@@ -163,31 +163,13 @@ def main():
 
     # --
 
-    st.write("## Calculations")
-
-    algorithm_options = ["PyMedPhys", "PyLinac"]
-    selected_algorithms = st.multiselect(
-        "Algorithms to run", algorithm_options, algorithm_options
+    _calculation.calculations_ui(
+        database_table,
+        database_directory,
+        wlutz_directory_by_date,
+        bb_diameter,
+        penumbra,
     )
-
-    database_table["filename"] = database_table["filepath"].apply(
-        _utilities.filepath_to_filename
-    )
-    database_table["time"] = database_table["datetime"].dt.time.apply(str)
-
-    _show_selected_image(
-        database_directory, database_table, selected_algorithms, bb_diameter, penumbra
-    )
-
-    if st.button("Calculate"):
-        _calculation.run_calculation(
-            database_table,
-            database_directory,
-            wlutz_directory_by_date,
-            selected_algorithms,
-            bb_diameter,
-            penumbra,
-        )
 
 
 def _show_selected_image(
