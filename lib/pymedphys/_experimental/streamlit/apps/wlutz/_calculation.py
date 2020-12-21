@@ -223,7 +223,7 @@ def _collapse_column_to_single_value(dataframe, column):
 
 def _get_calculation_icom_items(database_row):
     edge_lengths = [database_row["width"], database_row["length"]]
-    icom_field_rotation = 90 - database_row["collimator"]
+    icom_field_rotation = -database_row["collimator"]
 
     return edge_lengths, icom_field_rotation
 
