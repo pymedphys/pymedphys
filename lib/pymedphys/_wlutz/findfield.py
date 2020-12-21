@@ -236,23 +236,7 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
     return predicted_centre
 
 
-def get_centre_of_mass(x, y, img):
-    centre_of_mass_index = scipy.ndimage.measurements.center_of_mass(img)
-
-    centre = [
-        float(_interp_coords(x)(centre_of_mass_index[1])),
-        float(_interp_coords(y)(centre_of_mass_index[0])),
-    ]
-
-    return centre
-
-
-def _interp_coords(coord):
-    return scipy.interpolate.interp1d(np.arange(len(coord)), coord)
-
-
 def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
-
     points_at_origin = define_penumbra_points_at_origin(edge_lengths, penumbra)
 
     def to_minimise(centre):
