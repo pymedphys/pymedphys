@@ -39,9 +39,6 @@ RESULTS_DATA_COLUMNS = [
 ]
 
 
-functools.lru_cache()
-
-
 def calculations_ui(
     database_table, database_directory, wlutz_directory_by_date, bb_diameter, penumbra
 ):

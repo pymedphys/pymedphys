@@ -44,6 +44,7 @@ def calculate(
     return field_centre, bb_centre
 
 
+@functools.lru_cache()
 def get_algorithm_function_map():
     ALGORITHM_FUNCTION_MAP = {
         "PyMedPhys": _pymedphys_wlutz_calculate,
