@@ -203,15 +203,16 @@ def _show_selected_image(
         image_filename = st.selectbox("Select single filepath", filenames)
 
         st.write(image_filename)
-        database_row = database_table.loc[
+        database_row_all_filename_matches = database_table.loc[
             database_table["filename"] == image_filename
-        ].iloc[0]
+        ]
 
-        relative_image_path = database_row["filepath"]
+        relative_image_path = database_row_all_filename_matches["filepath"]
         if len(relative_image_path) != 1:
             raise ValueError("Filepath and filelength should be a one-to-one mapping")
 
-        relative_image_path = relative_image_path.iloc[0]
+        database_row = database_row_all_filename_matches.iloc[0]
+        relative_image_path = database_row["filepath"]
 
         if _utilities.filepath_to_filename(relative_image_path) != image_filename:
             raise ValueError("Filepath selection did not convert appropriately")

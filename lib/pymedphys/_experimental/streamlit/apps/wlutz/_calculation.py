@@ -34,7 +34,6 @@ RESULTS_DATA_COLUMNS = [
     "diff_y",
     "field_centre_x",
     "field_centre_y",
-    "field_rotation",
     "bb_centre_x",
     "bb_centre_y",
 ]
@@ -249,7 +248,7 @@ def get_results_for_image(
 
     for algorithm in selected_algorithms:
 
-        field_centre, field_rotation_calculated, bb_centre = _calculate_wlutz(
+        field_centre, bb_centre = _calculate_wlutz(
             full_image_path,
             algorithm,
             bb_diameter,
@@ -265,7 +264,6 @@ def get_results_for_image(
                 "diff_y": field_centre[1] - bb_centre[1],
                 "field_centre_x": field_centre[0],
                 "field_centre_y": field_centre[1],
-                "field_rotation": field_rotation_calculated,
                 "bb_centre_x": bb_centre[0],
                 "bb_centre_y": bb_centre[1],
             }
@@ -289,14 +287,13 @@ def plot_diagnostic_figures(
 ):
     full_image_path = _get_full_image_path(database_directory, relative_image_path)
     edge_lengths, icom_field_rotation = _get_calculation_icom_items(database_row)
-    wlutz_input_parameters = _get_wlutz_input_parameters(
-        full_image_path, bb_diameter, edge_lengths, penumbra, icom_field_rotation
-    )
+
+    x, y, image = _load_iview_image(full_image_path)
 
     figures = []
 
     for algorithm in selected_algorithms:
-        field_centre, _, bb_centre = _calculate_wlutz(
+        field_centre, bb_centre = _calculate_wlutz(
             full_image_path,
             algorithm,
             bb_diameter,
@@ -305,27 +302,25 @@ def plot_diagnostic_figures(
             icom_field_rotation,
         )
 
-        fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
-        axs[0, 0].set_title(algorithm)
-        figures.append(fig)
+        try:
+            fig, axs = reporting.image_analysis_figure(
+                x,
+                y,
+                image,
+                bb_centre,
+                field_centre,
+                icom_field_rotation,
+                bb_diameter,
+                edge_lengths,
+                penumbra,
+            )
+
+            axs[0, 0].set_title(algorithm)
+            figures.append(fig)
+        except ValueError as e:
+            st.write(e)
 
     return figures
-
-
-def _create_figure(field_centre, bb_centre, wlutz_input_parameters):
-    fig, axs = reporting.image_analysis_figure(
-        wlutz_input_parameters["x"],
-        wlutz_input_parameters["y"],
-        wlutz_input_parameters["image"],
-        bb_centre,
-        field_centre,
-        wlutz_input_parameters["field_rotation"],
-        wlutz_input_parameters["bb_diameter"],
-        wlutz_input_parameters["edge_lengths"],
-        wlutz_input_parameters["penumbra"],
-    )
-
-    return fig, axs
 
 
 def _get_full_image_path(database_directory, relative_image_path):
@@ -333,52 +328,42 @@ def _get_full_image_path(database_directory, relative_image_path):
 
 
 @st.cache(show_spinner=False)
-def _get_wlutz_input_parameters(
-    image_path, bb_diameter, edge_lengths, penumbra, icom_field_rotation
-):
-    field_parameters = _get_field_parameters(image_path, edge_lengths, penumbra)
-    wlutz_input_parameters = {
-        "bb_diameter": bb_diameter,
-        "edge_lengths": edge_lengths,
-        "penumbra": penumbra,
-        "icom_field_rotation": icom_field_rotation,
-        **field_parameters,
-    }
-
-    return wlutz_input_parameters
-
-
-@st.cache(show_spinner=False)
 def _calculate_wlutz(
     image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
 ):
-    wlutz_input_parameters = _get_wlutz_input_parameters(
-        image_path, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+    x, y, image = _load_iview_image(image_path)
+
+    calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
+    field_centre, bb_centre = calculate_function(
+        x=x,
+        y=y,
+        image=image,
+        bb_diameter=bb_diameter,
+        edge_lengths=edge_lengths,
+        penumbra=penumbra,
+        icom_field_rotation=icom_field_rotation,
     )
 
-    if wlutz_input_parameters["field_rotation"] == np.nan:
-        field_centre = [np.nan, np.nan]
-        field_rotation = np.nan
-        bb_centre = [np.nan, np.nan]
-    else:
-        calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
-        field_centre, field_rotation, bb_centre = calculate_function(
-            **wlutz_input_parameters
-        )
-
-    return field_centre, field_rotation, bb_centre
+    return field_centre, bb_centre
 
 
 def _pymedphys_wlutz_calculate(
-    field,
-    bb_diameter,
-    edge_lengths,
-    penumbra,
-    pymedphys_field_centre,
-    field_rotation,
-    **_,
+    x, y, image, bb_diameter, edge_lengths, penumbra, icom_field_rotation, **_
 ):
-    field_centre = pymedphys_field_centre
+
+    initial_centre = findfield.get_centre_of_mass(x, y, image)
+    field = imginterp.create_interpolated_field(x, y, image)
+    try:
+        field_centre, _ = findfield.field_centre_and_rotation_refining(
+            field,
+            edge_lengths,
+            penumbra,
+            initial_centre,
+            pylinac_tol=None,
+            fixed_rotation=icom_field_rotation,
+        )
+    except ValueError:
+        field_centre = [np.nan, np.nan]
 
     try:
         bb_centre = findbb.optimise_bb_centre(
@@ -387,21 +372,23 @@ def _pymedphys_wlutz_calculate(
             edge_lengths,
             penumbra,
             field_centre,
-            field_rotation,
+            icom_field_rotation,
             pylinac_tol=None,
         )
     except ValueError:
         bb_centre = [np.nan, np.nan]
 
-    return field_centre, field_rotation, bb_centre
+    return field_centre, bb_centre
 
 
-def _pylinac_wlutz_calculate(field, icom_field_rotation, **_):
+def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, **_):
     version_to_use = pylinac.__version__
 
     try:
         pylinac_results = pmp_pylinac_api.run_wlutz(
-            field,
+            x,
+            y,
+            image,
             icom_field_rotation,
             find_bb=True,
             pylinac_versions=[version_to_use],
@@ -415,7 +402,7 @@ def _pylinac_wlutz_calculate(field, icom_field_rotation, **_):
         field_centre = [np.nan, np.nan]
         bb_centre = [np.nan, np.nan]
 
-    return field_centre, icom_field_rotation, bb_centre
+    return field_centre, bb_centre
 
 
 ALGORITHM_FUNCTION_MAP = {
@@ -424,41 +411,8 @@ ALGORITHM_FUNCTION_MAP = {
 }
 
 
-@st.cache(show_spinner=False)
-def _get_pymedphys_field_centre_and_rotation(image_path, edge_lengths, penumbra):
-    x, y, image, field = _load_image_field_interpolator(image_path)
-    initial_centre = findfield.get_centre_of_mass(x, y, image)
-
-    try:
-        field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
-            field, edge_lengths, penumbra, initial_centre, pylinac_tol=None
-        )
-    except ValueError:
-        field_centre = [np.nan, np.nan]
-        field_rotation = np.nan
-
-    return field_centre, field_rotation
-
-
-def _load_image_field_interpolator(image_path):
+def _load_iview_image(image_path):
     raw_image = lljpeg.imread(image_path)
     x, y, image = iview.iview_image_transform(raw_image)
-    field = imginterp.create_interpolated_field(x, y, image)
 
-    return x, y, image, field
-
-
-def _get_field_parameters(image_path, edge_lengths, penumbra):
-    x, y, image, field = _load_image_field_interpolator(image_path)
-    field_centre, field_rotation = _get_pymedphys_field_centre_and_rotation(
-        image_path, edge_lengths, penumbra
-    )
-
-    return {
-        "x": x,
-        "y": y,
-        "image": image,
-        "field": field,
-        "pymedphys_field_centre": field_centre,
-        "field_rotation": field_rotation,
-    }
+    return x, y, image
