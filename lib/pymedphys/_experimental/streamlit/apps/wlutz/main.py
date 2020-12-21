@@ -172,58 +172,6 @@ def main():
     )
 
 
-def _show_selected_image(
-    database_directory, database_table, selected_algorithms, bb_diameter, penumbra
-):
-    show_selected_image = st.checkbox(
-        "Select a single image to show results for", False
-    )
-
-    filenames = list(database_table["filename"])
-
-    if show_selected_image:
-        image_filename = st.selectbox("Select single filepath", filenames)
-
-        st.write(image_filename)
-        database_row_all_filename_matches = database_table.loc[
-            database_table["filename"] == image_filename
-        ]
-
-        relative_image_path = database_row_all_filename_matches["filepath"]
-        if len(relative_image_path) != 1:
-            raise ValueError("Filepath and filelength should be a one-to-one mapping")
-
-        database_row = database_row_all_filename_matches.iloc[0]
-        relative_image_path = database_row["filepath"]
-
-        if _utilities.filepath_to_filename(relative_image_path) != image_filename:
-            raise ValueError("Filepath selection did not convert appropriately")
-
-        st.write(relative_image_path)
-        results = _calculation.get_results_for_image(
-            database_directory,
-            relative_image_path,
-            selected_algorithms,
-            bb_diameter,
-            database_row,
-            penumbra,
-        )
-
-        st.write(results)
-
-        figures = _calculation.plot_diagnostic_figures(
-            database_directory,
-            relative_image_path,
-            bb_diameter,
-            database_row,
-            penumbra,
-            selected_algorithms,
-        )
-
-        for fig in figures:
-            st.pyplot(fig)
-
-
 def _set_parameters():
     st.sidebar.write("## Parameters")
 
