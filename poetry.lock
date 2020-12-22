@@ -2353,7 +2353,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "streamlit"
-version = "0.73.0"
+version = "0.73.1"
 description = "The fastest way to build data apps in Python"
 category = "main"
 optional = true
@@ -2760,7 +2760,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "89125c9bab97dbee14179ffbc534140bc0e325c92e70343c1bcbf0d60779f4e2"
+content-hash = "b220d356656fe75d8a1ccf3cc14e520acb75da215f4d2173725243519ab2bde7"
 
 [metadata.files]
 absl-py = [
@@ -4219,8 +4219,8 @@ stevedore = [
     {file = "stevedore-3.3.0.tar.gz", hash = "sha256:3a5bbd0652bf552748871eaa73a4a8dc2899786bc497a2aa1fcb4dcdb0debeee"},
 ]
 streamlit = [
-    {file = "streamlit-0.73.0-py2.py3-none-any.whl", hash = "sha256:3e7f79ea82645934b4dbf1cbad91929f413db056e7f998cd72c20b8db620d2b3"},
-    {file = "streamlit-0.73.0.tar.gz", hash = "sha256:018541ecb0582c6a3273068ae6db9dcea26c7bd590f014e600cc7458d6eba5a7"},
+    {file = "streamlit-0.73.1-py2.py3-none-any.whl", hash = "sha256:dc9ad12ff6b14263eaad7ea784375024d9f8a56ee19a8cfcfbf78382e1322f05"},
+    {file = "streamlit-0.73.1.tar.gz", hash = "sha256:6db734ca36c2c7beb3148c9894b1116837cd9f6d587446c56a3f4cde0453b726"},
 ]
 tensorboard = [
     {file = "tensorboard-2.4.0-py3-none-any.whl", hash = "sha256:cde0c663a85609441cb4d624e7255fd8e2b6b1d679645095aac8a234a2812738"},
