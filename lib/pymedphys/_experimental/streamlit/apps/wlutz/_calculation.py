@@ -219,7 +219,7 @@ def run_calculation(
     merged_with_previous = pd.concat(
         [contextualised_results, previously_calculated_results]
     )
-    merged_with_previous = merged_with_previous.drop_duplicates(ignore_index=True)
+    merged_with_previous.drop_duplicates(inplace=True, ignore_index=True)
     merged_with_previous.to_csv(raw_results_csv_path, index=False)
 
     statistics_collection = []
