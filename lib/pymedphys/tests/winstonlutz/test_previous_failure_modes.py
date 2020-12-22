@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 import toml
 
 import numpy as np
@@ -26,13 +27,20 @@ from pymedphys._experimental.streamlit.utilities import wlutz as _wlutz
 # from pymedphys._wlutz import reporting
 
 
-def test_line_artefact_images():
-    data_files = pymedphys.zip_data_paths("previously_failing_iview_images.zip")
+@pytest.fixture
+def data_files():
+    zenodo_data_files = pymedphys.zip_data_paths("previously_failing_iview_images.zip")
     collimator_angles = toml.load(
-        [item for item in data_files if item.suffix == ".toml"][0]
+        [item for item in zenodo_data_files if item.suffix == ".toml"][0]
     )
 
-    jpg_paths = {item.name: item for item in data_files if item.suffix == ".jpg"}
+    jpg_paths = {item.name: item for item in zenodo_data_files if item.suffix == ".jpg"}
+
+    return collimator_angles, jpg_paths
+
+
+def test_line_artefact_images(data_files):
+    collimator_angles, jpg_paths = data_files
 
     edge_lengths = [20, 26]
     penumbra = 2
