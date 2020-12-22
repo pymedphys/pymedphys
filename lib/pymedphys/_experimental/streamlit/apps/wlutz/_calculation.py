@@ -144,6 +144,9 @@ def run_calculation(
         result_range = max_result - min_result
 
         display_diagnostic_plot = np.any(result_range > deviation_plot_threshold)
+        if display_diagnostic_plot:
+            st.write(result_range)
+
         if (
             plot_when_data_missing
             and results[["diff_x", "diff_y"]].isnull().values.any()
@@ -216,7 +219,7 @@ def run_calculation(
     merged_with_previous = pd.concat(
         [contextualised_results, previously_calculated_results]
     )
-    merged_with_previous.drop_duplicates(inplace=True)
+    merged_with_previous.drop_duplicates(inplace=True, ignore_index=True)
     merged_with_previous.to_csv(raw_results_csv_path, index=False)
 
     statistics_collection = []
