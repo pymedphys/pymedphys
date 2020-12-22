@@ -2593,7 +2593,7 @@ name = "typing-extensions"
 version = "3.7.4.3"
 description = "Backported and Experimental Type Hints for Python 3.5+"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
