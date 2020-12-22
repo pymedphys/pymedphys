@@ -27,7 +27,7 @@ from pymedphys._experimental.streamlit.utilities import wlutz as _wlutz
 
 
 def test_line_artefact_images():
-    data_files = pymedphys.zip_data_paths("26x20mm_out_of_sync_iview_images.zip")
+    data_files = pymedphys.zip_data_paths("previously_failing_iview_images.zip")
     collimator_angles = toml.load(
         [item for item in data_files if item.suffix == ".toml"][0]
     )
