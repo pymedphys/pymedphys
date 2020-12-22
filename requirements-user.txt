@@ -92,7 +92,7 @@ send2trash==1.5.0; python_version >= "3.6"
 shapely==1.7.1
 six==1.15.0; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "linux" or python_full_version >= "3.6.0" and python_version >= "3.6" and sys_platform == "linux"
 smmap==3.0.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
-streamlit==0.73.0; python_version >= "3.6"
+streamlit==0.73.1; python_version >= "3.6"
 terminado==0.9.1; python_version >= "3.6"
 testpath==0.4.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 threadpoolctl==2.1.0; python_version >= "3.6"
