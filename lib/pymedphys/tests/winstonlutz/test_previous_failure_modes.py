@@ -35,7 +35,6 @@ ALGORITHM_PYLINAC = f"PyLinac v{pylinac.__version__}"
 ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
 
 
-@pytest.fixture
 def data_files():
     zenodo_data_files = pymedphys.zip_data_paths("previously_failing_iview_images.zip")
     collimator_angles = toml.load(
@@ -47,29 +46,41 @@ def data_files():
     return collimator_angles, jpg_paths
 
 
-def test_offset_pylinac(data_files):
-    collimator_angles, jpg_paths = data_files
+def test_offset_pylinac():
+    filename = "000058A7.jpg"
+    expected_field_centre = [-0.70, -2.75]
+    expected_bb_centre = [-0.10, -2.33]
 
-    algorithm_pylinac = f"PyLinac v{pylinac.__version__}"
+    _compare_to_expected(
+        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYLINAC
+    )
 
 
-def test_line_artefact_images(data_files):
-    collimator_angles, jpg_paths = data_files
-
+def test_line_artefact_images_pymedphys():
+    filename = "000057E2.jpg"
     expected_field_centre = [-0.11, -2.07]
     expected_bb_centre = [-0.17, -2.41]
 
-    filename = "000057E2.jpg"
+    _compare_to_expected(
+        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
+    )
+
+
+def _get_path_and_rotation(filename):
+    collimator_angles, jpg_paths = data_files()
     full_image_path = jpg_paths[filename]
     icom_field_rotation = -collimator_angles[filename]
 
+    return full_image_path, icom_field_rotation
+
+
+def _compare_to_expected(
+    filename, expected_field_centre, expected_bb_centre, algorithm
+):
+    filepath, rotation = _get_path_and_rotation(filename)
+
     field_centre, bb_centre = _wlutz.calculate(
-        full_image_path,
-        ALGORITHM_PYMEDPHYS,
-        BB_DIAMETER,
-        EDGE_LENGTHS,
-        PENUMBRA,
-        icom_field_rotation,
+        filepath, algorithm, BB_DIAMETER, EDGE_LENGTHS, PENUMBRA, rotation
     )
 
     assert np.allclose(field_centre, expected_field_centre, atol=0.05)
