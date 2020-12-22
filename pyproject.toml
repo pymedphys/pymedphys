@@ -44,7 +44,7 @@ packaging = { version = "*", optional = true }  # groups = ["user", "dev"]
 PyYAML = { version = "*", optional = true }  # groups = ["user", "dev"]
 requests = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-numpy = { version = ">= 1.12", optional = true }  # groups = ["user", "dev"]
+numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev"]
 matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev"]
@@ -53,7 +53,7 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 ## electron-factors
-shapely = { version = ">= 1.7.0", optional = true }  # groups = ["user", "dev"]
+shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
 
 ## dicom
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
