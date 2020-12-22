@@ -130,12 +130,20 @@ def run_calculation(
                 penumbra,
             )
 
-        min_diff = results[["diff_x", "diff_y"]].min(axis=0)
-        max_diff = results[["diff_x", "diff_y"]].max(axis=0)
+        columns_to_check_for_deviation = [
+            "diff_x",
+            "diff_y",
+            "field_centre_x",
+            "field_centre_y",
+            "bb_centre_x",
+            "bb_centre_y",
+        ]
+        min_result = results[columns_to_check_for_deviation].min(axis=0)
+        max_result = results[columns_to_check_for_deviation].max(axis=0)
 
-        diff_range = max_diff - min_diff
+        result_range = max_result - min_result
 
-        display_diagnostic_plot = np.any(diff_range > deviation_plot_threshold)
+        display_diagnostic_plot = np.any(result_range > deviation_plot_threshold)
         if (
             plot_when_data_missing
             and results[["diff_x", "diff_y"]].isnull().values.any()
