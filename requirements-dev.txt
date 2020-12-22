@@ -46,7 +46,7 @@ identify==1.5.10; python_version >= "3.6" and python_full_version < "3.0.0" or p
 idna==2.10; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 imageio==2.9.0; python_version >= "3.5"
 imagesize==1.2.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
-importlib-metadata==3.2.0; python_version < "3.8" and python_version >= "3.6" and (python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "3.8" or python_full_version >= "3.4.0" and python_version >= "3.6" and python_version < "3.8")
+importlib-metadata==3.3.0; python_version < "3.8" and python_version >= "3.6" and (python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "3.8" or python_full_version >= "3.4.0" and python_version >= "3.6" and python_version < "3.8")
 importlib-resources==3.0.0; python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "3.7" or python_version < "3.7" and python_version >= "3.6" and python_full_version >= "3.5.0"
 iniconfig==1.1.1; python_version >= "3.6"
 ipykernel==5.4.2; python_version >= "3.6"
@@ -124,6 +124,7 @@ pynetdicom==1.5.3
 pyparsing==2.4.7; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
 pyrsistent==0.17.3; python_version >= "3.6"
 pytest-pylint==0.18.0; python_version >= "3.5"
+pytest-rerunfailures==9.1.1; python_version >= "3.5"
 pytest-sugar==0.9.4
 pytest==6.2.0; python_version >= "3.6"
 python-dateutil==2.8.1; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.3.0")
