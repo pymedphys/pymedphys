@@ -16,8 +16,10 @@
 import functools
 import os
 import pathlib
+from typing import Callable, Dict
 
 from pymedphys._imports import streamlit as st
+from typing_extensions import Literal
 
 import pymedphys
 from pymedphys import _config as pmp_config
@@ -51,11 +53,27 @@ def get_export_directory_from_site_config(site_config, export_directory):
     )
 
 
+DirectoryConfigOptions = Literal[
+    "monaco", "escan", "anonymised_monaco", "iviewdb", "icom"
+]
+
+DirectoriesForSite = Dict[DirectoryConfigOptions, pathlib.Path]
+
+
 @st.cache
-def get_site_directories():
+def get_site_directories() -> Dict[str, DirectoriesForSite]:
+    """A config wrapper that retrieves a dictionary that maps site to directories.
+
+    Returns
+    -------
+    site_directories
+        A dictionary indexed by site. Each site has within it a
+        dictionary that is indexed by directory type.
+
+    """
     config = get_config()
 
-    site_directory_functions = {
+    site_directory_functions: Dict[DirectoryConfigOptions, Callable] = {
         "monaco": get_monaco_from_site_config,
         "escan": functools.partial(
             get_export_directory_from_site_config, export_directory="escan"
@@ -66,9 +84,12 @@ def get_site_directories():
         "iviewdb": functools.partial(
             get_export_directory_from_site_config, export_directory="iviewdb"
         ),
+        "icom": functools.partial(
+            get_export_directory_from_site_config, export_directory="icom"
+        ),
     }
 
-    site_directories = {}
+    site_directories: Dict[str, DirectoriesForSite] = {}
     for site in config["site"]:
         site_name = site["name"]
         site_directories[site_name] = {}

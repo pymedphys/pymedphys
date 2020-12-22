@@ -2649,7 +2649,7 @@ name = "typing-extensions"
 version = "3.7.4.3"
 description = "Backported and Experimental Type Hints for Python 3.5+"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -2816,7 +2816,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "9d39a26310f854f9aee1ce9f368e558cfc28e6f86d2704b80122daefb6d36b4c"
+content-hash = "804042edab3bc3902d3a7832bfd6fdfefb190a6663418aa502377336337bc275"
 
 [metadata.files]
 absl-py = [
