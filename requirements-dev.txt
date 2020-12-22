@@ -71,7 +71,7 @@ latexcodec==2.0.1; python_version >= "3.6" and python_full_version < "3.0.0" or 
 lazy-object-proxy==1.4.3; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5"
 lxml==4.6.2; python_version >= "2.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0"
 markdown-it-py==0.5.8; python_version >= "3.6" and python_version < "4.0"
-markupsafe==1.1.1; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
+markupsafe==1.1.1; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.5"
 matplotlib==3.3.3; python_version >= "3.6"
 mccabe==0.6.1; python_version >= "3.5"
 mistune==0.8.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
@@ -128,7 +128,7 @@ pytest-rerunfailures==9.1.1; python_version >= "3.5"
 pytest-sugar==0.9.4
 pytest==6.2.1; python_version >= "3.6"
 python-dateutil==2.8.1; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.3.0")
-pytz==2020.4; python_full_version >= "3.6.1" and python_version >= "3.6" and (python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6")
+pytz==2020.4; python_full_version >= "3.6.1" and python_version >= "3.6" and (python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5")
 pywavelets==1.1.1; python_version >= "3.6"
 pywin32-ctypes==0.2.0; sys_platform == "win32" and python_version >= "3.6"
 pywin32==300; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "win32" or python_full_version >= "3.5.0" and python_version >= "3.6" and sys_platform == "win32"
@@ -160,7 +160,7 @@ sphinx-copybutton==0.3.1; python_version >= "3.6"
 sphinx-panels==0.5.2; python_version >= "3.6"
 sphinx-thebe==0.0.8; python_version >= "3.6"
 sphinx-togglebutton==0.2.3; python_version >= "3.6"
-sphinx==3.4.0; python_version >= "3.6"
+sphinx==3.3.1; python_version >= "3.5"
 sphinxcontrib-applehelp==1.0.2; python_version >= "3.6"
 sphinxcontrib-bibtex==1.0.0
 sphinxcontrib-devhelp==1.0.2; python_version >= "3.6"
