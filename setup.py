@@ -169,6 +169,7 @@ extras_require = {
         "xmltodict",
         "streamlit==0.71.0",
         "timeago",
+        "sphinx<3.4.0",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
@@ -191,6 +192,7 @@ extras_require = {
     ],
     "dicom": ["pydicom>=2.0.0", "pynetdicom", "pylibjpeg-libjpeg"],
     "docs": [
+        "sphinx<3.4.0",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
