@@ -1,10 +1,14 @@
-name: PullRequest
+name: TestAndDeploy
 
 on:
   push:
     branches:
       - main
   pull_request:
+  release:
+    types:
+      - created
+
 
 jobs:
 
@@ -53,6 +57,7 @@ jobs:
 # =============================================================================
 
   Tests:
+    if: github.event_name != 'release'  # Skip on release while building out the CI
     strategy:
       fail-fast: false
       matrix:
@@ -370,10 +375,43 @@ jobs:
     - name: Run Cypress tests
       if: matrix.task == 'cypress'
       run: |
-        poetry run pymedphys dev tests -v -s --cypress
+        poetry run pymedphys dev tests --reruns 5 -v -s --cypress
 
     - uses: actions/upload-artifact@v2
       if: failure() && matrix.task == 'cypress'
       with:
         name: cypress-videos
         path: pymedphys/tests/e2e/cypress/videos
+
+
+  PyPI:
+    # needs:
+      # - PreCommit
+      # - Tests
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: |
+          echo Hello World
+
+  WheelBundles:
+    needs:
+      - PyPI
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: |
+          echo Hello World
+
+  UpdateRelease:
+    needs:
+      # - Tests
+      - WheelBundles
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: |
+          echo Hello World

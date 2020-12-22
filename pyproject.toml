@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.35.0-dev2"
+version = "0.36.0-dev0"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -12,7 +12,7 @@ authors = [
     "Jake Rembish",
     "Matthew Cooper <mcooper@pymedphys.com>",
     "Jacob McAloney",
-    "Pedro Martinez"
+    "Pedro Martinez",
 ]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"
@@ -26,7 +26,7 @@ classifiers = [
     "Intended Audience :: Healthcare Industry",
 ]
 
-packages = [{include = "pymedphys", from = "lib" }]
+packages = [{ include = "pymedphys", from = "lib" }]
 
 [tool.poetry.dependencies]
 python = "^3.6"
@@ -34,86 +34,87 @@ dataclasses = {version = "*", python = "~3.6"}
 typing-extensions = {version = "*"}
 
 # library
-tqdm = {version = "*", optional = true}  # groups = ["user", "dev"]
-attrs = {version = "*", optional = true}  # groups = ["user", "dev"]
-watchdog = {version = "*", optional = true}  # groups = ["user", "dev"]
+tqdm = { version = "*", optional = true }  # groups = ["user", "dev"]
+attrs = { version = "*", optional = true }  # groups = ["user", "dev"]
+watchdog = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-keyring = {version = "*", optional = true}  # groups = ["user", "dev"]
-packaging = {version = "*", optional = true}  # groups = ["user", "dev"]
-PyYAML = {version = "*", optional = true}  # groups = ["user", "dev"]
-requests = {version = "*", optional = true}  # groups = ["user", "dev"]
+keyring = { version = "*", optional = true }  # groups = ["user", "dev"]
+packaging = { version = "*", optional = true }  # groups = ["user", "dev"]
+PyYAML = { version = "*", optional = true }  # groups = ["user", "dev"]
+requests = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-numpy = {version = ">= 1.12", optional = true}  # groups = ["user", "dev"]
-matplotlib = {version = "*", optional = true}  # groups = ["user", "dev"]
-scipy = {version = "*", optional = true}  # groups = ["user", "dev"]
-pandas = {version = "*", optional = true}  # groups = ["user", "dev"]
+numpy = { version = ">= 1.12", optional = true }  # groups = ["user", "dev"]
+matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
+scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
+pandas = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-Pillow = {version = "*", optional = true}  # groups = ["user", "dev"]
-imageio = {version = "*", optional = true}  # groups = ["user", "dev"]
+Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
+imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 ## electron-factors
-shapely = {version = ">= 1.7.0", optional = true}  # groups = ["user", "dev"]
+shapely = { version = ">= 1.7.0", optional = true }  # groups = ["user", "dev"]
 
 ## dicom
-pydicom = {version = ">=2.0.0", optional = true}  # groups = ["user", "dev", "dicom"]
-pynetdicom = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
-pylibjpeg-libjpeg = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
+pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
+pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
+pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 
 ## mosaiq
-pymssql = {version = "*", optional = true}  # groups = ["user", "dev"]
+pymssql = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 ## wlutz
-pylinac = {version = "2.3.2", optional = true}  # groups = ["user", "dev"]
-python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev"]
-scikit-image = {version = "*", optional = true}  # groups = ["user", "dev"]
-dbfread = {version = "*", optional = true}  # groups = ["user", "dev"]
-xmltodict = {version = "*", optional = true}  # groups = ["user", "dev"]
+pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev"]
+python_dateutil = { version = "*", optional = true }  # groups = ["user", "dev"]
+scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
+dbfread = { version = "*", optional = true }  # groups = ["user", "dev"]
+xmltodict = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 ## gui
-streamlit = {version = "0.71.0", optional = true}  # groups = ["user", "dev"]
-timeago = {version = "*", optional = true}  # groups = ["user", "dev"]
+streamlit = { version = "0.71.0", optional = true }  # groups = ["user", "dev"]
+timeago = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # comparables
-flashgamma = {version = "*", optional = true}  # groups = ["comparables"]
+flashgamma = { version = "*", optional = true }  # groups = ["comparables"]
 
 # ml
-tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml", "doctests"]
-torch = {version = ">=1.0.0", optional = true}  # groups = ["ml"]
+tensorflow = { version = ">=2.2.0", optional = true }  # groups = ["ml", "doctests"]
+torch = { version = ">=1.0.0", optional = true }  # groups = ["ml"]
 
 # docs
-jupyter-book = {version = ">=0.8.3", optional = true}  # groups = ["dev", "docs"]
-sphinx-argparse = {version = "*", optional = true}  # groups = ["dev", "docs"]
-sphinxcontrib-napoleon = {version = "*", optional = true}  # groups = ["dev", "docs"]
-sphinx-book-theme = {version = "*", optional = true}  # groups = ["dev", "docs", "doctests"]
-sphinxcontrib-bibtex = {version = "<2.0.0", optional = true}  # groups = ["dev", "docs", "doctests"]
+jupyter-book = { version = ">=0.8.3", optional = true }  # groups = ["dev", "docs"]
+sphinx-argparse = { version = "*", optional = true }  # groups = ["dev", "docs"]
+sphinxcontrib-napoleon = { version = "*", optional = true }  # groups = ["dev", "docs"]
+sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs", "doctests"]
+sphinxcontrib-bibtex = { version = "<2.0.0", optional = true }  # groups = ["dev", "docs", "doctests"]
 
 # tests
-pytest = {version = "*", optional = true}  # groups = ["dev", "tests"]
-pytest-sugar  = {version = "*", optional = true}  # groups = ["dev", "tests"]
-hypothesis  = {version = "*", optional = true}  # groups = ["dev", "tests"]
-psutil  = {version = "*", optional = true}  # groups = ["dev", "tests"]
-pylint  = {version = "*", optional = true}  # groups = ["dev", "tests"]
-pytest-pylint  = {version = "*", optional = true}  # groups = ["dev", "tests"]
+pytest = { version = "*", optional = true }  # groups = ["dev", "tests"]
+pytest-sugar = { version = "*", optional = true }  # groups = ["dev", "tests"]
+hypothesis = { version = "*", optional = true }  # groups = ["dev", "tests"]
+psutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
+pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
+pytest-pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
+pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "tests"]
 
 # dev
-pre-commit = {version = "*", optional = true}  # groups = ["dev"]
-black = {version = "^19.3b0", optional = true}  # groups = ["dev", "doctests"]
-mypy = {version = "*", optional = true}  # groups = ["dev"]
-rope = {version = "*", optional = true}  # groups = ["dev"]
-doc8 = {version = "*", optional = true}  # groups = ["dev"]
-tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
-readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
+pre-commit = { version = "*", optional = true }  # groups = ["dev"]
+black = { version = "^19.3b0", optional = true }  # groups = ["dev", "doctests"]
+mypy = { version = "*", optional = true }  # groups = ["dev"]
+rope = { version = "*", optional = true }  # groups = ["dev"]
+doc8 = { version = "*", optional = true }  # groups = ["dev"]
+tomlkit = { version = "*", optional = true }  # groups = ["dev", "doctests"]
+readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 
 
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
 comparables = ["flashgamma"]
 ml = ["tensorflow", "torch"]
 doctests = ["tensorflow", "sphinx-book-theme", "sphinxcontrib-bibtex", "black", "tomlkit"]
 docs = ["jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex"]
-tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
+tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures"]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"
@@ -129,24 +130,32 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 
-known_third_party = [
-    "pymedphys._imports"
-]
+known_third_party = ["pymedphys._imports"]
 known_general_scientific = [
-    "numpy", "scipy", "pandas", "imageio", "PIL", "skimage", "matplotlib",
-    "mpl_toolkits", "shapely"
+    "numpy",
+    "scipy",
+    "pandas",
+    "imageio",
+    "PIL",
+    "skimage",
+    "matplotlib",
+    "mpl_toolkits",
+    "shapely",
 ]
-known_machine_learning = [
-    "tensorflow", "streamlit"
-]
-known_medphys = [
-    "pydicom", "pylinac", "pynetdicom", "libjpeg"
-]
+known_machine_learning = ["tensorflow", "streamlit"]
+known_medphys = ["pydicom", "pylinac", "pynetdicom", "libjpeg"]
 known_first_party = ["pymedphys"]
 known_experimental = ["pymedphys._experimental"]
 sections = [
-    "FUTURE", "STDLIB", "THIRDPARTY", "GENERAL_SCIENTIFIC", "MACHINE_LEARNING",
-    "MEDPHYS", "FIRSTPARTY", "EXPERIMENTAL", "LOCALFOLDER"
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "GENERAL_SCIENTIFIC",
+    "MACHINE_LEARNING",
+    "MEDPHYS",
+    "FIRSTPARTY",
+    "EXPERIMENTAL",
+    "LOCALFOLDER",
 ]
 
 [build-system]
