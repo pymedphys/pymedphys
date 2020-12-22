@@ -140,6 +140,8 @@ package_data = {
     ],
 }
 
+install_requires = ["typing-extensions"]
+
 extras_require = {
     ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],
     "comparables": ["flashgamma"],
@@ -263,6 +265,7 @@ setup_kwargs = {
     "package_dir": package_dir,
     "packages": packages,
     "package_data": package_data,
+    "install_requires": install_requires,
     "extras_require": extras_require,
     "entry_points": entry_points,
     "python_requires": ">=3.6.2,<4.0.0",
