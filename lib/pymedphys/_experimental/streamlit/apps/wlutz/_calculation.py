@@ -14,6 +14,7 @@
 
 
 import base64
+import io
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -219,7 +220,25 @@ def run_calculation(
     merged_with_previous = pd.concat(
         [contextualised_results, previously_calculated_results]
     )
-    merged_with_previous.drop_duplicates(inplace=True, ignore_index=True)
+
+    merged_with_previous = merged_with_previous.round(
+        {
+            "diff_x": 4,
+            "diff_y": 4,
+            "field_centre_x": 4,
+            "field_centre_y": 4,
+            "bb_centre_x": 4,
+            "bb_centre_y": 4,
+            "width": 1,
+            "length": 1,
+            "collimator": 1,
+            "gantry": 1,
+        }
+    )
+
+    merged_with_previous = merged_with_previous.drop_duplicates(
+        subset=["filepath", "algorithm"]
+    )
     merged_with_previous.to_csv(raw_results_csv_path, index=False)
 
     statistics_collection = []
