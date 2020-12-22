@@ -26,6 +26,14 @@ from pymedphys._experimental.streamlit.utilities import wlutz as _wlutz
 # import matplotlib.pyplot as plt
 # from pymedphys._wlutz import reporting
 
+EDGE_LENGTHS = [20, 26]
+PENUMBRA = 2
+BB_DIAMETER = 8
+
+ALGORITHM_PYMEDPHYS = "PyMedPhys"
+ALGORITHM_PYLINAC = f"PyLinac v{pylinac.__version__}"
+ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
+
 
 @pytest.fixture
 def data_files():
@@ -39,55 +47,30 @@ def data_files():
     return collimator_angles, jpg_paths
 
 
+def test_offset_pylinac(data_files):
+    collimator_angles, jpg_paths = data_files
+
+    algorithm_pylinac = f"PyLinac v{pylinac.__version__}"
+
+
 def test_line_artefact_images(data_files):
     collimator_angles, jpg_paths = data_files
 
-    edge_lengths = [20, 26]
-    penumbra = 2
-    bb_diameter = 8
-
-    algorithm_pymedphys = "PyMedPhys"
-    algorithm_pylinac = f"PyLinac v{pylinac.__version__}"
-    algorithms = [algorithm_pymedphys, algorithm_pylinac]
+    expected_field_centre = [-0.11, -2.07]
+    expected_bb_centre = [-0.17, -2.41]
 
     filename = "000057E2.jpg"
     full_image_path = jpg_paths[filename]
     icom_field_rotation = -collimator_angles[filename]
 
-    results = {}
-    for algorithm in algorithms:
-        field_centre, bb_centre = _wlutz.calculate(
-            full_image_path,
-            algorithm,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
-            icom_field_rotation,
-        )
-
-        results[algorithm] = {"field_centre": field_centre, "bb_centre": bb_centre}
-
-        # x, y, image = _wlutz.load_iview_image(full_image_path)
-        # fig, axs = reporting.image_analysis_figure(
-        #     x,
-        #     y,
-        #     image,
-        #     bb_centre,
-        #     field_centre,
-        #     icom_field_rotation,
-        #     bb_diameter,
-        #     edge_lengths,
-        #     penumbra,
-        # )
-        # plt.show()
-
-    assert np.allclose(
-        results[algorithm_pymedphys]["field_centre"],
-        results[algorithm_pylinac]["field_centre"],
-        atol=0.2,
+    field_centre, bb_centre = _wlutz.calculate(
+        full_image_path,
+        ALGORITHM_PYMEDPHYS,
+        BB_DIAMETER,
+        EDGE_LENGTHS,
+        PENUMBRA,
+        icom_field_rotation,
     )
-    assert np.allclose(
-        results[algorithm_pymedphys]["bb_centre"],
-        results[algorithm_pylinac]["bb_centre"],
-        atol=0.2,
-    )
+
+    assert np.allclose(field_centre, expected_field_centre, atol=0.05)
+    assert np.allclose(bb_centre, expected_bb_centre, atol=0.05)
