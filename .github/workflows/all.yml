@@ -464,7 +464,7 @@ jobs:
         run: |
           pip install wheel
           pip wheel . -w offline --no-deps
-          pip download -r requirements-deploy.txt -d offline
+          pip download -r requirements-dev.txt -d offline
       - name: Get Wheel Types
         id: wheel_label
         run: |
