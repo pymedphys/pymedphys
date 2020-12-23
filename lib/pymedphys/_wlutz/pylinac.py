@@ -25,6 +25,10 @@ class PylinacComparisonDeviation(ValueError):
     pass
 
 
+def run_wlutz_raw(x, y, image, pylinac_versions=None, fill_errors_with_nan=False):
+    pass
+
+
 def run_wlutz(
     x,
     y,
@@ -90,7 +94,7 @@ def run_pylinac_with_class(
 
     try:
         field_centre = _utilities.transform_point(
-            interpolated_image_field_centre, [0, 0], field_rotation_for_interpolation
+            interpolated_image_field_centre, [0, 0], -field_rotation_for_interpolation
         )
     except ValueError:
         if fill_errors_with_nan:
@@ -106,7 +110,7 @@ def run_pylinac_with_class(
             ]
 
             bb_centre = _utilities.transform_point(
-                interpolated_image_bb_centre, [0, 0], field_rotation_for_interpolation
+                interpolated_image_bb_centre, [0, 0], -field_rotation_for_interpolation
             )
         except ValueError:
             if fill_errors_with_nan:
