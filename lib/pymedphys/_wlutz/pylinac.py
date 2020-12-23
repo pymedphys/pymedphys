@@ -82,7 +82,7 @@ def run_wlutz(
     y,
     image,
     field_rotation,
-    search_radius=20,
+    search_radius=25,
     find_bb=True,
     interpolated_pixel_size=0.25,
     pylinac_versions=None,
