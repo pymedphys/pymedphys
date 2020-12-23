@@ -27,7 +27,6 @@ def transform_point(point, field_centre, field_rotation):
 
 
 def create_centralised_field(field, centre, rotation):
-
     transform = translate_and_rotate_transform(centre, rotation)
 
     def new_field(x, y):
