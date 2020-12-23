@@ -110,8 +110,7 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys._experimental.streamlit.apps": ["data/*"],
+    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/apps/data/*"],
     "pymedphys.docs": [
         "_static/*",
         "background/*",
@@ -127,20 +126,21 @@ package_data = {
         "ref/lib/experimental/*",
         "tutes/*",
     ],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/.gitignore",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/.gitignore",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
+        "experimental/paulking/film/data/*",
     ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
-    ],
-    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
+
+install_requires = ["typing-extensions"]
 
 extras_require = {
     ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],
@@ -156,7 +156,7 @@ extras_require = {
         "numpy>=1.12",
         "matplotlib",
         "scipy",
-        "pandas",
+        "pandas>=1.0.0",
         "Pillow",
         "imageio",
         "shapely>=1.7.0",
@@ -169,8 +169,9 @@ extras_require = {
         "scikit-image",
         "dbfread",
         "xmltodict",
-        "streamlit==0.71.0",
+        "streamlit==0.73.1",
         "timeago",
+        "sphinx<3.4.0",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
@@ -193,6 +194,7 @@ extras_require = {
     ],
     "dicom": ["pydicom>=2.0.0", "pynetdicom", "pylibjpeg-libjpeg"],
     "docs": [
+        "sphinx<3.4.0",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
@@ -206,7 +208,7 @@ extras_require = {
         "black>=19.3b0,<20.0",
         "tomlkit",
     ],
-    "ml": ["tensorflow>=2.2.0", "torch>=1.0.0"],
+    "ml": ["tensorflow>=2.2.0", "torch>=1.7.1"],
     "tests": [
         "pytest",
         "pytest-sugar",
@@ -227,7 +229,7 @@ extras_require = {
         "numpy>=1.12",
         "matplotlib",
         "scipy",
-        "pandas",
+        "pandas>=1.0.0",
         "Pillow",
         "imageio",
         "shapely>=1.7.0",
@@ -240,7 +242,7 @@ extras_require = {
         "scikit-image",
         "dbfread",
         "xmltodict",
-        "streamlit==0.71.0",
+        "streamlit==0.73.1",
         "timeago",
     ],
 }
@@ -263,9 +265,10 @@ setup_kwargs = {
     "package_dir": package_dir,
     "packages": packages,
     "package_data": package_data,
+    "install_requires": install_requires,
     "extras_require": extras_require,
     "entry_points": entry_points,
-    "python_requires": ">=3.6,<4.0",
+    "python_requires": ">=3.6.2,<4.0.0",
 }
 
 
