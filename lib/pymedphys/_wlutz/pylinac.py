@@ -14,10 +14,10 @@
 
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pylinac as _pylinac_installed
 
 from pymedphys._vendor.pylinac import winstonlutz as _pylinac_wlutz
 
-from . import imginterp as _imginterp
 from . import utilities as _utilities
 
 
@@ -25,8 +25,56 @@ class PylinacComparisonDeviation(ValueError):
     pass
 
 
-def run_wlutz_raw(x, y, image, pylinac_versions=None, fill_errors_with_nan=False):
-    pass
+def run_wlutz_raw(
+    x, y, image, find_bb=True, pylinac_version=None, fill_errors_with_nan=False
+):
+    if pylinac_version is None:
+        pylinac_version = _pylinac_installed.__version__
+
+    nan_coords = [np.nan, np.nan]
+
+    VERSION_TO_CLASS_MAP = _pylinac_wlutz.get_version_to_class_map()
+    WLImage = VERSION_TO_CLASS_MAP[pylinac_version]
+    wl_image = WLImage(image)
+
+    dx = _convert_grid_to_step_size(x)
+    dy = _convert_grid_to_step_size(y)
+
+    try:
+        field_centre = [
+            wl_image.field_cax.x * dx + np.min(x),
+            wl_image.field_cax.y * dy + np.min(y),
+        ]
+    except ValueError:
+        if fill_errors_with_nan:
+            field_centre = nan_coords
+
+        else:
+            raise
+
+    if find_bb:
+        try:
+            bb_centre = [wl_image.bb.x * dx + np.min(x), wl_image.bb.y * dy + np.min(y)]
+        except ValueError:
+            if fill_errors_with_nan:
+                bb_centre = nan_coords
+            else:
+                raise
+    else:
+        bb_centre = nan_coords
+
+    return field_centre, bb_centre
+
+
+def _convert_grid_to_step_size(x):
+    diff_x = np.diff(x)
+    dx_all = np.unique(diff_x)
+    if len(dx_all) != 1:
+        raise ValueError("Exactly one grid step size required.")
+
+    dx = dx_all[0]
+
+    return dx
 
 
 def run_wlutz(
@@ -34,90 +82,41 @@ def run_wlutz(
     y,
     image,
     field_rotation,
-    search_radius=40,
+    search_radius=20,
     find_bb=True,
     interpolated_pixel_size=0.25,
     pylinac_versions=None,
     fill_errors_with_nan=False,
 ):
-    VERSION_TO_CLASS_MAP = _pylinac_wlutz.get_version_to_class_map()
-
-    if pylinac_versions is None:
-        pylinac_versions = VERSION_TO_CLASS_MAP.keys()
-
-    field = _imginterp.create_interpolated_field(x, y, image)
-
-    centralised_straight_field = _utilities.create_centralised_field(
-        field, [0, 0], field_rotation
-    )
-
-    interp_coord = np.arange(
+    new_x = np.arange(
         -search_radius, search_radius + interpolated_pixel_size, interpolated_pixel_size
     )
+    new_y = new_x
+    rotated_image = _utilities.create_rotated_image(
+        x, y, image, field_rotation, new_x=new_x, new_y=new_y
+    )
 
-    xx_range, yy_range = np.meshgrid(interp_coord, interp_coord)
-    centralised_image = centralised_straight_field(xx_range, yy_range)
+    if pylinac_versions is None:
+        VERSION_TO_CLASS_MAP = _pylinac_wlutz.get_version_to_class_map()
+        pylinac_versions = VERSION_TO_CLASS_MAP.keys()
 
     results = {}
-    for key in pylinac_versions:
-        pylinac_field_centre, pylinac_bb_centre = run_pylinac_with_class(
-            VERSION_TO_CLASS_MAP[key],
-            centralised_image,
-            interpolated_pixel_size,
-            search_radius,
-            field_rotation,
+    for pylinac_version in pylinac_versions:
+        raw_field_centre, raw_bb_centre = run_wlutz_raw(
+            new_x,
+            new_y,
+            rotated_image,
             find_bb=find_bb,
+            pylinac_version=pylinac_version,
             fill_errors_with_nan=fill_errors_with_nan,
         )
-        results[key] = {
-            "field_centre": pylinac_field_centre,
-            "bb_centre": pylinac_bb_centre,
+
+        bb_centre = _utilities.rotate_point(raw_bb_centre, field_rotation)
+        field_centre = _utilities.rotate_point(raw_field_centre, field_rotation)
+
+        results[pylinac_version] = {
+            "field_centre": field_centre,
+            "bb_centre": bb_centre,
         }
 
     return results
-
-
-def run_pylinac_with_class(
-    class_to_use,
-    interpolated_image,
-    interpolated_pixel_size,
-    search_radius,
-    field_rotation_for_interpolation,
-    find_bb=True,
-    fill_errors_with_nan=False,
-):
-    wl_image = class_to_use(interpolated_image)
-    interpolated_image_field_centre = [
-        wl_image.field_cax.x * interpolated_pixel_size - search_radius,
-        wl_image.field_cax.y * interpolated_pixel_size - search_radius,
-    ]
-
-    try:
-        field_centre = _utilities.transform_point(
-            interpolated_image_field_centre, [0, 0], -field_rotation_for_interpolation
-        )
-    except ValueError:
-        if fill_errors_with_nan:
-            field_centre = [np.nan, np.nan]
-        else:
-            raise
-
-    if find_bb:
-        try:
-            interpolated_image_bb_centre = [
-                wl_image.bb.x * interpolated_pixel_size - search_radius,
-                wl_image.bb.y * interpolated_pixel_size - search_radius,
-            ]
-
-            bb_centre = _utilities.transform_point(
-                interpolated_image_bb_centre, [0, 0], -field_rotation_for_interpolation
-            )
-        except ValueError:
-            if fill_errors_with_nan:
-                bb_centre = [np.nan, np.nan]
-            else:
-                raise
-    else:
-        bb_centre = [np.nan, np.nan]
-
-    return field_centre, bb_centre
