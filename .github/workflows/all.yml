@@ -420,7 +420,7 @@ jobs:
 
   PyPI:
     needs:
-      # - ValidateVersionReleaseMatch
+      - ValidateVersionReleaseMatch
       # - PreCommit
       # - Tests
     runs-on: ubuntu-latest
@@ -445,7 +445,7 @@ jobs:
 
 
   OfflineInstallBundles:
-    needs:
+    # needs:
       # - PyPI
       # - ValidateVersionReleaseMatch
     runs-on: ${{ matrix.os }}-latest
