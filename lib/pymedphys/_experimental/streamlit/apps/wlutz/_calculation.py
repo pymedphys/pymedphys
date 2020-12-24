@@ -88,6 +88,10 @@ def calculations_ui(
             advanced_mode,
         )
 
+        st.write("### Overview of calculations")
+
+        st.write("`TODO: Provide an appropriate overview.`")
+
 
 def run_calculation(
     database_table,
