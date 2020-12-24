@@ -15,8 +15,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac, scipy
 
-from .interppoints import define_penumbra_points_at_origin, transform_penumbra_points
-from .pylinac import run_wlutz
+from . import interppoints, pylinacwrapper
 
 BASINHOPPING_NITER = 200
 FIELD_REPEAT_TOL = 0.2
@@ -25,7 +24,7 @@ FIELD_REPEAT_TOL = 0.2
 def get_initial_centre(x, y, image, field_rotation):
     pylinac_version = pylinac.__version__
 
-    pylinac_results = run_wlutz(
+    pylinac_results = pylinacwrapper.run_wlutz(
         x, y, image, field_rotation, find_bb=False, pylinac_versions=[pylinac_version]
     )
 
@@ -86,7 +85,9 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
 
 
 def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
-    points_at_origin = define_penumbra_points_at_origin(edge_lengths, penumbra)
+    points_at_origin = interppoints.define_penumbra_points_at_origin(
+        edge_lengths, penumbra
+    )
 
     def to_minimise(centre):
         (
@@ -94,7 +95,7 @@ def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
             yy_left_right,
             xx_top_bot,
             yy_top_bot,
-        ) = transform_penumbra_points(points_at_origin, centre, rotation)
+        ) = interppoints.transform_penumbra_points(points_at_origin, centre, rotation)
 
         left_right_interpolated = field(xx_left_right, yy_left_right)
         top_bot_interpolated = field(xx_top_bot, yy_top_bot)

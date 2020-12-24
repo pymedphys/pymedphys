@@ -20,8 +20,7 @@ from pymedphys._imports import pylinac
 
 from pymedphys import _losslessjpeg as lljpeg
 
-from . import findbb, findfield, imginterp, iview
-from . import pylinac as pmp_pylinac_api
+from . import findbb, findfield, imginterp, iview, pylinacwrapper
 
 
 def calculate(
@@ -97,7 +96,7 @@ def _pymedphys_wlutz_calculate(
 
 def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, pylinac_version, **_):
     try:
-        pylinac_results = pmp_pylinac_api.run_wlutz(
+        pylinac_results = pylinacwrapper.run_wlutz(
             x,
             y,
             image,
