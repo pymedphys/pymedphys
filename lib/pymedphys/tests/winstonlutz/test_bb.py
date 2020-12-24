@@ -90,15 +90,15 @@ def run_test(
     )
 
     (
-        determined_bb_centre,
         determined_field_centre,
+        determined_bb_centre,
     ) = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
         x, y, img, bb_diameter, field_side_lengths, field_penumbra, field_rotation
     )
 
     try:
-        assert np.allclose(bb_centre, determined_bb_centre, atol=0.001)
-        assert np.allclose(field_centre, determined_field_centre, atol=0.001)
+        assert np.allclose(bb_centre, determined_bb_centre, atol=0.01)
+        assert np.allclose(field_centre, determined_field_centre, atol=0.01)
 
     except:
         reporting.image_analysis_figure(
