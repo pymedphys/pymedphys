@@ -20,7 +20,7 @@ from pymedphys._imports import scipy
 from . import imginterp, interppoints, utilities
 
 BB_MIN_SEARCH_DIST = 2
-BB_REPEAT_TOL = 0.1
+BB_REPEAT_TOL = 0.2
 
 
 def optimise_bb_centre(

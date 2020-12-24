@@ -19,7 +19,7 @@ from .interppoints import define_penumbra_points_at_origin, transform_penumbra_p
 from .pylinac import run_wlutz
 
 BASINHOPPING_NITER = 200
-FIELD_REPEAT_TOL = 0.1
+FIELD_REPEAT_TOL = 0.2
 
 
 def get_initial_centre(x, y, image, field_rotation):
