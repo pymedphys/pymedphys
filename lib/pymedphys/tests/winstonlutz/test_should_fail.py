@@ -48,6 +48,8 @@ def data_files():
 def test_start_fields_with_panel_artefacts():
     collimator_angles, jpg_paths = data_files()
 
+    field_centres_that_can_be_found = ["000057B6.jpg", "00005848.jpg"]
+
     for filename, full_image_path in jpg_paths.items():
         icom_field_rotation = -collimator_angles[filename]
 
@@ -60,5 +62,8 @@ def test_start_fields_with_panel_artefacts():
             icom_field_rotation,
         )
         print(filename)
-        assert np.all(np.isnan(field_centre))
+
+        if not filename in field_centres_that_can_be_found:
+            assert np.all(np.isnan(field_centre))
+
         assert np.all(np.isnan(bb_centre))
