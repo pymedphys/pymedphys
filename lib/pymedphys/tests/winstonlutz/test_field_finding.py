@@ -45,14 +45,6 @@ def test_find_field_in_image():
     assert expected_centre == centre
 
 
-# @pytest.mark.skip(
-#     reason=(
-#         "Wlutz field finding algorithm is being shelved for now. "
-#         "Will use pylinac only for the time being. When more resources "
-#         "are available, will implement independent algorithm to run "
-#         "alongside pylinac."
-#     )
-# )
 @pytest.mark.slow
 @settings(
     deadline=datetime.timedelta(milliseconds=4000),
@@ -116,4 +108,4 @@ def test_find_initial_field_centre():
 
     initial_centre = findfield.get_initial_centre(x, y, zz, rotation)
 
-    assert np.allclose(initial_centre, centre)
+    assert np.allclose(initial_centre, centre, atol=0.2)
