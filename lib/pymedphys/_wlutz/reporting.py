@@ -121,17 +121,23 @@ def image_analysis_figure(
     )
 
     profile_flip_plot(axs[2, 0], x_axis, field(*x_field_interp))
-    axs[2, 0].set_xlim(
-        [edge_lengths[0] / 2 - penumbra * 2, edge_lengths[0] / 2 + penumbra * 2]
-    )
+    try:
+        axs[2, 0].set_xlim(
+            [edge_lengths[0] / 2 - penumbra * 2, edge_lengths[0] / 2 + penumbra * 2]
+        )
+    except ValueError:
+        pass
     axs[2, 0].set_title("Flipped profile about field centre [field x-axis]")
     axs[2, 0].set_xlabel(f"Distance from field centre {units}")
     axs[2, 0].set_ylabel(pixel_value_label)
 
     profile_flip_plot(axs[2, 1], y_axis, field(*y_field_interp))
-    axs[2, 1].set_xlim(
-        [edge_lengths[1] / 2 - penumbra * 2, edge_lengths[1] / 2 + penumbra * 2]
-    )
+    try:
+        axs[2, 1].set_xlim(
+            [edge_lengths[1] / 2 - penumbra * 2, edge_lengths[1] / 2 + penumbra * 2]
+        )
+    except ValueError:
+        pass
     axs[2, 1].set_title("Flipped profile about field centre [field y-axis]")
     axs[2, 1].set_xlabel(f"Distance from field centre {units}")
     axs[2, 1].set_ylabel(pixel_value_label)
