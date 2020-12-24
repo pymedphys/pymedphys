@@ -20,24 +20,15 @@ from hypothesis.strategies import floats
 import numpy as np
 
 import pymedphys
-import pymedphys._wlutz.findbb
-import pymedphys._wlutz.imginterp
-import pymedphys._wlutz.iview
+
+from pymedphys._experimental.wlutz import findbb, imginterp, iview
 
 
 @pytest.fixture
 def test_field():
     image_path = pymedphys.data_path("wlutz_image.png", check_hash=False)
-    (
-        x,
-        y,
-        img,
-    ) = pymedphys._wlutz.iview.iview_image_transform_from_path(  # pylint:disable = protected-access
-        image_path
-    )
-    field = pymedphys._wlutz.imginterp.create_interpolated_field(  # pylint:disable = protected-access
-        x, y, img
-    )
+    (x, y, img) = iview.iview_image_transform_from_path(image_path)
+    field = imginterp.create_interpolated_field(x, y, img)
 
     return field
 
@@ -58,12 +49,8 @@ def test_minimise_bb(
         reference_bb_centre[1] + bb_centre_y_deviation,
     ]
 
-    vectorised_to_minimise = pymedphys._wlutz.findbb.create_bb_to_minimise(  # pylint:disable = protected-access
-        test_field, bb_diameter
-    )
-    simple_to_minimise = pymedphys._wlutz.findbb.create_bb_to_minimise_simple(  # pylint:disable = protected-access
-        test_field, bb_diameter
-    )
+    vectorised_to_minimise = findbb.create_bb_to_minimise(test_field, bb_diameter)
+    simple_to_minimise = findbb.create_bb_to_minimise_simple(test_field, bb_diameter)
 
     assert np.allclose(
         vectorised_to_minimise(centre_to_test),

@@ -21,9 +21,8 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
-from pymedphys._wlutz import reporting
-
-from pymedphys._experimental.streamlit.utilities import wlutz as _wlutz
+from pymedphys._experimental.wlutz import main as _wlutz
+from pymedphys._experimental.wlutz import reporting as _reporting
 
 from . import _altair, _utilities
 
@@ -415,7 +414,7 @@ def plot_diagnostic_figures(
         )
 
         try:
-            fig, axs = reporting.image_analysis_figure(
+            fig, axs = _reporting.image_analysis_figure(
                 x,
                 y,
                 image,

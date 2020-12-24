@@ -21,7 +21,7 @@ import pylinac
 
 import pymedphys
 
-from pymedphys._experimental.streamlit.utilities import wlutz as _wlutz
+from pymedphys._experimental.wlutz import main as _wlutz
 
 # import matplotlib.pyplot as plt
 # from pymedphys._wlutz import reporting
