@@ -16,7 +16,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac as _pylinac_installed
 
-from pymedphys._experimental.vendor.pylinac import winstonlutz as _vendored_pylinac
+from pymedphys._experimental.vendor.pylinac import winstonlutz as _pylinac_vendored
 
 from . import utilities as _utilities
 
@@ -29,7 +29,7 @@ def run_wlutz_raw(
 
     nan_coords = [np.nan, np.nan]
 
-    VERSION_TO_CLASS_MAP = _vendored_pylinac.get_version_to_class_map()
+    VERSION_TO_CLASS_MAP = _pylinac_vendored.get_version_to_class_map()
     WLImage = VERSION_TO_CLASS_MAP[pylinac_version]
     wl_image = WLImage(image)
 
@@ -93,7 +93,7 @@ def run_wlutz(
     )
 
     if pylinac_versions is None:
-        VERSION_TO_CLASS_MAP = _vendored_pylinac.get_version_to_class_map()
+        VERSION_TO_CLASS_MAP = _pylinac_vendored.get_version_to_class_map()
         pylinac_versions = VERSION_TO_CLASS_MAP.keys()
 
     results = {}
