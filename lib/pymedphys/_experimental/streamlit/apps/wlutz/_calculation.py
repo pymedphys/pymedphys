@@ -144,15 +144,23 @@ def run_calculation(
 
         result_range = max_result - min_result
 
-        display_diagnostic_plot = np.any(result_range > deviation_plot_threshold)
-        if display_diagnostic_plot:
-            st.write(result_range)
+        a_deviation_is_larger_than_threshold = np.any(
+            result_range > deviation_plot_threshold
+        )
+        at_least_one_diff_is_missing = (
+            results[["diff_x", "diff_y"]].isnull().values.any()
+        )
+        all_diffs_are_missing = results[["diff_x", "diff_y"]].isnull().values.all()
 
-        if (
-            plot_when_data_missing
-            and results[["diff_x", "diff_y"]].isnull().values.any()
-        ):
+        if plot_when_data_missing and at_least_one_diff_is_missing:
             display_diagnostic_plot = True
+        elif a_deviation_is_larger_than_threshold and not all_diffs_are_missing:
+            display_diagnostic_plot = True
+
+            if display_diagnostic_plot:
+                st.write(result_range)
+        else:
+            display_diagnostic_plot = False
 
         if display_diagnostic_plot:
             st.write(results)
@@ -160,11 +168,11 @@ def run_calculation(
 
             figures = plot_diagnostic_figures(
                 full_image_path,
+                results,
+                icom_field_rotation,
                 bb_diameter,
                 edge_lengths,
-                icom_field_rotation,
                 penumbra,
-                selected_algorithms,
             )
 
             for fig in figures:
@@ -285,6 +293,7 @@ def run_calculation(
 
                 ax.legend(loc="best")
                 fig.savefig(plot_filepath)
+                plt.close(fig)
 
     st.write("## Overview Statistics")
 
@@ -372,25 +381,16 @@ def get_results_for_image(
 
 
 def plot_diagnostic_figures(
-    full_image_path,
-    bb_diameter,
-    edge_lengths,
-    icom_field_rotation,
-    penumbra,
-    selected_algorithms,
+    full_image_path, results, icom_field_rotation, bb_diameter, edge_lengths, penumbra
 ):
     x, y, image = _wlutz.load_iview_image(full_image_path)
 
     figures = []
 
-    for algorithm in selected_algorithms:
-        field_centre, bb_centre = _calculate_wlutz(
-            full_image_path,
-            algorithm,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
-            icom_field_rotation,
+    for i, results_row in results.iterrows():
+        field_centre, bb_centre = (
+            [results_row["field_centre_x"], results_row["field_centre_y"]],
+            [results_row["bb_centre_x"], results_row["bb_centre_y"]],
         )
 
         try:
@@ -406,7 +406,7 @@ def plot_diagnostic_figures(
                 penumbra,
             )
 
-            axs[0, 0].set_title(algorithm)
+            axs[0, 0].set_title(results_row["algorithm"])
             figures.append(fig)
         except ValueError as e:
             st.write(e)

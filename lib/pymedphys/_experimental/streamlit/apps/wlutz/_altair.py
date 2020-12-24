@@ -52,7 +52,16 @@ def _build_altair_chart(table, axis):
                     ),
                 ),
                 color=alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
-                tooltip=["time", "diff_x", "diff_y", "filename", "algorithm"],
+                tooltip=[
+                    "time",
+                    "diff_x",
+                    "diff_y",
+                    "gantry",
+                    "collimator",
+                    "turn_table",
+                    "filename",
+                    "algorithm",
+                ],
             )
         )
         .properties(title=parameters["plot-type"])
