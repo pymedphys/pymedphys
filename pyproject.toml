@@ -53,7 +53,6 @@ imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev"]
-python_dateutil = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
@@ -81,6 +80,7 @@ pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev"]
 
 # Scikit-learn has an upper bound since there appears to be an incompatibility
 # between pylinac and scikit-learn version 0.24.0
+# Not needed as PyMedPhys dependency. Included only as a fix.
 scikit-learn = { version = "<0.24.0", optional = true }  # groups = ["user", "dev"]
 
 # ----------- #
@@ -106,7 +106,8 @@ sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs
 jupyter-book = { version = ">=0.8.3", optional = true }  # groups = ["dev", "docs"]
 
 # The sphinx and bibtex packages have an upper bound due to current
-# incompatibilities with jupyter-book
+# incompatibilities with jupyter-book. Neither of these are needed as a
+# direct PyMedPhys dependency. Instead they are included as a fix.
 sphinx = { version = "<3.4.0", optional = true }  # groups = ["dev", "docs"]
 sphinxcontrib-bibtex = { version = "<2.0.0", optional = true }  # groups = ["dev", "docs"]
 
@@ -120,6 +121,7 @@ psutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "tests"]
+python_dateutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 
 # ---------------- #
 # Development Only #
