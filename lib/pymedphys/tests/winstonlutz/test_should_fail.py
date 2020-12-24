@@ -46,25 +46,19 @@ def data_files():
 
 
 def test_start_fields_with_panel_artefacts():
-    filename = "00005848.jpg"
-
-    _should_produce_nans(filename, ALGORITHM_PYMEDPHYS)
-
-
-def _get_path_and_rotation(filename):
     collimator_angles, jpg_paths = data_files()
-    full_image_path = jpg_paths[filename]
-    icom_field_rotation = -collimator_angles[filename]
 
-    return full_image_path, icom_field_rotation
+    for filename, full_image_path in jpg_paths.items():
+        icom_field_rotation = -collimator_angles[filename]
 
-
-def _should_produce_nans(filename, algorithm):
-    filepath, rotation = _get_path_and_rotation(filename)
-
-    field_centre, bb_centre = _wlutz.calculate(
-        filepath, algorithm, BB_DIAMETER, EDGE_LENGTHS, PENUMBRA, rotation
-    )
-
-    assert np.all(np.isnan(field_centre))
-    assert np.all(np.isnan(bb_centre))
+        field_centre, bb_centre = _wlutz.calculate(
+            full_image_path,
+            ALGORITHM_PYMEDPHYS,
+            BB_DIAMETER,
+            EDGE_LENGTHS,
+            PENUMBRA,
+            icom_field_rotation,
+        )
+        print(filename)
+        assert np.all(np.isnan(field_centre))
+        assert np.all(np.isnan(bb_centre))

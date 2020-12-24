@@ -39,13 +39,19 @@ def refine_field_centre(initial_centre, field, edge_lengths, penumbra, field_rot
         field, initial_centre, edge_lengths, penumbra, field_rotation
     )
 
-    predicted_centre_with_double_penumbra = optimise_centre(
-        field, initial_centre, edge_lengths, penumbra * 2, field_rotation
-    )
+    all_centre_predictions = [predicted_centre]
+    for penumbra_ratio in [0.5, 1.5, 2]:
+        prediction_with_adjusted_penumbra = optimise_centre(
+            field,
+            initial_centre,
+            edge_lengths,
+            penumbra * penumbra_ratio,
+            field_rotation,
+        )
+        check_centre_close(predicted_centre, prediction_with_adjusted_penumbra)
+        all_centre_predictions.append(prediction_with_adjusted_penumbra)
 
-    check_centre_close(predicted_centre, predicted_centre_with_double_penumbra)
-
-    return np.mean([predicted_centre, predicted_centre_with_double_penumbra], axis=0)
+    return np.mean(all_centre_predictions, axis=0)
 
 
 def check_centre_close(verification_centre, predicted_centre):
