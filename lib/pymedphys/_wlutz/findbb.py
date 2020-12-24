@@ -15,11 +15,9 @@
 # import warnings
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pylinac, scipy
+from pymedphys._imports import scipy
 
-from . import imginterp, interppoints
-from . import pylinac as _vendor_pylinac
-from . import reporting, utilities
+from . import imginterp, interppoints, utilities
 
 BB_MIN_SEARCH_DIST = 2
 BB_REPEAT_TOL = 0.1
@@ -32,64 +30,46 @@ def optimise_bb_centre(
     penumbra,
     field_centre,
     field_rotation,
-    debug=True,
 ):
     centralised_field = utilities.create_centralised_field(
         field, field_centre, field_rotation
     )
-    to_minimise_edge_agreement = create_bb_to_minimise(centralised_field, bb_diameter)
-    bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
 
-    bb_centre_in_centralised_field = bb_basinhopping(
-        to_minimise_edge_agreement, bb_bounds
+    bb_centre_in_centralised_field = _minimise_bb(
+        centralised_field, bb_diameter, edge_lengths, penumbra
     )
-
-    if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
-        raise ValueError("BB found at bounds, likely incorrect")
+    verification_repeat_with_smaller_bb = _minimise_bb(
+        centralised_field, bb_diameter / 2, edge_lengths, penumbra
+    )
+    repeat_agreement = np.abs(
+        verification_repeat_with_smaller_bb - bb_centre_in_centralised_field
+    )
 
     bb_centre = utilities.transform_point(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
-    repeat_agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
-
     if np.any(repeat_agreement > BB_REPEAT_TOL):
         bb_repeated = utilities.transform_point(
-            verification_repeat, field_centre, field_rotation
+            verification_repeat_with_smaller_bb, field_centre, field_rotation
         )
-        if debug:
-            reporting.image_analysis_figure(
-                field.x,
-                field.y,
-                field.img,
-                bb_centre,
-                field_centre,
-                field_rotation,
-                bb_diameter,
-                edge_lengths,
-                penumbra,
-            )
-            plt.title("First iteration")
-
-            reporting.image_analysis_figure(
-                field.x,
-                field.y,
-                field.img,
-                bb_repeated,
-                field_centre,
-                field_rotation,
-                bb_diameter,
-                edge_lengths,
-                penumbra,
-            )
-            plt.title("Second iteration")
-            plt.show()
         raise ValueError(
             "BB centre not able to be consistently determined\n"
             f"  First iteration:  {bb_centre}\n"
             f"  Second iteration: {bb_repeated}"
         )
+
+    return bb_centre
+
+
+def _minimise_bb(field, bb_diameter, edge_lengths, penumbra):
+    to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
+    bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
+
+    bb_centre = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
+
+    if check_if_at_bounds(bb_centre, bb_bounds):
+        raise ValueError("BB found at bounds, likely incorrect")
 
     return bb_centre
 
