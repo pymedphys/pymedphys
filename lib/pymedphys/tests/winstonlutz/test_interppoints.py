@@ -18,7 +18,7 @@ from hypothesis.strategies import floats
 
 import numpy as np
 
-import pymedphys._mocks.profiles
+from pymedphys._mocks import profiles
 
 from pymedphys._experimental.wlutz import interppoints
 
@@ -36,10 +36,10 @@ def test_field_interp_points(x_centre, y_centre, x_edge, y_edge, penumbra, degre
     edge_lengths = [x_edge, y_edge]
     centre = [x_centre, y_centre]
 
-    field = pymedphys._mocks.profiles.create_rectangular_field_function(
+    field = profiles.create_rectangular_field_function(
         centre, edge_lengths, penumbra, degrees
     )
-    origin_field = pymedphys._mocks.profiles.create_rectangular_field_function(
+    origin_field = profiles.create_rectangular_field_function(
         [0, 0], edge_lengths, penumbra, 0
     )
 
@@ -78,15 +78,11 @@ def test_field_interp_at_origin(x_edge, y_edge, penumbra):
     degrees = 0
     edge_lengths = [x_edge, y_edge]
 
-    field = pymedphys._mocks.profiles.create_rectangular_field_function(
+    field = profiles.create_rectangular_field_function(
         centre, edge_lengths, penumbra, degrees
     )
-    x_profile = pymedphys._mocks.profiles.create_profile_function(
-        0, edge_lengths[0], penumbra
-    )
-    y_profile = pymedphys._mocks.profiles.create_profile_function(
-        0, edge_lengths[1], penumbra
-    )
+    x_profile = profiles.create_profile_function(0, edge_lengths[0], penumbra)
+    y_profile = profiles.create_profile_function(0, edge_lengths[1], penumbra)
 
     (
         xx_left_right,
