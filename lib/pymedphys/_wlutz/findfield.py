@@ -45,9 +45,7 @@ def refine_field_centre(initial_centre, field, edge_lengths, penumbra, field_rot
 
     check_centre_close(predicted_centre, predicted_centre_with_double_penumbra)
 
-    field_centre = predicted_centre.tolist()
-
-    return field_centre
+    return np.mean([predicted_centre, predicted_centre_with_double_penumbra], axis=0)
 
 
 def check_centre_close(verification_centre, predicted_centre):

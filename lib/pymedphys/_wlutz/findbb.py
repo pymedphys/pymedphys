@@ -48,18 +48,19 @@ def optimise_bb_centre(
     bb_centre = utilities.transform_point(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
+    bb_repeated = utilities.transform_point(
+        verification_repeat_with_smaller_bb, field_centre, field_rotation
+    )
 
     if np.any(repeat_agreement > BB_REPEAT_TOL):
-        bb_repeated = utilities.transform_point(
-            verification_repeat_with_smaller_bb, field_centre, field_rotation
-        )
+
         raise ValueError(
             "BB centre not able to be consistently determined\n"
             f"  First iteration:  {bb_centre}\n"
             f"  Second iteration: {bb_repeated}"
         )
 
-    return bb_centre
+    return np.mean([bb_centre, bb_repeated], axis=0)
 
 
 def _minimise_bb(field, bb_diameter, edge_lengths, penumbra):
