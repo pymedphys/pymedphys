@@ -50,13 +50,7 @@ def check_aspect_ratio(edge_lengths):
 
 
 def field_centre_and_rotation_refining(
-    field,
-    edge_lengths,
-    penumbra,
-    initial_centre,
-    fixed_rotation=None,
-    niter=10,
-    pylinac_tol=0.2,
+    field, edge_lengths, penumbra, initial_centre, fixed_rotation=None, niter=10
 ):
 
     if fixed_rotation is None:
@@ -102,43 +96,6 @@ def field_centre_and_rotation_refining(
         )
 
         check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
-
-    if not pylinac_tol is None:
-        try:
-            pylinac_result = run_wlutz(
-                field,
-                edge_lengths,
-                penumbra,
-                predicted_centre,
-                predicted_rotation,
-                find_bb=False,
-            )
-        except ValueError as e:
-            raise ValueError(
-                "After finding the field centre during comparison to Pylinac the pylinac "
-                f"code raised the following error:\n    {e}"
-            )
-
-        pylinac_2_2_6_out_of_tol = np.any(
-            np.abs(np.array(pylinac_result["2.2.6"]["field_centre"]) - predicted_centre)
-            > pylinac_tol
-        )
-        pylinac_2_2_7_out_of_tol = np.any(
-            np.abs(np.array(pylinac_result["2.2.7"]["field_centre"]) - predicted_centre)
-            > pylinac_tol
-        )
-        pylinac_out_of_tol = np.any(
-            np.abs(
-                np.array(pylinac_result[pylinac.__version__]["field_centre"])
-                - predicted_centre
-            )
-            > pylinac_tol
-        )
-        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol or pylinac_out_of_tol:
-            raise PylinacComparisonDeviation(
-                "The determined field centre deviates from pylinac more "
-                "than the defined tolerance"
-            )
 
     centre = predicted_centre.tolist()
     return centre, predicted_rotation

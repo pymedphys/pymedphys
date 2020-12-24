@@ -78,7 +78,6 @@ def _pymedphys_wlutz_calculate(
             edge_lengths,
             penumbra,
             initial_centre,
-            pylinac_tol=None,
             fixed_rotation=icom_field_rotation,
         )
     except ValueError:
@@ -92,7 +91,6 @@ def _pymedphys_wlutz_calculate(
             penumbra,
             field_centre,
             icom_field_rotation,
-            pylinac_tol=None,
         )
     except ValueError:
         bb_centre = [np.nan, np.nan]

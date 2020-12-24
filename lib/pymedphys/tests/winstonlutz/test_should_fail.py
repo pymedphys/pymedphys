@@ -48,7 +48,7 @@ def data_files():
 def test_start_fields_with_panel_artefacts():
     filename = "00005848.jpg"
 
-    _should_raise_value_error(filename, ALGORITHM_PYMEDPHYS)
+    _should_produce_nans(filename, ALGORITHM_PYMEDPHYS)
 
 
 def _get_path_and_rotation(filename):
@@ -59,10 +59,11 @@ def _get_path_and_rotation(filename):
     return full_image_path, icom_field_rotation
 
 
-def _should_raise_value_error(filename, algorithm):
+def _should_produce_nans(filename, algorithm):
     filepath, rotation = _get_path_and_rotation(filename)
 
-    with pytest.raises(ValueError):
-        field_centre, bb_centre = _wlutz.calculate(
-            filepath, algorithm, BB_DIAMETER, EDGE_LENGTHS, PENUMBRA, rotation
-        )
+    field_centre, bb_centre = _wlutz.calculate(
+        filepath, algorithm, BB_DIAMETER, EDGE_LENGTHS, PENUMBRA, rotation
+    )
+
+    assert np.all(np.isnan(bb_centre))
