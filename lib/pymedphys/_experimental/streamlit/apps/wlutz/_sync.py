@@ -23,7 +23,11 @@ from pymedphys._experimental.streamlit.utilities import icom as _icom
 
 
 def icom_iview_timestamp_alignment(
-    database_table, icom_patients_directory, selected_date, selected_machine_id
+    database_table,
+    icom_patients_directory,
+    selected_date,
+    selected_machine_id,
+    advanced_mode,
 ):
     st.write("## iView to iCom timestamp alignment")
 
@@ -50,27 +54,31 @@ def icom_iview_timestamp_alignment(
 
     initial_region = [init_min_time.time(), init_max_time.time()]
 
-    icom_time_range = st.slider(
-        "iCom alignment range",
-        min_value=min_icom_datetime.time(),
-        max_value=max_icom_datetime.time(),
-        step=time_step,
-        value=initial_region,
-    )
+    if advanced_mode:
+        icom_time_range = st.slider(
+            "iCom alignment range",
+            min_value=min_icom_datetime.time(),
+            max_value=max_icom_datetime.time(),
+            step=time_step,
+            value=initial_region,
+        )
+    else:
+        icom_time_range = initial_region
 
     time = relevant_times["datetime"].dt.time
     icom_lookup_mask = (time >= icom_time_range[0]) & (time <= icom_time_range[1])
     time_filtered_icom_times = relevant_times.loc[icom_lookup_mask]
 
-    _icom.plot_relevant_times(
-        time_filtered_icom_times,
-        step=1,
-        title="iCom | Timesteps with recorded meterset",
-    )
+    if advanced_mode:
+        _icom.plot_relevant_times(
+            time_filtered_icom_times,
+            step=1,
+            title="iCom | Timesteps with recorded meterset",
+        )
 
-    _icom.plot_relevant_times(
-        database_table, step=1, title="iView | Timesteps with recorded image frames"
-    )
+        _icom.plot_relevant_times(
+            database_table, step=1, title="iView | Timesteps with recorded image frames"
+        )
 
     iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
 
@@ -126,30 +134,32 @@ def icom_iview_timestamp_alignment(
     ) & (time <= (max_iview_datetime + adjusted_buffer).time())
     usable_icom_times = usable_icom_times.loc[adjusted_icom_lookup_mask]
 
-    _icom.plot_relevant_times(
-        usable_icom_times, step=1, title=f"iCom | With {offset_used} offset applied"
-    )
+    if advanced_mode:
+        _icom.plot_relevant_times(
+            usable_icom_times, step=1, title=f"iCom | With {offset_used} offset applied"
+        )
 
     time_diffs = _get_time_diffs(iview_datetimes, usable_icom_times["datetime"])
     time_diffs = pd.concat([iview_datetimes, time_diffs], axis=1)
     time_diffs["time"] = time_diffs["datetime"].dt.time
 
-    raw_chart = (
-        alt.Chart(time_diffs)
-        .mark_circle()
-        .encode(
-            x=alt.X("datetime", axis=alt.Axis(title="iView timestamp")),
-            y=alt.Y(
-                "time_diff",
-                axis=alt.Axis(title="Time diff [iView - Adjusted iCom] (s)"),
-            ),
-            tooltip=["time:N", "time_diff"],
+    if advanced_mode:
+        raw_chart = (
+            alt.Chart(time_diffs)
+            .mark_circle()
+            .encode(
+                x=alt.X("datetime", axis=alt.Axis(title="iView timestamp")),
+                y=alt.Y(
+                    "time_diff",
+                    axis=alt.Axis(title="Time diff [iView - Adjusted iCom] (s)"),
+                ),
+                tooltip=["time:N", "time_diff"],
+            )
+        ).properties(
+            title="Time displacement between iView image timestamp and closest iCom record"
         )
-    ).properties(
-        title="Time displacement between iView image timestamp and closest iCom record"
-    )
 
-    st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+        st.altair_chart(altair_chart=raw_chart, use_container_width=True)
 
     max_diff = np.max(np.abs(time_diffs["time_diff"]))
 
@@ -160,6 +170,32 @@ def icom_iview_timestamp_alignment(
     )
 
     filepaths_to_load = usable_icom_times["filepath"].unique()
+
+    if max_diff > 5:
+        if advanced_mode:
+            st.error(
+                "This maximum deviation is significantly larger than "
+                "should occur. Please adjust the "
+                "**iCom alignment range** time slider above."
+            )
+            st.stop()
+        else:
+            st.error(
+                "This maximum deviation is significantly larger than "
+                "should occur. This alignment utility is being "
+                "forcibly swapped into advanced mode in order to "
+                "manually adjust the time alignment window.\n\n"
+                "Please use the **iCom alignment range** time slider "
+                "below to select the time window where the iView "
+                "images were captured."
+            )
+            filepaths_to_load, offset_to_apply = icom_iview_timestamp_alignment(
+                database_table,
+                icom_patients_directory,
+                selected_date,
+                selected_machine_id,
+                advanced_mode=True,
+            )
 
     return filepaths_to_load, offset_to_apply
 
