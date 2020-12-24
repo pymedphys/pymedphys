@@ -19,8 +19,9 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac
 
 from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._wlutz import findbb, findfield, imginterp, iview
-from pymedphys._wlutz import pylinac as pmp_pylinac_api
+
+from . import findbb, findfield, imginterp, iview
+from . import pylinac as pmp_pylinac_api
 
 
 def calculate(
