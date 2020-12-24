@@ -24,8 +24,8 @@ import numpy as np
 
 import pymedphys
 import pymedphys._mocks.profiles
-import pymedphys._wlutz.findfield
-import pymedphys._wlutz.iview
+
+from pymedphys._experimental.wlutz import findfield, iview
 
 
 def test_find_field_in_image():
@@ -35,9 +35,9 @@ def test_find_field_in_image():
     expected_rotation = 12.1
 
     image_path = pymedphys.data_path("wlutz_image.png")
-    x, y, img = pymedphys._wlutz.iview.iview_image_transform_from_path(image_path)
+    x, y, img = iview.iview_image_transform_from_path(image_path)
 
-    _, centre, rotation = pymedphys._wlutz.core.find_field(x, y, img, edge_lengths)
+    _, centre, rotation = core.find_field(x, y, img, edge_lengths)
 
     centre = np.round(centre, 2).tolist()
     rotation = float(np.round(rotation, 1))
@@ -72,7 +72,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     actual_centre = [x_centre, y_centre]
 
     try:
-        pymedphys._wlutz.findfield.check_aspect_ratio(edge_lengths)
+        findfield.check_aspect_ratio(edge_lengths)
     except ValueError:
         return
 
@@ -85,15 +85,14 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     xx, yy = np.meshgrid(x, y)
     zz = field(xx, yy)
 
-    initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
+    initial_centre = findfield.get_centre_of_mass(x, y, zz)
 
-    # Only test for fixed rotation for now
-    (centre, rotation) = pymedphys._wlutz.findfield.field_centre_and_rotation_refining(
+    (centre, rotation) = findfield.field_centre_and_rotation_refining(
         field, edge_lengths, penumbra, initial_centre, fixed_rotation=actual_rotation
     )
 
     try:
-        pymedphys._wlutz.findfield.check_rotation_and_centre(
+        findfield.check_rotation_and_centre(
             edge_lengths, actual_centre, centre, actual_rotation, rotation
         )
     except ValueError:
@@ -115,6 +114,6 @@ def test_find_initial_field_centre():
 
     zz = field(xx, yy)
 
-    initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
+    initial_centre = findfield.get_centre_of_mass(x, y, zz)
 
     assert np.allclose(initial_centre, centre)

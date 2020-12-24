@@ -23,9 +23,6 @@ import pymedphys
 
 from pymedphys._experimental.wlutz import main as _wlutz
 
-# import matplotlib.pyplot as plt
-# from pymedphys._wlutz import reporting
-
 EDGE_LENGTHS = [20, 26]
 PENUMBRA = 2
 BB_DIAMETER = 8
