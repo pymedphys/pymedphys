@@ -187,14 +187,10 @@ def _set_parameters():
     st.sidebar.write("# Configuration")
     advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
 
-    bb_diameter = 8
-    penumbra = 2
+    st.sidebar.write("# Parameters")
 
-    if advanced_mode:
-        st.sidebar.write("# Parameters")
-
-        bb_diameter = st.sidebar.number_input("BB Diameter (mm)", bb_diameter)
-        penumbra = st.sidebar.number_input("Penumbra (mm)", penumbra)
+    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", bb_diameter)
+    penumbra = st.sidebar.number_input("Penumbra (mm)", penumbra)
 
     return bb_diameter, penumbra, advanced_mode
 
