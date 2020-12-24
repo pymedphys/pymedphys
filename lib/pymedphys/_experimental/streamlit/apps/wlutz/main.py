@@ -100,54 +100,57 @@ def main():
     icom_datasets["beam_shade_min"] = beam_shade_min
     icom_datasets["beam_shade_max"] = beam_shade_max
 
-    beam_on_chart = (
-        alt.Chart(icom_datasets)
-        .mark_area(fillOpacity=0.1, strokeOpacity=0.3, stroke="black", fill="black")
-        .encode(x="datetime:T", y="beam_shade_min:Q", y2="beam_shade_max:Q")
-    )
+    if advanced_mode:
+        beam_on_chart = (
+            alt.Chart(icom_datasets)
+            .mark_area(fillOpacity=0.1, strokeOpacity=0.3, stroke="black", fill="black")
+            .encode(x="datetime:T", y="beam_shade_min:Q", y2="beam_shade_max:Q")
+        )
 
     try:
         icom_datasets = _angles.make_icom_angles_continuous(icom_datasets)
     finally:
-        device_angle_chart = (
-            beam_on_chart
-            + (
-                alt.Chart(icom_datasets)
-                .transform_fold(
-                    ["gantry", "collimator", "turn_table"], as_=["device", "angle"]
+        if advanced_mode:
+            device_angle_chart = (
+                beam_on_chart
+                + (
+                    alt.Chart(icom_datasets)
+                    .transform_fold(
+                        ["gantry", "collimator", "turn_table"], as_=["device", "angle"]
+                    )
+                    .mark_line(point=True)
+                    .encode(
+                        x="datetime:T",
+                        y=alt.Y("angle:Q", axis=alt.Axis(title="Angle (degrees)")),
+                        color="device:N",
+                        tooltip=["time:N", "device:N", "angle:Q"],
+                    )
+                    .properties(title="iCom Angle Parameters")
+                    .interactive(bind_y=False)
                 )
-                .mark_line(point=True)
-                .encode(
-                    x="datetime:T",
-                    y=alt.Y("angle:Q", axis=alt.Axis(title="Angle (degrees)")),
-                    color="device:N",
-                    tooltip=["time:N", "device:N", "angle:Q"],
-                )
-                .properties(title="iCom Angle Parameters")
-                .interactive(bind_y=False)
-            )
-        ).configure_point(size=10)
+            ).configure_point(size=10)
 
-        st.altair_chart(device_angle_chart, use_container_width=True)
+            st.altair_chart(device_angle_chart, use_container_width=True)
 
     icom_datasets["width"] = icom_datasets["width"].round(2)
 
-    field_size_chart = (
-        alt.Chart(icom_datasets)
-        .transform_fold(["length", "width"], as_=["side", "size"])
-        .mark_line()
-        .encode(
-            x="datetime:T",
-            y="size:Q",
-            color="side:N",
-            tooltip=["time:N", "side:N", "size:Q"],
+    if advanced_mode:
+        field_size_chart = (
+            alt.Chart(icom_datasets)
+            .transform_fold(["length", "width"], as_=["side", "size"])
+            .mark_line()
+            .encode(
+                x="datetime:T",
+                y="size:Q",
+                color="side:N",
+                tooltip=["time:N", "side:N", "size:Q"],
+            )
+            .properties(title="iCom Field Size")
+            .interactive(bind_x=False)
         )
-        .properties(title="iCom Field Size")
-        .interactive(bind_x=False)
-    )
-    st.altair_chart(field_size_chart, use_container_width=True)
+        st.altair_chart(field_size_chart, use_container_width=True)
 
-    st.write(icom_datasets)
+        st.write(icom_datasets)
 
     midnight = (
         icom_datasets["datetime"]
@@ -165,7 +168,8 @@ def main():
     for column in ["gantry", "collimator", "turn_table", "width", "length"]:
         _table_transfer_via_interpolation(icom_datasets, database_table, column)
 
-    st.write(database_table)
+    if advanced_mode:
+        st.write(database_table)
 
     # --
 
@@ -175,16 +179,18 @@ def main():
         wlutz_directory_by_date,
         bb_diameter,
         penumbra,
+        advanced_mode,
     )
 
 
 def _set_parameters():
-    st.sidebar.write("## Parameters")
+    st.sidebar.write("# Configuration")
+    advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
+
+    st.sidebar.write("# Parameters")
 
     bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
-
-    advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
 
     return bb_diameter, penumbra, advanced_mode
 

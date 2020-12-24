@@ -40,27 +40,40 @@ RESULTS_DATA_COLUMNS = [
 
 
 def calculations_ui(
-    database_table, database_directory, wlutz_directory_by_date, bb_diameter, penumbra
+    database_table,
+    database_directory,
+    wlutz_directory_by_date,
+    bb_diameter,
+    penumbra,
+    advanced_mode,
 ):
     st.write("## Calculations")
 
     ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 
     algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
-    selected_algorithms = st.multiselect(
-        "Algorithms to run", algorithm_options, algorithm_options
-    )
+
+    if advanced_mode:
+        selected_algorithms = st.multiselect(
+            "Algorithms to run", algorithm_options, algorithm_options
+        )
+    else:
+        selected_algorithms = algorithm_options
 
     database_table["filename"] = database_table["filepath"].apply(
         _utilities.filepath_to_filename
     )
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
-    deviation_plot_threshold = st.number_input(
-        "Display deviations greater than", value=0.2
-    )
+    if advanced_mode:
+        deviation_plot_threshold = st.number_input(
+            "Display deviations greater than", value=0.2
+        )
 
-    plot_when_data_missing = st.checkbox("Plot when data missing", value=True)
+        plot_when_data_missing = st.checkbox("Plot when data missing", value=True)
+    else:
+        deviation_plot_threshold = 0.5
+        plot_when_data_missing = False
 
     if st.button("Calculate"):
         run_calculation(
@@ -72,6 +85,7 @@ def calculations_ui(
             penumbra,
             deviation_plot_threshold,
             plot_when_data_missing,
+            advanced_mode,
         )
 
 
@@ -84,6 +98,7 @@ def run_calculation(
     penumbra,
     deviation_plot_threshold,
     plot_when_data_missing,
+    advanced_mode,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -220,8 +235,9 @@ def run_calculation(
         database_table, left_on="filepath", right_on="filepath"
     )
 
-    st.write("## Raw results")
-    st.write(contextualised_results)
+    if advanced_mode:
+        st.write("## Raw results")
+        st.write(contextualised_results)
 
     wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
 
@@ -295,15 +311,15 @@ def run_calculation(
                 fig.savefig(plot_filepath)
                 plt.close(fig)
 
-    st.write("## Overview Statistics")
-
     statistics_collection = pd.concat(statistics_collection, axis=1).T
     statistics_collection.reset_index(inplace=True)
     statistics_collection = statistics_collection[
         ["treatment", "port", "orientation", "algorithm", "min", "max", "mean"]
     ]
 
-    st.write(statistics_collection)
+    if advanced_mode:
+        st.write("## Overview Statistics")
+        st.write(statistics_collection)
 
     statistics_filename = "statistics_overview.csv"
 
@@ -313,13 +329,14 @@ def run_calculation(
     with open(statistics_overview_csv_path, "rb") as f:
         csv_bytes = f.read()
 
-    b64 = base64.b64encode(csv_bytes).decode()
-    href = f"""
-        <a href=\"data:file/zip;base64,{b64}\" download='{statistics_filename}'>
-            Download `{statistics_filename}`.
-        </a>
-    """
-    st.markdown(href, unsafe_allow_html=True)
+    if advanced_mode:
+        b64 = base64.b64encode(csv_bytes).decode()
+        href = f"""
+            <a href=\"data:file/zip;base64,{b64}\" download='{statistics_filename}'>
+                Download `{statistics_filename}`.
+            </a>
+        """
+        st.markdown(href, unsafe_allow_html=True)
 
 
 def _collapse_column_to_single_value(dataframe, column):
