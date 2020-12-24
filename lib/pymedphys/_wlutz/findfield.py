@@ -19,6 +19,7 @@ from .interppoints import define_penumbra_points_at_origin, transform_penumbra_p
 from .pylinac import run_wlutz
 
 BASINHOPPING_NITER = 200
+FIELD_REPEAT_TOL = 0.1
 
 
 def get_initial_centre(x, y, image, field_rotation):
@@ -45,11 +46,12 @@ def refine_field_centre(initial_centre, field, edge_lengths, penumbra, field_rot
     check_centre_close(predicted_centre, predicted_centre_with_double_penumbra)
 
     field_centre = predicted_centre.tolist()
+
     return field_centre
 
 
 def check_centre_close(verification_centre, predicted_centre):
-    if not np.allclose(verification_centre, predicted_centre, rtol=0.01, atol=0.01):
+    if not np.allclose(verification_centre, predicted_centre, atol=FIELD_REPEAT_TOL):
         raise ValueError(
             "Field centre not able to be reproducibly determined.\n"
             f"    Verification Centre: {verification_centre}\n"
