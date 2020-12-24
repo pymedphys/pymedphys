@@ -32,7 +32,6 @@ def optimise_bb_centre(
     penumbra,
     field_centre,
     field_rotation,
-    pylinac_tol=0.2,
     debug=True,
 ):
     centralised_field = utilities.create_centralised_field(
@@ -91,43 +90,6 @@ def optimise_bb_centre(
             f"  First iteration:  {bb_centre}\n"
             f"  Second iteration: {bb_repeated}"
         )
-
-    if not pylinac_tol is None:
-        try:
-            pylinac_result = _vendor_pylinac.run_wlutz(
-                field,
-                edge_lengths,
-                penumbra,
-                field_centre,
-                field_rotation,
-                find_bb=True,
-                pylinac_versions=(pylinac.__version__,),
-            )
-        except ValueError:
-            raise ValueError("While comparing result to PyLinac an error was raised")
-            # warnings.simplefilter("always", UserWarning)
-            # warnings.warn(
-            #     "This iteration has not been checked against pylinac. "
-            #     "When attempting to run pylinac instead an error was "
-            #     f"raised. Pylinac raised the following error:\n\n{e}\n"
-            # )
-            # pylinac = {}
-
-        try:
-            pylinac_out_of_tol = np.any(
-                np.abs(
-                    np.array(pylinac_result[pylinac.__version__]["bb_centre"])
-                    - bb_centre
-                )
-                > pylinac_tol
-            )
-            if pylinac_out_of_tol:
-                raise _vendor_pylinac.PylinacComparisonDeviation(
-                    "The determined bb centre deviates from pylinac more "
-                    "than the defined tolerance"
-                )
-        except KeyError:
-            pass
 
     return bb_centre
 
