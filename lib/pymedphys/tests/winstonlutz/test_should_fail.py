@@ -66,4 +66,5 @@ def _should_produce_nans(filename, algorithm):
         filepath, algorithm, BB_DIAMETER, EDGE_LENGTHS, PENUMBRA, rotation
     )
 
+    assert np.all(np.isnan(field_centre))
     assert np.all(np.isnan(bb_centre))
