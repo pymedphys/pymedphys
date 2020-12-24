@@ -15,16 +15,10 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac, scipy
 
-from .interppoints import (
-    define_penumbra_points_at_origin,
-    define_rotation_field_points_at_origin,
-    transform_penumbra_points,
-    transform_rotation_field_points,
-)
+from .interppoints import define_penumbra_points_at_origin, transform_penumbra_points
 from .pylinac import run_wlutz
 
 BASINHOPPING_NITER = 200
-INITIAL_ROTATION = 0
 
 
 def get_initial_centre(x, y, image, field_rotation):
