@@ -73,12 +73,8 @@ def _pymedphys_wlutz_calculate(
     initial_centre = findfield.get_initial_centre(x, y, image, icom_field_rotation)
     field = imginterp.create_interpolated_field(x, y, image)
     try:
-        field_centre, _ = findfield.field_centre_and_rotation_refining(
-            field,
-            edge_lengths,
-            penumbra,
-            initial_centre,
-            fixed_rotation=icom_field_rotation,
+        field_centre, _ = findfield.refine_field_centre(
+            initial_centre, field, edge_lengths, penumbra, icom_field_rotation
         )
     except ValueError:
         field_centre = [np.nan, np.nan]

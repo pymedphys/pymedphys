@@ -21,7 +21,7 @@ from .interppoints import (
     transform_penumbra_points,
     transform_rotation_field_points,
 )
-from .pylinac import PylinacComparisonDeviation, run_wlutz
+from .pylinac import run_wlutz
 
 BASINHOPPING_NITER = 200
 INITIAL_ROTATION = 0
@@ -39,101 +39,19 @@ def get_initial_centre(x, y, image, field_rotation):
     return field_centre
 
 
-def check_aspect_ratio(edge_lengths):
-    if not np.allclose(*edge_lengths):
-        if np.min(edge_lengths) > 0.95 * np.max(edge_lengths):
-            raise ValueError(
-                "For non-square rectangular fields, "
-                "to accurately determine the rotation, "
-                "need to have the small edge be less than 95% of the long edge."
-            )
-
-
-def field_centre_and_rotation_refining(
-    field, edge_lengths, penumbra, initial_centre, fixed_rotation=None, niter=10
-):
-
-    if fixed_rotation is None:
-        check_aspect_ratio(edge_lengths)
-
-        predicted_rotation = optimise_rotation(
-            field, initial_centre, edge_lengths, penumbra
-        )
-    else:
-        predicted_rotation = fixed_rotation
-
+def refine_field_centre(initial_centre, field, edge_lengths, penumbra, field_rotation):
     predicted_centre = optimise_centre(
-        field, initial_centre, edge_lengths, penumbra, predicted_rotation
+        field, initial_centre, edge_lengths, penumbra, field_rotation
     )
 
-    for _ in range(niter):
-        if fixed_rotation is None:
-            previous_rotation = predicted_rotation
-            predicted_rotation = optimise_rotation(
-                field, predicted_centre, edge_lengths, penumbra
-            )
-            try:
-                check_rotation_close(
-                    edge_lengths, previous_rotation, predicted_rotation
-                )
-                break
-            except ValueError:
-                pass
-
-        previous_centre = predicted_centre
-        predicted_centre = optimise_centre(
-            field, predicted_centre, edge_lengths, penumbra, predicted_rotation
-        )
-        try:
-            check_centre_close(previous_centre, predicted_centre)
-            break
-        except ValueError:
-            pass
-
-    if fixed_rotation is None:
-        verification_rotation = optimise_rotation(
-            field, predicted_centre, edge_lengths, penumbra
-        )
-
-        check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
-
-    centre = predicted_centre.tolist()
-    return centre, predicted_rotation
-
-
-def check_rotation_and_centre(
-    edge_lengths,
-    verification_centre,
-    predicted_centre,
-    verification_rotation,
-    predicted_rotation,
-):
-    check_centre_close(verification_centre, predicted_centre)
-    check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
-
-
-def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation):
-    if np.allclose(*edge_lengths):
-        diff = (verification_rotation - predicted_rotation) % 90
-        if not (diff < 0.3 or diff > 89.7):
-            raise ValueError(
-                _rotation_error_string(verification_rotation, predicted_rotation, diff)
-            )
-    else:
-        diff = (verification_rotation - predicted_rotation) % 180
-        if not (diff < 0.3 or diff > 179.7):
-            raise ValueError(
-                _rotation_error_string(verification_rotation, predicted_rotation, diff)
-            )
-
-
-def _rotation_error_string(verification_rotation, predicted_rotation, diff):
-    return (
-        "Rotation not able to be consistently determined.\n"
-        f"    Predicted Rotation = {predicted_rotation}\n"
-        f"    Verification Rotation = {verification_rotation}\n"
-        f"    Diff = {diff}\n"
+    predicted_centre_with_double_penumbra = optimise_centre(
+        field, initial_centre, edge_lengths, penumbra * 2, field_rotation
     )
+
+    check_centre_close(predicted_centre, predicted_centre_with_double_penumbra)
+
+    field_centre = predicted_centre.tolist()
+    return field_centre
 
 
 def check_centre_close(verification_centre, predicted_centre):
@@ -143,32 +61,6 @@ def check_centre_close(verification_centre, predicted_centre):
             f"    Verification Centre: {verification_centre}\n"
             f"    Predicted Centre: {predicted_centre}\n"
         )
-
-
-def optimise_rotation(field, centre, edge_lengths, penumbra):
-    to_minimise = create_rotation_only_minimiser(field, centre, edge_lengths, penumbra)
-    result = scipy.optimize.basinhopping(
-        to_minimise,
-        INITIAL_ROTATION,
-        T=1,
-        niter=BASINHOPPING_NITER,
-        niter_success=5,
-        stepsize=90,
-        minimizer_kwargs={"method": "L-BFGS-B"},
-    )
-
-    predicted_rotation = result.x[0]
-
-    if np.allclose(*edge_lengths, rtol=0.001, atol=0.001):
-        modulo_rotation = predicted_rotation % 90
-        if modulo_rotation >= 45:
-            modulo_rotation = modulo_rotation - 90
-        return modulo_rotation
-
-    modulo_rotation = predicted_rotation % 180
-    if modulo_rotation >= 90:
-        modulo_rotation = modulo_rotation - 180
-    return modulo_rotation
 
 
 def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
@@ -221,17 +113,5 @@ def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
         return np.sum(left_right_weighted_diff ** 2) + np.sum(
             top_bot_weighted_diff ** 2
         )
-
-    return to_minimise
-
-
-def create_rotation_only_minimiser(field, centre, edge_lengths, penumbra):
-    points_at_origin = define_rotation_field_points_at_origin(edge_lengths, penumbra)
-
-    def to_minimise(rotation):
-        all_field_points = transform_rotation_field_points(
-            points_at_origin, centre, rotation
-        )
-        return np.mean(field(*all_field_points) ** 2)
 
     return to_minimise
