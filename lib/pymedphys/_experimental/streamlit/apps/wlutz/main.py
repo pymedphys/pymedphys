@@ -189,8 +189,8 @@ def _set_parameters():
 
     st.sidebar.write("# Parameters")
 
-    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", bb_diameter)
-    penumbra = st.sidebar.number_input("Penumbra (mm)", penumbra)
+    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
+    penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
     return bb_diameter, penumbra, advanced_mode
 
