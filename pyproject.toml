@@ -34,7 +34,9 @@ dataclasses = { version = "*", python = "~3.6" }
 typing-extensions = "*"
 
 
-# library
+# ------- #
+# Library #
+# ------- #
 tqdm = { version = "*", optional = true }  # groups = ["user", "dev"]
 attrs = { version = "*", optional = true }  # groups = ["user", "dev"]
 watchdog = { version = "*", optional = true }  # groups = ["user", "dev"]
@@ -44,53 +46,73 @@ packaging = { version = "*", optional = true }  # groups = ["user", "dev"]
 PyYAML = { version = "*", optional = true }  # groups = ["user", "dev"]
 requests = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev"]
 matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
-pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev"]
-
 Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
+scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-## electron-factors
-shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
+pymssql = { version = "*", optional = true }  # groups = ["user", "dev"]
+python_dateutil = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-## dicom
-pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 
-## mosaiq
-pymssql = { version = "*", optional = true }  # groups = ["user", "dev"]
-
-## wlutz
-pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev"]
-python_dateutil = { version = "*", optional = true }  # groups = ["user", "dev"]
-scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 dbfread = { version = "*", optional = true }  # groups = ["user", "dev"]
 xmltodict = { version = "*", optional = true }  # groups = ["user", "dev"]
-
-## gui
-streamlit = { version = "0.73.1", optional = true }  # groups = ["user", "dev"]
 timeago = { version = "*", optional = true }  # groups = ["user", "dev"]
 xlsxwriter = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-# comparables
+# The following lower bounded packages are due to certain APIs utilised
+numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev"]
+pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev"]
+pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
+
+# Shapely's lower bound is so that the PyPI version with wheels is used
+shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
+
+# Streamlit's pinning is due to its current beta nature and the fact that some
+# private APIs are utilised
+streamlit = { version = "0.73.1", optional = true }  # groups = ["user", "dev"]
+
+# PyLinac is pinned due to historical algorithm changes with both minor and
+# patch version bumps
+pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev"]
+
+# Scikit-learn has an upper bound since there appears to be an incompatibility
+# between pylinac and scikit-learn version 0.24.0
+scikit-learn = { version = "<0.24.0", optional = true }  # groups = ["user", "dev"]
+
+# ----------- #
+# Comparables #
+# ----------- #
 flashgamma = { version = "*", optional = true }  # groups = ["comparables"]
 
-# ml
+# ---------------- #
+# Machine Learning #
+# ---------------- #
 tensorflow = { version = ">=2.2.0", optional = true }  # groups = ["ml", "doctests"]
 torch = { version = ">=1.7.1", optional = true }  # groups = ["ml"]
 
-# docs
-sphinx = { version = "<3.4.0", optional = true }  # groups = ["dev", "docs"]
-jupyter-book = { version = ">=0.8.3", optional = true }  # groups = ["dev", "docs"]
+# ------------- #
+# Documentation #
+# ------------- #
 sphinx-argparse = { version = "*", optional = true }  # groups = ["dev", "docs"]
 sphinxcontrib-napoleon = { version = "*", optional = true }  # groups = ["dev", "docs"]
 sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs", "doctests"]
-sphinxcontrib-bibtex = { version = "<2.0.0", optional = true }  # groups = ["dev", "docs", "doctests"]
 
-# tests
+# Jupyter book has a lower bound due to 0.8 being a major breaking change
+# version
+jupyter-book = { version = ">=0.8.3", optional = true }  # groups = ["dev", "docs"]
+
+# The sphinx and bibtex packages have an upper bound due to current
+# incompatibilities with jupyter-book
+sphinx = { version = "<3.4.0", optional = true }  # groups = ["dev", "docs"]
+sphinxcontrib-bibtex = { version = "<2.0.0", optional = true }  # groups = ["dev", "docs"]
+
+# ----- #
+# Tests #
+# ----- #
 pytest = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-sugar = { version = "*", optional = true }  # groups = ["dev", "tests"]
 hypothesis = { version = "*", optional = true }  # groups = ["dev", "tests"]
@@ -99,7 +121,9 @@ pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "tests"]
 
-# dev
+# ---------------- #
+# Development Only #
+# ---------------- #
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
 black = { version = "^19.3b0", optional = true }  # groups = ["dev", "doctests"]
 mypy = { version = "*", optional = true }  # groups = ["dev"]
@@ -110,13 +134,13 @@ readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 
 
 [tool.poetry.extras]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "xlsxwriter"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "xlsxwriter", "sphinx", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
-dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "python_dateutil", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "python_dateutil", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
+dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
 comparables = ["flashgamma"]
 ml = ["tensorflow", "torch"]
-doctests = ["tensorflow", "sphinx-book-theme", "sphinxcontrib-bibtex", "black", "tomlkit"]
-docs = ["sphinx", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex"]
+doctests = ["tensorflow", "sphinx-book-theme", "black", "tomlkit"]
+docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures"]
 
 [tool.poetry.scripts]
