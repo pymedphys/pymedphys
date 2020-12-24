@@ -24,6 +24,7 @@ import pymedphys
 from pymedphys._mocks import profiles
 
 from pymedphys._experimental.wlutz import findfield, iview
+from pymedphys._experimental.wlutz import main as _wlutz
 
 
 def test_find_field_in_image():
@@ -35,12 +36,13 @@ def test_find_field_in_image():
     image_path = pymedphys.data_path("wlutz_image.png")
     x, y, img = iview.iview_image_transform_from_path(image_path)
 
-    _, centre, rotation = core.find_field(x, y, img, edge_lengths)
+    centre, _ = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
+        x, y, img, np.nan, edge_lengths, 2, expected_rotation
+    )
 
     centre = np.round(centre, 2).tolist()
-    rotation = float(np.round(rotation, 1))
 
-    assert (expected_centre, expected_rotation) == (centre, rotation)
+    assert expected_centre == centre
 
 
 # @pytest.mark.skip(
