@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable = protected-access
-
 import datetime
 
 import pytest
@@ -23,7 +21,7 @@ from hypothesis.strategies import floats
 import numpy as np
 
 import pymedphys
-import pymedphys._mocks.profiles
+from pymedphys._mocks import profiles
 
 from pymedphys._experimental.wlutz import findfield, iview
 
@@ -76,7 +74,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     except ValueError:
         return
 
-    field = pymedphys._mocks.profiles.create_rectangular_field_function(
+    field = profiles.create_rectangular_field_function(
         actual_centre, edge_lengths, penumbra, actual_rotation
     )
 
@@ -85,16 +83,14 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     xx, yy = np.meshgrid(x, y)
     zz = field(xx, yy)
 
-    initial_centre = findfield.get_centre_of_mass(x, y, zz)
+    initial_centre = findfield.get_initial_centre(x, y, zz, actual_rotation)
 
-    (centre, rotation) = findfield.field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, fixed_rotation=actual_rotation
+    centre = findfield.refine_field_centre(
+        initial_centre, field, edge_lengths, penumbra, actual_rotation
     )
 
     try:
-        findfield.check_rotation_and_centre(
-            edge_lengths, actual_centre, centre, actual_rotation, rotation
-        )
+        findfield.check_centre_close(actual_centre, centre)
     except ValueError:
         print("Failed during comparison to gold reference values")
         raise
@@ -103,8 +99,10 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
 def test_find_initial_field_centre():
     centre = [20, 5]
 
-    field = pymedphys._mocks.profiles.create_square_field_function(
-        centre=centre, side_length=10, penumbra_width=1, rotation=20
+    rotation = 20
+
+    field = profiles.create_square_field_function(
+        centre=centre, side_length=10, penumbra_width=1, rotation=rotation
     )
 
     x = np.arange(-15, 30, 0.1)
@@ -114,6 +112,6 @@ def test_find_initial_field_centre():
 
     zz = field(xx, yy)
 
-    initial_centre = findfield.get_centre_of_mass(x, y, zz)
+    initial_centre = findfield.get_initial_centre(x, y, zz, rotation)
 
     assert np.allclose(initial_centre, centre)
