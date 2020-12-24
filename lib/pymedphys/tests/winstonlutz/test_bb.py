@@ -16,9 +16,10 @@
 import pytest
 from pymedphys._imports import numpy as np
 
-import pymedphys
 import pymedphys._mocks.wlutz as wlutz_mocks
-import pymedphys._wlutz.reporting as reporting
+
+from pymedphys._experimental.wlutz import main as _wlutz
+from pymedphys._experimental.wlutz import reporting
 
 
 def test_normal_bb():
@@ -91,21 +92,13 @@ def run_test(
     (
         determined_bb_centre,
         determined_field_centre,
-        determined_field_rotation,
-    ) = pymedphys.wlutz.find_field_and_bb(
-        x,
-        y,
-        img,
-        field_side_lengths,
-        bb_diameter,
-        penumbra=field_penumbra,
-        pylinac_tol=None,
+    ) = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
+        x, y, img, bb_diameter, field_side_lengths, field_penumbra, field_rotation
     )
 
     try:
         assert np.allclose(bb_centre, determined_bb_centre, atol=0.001)
         assert np.allclose(field_centre, determined_field_centre, atol=0.001)
-        assert np.allclose(field_rotation, determined_field_rotation, atol=0.01)
 
     except:
         reporting.image_analysis_figure(
@@ -114,7 +107,7 @@ def run_test(
             img,
             determined_bb_centre,
             determined_field_centre,
-            determined_field_rotation,
+            field_rotation,
             bb_diameter,
             field_side_lengths,
             field_penumbra,
