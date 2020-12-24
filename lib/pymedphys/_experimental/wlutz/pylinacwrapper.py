@@ -16,7 +16,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac as _pylinac_installed
 
-from pymedphys._vendor.pylinac import winstonlutz as _vendored_pylinac
+from pymedphys._experimental.vendor.pylinac import winstonlutz as _vendored_pylinac
 
 from . import utilities as _utilities
 
