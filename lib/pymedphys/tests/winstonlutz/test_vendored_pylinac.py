@@ -48,8 +48,8 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     bb_max_attenuation = 0.3
     bb_centre = [0, 0]
 
-    x = np.arange(-20, 20.1, 0.1)
-    y = np.arange(-22, 22.1, 0.1)
+    x = np.arange(-50, 50.1, 0.1)
+    y = np.arange(-52, 52.1, 0.1)
     img = mock_wlutz.create_test_image(
         x,
         y,
@@ -63,7 +63,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     )
 
     results = pylinacwrapper.run_wlutz(
-        x, y, img, field_rotation=actual_rotation, find_bb=False
+        x, y, img, actual_rotation, search_radius=50, find_bb=False
     )
 
     assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.2)

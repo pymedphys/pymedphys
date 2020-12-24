@@ -63,11 +63,6 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     edge_lengths = [x_edge, y_edge]
     actual_centre = [x_centre, y_centre]
 
-    try:
-        findfield.check_aspect_ratio(edge_lengths)
-    except ValueError:
-        return
-
     field = profiles.create_rectangular_field_function(
         actual_centre, edge_lengths, penumbra, actual_rotation
     )
