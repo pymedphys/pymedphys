@@ -46,6 +46,9 @@ def data_files():
     return collimator_angles, jpg_paths
 
 
+# TODO: Add a "should be able to find BB on 000058F3.jpg"
+
+
 def test_offset_pylinac():
     filename = "000058A7.jpg"
     expected_field_centre = [-0.70, -2.75]
