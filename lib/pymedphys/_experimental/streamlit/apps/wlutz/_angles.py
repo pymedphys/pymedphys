@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 
@@ -57,7 +59,9 @@ def determine_speed(angle, time):
     diff_angle = np.diff(angle) / 360
     diff_time = pd.Series(np.diff(time)).dt.total_seconds().to_numpy() / 60
 
-    rpm = diff_angle / diff_time
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        rpm = diff_angle / diff_time
 
     return np.abs(rpm)
 
