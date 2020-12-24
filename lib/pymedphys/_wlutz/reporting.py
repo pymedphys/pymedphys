@@ -235,12 +235,15 @@ def image_with_overlays(
     long_edge = np.sqrt(np.sum((np.array(edge_lengths)) ** 2))
     long_edge_fraction = long_edge * 0.6
 
-    ax.set_xlim(
-        [field_centre[0] - long_edge_fraction, field_centre[0] + long_edge_fraction]
-    )
-    ax.set_ylim(
-        [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
-    )
+    try:
+        ax.set_xlim(
+            [field_centre[0] - long_edge_fraction, field_centre[0] + long_edge_fraction]
+        )
+        ax.set_ylim(
+            [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
+        )
+    except ValueError:
+        pass
 
     ax.set_xlabel(f"iView panel absolute x-pos {units}")
     ax.set_ylabel(f"iView panel absolute y-pos {units}")
