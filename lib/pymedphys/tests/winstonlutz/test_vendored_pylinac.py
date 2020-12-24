@@ -21,7 +21,8 @@ from hypothesis.strategies import floats
 import numpy as np
 
 import pymedphys._mocks.wlutz as mock_wlutz
-import pymedphys._wlutz.pylinac as wrapped_pylinac
+
+from pymedphys._experimental.wlutz import pylinacwrapper
 
 
 @pytest.mark.slow
@@ -61,7 +62,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
         bb_max_attenuation,
     )
 
-    results = wrapped_pylinac.run_wlutz(
+    results = pylinacwrapper.run_wlutz(
         x, y, img, field_rotation=actual_rotation, find_bb=False
     )
 

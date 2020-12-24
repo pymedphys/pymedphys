@@ -21,7 +21,8 @@ import numpy as np
 import pandas as pd
 
 import pymedphys
-import pymedphys._wlutz.iview
+
+from pymedphys._experimental.wlutz import iview
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
@@ -31,9 +32,7 @@ def test_end_to_end():
     edge_lengths = [20, 20]
 
     image_paths = pymedphys.zip_data_paths("wlutz_images.zip")
-    results = pymedphys._wlutz.iview.batch_process(  # pylint:disable = protected-access
-        image_paths, edge_lengths, display_figure=False
-    )
+    results = iview.batch_process(image_paths, edge_lengths, display_figure=False)
 
     reference_dataframe = pd.read_csv(HERE.joinpath("end_to_end.csv"))
 
