@@ -151,6 +151,10 @@ jobs:
         Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.poetry\bin"
         Get-Content -Path $env:GITHUB_PATH
 
+    - name: Configure Poetry to not use experimental installer
+      run: |
+        poetry config experimental.new-installer false
+
 # -----------------------------------------------------------------------------
 
 # No import and run CLI with no dependencies
