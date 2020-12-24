@@ -36,7 +36,7 @@ def main():
     """
     st.title("Winston-Lutz Arc")
 
-    bb_diameter, penumbra = _set_parameters()
+    bb_diameter, penumbra, advanced_mode = _set_parameters()
 
     refresh_cache = st.button("Re-query databases")
     (
@@ -50,23 +50,29 @@ def main():
 
     icom_patients_directory = icom_directory.joinpath("patients")
 
-    database_table = _get_user_image_set_selection(database_table)
+    database_table = _get_user_image_set_selection(database_table, advanced_mode)
     database_table = _load_image_frame_database(
-        database_directory, database_table, refresh_cache
+        database_directory, database_table, refresh_cache, advanced_mode
     )
 
-    st.write(
-        f"""
-            ## Directory where results are being saved
+    if advanced_mode:
 
-            `{wlutz_directory_by_date}`
-        """
-    )
+        st.write(
+            f"""
+                ## Directory where results are being saved
+
+                `{wlutz_directory_by_date}`
+            """
+        )
 
     # --
 
     filepaths_to_load, offset_to_apply = _sync.icom_iview_timestamp_alignment(
-        database_table, icom_patients_directory, selected_date, selected_machine_id
+        database_table,
+        icom_patients_directory,
+        selected_date,
+        selected_machine_id,
+        advanced_mode,
     )
 
     # --
@@ -178,15 +184,20 @@ def _set_parameters():
     bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
-    return bb_diameter, penumbra
+    advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
+
+    return bb_diameter, penumbra, advanced_mode
 
 
-def _get_user_image_set_selection(database_table):
-    st.write("## Filtering")
-    filtered = _filtering.filter_image_sets(database_table)
-    filtered.sort_values("datetime", ascending=False, inplace=True)
+def _get_user_image_set_selection(database_table, advanced_mode):
+    if advanced_mode:
+        st.write("## Filtering")
+        filtered = _filtering.filter_image_sets(database_table)
+        filtered.sort_values("datetime", ascending=False, inplace=True)
 
-    st.write(filtered)
+        st.write(filtered)
+    else:
+        filtered = database_table
 
     if len(filtered) == 0:
         st.stop()
@@ -194,8 +205,11 @@ def _get_user_image_set_selection(database_table):
     return filtered
 
 
-def _load_image_frame_database(database_directory, input_database_table, refresh_cache):
-    st.write("## Loading database image frame data")
+def _load_image_frame_database(
+    database_directory, input_database_table, refresh_cache, advanced_mode
+):
+    if advanced_mode:
+        st.write("## Loading database image frame data")
 
     try:
         database_table = _frames.dbf_frame_based_database(
