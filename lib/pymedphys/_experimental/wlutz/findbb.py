@@ -97,7 +97,7 @@ def check_if_at_bounds(bb_centre, bb_bounds):
 def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
     bb_results = scipy.optimize.basinhopping(
         to_minimise,
-        [0, 0],
+        initial_bb_centre,
         T=1,
         niter=200,
         niter_success=5,
