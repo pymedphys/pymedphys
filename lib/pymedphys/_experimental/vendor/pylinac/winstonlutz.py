@@ -103,12 +103,12 @@ class WLImageCurrent:
 
     def set_bounding_box_by_padding(self, padding):
         dims = np.shape(self._array_image.array)
-        self._array_image.rad_field_bounding_box = (
-            padding[1],
-            dims[0] - padding[1],
-            padding[0],
-            dims[1] - padding[0],
-        )
+        self._array_image.rad_field_bounding_box = [
+            int(padding[1]),
+            int(dims[0] - padding[1]),
+            int(padding[0]),
+            int(dims[1] - padding[0]),
+        ]
 
     def _run_field_finding(self):
         (
@@ -129,12 +129,12 @@ class WLImageCurrent:
             if self._array_image.rad_field_bounding_box is None:
                 self._run_field_finding()
 
-            print(
-                "Bounding box found:"
-                "\n\n===================\n\n"
-                f"{self._array_image.rad_field_bounding_box}"
-                "\n\n===================\n\n"
-            )
+            # print(
+            #     "Bounding box found:"
+            #     "\n\n===================\n\n"
+            #     f"{self._array_image.rad_field_bounding_box}"
+            #     "\n\n===================\n\n"
+            # )
 
             self._bb = self._array_image.find_bb(self._array_image)
 

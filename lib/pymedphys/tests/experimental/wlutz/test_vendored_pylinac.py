@@ -20,6 +20,8 @@ from hypothesis.strategies import floats
 
 import numpy as np
 
+import pylinac
+
 import pymedphys._mocks.wlutz as mock_wlutz
 
 from pymedphys._experimental.wlutz import pylinacwrapper
@@ -27,15 +29,15 @@ from pymedphys._experimental.wlutz import pylinacwrapper
 
 @pytest.mark.slow
 @settings(
-    max_examples=1,
+    max_examples=10,
     deadline=datetime.timedelta(milliseconds=4000),
     verbosity=Verbosity.verbose,
 )
 @given(
-    floats(-20, 20),
-    floats(-20, 20),
-    floats(10, 20),
-    floats(10, 20),
+    floats(-15, 15),
+    floats(-15, 15),
+    floats(15, 30),
+    floats(15, 30),
     floats(-3, 3),
     floats(-3, 3),
     floats(0.5, 3),
@@ -72,16 +74,22 @@ def test_field_finding(
         bb_max_attenuation,
     )
 
-    results = pylinacwrapper.run_wlutz(
-        x, y, img, actual_rotation, search_radius=50, find_bb=False
-    )
+    results = pylinacwrapper.run_wlutz(x, y, img, actual_rotation, find_bb=False)
 
     assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.2)
     assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.2)
-    assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.2)
+    assert np.allclose(
+        actual_centre, results[pylinac.__version__]["field_centre"], atol=0.2
+    )
 
-    predicted_bb_centre = pylinacwrapper.find_bb_only(
+    bb_centre_when_finding_it_only = pylinacwrapper.find_bb_only(
         x, y, img, actual_centre, edge_lengths, penumbra, actual_rotation
     )
+
+    results_with_bb = pylinacwrapper.run_wlutz(
+        x, y, img, actual_rotation, pylinac_versions=[pylinac.__version__]
+    )
+    predicted_bb_centre = results_with_bb[pylinac.__version__]["bb_centre"]
+    assert np.allclose(bb_centre_when_finding_it_only, predicted_bb_centre, atol=0.1)
 
     assert np.allclose(bb_centre, predicted_bb_centre, atol=0.2)
