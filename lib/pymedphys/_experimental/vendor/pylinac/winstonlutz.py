@@ -101,9 +101,14 @@ class WLImageCurrent:
             _pylinac_installed.winston_lutz.WLImage._find_bb  # pylint: disable = protected-access
         )
 
-    def set_bounding_box_to_maximum(self):
+    def set_bounding_box_by_padding(self, padding):
         dims = np.shape(self._array_image.array)
-        self._array_image.rad_field_bounding_box = (10, dims[0] - 10, 10, dims[1] - 10)
+        self._array_image.rad_field_bounding_box = (
+            padding[1],
+            dims[0] - padding[1],
+            padding[0],
+            dims[1] - padding[0],
+        )
 
     def _run_field_finding(self):
         (
@@ -123,6 +128,13 @@ class WLImageCurrent:
         if self._bb is None:
             if self._array_image.rad_field_bounding_box is None:
                 self._run_field_finding()
+
+            print(
+                "Bounding box found:"
+                "\n\n===================\n\n"
+                f"{self._array_image.rad_field_bounding_box}"
+                "\n\n===================\n\n"
+            )
 
             self._bb = self._array_image.find_bb(self._array_image)
 
