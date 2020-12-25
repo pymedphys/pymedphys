@@ -93,6 +93,9 @@ def _pymedphys_wlutz_calculate(
     except ValueError:
         if fill_errors_with_nan:
             field_centre = [np.nan, np.nan]
+            bb_centre = [np.nan, np.nan]
+
+            return field_centre, bb_centre
         else:
             raise
 
