@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Cancer Care Associates
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""A module to account for the discontinuous bipolar angles within iCom.
+
+A significant benefit of the bipolar coordinate system is that should
+an angle extend past 180 degrees, say to 181 degrees, this is able to
+be destinguished from -179 degrees. Even though, strictly speaking,
+these are the same angle, 181 is able to be used to designate that it
+is in the position from which it can travel CCW as opposed to CW. This
+also means that by using these bipolar system, all time consecutive
+angles provided are able to be sensibly interpolated with time.
+
+The Elekta linac's TRF format does follow this bipolar convention. The
+Elekta linac's iCom stream, at first glance appears to follow this
+convention, however, unfortunately it does not. The iCom angle format
+presents angles between -180 and 180 degrees. Should ever the angle
+travel past 180 degrees it causes a sign flip in its representation
+effectively throwing out information.
+
+This module aims to utilise knowledge about the maximum travel speed
+for the collimator and the gantry in order to correct this sign flip.
+"""
+
+
 import warnings
 
 from pymedphys._imports import numpy as np
@@ -23,7 +45,15 @@ from . import _utilities
 
 GANTRY_EXPECTED_SPEED_LIMIT = 1  # RPM
 COLLIMATOR_EXPECTED_SPEED_LIMIT = 2.7  # RPM
-NOISE_BUFFER_FACTOR = 5  # To allow a noisy point to not trigger the speed limit
+
+# To allow a noisy point to not trigger the speed limit. Given a sign
+# flip occurring within data on the order of 4 Hz would result in an
+# apparent RPM of 240, as long as the below factor times the expected
+# speed limits above is significantly less than 240 this is sufficient.
+NOISE_BUFFER_FACTOR = 5
+
+assert NOISE_BUFFER_FACTOR * GANTRY_EXPECTED_SPEED_LIMIT < 60
+assert NOISE_BUFFER_FACTOR * COLLIMATOR_EXPECTED_SPEED_LIMIT < 60
 
 
 def make_icom_angles_continuous(icom_datasets):
@@ -134,11 +164,16 @@ def attempt_to_make_angle_continuous(
 
     rpm = determine_speed(angle, time)
     if np.any(rpm > speed_limit):
+        if np.any(sign_to_be_adjusted):
+            new_range_adjust = init_range_to_adjust
+        else:
+            new_range_adjust = init_range_to_adjust + range_iter
+
         angle = attempt_to_make_angle_continuous(
             time,
             angle,
             speed_limit,
-            init_range_to_adjust=init_range_to_adjust + range_iter,
+            init_range_to_adjust=new_range_adjust,
             max_range=max_range,
             range_iter=range_iter,
         )
