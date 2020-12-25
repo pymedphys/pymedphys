@@ -63,4 +63,5 @@ import pydicom.filebase
 import pydicom.sequence
 import pydicom.uid
 import pylinac
+import pylinac.winston_lutz
 import pynetdicom
