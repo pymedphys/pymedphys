@@ -103,7 +103,7 @@ class WLImageCurrent:
 
     def set_bounding_box_to_maximum(self):
         dims = np.shape(self._array_image.array)
-        self._array_image.rad_field_bounding_box = (0, dims[0], 0, dims[1])
+        self._array_image.rad_field_bounding_box = (10, dims[0] - 10, 10, dims[1] - 10)
 
     def _run_field_finding(self):
         (

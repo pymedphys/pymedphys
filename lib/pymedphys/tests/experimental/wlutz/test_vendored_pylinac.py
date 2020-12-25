@@ -36,19 +36,30 @@ from pymedphys._experimental.wlutz import pylinacwrapper
     floats(-20, 20),
     floats(10, 20),
     floats(10, 20),
+    floats(-3, 3),
+    floats(-3, 3),
     floats(0.5, 3),
     floats(-360, 360),
 )
-def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rotation):
+def test_field_finding(
+    x_centre,
+    y_centre,
+    x_edge,
+    y_edge,
+    bb_offset_x,
+    bb_offset_y,
+    penumbra,
+    actual_rotation,
+):
     edge_lengths = [x_edge, y_edge]
     actual_centre = [x_centre, y_centre]
 
     bb_diameter = 8
     bb_max_attenuation = 0.3
-    bb_centre = [0, 0]
+    bb_centre = [x_centre + bb_offset_x, y_centre + bb_offset_y]
 
-    x = np.arange(-50, 50.1, 0.1)
-    y = np.arange(-52, 52.1, 0.1)
+    x = np.arange(-50, 50.1, 0.25)
+    y = np.arange(-52, 52.1, 0.25)
     img = mock_wlutz.create_test_image(
         x,
         y,
