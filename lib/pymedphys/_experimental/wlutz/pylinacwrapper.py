@@ -92,7 +92,7 @@ def run_wlutz(
         search_radius_defined = cast(float, search_radius)
         new_x = np.arange(
             -search_radius_defined,  # pylint: disable = invalid-unary-operand-type
-            search_radius_defined + interpolated_pixel_size,
+            search_radius_defined + interpolated_pixel_size / 2,
             interpolated_pixel_size,
         )
         new_y = new_x
