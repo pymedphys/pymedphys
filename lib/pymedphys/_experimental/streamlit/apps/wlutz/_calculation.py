@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Cancer Care Associates
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 
 import base64
-import io
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -407,7 +406,7 @@ def plot_diagnostic_figures(
 
     figures = []
 
-    for i, results_row in results.iterrows():
+    for _, results_row in results.iterrows():
         field_centre, bb_centre = (
             [results_row["field_centre_x"], results_row["field_centre_y"]],
             [results_row["bb_centre_x"], results_row["bb_centre_y"]],

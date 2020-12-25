@@ -1,3 +1,4 @@
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import cast
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac as _pylinac_installed
@@ -78,16 +80,23 @@ def run_wlutz(
     y,
     image,
     field_rotation,
-    search_radius=25,
+    search_radius=None,
     find_bb=True,
     interpolated_pixel_size=0.25,
     pylinac_versions=None,
     fill_errors_with_nan=False,
 ):
-    new_x = np.arange(
-        -search_radius, search_radius + interpolated_pixel_size, interpolated_pixel_size
-    )
-    new_y = new_x
+    if search_radius is None:
+        new_x, new_y = x, y
+    else:
+        search_radius_defined = cast(float, search_radius)
+        new_x = np.arange(
+            -search_radius_defined,  # pylint: disable = invalid-unary-operand-type
+            search_radius_defined + interpolated_pixel_size,
+            interpolated_pixel_size,
+        )
+        new_y = new_x
+
     rotated_image = _utilities.create_rotated_image(
         x, y, image, field_rotation, new_x=new_x, new_y=new_y
     )
