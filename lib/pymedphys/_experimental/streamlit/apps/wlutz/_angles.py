@@ -41,8 +41,6 @@ import warnings
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 
-from pymedphys._utilities import transforms as pmp_transforms
-
 from . import _utilities
 
 GANTRY_EXPECTED_SPEED_LIMIT = 1  # RPM
@@ -76,15 +74,6 @@ def make_icom_angles_continuous(icom_datasets):
     angle_speed_check(icom_datasets)
 
     return icom_datasets
-
-
-def fix_bipolar_angle(angle: "pd.Series"):
-    output = angle.to_numpy()
-    output[output < 0] = output[output < 0] + 360
-
-    output = pmp_transforms.convert_IEC_angle_to_bipolar(output)
-
-    return output
 
 
 def determine_speed(angle, time):
