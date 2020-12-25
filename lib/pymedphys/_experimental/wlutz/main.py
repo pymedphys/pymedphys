@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Cancer Care Associates
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -94,13 +94,21 @@ def _pymedphys_wlutz_calculate(
     return field_centre, bb_centre
 
 
-def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, pylinac_version, **_):
+def _pylinac_wlutz_calculate(
+    x, y, image, edge_lengths, icom_field_rotation, pylinac_version, **_
+):
+    # By defining a search radius artefacts that can cause offsets
+    # in the pylinac algorithm can be cropped out. See:
+    #    <https://github.com/jrkerns/pylinac/issues/333>
+    search_radius = np.max(edge_lengths)
+
     try:
         pylinac_results = pylinacwrapper.run_wlutz(
             x,
             y,
             image,
             icom_field_rotation,
+            search_radius=search_radius,
             find_bb=True,
             pylinac_versions=[pylinac_version],
             fill_errors_with_nan=True,
