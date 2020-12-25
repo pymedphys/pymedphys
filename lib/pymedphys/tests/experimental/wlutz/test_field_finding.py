@@ -74,7 +74,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     zz = field(xx, yy)
 
     initial_centre = findfield.get_initial_centre(
-        x, y, zz, search_radius=np.max(edge_lengths), field_rotation=actual_rotation
+        x, y, zz, search_radius=None, field_rotation=actual_rotation
     )
     centre = findfield.refine_field_centre(
         initial_centre, field, edge_lengths, penumbra, actual_rotation
