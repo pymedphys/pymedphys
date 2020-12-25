@@ -19,15 +19,17 @@ an angle extend past 180 degrees, say to 181 degrees, this is able to
 be destinguished from -179 degrees. Even though, strictly speaking,
 these are the same angle, 181 is able to be used to designate that it
 is in the position from which it can travel CCW as opposed to CW. This
-also means that by using these bipolar system, all time consecutive
-angles provided are able to be sensibly interpolated with time.
+also means that by using the bipolar system, all time consecutive
+angles provided are able to be sensibly interpolated linearly in order
+to find the the angles between the two time steps.
 
 The Elekta linac's TRF format does follow this bipolar convention. The
 Elekta linac's iCom stream, at first glance appears to follow this
 convention, however, unfortunately it does not. The iCom angle format
 presents angles between -180 and 180 degrees. Should ever the angle
 travel past 180 degrees it causes a sign flip in its representation
-effectively throwing out information.
+effectively throwing out information and making it so that linear
+interpolation between these time steps would return nonsense.
 
 This module aims to utilise knowledge about the maximum travel speed
 for the collimator and the gantry in order to correct this sign flip.
