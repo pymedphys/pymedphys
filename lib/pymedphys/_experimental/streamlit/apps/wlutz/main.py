@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Cancer Care Associates
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,8 +65,6 @@ def main():
             """
         )
 
-    # --
-
     filepaths_to_load, offset_to_apply = _sync.icom_iview_timestamp_alignment(
         database_table,
         icom_patients_directory,
@@ -75,12 +73,9 @@ def main():
         advanced_mode,
     )
 
-    # --
-
     icom_datasets = []
     for filepath in filepaths_to_load:
         icom_dataframe = _icom.get_icom_dataset(filepath)
-        # st.write(icom_dataframe)
         icom_datasets.append(icom_dataframe.copy())
 
     icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
@@ -89,28 +84,27 @@ def main():
     icom_datasets["datetime"] += datetime.timedelta(seconds=offset_to_apply)
     icom_datasets["time"] = icom_datasets["datetime"].dt.round("ms").dt.time
 
-    # icom_datasets.set_index("datetime", inplace=True)
-
-    beam_on_mask = _utilities.expand_border_events(
-        np.diff(icom_datasets["meterset"]) > 0
-    )
-    beam_shade_min = -200 * beam_on_mask
-    beam_shade_max = 200 * beam_on_mask
-
-    icom_datasets["beam_shade_min"] = beam_shade_min
-    icom_datasets["beam_shade_max"] = beam_shade_max
-
-    if advanced_mode:
-        beam_on_chart = (
-            alt.Chart(icom_datasets)
-            .mark_area(fillOpacity=0.1, strokeOpacity=0.3, stroke="black", fill="black")
-            .encode(x="datetime:T", y="beam_shade_min:Q", y2="beam_shade_max:Q")
-        )
-
     try:
         icom_datasets = _angles.make_icom_angles_continuous(icom_datasets)
     finally:
         if advanced_mode:
+            beam_on_mask = _utilities.expand_border_events(
+                np.diff(icom_datasets["meterset"]) > 0
+            )
+            beam_shade_min = -200 * beam_on_mask
+            beam_shade_max = 200 * beam_on_mask
+
+            icom_datasets["beam_shade_min"] = beam_shade_min
+            icom_datasets["beam_shade_max"] = beam_shade_max
+
+            beam_on_chart = (
+                alt.Chart(icom_datasets)
+                .mark_area(
+                    fillOpacity=0.1, strokeOpacity=0.3, stroke="black", fill="black"
+                )
+                .encode(x="datetime:T", y="beam_shade_min:Q", y2="beam_shade_max:Q")
+            )
+
             device_angle_chart = (
                 beam_on_chart
                 + (
@@ -170,8 +164,6 @@ def main():
 
     if advanced_mode:
         st.write(database_table)
-
-    # --
 
     _calculation.calculations_ui(
         database_table,
