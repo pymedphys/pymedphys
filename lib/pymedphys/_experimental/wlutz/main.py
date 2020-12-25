@@ -97,9 +97,15 @@ def _pymedphys_wlutz_calculate(
 def _pylinac_wlutz_calculate(
     x, y, image, edge_lengths, icom_field_rotation, pylinac_version, **_
 ):
-    # By defining a search radius artefacts that can cause offsets
-    # in the pylinac algorithm can be cropped out. See:
+    # By defining a search radius, artefacts that can cause offsets
+    # in the pylinac algorithm can be cropped out. See the following
+    # issue for more details:
+
     #    <https://github.com/jrkerns/pylinac/issues/333>
+
+    # By defining the search radius to equal the maximum side length
+    # the interpolation region being search over by PyLinac is twice
+    # that of the maximum field edge.
     search_radius = np.max(edge_lengths)
 
     try:
