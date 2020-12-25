@@ -95,8 +95,8 @@ def test_find_initial_field_centre():
         centre=centre, side_length=10, penumbra_width=1, rotation=rotation
     )
 
-    x = np.arange(-15, 30, 0.1)
-    y = np.arange(-15, 15, 0.1)
+    x = np.arange(-30, 30, 0.25)
+    y = np.arange(-32, 32, 0.25)
 
     xx, yy = np.meshgrid(x, y)
 
@@ -106,4 +106,4 @@ def test_find_initial_field_centre():
         x, y, zz, search_radius=None, field_rotation=rotation
     )
 
-    assert np.allclose(initial_centre, centre, atol=0.2)
+    assert np.allclose(initial_centre, centre, atol=0.4)
