@@ -42,7 +42,8 @@ import functools
 from typing import List, Tuple
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pylinac, scipy, skimage
+from pymedphys._imports import pylinac as _pylinac_installed
+from pymedphys._imports import scipy, skimage
 
 from .core import geometry as _vendor_geometry
 from .core import image as _vendor_image
@@ -76,13 +77,13 @@ class WLImageCurrent:
         """Adapted from
         <https://github.com/jrkerns/pylinac/blob/14a5296ae4ee0ecb01865d08f15070c82e19fc45/pylinac/winston_lutz.py#L594-L612>
         """
-        self._array_image = pylinac.image.ArrayImage(
+        self._array_image = _pylinac_installed.image.ArrayImage(
             array, dpi=dpi, sid=sid, dtype=dtype
         )
         self._array_image.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
 
         self._array_image._clean_edges = (
-            pylinac.winston_lutz.WLImage._clean_edges  # pylint: disable = protected-access
+            _pylinac_installed.winston_lutz.WLImage._clean_edges  # pylint: disable = protected-access
         )
         self._array_image._clean_edges(self._array_image)
 
@@ -94,11 +95,19 @@ class WLImageCurrent:
         self._bb = None
 
         self._array_image.find_field_centroid = (
-            pylinac.winston_lutz.WLImage._find_field_centroid  # pylint: disable = protected-access
+            _pylinac_installed.winston_lutz.WLImage._find_field_centroid  # pylint: disable = protected-access
         )
         self._array_image.find_bb = (
-            pylinac.winston_lutz.WLImage._find_bb  # pylint: disable = protected-access
+            _pylinac_installed.winston_lutz.WLImage._find_bb  # pylint: disable = protected-access
         )
+
+    @property
+    def rad_field_bounding_box(self):
+        return self._array_image.rad_field_bounding_box
+
+    @rad_field_bounding_box.setter
+    def rad_field_bounding_box(self, bounding_box):
+        self._array_image.rad_field_bounding_box = bounding_box
 
     def _run_field_finding(self):
         (

@@ -26,14 +26,10 @@ from . import utilities as _utilities
 def run_wlutz_raw(
     x, y, image, find_bb=True, pylinac_version=None, fill_errors_with_nan=False
 ):
-    if pylinac_version is None:
-        pylinac_version = _pylinac_installed.__version__
+    WLImage = _get_class_for_version(pylinac_version)
+    wl_image = WLImage(image)
 
     nan_coords = [np.nan, np.nan]
-
-    VERSION_TO_CLASS_MAP = _pylinac_vendored.get_version_to_class_map()
-    WLImage = VERSION_TO_CLASS_MAP[pylinac_version]
-    wl_image = WLImage(image)
 
     dx = _convert_grid_to_step_size(x)
     dy = _convert_grid_to_step_size(y)
@@ -62,6 +58,20 @@ def run_wlutz_raw(
         bb_centre = nan_coords
 
     return field_centre, bb_centre
+
+
+def _get_class_for_version(pylinac_version=None):
+    if pylinac_version is None:
+        pylinac_version = _pylinac_installed.__version__
+
+    VERSION_TO_CLASS_MAP = _pylinac_vendored.get_version_to_class_map()
+    WLImage = VERSION_TO_CLASS_MAP[pylinac_version]
+
+    return WLImage
+
+
+def find_bb_only(x, y, image):
+    pass
 
 
 def _convert_grid_to_step_size(x):
