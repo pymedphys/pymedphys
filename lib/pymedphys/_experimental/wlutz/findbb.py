@@ -1,3 +1,4 @@
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# import warnings
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -35,32 +34,34 @@ def optimise_bb_centre(
         field, field_centre, field_rotation
     )
 
-    bb_centre_in_centralised_field = _minimise_bb(
+    bb_centre_in_centralised_field = _optimise_bb_centre_in_straightened_centralised_field(
         centralised_field, bb_diameter, edge_lengths, penumbra
-    )
-    verification_repeat_with_smaller_bb = _minimise_bb(
-        centralised_field, bb_diameter / 2, edge_lengths, penumbra
-    )
-    repeat_agreement = np.abs(
-        verification_repeat_with_smaller_bb - bb_centre_in_centralised_field
     )
 
     bb_centre = utilities.transform_point(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
-    bb_repeated = utilities.transform_point(
-        verification_repeat_with_smaller_bb, field_centre, field_rotation
-    )
 
-    if np.any(repeat_agreement > BB_REPEAT_TOL):
+    return bb_centre
 
-        raise ValueError(
-            "BB centre not able to be consistently determined\n"
-            f"  First iteration:  {bb_centre}\n"
-            f"  Second iteration: {bb_repeated}"
+
+def _optimise_bb_centre_in_straightened_centralised_field(
+    centralised_field: imginterp.Field, bb_diameter, edge_lengths, penumbra
+):
+    bb_centre = _minimise_bb(centralised_field, bb_diameter, edge_lengths, penumbra)
+
+    all_centre_predictions = [bb_centre]
+    for bb_size_factor in [0.5, 0.6, 0.7, 0.8, 0.9]:
+        prediction_with_adjusted_bb_size = _minimise_bb(
+            centralised_field, bb_diameter * bb_size_factor, edge_lengths, penumbra
         )
+        repeat_agreement = np.abs(prediction_with_adjusted_bb_size - bb_centre)
+        if np.any(repeat_agreement > BB_REPEAT_TOL):
+            raise ValueError("BB centre not able to be consistently determined")
 
-    return np.mean([bb_centre, bb_repeated], axis=0)
+        all_centre_predictions.append(prediction_with_adjusted_bb_size)
+
+    return np.mean(all_centre_predictions, axis=0)
 
 
 def _minimise_bb(field, bb_diameter, edge_lengths, penumbra):
