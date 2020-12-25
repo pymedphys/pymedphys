@@ -43,7 +43,6 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     edge_lengths = [x_edge, y_edge]
     actual_centre = [x_centre, y_centre]
 
-    # BB not actually being tested here
     bb_diameter = 8
     bb_max_attenuation = 0.3
     bb_centre = [0, 0]
@@ -69,3 +68,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.2)
     assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.2)
     assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.2)
+
+    predicted_bb_centre = pylinacwrapper.find_bb_only(x, y, img)
+
+    assert np.allclose(bb_centre, predicted_bb_centre, atol=0.2)

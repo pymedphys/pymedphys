@@ -101,13 +101,9 @@ class WLImageCurrent:
             _pylinac_installed.winston_lutz.WLImage._find_bb  # pylint: disable = protected-access
         )
 
-    @property
-    def rad_field_bounding_box(self):
-        return self._array_image.rad_field_bounding_box
-
-    @rad_field_bounding_box.setter
-    def rad_field_bounding_box(self, bounding_box):
-        self._array_image.rad_field_bounding_box = bounding_box
+    def set_bounding_box_to_maximum(self):
+        dims = np.shape(self._array_image.array)
+        self._array_image.rad_field_bounding_box = (0, dims[0], 0, dims[1])
 
     def _run_field_finding(self):
         (
@@ -366,7 +362,7 @@ def get_version_to_class_map():
     VERSION_TO_CLASS_MAP = {
         "2.2.6": WLImage_2_2_6,
         "2.2.7": WLImage_2_2_7,
-        pylinac.__version__: WLImageCurrent,
+        _pylinac_installed.__version__: WLImageCurrent,
     }
 
     return VERSION_TO_CLASS_MAP

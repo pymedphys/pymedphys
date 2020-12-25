@@ -71,18 +71,31 @@ def _get_class_for_version(pylinac_version=None):
 
 
 def find_bb_only(x, y, image):
-    pass
+    WLImage = _pylinac_vendored.WLImageCurrent
+    wl_image = WLImage(image)
+    wl_image.set_bounding_box_to_maximum()
+
+    dx = _convert_grid_to_step_size(x)
+    dy = _convert_grid_to_step_size(y)
+
+    bb_centre = [wl_image.bb.x * dx + np.min(x), wl_image.bb.y * dy + np.min(y)]
+
+    return bb_centre
 
 
 def _convert_grid_to_step_size(x):
     diff_x = np.diff(x)
-    dx_all = np.unique(diff_x)
-    if len(dx_all) != 1:
-        raise ValueError("Exactly one grid step size required.")
 
-    dx = dx_all[0]
+    dx_mean = np.mean(diff_x)
+    dx_deviations = np.abs(diff_x - dx_mean)
 
-    return dx
+    if np.any(dx_deviations > 0.00001):
+        raise ValueError(
+            "Exactly one grid step size required. Maximum deviation "
+            f"from the mean was {np.max(dx_deviations)}."
+        )
+
+    return dx_mean
 
 
 def run_wlutz(
