@@ -27,7 +27,7 @@ from pymedphys._experimental.wlutz import pylinacwrapper
 
 @pytest.mark.slow
 @settings(
-    max_examples=10,
+    max_examples=1,
     deadline=datetime.timedelta(milliseconds=4000),
     verbosity=Verbosity.verbose,
 )
@@ -54,7 +54,7 @@ def test_field_finding(
     edge_lengths = [x_edge, y_edge]
     actual_centre = [x_centre, y_centre]
 
-    bb_diameter = 8
+    bb_diameter = 3
     bb_max_attenuation = 0.3
     bb_centre = [x_centre + bb_offset_x, y_centre + bb_offset_y]
 
@@ -81,7 +81,7 @@ def test_field_finding(
     assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.2)
 
     predicted_bb_centre = pylinacwrapper.find_bb_only(
-        x, y, img, actual_centre, edge_lengths, actual_rotation
+        x, y, img, actual_centre, edge_lengths, penumbra, actual_rotation
     )
 
     assert np.allclose(bb_centre, predicted_bb_centre, atol=0.2)

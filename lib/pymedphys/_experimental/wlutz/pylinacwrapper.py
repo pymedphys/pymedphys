@@ -16,6 +16,7 @@
 from typing import cast
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 from pymedphys._imports import pylinac as _pylinac_installed
 
 from pymedphys._experimental.vendor.pylinac import winstonlutz as _pylinac_vendored
@@ -70,10 +71,10 @@ def _get_class_for_version(pylinac_version=None):
     return WLImage
 
 
-def find_bb_only_raw(x, y, image):
+def find_bb_only_raw(x, y, image, padding):
     WLImage = _pylinac_vendored.WLImageCurrent
     wl_image = WLImage(image)
-    wl_image.set_bounding_box_to_maximum()
+    wl_image.set_bounding_box_by_padding(padding)
 
     dx = _convert_grid_to_step_size(x)
     dy = _convert_grid_to_step_size(y)
@@ -98,12 +99,21 @@ def _convert_grid_to_step_size(x):
     return dx_mean
 
 
-def find_bb_only(x, y, image, field_centre, edge_lengths, field_rotation):
-    x_radius = edge_lengths[0] / 2
-    y_radius = edge_lengths[1] / 2
+def find_bb_only(x, y, image, field_centre, edge_lengths, penumbra, field_rotation):
+    out_of_field_padding_factor = 4
+    in_field_padding_factor = 2
+    bounding_box_padding_factor = out_of_field_padding_factor + in_field_padding_factor
+
+    x_radius = edge_lengths[0] / 2 + penumbra * out_of_field_padding_factor
+    y_radius = edge_lengths[1] / 2 + penumbra * out_of_field_padding_factor
 
     dx = _convert_grid_to_step_size(x)
     dy = _convert_grid_to_step_size(y)
+
+    bounding_box_x_padding = np.round(bounding_box_padding_factor * penumbra / dx)
+    bounding_box_y_padding = np.round(bounding_box_padding_factor * penumbra / dy)
+
+    padding = [bounding_box_x_padding, bounding_box_y_padding]
 
     x_new = np.arange(-x_radius, x_radius + dx / 2, dx)
     y_new = np.arange(-y_radius, y_radius + dy / 2, dy)
@@ -111,7 +121,16 @@ def find_bb_only(x, y, image, field_centre, edge_lengths, field_rotation):
         x, y, image, field_centre, field_rotation, new_x=x_new, new_y=y_new
     )
 
-    raw_bb_centre = find_bb_only_raw(x_new, y_new, centralised_image)
+    try:
+        raw_bb_centre = find_bb_only_raw(x_new, y_new, centralised_image, padding)
+    except:
+        plt.pcolormesh(x_new, y_new, centralised_image, shading="nearest")
+        plt.show()
+        field_centre, bb_centre = run_wlutz_raw(x_new, y_new, centralised_image)
+        print(field_centre)
+        print(bb_centre)
+        raise
+
     bb_centre = _utilities.rotate_point(raw_bb_centre, field_rotation)
 
     return bb_centre
