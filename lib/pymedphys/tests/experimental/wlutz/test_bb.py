@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import pytest
 from pymedphys._imports import numpy as np
 
 import pymedphys._mocks.wlutz as wlutz_mocks

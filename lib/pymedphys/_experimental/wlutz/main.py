@@ -70,7 +70,13 @@ def _pymedphys_wlutz_calculate(
     x, y, image, bb_diameter, edge_lengths, penumbra, icom_field_rotation, **_
 ):
 
-    initial_centre = findfield.get_initial_centre(x, y, image, icom_field_rotation)
+    initial_centre = findfield.get_initial_centre(
+        x,
+        y,
+        image,
+        search_radius=np.max(edge_lengths),
+        field_rotation=icom_field_rotation,
+    )
     field = imginterp.create_interpolated_field(x, y, image)
     try:
         field_centre = findfield.refine_field_centre(

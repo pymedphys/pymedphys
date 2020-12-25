@@ -1,3 +1,4 @@
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +22,17 @@ BASINHOPPING_NITER = 200
 FIELD_REPEAT_TOL = 0.2
 
 
-def get_initial_centre(x, y, image, field_rotation):
+def get_initial_centre(x, y, image, search_radius, field_rotation):
     pylinac_version = pylinac.__version__
 
     pylinac_results = pylinacwrapper.run_wlutz(
-        x, y, image, field_rotation, find_bb=False, pylinac_versions=[pylinac_version]
+        x,
+        y,
+        image,
+        field_rotation,
+        search_radius=search_radius,
+        find_bb=False,
+        pylinac_versions=[pylinac_version],
     )
 
     field_centre = pylinac_results[pylinac_version]["field_centre"]

@@ -1,3 +1,4 @@
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,8 +73,9 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     xx, yy = np.meshgrid(x, y)
     zz = field(xx, yy)
 
-    initial_centre = findfield.get_initial_centre(x, y, zz, actual_rotation)
-
+    initial_centre = findfield.get_initial_centre(
+        x, y, zz, search_radius=np.max(edge_lengths), field_rotation=actual_rotation
+    )
     centre = findfield.refine_field_centre(
         initial_centre, field, edge_lengths, penumbra, actual_rotation
     )
@@ -87,7 +89,6 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
 
 def test_find_initial_field_centre():
     centre = [20, 5]
-
     rotation = 20
 
     field = profiles.create_square_field_function(
@@ -101,6 +102,8 @@ def test_find_initial_field_centre():
 
     zz = field(xx, yy)
 
-    initial_centre = findfield.get_initial_centre(x, y, zz, rotation)
+    initial_centre = findfield.get_initial_centre(
+        x, y, zz, search_radius=None, field_rotation=rotation
+    )
 
     assert np.allclose(initial_centre, centre, atol=0.2)
