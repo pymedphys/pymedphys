@@ -69,6 +69,8 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.2)
     assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.2)
 
-    predicted_bb_centre = pylinacwrapper.find_bb_only(x, y, img)
+    predicted_bb_centre = pylinacwrapper.find_bb_only(
+        x, y, img, actual_centre, edge_lengths, actual_rotation
+    )
 
     assert np.allclose(bb_centre, predicted_bb_centre, atol=0.2)

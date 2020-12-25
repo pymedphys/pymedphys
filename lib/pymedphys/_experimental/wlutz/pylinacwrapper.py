@@ -70,7 +70,7 @@ def _get_class_for_version(pylinac_version=None):
     return WLImage
 
 
-def find_bb_only(x, y, image):
+def find_bb_only_raw(x, y, image):
     WLImage = _pylinac_vendored.WLImageCurrent
     wl_image = WLImage(image)
     wl_image.set_bounding_box_to_maximum()
@@ -96,6 +96,25 @@ def _convert_grid_to_step_size(x):
         )
 
     return dx_mean
+
+
+def find_bb_only(x, y, image, field_centre, edge_lengths, field_rotation):
+    x_radius = edge_lengths[0] / 2
+    y_radius = edge_lengths[1] / 2
+
+    dx = _convert_grid_to_step_size(x)
+    dy = _convert_grid_to_step_size(y)
+
+    x_new = np.arange(-x_radius, x_radius + dx / 2, dx)
+    y_new = np.arange(-y_radius, y_radius + dy / 2, dy)
+    centralised_image = _utilities.create_centralised_image(
+        x, y, image, field_centre, field_rotation, new_x=x_new, new_y=y_new
+    )
+
+    raw_bb_centre = find_bb_only_raw(x_new, y_new, centralised_image)
+    bb_centre = _utilities.rotate_point(raw_bb_centre, field_rotation)
+
+    return bb_centre
 
 
 def run_wlutz(
