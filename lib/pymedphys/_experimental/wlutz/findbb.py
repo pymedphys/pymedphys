@@ -16,59 +16,69 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from . import imginterp, interppoints, utilities
+from . import imginterp, interppoints, pylinacwrapper
 
 BB_MIN_SEARCH_DIST = 2
 BB_REPEAT_TOL = 0.2
 
 
-def optimise_bb_centre(
-    field: imginterp.Field,
-    bb_diameter,
-    edge_lengths,
-    penumbra,
-    field_centre,
-    field_rotation,
+def find_bb_centre(
+    x, y, image, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
 ):
-    centralised_field = utilities.create_centralised_field(
-        field, field_centre, field_rotation
+    initial_bb_centre = pylinacwrapper.find_bb_only(
+        x, y, image, edge_lengths, penumbra, field_centre, field_rotation
     )
+    field = imginterp.create_interpolated_field(x, y, image)
 
-    bb_centre_in_centralised_field = _optimise_bb_centre_in_straightened_centralised_field(
-        centralised_field, bb_diameter, edge_lengths, penumbra
-    )
-
-    bb_centre = utilities.transform_point(
-        bb_centre_in_centralised_field, field_centre, field_rotation
+    bb_centre = optimise_bb_centre(
+        field, bb_diameter, field_centre, initial_bb_centre=initial_bb_centre
     )
 
     return bb_centre
 
 
-def _optimise_bb_centre_in_straightened_centralised_field(
-    centralised_field: imginterp.Field, bb_diameter, edge_lengths, penumbra
+def optimise_bb_centre(
+    field: imginterp.Field, bb_diameter, field_centre, initial_bb_centre=None
 ):
-    bb_centre = _minimise_bb(centralised_field, bb_diameter, edge_lengths, penumbra)
+    if initial_bb_centre is None:
+        initial_bb_centre = field_centre
+
+    search_square_edge_length = bb_diameter / np.sqrt(2) * 0.8
+    bb_centre = _minimise_bb(
+        field, bb_diameter, search_square_edge_length, initial_bb_centre
+    )
 
     all_centre_predictions = [bb_centre]
     for bb_size_factor in [0.5, 0.6, 0.7, 0.8, 0.9]:
         prediction_with_adjusted_bb_size = _minimise_bb(
-            centralised_field, bb_diameter * bb_size_factor, edge_lengths, penumbra
+            field,
+            bb_diameter * bb_size_factor,
+            search_square_edge_length,
+            initial_bb_centre,
         )
-        repeat_agreement = np.abs(prediction_with_adjusted_bb_size - bb_centre)
-        if np.any(repeat_agreement > BB_REPEAT_TOL):
-            raise ValueError("BB centre not able to be consistently determined")
 
         all_centre_predictions.append(prediction_with_adjusted_bb_size)
+
+        repeat_agreement = np.abs(prediction_with_adjusted_bb_size - bb_centre)
+        if np.any(repeat_agreement > BB_REPEAT_TOL):
+            raise ValueError(
+                "BB centre not able to be consistently determined. "
+                "Predictions thus far were the following:\n"
+                f"    {all_centre_predictions}\n"
+                "Initial bb centre was:\n"
+                f"    {initial_bb_centre}"
+            )
 
     return np.mean(all_centre_predictions, axis=0)
 
 
-def _minimise_bb(field, bb_diameter, edge_lengths, penumbra):
+def _minimise_bb(field, bb_diameter, search_square_edge_length, initial_bb_centre):
     to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
-    bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
+    bb_bounds = define_bb_bounds(search_square_edge_length, initial_bb_centre)
 
-    bb_centre = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
+    bb_centre = bb_basinhopping(
+        to_minimise_edge_agreement, bb_bounds, initial_bb_centre
+    )
 
     if check_if_at_bounds(bb_centre, bb_bounds):
         raise ValueError("BB found at bounds, likely incorrect")
@@ -84,7 +94,7 @@ def check_if_at_bounds(bb_centre, bb_bounds):
     return any_at_bounds
 
 
-def bb_basinhopping(to_minimise, bb_bounds):
+def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
     bb_results = scipy.optimize.basinhopping(
         to_minimise,
         [0, 0],
@@ -127,7 +137,6 @@ def create_bb_to_minimise(field, bb_diameter):
 
 
 def create_bb_to_minimise_simple(field, bb_diameter):
-
     points_to_check_edge_agreement, dist = interppoints.create_bb_points_function(
         bb_diameter
     )
@@ -147,20 +156,17 @@ def create_bb_to_minimise_simple(field, bb_diameter):
     return to_minimise_edge_agreement
 
 
-def define_bb_bounds(bb_diameter, edge_lengths, penumbra):
-    # TODO: This does not allow the BB to search right up to the edge of the field
-    # this is a crude work around for the fact that a significantly flat area will
-    # currently be optimised for over the BB itself.
-    half_field_bounds = [
-        (edge_lengths[0] - penumbra * 2) / 2,
-        (edge_lengths[1] - penumbra * 2) / 2,
-    ]
-
-    bb_radius = bb_diameter / 2
-
+def define_bb_bounds(search_square_edge_length, initial_bb_centre):
+    half_field_bounds = search_square_edge_length / 2
     circle_centre_bounds = [
-        (-half_field_bounds[0] + bb_radius, half_field_bounds[0] - bb_radius),
-        (-half_field_bounds[1] + bb_radius, half_field_bounds[1] - bb_radius),
+        (
+            initial_bb_centre[0] - half_field_bounds,
+            initial_bb_centre[0] + half_field_bounds,
+        ),
+        (
+            initial_bb_centre[1] - half_field_bounds,
+            initial_bb_centre[1] + half_field_bounds,
+        ),
     ]
 
     return circle_centre_bounds

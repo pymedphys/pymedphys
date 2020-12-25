@@ -44,12 +44,12 @@ def test_normal_bb():
 
 def test_small_bb():
     field_centre = [0, 0]
-    field_side_lengths = [20, 24]
+    field_side_lengths = [15, 35]
     field_penumbra = 2
-    field_rotation = 20
+    field_rotation = 0
 
-    bb_centre = [2, 2]
-    bb_diameter = 3
+    bb_centre = [2, -10]
+    bb_diameter = 1
     bb_max_attenuation = 0.3
 
     run_test(
@@ -73,8 +73,8 @@ def run_test(
     bb_max_attenuation,
 ):
 
-    x = np.arange(-20, 20.1, 0.1)
-    y = np.arange(-22, 22.1, 0.1)
+    x = np.arange(-30, 30.1, 0.25)
+    y = np.arange(-32, 32.1, 0.25)
     img = wlutz_mocks.create_test_image(
         x,
         y,
@@ -91,7 +91,14 @@ def run_test(
         determined_field_centre,
         determined_bb_centre,
     ) = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
-        x, y, img, bb_diameter, field_side_lengths, field_penumbra, field_rotation
+        x,
+        y,
+        img,
+        bb_diameter,
+        field_side_lengths,
+        field_penumbra,
+        field_rotation,
+        fill_errors_with_nan=False,
     )
 
     try:

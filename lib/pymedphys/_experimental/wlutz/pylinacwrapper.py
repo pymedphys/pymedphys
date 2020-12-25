@@ -16,7 +16,6 @@
 from typing import cast
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt
 from pymedphys._imports import pylinac as _pylinac_installed
 
 from pymedphys._experimental.vendor.pylinac import winstonlutz as _pylinac_vendored
@@ -99,7 +98,7 @@ def _convert_grid_to_step_size(x):
     return dx_mean
 
 
-def find_bb_only(x, y, image, field_centre, edge_lengths, penumbra, field_rotation):
+def find_bb_only(x, y, image, edge_lengths, penumbra, field_centre, field_rotation):
     extra_pixels_padding = 20
     out_of_field_padding_factor = 2
     in_field_padding_factor = 2

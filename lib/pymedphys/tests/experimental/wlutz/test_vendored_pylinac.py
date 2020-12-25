@@ -83,7 +83,7 @@ def test_field_finding(
     )
 
     bb_centre_when_finding_it_only = pylinacwrapper.find_bb_only(
-        x, y, img, actual_centre, edge_lengths, penumbra, actual_rotation
+        x, y, img, edge_lengths, penumbra, actual_centre, actual_rotation
     )
 
     results_with_bb = pylinacwrapper.run_wlutz(

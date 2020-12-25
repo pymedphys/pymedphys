@@ -67,7 +67,15 @@ def load_iview_image(image_path):
 
 
 def _pymedphys_wlutz_calculate(
-    x, y, image, bb_diameter, edge_lengths, penumbra, icom_field_rotation, **_
+    x,
+    y,
+    image,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+    icom_field_rotation,
+    fill_errors_with_nan=True,
+    **_,
 ):
 
     initial_centre = findfield.get_initial_centre(
@@ -83,25 +91,40 @@ def _pymedphys_wlutz_calculate(
             initial_centre, field, edge_lengths, penumbra, icom_field_rotation
         )
     except ValueError:
-        field_centre = [np.nan, np.nan]
+        if fill_errors_with_nan:
+            field_centre = [np.nan, np.nan]
+        else:
+            raise
 
     try:
-        bb_centre = findbb.optimise_bb_centre(
-            field,
+        bb_centre = findbb.find_bb_centre(
+            x,
+            y,
+            image,
             bb_diameter,
             edge_lengths,
             penumbra,
             field_centre,
-            icom_field_rotation,
+            field_rotation=icom_field_rotation,
         )
     except ValueError:
-        bb_centre = [np.nan, np.nan]
+        if fill_errors_with_nan:
+            bb_centre = [np.nan, np.nan]
+        else:
+            raise
 
     return field_centre, bb_centre
 
 
 def _pylinac_wlutz_calculate(
-    x, y, image, edge_lengths, icom_field_rotation, pylinac_version, **_
+    x,
+    y,
+    image,
+    edge_lengths,
+    icom_field_rotation,
+    pylinac_version,
+    fill_errors_with_nan=True,
+    **_,
 ):
     # By defining a search radius, artefacts that can cause offsets
     # in the pylinac algorithm can be cropped out. See the following
@@ -123,14 +146,17 @@ def _pylinac_wlutz_calculate(
             search_radius=search_radius,
             find_bb=True,
             pylinac_versions=[pylinac_version],
-            fill_errors_with_nan=True,
+            fill_errors_with_nan=fill_errors_with_nan,
         )
 
         field_centre = pylinac_results[pylinac_version]["field_centre"]
         bb_centre = pylinac_results[pylinac_version]["bb_centre"]
 
     except ValueError:
-        field_centre = [np.nan, np.nan]
-        bb_centre = [np.nan, np.nan]
+        if fill_errors_with_nan:
+            field_centre = [np.nan, np.nan]
+            bb_centre = [np.nan, np.nan]
+        else:
+            raise
 
     return field_centre, bb_centre
