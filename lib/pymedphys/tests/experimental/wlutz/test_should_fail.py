@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
+
+"""A set of tests where the artefacts on the image mean that PyMedPhys
+should fail instead of producing a return value.
+"""
+
+
 import toml
 
 import numpy as np
