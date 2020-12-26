@@ -13,12 +13,12 @@
 # limitations under the License.
 
 
-import pytest
 from pymedphys._imports import numpy as np
 
-import pymedphys
 import pymedphys._mocks.wlutz as wlutz_mocks
-import pymedphys._wlutz.reporting as reporting
+
+from pymedphys._experimental.wlutz import main as _wlutz
+from pymedphys._experimental.wlutz import reporting
 
 
 def test_normal_bb():
@@ -42,15 +42,14 @@ def test_normal_bb():
     )
 
 
-@pytest.mark.skip(reason="This test currently demonstrates a limitation of the library")
 def test_small_bb():
     field_centre = [0, 0]
-    field_side_lengths = [20, 24]
+    field_side_lengths = [15, 35]
     field_penumbra = 2
-    field_rotation = 20
+    field_rotation = 0
 
-    bb_centre = [2, 2]
-    bb_diameter = 3
+    bb_centre = [2, -10]
+    bb_diameter = 1
     bb_max_attenuation = 0.3
 
     run_test(
@@ -64,34 +63,6 @@ def test_small_bb():
     )
 
 
-def create_test_image(
-    field_centre,
-    field_side_lengths,
-    field_penumbra,
-    field_rotation,
-    bb_centre,
-    bb_diameter,
-    bb_max_attenuation,
-):
-    field = wlutz_mocks.create_field_with_bb_func(
-        field_centre,
-        field_side_lengths,
-        field_penumbra,
-        field_rotation,
-        bb_centre,
-        bb_diameter,
-        bb_max_attenuation,
-    )
-
-    x = np.arange(-20, 20.1, 0.1)
-    y = np.arange(-22, 22.1, 0.1)
-    xx, yy = np.meshgrid(x, y)
-
-    img = field(xx, yy)
-
-    return x, y, img
-
-
 def run_test(
     field_centre,
     field_side_lengths,
@@ -102,7 +73,11 @@ def run_test(
     bb_max_attenuation,
 ):
 
-    x, y, img = create_test_image(
+    x = np.arange(-30, 30.1, 0.25)
+    y = np.arange(-32, 32.1, 0.25)
+    img = wlutz_mocks.create_test_image(
+        x,
+        y,
         field_centre,
         field_side_lengths,
         field_penumbra,
@@ -113,23 +88,22 @@ def run_test(
     )
 
     (
-        determined_bb_centre,
         determined_field_centre,
-        determined_field_rotation,
-    ) = pymedphys.wlutz.find_field_and_bb(
+        determined_bb_centre,
+    ) = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
         x,
         y,
         img,
-        field_side_lengths,
         bb_diameter,
-        penumbra=field_penumbra,
-        pylinac_tol=None,
+        field_side_lengths,
+        field_penumbra,
+        field_rotation,
+        fill_errors_with_nan=False,
     )
 
     try:
-        assert np.allclose(bb_centre, determined_bb_centre, atol=0.001)
-        assert np.allclose(field_centre, determined_field_centre, atol=0.001)
-        assert np.allclose(field_rotation, determined_field_rotation, atol=0.01)
+        assert np.allclose(bb_centre, determined_bb_centre, atol=0.01)
+        assert np.allclose(field_centre, determined_field_centre, atol=0.01)
 
     except:
         reporting.image_analysis_figure(
@@ -138,7 +112,7 @@ def run_test(
             img,
             determined_bb_centre,
             determined_field_centre,
-            determined_field_rotation,
+            field_rotation,
             bb_diameter,
             field_side_lengths,
             field_penumbra,

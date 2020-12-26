@@ -49,6 +49,33 @@ def create_bb_attenuation_func(diameter, penumbra, max_attenuation):
     return attenuation
 
 
+def create_test_image(
+    x,
+    y,
+    field_centre,
+    field_side_lengths,
+    field_penumbra,
+    field_rotation,
+    bb_centre,
+    bb_diameter,
+    bb_max_attenuation,
+):
+    field = create_field_with_bb_func(
+        field_centre,
+        field_side_lengths,
+        field_penumbra,
+        field_rotation,
+        bb_centre,
+        bb_diameter,
+        bb_max_attenuation,
+    )
+
+    xx, yy = np.meshgrid(x, y)
+    img = field(xx, yy)
+
+    return img
+
+
 def create_field_with_bb_func(
     field_centre,
     field_side_lengths,

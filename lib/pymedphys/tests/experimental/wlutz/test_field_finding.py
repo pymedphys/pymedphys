@@ -1,3 +1,4 @@
+# Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable = protected-access
-
 import datetime
 
 import pytest
@@ -23,9 +22,10 @@ from hypothesis.strategies import floats
 import numpy as np
 
 import pymedphys
-import pymedphys._mocks.profiles
-import pymedphys._wlutz.findfield
-import pymedphys._wlutz.iview
+from pymedphys._mocks import profiles
+
+from pymedphys._experimental.wlutz import findfield, iview
+from pymedphys._experimental.wlutz import main as _wlutz
 
 
 def test_find_field_in_image():
@@ -35,25 +35,18 @@ def test_find_field_in_image():
     expected_rotation = 12.1
 
     image_path = pymedphys.data_path("wlutz_image.png")
-    x, y, img = pymedphys._wlutz.iview.iview_image_transform_from_path(image_path)
+    x, y, img = iview.iview_image_transform_from_path(image_path)
 
-    _, centre, rotation = pymedphys._wlutz.core.find_field(x, y, img, edge_lengths)
+    centre, _ = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
+        x, y, img, np.nan, edge_lengths, 2, expected_rotation
+    )
 
     centre = np.round(centre, 2).tolist()
-    rotation = float(np.round(rotation, 1))
 
-    assert (expected_centre, expected_rotation) == (centre, rotation)
+    assert expected_centre == centre
 
 
-# @pytest.mark.slow
-@pytest.mark.skip(
-    reason=(
-        "Wlutz field finding algorithm is being shelved for now. "
-        "Will use pylinac only for the time being. When more resources "
-        "are available, will implement independent algorithm to run "
-        "alongside pylinac."
-    )
-)
+@pytest.mark.slow
 @settings(
     deadline=datetime.timedelta(milliseconds=4000),
     max_examples=10,
@@ -71,12 +64,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     edge_lengths = [x_edge, y_edge]
     actual_centre = [x_centre, y_centre]
 
-    try:
-        pymedphys._wlutz.findfield.check_aspect_ratio(edge_lengths)
-    except ValueError:
-        return
-
-    field = pymedphys._mocks.profiles.create_rectangular_field_function(
+    field = profiles.create_rectangular_field_function(
         actual_centre, edge_lengths, penumbra, actual_rotation
     )
 
@@ -85,15 +73,12 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     xx, yy = np.meshgrid(x, y)
     zz = field(xx, yy)
 
-    initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
-    (centre, rotation) = pymedphys._wlutz.findfield.field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre
+    centre = findfield.find_field_centre(
+        x, y, zz, edge_lengths, penumbra, field_rotation=actual_rotation
     )
 
     try:
-        pymedphys._wlutz.findfield.check_rotation_and_centre(
-            edge_lengths, actual_centre, centre, actual_rotation, rotation
-        )
+        findfield.check_centre_close(actual_centre, centre)
     except ValueError:
         print("Failed during comparison to gold reference values")
         raise
@@ -101,18 +86,21 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
 
 def test_find_initial_field_centre():
     centre = [20, 5]
+    rotation = 20
+    side_length = 10
+    edge_lengths = [side_length, side_length]
 
-    field = pymedphys._mocks.profiles.create_square_field_function(
-        centre=centre, side_length=10, penumbra_width=1, rotation=20
+    field = profiles.create_square_field_function(
+        centre=centre, side_length=side_length, penumbra_width=1, rotation=rotation
     )
 
-    x = np.arange(-15, 30, 0.1)
-    y = np.arange(-15, 15, 0.1)
+    x = np.arange(-30, 30, 0.25)
+    y = np.arange(-32, 32, 0.25)
 
     xx, yy = np.meshgrid(x, y)
 
     zz = field(xx, yy)
 
-    initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
+    initial_centre = findfield.get_initial_centre(x, y, zz, edge_lengths, rotation)
 
-    assert np.allclose(initial_centre, centre)
+    assert np.allclose(initial_centre, centre, atol=0.4)

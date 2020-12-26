@@ -20,9 +20,11 @@ import watchdog
 import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
+import xlsxwriter
 import xmltodict
 import yaml
 
+import altair
 import imageio
 import matplotlib
 import matplotlib.patches
@@ -61,4 +63,5 @@ import pydicom.filebase
 import pydicom.sequence
 import pydicom.uid
 import pylinac
+import pylinac.winston_lutz
 import pynetdicom

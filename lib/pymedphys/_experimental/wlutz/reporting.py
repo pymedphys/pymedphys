@@ -121,17 +121,23 @@ def image_analysis_figure(
     )
 
     profile_flip_plot(axs[2, 0], x_axis, field(*x_field_interp))
-    axs[2, 0].set_xlim(
-        [edge_lengths[0] / 2 - penumbra * 2, edge_lengths[0] / 2 + penumbra * 2]
-    )
+    try:
+        axs[2, 0].set_xlim(
+            [edge_lengths[0] / 2 - penumbra * 2, edge_lengths[0] / 2 + penumbra * 2]
+        )
+    except ValueError:
+        pass
     axs[2, 0].set_title("Flipped profile about field centre [field x-axis]")
     axs[2, 0].set_xlabel(f"Distance from field centre {units}")
     axs[2, 0].set_ylabel(pixel_value_label)
 
     profile_flip_plot(axs[2, 1], y_axis, field(*y_field_interp))
-    axs[2, 1].set_xlim(
-        [edge_lengths[1] / 2 - penumbra * 2, edge_lengths[1] / 2 + penumbra * 2]
-    )
+    try:
+        axs[2, 1].set_xlim(
+            [edge_lengths[1] / 2 - penumbra * 2, edge_lengths[1] / 2 + penumbra * 2]
+        )
+    except ValueError:
+        pass
     axs[2, 1].set_title("Flipped profile about field centre [field y-axis]")
     axs[2, 1].set_xlabel(f"Distance from field centre {units}")
     axs[2, 1].set_ylabel(pixel_value_label)
@@ -235,12 +241,15 @@ def image_with_overlays(
     long_edge = np.sqrt(np.sum((np.array(edge_lengths)) ** 2))
     long_edge_fraction = long_edge * 0.6
 
-    ax.set_xlim(
-        [field_centre[0] - long_edge_fraction, field_centre[0] + long_edge_fraction]
-    )
-    ax.set_ylim(
-        [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
-    )
+    try:
+        ax.set_xlim(
+            [field_centre[0] - long_edge_fraction, field_centre[0] + long_edge_fraction]
+        )
+        ax.set_ylim(
+            [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
+        )
+    except ValueError:
+        pass
 
     ax.set_xlabel(f"iView panel absolute x-pos {units}")
     ax.set_ylabel(f"iView panel absolute y-pos {units}")

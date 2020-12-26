@@ -40,6 +40,7 @@ def transform_penumbra_points(points_at_origin, centre, rotation):
 
 
 def translate_and_rotate_transform(centre, rotation):
+    centre = np.array(centre, copy=False)
     transform = matplotlib.transforms.Affine2D()
     try:
         transform.rotate_deg(-rotation)
@@ -72,39 +73,6 @@ def define_penumbra_points_at_origin(edge_lengths, penumbra):
     xx_top_bot, yy_top_bot = np.meshgrid(*edge_points_top_bot[::-1])
 
     return xx_left_right, yy_left_right, xx_top_bot, yy_top_bot
-
-
-def transform_rotation_field_points(points_at_origin, centre, rotation):
-    transform = translate_and_rotate_transform(centre, rotation)
-
-    xx_flat, yy_flat = points_at_origin
-    tranformed_xx, transformed_yy = apply_transform(xx_flat, yy_flat, transform)
-
-    return tranformed_xx, transformed_yy
-
-
-def define_rotation_field_points_at_origin(edge_lengths, penumbra):
-    x_half_range = edge_lengths[0] / 2 + penumbra / 2
-    y_half_range = edge_lengths[1] / 2 + penumbra / 2
-
-    num_x = np.ceil(x_half_range * 2 * 8) + 1
-    num_y = np.ceil(y_half_range * 2 * 8) + 1
-
-    x = np.linspace(-x_half_range, x_half_range, int(num_x))
-    y = np.linspace(-y_half_range, y_half_range, int(num_y))
-
-    xx, yy = np.meshgrid(x, y)
-    xx_flat = np.ravel(xx)
-    yy_flat = np.ravel(yy)
-
-    inside = np.logical_and(
-        (np.abs(xx_flat) < x_half_range), (np.abs(yy_flat) < y_half_range)
-    )
-
-    xx_flat = xx_flat[np.invert(inside)]
-    yy_flat = yy_flat[np.invert(inside)]
-
-    return xx_flat, yy_flat
 
 
 def apply_transform(xx, yy, transform):

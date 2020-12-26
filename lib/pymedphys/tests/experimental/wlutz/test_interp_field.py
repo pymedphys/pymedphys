@@ -16,7 +16,8 @@ import imageio
 import numpy as np
 
 import pymedphys
-import pymedphys._wlutz.imginterp
+
+from pymedphys._experimental.wlutz import imginterp
 
 
 def test_interp_field():
@@ -34,8 +35,6 @@ def test_interp_field():
     y = np.arange(-shape[0] / 2, shape[0] / 2) / 4
     xx, yy = np.meshgrid(x, y)
 
-    field = pymedphys._wlutz.imginterp.create_interpolated_field(  # pylint:disable = protected-access
-        x, y, img
-    )
+    field = imginterp.create_interpolated_field(x, y, img)
 
     assert np.all(field(xx, yy) == img)
