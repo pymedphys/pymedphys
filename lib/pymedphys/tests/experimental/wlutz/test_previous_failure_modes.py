@@ -117,7 +117,13 @@ def _compare_to_expected(
     filepath, rotation = _get_path_and_rotation(filename)
 
     field_centre, bb_centre = _wlutz.calculate(
-        filepath, algorithm, BB_DIAMETER, EDGE_LENGTHS, PENUMBRA, rotation
+        filepath,
+        algorithm,
+        BB_DIAMETER,
+        EDGE_LENGTHS,
+        PENUMBRA,
+        rotation,
+        fill_errors_with_nan=False,
     )
 
     assert np.allclose(field_centre, expected_field_centre, atol=0.05)

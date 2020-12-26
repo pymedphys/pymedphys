@@ -24,7 +24,13 @@ from . import findbb, findfield, iview, pylinacwrapper
 
 
 def calculate(
-    image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+    image_path,
+    algorithm,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+    icom_field_rotation,
+    fill_errors_with_nan=True,
 ):
     x, y, image = load_iview_image(image_path)
 
@@ -39,6 +45,7 @@ def calculate(
         edge_lengths=edge_lengths,
         penumbra=penumbra,
         icom_field_rotation=icom_field_rotation,
+        fill_errors_with_nan=fill_errors_with_nan,
     )
 
     return field_centre, bb_centre
