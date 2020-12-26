@@ -157,6 +157,7 @@ def run_wlutz(
     image,
     field_rotation,
     search_radius=None,
+    search_offset=None,
     find_bb=True,
     interpolated_pixel_size=0.25,
     pylinac_versions=None,
@@ -165,13 +166,22 @@ def run_wlutz(
     if search_radius is None:
         new_x, new_y = x, y
     else:
+        if search_offset is None:
+            search_offset = [0, 0]
+
         search_radius_defined = cast(float, search_radius)
         new_x = np.arange(
-            -search_radius_defined,  # pylint: disable = invalid-unary-operand-type
-            search_radius_defined + interpolated_pixel_size / 2,
+            search_offset[0]
+            - search_radius_defined,  # pylint: disable = invalid-unary-operand-type
+            search_offset[0] + search_radius_defined + interpolated_pixel_size / 2,
             interpolated_pixel_size,
         )
-        new_y = new_x
+        new_y = np.arange(
+            search_offset[1]
+            - search_radius_defined,  # pylint: disable = invalid-unary-operand-type
+            search_offset[1] + search_radius_defined + interpolated_pixel_size / 2,
+            interpolated_pixel_size,
+        )
 
     rotated_image = _utilities.create_rotated_image(
         x, y, image, field_rotation, new_x=new_x, new_y=new_y

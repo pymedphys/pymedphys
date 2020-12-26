@@ -25,32 +25,46 @@ FIELD_REPEAT_TOL = 0.2
 def find_field_centre(x, y, image, edge_lengths, penumbra, field_rotation):
     field = imginterp.create_interpolated_field(x, y, image)
 
-    initial_field_centre = get_initial_centre(
-        x, y, image, np.max(edge_lengths) * np.sqrt(2), field_rotation
-    )
+    initial_field_centre = get_initial_centre(x, y, image, edge_lengths, field_rotation)
+
+    print(initial_field_centre)
+
     field_centre = refine_field_centre(
         initial_field_centre, field, edge_lengths, penumbra, field_rotation
     )
 
+    print(field_centre)
+
     return field_centre
 
 
-def get_initial_centre(x, y, image, search_radius, field_rotation):
+def get_initial_centre(x, y, image, edge_lengths, field_rotation):
     pylinac_version = pylinac.__version__
 
-    pylinac_results = pylinacwrapper.run_wlutz(
+    first_pylinac_results = pylinacwrapper.run_wlutz(
         x,
         y,
         image,
         field_rotation,
-        search_radius=search_radius,
+        search_radius=None,
         find_bb=False,
         pylinac_versions=[pylinac_version],
     )
+    gross_initial_centre = first_pylinac_results[pylinac_version]["field_centre"]
 
-    field_centre = pylinac_results[pylinac_version]["field_centre"]
+    second_pylinac_results = pylinacwrapper.run_wlutz(
+        x,
+        y,
+        image,
+        field_rotation,
+        search_radius=np.max(edge_lengths),
+        search_offset=gross_initial_centre,
+        find_bb=False,
+        pylinac_versions=[pylinac_version],
+    )
+    initial_centre = second_pylinac_results[pylinac_version]["field_centre"]
 
-    return field_centre
+    return initial_centre
 
 
 def refine_field_centre(initial_centre, field, edge_lengths, penumbra, field_rotation):
