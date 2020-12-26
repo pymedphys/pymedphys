@@ -19,7 +19,7 @@ from pymedphys._imports import pylinac, scipy
 from . import bounds, imginterp, interppoints, pylinacwrapper
 
 BASINHOPPING_NITER = 200
-FIELD_REPEAT_TOL = 0.2
+FIELD_REPEAT_TOL = 0.2  # mm
 
 
 def find_field_centre(x, y, image, edge_lengths, penumbra, field_rotation):
