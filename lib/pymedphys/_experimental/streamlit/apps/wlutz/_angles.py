@@ -160,7 +160,7 @@ def attempt_to_make_angles_continuous(
         else:
             new_range_adjust = init_range_to_adjust + range_iter
 
-        angle = attempt_to_make_angles_continuous(
+        angles = attempt_to_make_angles_continuous(
             times,
             angles,
             speed_limit,
