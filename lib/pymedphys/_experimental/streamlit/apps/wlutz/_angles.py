@@ -76,13 +76,13 @@ def make_icom_angles_continuous(icom_datasets):
     return icom_datasets
 
 
-def determine_speed(angle, time):
-    diff_angle = np.diff(angle) / 360
-    diff_time = pd.Series(np.diff(time)).dt.total_seconds().to_numpy() / 60
+def determine_speed(angles, times):
+    diff_angles = np.diff(angles) / 360
+    diff_times = pd.Series(np.diff(times)).dt.total_seconds().to_numpy() / 60
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        rpm = diff_angle / diff_time
+        rpm = diff_angles / diff_times
 
     return np.abs(rpm)
 
@@ -117,8 +117,8 @@ def angle_speed_check(icom_datasets):
 
 
 def attempt_to_make_angles_continuous(
-    time: "pd.Series",
-    angle,
+    times: "pd.Series",
+    angles,
     speed_limit,
     init_range_to_adjust=0,
     max_range=5,
@@ -127,7 +127,7 @@ def attempt_to_make_angles_continuous(
     if init_range_to_adjust > max_range:
         raise ValueError("The adjustment range was larger than the maximum")
 
-    within_adjustment_range = np.abs(angle) >= 180 - init_range_to_adjust
+    within_adjustment_range = np.abs(angles) >= 180 - init_range_to_adjust
     outside_adjustment_range = np.invert(within_adjustment_range)
 
     if not np.any(outside_adjustment_range):
@@ -142,18 +142,18 @@ def attempt_to_make_angles_continuous(
 
     closest_left_leaning = index_outside[where_closest_left_leaning]
 
-    sign_to_be_adjusted = np.sign(angle[index_within]) != np.sign(
-        angle[closest_left_leaning]
+    sign_to_be_adjusted = np.sign(angles[index_within]) != np.sign(
+        angles[closest_left_leaning]
     )
 
-    angles_to_be_adjusted = angle[index_within][sign_to_be_adjusted]
+    angles_to_be_adjusted = angles[index_within][sign_to_be_adjusted]
     angles_to_be_adjusted = angles_to_be_adjusted + 360 * np.sign(
-        angle[closest_left_leaning][sign_to_be_adjusted]
+        angles[closest_left_leaning][sign_to_be_adjusted]
     )
 
-    angle[index_within[sign_to_be_adjusted]] = angles_to_be_adjusted
+    angles[index_within[sign_to_be_adjusted]] = angles_to_be_adjusted
 
-    rpm = determine_speed(angle, time)
+    rpm = determine_speed(angles, times)
     if np.any(rpm > speed_limit):
         if np.any(sign_to_be_adjusted):
             new_range_adjust = init_range_to_adjust
@@ -161,12 +161,12 @@ def attempt_to_make_angles_continuous(
             new_range_adjust = init_range_to_adjust + range_iter
 
         angle = attempt_to_make_angles_continuous(
-            time,
-            angle,
+            times,
+            angles,
             speed_limit,
             init_range_to_adjust=new_range_adjust,
             max_range=max_range,
             range_iter=range_iter,
         )
 
-    return angle
+    return angles
