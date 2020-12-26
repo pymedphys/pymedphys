@@ -68,6 +68,10 @@ def test_offset_pylinac():
         filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYLINAC
     )
 
+    _compare_to_expected(
+        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
+    )
+
 
 def test_line_artefact_images_pymedphys():
     filename = "000057E2.jpg"
