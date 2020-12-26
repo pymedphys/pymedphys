@@ -138,18 +138,6 @@ def _get_relevant_times(filepath):
     return machine_id, pd.Series(relevant_times, name="datetime")
 
 
-def _get_meterset_timestep_weighting(delivery):
-    meterset = np.array(delivery.mu)
-
-    diff_meterset = np.concatenate([[0], np.diff(meterset)])
-    timestep_meterset_weighting = diff_meterset / meterset[-1]
-
-    if not np.allclose(np.sum(timestep_meterset_weighting), 1):
-        raise ValueError("Meterset position weighting should add up to 1")
-
-    return timestep_meterset_weighting
-
-
 @st.cache(show_spinner=False)
 def get_icom_datetimes_meterset_machine(filepath):
     icom_stream = read_icom_log(filepath)
@@ -249,15 +237,6 @@ def get_icom_dataset(filepath):
     )
 
     return icom_dataset
-
-
-def _check_for_consistent_mlc_width_return_mean(weighted_mlc_positions):
-    mean = np.mean(weighted_mlc_positions)
-    if np.any(np.abs(weighted_mlc_positions - mean) > 1):
-        st.write(weighted_mlc_positions)
-        raise ValueError("MLCs are not producing a consistent width")
-
-    return mean
 
 
 def _get_mean_unblocked_mlc_pos(mlc, jaw):
