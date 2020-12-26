@@ -55,7 +55,7 @@ def main():
 
         _insert_file_download_link(xlsx_filepath)
 
-    st.write("## Playing with Wlutz results")
+    st.write("## Writing Excel file from Wlutz results")
 
     (
         _,
