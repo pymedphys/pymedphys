@@ -20,7 +20,7 @@ from pymedphys._imports import pylinac
 
 from pymedphys import _losslessjpeg as lljpeg
 
-from . import findbb, findfield, imginterp, iview, pylinacwrapper
+from . import findbb, findfield, iview, pylinacwrapper
 
 
 def calculate(
@@ -78,17 +78,9 @@ def _pymedphys_wlutz_calculate(
     **_,
 ):
 
-    initial_centre = findfield.get_initial_centre(
-        x,
-        y,
-        image,
-        search_radius=np.max(edge_lengths),
-        field_rotation=icom_field_rotation,
-    )
-    field = imginterp.create_interpolated_field(x, y, image)
     try:
-        field_centre = findfield.refine_field_centre(
-            initial_centre, field, edge_lengths, penumbra, icom_field_rotation
+        field_centre = findfield.find_field_centre(
+            x, y, image, edge_lengths, penumbra, field_rotation=icom_field_rotation
         )
     except ValueError:
         if fill_errors_with_nan:

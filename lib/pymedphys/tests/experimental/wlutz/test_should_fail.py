@@ -18,6 +18,7 @@ should fail instead of producing a return value.
 """
 
 
+import pytest
 import toml
 
 import numpy as np
@@ -50,10 +51,11 @@ def data_files():
     return collimator_angles, jpg_paths
 
 
+@pytest.mark.slow
 def test_start_fields_with_panel_artefacts():
     collimator_angles, jpg_paths = data_files()
 
-    field_centres_that_can_be_found = ["000057B6.jpg", "00005848.jpg"]
+    field_centres_that_can_be_found = ["000057B6.jpg", "00005848.jpg", "000058B0.jpg"]
 
     for filename, full_image_path in jpg_paths.items():
         icom_field_rotation = -collimator_angles[filename]

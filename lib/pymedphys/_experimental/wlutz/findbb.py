@@ -16,7 +16,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from . import imginterp, interppoints, pylinacwrapper
+from . import bounds, imginterp, interppoints, pylinacwrapper
 
 BB_MIN_SEARCH_DIST = 2
 BB_REPEAT_TOL = 0.2
@@ -85,18 +85,10 @@ def _minimise_bb(field, bb_diameter, search_square_edge_length, initial_bb_centr
         to_minimise_edge_agreement, bb_bounds, initial_bb_centre
     )
 
-    if check_if_at_bounds(bb_centre, bb_bounds):
+    if bounds.check_if_at_bounds(bb_centre, bb_bounds):
         raise ValueError("BB found at bounds, likely incorrect")
 
     return bb_centre
-
-
-def check_if_at_bounds(bb_centre, bb_bounds):
-    x_at_bounds = np.any(np.array(bb_centre[0]) == np.array(bb_bounds[0]))
-    y_at_bounds = np.any(np.array(bb_centre[1]) == np.array(bb_bounds[1]))
-
-    any_at_bounds = x_at_bounds or y_at_bounds
-    return any_at_bounds
 
 
 def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
