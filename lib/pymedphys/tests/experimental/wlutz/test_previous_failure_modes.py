@@ -65,11 +65,11 @@ def test_offset_pylinac():
     expected_bb_centre = [-0.10, -2.33]
 
     _compare_to_expected(
-        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYLINAC
+        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
     )
 
     _compare_to_expected(
-        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
+        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYLINAC
     )
 
 
