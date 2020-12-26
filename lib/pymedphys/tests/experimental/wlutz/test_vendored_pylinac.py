@@ -20,7 +20,7 @@ from hypothesis.strategies import floats
 
 import numpy as np
 
-import pylinac
+import pylinac as _pylinac_installed
 
 import pymedphys._mocks.wlutz as mock_wlutz
 
@@ -81,7 +81,7 @@ def test_field_finding(
     assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.2)
     assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.2)
     assert np.allclose(
-        actual_centre, results[pylinac.__version__]["field_centre"], atol=0.2
+        actual_centre, results[_pylinac_installed.__version__]["field_centre"], atol=0.2
     )
 
     bb_centre_when_finding_it_only = pylinacwrapper.find_bb_only(
@@ -89,9 +89,14 @@ def test_field_finding(
     )
 
     results_with_bb = pylinacwrapper.run_wlutz(
-        x, y, img, edge_lengths, actual_rotation, pylinac_versions=[pylinac.__version__]
+        x,
+        y,
+        img,
+        edge_lengths,
+        actual_rotation,
+        pylinac_versions=[_pylinac_installed.__version__],
     )
-    predicted_bb_centre = results_with_bb[pylinac.__version__]["bb_centre"]
+    predicted_bb_centre = results_with_bb[_pylinac_installed.__version__]["bb_centre"]
     assert np.allclose(bb_centre_when_finding_it_only, predicted_bb_centre, atol=0.1)
 
     assert np.allclose(bb_centre, predicted_bb_centre, atol=0.2)

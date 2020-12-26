@@ -17,7 +17,7 @@ import toml
 
 import numpy as np
 
-import pylinac
+import pylinac as _pylinac_installed
 
 import pymedphys
 
@@ -28,7 +28,7 @@ PENUMBRA = 2
 BB_DIAMETER = 8
 
 ALGORITHM_PYMEDPHYS = "PyMedPhys"
-ALGORITHM_PYLINAC = f"PyLinac v{pylinac.__version__}"
+ALGORITHM_PYLINAC = f"PyLinac v{_pylinac_installed.__version__}"
 ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
 
 
