@@ -84,7 +84,7 @@ def test_line_artefact_images_pymedphys():
 
 
 @pytest.mark.slow
-def test_saturated_fff_image():
+def test_saturated_fff_images():
     test_map = {
         "000059DB.jpg": {"centre": [-1.29, -3.49], "bb": [-0.47, -3.03]},
         "000059DC.jpg": {"centre": [-0.85, -3.25], "bb": [-0.46, -2.92]},
