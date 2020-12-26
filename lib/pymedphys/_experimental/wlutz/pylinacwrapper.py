@@ -16,7 +16,9 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac as _pylinac_installed
 
-from pymedphys._experimental.vendor.pylinac import winstonlutz as _pylinac_vendored
+from pymedphys._experimental.vendor.pylinac_vendored import (
+    winstonlutz as _pylinac_vendored_wlutz,
+)
 
 from . import utilities as _utilities
 
@@ -62,14 +64,14 @@ def _get_class_for_version(pylinac_version=None):
     if pylinac_version is None:
         pylinac_version = _pylinac_installed.__version__
 
-    VERSION_TO_CLASS_MAP = _pylinac_vendored.get_version_to_class_map()
+    VERSION_TO_CLASS_MAP = _pylinac_vendored_wlutz.get_version_to_class_map()
     WLImage = VERSION_TO_CLASS_MAP[pylinac_version]
 
     return WLImage
 
 
 def find_bb_only_raw(x, y, image, padding):
-    WLImage = _pylinac_vendored.WLImageCurrent
+    WLImage = _pylinac_vendored_wlutz.WLImageCurrent
     wl_image = WLImage(image)
     wl_image.set_bounding_box_by_padding(padding)
 
@@ -159,8 +161,8 @@ def run_wlutz(
     interpolated_pixel_size=0.25,
     pylinac_versions=None,
     fill_errors_with_nan=False,
-    offset_iter=10,
 ):
+    offset_iter = 10
     current_pylinac_version = _pylinac_installed.__version__
 
     # By defining a search offset and radius, artefacts that can cause
@@ -250,7 +252,7 @@ def run_wlutz_with_manual_search_definition(
     )
 
     if pylinac_versions is None:
-        VERSION_TO_CLASS_MAP = _pylinac_vendored.get_version_to_class_map()
+        VERSION_TO_CLASS_MAP = _pylinac_vendored_wlutz.get_version_to_class_map()
         pylinac_versions = VERSION_TO_CLASS_MAP.keys()
 
     results = {}

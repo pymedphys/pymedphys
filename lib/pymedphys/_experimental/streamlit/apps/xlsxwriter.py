@@ -98,6 +98,8 @@ def main():
         raw_data_worksheet = workbook.add_worksheet(name="Raw Data")
         interpolated_data_worksheet = workbook.add_worksheet(name="Interpolated Data")
 
+        print(summary_worksheet, interpolated_data_worksheet)
+
         _create_algorithms_chart_sheet(
             dataframe, workbook, raw_data_worksheet, algorithm_worksheet
         )

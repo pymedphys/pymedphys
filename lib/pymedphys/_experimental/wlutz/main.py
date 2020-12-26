@@ -16,7 +16,7 @@
 import functools
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pylinac
+from pymedphys._imports import pylinac as _pylinac_installed
 
 from pymedphys import _losslessjpeg as lljpeg
 
@@ -55,8 +55,8 @@ def calculate(
 def get_algorithm_function_map():
     ALGORITHM_FUNCTION_MAP = {
         "PyMedPhys": _pymedphys_wlutz_calculate,
-        f"PyLinac v{pylinac.__version__}": functools.partial(
-            _pylinac_wlutz_calculate, pylinac_version=pylinac.__version__
+        f"PyLinac v{_pylinac_installed.__version__}": functools.partial(
+            _pylinac_wlutz_calculate, pylinac_version=_pylinac_installed.__version__
         ),
         "PyLinac v2.2.6": functools.partial(
             _pylinac_wlutz_calculate, pylinac_version="2.2.6"

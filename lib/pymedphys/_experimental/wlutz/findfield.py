@@ -14,7 +14,8 @@
 # limitations under the License.
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pylinac, scipy
+from pymedphys._imports import pylinac as _pylinac_installed
+from pymedphys._imports import scipy
 
 from . import bounds, imginterp, interppoints, pylinacwrapper
 
@@ -34,7 +35,7 @@ def find_field_centre(x, y, image, edge_lengths, penumbra, field_rotation):
 
 
 def get_initial_centre(x, y, image, edge_lengths, field_rotation):
-    pylinac_version = pylinac.__version__
+    pylinac_version = _pylinac_installed.__version__
 
     pylinac_results = pylinacwrapper.run_wlutz(
         x,
