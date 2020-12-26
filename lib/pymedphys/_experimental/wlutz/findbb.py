@@ -68,17 +68,13 @@ def optimise_bb_centre(
             field, bb_diameter, search_square_edge_length, initial_bb_centre
         )
     )
-    # print(all_centre_predictions)
     median_of_predictions = np.median(all_centre_predictions, axis=0)
-    # print(median_of_predictions)
 
     diff = np.abs(all_centre_predictions - median_of_predictions)
-    # print(diff)
     within_tolerance = np.all(diff < BB_REPEAT_TOL, axis=1)
-    # print(within_tolerance)
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
-    if np.all(diff < BB_REPEAT_TOL):
+    if np.all(within_tolerance):
         return median_of_predictions
 
     if repeats == 0:
