@@ -60,12 +60,12 @@ def make_icom_angles_continuous(icom_datasets):
     try:
         angle_speed_check(icom_datasets)
     except ValueError:
-        icom_datasets["gantry"] = attempt_to_make_angle_continuous(
+        icom_datasets["gantry"] = attempt_to_make_angles_continuous(
             icom_datasets["datetime"],
             icom_datasets["gantry"].to_numpy(),
             GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
         )
-        icom_datasets["collimator"] = attempt_to_make_angle_continuous(
+        icom_datasets["collimator"] = attempt_to_make_angles_continuous(
             icom_datasets["datetime"],
             icom_datasets["collimator"].to_numpy(),
             COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
@@ -116,7 +116,7 @@ def angle_speed_check(icom_datasets):
         )
 
 
-def attempt_to_make_angle_continuous(
+def attempt_to_make_angles_continuous(
     time: "pd.Series",
     angle,
     speed_limit,
@@ -160,7 +160,7 @@ def attempt_to_make_angle_continuous(
         else:
             new_range_adjust = init_range_to_adjust + range_iter
 
-        angle = attempt_to_make_angle_continuous(
+        angle = attempt_to_make_angles_continuous(
             time,
             angle,
             speed_limit,
