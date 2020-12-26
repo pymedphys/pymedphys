@@ -25,14 +25,19 @@ BB_REPEAT_TOL = 0.2
 def find_bb_centre(
     x, y, image, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
 ):
-    initial_bb_centre = pylinacwrapper.find_bb_only(
-        x, y, image, edge_lengths, penumbra, field_centre, field_rotation
-    )
     field = imginterp.create_interpolated_field(x, y, image)
 
-    bb_centre = optimise_bb_centre(
-        field, bb_diameter, field_centre, initial_bb_centre=initial_bb_centre
-    )
+    try:
+        bb_centre = optimise_bb_centre(
+            field, bb_diameter, field_centre, initial_bb_centre=field_centre
+        )
+    except ValueError:
+        initial_bb_centre = pylinacwrapper.find_bb_only(
+            x, y, image, edge_lengths, penumbra, field_centre, field_rotation
+        )
+        bb_centre = optimise_bb_centre(
+            field, bb_diameter, field_centre, initial_bb_centre=initial_bb_centre
+        )
 
     return bb_centre
 
