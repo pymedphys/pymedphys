@@ -98,7 +98,7 @@ def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
         T=1,
         niter=300,
         niter_success=10,
-        stepsize=1,
+        stepsize=0.2,
         minimizer_kwargs={"method": "L-BFGS-B", "bounds": bb_bounds},
     )
 
