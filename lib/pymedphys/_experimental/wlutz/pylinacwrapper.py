@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import cast
-
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac as _pylinac_installed
 
@@ -163,28 +161,22 @@ def run_wlutz(
     pylinac_versions=None,
     fill_errors_with_nan=False,
 ):
+    if search_offset is None:
+        search_offset = [np.mean(x), np.mean(y)]
+
     if search_radius is None:
-        new_x, new_y = x, y
+        new_x = x - search_offset[0]
+        new_y = y - search_offset[1]
     else:
-        if search_offset is None:
-            search_offset = [0, 0]
-
-        search_radius_defined = cast(float, search_radius)
         new_x = np.arange(
-            search_offset[0]
-            - search_radius_defined,  # pylint: disable = invalid-unary-operand-type
-            search_offset[0] + search_radius_defined + interpolated_pixel_size / 2,
+            -search_radius,  # pylint: disable = invalid-unary-operand-type
+            search_radius + interpolated_pixel_size / 2,
             interpolated_pixel_size,
         )
-        new_y = np.arange(
-            search_offset[1]
-            - search_radius_defined,  # pylint: disable = invalid-unary-operand-type
-            search_offset[1] + search_radius_defined + interpolated_pixel_size / 2,
-            interpolated_pixel_size,
-        )
+        new_y = new_x
 
-    rotated_image = _utilities.create_rotated_image(
-        x, y, image, field_rotation, new_x=new_x, new_y=new_y
+    centralised_image = _utilities.create_centralised_image(
+        x, y, image, search_offset, field_rotation, new_x=new_x, new_y=new_y
     )
 
     if pylinac_versions is None:
@@ -196,14 +188,18 @@ def run_wlutz(
         raw_field_centre, raw_bb_centre = run_wlutz_raw(
             new_x,
             new_y,
-            rotated_image,
+            centralised_image,
             find_bb=find_bb,
             pylinac_version=pylinac_version,
             fill_errors_with_nan=fill_errors_with_nan,
         )
 
-        bb_centre = _utilities.rotate_point(raw_bb_centre, field_rotation)
-        field_centre = _utilities.rotate_point(raw_field_centre, field_rotation)
+        bb_centre = _utilities.transform_point(
+            raw_bb_centre, search_offset, field_rotation
+        )
+        field_centre = _utilities.transform_point(
+            raw_field_centre, search_offset, field_rotation
+        )
 
         results[pylinac_version] = {
             "field_centre": field_centre,

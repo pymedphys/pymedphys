@@ -87,9 +87,11 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
 def test_find_initial_field_centre():
     centre = [20, 5]
     rotation = 20
+    side_length = 10
+    edge_lengths = [side_length, side_length]
 
     field = profiles.create_square_field_function(
-        centre=centre, side_length=10, penumbra_width=1, rotation=rotation
+        centre=centre, side_length=side_length, penumbra_width=1, rotation=rotation
     )
 
     x = np.arange(-30, 30, 0.25)
@@ -99,8 +101,6 @@ def test_find_initial_field_centre():
 
     zz = field(xx, yy)
 
-    initial_centre = findfield.get_initial_centre(
-        x, y, zz, search_radius=None, field_rotation=rotation
-    )
+    initial_centre = findfield.get_initial_centre(x, y, zz, edge_lengths, rotation)
 
     assert np.allclose(initial_centre, centre, atol=0.4)

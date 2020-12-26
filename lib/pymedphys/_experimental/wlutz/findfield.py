@@ -26,14 +26,9 @@ def find_field_centre(x, y, image, edge_lengths, penumbra, field_rotation):
     field = imginterp.create_interpolated_field(x, y, image)
 
     initial_field_centre = get_initial_centre(x, y, image, edge_lengths, field_rotation)
-
-    print(initial_field_centre)
-
     field_centre = refine_field_centre(
         initial_field_centre, field, edge_lengths, penumbra, field_rotation
     )
-
-    print(field_centre)
 
     return field_centre
 
