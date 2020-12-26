@@ -251,6 +251,14 @@ jobs:
       run: |
         poetry install -E user -E tests
 
+## Install with Doctests Environment
+
+    - name: Install a doctests environment
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      run: |
+        poetry install -E user -E doctests
+
+
 ## Update all packages and then install with tests environment
 
     - name: Update all packages then install with tests and user environment

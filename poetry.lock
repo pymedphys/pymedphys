@@ -2760,6 +2760,7 @@ comparables = ["flashgamma"]
 dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex"]
+doctests = ["pylinac", "tensorflow", "sphinx-book-theme"]
 ml = ["tensorflow", "torch"]
 propagate = ["black", "tomlkit"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil"]
@@ -2768,7 +2769,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "fb66fffacf1b0b999b1363a1ec25239a9e40456207889637541027cd7e6d4b38"
+content-hash = "705b88aa992702817e274fe9be399704691592d4c863fb8cfb7dffb13d735347"
 
 [metadata.files]
 absl-py = [
