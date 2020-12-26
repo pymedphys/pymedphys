@@ -33,7 +33,20 @@ ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
 
 
 def data_files():
-    zenodo_data_files = pymedphys.zip_data_paths("previously_failing_iview_images.zip")
+    zip_filenames = ["previously_failing_iview_images.zip", "saturated-images.zip"]
+
+    collated_collimator_angles = {}
+    collated_jpg_paths = {}
+    for zip_filename in zip_filenames:
+        collimator_angles, jpg_paths = _get_data_files_by_zip_name(zip_filename)
+        collated_collimator_angles = {**collated_collimator_angles, **collimator_angles}
+        collated_jpg_paths = {**collated_jpg_paths, **jpg_paths}
+
+    return collated_collimator_angles, collated_jpg_paths
+
+
+def _get_data_files_by_zip_name(zip_filename):
+    zenodo_data_files = pymedphys.zip_data_paths(zip_filename)
     collimator_angles = toml.load(
         [item for item in zenodo_data_files if item.suffix == ".toml"][0]
     )
@@ -60,6 +73,16 @@ def test_line_artefact_images_pymedphys():
     filename = "000057E2.jpg"
     expected_field_centre = [-0.11, -2.07]
     expected_bb_centre = [-0.17, -2.41]
+
+    _compare_to_expected(
+        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
+    )
+
+
+def test_saturated_fff_image():
+    filename = "000059DB.jpg"
+    expected_field_centre = [-1.29, -3.49]
+    expected_bb_centre = [-0.47, -3.03]
 
     _compare_to_expected(
         filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
