@@ -206,6 +206,7 @@ extras_require = {
         "sphinxcontrib-bibtex<2.0.0",
     ],
     "ml": ["tensorflow>=2.2.0", "torch>=1.7.1"],
+    "propagate": ["black>=19.3b0,<20.0", "tomlkit"],
     "tests": [
         "pytest",
         "pytest-sugar",

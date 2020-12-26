@@ -2761,13 +2761,14 @@ dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests"
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex"]
 ml = ["tensorflow", "torch"]
+propagate = ["black", "tomlkit"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil"]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "70c04ddb19dc9e6a5c82efc1959059859d7f34ef1ccdd72d488b22f0b8275119"
+content-hash = "fb66fffacf1b0b999b1363a1ec25239a9e40456207889637541027cd7e6d4b38"
 
 [metadata.files]
 absl-py = [
