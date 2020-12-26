@@ -76,12 +76,12 @@ streamlit = { version = "0.73.1", optional = true }  # groups = ["user", "dev"]
 
 # PyLinac is pinned due to historical algorithm changes with both minor and
 # patch version bumps
-pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "doctests"]
+pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev"]
 
 # Scikit-learn has an upper bound since there appears to be an incompatibility
 # between pylinac and scikit-learn version 0.24.0
 # Not needed as PyMedPhys dependency. Included only as a fix.
-scikit-learn = { version = "<0.24.0", optional = true }  # groups = ["user", "dev", "doctests"]
+scikit-learn = { version = "<0.24.0", optional = true }  # groups = ["user", "dev"]
 
 # ----------- #
 # Comparables #
@@ -91,7 +91,7 @@ flashgamma = { version = "*", optional = true }  # groups = ["comparables"]
 # ---------------- #
 # Machine Learning #
 # ---------------- #
-tensorflow = { version = ">=2.2.0", optional = true }  # groups = ["ml", "doctests"]
+tensorflow = { version = ">=2.2.0", optional = true }  # groups = ["ml"]
 torch = { version = ">=1.7.1", optional = true }  # groups = ["ml"]
 
 # ------------- #
@@ -99,7 +99,7 @@ torch = { version = ">=1.7.1", optional = true }  # groups = ["ml"]
 # ------------- #
 sphinx-argparse = { version = "*", optional = true }  # groups = ["dev", "docs"]
 sphinxcontrib-napoleon = { version = "*", optional = true }  # groups = ["dev", "docs"]
-sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs", "doctests"]
+sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs"]
 
 # Jupyter book has a lower bound due to 0.8 being a major breaking change
 # version
@@ -127,11 +127,11 @@ python_dateutil = { version = "*", optional = true }  # groups = ["dev", "tests"
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
-black = { version = "^19.3b0", optional = true }  # groups = ["dev", "doctests"]
+black = { version = "^19.3b0", optional = true }  # groups = ["dev"]
 mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
-tomlkit = { version = "*", optional = true }  # groups = ["dev", "doctests"]
+tomlkit = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 
 
@@ -139,7 +139,6 @@ readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn"]
 dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
-doctests = ["pylinac", "scikit-learn", "tensorflow", "sphinx-book-theme", "black", "tomlkit"]
 comparables = ["flashgamma"]
 ml = ["tensorflow", "torch"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex"]
