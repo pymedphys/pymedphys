@@ -153,6 +153,55 @@ def run_wlutz(
     x,
     y,
     image,
+    edge_lengths,
+    field_rotation,
+    find_bb=True,
+    interpolated_pixel_size=0.25,
+    pylinac_versions=None,
+    fill_errors_with_nan=False,
+):
+    current_pylinac_version = _pylinac_installed.__version__
+
+    # By defining a search offset and radius, artefacts that can cause
+    # offsets in the pylinac algorithm can be cropped out. See the
+    # following issue for more details:
+
+    #    <https://github.com/jrkerns/pylinac/issues/333>
+
+    # By defining the search radius to equal the maximum side length
+    # the interpolation region being search over by PyLinac is twice
+    # that of the maximum field edge.
+    first_pylinac_results = run_wlutz_with_manual_search_definition(
+        x,
+        y,
+        image,
+        field_rotation,
+        search_radius=None,
+        find_bb=False,
+        pylinac_versions=[current_pylinac_version],
+    )
+    search_offset = first_pylinac_results[current_pylinac_version]["field_centre"]
+
+    second_pylinac_results = run_wlutz_with_manual_search_definition(
+        x,
+        y,
+        image,
+        field_rotation,
+        search_radius=np.max(edge_lengths),
+        search_offset=search_offset,
+        find_bb=find_bb,
+        interpolated_pixel_size=interpolated_pixel_size,
+        pylinac_versions=pylinac_versions,
+        fill_errors_with_nan=fill_errors_with_nan,
+    )
+
+    return second_pylinac_results
+
+
+def run_wlutz_with_manual_search_definition(
+    x,
+    y,
+    image,
     field_rotation,
     search_radius=None,
     search_offset=None,
