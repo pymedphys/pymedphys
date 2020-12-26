@@ -35,5 +35,6 @@
   "dicom-trf-pairs.zip": "https://zenodo.org/record/4255822/files/dicom_trf_pairs.zip?download=1",
   "previously_failing_iview_images.zip": "https://zenodo.org/record/4383292/files/previously_failing_iview_images.zip?download=1",
   "pylinac_offset.png": "https://zenodo.org/record/4387050/files/pylinac_offset.png?download=1",
-  "iview-images-where-wlutz-should-fail-fast.zip": "https://zenodo.org/record/4391411/files/should-raise-error.zip?download=1"
+  "iview-images-where-wlutz-should-fail-fast.zip": "https://zenodo.org/record/4391411/files/should-raise-error.zip?download=1",
+  "saturated-images.zip": "https://zenodo.org/record/4393748/files/saturated-images.zip?download=1"
 }
