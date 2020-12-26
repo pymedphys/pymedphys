@@ -16,10 +16,23 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac, scipy
 
-from . import interppoints, pylinacwrapper
+from . import bounds, imginterp, interppoints, pylinacwrapper
 
 BASINHOPPING_NITER = 200
 FIELD_REPEAT_TOL = 0.2
+
+
+def find_field_centre(x, y, image, edge_lengths, penumbra, field_rotation):
+    field = imginterp.create_interpolated_field(x, y, image)
+
+    initial_field_centre = get_initial_centre(
+        x, y, image, np.max(edge_lengths) * np.sqrt(2), field_rotation
+    )
+    field_centre = refine_field_centre(
+        initial_field_centre, field, edge_lengths, penumbra, field_rotation
+    )
+
+    return field_centre
 
 
 def get_initial_centre(x, y, image, search_radius, field_rotation):
@@ -41,8 +54,15 @@ def get_initial_centre(x, y, image, search_radius, field_rotation):
 
 
 def refine_field_centre(initial_centre, field, edge_lengths, penumbra, field_rotation):
+    search_distance = penumbra * 2
+
+    field_bounds = [
+        (initial_centre[0] - search_distance, initial_centre[0] + search_distance),
+        (initial_centre[1] - search_distance, initial_centre[1] + search_distance),
+    ]
+
     predicted_centre = optimise_centre(
-        field, initial_centre, edge_lengths, penumbra, field_rotation
+        field, initial_centre, edge_lengths, penumbra, field_rotation, field_bounds
     )
 
     all_centre_predictions = [predicted_centre]
@@ -53,6 +73,7 @@ def refine_field_centre(initial_centre, field, edge_lengths, penumbra, field_rot
             edge_lengths,
             penumbra * penumbra_ratio,
             field_rotation,
+            field_bounds,
         )
         check_centre_close(predicted_centre, prediction_with_adjusted_penumbra)
         all_centre_predictions.append(prediction_with_adjusted_penumbra)
@@ -69,12 +90,9 @@ def check_centre_close(verification_centre, predicted_centre):
         )
 
 
-def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
-    bounds = [
-        (initial_centre[0] - penumbra, initial_centre[0] + penumbra),
-        (initial_centre[1] - penumbra, initial_centre[1] + penumbra),
-    ]
-
+def optimise_centre(
+    field, initial_centre, edge_lengths, penumbra, rotation, field_bounds
+):
     to_minimise = create_penumbra_minimiser(field, edge_lengths, penumbra, rotation)
 
     result = scipy.optimize.basinhopping(
@@ -84,10 +102,14 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
         niter=BASINHOPPING_NITER,
         niter_success=3,
         stepsize=0.25,
-        minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds},
+        minimizer_kwargs={"method": "L-BFGS-B", "bounds": field_bounds},
     )
 
     predicted_centre = result.x
+
+    if bounds.check_if_at_bounds(predicted_centre, field_bounds):
+        raise ValueError("Field found at bounds, likely incorrect")
+
     return predicted_centre
 
 
