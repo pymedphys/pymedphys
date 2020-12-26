@@ -83,14 +83,24 @@ def test_line_artefact_images_pymedphys():
     )
 
 
+@pytest.mark.slow
 def test_saturated_fff_image():
-    filename = "000059DB.jpg"
-    expected_field_centre = [-1.29, -3.49]
-    expected_bb_centre = [-0.47, -3.03]
+    test_map = {
+        "000059DB.jpg": {"centre": [-1.29, -3.49], "bb": [-0.47, -3.03]},
+        "000059DC.jpg": {"centre": [-0.85, -3.25], "bb": [-0.46, -2.92]},
+        "000059DD.jpg": {"centre": [-0.86, -3.07], "bb": [-0.53, -2.82]},
+        "000059DE.jpg": {"centre": [-1.0, -2.9], "bb": [-0.63, -2.71]},
+        "000059DF.jpg": {"centre": [-1.0, -2.67], "bb": [-0.75, -2.62]},
+        "000059E0.jpg": {"centre": [-0.97, -2.49], "bb": [-0.76, -2.51]},
+        "000059E1.jpg": {"centre": [-1.02, -2.34], "bb": [-0.76, -2.42]},
+        "000059E4.jpg": {"centre": [-0.71, -1.9], "bb": [-0.73, -2.27]},
+        "000059E5.jpg": {"centre": [-0.73, -1.8], "bb": [-0.77, -2.21]},
+    }
 
-    _compare_to_expected(
-        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
-    )
+    for filename, expected in test_map.items():
+        _compare_to_expected(
+            filename, expected["centre"], expected["bb"], ALGORITHM_PYMEDPHYS
+        )
 
 
 def _get_path_and_rotation(filename):
