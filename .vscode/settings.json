@@ -437,6 +437,7 @@
     "zfill",
     "zlabel",
     "zlim",
-    "zorder"
+    "zorder",
+    "pylinacwrapper"
   ]
 }

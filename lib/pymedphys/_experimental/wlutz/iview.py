@@ -15,67 +15,6 @@
 
 from pymedphys._imports import imageio
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt
-
-from .core import find_field_and_bb
-from .reporting import image_analysis_figure
-
-
-def iview_find_bb_and_field(
-    image_path, edge_lengths, bb_diameter=8, penumbra=2, display_figure=True
-):
-    x, y, img = iview_image_transform_from_path(image_path)
-
-    bb_centre, field_centre, field_rotation = find_field_and_bb(
-        x, y, img, edge_lengths, bb_diameter, penumbra=penumbra
-    )
-
-    if display_figure:
-        image_analysis_figure(
-            x,
-            y,
-            img,
-            bb_centre,
-            field_centre,
-            field_rotation,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
-        )
-
-    return bb_centre, field_centre, field_rotation
-
-
-def batch_process(
-    image_paths, edge_lengths, bb_diameter=8, penumbra=2, display_figure=True
-):
-    bb_centres = []
-    field_centres = []
-    field_rotations = []
-
-    for image_path in image_paths:
-        bb_centre, field_centre, field_rotation = iview_find_bb_and_field(
-            image_path,
-            edge_lengths,
-            bb_diameter=bb_diameter,
-            penumbra=penumbra,
-            display_figure=display_figure,
-        )
-
-        bb_centres.append(bb_centre)
-        field_centres.append(field_centre)
-        field_rotations.append(field_rotation)
-
-        if display_figure:
-            plt.show()
-
-    data = np.concatenate(
-        [bb_centres, field_centres, np.array(field_rotations)[:, None]], axis=1
-    )
-    return pd.DataFrame(
-        data=data, columns=["BB x", "BB y", "Field x", "Field y", "Rotation"]
-    )
 
 
 def iview_image_transform_from_path(image_path):

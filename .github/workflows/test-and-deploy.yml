@@ -251,21 +251,22 @@ jobs:
       run: |
         poetry install -E user -E tests
 
-## Install Extra Packages for Doctests
+## Install with Doctests Environment
 
-    - name: Install extra packages for doctests
+    - name: Install a doctests environment
       if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
         poetry install -E user -E doctests
 
+
 ## Update all packages and then install with tests environment
 
-    - name: Update all packages then install with tests, user and doctests environment
+    - name: Update all packages then install with tests and user environment
       if: matrix.task == 'updates'
       run: |
-        poetry install -E user -E tests -E docs -E doctests
+        poetry install -E user -E tests -E docs
         poetry update
-        poetry install -E user -E tests -E docs -E doctests
+        poetry install -E user -E tests -E docs
 
 # -----------------------------------------------------------------------------
 
@@ -320,6 +321,8 @@ jobs:
     - name: See if propagate is needed
       if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
+        poetry install -E propagate
+
         poetry run pymedphys dev propagate
 
         git config --local user.email "propagate-bot@pymedphys.com"
