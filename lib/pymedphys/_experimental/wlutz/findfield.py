@@ -36,28 +36,16 @@ def find_field_centre(x, y, image, edge_lengths, penumbra, field_rotation):
 def get_initial_centre(x, y, image, edge_lengths, field_rotation):
     pylinac_version = pylinac.__version__
 
-    first_pylinac_results = pylinacwrapper.run_wlutz(
+    pylinac_results = pylinacwrapper.run_wlutz(
         x,
         y,
         image,
+        edge_lengths,
         field_rotation,
-        search_radius=None,
         find_bb=False,
         pylinac_versions=[pylinac_version],
     )
-    gross_initial_centre = first_pylinac_results[pylinac_version]["field_centre"]
-
-    second_pylinac_results = pylinacwrapper.run_wlutz(
-        x,
-        y,
-        image,
-        field_rotation,
-        search_radius=np.max(edge_lengths),
-        search_offset=gross_initial_centre,
-        find_bb=False,
-        pylinac_versions=[pylinac_version],
-    )
-    initial_centre = second_pylinac_results[pylinac_version]["field_centre"]
+    initial_centre = pylinac_results[pylinac_version]["field_centre"]
 
     return initial_centre
 

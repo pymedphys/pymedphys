@@ -74,7 +74,9 @@ def test_field_finding(
         bb_max_attenuation,
     )
 
-    results = pylinacwrapper.run_wlutz(x, y, img, actual_rotation, find_bb=False)
+    results = pylinacwrapper.run_wlutz(
+        x, y, img, edge_lengths, actual_rotation, find_bb=False
+    )
 
     assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.2)
     assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.2)
@@ -87,7 +89,7 @@ def test_field_finding(
     )
 
     results_with_bb = pylinacwrapper.run_wlutz(
-        x, y, img, actual_rotation, pylinac_versions=[pylinac.__version__]
+        x, y, img, edge_lengths, actual_rotation, pylinac_versions=[pylinac.__version__]
     )
     predicted_bb_centre = results_with_bb[pylinac.__version__]["bb_centre"]
     assert np.allclose(bb_centre_when_finding_it_only, predicted_bb_centre, atol=0.1)

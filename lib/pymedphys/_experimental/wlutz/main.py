@@ -121,24 +121,13 @@ def _pylinac_wlutz_calculate(
     fill_errors_with_nan=True,
     **_,
 ):
-    # By defining a search radius, artefacts that can cause offsets
-    # in the pylinac algorithm can be cropped out. See the following
-    # issue for more details:
-
-    #    <https://github.com/jrkerns/pylinac/issues/333>
-
-    # By defining the search radius to equal the maximum side length
-    # the interpolation region being search over by PyLinac is twice
-    # that of the maximum field edge.
-    search_radius = np.max(edge_lengths)
-
     try:
         pylinac_results = pylinacwrapper.run_wlutz(
             x,
             y,
             image,
+            edge_lengths,
             icom_field_rotation,
-            search_radius=search_radius,
             find_bb=True,
             pylinac_versions=[pylinac_version],
             fill_errors_with_nan=fill_errors_with_nan,
