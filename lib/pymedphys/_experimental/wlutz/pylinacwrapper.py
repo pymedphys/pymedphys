@@ -159,6 +159,7 @@ def run_wlutz(
     interpolated_pixel_size=0.25,
     pylinac_versions=None,
     fill_errors_with_nan=False,
+    offset_iter=10,
 ):
     current_pylinac_version = _pylinac_installed.__version__
 
@@ -171,7 +172,7 @@ def run_wlutz(
     # By defining the search radius to equal the maximum side length
     # the interpolation region being search over by PyLinac is twice
     # that of the maximum field edge.
-    first_pylinac_results = run_wlutz_with_manual_search_definition(
+    pylinac_offset_calculation = run_wlutz_with_manual_search_definition(
         x,
         y,
         image,
@@ -180,9 +181,29 @@ def run_wlutz(
         find_bb=False,
         pylinac_versions=[current_pylinac_version],
     )
-    search_offset = first_pylinac_results[current_pylinac_version]["field_centre"]
+    previous_search_offset = pylinac_offset_calculation[current_pylinac_version][
+        "field_centre"
+    ]
+    for _ in range(offset_iter):
+        pylinac_offset_calculation = run_wlutz_with_manual_search_definition(
+            x,
+            y,
+            image,
+            field_rotation,
+            search_radius=np.max(edge_lengths),
+            search_offset=previous_search_offset,
+            find_bb=False,
+            pylinac_versions=[current_pylinac_version],
+        )
+        search_offset = pylinac_offset_calculation[current_pylinac_version][
+            "field_centre"
+        ]
+        if np.allclose(search_offset, previous_search_offset, atol=0.2):
+            break
 
-    second_pylinac_results = run_wlutz_with_manual_search_definition(
+        previous_search_offset = search_offset
+
+    pylinac_calculation_with_offset = run_wlutz_with_manual_search_definition(
         x,
         y,
         image,
@@ -195,7 +216,7 @@ def run_wlutz(
         fill_errors_with_nan=fill_errors_with_nan,
     )
 
-    return second_pylinac_results
+    return pylinac_calculation_with_offset
 
 
 def run_wlutz_with_manual_search_definition(
