@@ -206,6 +206,8 @@ extras_require = {
         "sphinxcontrib-bibtex<2.0.0",
     ],
     "doctests": [
+        "pylinac==2.3.2",
+        "scikit-learn<0.24.0",
         "tensorflow>=2.2.0",
         "sphinx-book-theme",
         "black>=19.3b0,<20.0",
