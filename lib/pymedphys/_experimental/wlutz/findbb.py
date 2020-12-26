@@ -18,8 +18,8 @@ from pymedphys._imports import scipy
 
 from . import bounds, imginterp, interppoints, pylinacwrapper
 
-BB_MIN_SEARCH_DIST = 2
-BB_REPEAT_TOL = 0.2
+BB_MIN_SEARCH_DIST = 2  # mm
+BB_REPEAT_TOL = 0.2  # mm
 
 
 def find_bb_centre(
