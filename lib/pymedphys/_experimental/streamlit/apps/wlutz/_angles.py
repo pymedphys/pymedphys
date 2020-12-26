@@ -87,7 +87,7 @@ def determine_speed(angle, time):
     return np.abs(rpm)
 
 
-def get_collimator_and_gantry_flags(icom_datasets):
+def get_gantry_and_collimator_flags(icom_datasets):
     gantry_rpm = determine_speed(icom_datasets["gantry"], icom_datasets["datetime"])
     collimator_rpm = determine_speed(
         icom_datasets["collimator"], icom_datasets["datetime"]
@@ -105,7 +105,7 @@ def get_collimator_and_gantry_flags(icom_datasets):
 
 
 def angle_speed_check(icom_datasets):
-    gantry_flag, collimator_flag = get_collimator_and_gantry_flags(icom_datasets)
+    gantry_flag, collimator_flag = get_gantry_and_collimator_flags(icom_datasets)
 
     if np.any(gantry_flag):
         raise ValueError("The gantry angle is changing faster than should be possible.")
