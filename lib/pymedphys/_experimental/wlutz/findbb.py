@@ -21,6 +21,20 @@ from . import bounds, imginterp, interppoints, pylinacwrapper
 BB_MIN_SEARCH_DIST = 2  # mm
 BB_REPEAT_TOL = 0.2  # mm
 
+BB_SIZE_FACTORS_TO_SEARCH_OVER = [
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85,
+    0.9,
+    0.95,
+    1.0,
+]
+
 
 def find_bb_centre(
     x, y, image, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
@@ -43,18 +57,57 @@ def find_bb_centre(
 
 
 def optimise_bb_centre(
-    field: imginterp.Field, bb_diameter, field_centre, initial_bb_centre=None
+    field: imginterp.Field, bb_diameter, field_centre, initial_bb_centre=None, repeats=2
 ):
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
     search_square_edge_length = bb_diameter / np.sqrt(2) * 0.8
-    bb_centre = _minimise_bb(
-        field, bb_diameter, search_square_edge_length, initial_bb_centre
+    all_centre_predictions = np.array(
+        _bb_finding_repetitions(
+            field, bb_diameter, search_square_edge_length, initial_bb_centre
+        )
+    )
+    # print(all_centre_predictions)
+    median_of_predictions = np.median(all_centre_predictions, axis=0)
+    # print(median_of_predictions)
+
+    diff = np.abs(all_centre_predictions - median_of_predictions)
+    # print(diff)
+    within_tolerance = np.all(diff < BB_REPEAT_TOL, axis=1)
+    # print(within_tolerance)
+    assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
+
+    if np.all(diff < BB_REPEAT_TOL):
+        return median_of_predictions
+
+    if repeats == 0:
+        raise ValueError("Unable to determine BB position within designated repeats")
+
+    out_of_tolerance = np.invert(within_tolerance)
+    if np.sum(out_of_tolerance) > len(BB_SIZE_FACTORS_TO_SEARCH_OVER) / 3:
+        raise ValueError(
+            "BB centre not able to be consistently determined. "
+            "Predictions thus far were the following:\n"
+            f"    {all_centre_predictions}\n"
+            "Initial bb centre for this iteration was:\n"
+            f"    {initial_bb_centre}"
+        )
+
+    return optimise_bb_centre(
+        field,
+        bb_diameter,
+        field_centre,
+        initial_bb_centre=median_of_predictions,
+        repeats=repeats - 1,
     )
 
-    all_centre_predictions = [bb_centre]
-    for bb_size_factor in [0.5, 0.6, 0.7, 0.8, 0.9]:
+
+def _bb_finding_repetitions(
+    field, bb_diameter, search_square_edge_length, initial_bb_centre
+):
+    all_centre_predictions = []
+    for bb_size_factor in BB_SIZE_FACTORS_TO_SEARCH_OVER:
         prediction_with_adjusted_bb_size = _minimise_bb(
             field,
             bb_diameter * bb_size_factor,
@@ -64,17 +117,7 @@ def optimise_bb_centre(
 
         all_centre_predictions.append(prediction_with_adjusted_bb_size)
 
-        repeat_agreement = np.abs(prediction_with_adjusted_bb_size - bb_centre)
-        if np.any(repeat_agreement > BB_REPEAT_TOL):
-            raise ValueError(
-                "BB centre not able to be consistently determined. "
-                "Predictions thus far were the following:\n"
-                f"    {all_centre_predictions}\n"
-                "Initial bb centre was:\n"
-                f"    {initial_bb_centre}"
-            )
-
-    return np.mean(all_centre_predictions, axis=0)
+    return all_centre_predictions
 
 
 def _minimise_bb(field, bb_diameter, search_square_edge_length, initial_bb_centre):
