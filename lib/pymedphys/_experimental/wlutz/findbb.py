@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
@@ -68,10 +70,13 @@ def optimise_bb_centre(
             field, bb_diameter, search_square_edge_length, initial_bb_centre
         )
     )
-    median_of_predictions = np.median(all_centre_predictions, axis=0)
+    median_of_predictions = np.nanmedian(all_centre_predictions, axis=0)
 
     diff = np.abs(all_centre_predictions - median_of_predictions)
-    within_tolerance = np.all(diff < BB_REPEAT_TOL, axis=1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        within_tolerance = np.all(diff < BB_REPEAT_TOL, axis=1)
+
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
     if np.all(within_tolerance):
@@ -109,7 +114,7 @@ def _bb_finding_repetitions(
             bb_diameter * bb_size_factor,
             search_square_edge_length,
             initial_bb_centre,
-            set_inf_if_at_bounds=True,
+            set_nan_if_at_bounds=True,
         )
 
         all_centre_predictions.append(prediction_with_adjusted_bb_size)
@@ -122,7 +127,7 @@ def _minimise_bb(
     bb_diameter,
     search_square_edge_length,
     initial_bb_centre,
-    set_inf_if_at_bounds=False,
+    set_nan_if_at_bounds=False,
 ):
     to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
     bb_bounds = define_bb_bounds(search_square_edge_length, initial_bb_centre)
@@ -132,8 +137,8 @@ def _minimise_bb(
     )
 
     if bounds.check_if_at_bounds(bb_centre, bb_bounds):
-        if set_inf_if_at_bounds:
-            return [np.inf, np.inf]
+        if set_nan_if_at_bounds:
+            return [np.nan, np.nan]
         else:
             raise ValueError("BB found at bounds, likely incorrect")
 
