@@ -109,6 +109,7 @@ def _bb_finding_repetitions(
             bb_diameter * bb_size_factor,
             search_square_edge_length,
             initial_bb_centre,
+            set_inf_if_at_bounds=True,
         )
 
         all_centre_predictions.append(prediction_with_adjusted_bb_size)
@@ -116,7 +117,13 @@ def _bb_finding_repetitions(
     return all_centre_predictions
 
 
-def _minimise_bb(field, bb_diameter, search_square_edge_length, initial_bb_centre):
+def _minimise_bb(
+    field,
+    bb_diameter,
+    search_square_edge_length,
+    initial_bb_centre,
+    set_inf_if_at_bounds=False,
+):
     to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
     bb_bounds = define_bb_bounds(search_square_edge_length, initial_bb_centre)
 
@@ -125,7 +132,10 @@ def _minimise_bb(field, bb_diameter, search_square_edge_length, initial_bb_centr
     )
 
     if bounds.check_if_at_bounds(bb_centre, bb_bounds):
-        raise ValueError("BB found at bounds, likely incorrect")
+        if set_inf_if_at_bounds:
+            return [np.inf, np.inf]
+        else:
+            raise ValueError("BB found at bounds, likely incorrect")
 
     return bb_centre
 
