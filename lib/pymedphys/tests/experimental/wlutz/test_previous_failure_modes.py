@@ -59,6 +59,16 @@ def _get_data_files_by_zip_name(zip_filename):
 # TODO: Add a "should be able to find BB on 000058F3.jpg"
 
 
+def test_slightly_wrong_collimator_angle():
+    filename = "0000528F.jpg"
+    expected_field_centre = [0.38, -2.44]
+    expected_bb_centre = [0.39, -2.33]
+
+    _compare_to_expected(
+        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYMEDPHYS
+    )
+
+
 def test_offset_pylinac():
     filename = "000058A7.jpg"
     expected_field_centre = [-0.70, -2.75]
