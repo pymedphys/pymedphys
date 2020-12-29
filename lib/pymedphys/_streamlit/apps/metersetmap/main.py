@@ -556,8 +556,6 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
 def main():
     st.write(
         """
-        # MetersetMap comparison tool
-
         Tool to compare the MetersetMap between planned and delivery.
         """
     )
