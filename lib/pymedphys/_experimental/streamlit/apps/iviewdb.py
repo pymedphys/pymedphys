@@ -23,6 +23,9 @@ from pymedphys._streamlit.utilities import misc
 
 from pymedphys._experimental.streamlit.utilities import dbf
 
+CATEGORY = "experimental"
+TITLE = "iView Database Explorer"
+
 
 @st.cache()
 def get_files_for_extension(directory: pathlib.Path, extension: str):

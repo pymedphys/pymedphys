@@ -83,56 +83,16 @@ APPLICATION_CATEGORIES = {
 
 
 APPLICATION_OPTIONS = {
-    "metersetmap": {
-        "category": "raw",
-        "title": "MetersetMap Comparison",
-        "callable": _metersetmap.main,
-    },
-    "pseudonymise": {
-        "category": "raw",
-        "title": "DICOM Pseudonymisation",
-        "callable": _pseudonymise.main,
-    },
-    "dashboard": {
-        "category": "experimental",
-        "title": "Clinical Dashboard",
-        "callable": _dashboard.main,
-    },
-    "electrons": {
-        "category": "experimental",
-        "title": "Electron Insert Factor Modelling",
-        "callable": _electrons.main,
-    },
-    "anonymise-monaco": {
-        "category": "experimental",
-        "title": "Anonymising Monaco Backend Files",
-        "callable": _anonymise_monaco.main,
-    },
-    "wlutz": {
-        "category": "experimental",
-        "title": "Winston-Lutz",
-        "callable": _wlutz.main,
-    },
-    "iviewdb": {
-        "category": "experimental",
-        "title": "iView Database Explorer",
-        "callable": _iviewdb.main,
-    },
-    "icom": {
-        "category": "experimental",
-        "title": "iCom Logs Explorer",
-        "callable": _icom.main,
-    },
-    "xlsxwriter": {
-        "category": "experimental",
-        "title": "Writing Excel Demo",
-        "callable": _xlsxwriter.main,
-    },
-    "collimator-corrections": {
-        "category": "experimental",
-        "title": "WLutz collimator processing",
-        "callable": _collimator_corrections.main,
-    },
+    "metersetmap": _metersetmap,
+    "pseudonymise": _pseudonymise,
+    "dashboard": _dashboard,
+    "electrons": _electrons,
+    "anonymise-monaco": _anonymise_monaco,
+    "wlutz": _wlutz,
+    "iviewdb": _iviewdb,
+    "icom": _icom,
+    "xlsxwriter": _xlsxwriter,
+    "collimator-corrections": _collimator_corrections,
 }
 
 
@@ -178,14 +138,14 @@ def index():
         applications_in_this_category = [
             item
             for item in APPLICATION_OPTIONS.items()
-            if item[1]["category"] == category_key
+            if item[1].CATEGORY == category_key
         ]
 
         if not applications_in_this_category:
             st.write("> *No applications are currently in this category.*")
 
         for app_key, application in applications_in_this_category:
-            if st.button(application["title"]):
+            if st.button(application.TITLE):
                 swap_app(app_key)
 
         st.write("---")
@@ -202,7 +162,7 @@ def main():
         swap_app("index")
 
     if session_state.app != "index":
-        st.write(f"# {APPLICATION_OPTIONS[session_state.app]['title']}")
+        st.title(APPLICATION_OPTIONS[session_state.app].TITLE)
         if st.sidebar.button("Return to Index"):
             swap_app("index")
 
@@ -211,7 +171,7 @@ def main():
     if session_state.app == "index":
         application_function = index
     else:
-        application_function = APPLICATION_OPTIONS[session_state.app]["callable"]
+        application_function = APPLICATION_OPTIONS[session_state.app].main
 
     application_function()
 
