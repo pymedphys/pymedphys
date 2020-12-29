@@ -24,6 +24,9 @@ import pymedphys.electronfactors as electronfactors
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
 
+CATEGORY = "experimental"
+TITLE = "Electron Insert Factor Modelling"
+
 
 def visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
     t = np.linspace(0, 2 * np.pi)

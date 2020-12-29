@@ -19,6 +19,9 @@ from pymedphys._streamlit.utilities import config, misc
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
+CATEGORY = "experimental"
+TITLE = "iCom Logs Explorer"
+
 
 def main():
     st.title("iCom Logs Explorer")

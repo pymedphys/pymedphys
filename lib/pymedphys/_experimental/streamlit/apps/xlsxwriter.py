@@ -24,6 +24,9 @@ from pymedphys._imports import xlsxwriter
 
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 
+CATEGORY = "experimental"
+TITLE = "Writing Excel Demo"
+
 HOME = pathlib.Path.home()
 PYMEDPHYS_LIBRARY_ROOT = pathlib.Path(__file__).parents[3]
 LOGO_PATH = PYMEDPHYS_LIBRARY_ROOT.joinpath("_streamlit", "pymedphys-title.png")

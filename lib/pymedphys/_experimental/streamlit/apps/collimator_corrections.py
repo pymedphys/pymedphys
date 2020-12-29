@@ -14,6 +14,28 @@
 
 from pymedphys._imports import streamlit as st
 
+from pymedphys._experimental.streamlit.apps.wlutz import _utilities
+
+CATEGORY = "experimental"
+TITLE = "WLutz Collimator Processing"
+
 
 def main():
-    pass
+    (
+        _,
+        _,
+        wlutz_directory_by_date,
+        _,
+        _,
+        _,
+    ) = _utilities.get_directories_and_initial_database(refresh_cache=False)
+
+    raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
+
+    st.write(f"`{raw_results_csv_path}`")
+
+    try:
+        dataframe = _get_results(raw_results_csv_path)
+    except FileNotFoundError:
+        st.error("Winston Lutz results not yet calculated/saved for this date.")
+        st.stop()
