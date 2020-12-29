@@ -37,6 +37,8 @@ BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     1.0,
 ]
 
+DEFAULT_BB_REPEATS = 2
+
 
 def find_bb_centre(
     x, y, image, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
@@ -59,12 +61,16 @@ def find_bb_centre(
 
 
 def optimise_bb_centre(
-    field: imginterp.Field, bb_diameter, field_centre, initial_bb_centre=None, repeats=2
+    field: imginterp.Field,
+    bb_diameter,
+    field_centre,
+    initial_bb_centre=None,
+    repeats=DEFAULT_BB_REPEATS,
 ):
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
-    search_square_edge_length = bb_diameter / np.sqrt(2) * 0.8
+    search_square_edge_length = bb_diameter / np.sqrt(2) / (DEFAULT_BB_REPEATS + 1)
     all_centre_predictions = np.array(
         _bb_finding_repetitions(
             field, bb_diameter, search_square_edge_length, initial_bb_centre
@@ -79,7 +85,7 @@ def optimise_bb_centre(
 
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
-    if np.all(within_tolerance):
+    if np.sum(within_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) - 1:
         return median_of_predictions
 
     if repeats == 0:
