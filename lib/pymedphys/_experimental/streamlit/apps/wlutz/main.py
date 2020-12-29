@@ -56,7 +56,6 @@ def main():
     )
 
     if advanced_mode:
-
         st.write(
             f"""
                 ## Directory where results are being saved
