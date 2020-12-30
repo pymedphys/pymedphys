@@ -34,8 +34,6 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
-    st.title("Winston-Lutz Arc")
-
     bb_diameter, penumbra, advanced_mode = _set_parameters()
 
     refresh_cache = st.button("Re-query databases")
@@ -56,7 +54,6 @@ def main():
     )
 
     if advanced_mode:
-
         st.write(
             f"""
                 ## Directory where results are being saved

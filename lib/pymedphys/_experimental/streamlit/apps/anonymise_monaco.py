@@ -24,6 +24,9 @@ from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
 from pymedphys._streamlit.utilities import rerun as st_rerun
 
+CATEGORY = "experimental"
+TITLE = "Anonymising Monaco Backend Files"
+
 HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("data", "demographic.000000")
 
