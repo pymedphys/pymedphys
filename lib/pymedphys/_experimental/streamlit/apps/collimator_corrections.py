@@ -123,9 +123,12 @@ def main():
     plt.legend()
     st.pyplot(fig)
 
+    # TODO: Create tests of this logic utilising the test fields created
+    # on the 2020-12-31 on 2694.
+
     logfile_corrections = []
     for i, row in dataframe_by_treatment.iterrows():
-        logfile_correction_field_frame = np.array([-row["x_centre"], -row["y_centre"]])
+        logfile_correction_field_frame = np.array([row["x_centre"], row["y_centre"]])
         logfile_correction_iview_frame = _transformation.rotate_point(
             logfile_correction_field_frame, -row["collimator"]
         )
@@ -202,12 +205,67 @@ def main():
     st.write(dataframe_by_treatment[["gantry", "diff_x", "collimator"]])
 
     for axis in ["x", "y"]:
-        _make_coll_corrected_plots(dataframe_by_treatment, axis, ["coll_corrected"])
+        _make_coll_corrected_plots(
+            dataframe_by_treatment,
+            axis,
+            ["logfile_corrected", "coll_corrected"]
+            # ["coll_corrected"],
+        )
         _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
+
+    original = _transform_points_to_field_reference_frame(
+        dataframe_by_treatment, ["diff_x", "diff_y"]
+    )
+    logfile_corrected = _transform_points_to_field_reference_frame(
+        dataframe_by_treatment, ["diff_x_logfile_corrected", "diff_y_logfile_corrected"]
+    )
+    coll_corrected = _transform_points_to_field_reference_frame(
+        dataframe_by_treatment, ["diff_x_coll_corrected", "diff_y_coll_corrected"]
+    )
+
+    fig, ax = plt.subplots()
+    ax.plot(gantry, original[:, 0], "o-", alpha=0.3)
+    ax.plot(gantry, logfile_corrected[:, 0], "o-", alpha=0.3)
+    st.pyplot(fig)
+
+    fig, ax = plt.subplots()
+    ax.plot(gantry, original[:, 1], "o-", alpha=0.3)
+    ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
+    st.pyplot(fig)
+
+    st.write(median_correction[0])
+    fig, ax = plt.subplots()
+    ax.set_title("MLC, logfile -> coll")
+    ax.plot(gantry, logfile_corrected[:, 0], "o-", alpha=0.3)
+    ax.plot(gantry, coll_corrected[:, 0], "o-", alpha=0.3)
+    st.pyplot(fig)
+
+    st.write(median_correction[1])
+    fig, ax = plt.subplots()
+    ax.set_title("Jaw, logfile -> coll")
+    ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
+    ax.plot(gantry, coll_corrected[:, 1], "o-", alpha=0.3)
+    st.pyplot(fig)
+
+
+def _transform_points_to_field_reference_frame(dataframe, point_columns):
+    field_frame_points = []
+    for i, row in dataframe.iterrows():
+        collimator = row["collimator"]
+        if collimator <= 0:
+            collimator += 180
+        point = row[point_columns]
+        field_frame_point = _transformation.rotate_point(point, collimator)
+        field_frame_points.append(field_frame_point)
+
+    field_frame_points = np.array(field_frame_points)
+
+    return field_frame_points
 
 
 def _make_coll_corrected_plots(dataframe, axis, correction_types):
     gantry = np.array(dataframe["gantry"])
+    collimator = np.array(dataframe["collimator"])
     original_column = f"diff_{axis}"
 
     fig, ax = plt.subplots()
@@ -217,7 +275,12 @@ def _make_coll_corrected_plots(dataframe, axis, correction_types):
     for correction_type in correction_types:
         corrected_column = f"{original_column}_{correction_type}"
         ax.plot(
-            gantry, dataframe[corrected_column], "o-", alpha=0.3, label=corrected_column
+            gantry,
+            # collimator,
+            dataframe[corrected_column],
+            "o-",
+            alpha=0.3,
+            label=corrected_column,
         )
     ax.legend()
     ax.set_xlabel("Gantry angle (degrees)")
