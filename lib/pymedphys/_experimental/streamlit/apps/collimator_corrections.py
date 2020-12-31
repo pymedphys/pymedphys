@@ -21,7 +21,8 @@ from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 CATEGORY = "experimental"
 TITLE = "WLutz Collimator Processing"
 
-ANGLE_AGREEMENT_TOLERANCE = 10  # degrees
+OPPOSING_COLLIMATOR_TOLERANCE = 5  # degrees
+AGREEING_GANTRY_TOLERANCE = 10  # degrees
 
 
 def main():
@@ -74,21 +75,30 @@ def main():
     st.write(gantry_mod)
     st.write(coll_mod)
 
-    combined = np.concatenate(
-        [
-            gantry_mod + coll_mod,
-            gantry_mod + coll_mod.T,
-            gantry_mod.T + coll_mod,
-            gantry_mod.T + coll_mod.T,
-        ],
-        axis=1,
+    coll_combined = np.concatenate([coll_mod, coll_mod.T, coll_mod, coll_mod.T], axis=1)
+
+    gantry_combined = np.concatenate(
+        [gantry_mod, gantry_mod, gantry_mod.T, gantry_mod.T], axis=1
     )
-    min_location = np.mod(np.argmin(combined, axis=1), len(dataframe_by_treatment))
-    # min_location_coords = np.unravel_index(min_location, combined.shape)
+    combined = coll_combined + gantry_combined
 
-    st.write(combined.shape)
+    index_of_min = np.argmin(combined, axis=1)
+    min_coll_values = np.take_along_axis(coll_combined, index_of_min[:, None], axis=1)
+    min_gantry_values = np.take_along_axis(
+        gantry_combined, index_of_min[:, None], axis=1
+    )
 
-    st.write(min_location)
+    out_of_tolerance = np.logical_or(
+        min_coll_values > OPPOSING_COLLIMATOR_TOLERANCE,
+        min_gantry_values > AGREEING_GANTRY_TOLERANCE,
+    )
+
+    st.write(min_coll_values)
+    st.write(min_gantry_values)
+
+    min_location_by_dataframe_row = np.mod(index_of_min, len(dataframe_by_treatment))
+
+    st.write(min_location_by_dataframe_row)
 
 
 @st.cache()
