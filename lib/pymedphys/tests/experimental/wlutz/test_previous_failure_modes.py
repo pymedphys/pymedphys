@@ -58,6 +58,8 @@ def _get_data_files_by_zip_name(zip_filename):
 
 # TODO: Add a "should be able to find BB on 000058F3.jpg"
 
+# TODO: Add 00005A50.jpg
+
 
 def test_slightly_wrong_collimator_angle():
     filename = "0000528F.jpg"

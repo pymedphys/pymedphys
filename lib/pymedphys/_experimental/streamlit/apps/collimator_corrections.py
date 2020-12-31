@@ -47,6 +47,9 @@ def main():
         st.error("Winston Lutz results not yet calculated/saved for this date.")
         st.stop()
 
+    dataframe["x_centre"] = np.mean(dataframe[["x_lower", "x_upper"]], axis=1)
+    dataframe["y_centre"] = np.mean(dataframe[["y_lower", "y_upper"]], axis=1)
+
     algorithm = "PyMedPhys"
     dataframe_by_algorithm = _filter_by(dataframe, "algorithm", algorithm)
 
@@ -102,13 +105,59 @@ def main():
 
     st.write(min_location_by_dataframe_row)
 
+    fig, ax = plt.subplots()
+    ax.plot(
+        gantry,
+        dataframe_by_treatment["x_centre"],
+        "o-",
+        alpha=0.7,
+        label="MLC logfile centre",
+    )
+    ax.plot(
+        gantry,
+        dataframe_by_treatment["y_centre"],
+        "o-",
+        alpha=0.7,
+        label="Jaw logfile centre",
+    )
+    plt.legend()
+    st.pyplot(fig)
+
+    logfile_corrections = []
+    for i, row in dataframe_by_treatment.iterrows():
+        logfile_correction_field_frame = np.array([-row["x_centre"], -row["y_centre"]])
+        logfile_correction_iview_frame = _transformation.rotate_point(
+            logfile_correction_field_frame, -row["collimator"]
+        )
+
+        logfile_corrections.append(logfile_correction_iview_frame)
+
+    logfile_corrections = np.array(logfile_corrections)
+    dataframe_by_treatment["diff_x_logfile_correction"] = logfile_corrections[:, 0]
+    dataframe_by_treatment["diff_y_logfile_correction"] = logfile_corrections[:, 1]
+
+    dataframe_by_treatment["diff_x_logfile_corrected"] = (
+        dataframe_by_treatment["diff_x"]
+        + dataframe_by_treatment["diff_x_logfile_correction"]
+    )
+    dataframe_by_treatment["diff_y_logfile_corrected"] = (
+        dataframe_by_treatment["diff_y"]
+        + dataframe_by_treatment["diff_y_logfile_correction"]
+    )
+
+    for axis in ["x", "y"]:
+        _make_coll_corrected_plots(dataframe_by_treatment, axis, ["logfile_corrected"])
+
     corrections = []
     for i, row in dataframe_by_treatment.iterrows():
-        diff_point = (row["diff_x"], row["diff_y"])
+        diff_point = (row["diff_x_logfile_corrected"], row["diff_y_logfile_corrected"])
         collimator = row["collimator"]
         opposing_index = min_location_by_dataframe_row[i]
         opposing_row = dataframe_by_treatment.iloc[opposing_index]
-        opposing_diff_point = (opposing_row["diff_x"], opposing_row["diff_y"])
+        opposing_diff_point = (
+            opposing_row["diff_x_logfile_corrected"],
+            opposing_row["diff_y_logfile_corrected"],
+        )
         opposing_collimator = opposing_row["collimator"]
 
         rotated = _transformation.rotate_point(diff_point, collimator)
@@ -140,7 +189,10 @@ def main():
             median_correction, -collimator
         )
 
-        corrected_diff = np.array((row["diff_x"], row["diff_y"])) + rotated_correction
+        corrected_diff = (
+            np.array((row["diff_x_logfile_corrected"], row["diff_y_logfile_corrected"]))
+            + rotated_correction
+        )
         corrected_diffs.append(corrected_diff)
 
     corrected_diffs = np.array(corrected_diffs)
@@ -150,21 +202,23 @@ def main():
     st.write(dataframe_by_treatment[["gantry", "diff_x", "collimator"]])
 
     for axis in ["x", "y"]:
-        _make_coll_corrected_plots(dataframe_by_treatment, axis)
+        _make_coll_corrected_plots(dataframe_by_treatment, axis, ["coll_corrected"])
         _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
 
 
-def _make_coll_corrected_plots(dataframe, axis):
+def _make_coll_corrected_plots(dataframe, axis, correction_types):
     gantry = np.array(dataframe["gantry"])
     original_column = f"diff_{axis}"
-    corrected_column = f"{original_column}_coll_corrected"
 
     fig, ax = plt.subplots()
-    ax.set_title(f"Field - BB on iView {axis} axis with collimation correction")
+    ax.set_title(f"Field - BB on iView {axis} axis")
     ax.plot(gantry, dataframe[original_column], "o-", alpha=0.3, label=original_column)
-    ax.plot(
-        gantry, dataframe[corrected_column], "o-", alpha=0.3, label=corrected_column
-    )
+
+    for correction_type in correction_types:
+        corrected_column = f"{original_column}_{correction_type}"
+        ax.plot(
+            gantry, dataframe[corrected_column], "o-", alpha=0.3, label=corrected_column
+        )
     ax.legend()
     ax.set_xlabel("Gantry angle (degrees)")
     ax.set_ylabel(f"Field - BB [iView {axis} axis] (mm)")
