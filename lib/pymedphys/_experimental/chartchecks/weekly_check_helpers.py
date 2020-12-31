@@ -1,9 +1,9 @@
 from datetime import date, timedelta
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import streamlit as st
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
+from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import connect
 from pymedphys._mosaiq.helpers import get_incomplete_qcls
@@ -102,9 +102,11 @@ def compare_all_incompletes(incomplete_qcls):
     if not incomplete_qcls.empty:
         for patient in incomplete_qcls.index:
             patient_results = pd.DataFrame()
-            planned_values, delivered_values, patient_results = compare_delivered_to_planned(
-                patient
-            )
+            (
+                planned_values,
+                delivered_values,
+                patient_results,
+            ) = compare_delivered_to_planned(patient)
             overall_results = overall_results.append(patient_results)
 
         return planned_values, delivered_values, overall_results
