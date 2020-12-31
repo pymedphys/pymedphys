@@ -270,8 +270,8 @@ def get_incomplete_qcls(cursor, location):
         """
         SELECT
             Ident.IDA,
-            Patient.First_Name,
             Patient.Last_Name,
+            Patient.First_Name,
             Chklist.Due_DtTm,
             Chklist.Instructions,
             Chklist.Notes,
@@ -292,8 +292,8 @@ def get_incomplete_qcls(cursor, location):
         data=data,
         columns=[
             "patient_id",
-            "first_name",
             "last_name",
+            "first_name",
             "due",
             "instructions",
             "comment",
