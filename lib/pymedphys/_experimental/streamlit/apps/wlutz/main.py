@@ -177,7 +177,7 @@ def main():
     database_table["width"] = database_table["x_upper"] - database_table["x_lower"]
     database_table["length"] = database_table["y_upper"] - database_table["y_lower"]
 
-    st.write(database_table)
+    # st.write(database_table)
 
     if advanced_mode:
         st.write(database_table)
@@ -205,14 +205,12 @@ def _set_parameters():
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):
-    if advanced_mode:
-        st.write("## Filtering")
-        filtered = _filtering.filter_image_sets(database_table)
-        filtered.sort_values("datetime", ascending=False, inplace=True)
+    st.write("## Filtering")
+    filtered = _filtering.filter_image_sets(database_table, advanced_mode)
+    filtered.sort_values("datetime", ascending=False, inplace=True)
 
+    if advanced_mode:
         st.write(filtered)
-    else:
-        filtered = database_table
 
     if len(filtered) == 0:
         st.stop()
