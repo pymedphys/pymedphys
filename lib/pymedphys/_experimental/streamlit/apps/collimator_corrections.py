@@ -128,7 +128,7 @@ def main():
 
     logfile_corrections = []
     for i, row in dataframe_by_treatment.iterrows():
-        logfile_correction_field_frame = np.array([row["x_centre"], row["y_centre"]])
+        logfile_correction_field_frame = -np.array([row["x_centre"], row["y_centre"]])
         logfile_correction_iview_frame = _transformation.rotate_point(
             logfile_correction_field_frame, -row["collimator"]
         )
@@ -252,8 +252,8 @@ def _transform_points_to_field_reference_frame(dataframe, point_columns):
     field_frame_points = []
     for i, row in dataframe.iterrows():
         collimator = row["collimator"]
-        if collimator <= 0:
-            collimator += 180
+        # if collimator <= 0:
+        #     collimator += 180
         point = row[point_columns]
         field_frame_point = _transformation.rotate_point(point, collimator)
         field_frame_points.append(field_frame_point)
@@ -270,7 +270,7 @@ def _make_coll_corrected_plots(dataframe, axis, correction_types):
 
     fig, ax = plt.subplots()
     ax.set_title(f"Field - BB on iView {axis} axis")
-    ax.plot(gantry, dataframe[original_column], "o-", alpha=0.3, label=original_column)
+    # ax.plot(gantry, dataframe[original_column], "o-", alpha=0.3, label=original_column)
 
     for correction_type in correction_types:
         corrected_column = f"{original_column}_{correction_type}"
