@@ -124,20 +124,63 @@ def main():
 
     corrections = np.array(corrections)
 
-    fig, ax = plt.subplots()
-    ax.plot(gantry, dataframe_by_treatment["diff_x"], "o", alpha=0.3)
-    st.pyplot(fig)
+    dataframe_by_treatment["diff_x_predicted_coll_correction"] = corrections[:, 0]
+    dataframe_by_treatment["diff_y_predicted_coll_correction"] = corrections[:, 1]
+
+    median_correction = np.nanmedian(corrections, axis=0)
+    st.write(median_correction)
+
+    # TODO: Do the above for all treatment combinations, then find the
+    # median over all treatments.
+
+    corrected_diffs = []
+    for i, row in dataframe_by_treatment.iterrows():
+        collimator = row["collimator"]
+        rotated_correction = _transformation.rotate_point(
+            median_correction, -collimator
+        )
+
+        corrected_diff = np.array((row["diff_x"], row["diff_y"])) + rotated_correction
+        corrected_diffs.append(corrected_diff)
+
+    corrected_diffs = np.array(corrected_diffs)
+    dataframe_by_treatment["diff_x_coll_corrected"] = corrected_diffs[:, 0]
+    dataframe_by_treatment["diff_y_coll_corrected"] = corrected_diffs[:, 1]
+
+    st.write(dataframe_by_treatment[["gantry", "diff_x", "collimator"]])
+
+    for axis in ["x", "y"]:
+        _make_coll_corrected_plots(dataframe_by_treatment, axis)
+        _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
+
+
+def _make_coll_corrected_plots(dataframe, axis):
+    gantry = np.array(dataframe["gantry"])
+    original_column = f"diff_{axis}"
+    corrected_column = f"{original_column}_coll_corrected"
 
     fig, ax = plt.subplots()
-    ax.plot(gantry, dataframe_by_treatment["diff_y"], "o", alpha=0.3)
+    ax.set_title(f"Field - BB on iView {axis} axis with collimation correction")
+    ax.plot(gantry, dataframe[original_column], "o-", alpha=0.3, label=original_column)
+    ax.plot(
+        gantry, dataframe[corrected_column], "o-", alpha=0.3, label=corrected_column
+    )
+    ax.legend()
+    ax.set_xlabel("Gantry angle (degrees)")
+    ax.set_ylabel(f"Field - BB [iView {axis} axis] (mm)")
     st.pyplot(fig)
 
-    fig, ax = plt.subplots()
-    ax.plot(gantry, corrections[:, 0], "o", alpha=0.3)
-    st.pyplot(fig)
+
+def _make_coll_correction_prediction_plots(dataframe, axis):
+    gantry = np.array(dataframe["gantry"])
+    column = f"diff_{axis}_predicted_coll_correction"
 
     fig, ax = plt.subplots()
-    ax.plot(gantry, corrections[:, 1], "o", alpha=0.3)
+    ax.set_title(f"Predicted collimator correction along {axis}-axis of rotated field")
+    ax.plot(gantry, dataframe[column], "o", alpha=0.3, label=column)
+    ax.set_xlabel("Gantry angle (degrees)")
+    ax.set_ylabel(f"{axis} axis predicted collimator correction (mm)")
+    ax.legend()
     st.pyplot(fig)
 
 
