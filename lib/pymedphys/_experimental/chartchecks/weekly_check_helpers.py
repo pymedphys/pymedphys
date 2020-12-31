@@ -79,8 +79,8 @@ def compare_delivered_to_planned(patient):
         if True in delivered_values["partial_treatment"].values:
             primary_checks["partial_treatment"] = "Partial Treatment"
 
-        for check in primary_checks.keys():
-            patient_results[check] = [primary_checks[check]]
+        for key, item in primary_checks.items():
+            patient_results[key] = [item]
 
     # delivered_parameters = delivered_values.columns
     # planned_parameters = planned_values.columns

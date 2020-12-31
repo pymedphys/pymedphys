@@ -3,6 +3,7 @@ import streamlit as st
 from pymedphys._mosaiq import connect
 
 from pymedphys._experimental.chartchecks.compare import color_results, compare_to_mosaiq
+from pymedphys._experimental.chartchecks.dvh_helpers import plot_dvh
 from pymedphys._experimental.chartchecks.helpers import (
     get_all_dicom_treatment_info,
     get_all_treatment_data,
@@ -29,11 +30,27 @@ def main():
     will run.
     """
     )
-    dicomFile = st.file_uploader("Please select a RP file.", force=True)
+    dicomFiles = st.file_uploader(
+        "Please select a RP file.", force=True, accept_multiple_files=True
+    )
 
-    if dicomFile is not None:
+    files = {}
+    for dicomFile in dicomFiles:
+        name = dicomFile.name
+        if "RP" in name:
+            files["rp"] = dicomFile
+        elif "RD" in name:
+            files["rd"] = dicomFile
+        elif "RS" in name:
+            files["rs"] = dicomFile
+        elif "CT" in name:
+            files["ct"] = dicomFile
+        else:
+            continue
+
+    if "rp" in files:
         # retrieve data from both systems.
-        dicom_table = get_all_dicom_treatment_info(dicomFile)
+        dicom_table = get_all_dicom_treatment_info(files["rp"])
         dicom_table["tolerance"] = [
             TOLERANCE_TYPES[item] for item in dicom_table["tolerance"]
         ]
@@ -179,3 +196,6 @@ def main():
         if show_mosaiq:
             st.subheader("Mosaiq Table")
             st.dataframe(mosaiq_table, height=1000)
+
+        # if 'rs' in files and 'rd' in files:
+        #     plot_dvh(files['rs'], files['rd'])

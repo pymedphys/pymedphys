@@ -12,7 +12,7 @@ import pandas as pd
 #             uncomparable = yellow
 
 
-def color_results(val):
+def color_results(val):  # pylint: disable = too-many-return-statements
     not_in = [
         "field_type",
         "machine",

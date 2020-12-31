@@ -22,7 +22,7 @@ def main():
     incomplete_qcls = incomplete_qcls.drop_duplicates(subset=["patient_id"])
     incomplete_qcls = incomplete_qcls.set_index("patient_id")
 
-    planned, delivered, overall_results = compare_all_incompletes(incomplete_qcls)
+    delivered, overall_results = compare_all_incompletes(incomplete_qcls)[1:]
     overall_results = overall_results.set_index("patient_id")
 
     weekly_check_results = pd.concat(

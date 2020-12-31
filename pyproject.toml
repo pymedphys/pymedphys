@@ -101,6 +101,8 @@ rope = {version = "*", optional = true}  # groups = ["dev"]
 doc8 = {version = "*", optional = true}  # groups = ["dev"]
 tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
 readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
+dicompyler-core = "^0.5.5"
+plotly = "^4.14.1"
 
 
 [tool.poetry.extras]
