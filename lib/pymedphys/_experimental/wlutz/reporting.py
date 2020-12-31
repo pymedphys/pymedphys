@@ -17,7 +17,7 @@ from typing import Tuple
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt
 
-from . import createaxis, imginterp, interppoints
+from . import createaxis, imginterp, transformation
 
 
 def image_analysis_figure(
@@ -75,7 +75,7 @@ def image_analysis_figure(
     x_axis = np.linspace(-x_half_bound, x_half_bound, 200)
     y_axis = np.linspace(-y_half_bound, y_half_bound, 200)
 
-    field_transform = interppoints.translate_and_rotate_transform(
+    field_transform = transformation.translate_and_rotate_transform(
         field_centre, field_rotation
     )
     x_field_interp, y_field_interp = createaxis.transform_axis(
@@ -83,7 +83,7 @@ def image_analysis_figure(
     )
 
     if bb_centre is not None:
-        bb_transform = interppoints.translate_and_rotate_transform(bb_centre, 0)
+        bb_transform = transformation.translate_and_rotate_transform(bb_centre, 0)
         x_bb_interp, y_bb_interp = createaxis.transform_axis(
             x_axis, y_axis, bb_transform
         )
@@ -259,6 +259,6 @@ def draw_by_diff(dx, dy, transform):
     draw_x = np.cumsum(dx)
     draw_y = np.cumsum(dy)
 
-    draw_x, draw_y = interppoints.apply_transform(draw_x, draw_y, transform)
+    draw_x, draw_y = transformation.apply_transform(draw_x, draw_y, transform)
 
     return draw_x, draw_y
