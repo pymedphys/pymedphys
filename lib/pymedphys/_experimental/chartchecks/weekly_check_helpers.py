@@ -6,8 +6,6 @@ import pandas as pd
 
 import streamlit as st
 
-import pydicom
-
 from pymedphys._mosaiq import connect
 from pymedphys._mosaiq.helpers import get_incomplete_qcls
 

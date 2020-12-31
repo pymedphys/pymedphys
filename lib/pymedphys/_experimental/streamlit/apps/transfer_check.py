@@ -197,5 +197,5 @@ def main():
             st.subheader("Mosaiq Table")
             st.dataframe(mosaiq_table, height=1000)
 
-        # if 'rs' in files and 'rd' in files:
-        #     plot_dvh(files['rs'], files['rd'])
+        if "rs" in files and "rd" in files:
+            plot_dvh(files["rs"], files["rd"])
