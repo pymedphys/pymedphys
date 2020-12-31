@@ -1,7 +1,6 @@
 from datetime import date, timedelta
 
 import pandas as pd
-
 import streamlit as st
 
 from pymedphys._experimental.chartchecks.compare import weekly_check_color_results
@@ -11,6 +10,9 @@ from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     plot_couch_positions,
     show_incomplete_weekly_checks,
 )
+
+CATEGORY = "experimental"
+TITLE = "Weekly Chart Review"
 
 
 def main():

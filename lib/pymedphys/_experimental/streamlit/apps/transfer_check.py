@@ -14,6 +14,9 @@ from pymedphys._experimental.chartchecks.tolerance_constants import (
     TOLERANCE_TYPES,
 )
 
+CATEGORY = "experimental"
+TITLE = "Pre-Treatment Data Transfer Check"
+
 
 def main():
     # currdir = os.getcwd()

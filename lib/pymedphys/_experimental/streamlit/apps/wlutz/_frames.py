@@ -30,7 +30,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xmltodict
 
-from pymedphys._experimental.streamlit.apps.wlutz import _dbf
+from . import _dbf
 
 
 def dbf_frame_based_database(
