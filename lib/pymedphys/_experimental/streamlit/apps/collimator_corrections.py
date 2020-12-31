@@ -76,7 +76,6 @@ def main():
     st.write(coll_mod)
 
     coll_combined = np.concatenate([coll_mod, coll_mod.T, coll_mod, coll_mod.T], axis=1)
-
     gantry_combined = np.concatenate(
         [gantry_mod, gantry_mod, gantry_mod.T, gantry_mod.T], axis=1
     )

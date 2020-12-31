@@ -12,18 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
 
 from . import imginterp as _imginterp
-from .interppoints import apply_transform, translate_and_rotate_transform
 
 
 def transform_point(point, field_centre, field_rotation):
     transform = translate_and_rotate_transform(field_centre, field_rotation)
-    bb_centre = apply_transform(*point, transform)
-    bb_centre = np.array(bb_centre).tolist()
+    transformed_point = apply_transform(*point, transform)
+    transformed_point = np.array(transformed_point).tolist()
 
-    return bb_centre
+    return transformed_point
+
+
+def apply_transform(xx, yy, transform):
+    xx = np.array(xx, copy=False)
+    yy = np.array(yy, copy=False)
+
+    xx_flat = np.ravel(xx)
+    transformed = transform @ np.vstack([xx_flat, np.ravel(yy), np.ones_like(xx_flat)])
+
+    xx_transformed = transformed[0]
+    yy_transformed = transformed[1]
+
+    xx_transformed.shape = xx.shape
+    yy_transformed.shape = yy.shape
+
+    return xx_transformed, yy_transformed
+
+
+def translate_and_rotate_transform(centre, rotation):
+    centre = np.array(centre, copy=False)
+    transform = matplotlib.transforms.Affine2D()
+    try:
+        transform.rotate_deg(-rotation)
+        transform.translate(*centre)
+    except ValueError:
+        print(centre, rotation)
+        raise
+
+    return transform
 
 
 def create_centralised_field(field, centre, rotation):
