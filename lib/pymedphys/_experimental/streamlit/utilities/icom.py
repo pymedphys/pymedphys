@@ -266,12 +266,8 @@ def _determine_width_length_centre(mlc, jaw):
     width = pd.Series(np.sum(mean_mlc, axis=1), name="width")
     length = pd.Series(jaw[:, 0] + jaw[:, 1], name="length")
 
-    centre_x = pd.Series(
-        (-mean_mlc[:, 0] + mean_mlc[:, 1]) / 2, name="experimental_icom_centre_x"
-    )
-    centre_y = pd.Series(
-        (-jaw[:, 0] + jaw[:, 1]) / 2, name="experimental_icom_centre_y"
-    )
+    centre_x = pd.Series((-mean_mlc[:, 0] + mean_mlc[:, 1]) / 2, name="centre_x")
+    centre_y = pd.Series((-jaw[:, 0] + jaw[:, 1]) / 2, name="centre_y")
 
     length.loc[np.isnan(width)] = np.nan
     centre_x.loc[np.isnan(width)] = np.nan

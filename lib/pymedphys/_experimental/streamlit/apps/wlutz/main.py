@@ -78,7 +78,9 @@ def main():
     icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
     icom_datasets = icom_datasets.sort_values(by="datetime", inplace=False)
 
-    icom_datasets["datetime"] += datetime.timedelta(seconds=offset_to_apply)
+    icom_datasets["datetime"] = icom_datasets["datetime"] + datetime.timedelta(
+        seconds=offset_to_apply
+    )
     icom_datasets["time"] = icom_datasets["datetime"].dt.round("ms").dt.time
 
     try:
@@ -123,8 +125,6 @@ def main():
 
             st.altair_chart(device_angle_chart, use_container_width=True)
 
-    icom_datasets["width"] = icom_datasets["width"].round(2)
-
     if advanced_mode:
         field_size_chart = (
             alt.Chart(icom_datasets)
@@ -156,8 +156,28 @@ def main():
         database_table["datetime"] - midnight
     ).dt.total_seconds()
 
-    for column in ["gantry", "collimator", "turn_table", "width", "length"]:
+    # st.write(icom_datasets)
+
+    icom_datasets["x_lower"] = icom_datasets["centre_x"] - icom_datasets["width"] / 2
+    icom_datasets["x_upper"] = icom_datasets["centre_x"] + icom_datasets["width"] / 2
+    icom_datasets["y_lower"] = icom_datasets["centre_y"] - icom_datasets["length"] / 2
+    icom_datasets["y_upper"] = icom_datasets["centre_y"] + icom_datasets["length"] / 2
+
+    for column in [
+        "gantry",
+        "collimator",
+        "turn_table",
+        "x_lower",
+        "x_upper",
+        "y_lower",
+        "y_upper",
+    ]:
         _table_transfer_via_interpolation(icom_datasets, database_table, column)
+
+    database_table["width"] = database_table["x_upper"] - database_table["x_lower"]
+    database_table["length"] = database_table["y_upper"] - database_table["y_lower"]
+
+    st.write(database_table)
 
     if advanced_mode:
         st.write(database_table)
