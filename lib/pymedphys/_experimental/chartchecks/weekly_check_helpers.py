@@ -3,7 +3,6 @@ from datetime import date, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 import streamlit as st
 
 from pymedphys._mosaiq import connect
