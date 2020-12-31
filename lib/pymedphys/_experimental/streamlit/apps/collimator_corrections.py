@@ -14,9 +14,11 @@
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
+from pymedphys._experimental.wlutz import transformation as _transformation
 
 CATEGORY = "experimental"
 TITLE = "WLutz Collimator Processing"
@@ -57,12 +59,13 @@ def main():
     # st.write(treatment)
 
     dataframe_by_treatment = _filter_by(dataframe_by_algorithm, "treatment", treatment)
+    dataframe_by_treatment.reset_index(inplace=True)
     st.write(dataframe_by_treatment)
 
-    collimator = dataframe_by_treatment["collimator"]
+    collimator = np.array(dataframe_by_treatment["collimator"])
     st.write(collimator)
 
-    gantry = dataframe_by_treatment["gantry"]
+    gantry = np.array(dataframe_by_treatment["gantry"])
 
     gantry_mod = np.mod(gantry[:, None] - gantry[None, :], 360)
     coll_mod = np.mod(collimator[:, None] - collimator[None, :] + 180, 360)
@@ -98,6 +101,44 @@ def main():
     min_location_by_dataframe_row = np.mod(index_of_min, len(dataframe_by_treatment))
 
     st.write(min_location_by_dataframe_row)
+
+    corrections = []
+    for i, row in dataframe_by_treatment.iterrows():
+        diff_point = (row["diff_x"], row["diff_y"])
+        collimator = row["collimator"]
+        opposing_index = min_location_by_dataframe_row[i]
+        opposing_row = dataframe_by_treatment.iloc[opposing_index]
+        opposing_diff_point = (opposing_row["diff_x"], opposing_row["diff_y"])
+        opposing_collimator = opposing_row["collimator"]
+
+        rotated = _transformation.rotate_point(diff_point, collimator)
+        opposed_rotated = _transformation.rotate_point(
+            opposing_diff_point, opposing_collimator + 180
+        )
+
+        stacked = np.vstack([rotated, opposed_rotated])
+        avg = np.mean(stacked, axis=0)
+        correction = avg - rotated
+
+        corrections.append(correction)
+
+    corrections = np.array(corrections)
+
+    fig, ax = plt.subplots()
+    ax.plot(gantry, dataframe_by_treatment["diff_x"], "o", alpha=0.3)
+    st.pyplot(fig)
+
+    fig, ax = plt.subplots()
+    ax.plot(gantry, dataframe_by_treatment["diff_y"], "o", alpha=0.3)
+    st.pyplot(fig)
+
+    fig, ax = plt.subplots()
+    ax.plot(gantry, corrections[:, 0], "o", alpha=0.3)
+    st.pyplot(fig)
+
+    fig, ax = plt.subplots()
+    ax.plot(gantry, corrections[:, 1], "o", alpha=0.3)
+    st.pyplot(fig)
 
 
 @st.cache()
