@@ -1,4 +1,4 @@
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import connect
 
