@@ -1,4 +1,4 @@
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import connect
 
@@ -13,6 +13,9 @@ from pymedphys._experimental.chartchecks.tolerance_constants import (
     SITE_CONSTANTS,
     TOLERANCE_TYPES,
 )
+
+CATEGORY = "experimental"
+TITLE = "Pre-Treatment Data Transfer Check"
 
 
 def main():

@@ -29,6 +29,9 @@ from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 
+CATEGORY = "raw"
+TITLE = "DICOM Pseudonymisation"
+
 
 def link_to_zipbuffer_download(filename: str, zip_bytes: bytes):
     """Generates a link allowing the bytes to be downloaded using the specified filename

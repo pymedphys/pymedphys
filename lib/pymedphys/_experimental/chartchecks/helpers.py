@@ -19,8 +19,7 @@
 import collections
 
 from pymedphys._imports import pandas as pd
-
-import pydicom
+from pymedphys._imports import pydicom
 
 from pymedphys._mosaiq.connect import execute_sql
 

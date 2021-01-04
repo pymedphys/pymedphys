@@ -14,7 +14,7 @@
 
 import datetime
 
-import pandas as pd
+from pymedphys._imports import pandas as pd
 
 #######################################################################################################################
 
