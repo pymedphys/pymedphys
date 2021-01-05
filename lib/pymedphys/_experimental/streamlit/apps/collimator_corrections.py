@@ -93,7 +93,8 @@ def main():
         gantry_combined, index_of_min[:, None], axis=1
     )
 
-    out_of_tolerance = np.logical_or(
+    # TODO: convert out_of_tolerance sections to np.nan
+    out_of_tolerance = np.logical_or(  # pylint: disable = unused-variable
         min_coll_values > OPPOSING_COLLIMATOR_TOLERANCE,
         min_gantry_values > AGREEING_GANTRY_TOLERANCE,
     )
@@ -128,7 +129,9 @@ def main():
 
     logfile_corrections = []
     for i, row in dataframe_by_treatment.iterrows():
-        logfile_correction_field_frame = -np.array([row["x_centre"], row["y_centre"]])
+        logfile_correction_field_frame = -np.array(  # pylint: disable = invalid-unary-operand-type
+            [row["x_centre"], row["y_centre"]]
+        )
         logfile_correction_iview_frame = _transformation.rotate_point(
             logfile_correction_field_frame, -row["collimator"]
         )
@@ -250,8 +253,8 @@ def main():
 
 def _transform_points_to_field_reference_frame(dataframe, point_columns):
     field_frame_points = []
-    for i, row in dataframe.iterrows():
-        collimator = row["collimator"]
+    for _, row in dataframe.iterrows():
+        # collimator = row["collimator"]
         # if collimator <= 0:
         #     collimator += 180
         point = row[point_columns]
