@@ -17,11 +17,11 @@ from pymedphys._imports import altair as alt
 from pymedphys._imports import streamlit as st
 
 
-def build_both_axis_altair_charts(table):
+def build_both_axis_altair_charts(table, plot_x_axis):
     chart_bucket = {}
 
     for axis in ["y", "x"]:
-        raw_chart = _build_altair_chart(table, axis)
+        raw_chart = _build_altair_chart(table, axis, plot_x_axis)
         chart_bucket[axis] = st.altair_chart(
             altair_chart=raw_chart, use_container_width=True
         )
@@ -29,7 +29,7 @@ def build_both_axis_altair_charts(table):
     return chart_bucket
 
 
-def _build_altair_chart(table, axis):
+def _build_altair_chart(table, axis, plot_x_axis):
     parameters = {
         "x": {
             "column-name": "diff_x",
@@ -44,7 +44,7 @@ def _build_altair_chart(table, axis):
             alt.Chart(table)
             .mark_line(point=True)
             .encode(
-                x=alt.X("gantry", axis=alt.Axis(title="Gantry (degrees)")),
+                x=alt.X(plot_x_axis.lower(), axis=alt.Axis(title=plot_x_axis)),
                 y=alt.Y(
                     parameters["column-name"],
                     axis=alt.Axis(

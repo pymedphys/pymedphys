@@ -47,6 +47,8 @@ def calculations_ui(
 ):
     st.write("## Calculations")
 
+    plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
+
     ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 
     algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
@@ -84,6 +86,7 @@ def calculations_ui(
             deviation_plot_threshold,
             plot_when_data_missing,
             advanced_mode,
+            plot_x_axis,
         )
 
         st.write("### Overview of calculations")
@@ -101,6 +104,7 @@ def run_calculation(
     deviation_plot_threshold,
     plot_when_data_missing,
     advanced_mode,
+    plot_x_axis,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -223,7 +227,7 @@ def run_calculation(
         except KeyError:
             st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
             port_chart_bucket = _altair.build_both_axis_altair_charts(
-                table_filtered_by_port
+                table_filtered_by_port, plot_x_axis
             )
             treatment_chart_bucket[port] = port_chart_bucket
 

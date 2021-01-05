@@ -58,7 +58,7 @@ def main():
     treatments = dataframe_by_algorithm["treatment"].unique()
     # st.write(treatments)
 
-    treatment = treatments[0]
+    treatment = st.radio("Treatment", list(treatments))
     # st.write(treatment)
 
     dataframe_by_treatment = _filter_by(dataframe_by_algorithm, "treatment", treatment)
@@ -93,11 +93,14 @@ def main():
         gantry_combined, index_of_min[:, None], axis=1
     )
 
-    # TODO: convert out_of_tolerance sections to np.nan
-    out_of_tolerance = np.logical_or(  # pylint: disable = unused-variable
+    out_of_tolerance = np.logical_or(
         min_coll_values > OPPOSING_COLLIMATOR_TOLERANCE,
         min_gantry_values > AGREEING_GANTRY_TOLERANCE,
     )
+
+    st.write("## Out of tolerance")
+
+    st.write(out_of_tolerance)
 
     st.write(min_coll_values)
     st.write(min_gantry_values)
@@ -152,28 +155,37 @@ def main():
     )
 
     for axis in ["x", "y"]:
-        _make_coll_corrected_plots(dataframe_by_treatment, axis, ["logfile_corrected"])
+        _make_coll_corrected_plots(
+            dataframe_by_treatment, axis, ["", "_logfile_corrected"]
+        )
 
     corrections = []
     for i, row in dataframe_by_treatment.iterrows():
-        diff_point = (row["diff_x_logfile_corrected"], row["diff_y_logfile_corrected"])
-        collimator = row["collimator"]
-        opposing_index = min_location_by_dataframe_row[i]
-        opposing_row = dataframe_by_treatment.iloc[opposing_index]
-        opposing_diff_point = (
-            opposing_row["diff_x_logfile_corrected"],
-            opposing_row["diff_y_logfile_corrected"],
-        )
-        opposing_collimator = opposing_row["collimator"]
+        if not out_of_tolerance[i]:
+            diff_point = (
+                row["diff_x_logfile_corrected"],
+                row["diff_y_logfile_corrected"],
+            )
+            collimator = row["collimator"]
+            opposing_index = min_location_by_dataframe_row[i]
 
-        rotated = _transformation.rotate_point(diff_point, collimator)
-        opposed_rotated = _transformation.rotate_point(
-            opposing_diff_point, opposing_collimator + 180
-        )
+            opposing_row = dataframe_by_treatment.iloc[opposing_index]
+            opposing_diff_point = (
+                opposing_row["diff_x_logfile_corrected"],
+                opposing_row["diff_y_logfile_corrected"],
+            )
+            opposing_collimator = opposing_row["collimator"]
 
-        stacked = np.vstack([rotated, opposed_rotated])
-        avg = np.mean(stacked, axis=0)
-        correction = avg - rotated
+            rotated = _transformation.rotate_point(diff_point, collimator)
+            opposed_rotated = _transformation.rotate_point(
+                opposing_diff_point, opposing_collimator + 180
+            )
+
+            stacked = np.vstack([rotated, opposed_rotated])
+            avg = np.mean(stacked, axis=0)
+            correction = avg - rotated
+        else:
+            correction = [np.nan, np.nan]
 
         corrections.append(correction)
 
@@ -211,7 +223,7 @@ def main():
         _make_coll_corrected_plots(
             dataframe_by_treatment,
             axis,
-            ["logfile_corrected", "coll_corrected"]
+            ["_logfile_corrected", "_coll_corrected"]
             # ["coll_corrected"],
         )
         _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
@@ -254,7 +266,7 @@ def main():
 def _transform_points_to_field_reference_frame(dataframe, point_columns):
     field_frame_points = []
     for _, row in dataframe.iterrows():
-        # collimator = row["collimator"]
+        collimator = row["collimator"]
         # if collimator <= 0:
         #     collimator += 180
         point = row[point_columns]
@@ -276,7 +288,7 @@ def _make_coll_corrected_plots(dataframe, axis, correction_types):
     # ax.plot(gantry, dataframe[original_column], "o-", alpha=0.3, label=original_column)
 
     for correction_type in correction_types:
-        corrected_column = f"{original_column}_{correction_type}"
+        corrected_column = f"{original_column}{correction_type}"
         ax.plot(
             gantry,
             # collimator,
@@ -304,7 +316,6 @@ def _make_coll_correction_prediction_plots(dataframe, axis):
     st.pyplot(fig)
 
 
-@st.cache()
 def _get_results(filepath) -> "pd.DataFrame":
     raw_results_dataframe = pd.read_csv(filepath)
 
