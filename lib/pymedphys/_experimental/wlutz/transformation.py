@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2019-2021 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ from . import imginterp as _imginterp
 
 
 def transform_point(point, field_centre, field_rotation):
-    transform = translate_and_rotate_transform(field_centre, field_rotation)
+    transform = rotate_and_translate_transform(field_centre, field_rotation)
     transformed_point = apply_transform(*point, transform)
     transformed_point = np.array(transformed_point).tolist()
 
@@ -42,7 +42,7 @@ def apply_transform(xx, yy, transform):
     return xx_transformed, yy_transformed
 
 
-def translate_and_rotate_transform(centre, rotation):
+def rotate_and_translate_transform(centre, rotation):
     centre = np.array(centre, copy=False)
     transform = matplotlib.transforms.Affine2D()
     try:
@@ -56,7 +56,7 @@ def translate_and_rotate_transform(centre, rotation):
 
 
 def create_centralised_field(field, centre, rotation):
-    transform = translate_and_rotate_transform(centre, rotation)
+    transform = rotate_and_translate_transform(centre, rotation)
 
     def new_field(x, y):
         x_prime, y_prime = apply_transform(x, y, transform)

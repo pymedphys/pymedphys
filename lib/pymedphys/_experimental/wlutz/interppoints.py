@@ -21,7 +21,7 @@ from . import transformation as _transformation
 
 
 def transform_penumbra_points(points_at_origin, centre, rotation):
-    transform = _transformation.translate_and_rotate_transform(centre, rotation)
+    transform = _transformation.rotate_and_translate_transform(centre, rotation)
 
     xx_left_right, yy_left_right, xx_top_bot, yy_top_bot = points_at_origin
 
