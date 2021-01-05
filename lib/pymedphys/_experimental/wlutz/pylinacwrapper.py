@@ -20,7 +20,7 @@ from pymedphys._experimental.vendor.pylinac_vendored import (
     winstonlutz as _pylinac_vendored_wlutz,
 )
 
-from . import utilities as _utilities
+from . import transformation as _transformation
 
 
 def run_wlutz_raw(
@@ -129,7 +129,7 @@ def find_bb_only(x, y, image, edge_lengths, penumbra, field_centre, field_rotati
 
     x_new = np.arange(-x_radius, x_radius + dx / 2, dx)
     y_new = np.arange(-y_radius, y_radius + dy / 2, dy)
-    centralised_image = _utilities.create_centralised_image(
+    centralised_image = _transformation.create_centralised_image(
         x, y, image, field_centre, field_rotation, new_x=x_new, new_y=y_new
     )
 
@@ -146,7 +146,9 @@ def find_bb_only(x, y, image, edge_lengths, penumbra, field_centre, field_rotati
     #     print(bb_centre)
     #     raise
 
-    bb_centre = _utilities.transform_point(raw_bb_centre, field_centre, field_rotation)
+    bb_centre = _transformation.transform_point(
+        raw_bb_centre, field_centre, field_rotation
+    )
 
     return bb_centre
 
@@ -247,7 +249,7 @@ def run_wlutz_with_manual_search_definition(
         )
         new_y = new_x
 
-    centralised_image = _utilities.create_centralised_image(
+    centralised_image = _transformation.create_centralised_image(
         x, y, image, search_offset, field_rotation, new_x=new_x, new_y=new_y
     )
 
@@ -266,10 +268,10 @@ def run_wlutz_with_manual_search_definition(
             fill_errors_with_nan=fill_errors_with_nan,
         )
 
-        bb_centre = _utilities.transform_point(
+        bb_centre = _transformation.transform_point(
             raw_bb_centre, search_offset, field_rotation
         )
-        field_centre = _utilities.transform_point(
+        field_centre = _transformation.transform_point(
             raw_field_centre, search_offset, field_rotation
         )
 

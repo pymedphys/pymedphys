@@ -13,21 +13,23 @@
 # limitations under the License.
 
 
-from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
 
 import pymedphys._utilities.createshells
 
+from . import transformation as _transformation
+
 
 def transform_penumbra_points(points_at_origin, centre, rotation):
-    transform = translate_and_rotate_transform(centre, rotation)
+    transform = _transformation.rotate_and_translate_transform(centre, rotation)
 
     xx_left_right, yy_left_right, xx_top_bot, yy_top_bot = points_at_origin
 
-    xx_left_right_transformed, yy_left_right_transformed = apply_transform(
-        xx_left_right, yy_left_right, transform
-    )
-    xx_top_bot_transformed, yy_top_bot_transformed = apply_transform(
+    (
+        xx_left_right_transformed,
+        yy_left_right_transformed,
+    ) = _transformation.apply_transform(xx_left_right, yy_left_right, transform)
+    xx_top_bot_transformed, yy_top_bot_transformed = _transformation.apply_transform(
         xx_top_bot, yy_top_bot, transform
     )
 
@@ -37,19 +39,6 @@ def transform_penumbra_points(points_at_origin, centre, rotation):
         xx_top_bot_transformed,
         yy_top_bot_transformed,
     )
-
-
-def translate_and_rotate_transform(centre, rotation):
-    centre = np.array(centre, copy=False)
-    transform = matplotlib.transforms.Affine2D()
-    try:
-        transform.rotate_deg(-rotation)
-        transform.translate(*centre)
-    except ValueError:
-        print(centre, rotation)
-        raise
-
-    return transform
 
 
 def define_penumbra_points_at_origin(edge_lengths, penumbra):
@@ -73,22 +62,6 @@ def define_penumbra_points_at_origin(edge_lengths, penumbra):
     xx_top_bot, yy_top_bot = np.meshgrid(*edge_points_top_bot[::-1])
 
     return xx_left_right, yy_left_right, xx_top_bot, yy_top_bot
-
-
-def apply_transform(xx, yy, transform):
-    xx = np.array(xx, copy=False)
-    yy = np.array(yy, copy=False)
-
-    xx_flat = np.ravel(xx)
-    transformed = transform @ np.vstack([xx_flat, np.ravel(yy), np.ones_like(xx_flat)])
-
-    xx_transformed = transformed[0]
-    yy_transformed = transformed[1]
-
-    xx_transformed.shape = xx.shape
-    yy_transformed.shape = yy.shape
-
-    return xx_transformed, yy_transformed
 
 
 def create_bb_points_function(bb_diameter):
@@ -126,13 +99,3 @@ def create_bb_points_function(bb_diameter):
         return x_shifted, y_shifted
 
     return points_to_check, dist
-
-
-def create_centralised_field(field, centre, rotation):
-    transform = translate_and_rotate_transform(centre, rotation)
-
-    def new_field(x, y):
-        x_prime, y_prime = apply_transform(x, y, transform)
-        return field(x_prime, y_prime)
-
-    return new_field
