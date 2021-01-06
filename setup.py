@@ -111,8 +111,7 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys._experimental.streamlit.apps": ["data/*"],
+    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/apps/data/*"],
     "pymedphys.docs": [
         "_static/*",
         "background/*",
@@ -128,19 +127,18 @@ package_data = {
         "ref/lib/experimental/*",
         "tutes/*",
     ],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/.gitignore",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/.gitignore",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
+        "experimental/paulking/film/data/*",
     ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
-    ],
-    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
 
 install_requires = ["typing-extensions"]
@@ -209,7 +207,7 @@ extras_require = {
         "sphinxcontrib-bibtex<2.0.0",
     ],
     "doctests": ["pylinac==2.3.2", "tensorflow>=2.2.0", "sphinx-book-theme"],
-    "ml": ["tensorflow>=2.2.0", "torch>=1.7.1"],
+    "ml": ["tensorflow>=2.2.0"],
     "propagate": ["black>=19.3b0,<20.0", "tomlkit"],
     "tests": [
         "pytest",
