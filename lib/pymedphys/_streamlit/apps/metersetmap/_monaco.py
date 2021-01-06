@@ -45,7 +45,7 @@ def monaco_input_method(
     st.write(f"Patient Name: `{patient_name}`")
 
     all_tel_paths = list(plan_directory.glob("**/*tel.1"))
-    all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
+    all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime, reverse=True)
 
     plan_names_to_choose_from = [
         str(path.relative_to(plan_directory)) for path in all_tel_paths
