@@ -17,7 +17,7 @@ import datetime
 import hashlib
 import logging
 import random
-from decimal import Decimal, DecimalTuple
+from decimal import Decimal
 
 from pymedphys._imports import pydicom
 
@@ -159,34 +159,36 @@ def _pseudonymise_CS(value):
     return my_sliced_pseudonym
 
 
+def _add_tzinfo(d: datetime.datetime, tz: datetime.timezone) -> datetime.datetime:
+    return datetime.datetime.combine(d.date(), d.time(), tz)
+
+
 def _pseudonymise_DA(
     value, format_str=DICOM_DATE_FORMAT_STR, earliest_study=DEFAULT_EARLIEST_STUDY_DATE
 ):
     epoch_start = EPOCH_START
     # earliest_study = DEFAULT_EARLIEST_STUDY_DATE
     # format_str = DICOM_DATE_FORMAT_STR
-    try:
-        my_datetime_obj = datetime.datetime.strptime(value, format_str)
-    except ValueError:
-        my_datetime_obj = datetime.datetime.strptime(value, DICOM_DATE_FORMAT_STR)
-    try:
-        earliest_study_datetime_obj = datetime.datetime.strptime(
-            earliest_study, format_str
-        )
-    except ValueError:
-        earliest_study_datetime_obj = datetime.datetime.strptime(
-            earliest_study, DICOM_DATE_FORMAT_STR
-        )
-    try:
-        epoch_start_datetime_obj = datetime.datetime.strptime(epoch_start, format_str)
-    except ValueError:
-        epoch_start_datetime_obj = datetime.datetime.strptime(
-            epoch_start, DICOM_DATE_FORMAT_STR
-        )
+
+    # let pydicom do the heavy lifting on parsing the datetime values
+    my_datetime_obj = pydicom.valuerep.DT(value)
+    earliest_study_datetime_obj = pydicom.valuerep.DT(earliest_study)
+    epoch_start_datetime_obj = pydicom.valuerep.DT(epoch_start)
+
+    # convert to pure datetime.datetime for date arithmetic
+    earliest_study_datetime_obj = _add_tzinfo(
+        earliest_study_datetime_obj, my_datetime_obj.tzinfo
+    )
+    epoch_start_datetime_obj = _add_tzinfo(
+        epoch_start_datetime_obj, my_datetime_obj.tzinfo
+    )
+    my_datetime_obj = _add_tzinfo(my_datetime_obj, my_datetime_obj.tzinfo)
 
     time_delta = my_datetime_obj - earliest_study_datetime_obj
+    # this failed when using type DT instead of datetime.datetime
     my_new_date = epoch_start_datetime_obj + time_delta
-    my_pseudonym_date = my_new_date.strftime(DICOM_DATE_FORMAT_STR)
+
+    my_pseudonym_date = my_new_date.strftime(format_str)
     return my_pseudonym_date
 
 
@@ -206,26 +208,31 @@ def _pseudonymise_DS(value):
         a decimal string of the same sign and exponent.
 
     """
-    my_decimal = Decimal(value)
+    # must call string on value because it is actually of type DSfloat
+    # so to get the original string, invoke __str__(), see class DSfloat in pydicom
+    # str(value) invokes value.__str__()
+    original_DS_value = str(value)
+    my_decimal = Decimal(original_DS_value)
     as_tuple = my_decimal.as_tuple()
     digits = as_tuple.digits
+    # print ("digits :" + str(digits))
     count_digits = len(digits)
     my_hash_func = hashlib.new("sha3_256")
-    encoded_value = digits.encode("ASCII")
+    encoded_value = original_DS_value.encode("ASCII")
     my_hash_func.update(encoded_value)
-    # my_digest = my_hash_func.digest()
-    my_hex_digest = my_hash_func.hex_digest()
+
+    my_hex_digest = my_hash_func.hexdigest()
+
     sliced_digest = my_hex_digest[0:count_digits]
+    # convert the hex digest values to a base ten integer
     my_integer = int(sliced_digest, 16)
     my_integer_string = str(my_integer)
-    # string_count = len(my_integer_string)
+
     new_digits = list()
     for i in range(0, count_digits):
-        new_digits.append(my_integer_string[i : i + 1])
-
-    new_decimal_tuple = DecimalTuple(
-        as_tuple.sign, tuple(new_digits), as_tuple.exponent
-    )
+        new_digits.append(int(my_integer_string[i : i + 1]))
+    # print("new digits : " + str(new_digits))
+    new_decimal_tuple = tuple((as_tuple.sign, tuple(new_digits), as_tuple.exponent))
     new_decimal = Decimal(new_decimal_tuple)
     return str(new_decimal)
 

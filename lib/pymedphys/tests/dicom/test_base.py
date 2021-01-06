@@ -28,7 +28,7 @@ def test_copy():
     dont_change_string = "don't change me"
     to_be_changed_string = "do change me"
 
-    new_manufactuer = "george"
+    new_manufacturer = "george"
 
     dataset_to_be_copied = dicom_dataset_from_dict({"Manufacturer": dont_change_string})
 
@@ -39,11 +39,11 @@ def test_copy():
     dicom_base_copy = DicomBase(dataset_to_be_copied)
     dicom_base_view = DicomBase(dataset_to_be_viewed, copy=False)
 
-    dicom_base_copy.dataset.Manufacturer = new_manufactuer
-    dicom_base_view.dataset.Manufacturer = new_manufactuer
+    dicom_base_copy.dataset.Manufacturer = new_manufacturer
+    dicom_base_view.dataset.Manufacturer = new_manufacturer
 
     assert dataset_to_be_copied.Manufacturer == dont_change_string
-    assert dataset_to_be_viewed.Manufacturer == new_manufactuer
+    assert dataset_to_be_viewed.Manufacturer == new_manufacturer
 
 
 @pytest.mark.pydicom

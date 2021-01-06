@@ -1,6 +1,6 @@
 [build]
-  command = "pymedphys dev docs --output build"
-  publish = "build"
+  command = "pymedphys dev docs --output ."
+  publish = "_build/html"
 
 [[redirects]]
   from = "/en/stable/*"
@@ -41,6 +41,12 @@
 [[redirects]]
   from = "https://app.pymedphys.com/*"
   to = "https://share.streamlit.io/pymedphys/pymedphys/main/app.py/:splat"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "https://app.pymedphys.com"
+  to = "https://share.streamlit.io/pymedphys/pymedphys/main/app.py/"
   status = 302
   force = true
 

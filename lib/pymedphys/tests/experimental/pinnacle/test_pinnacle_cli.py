@@ -48,6 +48,7 @@ from zipfile import ZipFile
 import pytest
 
 from pymedphys._data import download
+from pymedphys._utilities import test as pmp_test_utils
 
 working_path = tempfile.mkdtemp()
 data_path = os.path.join(working_path, "data")
@@ -74,21 +75,25 @@ def test_pinnacle_cli_output(data):
 
     for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
 
-        command = "pymedphys experimental pinnacle export".split() + [
-            "-o",
-            output_path,
-            "-m",
-            "CT",
-            "-m",
-            "RTSTRUCT",
-            "-m",
-            "RTDOSE",
-            "-m",
-            "RTPLAN",
-            "-t",
-            "Trial_1",
-            pinn_dir.as_posix(),
-        ]
+        command = (
+            [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
+            + "pymedphys experimental pinnacle export".split()
+            + [
+                "-o",
+                output_path,
+                "-m",
+                "CT",
+                "-m",
+                "RTSTRUCT",
+                "-m",
+                "RTDOSE",
+                "-m",
+                "RTPLAN",
+                "-t",
+                "Trial_1",
+                pinn_dir.as_posix(),
+            ]
+        )
 
         subprocess.check_call(command)
 
@@ -102,10 +107,11 @@ def test_pinnacle_cli_list(data):
 
     for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
 
-        command = "pymedphys experimental pinnacle export".split() + [
-            "-l",
-            pinn_dir.as_posix(),
-        ]
+        command = (
+            [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
+            + "pymedphys experimental pinnacle export".split()
+            + ["-l", pinn_dir.as_posix()]
+        )
 
         cli_output = str(subprocess.check_output(command))
         cli_output_parts = cli_output.split("\\n")
@@ -126,13 +132,11 @@ def test_pinnacle_cli_missing_trial(data):
 
     for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
 
-        command = "pymedphys experimental pinnacle export".split() + [
-            "-o",
-            output_path,
-            "-t",
-            "nonexistenttrial",
-            pinn_dir.as_posix(),
-        ]
+        command = (
+            [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
+            + "pymedphys experimental pinnacle export".split()
+            + ["-o", output_path, "-t", "nonexistenttrial", pinn_dir.as_posix()]
+        )
 
         cli_output = str(subprocess.check_output(command))
         assert "No Trial: nonexistenttrial found in Plan" in cli_output

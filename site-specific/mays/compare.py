@@ -14,7 +14,16 @@ Results:    match = green
 
 
 def color_results(val):
-    not_in = ["field_type", "machine", "rx", "technique", "tolerance"]
+    not_in = [
+        "field_type",
+        "machine",
+        "rx",
+        "technique",
+        "tolerance",
+        "modality",
+        "technique",
+        "backup_time",
+    ]
 
     # set any values which cannot accurately be compared as yellow (#FDFF8A)
     if val.name in not_in:
@@ -22,18 +31,32 @@ def color_results(val):
 
     # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
     elif type(val[0]) == str and type(val[1]) == str:
-        if val[0] == val[1]:
+        if val[0].lower() == val[1].lower():
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
             return ["background-color: #EE6363", "background-color: #EE6363"]
 
-    elif val[0] == "":
+    elif str(val[0]).strip() == "":
         val[0] = 0
         if val[0] == val[1]:
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
             return ["background-color: #EE6363", "background-color: #EE6363"]
-    elif val[1] == "":
+    elif str(val[1]).strip() == "":
+        val[1] = 0
+        if val[0] == val[1]:
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
+        else:
+            return ["background-color: #EE6363", "background-color: #EE6363"]
+
+    elif val[0] is None:
+        val[0] = 0
+        if val[0] == val[1]:
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
+        else:
+            return ["background-color: #EE6363", "background-color: #EE6363"]
+
+    elif val[1] is None:
         val[1] = 0
         if val[0] == val[1]:
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
@@ -170,3 +193,26 @@ def compare_to_mosaiq(dicom_table, mos_table):
 
 
 #######################################################################################################################
+
+
+def weekly_check_color_results(val):
+    failures = [
+        "Unverified Treatment",
+        "Partial Treatment",
+        "Treatment Overridden",
+        "New Field Delivered",
+        "Prescription Altered",
+        "Site Setup Altered",
+    ]
+    failure_flag = 0
+    for failure in failures:
+        # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
+        if failure in set(val):
+            failure_flag += 1
+        else:
+            failure_flag += 0
+
+    if failure_flag == 0:
+        return ["background-color: #C1FFC1"] * len(val)
+    else:
+        return ["background-color: #EE6363"] * len(val)

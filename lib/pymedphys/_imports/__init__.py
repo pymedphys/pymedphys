@@ -1,34 +1,13 @@
-import ast
 import importlib
 import pathlib
+
+from pymedphys._imports import _parse
 
 from pymedphys._vendor import apipkg
 
 HERE = pathlib.Path(__file__).parent
 
-with open(HERE.joinpath("imports.py")) as f:
-    imports_string = f.read()
-
-
-imports_for_apipkg = {}
-
-for node in ast.parse(imports_string).body:
-    if not isinstance(node, ast.Import):
-        raise ValueError("Only direct import statements are supported")
-
-    aliases = list(node.names)
-    if len(aliases) != 1:
-        raise ValueError("Only one alias per import supported")
-
-    alias = aliases[0]
-    asname = alias.asname
-
-    if asname is None:
-        asname = alias.name
-
-    imports_for_apipkg[asname] = alias.name
-
-
+imports_for_apipkg = _parse.parse_imports(HERE.joinpath("imports.py"))
 apipkg.initpkg(__name__, imports_for_apipkg)  # type: ignore
 
 THIS = importlib.import_module(__name__)
