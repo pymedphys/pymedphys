@@ -1,15 +1,36 @@
-import os
+# Copyright (C) 2020 Jacob Rembish
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import streamlit as st
 
-from compare import color_results, compare_to_mosaiq
-from helpers import get_all_dicom_treatment_info
 from pymedphys._mosaiq import connect
-from pymedphys._mosaiq.helpers import get_all_treatment_data, get_staff_initials
-from tolerance_constants import SITE_CONSTANTS, TOLERANCE_TYPES
+
+from pymedphys._experimental.chartchecks.compare import color_results, compare_to_mosaiq
+from pymedphys._experimental.chartchecks.helpers import (
+    get_all_dicom_treatment_info,
+    get_all_treatment_data,
+    get_staff_initials,
+)
+from pymedphys._experimental.chartchecks.tolerance_constants import (
+    SITE_CONSTANTS,
+    TOLERANCE_TYPES,
+)
+
+from pymedphys._experimental.chartchecks.dvh_helpers import plot_dvh
 
 
-currdir = os.getcwd()
+# currdir = os.getcwd()
 server = "PRDMOSAIQIWVV01.utmsa.local"
 
 st.title("Data Transfer Check")
@@ -23,11 +44,28 @@ When exporting the DICOM, only the RP is needed. Once you have that, you can sel
 will run.
 """
 )
-dicomFile = st.file_uploader("Please select a RP file.", force=True)
+dicomFiles = st.file_uploader(
+    "Please select a RP file.", force=True, accept_multiple_files=True
+)
 
-if dicomFile is not None:
+files = {}
+for dicomFile in dicomFiles:
+    name = dicomFile.name
+    if "RP" in name:
+        files["rp"] = dicomFile
+    elif "RD" in name:
+        files["rd"] = dicomFile
+    elif "RS" in name:
+        files["rs"] = dicomFile
+    elif "CT" in name:
+        files["ct"] = dicomFile
+    else:
+        continue
+
+
+if "rp" in files:
     # retrieve data from both systems.
-    dicom_table = get_all_dicom_treatment_info(dicomFile)
+    dicom_table = get_all_dicom_treatment_info(files["rp"])
     dicom_table["tolerance"] = [
         TOLERANCE_TYPES[item] for item in dicom_table["tolerance"]
     ]
@@ -39,9 +77,9 @@ if dicomFile is not None:
         if mosaiq_table.iloc[0]["create_id"] is not None:
             try:
                 site_initials = get_staff_initials(
-                    cursor, str(mosaiq_table.iloc[0]["create_id"])
+                    cursor, str(int(mosaiq_table.iloc[0]["create_id"]))
                 )
-            except:
+            except (TypeError, ValueError, AttributeError):
                 site_initials = ""
 
     # mosaiq_table = mosaiq_table[mosaiq_table["field_version"] == 0]
@@ -126,7 +164,7 @@ if dicomFile is not None:
     field_selection = st.radio("Select field to compare:", rx_fields)
     st.subheader("Comparison")
 
-    if len(field_selection) is not 0:
+    if len(field_selection) != 0:
         dicom_field = str(field_selection) + "_DICOM"
         mosaiq_field = str(field_selection) + "_MOSAIQ"
         st.write("**RX**: ", results[field_selection + "_DICOM"]["rx"])
@@ -140,7 +178,7 @@ if dicomFile is not None:
                     cursor, str(int(field_approval_id.iloc[0]))
                 )
             st.write("**Field Approved by: **", field_approval_initials[0][0])
-        except:
+        except (TypeError, ValueError, AttributeError):
             st.write("This field is not approved.")
 
         display_results = results[[dicom_field, mosaiq_field]]
@@ -167,3 +205,6 @@ if dicomFile is not None:
     if show_mosaiq:
         st.subheader("Mosaiq Table")
         st.dataframe(mosaiq_table, height=1000)
+
+    # if 'rs' in files and 'rd' in files:
+    #     plot_dvh(files['rs'], files['rd'])

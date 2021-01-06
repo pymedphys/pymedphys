@@ -7,8 +7,11 @@ import attr
 import black
 import dateutil
 import dbfread
+import dicompylercore
 import keyring
 import packaging
+import plotly
+import plotly.express
 import psutil
 import pymssql
 import requests

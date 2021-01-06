@@ -29,6 +29,8 @@ from pymedphys._experimental.streamlit.apps import dashboard as _dashboard
 from pymedphys._experimental.streamlit.apps import electrons as _electrons
 from pymedphys._experimental.streamlit.apps import icom as _icom
 from pymedphys._experimental.streamlit.apps import iviewdb as _iviewdb
+from pymedphys._experimental.streamlit.apps import transfer_check as _transfer_check
+from pymedphys._experimental.streamlit.apps import weekly_check as _weekly_check
 from pymedphys._experimental.streamlit.apps import wlutz as _wlutz
 from pymedphys._experimental.streamlit.apps import xlsxwriter as _xlsxwriter
 
@@ -93,6 +95,8 @@ APPLICATION_OPTIONS = {
     "icom": _icom,
     "xlsxwriter": _xlsxwriter,
     "collimator-corrections": _collimator_corrections,
+    "data-transfer": _transfer_check,
+    "weekly-check": _weekly_check,
 }
 
 
