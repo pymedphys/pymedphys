@@ -31,6 +31,8 @@ def icom_iview_timestamp_alignment(
 ):
     st.write("## iView to iCom timestamp alignment")
 
+    st.write(icom_patients_directory)
+
     selected_paths_by_date = _icom.get_paths_by_date(
         icom_patients_directory, selected_date=selected_date
     )

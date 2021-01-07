@@ -36,11 +36,11 @@ def filter_image_sets(
     machine_id = st.radio("Machine", filtered["machine_id"].unique())
     filtered = filtered.loc[filtered["machine_id"] == machine_id]
 
-    if advanced_mode:
-        # Patient ID
-        patient_id = st.radio("Patient", filtered["patient_id"].unique())
-        filtered = filtered.loc[filtered["patient_id"] == patient_id]
+    # Patient ID
+    patient_id = st.radio("Patient", filtered["patient_id"].unique())
+    filtered = filtered.loc[filtered["patient_id"] == patient_id]
 
+    if advanced_mode:
         # Time
         time = filtered["datetime"].dt.time
 

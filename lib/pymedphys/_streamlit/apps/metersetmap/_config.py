@@ -17,13 +17,14 @@ import pathlib
 
 from pymedphys._imports import streamlit as st
 
+import pymedphys
 from pymedphys._streamlit.utilities import config as st_config
 
 
 @st.cache
 def download_demo_config_file():
     cwd = pathlib.Path.cwd()
-    st_config.download_and_extract_demo_data(cwd)
+    pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=cwd)
 
     return cwd.joinpath("pymedphys-gui-demo")
 
