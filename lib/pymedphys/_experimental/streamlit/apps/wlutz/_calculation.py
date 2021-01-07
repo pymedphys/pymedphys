@@ -47,7 +47,10 @@ def calculations_ui(
 ):
     st.write("## Calculations")
 
-    plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
+    if advanced_mode:
+        plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
+    else:
+        plot_x_axis = "Gantry"
 
     ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 

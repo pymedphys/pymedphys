@@ -174,10 +174,27 @@ def main():
     ]:
         _table_transfer_via_interpolation(icom_datasets, database_table, column)
 
+    # st.write(icom_datasets)
+
+    icom_seconds = icom_datasets["seconds_since_midnight"]
+    iview_seconds = database_table["seconds_since_midnight"]
+
+    alignment_indices = np.argmin(
+        np.abs(icom_seconds.values[None, :] - iview_seconds.values[:, None]), axis=1
+    )
+    # st.write(alignment_indices)
+    # st.write(len(alignment_indices))
+    # st.write(len(iview_seconds))
+
+    energies = icom_datasets["energy"].values[alignment_indices]
+    # st.write(energies)
+
+    database_table["energy"] = energies
+
     database_table["width"] = database_table["x_upper"] - database_table["x_lower"]
     database_table["length"] = database_table["y_upper"] - database_table["y_lower"]
 
-    # st.write(database_table)
+    # st.write(database_table[["treatment", "energy"]])
 
     if advanced_mode:
         st.write(database_table)
