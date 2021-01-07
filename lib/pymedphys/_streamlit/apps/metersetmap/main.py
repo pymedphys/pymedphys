@@ -352,9 +352,7 @@ def calculate_gamma(reference_metersetmap, evaluation_metersetmap, gamma_options
     return gamma
 
 
-def advanced_debugging():
-    config = st_config.get_config()
-
+def advanced_debugging(config):
     st.sidebar.markdown("# Advanced Debugging")
     if st.sidebar.button("Compare Baseline to Output Directory"):
         st.write(
@@ -612,7 +610,7 @@ def main():
     data_option_functions = {
         "monaco": functools.partial(_monaco.monaco_input_method, config=config),
         "dicom": _dicom.dicom_input_method,
-        "icom": _icom.icom_input_method,
+        "icom": functools.partial(_icom.icom_input_method, config=config),
         "trf": _trf.trf_input_method,
         "mosaiq": _mosaiq.mosaiq_input_method,
     }
@@ -748,4 +746,4 @@ def main():
         )
 
     if advanced_mode:
-        advanced_debugging()
+        advanced_debugging(config)

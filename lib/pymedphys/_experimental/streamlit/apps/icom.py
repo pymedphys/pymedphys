@@ -25,8 +25,6 @@ TITLE = "iCom Logs Explorer"
 
 
 def main():
-    st.title("iCom Logs Explorer")
-
     config = _config.get_config()
 
     site_directories = _config.get_site_directories(config)

@@ -21,6 +21,8 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
 
+from pymedphys._streamlit.utilities import config as _config
+
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
 from . import _angles, _calculation, _filtering, _frames, _sync, _utilities
@@ -34,6 +36,8 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
+    config = _config.get_config()
+
     bb_diameter, penumbra, advanced_mode, demo_mode = _set_parameters()
 
     refresh_cache = st.button("Re-query databases")
@@ -44,7 +48,7 @@ def main():
         database_table,
         selected_date,
         selected_machine_id,
-    ) = _utilities.get_directories_and_initial_database(refresh_cache)
+    ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
 
     icom_patients_directory = icom_directory.joinpath("patients")
 
