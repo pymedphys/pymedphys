@@ -558,8 +558,24 @@ def main():
         """
     )
 
-    demo_mode = st.sidebar.checkbox("Demo Mode")
-    config = _config.get_config(demo_mode)
+    st.sidebar.markdown(
+        """
+        # Configuration Choice
+        """
+    )
+
+    config_options = list(_config.CONFIG_OPTIONS.keys())
+
+    try:
+        default_config = _config.get_config(config_options[0])
+        default_config_mode_choice = 0
+    except FileNotFoundError:
+        default_config_mode_choice = 1
+
+    config_mode = st.sidebar.radio(
+        "Config Mode", options=config_options, index=default_config_mode_choice
+    )
+    config = _config.get_config(config_mode)
 
     st.sidebar.markdown(
         """

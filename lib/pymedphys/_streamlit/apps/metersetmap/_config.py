@@ -20,20 +20,34 @@ from pymedphys._imports import streamlit as st
 import pymedphys
 from pymedphys._streamlit.utilities import config as st_config
 
+HERE = pathlib.Path(__file__).parent
+
+
+def config_on_disk():
+    return None
+
+
+def config_in_current_directory():
+    return HERE
+
 
 @st.cache
-def download_demo_config_file():
+def download_demo_files():
     cwd = pathlib.Path.cwd()
     pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=cwd)
 
     return cwd.joinpath("pymedphys-gui-demo")
 
 
-def get_config(demo_mode):
-    if demo_mode:
-        path = download_demo_config_file()
-    else:
-        path = None
+CONFIG_OPTIONS = {
+    "Config on Disk": config_on_disk,
+    "File Upload/Download Only": config_in_current_directory,
+    "Demo Data": download_demo_files,
+}
+
+
+def get_config(config_mode):
+    path = CONFIG_OPTIONS[config_mode]()
 
     return st_config.get_config(path)
 
