@@ -16,7 +16,9 @@
 import base64
 import io
 import pathlib
+import re
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
@@ -35,8 +37,6 @@ FIGURE_CELL_HEIGHT = 15
 
 
 def main():
-    st.title("Excel file creation sandbox")
-
     if st.button("Make demo.xlsx"):
         st.write(f"`{PYMEDPHYS_LIBRARY_ROOT}`")
 
@@ -91,6 +91,35 @@ def main():
     # filtered_by_treatment = _filter_by(dataframe, "treatment", treatment)
 
     # st.write(filtered_by_treatment)
+
+    dataframe_by_algorithm = _filter_by(dataframe, "algorithm", "PyMedPhys")
+    st.write(dataframe_by_algorithm)
+
+    statistics = []
+    energies = dataframe_by_algorithm["energy"].unique()
+    energies = sorted(energies, key=_natural_sort_key)
+
+    column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
+    for energy in energies:
+        st.write(energy)
+        dataframe_by_energy = _filter_by(dataframe_by_algorithm, "energy", energy)
+
+        st.write(dataframe_by_energy["diff_x"])
+
+        for column in ["diff_y", "diff_x"]:
+            statistics.append(
+                {
+                    "energy": energy,
+                    "direction": column_direction_map[column],
+                    "min": np.nanmin(dataframe_by_energy[column]),
+                    "max": np.nanmax(dataframe_by_energy[column]),
+                    "mean": np.nanmean(dataframe_by_energy[column]),
+                    "median": np.nanmedian(dataframe_by_energy[column]),
+                }
+            )
+
+    statistics = pd.DataFrame.from_dict(statistics).round(2)
+    st.write(statistics)
 
     dataframe = dataframe.fillna("")
 
@@ -246,3 +275,8 @@ def _insert_file_download_link(filepath: pathlib.Path):
         </a>
     """
     st.markdown(href, unsafe_allow_html=True)
+
+
+# https://stackoverflow.com/a/16090640/3912576
+def _natural_sort_key(s, _nsre=re.compile("([0-9]+)")):
+    return [int(text) if text.isdigit() else text.lower() for text in _nsre.split(s)]
