@@ -20,8 +20,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
-from pymedphys._imports import tomlkit
-from streamlit_ace import st_ace
+from pymedphys._imports import streamlit_ace, tomlkit
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
@@ -41,7 +40,9 @@ def main():
 
     if demo_mode and advanced_mode:
         st.write("## Demo Configuration")
-        config = tomlkit.loads(st_ace(value=tomlkit.dumps(config), language="toml"))
+        config = tomlkit.loads(
+            streamlit_ace.st_ace(value=tomlkit.dumps(config), language="toml")
+        )
 
     refresh_cache = st.button("Re-query databases")
     (
