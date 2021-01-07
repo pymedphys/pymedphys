@@ -93,7 +93,7 @@ def main():
     # st.write(filtered_by_treatment)
 
     dataframe_by_algorithm = _filter_by(dataframe, "algorithm", "PyMedPhys")
-    st.write(dataframe_by_algorithm)
+    # st.write(dataframe_by_algorithm)
 
     statistics = []
     energies = dataframe_by_algorithm["energy"].unique()
@@ -101,10 +101,10 @@ def main():
 
     column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
     for energy in energies:
-        st.write(energy)
+        # st.write(energy)
         dataframe_by_energy = _filter_by(dataframe_by_algorithm, "energy", energy)
 
-        st.write(dataframe_by_energy["diff_x"])
+        # st.write(dataframe_by_energy["diff_x"])
 
         for column in ["diff_y", "diff_x"]:
             statistics.append(
@@ -130,7 +130,14 @@ def main():
         raw_data_worksheet = workbook.add_worksheet(name="Raw Data")
         interpolated_data_worksheet = workbook.add_worksheet(name="Interpolated Data")
 
-        print(summary_worksheet, interpolated_data_worksheet)
+        # print(summary_worksheet, interpolated_data_worksheet)
+
+        _write_data_get_references(
+            data_column_start="A",
+            data_header="Summary Statistics",
+            dataframe=statistics,
+            worksheet=summary_worksheet,
+        )
 
         _create_algorithms_chart_sheet(
             dataframe, workbook, raw_data_worksheet, algorithm_worksheet

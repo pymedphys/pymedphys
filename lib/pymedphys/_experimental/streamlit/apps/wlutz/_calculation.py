@@ -20,6 +20,8 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
+from pymedphys._utilities import filesystem as _pp_filesystem_utilities
+
 from pymedphys._experimental.wlutz import main as _wlutz
 from pymedphys._experimental.wlutz import reporting as _reporting
 
@@ -282,6 +284,9 @@ def run_calculation(
                 ["diff_x", "diff_y"], ["Transverse", "Radial"]
             ):
                 plot_filename = f"{treatment}-{port}-{orientation}.png"
+                plot_filename = _pp_filesystem_utilities.make_a_valid_directory_name(
+                    plot_filename
+                )
                 plot_filepath = wlutz_directory_by_date.joinpath(plot_filename)
 
                 mask = (contextualised_results["treatment"] == treatment) & (
