@@ -26,7 +26,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
-from pymedphys._imports import timeago
+from pymedphys._imports import streamlit_ace, timeago, tomlkit
 
 import pymedphys
 from pymedphys._streamlit.apps.metersetmap import (
@@ -576,6 +576,13 @@ def main():
         "Config Mode", options=config_options, index=default_config_mode_choice
     )
     config = _config.get_config(config_mode)
+
+    show_config = st.sidebar.checkbox("Show/edit config", False)
+    if show_config:
+        st.write("## Configuration")
+        config = tomlkit.loads(
+            streamlit_ace.st_ace(value=tomlkit.dumps(config), language="toml")
+        )
 
     st.sidebar.markdown(
         """
