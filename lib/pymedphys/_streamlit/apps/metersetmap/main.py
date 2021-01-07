@@ -568,13 +568,10 @@ def main():
 
     try:
         default_config = _config.get_config(config_options[0])
-        default_config_mode_choice = 0
     except FileNotFoundError:
-        default_config_mode_choice = 1
+        config_options.pop(0)
 
-    config_mode = st.sidebar.radio(
-        "Config Mode", options=config_options, index=default_config_mode_choice
-    )
+    config_mode = st.sidebar.radio("Config Mode", options=config_options)
     config = _config.get_config(config_mode)
 
     show_config = st.sidebar.checkbox("Show/edit config", False)
