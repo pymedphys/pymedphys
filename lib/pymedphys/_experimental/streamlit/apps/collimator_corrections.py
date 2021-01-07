@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: skip-file
-
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
@@ -130,13 +128,11 @@ def main():
     st.pyplot(fig)
 
     # TODO: Create tests of this logic utilising the test fields created
-    # on the 2020-12-31 on 2694.
+    # on the 2021-01-07 on 2619.
 
     logfile_corrections = []
     for i, row in dataframe_by_treatment.iterrows():
-        logfile_correction_field_frame = -np.array(  # pylint: disable = invalid-unary-operand-type
-            [row["x_centre"], row["y_centre"]]
-        )
+        logfile_correction_field_frame = -np.array([row["x_centre"], row["y_centre"]])
         logfile_correction_iview_frame = _transformation.rotate_point(
             logfile_correction_field_frame, -row["collimator"]
         )

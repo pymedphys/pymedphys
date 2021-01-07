@@ -14,6 +14,7 @@
 
 
 import base64
+import functools
 import os
 import pathlib
 import subprocess
@@ -36,7 +37,6 @@ from pymedphys._streamlit.apps.metersetmap import (
     _mosaiq,
     _trf,
 )
-from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc
 
@@ -560,7 +560,8 @@ def main():
         """
     )
 
-    config = st_config.get_config()
+    demo_mode = st.sidebar.checkbox("Demo Mode")
+    config = _config.get_config(demo_mode)
 
     st.sidebar.markdown(
         """
@@ -606,10 +607,10 @@ def main():
     )
     advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-    gamma_options = _config.get_gamma_options(advanced_mode)
+    gamma_options = _config.get_gamma_options(config, advanced_mode)
 
     data_option_functions = {
-        "monaco": _monaco.monaco_input_method,
+        "monaco": functools.partial(_monaco.monaco_input_method, config=config),
         "dicom": _dicom.dicom_input_method,
         "icom": _icom.icom_input_method,
         "trf": _trf.trf_input_method,
@@ -681,7 +682,11 @@ def main():
         default_site = reference_results.get("site", None)
 
     _, escan_directory = st_misc.get_site_and_directory(
-        "eScan Site", "escan", default=default_site, key="escan_export_site_picker"
+        config,
+        "eScan Site",
+        "escan",
+        default=default_site,
+        key="escan_export_site_picker",
     )
 
     escan_directory = pathlib.Path(os.path.expanduser(escan_directory)).resolve()

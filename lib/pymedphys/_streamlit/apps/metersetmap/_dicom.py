@@ -88,6 +88,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             return {}
 
         monaco_site = st_misc.site_picker(
+            config,
             "Monaco Export Location",
             default=monaco_site,
             key=f"{key_namespace}_monaco_site",

@@ -34,7 +34,7 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
-    bb_diameter, penumbra, advanced_mode = _set_parameters()
+    bb_diameter, penumbra, advanced_mode, demo_mode = _set_parameters()
 
     refresh_cache = st.button("Re-query databases")
     (
@@ -211,6 +211,7 @@ def main():
 
 def _set_parameters():
     st.sidebar.write("# Configuration")
+    demo_mode = st.sidebar.checkbox("Demo Mode", value=False)
     advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
 
     st.sidebar.write("# Parameters")
@@ -218,7 +219,7 @@ def _set_parameters():
     bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
-    return bb_diameter, penumbra, advanced_mode
+    return bb_diameter, penumbra, advanced_mode, demo_mode
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):

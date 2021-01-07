@@ -28,7 +28,7 @@ def read_monaco_patient_name(monaco_patient_directory):
 
 
 def monaco_input_method(
-    patient_id="", key_namespace="", advanced_mode_local=False, site=None, **_
+    config, patient_id="", key_namespace="", advanced_mode_local=False, site=None, **_
 ):
     (
         monaco_site,
@@ -37,7 +37,7 @@ def monaco_input_method(
         plan_directory,
         patient_directory,
     ) = st_monaco.monaco_patient_directory_picker(
-        patient_id, key_namespace, advanced_mode_local, site
+        config, patient_id, key_namespace, advanced_mode_local, site
     )
 
     patient_name = read_monaco_patient_name(str(patient_directory))

@@ -21,8 +21,25 @@ from pymedphys._streamlit.utilities import config as st_config
 
 
 @st.cache
-def get_dicom_export_locations():
-    site_directories = st_config.get_site_directories()
+def download_demo_config_file():
+    cwd = pathlib.Path.cwd()
+    st_config.download_and_extract_demo_data(cwd)
+
+    return cwd.joinpath("pymedphys-gui-demo")
+
+
+def get_config(demo_mode):
+    if demo_mode:
+        path = download_demo_config_file()
+    else:
+        path = None
+
+    return st_config.get_config(path)
+
+
+@st.cache
+def get_dicom_export_locations(config):
+    site_directories = st_config.get_site_directories(config)
     dicom_export_locations = {
         site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
         for site, directories in site_directories.items()
@@ -32,8 +49,7 @@ def get_dicom_export_locations():
 
 
 @st.cache
-def get_icom_live_stream_directories():
-    config = st_config.get_config()
+def get_icom_live_stream_directories(config):
     icom_live_stream_directories = {}
     for site in config["site"]:
         icom_live_base_directory = pathlib.Path(site["export-directories"]["icom_live"])
@@ -46,8 +62,7 @@ def get_icom_live_stream_directories():
 
 
 @st.cache
-def get_machine_centre_map():
-    config = st_config.get_config()
+def get_machine_centre_map(config):
     machine_centre_map = {}
     for site in config["site"]:
         for linac in site["linac"]:
@@ -57,8 +72,7 @@ def get_machine_centre_map():
 
 
 @st.cache
-def get_mosaiq_details():
-    config = st_config.get_config()
+def get_mosaiq_details(config):
     mosaiq_details = {
         site["name"]: {
             "timezone": site["mosaiq"]["timezone"],
@@ -71,49 +85,46 @@ def get_mosaiq_details():
 
 
 @st.cache
-def get_default_icom_directories():
-    config = st_config.get_config()
+def get_default_icom_directories(config):
     default_icom_directory = config["icom"]["patient_directories"]
 
     return default_icom_directory
 
 
 @st.cache
-def get_default_gamma_options():
-    config = st_config.get_config()
+def get_default_gamma_options(config):
     default_gamma_options = config["gamma"]
 
     return default_gamma_options
 
 
 @st.cache
-def get_logfile_root_dir():
-    config = st_config.get_config()
+def get_logfile_root_dir(config):
     logfile_root_dir = pathlib.Path(config["trf_logfiles"]["root_directory"])
 
     return logfile_root_dir
 
 
 @st.cache
-def get_indexed_backups_directory():
-    logfile_root_dir = get_logfile_root_dir()
+def get_indexed_backups_directory(config):
+    logfile_root_dir = get_logfile_root_dir(config)
     indexed_backups_directory = logfile_root_dir.joinpath("diagnostics/already_indexed")
 
     return indexed_backups_directory
 
 
 @st.cache
-def get_indexed_trf_directory():
-    logfile_root_dir = get_logfile_root_dir()
+def get_indexed_trf_directory(config):
+    logfile_root_dir = get_logfile_root_dir(config)
     indexed_trf_directory = logfile_root_dir.joinpath("indexed")
 
     return indexed_trf_directory
 
 
-def get_gamma_options(advanced_mode_local):
-    default_gamma_options = get_default_gamma_options()
+def get_gamma_options(config, advanced_mode):
+    default_gamma_options = get_default_gamma_options(config)
 
-    if advanced_mode_local:
+    if advanced_mode:
         st.sidebar.markdown(
             """
             # Gamma parameters

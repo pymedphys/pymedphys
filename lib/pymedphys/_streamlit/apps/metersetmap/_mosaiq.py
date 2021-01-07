@@ -35,7 +35,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
     mosaiq_details = _config.get_mosaiq_details()
 
     mosaiq_site = st_misc.site_picker(
-        "Mosaiq Site", default=site, key=f"{key_namespace}_mosaiq_site"
+        config, "Mosaiq Site", default=site, key=f"{key_namespace}_mosaiq_site"
     )
 
     server = mosaiq_details[mosaiq_site]["server"]
