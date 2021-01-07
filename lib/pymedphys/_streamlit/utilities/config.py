@@ -24,6 +24,7 @@ from typing_extensions import Literal
 from pymedphys import _config as pmp_config
 
 
+@st.cache
 def get_config(path=None):
     result = pmp_config.get_config(path=path)
 
