@@ -14,6 +14,7 @@
 
 import functools
 import pathlib
+import re
 import time
 
 from pymedphys._imports import PIL
@@ -74,18 +75,24 @@ def swap_app(app):
 def index(application_options):
     st.image(PIL.Image.open(TITLE_LOGO))
 
-    for category in APPLICATION_CATEGORIES:
-        st.write(
-            f"""
-                ## {category}
-            """
-        )
+    title_filter = st.text_input("Filter")
+    pattern = re.compile(f".*{title_filter}.*", re.IGNORECASE)
 
+    for category in APPLICATION_CATEGORIES:
         applications_in_this_category = [
-            item for item in application_options.items() if item[1].CATEGORY == category
+            item
+            for item in application_options.items()
+            if item[1].CATEGORY == category and pattern.match(item[1].TITLE)
         ]
 
-        if not applications_in_this_category:
+        if not title_filter or applications_in_this_category:
+            st.write(
+                f"""
+                    ## {category}
+                """
+            )
+
+        if not applications_in_this_category and not title_filter:
             st.write("> *No applications are currently in this category.*")
             continue
 
