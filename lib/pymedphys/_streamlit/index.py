@@ -12,27 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import pathlib
 import time
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit.apps import metersetmap as _metersetmap
-from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
+from pymedphys._streamlit import apps as _stable_apps
 from pymedphys._streamlit.utilities import session
 
-from pymedphys._experimental.streamlit.apps import anonymise_monaco as _anonymise_monaco
-from pymedphys._experimental.streamlit.apps import (
-    collimator_corrections as _collimator_corrections,
-)
-from pymedphys._experimental.streamlit.apps import dashboard as _dashboard
-from pymedphys._experimental.streamlit.apps import electrons as _electrons
-from pymedphys._experimental.streamlit.apps import icom as _icom
-from pymedphys._experimental.streamlit.apps import iviewdb as _iviewdb
-from pymedphys._experimental.streamlit.apps import transfer_check as _transfer_check
-from pymedphys._experimental.streamlit.apps import weekly_check as _weekly_check
-from pymedphys._experimental.streamlit.apps import wlutz as _wlutz
-from pymedphys._experimental.streamlit.apps import xlsxwriter as _xlsxwriter
+from pymedphys._experimental.streamlit import apps as _experimental_apps
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
@@ -84,22 +73,6 @@ APPLICATION_CATEGORIES = {
 }
 
 
-APPLICATION_OPTIONS = {
-    "metersetmap": _metersetmap,
-    "pseudonymise": _pseudonymise,
-    "dashboard": _dashboard,
-    "electrons": _electrons,
-    "anonymise-monaco": _anonymise_monaco,
-    "wlutz": _wlutz,
-    "iviewdb": _iviewdb,
-    "icom": _icom,
-    "xlsxwriter": _xlsxwriter,
-    "collimator-corrections": _collimator_corrections,
-    "data-transfer": _transfer_check,
-    "weekly-check": _weekly_check,
-}
-
-
 def get_url_app():
     try:
         return st.experimental_get_query_params()["app"][0]
@@ -119,7 +92,7 @@ def swap_app(app):
     st.experimental_rerun()
 
 
-def index():
+def index(application_options):
     st.write(
         """
         # Index of applications available
@@ -141,7 +114,7 @@ def index():
 
         applications_in_this_category = [
             item
-            for item in APPLICATION_OPTIONS.items()
+            for item in application_options.items()
             if item[1].CATEGORY == category_key
         ]
 
@@ -155,27 +128,44 @@ def index():
         st.write("---")
 
 
+def _get_apps_from_module(module):
+    apps = {
+        item.replace("_", "-"): getattr(module, item)
+        for item in dir(module)
+        if not item.startswith("_")
+    }
+
+    return apps
+
+
 def main():
     st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
     session_state = session.session_state(app=get_url_app())
 
+    stable_apps = _get_apps_from_module(_stable_apps)
+    experimental_apps = _get_apps_from_module(_experimental_apps)
+
+    application_options = {**stable_apps, **experimental_apps}
+
     if (
         session_state.app != "index"
-        and not session_state.app in APPLICATION_OPTIONS.keys()
+        and not session_state.app in application_options.keys()
     ):
         swap_app("index")
 
     if session_state.app != "index":
-        st.title(APPLICATION_OPTIONS[session_state.app].TITLE)
+        st.title(application_options[session_state.app].TITLE)
         if st.sidebar.button("Return to Index"):
             swap_app("index")
 
         st.sidebar.write("---")
 
     if session_state.app == "index":
-        application_function = index
+        application_function = functools.partial(
+            index, application_options=application_options
+        )
     else:
-        application_function = APPLICATION_OPTIONS[session_state.app].main
+        application_function = application_options[session_state.app].main
 
     application_function()
 
