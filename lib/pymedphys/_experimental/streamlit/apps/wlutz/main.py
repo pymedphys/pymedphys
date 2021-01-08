@@ -219,7 +219,13 @@ def main():
 
 def _set_parameters():
     st.sidebar.write("# Configuration")
-    demo_mode = st.sidebar.checkbox("Demo Mode", value=False)
+
+    try:
+        _config.get_config(False)
+        demo_mode = st.sidebar.checkbox("Demo Mode", value=False)
+    except FileNotFoundError:
+        demo_mode = True
+
     advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
 
     st.sidebar.write("# Parameters")
