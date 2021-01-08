@@ -29,16 +29,10 @@ from pymedphys._imports import streamlit as st
 from pymedphys._imports import streamlit_ace, timeago, tomlkit
 
 import pymedphys
-from pymedphys._streamlit.apps.metersetmap import (
-    _config,
-    _dicom,
-    _icom,
-    _monaco,
-    _mosaiq,
-    _trf,
-)
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc
+
+from . import _config, _dicom, _icom, _monaco, _mosaiq, _trf
 
 DATA_OPTION_LABELS = {
     "monaco": "Monaco tel.1 filepath",
