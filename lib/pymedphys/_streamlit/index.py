@@ -16,6 +16,7 @@ import functools
 import pathlib
 import time
 
+from pymedphys._imports import PIL
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import apps as _stable_apps
@@ -37,7 +38,7 @@ from pymedphys._experimental.streamlit.apps import (
 )
 
 HERE = pathlib.Path(__file__).parent.resolve()
-FAVICON = str(HERE.joinpath("pymedphys.png"))
+FAVICON = str(HERE.joinpath("pymedphys-favicon.png"))
 TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
 
 # Utilise the PyPI development status classification scheme
@@ -71,7 +72,7 @@ def swap_app(app):
 
 
 def index(application_options):
-    st.title("PyMedPhys Applications")
+    st.image(PIL.Image.open(TITLE_LOGO))
 
     for category in APPLICATION_CATEGORIES:
         st.write(
