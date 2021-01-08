@@ -76,9 +76,12 @@ def calculations_ui(
         )
 
         plot_when_data_missing = st.checkbox("Plot when data missing", value=True)
+
+        fill_errors_with_nan = st.checkbox("Fill errors with nan", value=True)
     else:
         deviation_plot_threshold = 0.5
         plot_when_data_missing = False
+        fill_errors_with_nan = True
 
     if st.button("Calculate"):
         run_calculation(
@@ -92,6 +95,7 @@ def calculations_ui(
             plot_when_data_missing,
             advanced_mode,
             plot_x_axis,
+            fill_errors_with_nan,
         )
 
         st.write("### Overview of calculations")
@@ -110,6 +114,7 @@ def run_calculation(
     plot_when_data_missing,
     advanced_mode,
     plot_x_axis,
+    fill_errors_with_nan,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -155,6 +160,7 @@ def run_calculation(
                 edge_lengths,
                 icom_field_rotation,
                 penumbra,
+                fill_errors_with_nan,
             )
 
         columns_to_check_for_deviation = [
@@ -376,6 +382,7 @@ def get_results_for_image(
     edge_lengths,
     icom_field_rotation,
     penumbra,
+    fill_errors_with_nan,
 ):
 
     results_data = []
@@ -389,6 +396,7 @@ def get_results_for_image(
             edge_lengths,
             penumbra,
             icom_field_rotation,
+            fill_errors_with_nan,
         )
         results_data.append(
             {
@@ -451,10 +459,22 @@ def _get_full_image_path(database_directory, relative_image_path):
 
 @st.cache(show_spinner=False)
 def _calculate_wlutz(
-    image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+    image_path,
+    algorithm,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+    icom_field_rotation,
+    fill_errors_with_nan,
 ):
     field_centre, bb_centre = _wlutz.calculate(
-        image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+        image_path,
+        algorithm,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+        icom_field_rotation,
+        fill_errors_with_nan=fill_errors_with_nan,
     )
 
     return field_centre, bb_centre
