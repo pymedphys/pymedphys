@@ -37,7 +37,7 @@ def load_dicom_file_if_plan(filepath):
 
 
 def dicom_input_method(  # pylint: disable = too-many-return-statements
-    key_namespace="", patient_id="", site=None, **_
+    config, key_namespace="", patient_id="", site=None, **_
 ):
     monaco_site = site
 
@@ -77,7 +77,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
     if import_method == MONACO_SEARCH:
         try:
-            dicom_export_locations = _config.get_dicom_export_locations()
+            dicom_export_locations = _config.get_dicom_export_locations(config)
         except KeyError:
             st.write(
                 _exceptions.ConfigMissing(

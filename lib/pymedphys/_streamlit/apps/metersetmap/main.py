@@ -94,13 +94,15 @@ def trf_status(linac_id, backup_directory):
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-def show_status_indicators():
+def show_status_indicators(config):
     if st.sidebar.button("Check status of iCOM and backups"):
         try:
-            linac_icom_live_stream_directories = (
-                _config.get_icom_live_stream_directories()
+            linac_icom_live_stream_directories = _config.get_icom_live_stream_directories(
+                config
             )
-            linac_indexed_backups_directory = _config.get_indexed_backups_directory()
+            linac_indexed_backups_directory = _config.get_indexed_backups_directory(
+                config
+            )
         except KeyError:
             st.sidebar.write(
                 _exceptions.ConfigMissing(
@@ -608,7 +610,7 @@ def main():
         """
     )
 
-    show_status_indicators()
+    show_status_indicators(config)
 
     st.sidebar.markdown(
         """
@@ -622,9 +624,9 @@ def main():
     gamma_options = _config.get_gamma_options(config, advanced_mode)
 
     data_option_functions = {
-        "monaco": functools.partial(_monaco.monaco_input_method, config=config),
+        "monaco": _monaco.monaco_input_method,
         "dicom": _dicom.dicom_input_method,
-        "icom": functools.partial(_icom.icom_input_method, config=config),
+        "icom": _icom.icom_input_method,
         "trf": _trf.trf_input_method,
         "mosaiq": _mosaiq.mosaiq_input_method,
     }
@@ -638,7 +640,9 @@ def main():
 
     data_method_map = {}
     for method in available_data_methods:
-        data_method_map[DATA_OPTION_LABELS[method]] = data_option_functions[method]
+        data_method_map[DATA_OPTION_LABELS[method]] = functools.partial(
+            data_option_functions[method], config=config
+        )
 
     st.write(
         """
