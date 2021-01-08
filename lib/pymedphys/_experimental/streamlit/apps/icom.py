@@ -20,7 +20,7 @@ from pymedphys._streamlit.utilities import misc
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-CATEGORY = "experimental"
+CATEGORY = "Planning"
 TITLE = "iCom Logs Explorer"
 
 

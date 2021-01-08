@@ -25,7 +25,7 @@ from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     show_incomplete_weekly_checks,
 )
 
-CATEGORY = "experimental"
+CATEGORY = "Pre-Alpha"
 TITLE = "Weekly Chart Review"
 
 

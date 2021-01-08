@@ -1,4 +1,4 @@
 from .main import main
 
-CATEGORY = "experimental"
+CATEGORY = "Alpha"
 TITLE = "Winston-Lutz Arc"

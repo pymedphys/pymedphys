@@ -21,7 +21,7 @@ from pymedphys._imports import streamlit as st
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
-CATEGORY = "experimental"
+CATEGORY = "Alpha"
 TITLE = "Clinical Dashboard"
 
 

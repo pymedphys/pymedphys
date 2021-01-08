@@ -24,7 +24,7 @@ from pymedphys._streamlit.utilities import misc
 
 from pymedphys._experimental.streamlit.utilities import dbf
 
-CATEGORY = "experimental"
+CATEGORY = "Planning"
 TITLE = "iView Database Explorer"
 
 

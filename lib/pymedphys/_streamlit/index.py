@@ -40,50 +40,15 @@ HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
 TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
 
-APPLICATION_CATEGORIES = {
-    "mature": {
-        "title": "Mature",
-        "description": """
-            These are mature applications. They are in wide use, and
-            they have a high level of automated test coverage.
-        """,
-    },
-    "maturing": {
-        "title": "Maturing",
-        "description": """
-            These are relatively new applications. They potentially
-            only have limited use within the community, but the still
-            adhere to high quality standards with a level of automated
-            test coverage that can be expected for a mature application.
-        """,
-    },
-    "raw": {
-        "title": "Raw",
-        "description": """
-            These are relatively new applications. They possibly only
-            have minimal use within the community, and they have at
-            least some automated test coverage. It is likely that these
-            applications and their respective configurations will still
-            be changing as time goes on.
-        """,
-    },
-    "beta": {
-        "title": "Beta",
-        "description": """
-            These applications may not be in use at all within the
-            community. They potentially may only have minimal automated
-            test coverage.
-        """,
-    },
-    "experimental": {
-        "title": "Experimental",
-        "description": """
-            These applications may not be in use at all within the
-            community and they may not have any automated test coverage.
-            **They may not even work**.
-        """,
-    },
-}
+# Utilise the PyPI development status classification scheme
+APPLICATION_CATEGORIES = [
+    "Mature",
+    "Production/Stable",
+    "Beta",
+    "Alpha",
+    "Pre-Alpha",
+    "Planning",
+]
 
 
 def get_url_app():
@@ -106,39 +71,34 @@ def swap_app(app):
 
 
 def index(application_options):
-    st.write(
-        """
-        # Index of applications available
+    st.title("PyMedPhys Applications")
 
-        The following applications are organised by category where each
-        category is representative of the maturity of the tool.
-        """
-    )
-
-    for category_key, category in APPLICATION_CATEGORIES.items():
+    for category in APPLICATION_CATEGORIES:
         st.write(
             f"""
-                ## {category["title"]}
-                {category["description"]}
+                ## {category}
             """
         )
 
-        st.write("---")
-
         applications_in_this_category = [
-            item
-            for item in application_options.items()
-            if item[1].CATEGORY == category_key
+            item for item in application_options.items() if item[1].CATEGORY == category
         ]
 
         if not applications_in_this_category:
             st.write("> *No applications are currently in this category.*")
+            continue
+
+        applications_in_this_category = sorted(
+            applications_in_this_category, key=_application_sorting_key
+        )
 
         for app_key, application in applications_in_this_category:
             if st.button(application.TITLE):
                 swap_app(app_key)
 
-        st.write("---")
+
+def _application_sorting_key(application):
+    return application[1].TITLE.lower()
 
 
 def _get_apps_from_module(module):

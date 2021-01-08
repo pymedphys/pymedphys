@@ -22,7 +22,7 @@ from pymedphys._streamlit.utilities import config as _config
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 from pymedphys._experimental.wlutz import transformation as _transformation
 
-CATEGORY = "experimental"
+CATEGORY = "Planning"
 TITLE = "WLutz Collimator Processing"
 
 OPPOSING_COLLIMATOR_TOLERANCE = 5  # degrees

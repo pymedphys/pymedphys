@@ -29,7 +29,7 @@ from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 
-CATEGORY = "raw"
+CATEGORY = "Beta"
 TITLE = "DICOM Pseudonymisation"
 
 
@@ -66,9 +66,9 @@ def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
         name for the pseudonymised file, which can be used
         for addition to a zip
     """
-    pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch[
+    pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch[  # type: ignore
         "UI"
-    ](  # type: ignore
+    ](
         ds_input.SOPInstanceUID
     )
 

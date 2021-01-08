@@ -111,7 +111,7 @@ six==1.15.0; python_version >= "3.6" and python_full_version < "3.0.0" and sys_p
 smmap==3.0.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
 sortedcontainers==2.3.0; python_version >= "3.6"
 streamlit-ace==0.0.4; python_version >= "3.6"
-streamlit==0.74.0; python_version >= "3.6"
+streamlit==0.74.1; python_version >= "3.6"
 termcolor==1.1.0
 terminado==0.9.1; python_version >= "3.6"
 testpath==0.4.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"

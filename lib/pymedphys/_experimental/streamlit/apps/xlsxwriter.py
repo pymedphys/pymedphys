@@ -28,7 +28,7 @@ from pymedphys._streamlit.utilities import config as _config
 
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 
-CATEGORY = "experimental"
+CATEGORY = "Planning"
 TITLE = "Writing Excel Demo"
 
 HOME = pathlib.Path.home()

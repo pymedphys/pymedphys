@@ -14,7 +14,7 @@ from pymedphys._experimental.chartchecks.tolerance_constants import (
     TOLERANCE_TYPES,
 )
 
-CATEGORY = "experimental"
+CATEGORY = "Pre-Alpha"
 TITLE = "Pre-Treatment Data Transfer Check"
 
 

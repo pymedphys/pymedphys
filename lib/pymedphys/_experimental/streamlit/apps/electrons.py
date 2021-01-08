@@ -24,7 +24,7 @@ import pymedphys.electronfactors as electronfactors
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
 
-CATEGORY = "experimental"
+CATEGORY = "Alpha"
 TITLE = "Electron Insert Factor Modelling"
 
 

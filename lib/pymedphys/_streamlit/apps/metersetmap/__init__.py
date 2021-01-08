@@ -1,4 +1,4 @@
 from .main import main
 
-CATEGORY = "raw"
+CATEGORY = "Beta"
 TITLE = "MetersetMap Comparison"
