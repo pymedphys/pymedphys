@@ -1,6 +1,7 @@
 from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import connect
+from pymedphys._streamlit import categories
 
 from pymedphys._experimental.chartchecks.compare import color_results, compare_to_mosaiq
 from pymedphys._experimental.chartchecks.dvh_helpers import plot_dvh
@@ -14,7 +15,7 @@ from pymedphys._experimental.chartchecks.tolerance_constants import (
     TOLERANCE_TYPES,
 )
 
-CATEGORY = "experimental"
+CATEGORY = categories.PRE_ALPHA
 TITLE = "Pre-Treatment Data Transfer Check"
 
 
@@ -22,7 +23,6 @@ def main():
     # currdir = os.getcwd()
     server = "PRDMOSAIQIWVV01.utmsa.local"
 
-    st.title("Data Transfer Check")
     st.sidebar.header("Instructions:")
     st.sidebar.markdown(
         """

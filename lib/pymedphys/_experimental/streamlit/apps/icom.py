@@ -15,17 +15,16 @@
 
 from pymedphys._imports import streamlit as st
 
+from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config, misc
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-CATEGORY = "experimental"
+CATEGORY = categories.PLANNING
 TITLE = "iCom Logs Explorer"
 
 
 def main():
-    st.title("iCom Logs Explorer")
-
     site_directories = config.get_site_directories()
     chosen_site = misc.site_picker("Site")
     icom_directory = site_directories[chosen_site]["icom"]

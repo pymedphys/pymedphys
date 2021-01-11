@@ -19,10 +19,12 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
+from pymedphys._streamlit import categories
+
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 from pymedphys._experimental.wlutz import transformation as _transformation
 
-CATEGORY = "experimental"
+CATEGORY = categories.PLANNING
 TITLE = "WLutz Collimator Processing"
 
 OPPOSING_COLLIMATOR_TOLERANCE = 5  # degrees

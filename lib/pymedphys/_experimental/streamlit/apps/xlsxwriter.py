@@ -22,9 +22,11 @@ from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
 
+from pymedphys._streamlit import categories
+
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 
-CATEGORY = "experimental"
+CATEGORY = categories.PLANNING
 TITLE = "Writing Excel Demo"
 
 HOME = pathlib.Path.home()
@@ -35,8 +37,6 @@ FIGURE_CELL_HEIGHT = 15
 
 
 def main():
-    st.title("Excel file creation sandbox")
-
     if st.button("Make demo.xlsx"):
         st.write(f"`{PYMEDPHYS_LIBRARY_ROOT}`")
 
