@@ -25,8 +25,6 @@ TITLE = "iCom Logs Explorer"
 
 
 def main():
-    st.title("iCom Logs Explorer")
-
     site_directories = config.get_site_directories()
     chosen_site = misc.site_picker("Site")
     icom_directory = site_directories[chosen_site]["icom"]

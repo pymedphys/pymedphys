@@ -34,8 +34,6 @@ TITLE = "Weekly Chart Review"
 def main():
     # currdir = os.getcwd()
 
-    st.title("Weekly Check")
-
     incomplete_qcls = show_incomplete_weekly_checks()
     incomplete_qcls = incomplete_qcls.drop_duplicates(subset=["patient_id"])
     incomplete_qcls = incomplete_qcls.set_index("patient_id")

@@ -46,8 +46,6 @@ def get_files_for_extension(directory: pathlib.Path, extension: str):
 
 
 def main():
-    st.title("iView Database Explorer")
-
     st.write(
         """
             This tool was created to for my (Simon) own exploration

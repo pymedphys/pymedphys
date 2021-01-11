@@ -23,7 +23,6 @@ def main():
     # currdir = os.getcwd()
     server = "PRDMOSAIQIWVV01.utmsa.local"
 
-    st.title("Data Transfer Check")
     st.sidebar.header("Instructions:")
     st.sidebar.markdown(
         """
