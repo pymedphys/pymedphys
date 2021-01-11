@@ -17,6 +17,8 @@ from datetime import date, timedelta
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+from pymedphys._streamlit import categories
+
 from pymedphys._experimental.chartchecks.compare import weekly_check_color_results
 from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     compare_all_incompletes,
@@ -25,14 +27,12 @@ from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     show_incomplete_weekly_checks,
 )
 
-CATEGORY = "Pre-Alpha"
+CATEGORY = categories.PRE_ALPHA
 TITLE = "Weekly Chart Review"
 
 
 def main():
     # currdir = os.getcwd()
-
-    st.title("Weekly Check")
 
     incomplete_qcls = show_incomplete_weekly_checks()
     incomplete_qcls = incomplete_qcls.drop_duplicates(subset=["patient_id"])

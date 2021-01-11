@@ -24,11 +24,12 @@ from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
 
+from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
 
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 
-CATEGORY = "Planning"
+CATEGORY = categories.PLANNING
 TITLE = "Writing Excel Demo"
 
 HOME = pathlib.Path.home()

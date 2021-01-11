@@ -20,12 +20,13 @@ import tempfile
 
 from pymedphys._imports import streamlit as st
 
+from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
 from pymedphys._streamlit.utilities import rerun as st_rerun
 
-CATEGORY = "Pre-Alpha"
+CATEGORY = categories.PRE_ALPHA
 TITLE = "Anonymising Monaco Backend Files"
 
 HERE = pathlib.Path(__file__).parent.resolve()

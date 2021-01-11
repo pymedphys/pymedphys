@@ -27,9 +27,10 @@ from pymedphys._imports import streamlit as st
 from pymedphys._dicom.anonymise import anonymise_dataset
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
+from pymedphys._streamlit import categories
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 
-CATEGORY = "Beta"
+CATEGORY = categories.BETA
 TITLE = "DICOM Pseudonymisation"
 
 

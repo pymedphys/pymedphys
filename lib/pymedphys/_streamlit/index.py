@@ -38,19 +38,11 @@ from pymedphys._experimental.streamlit.apps import (
     xlsxwriter,
 )
 
+from . import categories
+
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys-favicon.png"))
 TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
-
-# Utilise the PyPI development status classification scheme
-APPLICATION_CATEGORIES = [
-    "Mature",
-    "Production/Stable",
-    "Beta",
-    "Alpha",
-    "Pre-Alpha",
-    "Planning",
-]
 
 
 def get_url_app():
@@ -78,7 +70,7 @@ def index(application_options):
     title_filter = st.text_input("Filter")
     pattern = re.compile(f".*{title_filter}.*", re.IGNORECASE)
 
-    for category in APPLICATION_CATEGORIES:
+    for category in categories.APPLICATION_CATEGORIES:
         applications_in_this_category = [
             item
             for item in application_options.items()

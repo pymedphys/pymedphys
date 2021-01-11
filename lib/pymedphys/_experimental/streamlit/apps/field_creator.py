@@ -15,7 +15,9 @@
 
 from pymedphys._imports import streamlit as st
 
-CATEGORY = "Planning"
+from pymedphys._streamlit import categories
+
+CATEGORY = categories.PLANNING
 TITLE = "DICOM QA Field Creator"
 
 
