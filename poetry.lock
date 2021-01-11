@@ -2395,7 +2395,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "streamlit"
-version = "0.73.1"
+version = "0.74.1"
 description = "The fastest way to build data apps in Python"
 category = "main"
 optional = true
@@ -2422,7 +2422,18 @@ toml = "*"
 tornado = ">=5.0"
 tzlocal = "*"
 validators = "*"
-watchdog = "*"
+watchdog = {version = "*", markers = "platform_system != \"Darwin\""}
+
+[[package]]
+name = "streamlit-ace"
+version = "0.0.4"
+description = "React Ace component for Streamlit"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.dependencies]
+streamlit = ">=0.63"
 
 [[package]]
 name = "tensorboard"
@@ -2786,19 +2797,19 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex"]
 doctests = ["pylinac", "tensorflow", "sphinx-book-theme"]
 ml = ["tensorflow"]
 propagate = ["black", "tomlkit"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil"]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "pylinac", "scikit-learn"]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "pylinac", "scikit-learn"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "263e8660b5d066f0e4187f408c997f6f05de357d800490269558242453e46f77"
+content-hash = "3227d7012c76f046273937fcf3396c5683135a0311c1f78644fa543f20917cd4"
 
 [metadata.files]
 absl-py = [
@@ -4268,8 +4279,14 @@ stevedore = [
     {file = "stevedore-3.3.0.tar.gz", hash = "sha256:3a5bbd0652bf552748871eaa73a4a8dc2899786bc497a2aa1fcb4dcdb0debeee"},
 ]
 streamlit = [
-    {file = "streamlit-0.73.1-py2.py3-none-any.whl", hash = "sha256:dc9ad12ff6b14263eaad7ea784375024d9f8a56ee19a8cfcfbf78382e1322f05"},
-    {file = "streamlit-0.73.1.tar.gz", hash = "sha256:6db734ca36c2c7beb3148c9894b1116837cd9f6d587446c56a3f4cde0453b726"},
+    {file = "streamlit-0.74.1-py2.py3-none-any.whl", hash = "sha256:a0721e2f736ab0cb255cfd721b72ddebaf4224b8c6a3369bb4231f45599cbe7c"},
+    {file = "streamlit-0.74.1.tar.gz", hash = "sha256:3fabbda5163c9a3a6f66d88eb4dd0cab4ffa634d25d00927680039839fd0ac56"},
+]
+streamlit-ace = [
+    {file = "streamlit_ace-0.0.4-1-py3-none-any.whl", hash = "sha256:471acbeee755aa16d1b1b031eb413e6e2d8ac2208bf69bc9ff748660ffe2fbee"},
+    {file = "streamlit_ace-0.0.4-2-py3-none-any.whl", hash = "sha256:a94ee7fb5de58bcda6c0176aa123c3fd3de450a7f022460fed1772099a38f60b"},
+    {file = "streamlit_ace-0.0.4-3-py3-none-any.whl", hash = "sha256:c46f066c21441b487b464d58d1abd7cabdaf8757ffb9e97499f99524ac2dcbcd"},
+    {file = "streamlit_ace-0.0.4-py3-none-any.whl", hash = "sha256:848d9053a51539b7c7351bbd636c3bcb43e1cfb81de693fa7fd2aa036ebae732"},
 ]
 tensorboard = [
     {file = "tensorboard-2.4.0-py3-none-any.whl", hash = "sha256:cde0c663a85609441cb4d624e7255fd8e2b6b1d679645095aac8a234a2812738"},
