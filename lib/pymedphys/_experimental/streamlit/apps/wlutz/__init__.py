@@ -1,4 +1,6 @@
+from pymedphys._streamlit import categories
+
 from .main import main
 
-CATEGORY = "experimental"
+CATEGORY = categories.ALPHA
 TITLE = "Winston-Lutz Arc"

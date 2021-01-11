@@ -21,10 +21,11 @@ from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
 import pymedphys.electronfactors as electronfactors
+from pymedphys._streamlit import categories
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
 
-CATEGORY = "experimental"
+CATEGORY = categories.ALPHA
 TITLE = "Electron Insert Factor Modelling"
 
 
@@ -110,12 +111,6 @@ def plot_model(width_data, length_data, factor_data):
 
 
 def main():
-    st.write(
-        """
-        # Electron Insert Factors
-        """
-    )
-
     patient_id = st.text_input("Patient ID")
 
     if patient_id == "":

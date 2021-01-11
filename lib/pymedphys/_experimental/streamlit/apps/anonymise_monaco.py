@@ -20,11 +20,12 @@ import tempfile
 
 from pymedphys._imports import streamlit as st
 
+from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
 from pymedphys._streamlit.utilities import rerun as st_rerun
 
-CATEGORY = "experimental"
+CATEGORY = categories.PRE_ALPHA
 TITLE = "Anonymising Monaco Backend Files"
 
 HERE = pathlib.Path(__file__).parent.resolve()
@@ -32,8 +33,6 @@ ANON_DEMOGRAPHIC_FILE = HERE.joinpath("data", "demographic.000000")
 
 
 def main():
-    st.write("# Anonymise Monaco Files")
-
     st.write("## Select Patient")
 
     (
