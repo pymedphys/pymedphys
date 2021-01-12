@@ -26,8 +26,8 @@ from pymedphys._experimental.wlutz import transformation as _transformation
 CATEGORY = categories.PLANNING
 TITLE = "WLutz Collimator Processing"
 
-OPPOSING_COLLIMATOR_TOLERANCE = 5  # degrees
-AGREEING_GANTRY_TOLERANCE = 10  # degrees
+DEFAULT_OPPOSING_COLLIMATOR_TOLERANCE = 5  # degrees
+DEFAULT_AGREEING_GANTRY_TOLERANCE = 10  # degrees
 
 
 def main():
@@ -74,44 +74,9 @@ def main():
 
     gantry = np.array(dataframe_by_treatment["gantry"])
 
-    gantry_mod = np.mod(gantry[:, None] - gantry[None, :], 360)
-    coll_mod = np.mod(collimator[:, None] - collimator[None, :] + 180, 360)
-
-    assert gantry_mod.shape == (
-        len(dataframe_by_treatment),
-        len(dataframe_by_treatment),
-    )
-
-    st.write(gantry_mod)
-    st.write(coll_mod)
-
-    coll_combined = np.concatenate([coll_mod, coll_mod.T, coll_mod, coll_mod.T], axis=1)
-    gantry_combined = np.concatenate(
-        [gantry_mod, gantry_mod, gantry_mod.T, gantry_mod.T], axis=1
-    )
-    combined = coll_combined + gantry_combined
-
-    index_of_min = np.argmin(combined, axis=1)
-    min_coll_values = np.take_along_axis(coll_combined, index_of_min[:, None], axis=1)
-    min_gantry_values = np.take_along_axis(
-        gantry_combined, index_of_min[:, None], axis=1
-    )
-
-    out_of_tolerance = np.logical_or(
-        min_coll_values > OPPOSING_COLLIMATOR_TOLERANCE,
-        min_gantry_values > AGREEING_GANTRY_TOLERANCE,
-    )
-
-    st.write("## Out of tolerance")
-
-    st.write(out_of_tolerance)
-
-    st.write(min_coll_values)
-    st.write(min_gantry_values)
-
-    min_location_by_dataframe_row = np.mod(index_of_min, len(dataframe_by_treatment))
-
-    st.write(min_location_by_dataframe_row)
+    # --
+    opposing_indices = _find_index_of_opposing_images(gantry, collimator)
+    # --
 
     fig, ax = plt.subplots()
     ax.plot(
@@ -163,14 +128,14 @@ def main():
 
     corrections = []
     for i, row in dataframe_by_treatment.iterrows():
-        if not out_of_tolerance[i]:
+        opposing_index = opposing_indices[i]
+
+        if not np.isnan(opposing_index):
             diff_point = (
                 row["diff_x_logfile_corrected"],
                 row["diff_y_logfile_corrected"],
             )
             collimator = row["collimator"]
-            opposing_index = min_location_by_dataframe_row[i]
-
             opposing_row = dataframe_by_treatment.iloc[opposing_index]
             opposing_diff_point = (
                 opposing_row["diff_x_logfile_corrected"],
@@ -336,3 +301,35 @@ def _filter_by(dataframe, column, value):
     filtered = dataframe.loc[dataframe[column] == value]
 
     return filtered
+
+
+def _find_index_of_opposing_images(
+    gantry,
+    collimator,
+    opposing_collimator_tolerance=DEFAULT_OPPOSING_COLLIMATOR_TOLERANCE,
+    agreeing_gantry_tolerance=DEFAULT_AGREEING_GANTRY_TOLERANCE,
+):
+    gantry_mod = np.mod(gantry[:, None] - gantry[None, :], 360)
+    coll_mod = np.mod(collimator[:, None] - collimator[None, :] + 180, 360)
+
+    coll_combined = np.concatenate([coll_mod, coll_mod.T, coll_mod, coll_mod.T], axis=1)
+    gantry_combined = np.concatenate(
+        [gantry_mod, gantry_mod, gantry_mod.T, gantry_mod.T], axis=1
+    )
+    combined = coll_combined + gantry_combined
+
+    index_of_min = np.argmin(combined, axis=1)
+    min_coll_values = np.take_along_axis(coll_combined, index_of_min[:, None], axis=1)
+    min_gantry_values = np.take_along_axis(
+        gantry_combined, index_of_min[:, None], axis=1
+    )
+
+    out_of_tolerance = np.logical_or(
+        min_coll_values > opposing_collimator_tolerance,
+        min_gantry_values > agreeing_gantry_tolerance,
+    )
+
+    opposing_indices = np.mod(index_of_min, len(gantry))
+    opposing_indices[out_of_tolerance] = np.nan
+
+    return opposing_indices
