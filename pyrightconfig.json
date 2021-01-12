@@ -1,0 +1,8 @@
+{
+    "include": [
+        "lib/pymedphys"
+    ],
+    "reportMissingImports": true,
+    "reportGeneralTypeIssues": false,
+    "reportUnboundVariable": false
+}
