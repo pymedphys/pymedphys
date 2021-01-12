@@ -66,6 +66,8 @@ jobs:
         exclude:
           - os: 'ubuntu'
             task: 'binary'
+          - os: 'ubuntu'
+            task: 'pyright'
 
           - os: 'windows'
             task: 'stackoverflow'
@@ -75,8 +77,6 @@ jobs:
             task: 'cypress'
           - os: 'windows'
             task: 'slow'
-          - os: 'windows'
-            task: 'pyright'
 
           - os: 'macos'
             task: 'stackoverflow'
@@ -270,6 +270,13 @@ jobs:
       run: |
         poetry install -E user -E doctests
 
+
+## Install remaining packages for pyright
+
+    - name: Install a propagate environment
+      if: matrix.task == 'pyright'
+      run: |
+        poetry install -E propagate
 
 ## Update all packages and then install with tests environment
 
