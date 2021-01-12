@@ -24,7 +24,16 @@ from pymedphys._imports import streamlit_ace, tomlkit
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-from . import _angles, _calculation, _config, _filtering, _frames, _sync, _utilities
+from . import (
+    _angles,
+    _calculation,
+    _config,
+    _excel,
+    _filtering,
+    _frames,
+    _sync,
+    _utilities,
+)
 
 
 def main():
@@ -216,12 +225,51 @@ def main():
         advanced_mode,
     )
 
-    st.write("### Overview of calculations")
+    _presentation_of_results(wlutz_directory_by_date)
+
+
+def _presentation_of_results(wlutz_directory_by_date):
+    st.write("## Overview of Results")
 
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
 
+    dataframe = calculated_results.sort_values("seconds_since_midnight")
+    statistics = _overview_statistics(dataframe)
+
+    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
+    _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
+
     st.write("`TODO: Provide an appropriate overview.`")
+
+
+def _overview_statistics(dataframe):
+    dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
+
+    statistics = []
+    energies = dataframe_by_algorithm["energy"].unique()
+    energies = sorted(energies, key=_utilities.natural_sort_key)
+
+    column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
+    for energy in energies:
+        dataframe_by_energy = _utilities.filter_by(
+            dataframe_by_algorithm, "energy", energy
+        )
+
+        for column in ["diff_y", "diff_x"]:
+            statistics.append(
+                {
+                    "energy": energy,
+                    "direction": column_direction_map[column],
+                    "min": np.nanmin(dataframe_by_energy[column]),
+                    "max": np.nanmax(dataframe_by_energy[column]),
+                    "mean": np.nanmean(dataframe_by_energy[column]),
+                    "median": np.nanmedian(dataframe_by_energy[column]),
+                }
+            )
+
+    statistics = pd.DataFrame.from_dict(statistics).round(2)
+    return statistics
 
 
 def _set_parameters():

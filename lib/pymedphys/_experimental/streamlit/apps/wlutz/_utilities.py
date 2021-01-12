@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pathlib
+import re
 
 from pymedphys._imports import numpy as np
 
@@ -20,6 +21,17 @@ from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
 from . import _dbf
+
+
+def filter_by(dataframe, column, value):
+    filtered = dataframe.loc[dataframe[column] == value]
+
+    return filtered
+
+
+# https://stackoverflow.com/a/16090640/3912576
+def natural_sort_key(s, _nsre=re.compile("([0-9]+)")):
+    return [int(text) if text.isdigit() else text.lower() for text in _nsre.split(s)]
 
 
 def filepath_to_filename(path):
