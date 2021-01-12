@@ -18,7 +18,7 @@ import string
 
 def get_detached_file_descriptor(filepath):
     try:
-        import win32file  # pylint: disable = import-error
+        import win32file  # pylint: disable = import-error  # type: ignore
 
         has_win32file = True
     except ImportError:
