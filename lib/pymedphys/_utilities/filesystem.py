@@ -15,17 +15,19 @@
 import contextlib
 import string
 
+# pylint: disable = import-error
+
 
 def get_detached_file_descriptor(filepath):
     try:
-        import win32file  # pylint: disable = import-error  # type: ignore
+        import win32file  # type: ignore
 
         has_win32file = True
     except ImportError:
         has_win32file = False
 
     if has_win32file:
-        import msvcrt  # pylint: disable = import-error
+        import msvcrt  # type: ignore
         import os
 
         handle = win32file.CreateFile(
