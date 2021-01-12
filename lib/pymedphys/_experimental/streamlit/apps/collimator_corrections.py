@@ -131,6 +131,9 @@ def main():
         opposing_index = opposing_indices[i]
 
         if not np.isnan(opposing_index):
+            assert opposing_index == int(opposing_index)
+            opposing_index = int(opposing_index)
+
             diff_point = (
                 row["diff_x_logfile_corrected"],
                 row["diff_y_logfile_corrected"],
@@ -329,7 +332,13 @@ def _find_index_of_opposing_images(
         min_gantry_values > agreeing_gantry_tolerance,
     )
 
+    assert out_of_tolerance.shape[1] == 1
+    assert len(out_of_tolerance.shape) == 2
+
+    out_of_tolerance = out_of_tolerance[:, 0]
+
     opposing_indices = np.mod(index_of_min, len(gantry))
+    opposing_indices = opposing_indices.astype(float)
     opposing_indices[out_of_tolerance] = np.nan
 
     return opposing_indices
