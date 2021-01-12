@@ -57,6 +57,27 @@ def main():
     algorithm = "PyMedPhys"
     dataframe_by_algorithm = _filter_by(dataframe, "algorithm", algorithm)
 
+    (
+        adjusted_x_deviation,
+        adjusted_y_deviation,
+    ) = _determine_logfile_corrected_deviations(
+        dataframe_by_algorithm["x_centre"],
+        dataframe_by_algorithm["y_centre"],
+        dataframe_by_algorithm["collimator"],
+        dataframe_by_algorithm["diff_x"],
+        dataframe_by_algorithm["diff_y"],
+    )
+    dataframe_by_algorithm["diff_x_logfile_corrected"] = adjusted_x_deviation
+    dataframe_by_algorithm["diff_y_logfile_corrected"] = adjusted_y_deviation
+
+    collimator_correction = _estimate_collimator_rotation_correction(
+        dataframe_by_algorithm["treatment"],
+        dataframe_by_algorithm["gantry"],
+        dataframe_by_algorithm["collimator"],
+        dataframe_by_algorithm["diff_x"],
+        dataframe_by_algorithm["diff_y"],
+    )
+
     # st.write(dataframe)
 
     treatments = dataframe_by_algorithm["treatment"].unique()
@@ -69,9 +90,7 @@ def main():
     dataframe_by_treatment.reset_index(inplace=True)
     st.write(dataframe_by_treatment)
 
-    collimator = np.array(dataframe_by_treatment["collimator"])
-    gantry = np.array(dataframe_by_treatment["gantry"])
-    opposing_indices = _find_index_of_opposing_images(gantry, collimator)
+    gantry = dataframe_by_treatment["gantry"]
 
     fig, ax = plt.subplots()
     ax.plot(
@@ -94,64 +113,12 @@ def main():
     # TODO: Create tests of this logic utilising the test fields created
     # on the 2021-01-07 on 2619.
 
-    (
-        adjusted_x_deviation,
-        adjusted_y_deviation,
-    ) = _determine_logfile_corrected_deviations(
-        dataframe_by_treatment["x_centre"],
-        dataframe_by_treatment["y_centre"],
-        collimator,
-        dataframe_by_treatment["diff_x"],
-        dataframe_by_treatment["diff_y"],
-    )
-    dataframe_by_treatment["diff_x_logfile_corrected"] = adjusted_x_deviation
-    dataframe_by_treatment["diff_y_logfile_corrected"] = adjusted_y_deviation
-
     for axis in ["x", "y"]:
         _make_coll_corrected_plots(
             dataframe_by_treatment, axis, ["", "_logfile_corrected"]
         )
 
-    corrections = []
-    for i, row in dataframe_by_treatment.iterrows():
-        opposing_index = opposing_indices[i]
-
-        if not np.isnan(opposing_index):
-            assert opposing_index == int(opposing_index)
-            opposing_index = int(opposing_index)
-
-            diff_point = (
-                row["diff_x_logfile_corrected"],
-                row["diff_y_logfile_corrected"],
-            )
-            collimator = row["collimator"]
-            opposing_row = dataframe_by_treatment.iloc[opposing_index]
-            opposing_diff_point = (
-                opposing_row["diff_x_logfile_corrected"],
-                opposing_row["diff_y_logfile_corrected"],
-            )
-            opposing_collimator = opposing_row["collimator"]
-
-            rotated = _transformation.rotate_point(diff_point, collimator)
-            opposed_rotated = _transformation.rotate_point(
-                opposing_diff_point, opposing_collimator + 180
-            )
-
-            stacked = np.vstack([rotated, opposed_rotated])
-            avg = np.mean(stacked, axis=0)
-            correction = avg - rotated
-        else:
-            correction = [np.nan, np.nan]
-
-        corrections.append(correction)
-
-    corrections = np.array(corrections)
-
-    dataframe_by_treatment["diff_x_predicted_coll_correction"] = corrections[:, 0]
-    dataframe_by_treatment["diff_y_predicted_coll_correction"] = corrections[:, 1]
-
-    median_correction = np.nanmedian(corrections, axis=0)
-    st.write(median_correction)
+    # --
 
     # TODO: Do the above for all treatment combinations, then find the
     # median over all treatments.
@@ -160,7 +127,7 @@ def main():
     for i, row in dataframe_by_treatment.iterrows():
         collimator = row["collimator"]
         rotated_correction = _transformation.rotate_point(
-            median_correction, -collimator
+            collimator_correction, -collimator
         )
 
         corrected_diff = (
@@ -182,7 +149,7 @@ def main():
             ["_logfile_corrected", "_coll_corrected"]
             # ["coll_corrected"],
         )
-        _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
+        # _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
 
     original = _transform_points_to_field_reference_frame(
         dataframe_by_treatment, ["diff_x", "diff_y"]
@@ -204,14 +171,14 @@ def main():
     ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
     st.pyplot(fig)
 
-    st.write(median_correction[0])
+    st.write(collimator_correction[0])
     fig, ax = plt.subplots()
     ax.set_title("MLC, logfile -> coll")
     ax.plot(gantry, logfile_corrected[:, 0], "o-", alpha=0.3)
     ax.plot(gantry, coll_corrected[:, 0], "o-", alpha=0.3)
     st.pyplot(fig)
 
-    st.write(median_correction[1])
+    st.write(collimator_correction[1])
     fig, ax = plt.subplots()
     ax.set_title("Jaw, logfile -> coll")
     ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
@@ -322,7 +289,29 @@ def _determine_logfile_corrected_deviations(
 def _estimate_collimator_rotation_correction(
     grouping_labels, gantry_angles, collimator_angles, x_deviations, y_deviations
 ):
-    pass
+    grouping_labels = np.asarray(grouping_labels)
+    gantry_angles = np.asarray(gantry_angles)
+    collimator_angles = np.asarray(collimator_angles)
+    x_deviations = np.asarray(x_deviations)
+    y_deviations = np.asarray(y_deviations)
+
+    corrections_for_all_groups = []
+    for grouping_label in np.unique(grouping_labels):
+        mask = grouping_labels == grouping_label
+        corrections = _determine_predicted_collimator_rotation_correction_for_opposing_pairs(
+            gantry_angles[mask],
+            collimator_angles[mask],
+            x_deviations[mask],
+            y_deviations[mask],
+        )
+
+        corrections_for_all_groups.append(corrections)
+
+    corrections_for_all_groups = np.concatenate(corrections_for_all_groups, axis=0)
+
+    median_correction = np.nanmedian(corrections, axis=0)
+    st.write(median_correction)
+    return median_correction
 
 
 def _determine_predicted_collimator_rotation_correction_for_opposing_pairs(
@@ -332,7 +321,43 @@ def _determine_predicted_collimator_rotation_correction_for_opposing_pairs(
     the beam position is expected to be relatively equivalent. ie, don't
     provide data from different beam energies or beam dose rates.
     """
-    pass
+    opposing_indices = _find_index_of_opposing_images(gantry_angles, collimator_angles)
+
+    corrections = []
+    for opposing_index, collimator_angle, x_deviation, y_deviation in zip(
+        opposing_indices, collimator_angles, x_deviations, y_deviations
+    ):
+        if np.isnan(opposing_index):
+            corrections.append([np.nan, np.nan])
+
+        else:
+            assert opposing_index == int(opposing_index)
+            opposing_index = int(opposing_index)
+
+            current_diff_point = (x_deviation, y_deviation)
+            opposing_diff_point = (
+                x_deviations[opposing_index],
+                y_deviations[opposing_index],
+            )
+            opposing_collimator_angle = collimator_angles[opposing_index]
+
+            current_diff_point_rotated = _transformation.rotate_point(
+                current_diff_point, collimator_angle
+            )
+            opposing_diff_point_rotated = _transformation.rotate_point(
+                opposing_diff_point, opposing_collimator_angle + 180
+            )
+
+            stacked = np.vstack(
+                [current_diff_point_rotated, opposing_diff_point_rotated]
+            )
+            avg = np.mean(stacked, axis=0)
+            correction = avg - current_diff_point_rotated
+            corrections.append(correction)
+
+    corrections = np.array(corrections)
+
+    return corrections
 
 
 def _find_index_of_opposing_images(
