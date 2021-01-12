@@ -17,173 +17,156 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities import config as _config
-
-from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 from pymedphys._experimental.wlutz import transformation as _transformation
 
-CATEGORY = categories.PLANNING
-TITLE = "WLutz Collimator Processing"
+from . import _utilities
 
 DEFAULT_OPPOSING_COLLIMATOR_TOLERANCE = 5  # degrees
 DEFAULT_AGREEING_GANTRY_TOLERANCE = 10  # degrees
 
 
-def main():
-    config = _config.get_config()
-    (
-        _,
-        _,
-        wlutz_directory_by_date,
-        _,
-        _,
-        _,
-    ) = _utilities.get_directories_and_initial_database(config, refresh_cache=False)
+def apply_corrections(dataframe):
+    """Only one algorithm should be provided
+    """
 
-    raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
-
-    st.write(f"`{raw_results_csv_path}`")
-
-    try:
-        dataframe = _get_results(raw_results_csv_path)
-    except FileNotFoundError:
-        st.error("Winston Lutz results not yet calculated/saved for this date.")
-        st.stop()
+    assert len(dataframe["algorithm"].unique()) == 1
 
     dataframe["x_centre"] = np.mean(dataframe[["x_lower", "x_upper"]], axis=1)
     dataframe["y_centre"] = np.mean(dataframe[["y_lower", "y_upper"]], axis=1)
 
-    algorithm = "PyMedPhys"
-    dataframe_by_algorithm = _filter_by(dataframe, "algorithm", algorithm)
-
     (
-        adjusted_x_deviation,
-        adjusted_y_deviation,
+        dataframe["diff_x_logfile_corrected"],
+        dataframe["diff_y_logfile_corrected"],
     ) = _determine_logfile_corrected_deviations(
-        dataframe_by_algorithm["x_centre"],
-        dataframe_by_algorithm["y_centre"],
-        dataframe_by_algorithm["collimator"],
-        dataframe_by_algorithm["diff_x"],
-        dataframe_by_algorithm["diff_y"],
+        dataframe["x_centre"],
+        dataframe["y_centre"],
+        dataframe["collimator"],
+        dataframe["diff_x"],
+        dataframe["diff_y"],
     )
-    dataframe_by_algorithm["diff_x_logfile_corrected"] = adjusted_x_deviation
-    dataframe_by_algorithm["diff_y_logfile_corrected"] = adjusted_y_deviation
 
     collimator_correction = _estimate_collimator_rotation_correction(
-        dataframe_by_algorithm["treatment"],
-        dataframe_by_algorithm["gantry"],
-        dataframe_by_algorithm["collimator"],
-        dataframe_by_algorithm["diff_x"],
-        dataframe_by_algorithm["diff_y"],
+        dataframe["treatment"],
+        dataframe["gantry"],
+        dataframe["collimator"],
+        dataframe["diff_x"],
+        dataframe["diff_y"],
     )
 
-    # st.write(dataframe)
-
-    treatments = dataframe_by_algorithm["treatment"].unique()
-    # st.write(treatments)
-
-    treatment = st.radio("Treatment", list(treatments))
-    # st.write(treatment)
-
-    dataframe_by_treatment = _filter_by(dataframe_by_algorithm, "treatment", treatment)
-    dataframe_by_treatment.reset_index(inplace=True)
-    st.write(dataframe_by_treatment)
-
-    gantry = dataframe_by_treatment["gantry"]
-
-    fig, ax = plt.subplots()
-    ax.plot(
-        gantry,
-        dataframe_by_treatment["x_centre"],
-        "o-",
-        alpha=0.7,
-        label="MLC logfile centre",
+    (
+        dataframe["diff_x_coll_corrected"],
+        dataframe["diff_y_coll_corrected"],
+    ) = _apply_collimator_corrections(
+        collimator_correction,
+        dataframe["collimator"],
+        dataframe["diff_x_logfile_corrected"],
+        dataframe["diff_y_logfile_corrected"],
     )
-    ax.plot(
-        gantry,
-        dataframe_by_treatment["y_centre"],
-        "o-",
-        alpha=0.7,
-        label="Jaw logfile centre",
-    )
-    plt.legend()
-    st.pyplot(fig)
+
+    return dataframe, collimator_correction
+
+
+def _deprecated_plotting_methods():
+    """"""
+    # fig, ax = plt.subplots()
+    # ax.plot(
+    #     gantry,
+    #     dataframe_by_treatment["x_centre"],
+    #     "o-",
+    #     alpha=0.7,
+    #     label="MLC logfile centre",
+    # )
+    # ax.plot(
+    #     gantry,
+    #     dataframe_by_treatment["y_centre"],
+    #     "o-",
+    #     alpha=0.7,
+    #     label="Jaw logfile centre",
+    # )
+    # plt.legend()
+    # st.pyplot(fig)
 
     # TODO: Create tests of this logic utilising the test fields created
     # on the 2021-01-07 on 2619.
 
-    for axis in ["x", "y"]:
-        _make_coll_corrected_plots(
-            dataframe_by_treatment, axis, ["", "_logfile_corrected"]
-        )
+    # for axis in ["x", "y"]:
+    #     _make_coll_corrected_plots(
+    #         dataframe_by_treatment, axis, ["", "_logfile_corrected"]
+    #     )
 
     # --
 
     # TODO: Do the above for all treatment combinations, then find the
     # median over all treatments.
 
-    corrected_diffs = []
-    for i, row in dataframe_by_treatment.iterrows():
-        collimator = row["collimator"]
-        rotated_correction = _transformation.rotate_point(
-            collimator_correction, -collimator
-        )
+    # dataframe_by_treatment["diff_x_coll_corrected"] = corrected_diffs[:, 0]
+    # dataframe_by_treatment["diff_y_coll_corrected"] = corrected_diffs[:, 1]
 
-        corrected_diff = (
-            np.array((row["diff_x_logfile_corrected"], row["diff_y_logfile_corrected"]))
-            + rotated_correction
+    # st.write(dataframe_by_treatment[["gantry", "diff_x", "collimator"]])
+
+    # for axis in ["x", "y"]:
+    #     _make_coll_corrected_plots(
+    #         dataframe_by_treatment,
+    #         axis,
+    #         ["_logfile_corrected", "_coll_corrected"]
+    #         # ["coll_corrected"],
+    #     )
+    # _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
+
+    # original = _transform_points_to_field_reference_frame(
+    #     dataframe_by_treatment, ["diff_x", "diff_y"]
+    # )
+    # logfile_corrected = _transform_points_to_field_reference_frame(
+    #     dataframe_by_treatment, ["diff_x_logfile_corrected", "diff_y_logfile_corrected"]
+    # )
+    # coll_corrected = _transform_points_to_field_reference_frame(
+    #     dataframe_by_treatment, ["diff_x_coll_corrected", "diff_y_coll_corrected"]
+    # )
+
+    # fig, ax = plt.subplots()
+    # ax.plot(gantry, original[:, 0], "o-", alpha=0.3)
+    # ax.plot(gantry, logfile_corrected[:, 0], "o-", alpha=0.3)
+    # st.pyplot(fig)
+
+    # fig, ax = plt.subplots()
+    # ax.plot(gantry, original[:, 1], "o-", alpha=0.3)
+    # ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
+    # st.pyplot(fig)
+
+    # st.write(collimator_correction[0])
+    # fig, ax = plt.subplots()
+    # ax.set_title("MLC, logfile -> coll")
+    # ax.plot(gantry, logfile_corrected[:, 0], "o-", alpha=0.3)
+    # ax.plot(gantry, coll_corrected[:, 0], "o-", alpha=0.3)
+    # st.pyplot(fig)
+
+    # st.write(collimator_correction[1])
+    # fig, ax = plt.subplots()
+    # ax.set_title("Jaw, logfile -> coll")
+    # ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
+    # ax.plot(gantry, coll_corrected[:, 1], "o-", alpha=0.3)
+    # st.pyplot(fig)
+
+
+def _apply_collimator_corrections(
+    collimator_correction, collimator_angles, x_deviations, y_deviations
+):
+    corrected_diffs = []
+    for collimator_angle, x_deviation, y_deviation in zip(
+        collimator_angles, x_deviations, y_deviations
+    ):
+        rotated_correction = _transformation.rotate_point(
+            collimator_correction, -collimator_angle
         )
+        corrected_diff = np.array([x_deviation, y_deviation]) + rotated_correction
         corrected_diffs.append(corrected_diff)
 
     corrected_diffs = np.array(corrected_diffs)
-    dataframe_by_treatment["diff_x_coll_corrected"] = corrected_diffs[:, 0]
-    dataframe_by_treatment["diff_y_coll_corrected"] = corrected_diffs[:, 1]
 
-    st.write(dataframe_by_treatment[["gantry", "diff_x", "collimator"]])
+    adjusted_x_deviation = corrected_diffs[:, 0]
+    adjusted_y_deviation = corrected_diffs[:, 1]
 
-    for axis in ["x", "y"]:
-        _make_coll_corrected_plots(
-            dataframe_by_treatment,
-            axis,
-            ["_logfile_corrected", "_coll_corrected"]
-            # ["coll_corrected"],
-        )
-        # _make_coll_correction_prediction_plots(dataframe_by_treatment, axis)
-
-    original = _transform_points_to_field_reference_frame(
-        dataframe_by_treatment, ["diff_x", "diff_y"]
-    )
-    logfile_corrected = _transform_points_to_field_reference_frame(
-        dataframe_by_treatment, ["diff_x_logfile_corrected", "diff_y_logfile_corrected"]
-    )
-    coll_corrected = _transform_points_to_field_reference_frame(
-        dataframe_by_treatment, ["diff_x_coll_corrected", "diff_y_coll_corrected"]
-    )
-
-    fig, ax = plt.subplots()
-    ax.plot(gantry, original[:, 0], "o-", alpha=0.3)
-    ax.plot(gantry, logfile_corrected[:, 0], "o-", alpha=0.3)
-    st.pyplot(fig)
-
-    fig, ax = plt.subplots()
-    ax.plot(gantry, original[:, 1], "o-", alpha=0.3)
-    ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
-    st.pyplot(fig)
-
-    st.write(collimator_correction[0])
-    fig, ax = plt.subplots()
-    ax.set_title("MLC, logfile -> coll")
-    ax.plot(gantry, logfile_corrected[:, 0], "o-", alpha=0.3)
-    ax.plot(gantry, coll_corrected[:, 0], "o-", alpha=0.3)
-    st.pyplot(fig)
-
-    st.write(collimator_correction[1])
-    fig, ax = plt.subplots()
-    ax.set_title("Jaw, logfile -> coll")
-    ax.plot(gantry, logfile_corrected[:, 1], "o-", alpha=0.3)
-    ax.plot(gantry, coll_corrected[:, 1], "o-", alpha=0.3)
-    st.pyplot(fig)
+    return adjusted_x_deviation, adjusted_y_deviation
 
 
 def _transform_points_to_field_reference_frame(dataframe, point_columns):
@@ -245,27 +228,11 @@ def _get_results(filepath) -> "pd.DataFrame":
     return raw_results_dataframe
 
 
-# def _filter_by_column(dataframe, column):
-#     options = list(dataframe[column].unique())
-#     selected = st.radio(column, options)
-#     filtered = dataframe.loc[dataframe[column] == selected]
-
-#     return filtered
-
-
-def _filter_by(dataframe, column, value):
-    filtered = dataframe.loc[dataframe[column] == value]
-
-    return filtered
-
-
 def _determine_logfile_corrected_deviations(
     icom_x_centres, icom_y_centres, collimator_angles, x_deviations, y_deviations
 ):
     adjusted_x_deviation = []
     adjusted_y_deviation = []
-
-    st.write(icom_x_centres)
 
     corrections_to_apply = []
     for (icom_x_centre, icom_y_centre, collimator) in zip(
@@ -310,7 +277,6 @@ def _estimate_collimator_rotation_correction(
     corrections_for_all_groups = np.concatenate(corrections_for_all_groups, axis=0)
 
     median_correction = np.nanmedian(corrections, axis=0)
-    st.write(median_correction)
     return median_correction
 
 

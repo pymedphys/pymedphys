@@ -28,6 +28,7 @@ from . import (
     _angles,
     _calculation,
     _config,
+    _corrections,
     _excel,
     _filtering,
     _frames,
@@ -235,7 +236,16 @@ def _presentation_of_results(wlutz_directory_by_date):
     calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
 
     dataframe = calculated_results.sort_values("seconds_since_midnight")
-    statistics = _overview_statistics(dataframe)
+    dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
+
+    dataframe_with_corrections, collimator_correction = _corrections.apply_corrections(
+        dataframe_by_algorithm
+    )
+    st.write(dataframe_with_corrections)
+
+    statistics = _overview_statistics(dataframe_with_corrections)
+
+    st.write(statistics)
 
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
@@ -244,17 +254,13 @@ def _presentation_of_results(wlutz_directory_by_date):
 
 
 def _overview_statistics(dataframe):
-    dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
-
     statistics = []
-    energies = dataframe_by_algorithm["energy"].unique()
+    energies = dataframe["energy"].unique()
     energies = sorted(energies, key=_utilities.natural_sort_key)
 
     column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
     for energy in energies:
-        dataframe_by_energy = _utilities.filter_by(
-            dataframe_by_algorithm, "energy", energy
-        )
+        dataframe_by_energy = _utilities.filter_by(dataframe, "energy", energy)
 
         for column in ["diff_y", "diff_x"]:
             statistics.append(
