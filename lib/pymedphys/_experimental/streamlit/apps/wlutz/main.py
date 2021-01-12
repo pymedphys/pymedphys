@@ -216,6 +216,13 @@ def main():
         advanced_mode,
     )
 
+    st.write("### Overview of calculations")
+
+    raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
+    calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
+
+    st.write("`TODO: Provide an appropriate overview.`")
+
 
 def _set_parameters():
     st.sidebar.write("# Configuration")

@@ -98,10 +98,6 @@ def calculations_ui(
             fill_errors_with_nan,
         )
 
-        st.write("### Overview of calculations")
-
-        st.write("`TODO: Provide an appropriate overview.`")
-
 
 def run_calculation(
     database_table,
