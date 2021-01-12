@@ -184,7 +184,7 @@ extras_require = {
         "sphinxcontrib-bibtex<2.0.0",
         "pytest",
         "pytest-sugar",
-        "hypothesis",
+        "hypothesis<6",
         "psutil",
         "pylint",
         "pytest-pylint",
@@ -213,7 +213,7 @@ extras_require = {
     "tests": [
         "pytest",
         "pytest-sugar",
-        "hypothesis",
+        "hypothesis<6",
         "psutil",
         "pylint",
         "pytest-pylint",
