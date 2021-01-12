@@ -241,6 +241,20 @@ def _presentation_of_results(wlutz_directory_by_date):
     statistics = _overview_statistics(dataframe_by_algorithm)
     st.write(statistics)
 
+    st.write(
+        """
+            `TODO:`
+            * Create figures here organised first by energy, then by
+              direction, then treatment.
+              * These figures will collate all ports for a given setup
+                onto one plot
+              * Only include PyMedPhys results for these.
+            * Beneath each figure write out the statistics for that
+              figure.
+            * Write those created figures to the Excel overview.
+    """
+    )
+
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
 
