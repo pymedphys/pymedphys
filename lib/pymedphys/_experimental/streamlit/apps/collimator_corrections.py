@@ -70,13 +70,8 @@ def main():
     st.write(dataframe_by_treatment)
 
     collimator = np.array(dataframe_by_treatment["collimator"])
-    st.write(collimator)
-
     gantry = np.array(dataframe_by_treatment["gantry"])
-
-    # --
     opposing_indices = _find_index_of_opposing_images(gantry, collimator)
-    # --
 
     fig, ax = plt.subplots()
     ax.plot(
@@ -99,27 +94,18 @@ def main():
     # TODO: Create tests of this logic utilising the test fields created
     # on the 2021-01-07 on 2619.
 
-    logfile_corrections = []
-    for i, row in dataframe_by_treatment.iterrows():
-        logfile_correction_field_frame = -np.array([row["x_centre"], row["y_centre"]])
-        logfile_correction_iview_frame = _transformation.rotate_point(
-            logfile_correction_field_frame, -row["collimator"]
-        )
-
-        logfile_corrections.append(logfile_correction_iview_frame)
-
-    logfile_corrections = np.array(logfile_corrections)
-    dataframe_by_treatment["diff_x_logfile_correction"] = logfile_corrections[:, 0]
-    dataframe_by_treatment["diff_y_logfile_correction"] = logfile_corrections[:, 1]
-
-    dataframe_by_treatment["diff_x_logfile_corrected"] = (
-        dataframe_by_treatment["diff_x"]
-        + dataframe_by_treatment["diff_x_logfile_correction"]
+    (
+        adjusted_x_deviation,
+        adjusted_y_deviation,
+    ) = _determine_logfile_corrected_deviations(
+        dataframe_by_treatment["x_centre"],
+        dataframe_by_treatment["y_centre"],
+        collimator,
+        dataframe_by_treatment["diff_x"],
+        dataframe_by_treatment["diff_y"],
     )
-    dataframe_by_treatment["diff_y_logfile_corrected"] = (
-        dataframe_by_treatment["diff_y"]
-        + dataframe_by_treatment["diff_y_logfile_correction"]
-    )
+    dataframe_by_treatment["diff_x_logfile_corrected"] = adjusted_x_deviation
+    dataframe_by_treatment["diff_y_logfile_corrected"] = adjusted_y_deviation
 
     for axis in ["x", "y"]:
         _make_coll_corrected_plots(
@@ -306,14 +292,59 @@ def _filter_by(dataframe, column, value):
     return filtered
 
 
+def _determine_logfile_corrected_deviations(
+    icom_x_centres, icom_y_centres, collimator_angles, x_deviations, y_deviations
+):
+    adjusted_x_deviation = []
+    adjusted_y_deviation = []
+
+    st.write(icom_x_centres)
+
+    corrections_to_apply = []
+    for (icom_x_centre, icom_y_centre, collimator) in zip(
+        icom_x_centres, icom_y_centres, collimator_angles
+    ):
+        icom_correction_in_collimator_coordinates = -np.array(
+            [icom_x_centre, icom_y_centre]
+        )
+        icom_correction_in_world_coordinates = _transformation.rotate_point(
+            icom_correction_in_collimator_coordinates, -collimator
+        )
+        corrections_to_apply.append(icom_correction_in_world_coordinates)
+
+    corrections_to_apply = np.array(corrections_to_apply)
+    adjusted_x_deviation = x_deviations + corrections_to_apply[:, 0]
+    adjusted_y_deviation = y_deviations + corrections_to_apply[:, 1]
+
+    return adjusted_x_deviation, adjusted_y_deviation
+
+
+def _estimate_collimator_rotation_correction(
+    grouping_labels, gantry_angles, collimator_angles, x_deviations, y_deviations
+):
+    pass
+
+
+def _determine_predicted_collimator_rotation_correction_for_opposing_pairs(
+    gantry_angles, collimator_angles, x_deviations, y_deviations
+):
+    """Must only be provided a set of data from a single delivery where
+    the beam position is expected to be relatively equivalent. ie, don't
+    provide data from different beam energies or beam dose rates.
+    """
+    pass
+
+
 def _find_index_of_opposing_images(
-    gantry,
-    collimator,
+    gantry_angles,
+    collimator_angles,
     opposing_collimator_tolerance=DEFAULT_OPPOSING_COLLIMATOR_TOLERANCE,
     agreeing_gantry_tolerance=DEFAULT_AGREEING_GANTRY_TOLERANCE,
 ):
-    gantry_mod = np.mod(gantry[:, None] - gantry[None, :], 360)
-    coll_mod = np.mod(collimator[:, None] - collimator[None, :] + 180, 360)
+    gantry_mod = np.mod(gantry_angles[:, None] - gantry_angles[None, :], 360)
+    coll_mod = np.mod(
+        collimator_angles[:, None] - collimator_angles[None, :] + 180, 360
+    )
 
     coll_combined = np.concatenate([coll_mod, coll_mod.T, coll_mod, coll_mod.T], axis=1)
     gantry_combined = np.concatenate(
@@ -337,7 +368,7 @@ def _find_index_of_opposing_images(
 
     out_of_tolerance = out_of_tolerance[:, 0]
 
-    opposing_indices = np.mod(index_of_min, len(gantry))
+    opposing_indices = np.mod(index_of_min, len(gantry_angles))
     opposing_indices = opposing_indices.astype(float)
     opposing_indices[out_of_tolerance] = np.nan
 
