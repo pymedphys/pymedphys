@@ -238,19 +238,44 @@ def _presentation_of_results(wlutz_directory_by_date):
     dataframe = calculated_results.sort_values("seconds_since_midnight")
     dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
 
-    dataframe_with_corrections, collimator_correction = _corrections.apply_corrections(
-        dataframe_by_algorithm
-    )
-    st.write(dataframe_with_corrections)
-
-    statistics = _overview_statistics(dataframe_with_corrections)
-
+    statistics = _overview_statistics(dataframe_by_algorithm)
     st.write(statistics)
 
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
 
-    st.write("`TODO: Provide an appropriate overview.`")
+    st.write("### Experimental iCom and collimator corrections")
+
+    experimental_collimator_corrections = st.checkbox(
+        "Turn on experimental collimator and iCom correction statistics?"
+    )
+    if experimental_collimator_corrections:
+        st.write("#### Statistics")
+
+        (
+            dataframe_with_corrections,
+            collimator_correction,
+        ) = _corrections.apply_corrections(dataframe_by_algorithm)
+
+        dataframe_with_corrections["diff_x"] = dataframe_with_corrections[
+            "diff_x_coll_corrected"
+        ]
+        dataframe_with_corrections["diff_y"] = dataframe_with_corrections[
+            "diff_y_coll_corrected"
+        ]
+
+        statistics_with_corrections = _overview_statistics(dataframe_with_corrections)
+        st.write(statistics_with_corrections)
+
+        st.write("#### Predicted Collimator Rotation Correction")
+        st.write(
+            f"""
+                * Shift in MLC travel direction =
+                  `{round(collimator_correction[0], 2)}` mm
+                * Shift in Jaw travel direction =
+                  `{round(collimator_correction[1], 2)}` mm
+            """
+        )
 
 
 def _overview_statistics(dataframe):
