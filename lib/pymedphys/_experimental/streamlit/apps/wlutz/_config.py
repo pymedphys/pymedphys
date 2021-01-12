@@ -1,7 +1,5 @@
 import pathlib
 
-from pymedphys._imports import streamlit as st
-
 import pymedphys
 from pymedphys._streamlit.utilities import config as st_config
 
