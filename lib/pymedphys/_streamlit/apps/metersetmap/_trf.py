@@ -42,7 +42,7 @@ def _get_mosaiq_configuration(config, headers):
 
 
 def get_logfile_mosaiq_info(
-    config, headers: "pd.DataFrame", machine_centre_map, mosaiq_details, mosaiq_servers
+    headers: "pd.DataFrame", machine_centre_map, mosaiq_details, mosaiq_servers
 ):
     details = []
 

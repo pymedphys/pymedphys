@@ -15,9 +15,7 @@
 
 import base64
 import pathlib
-import re
 
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
@@ -34,9 +32,6 @@ def write_excel_overview(dataframe, statistics, filepath):
         summary_worksheet = workbook.add_worksheet(name="Summary")
         algorithm_worksheet = workbook.add_worksheet(name="Algorithms")
         raw_data_worksheet = workbook.add_worksheet(name="Raw Data")
-        interpolated_data_worksheet = workbook.add_worksheet(name="Interpolated Data")
-
-        # print(summary_worksheet, interpolated_data_worksheet)
 
         _write_data_get_references(
             data_column_start="A",
