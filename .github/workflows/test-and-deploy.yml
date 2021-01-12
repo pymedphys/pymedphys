@@ -66,8 +66,6 @@ jobs:
         exclude:
           - os: 'ubuntu'
             task: 'binary'
-          - os: 'ubuntu'
-            task: 'pyright'
 
           - os: 'windows'
             task: 'stackoverflow'
@@ -77,6 +75,8 @@ jobs:
             task: 'cypress'
           - os: 'windows'
             task: 'slow'
+          - os: 'windows'
+            task: 'pyright'
 
           - os: 'macos'
             task: 'stackoverflow'
