@@ -563,7 +563,7 @@ def main():
     config_options = list(_config.CONFIG_OPTIONS.keys())
 
     try:
-        default_config = _config.get_config(config_options[0])
+        _config.get_config(config_options[0])
     except FileNotFoundError:
         config_options.pop(0)
 
