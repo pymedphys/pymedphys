@@ -74,7 +74,6 @@ def get_imports(filepath, relative_filepath, internal_packages, depth):
             external_imports.add(base_converted)
 
     for an_import in imports:
-
         if type(an_import) in IMPORT_TYPES:
             for alias in an_import.names:
                 add_level_0(alias.name)
