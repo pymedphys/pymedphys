@@ -24,10 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from glob import glob
 import json
 import os
 import textwrap
+from glob import glob
 
 from ..clean import blacken_str
 

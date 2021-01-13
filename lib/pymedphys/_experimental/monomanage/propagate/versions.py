@@ -24,10 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
 import json
-from glob import glob
+import os
 import textwrap
+from glob import glob
 
 import semver
 

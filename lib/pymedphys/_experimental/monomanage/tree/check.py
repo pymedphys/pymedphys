@@ -24,11 +24,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-import sys
 import json
-import subprocess
+import os
 import shutil
+import subprocess
+import sys
 
 from .build import PackageTree
 

@@ -26,8 +26,8 @@
 
 import os
 import textwrap
-
 from glob import glob
+
 from ..draw.utilities import remove_postfix
 
 ROOT = os.getcwd()

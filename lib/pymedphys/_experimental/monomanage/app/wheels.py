@@ -24,12 +24,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import json
 import os
 import shutil
-from glob import glob
 import subprocess
-import json
-
+from glob import glob
 
 WHITELIST = (
     "pymedphys_base",

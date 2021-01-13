@@ -25,10 +25,11 @@
 
 
 import os
+
 import networkx as nx
 
 from ..tree.build import PackageTree
-from .utilities import save_dot_file, create_link
+from .utilities import create_link, save_dot_file
 
 ROOT = os.getcwd()
 

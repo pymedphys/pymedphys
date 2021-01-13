@@ -24,15 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-import json
-from copy import copy, deepcopy
 import difflib
+import json
+import os
+from copy import copy, deepcopy
 
 import networkx as nx
 
 from ..parse.imports import get_imports
-
 
 DEPENDENCIES_JSON_FILEPATH = "dependencies.json"
 DEFAULT_EXCLUDE_DIRS = {"node_modules", "__pycache__", "dist", ".tox", "build"}

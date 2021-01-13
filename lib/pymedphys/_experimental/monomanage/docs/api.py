@@ -24,12 +24,15 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from .packages import draw_packages
-from .directories import draw_directory_modules
-from .files import draw_file_modules
+import os
+
+from ..draw import draw_all
+from .graphs import write_graphs_rst
 
 
-def draw_all(save_directory):
-    draw_packages(save_directory)
-    draw_directory_modules(save_directory)
-    draw_file_modules(save_directory)
+def pre_docs_build(pymedphys_dir):
+    docs_directory = os.path.join(pymedphys_dir, "docs")
+    docs_graphs = os.path.join(docs_directory, "graphs")
+
+    draw_all(docs_graphs)
+    write_graphs_rst(docs_graphs)
