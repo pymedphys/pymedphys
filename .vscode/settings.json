@@ -344,6 +344,7 @@
     "pyplot",
     "pypoetry",
     "pyproject",
+    "pyright",
     "pytest",
     "qcls",
     "quickcheck",

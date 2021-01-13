@@ -1,3 +1,3 @@
 # pylint: disable = unused-import, reimported, import-error
 
-import tensorflow
+import tensorflow  # type: ignore
