@@ -18,7 +18,6 @@ from copy import copy
 
 import networkx as nx
 
-from ..tree import PackageTree
 from .utilities import (
     convert_path_to_package,
     create_href,

@@ -15,7 +15,7 @@ import ast
 import pathlib
 
 HERE = pathlib.Path(__file__).parent.resolve()
-LIB_PATH = HERE.parents[3]
+LIB_PATH = HERE.parents[1]
 
 CONVERSIONS = {
     "attr": "attrs",

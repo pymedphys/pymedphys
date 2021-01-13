@@ -17,7 +17,6 @@ from copy import copy
 
 import networkx as nx
 
-from ..tree import PackageTree
 from .utilities import (
     create_href,
     create_labels,
