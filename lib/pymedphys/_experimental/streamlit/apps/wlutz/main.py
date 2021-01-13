@@ -16,6 +16,7 @@
 import datetime
 
 from pymedphys._imports import altair as alt
+from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
@@ -295,7 +296,7 @@ def _presentation_of_results(wlutz_directory_by_date):
 def _overview_statistics(dataframe):
     statistics = []
     energies = dataframe["energy"].unique()
-    energies = sorted(energies, key=_utilities.natural_sort_key)
+    energies = natsort.natsorted(energies)
 
     column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
     for energy in energies:

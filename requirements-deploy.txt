@@ -54,6 +54,7 @@ markupsafe==1.1.1; python_version >= "3.6" and python_full_version < "3.0.0" or 
 matplotlib==3.3.3; python_version >= "3.6"
 mccabe==0.6.1; python_version >= "3.5"
 mistune==0.8.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
+natsort==7.1.0; python_version >= "3.4"
 nbconvert==5.6.1; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 nbformat==5.0.8; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 networkx==2.5; python_version >= "3.6"
