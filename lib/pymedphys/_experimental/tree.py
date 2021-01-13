@@ -41,11 +41,9 @@ def get_module_dependencies(
     module_to_filepath_map = {
         _path_to_module(filepath, lib_path): filepath for filepath in all_filepaths
     }
-
     all_internal_modules = set(module_to_filepath_map.keys())
 
     module_dependencies = {}
-
     for module, filepath in module_to_filepath_map.items():
         raw_imports = _get_file_imports(filepath, lib_path, apipkg_name)
         module_imports = set()
@@ -60,27 +58,14 @@ def get_module_dependencies(
     return module_dependencies
 
 
-def _convert_import_to_module_name(
-    an_import, package_name, all_internal_modules, conversions
-):
-    if an_import.startswith(package_name):
-        if an_import in all_internal_modules:
-            return an_import
-        else:
-            adjusted_import = ".".join(an_import.split(".")[:-1])
-            if not adjusted_import in all_internal_modules:
-                print(an_import)
-                print(adjusted_import)
-                raise ValueError()
-            return adjusted_import
-    else:
-        adjusted_import = an_import.split(".")[0].replace("_", "-")
-        try:
-            adjusted_import = conversions[adjusted_import]
-        except KeyError:
-            pass
+def _path_to_module(filepath, library_path):
+    relative_path = filepath.relative_to(library_path)
+    if relative_path.name == "__init__.py":
+        relative_path = relative_path.parent
 
-        return adjusted_import
+    module_name = ".".join(relative_path.with_suffix("").parts)
+
+    return module_name
 
 
 def _get_file_imports(filepath, library_path, apipkg_name):
@@ -90,19 +75,18 @@ def _get_file_imports(filepath, library_path, apipkg_name):
         module_contents = file.read()
 
     parsed = ast.parse(module_contents)
+
     all_import_nodes = [
         node
         for node in ast.walk(parsed)
         if isinstance(node, (ast.Import, ast.ImportFrom))
     ]
-
     import_nodes = [node for node in all_import_nodes if isinstance(node, ast.Import)]
     import_from_nodes = [
         node for node in all_import_nodes if isinstance(node, ast.ImportFrom)
     ]
 
     imports = set()
-
     for node in import_nodes:
         for alias in node.names:
             imports.add(alias.name)
@@ -128,11 +112,24 @@ def _get_file_imports(filepath, library_path, apipkg_name):
     return imports
 
 
-def _path_to_module(filepath, library_path):
-    relative_path = filepath.relative_to(library_path)
-    if relative_path.name == "__init__.py":
-        relative_path = relative_path.parent
+def _convert_import_to_module_name(
+    an_import, package_name, all_internal_modules, conversions
+):
+    if an_import.startswith(package_name):
+        if an_import in all_internal_modules:
+            return an_import
+        else:
+            adjusted_import = ".".join(an_import.split(".")[:-1])
+            if not adjusted_import in all_internal_modules:
+                print(an_import)
+                print(adjusted_import)
+                raise ValueError()
+            return adjusted_import
+    else:
+        adjusted_import = an_import.split(".")[0].replace("_", "-")
+        try:
+            adjusted_import = conversions[adjusted_import]
+        except KeyError:
+            pass
 
-    module_name = ".".join(relative_path.with_suffix("").parts)
-
-    return module_name
+        return adjusted_import
