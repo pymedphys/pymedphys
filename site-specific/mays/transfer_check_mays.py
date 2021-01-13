@@ -212,7 +212,7 @@ if "rp" in files:
 
         # Format dataframe to color code results and then write the dataframe
         display_results = display_results.style.apply(color_results, axis=1)
-        st.dataframe(display_results, height=1000)
+        st.dataframe(display_results.set_precision(2), height=1000)
 
         # Extract and write fractionation pattern from MOSAIQ for the specific field
         fx_pattern = mosaiq_table[mosaiq_table["field_name"] == field_selection][

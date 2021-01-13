@@ -185,14 +185,20 @@ def compare_to_mosaiq(dicom_table, mos_table):
                     [mos_table.iloc[field][label]], columns=[label]
                 )
 
-                dicom_list[label] = add_dicom
-                mosaiq_list[label] = add_mosaiq
+                # add_dicom = dicom_table.iloc[field][label]
+                # add_mosaiq = mos_table.iloc[field][label]
+                # breakpoint()
+                dicom_list = pd.concat([dicom_list, add_dicom], axis=1)
+                mosaiq_list = pd.concat([mosaiq_list, add_mosaiq], axis=1)
             # continue if the value is not in Mosaiq
             else:
                 continue
 
         values_table = values_table.append(dicom_list, ignore_index=True)
         values_table = values_table.append(mosaiq_list, ignore_index=True)
+
+        dicom_list = pd.DataFrame()
+        mosaiq_list = pd.DataFrame()
 
     values_index = []
     for value in dicom_table[:]["field_name"]:
@@ -201,6 +207,7 @@ def compare_to_mosaiq(dicom_table, mos_table):
 
     values_table["beam_index"] = pd.Series(values_index).values
     values_table = values_table.set_index("beam_index", drop=True)
+    values_table = values_table.round(2)
 
     return values_table
 
