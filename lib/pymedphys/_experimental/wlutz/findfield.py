@@ -14,8 +14,11 @@
 # limitations under the License.
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pylinac as _pylinac_installed
 from pymedphys._imports import scipy
+
+from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
+    pylinac as _pylinac_installed,
+)
 
 from . import bounds, imginterp, interppoints, pylinacwrapper
 

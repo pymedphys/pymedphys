@@ -9,6 +9,7 @@ import dateutil
 import dbfread
 import dicompylercore
 import keyring
+import natsort
 import packaging
 import plotly
 import plotly.express

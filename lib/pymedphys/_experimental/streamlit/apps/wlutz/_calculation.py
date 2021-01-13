@@ -20,6 +20,8 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
+from pymedphys._utilities import filesystem as _pp_filesystem_utilities
+
 from pymedphys._experimental.wlutz import main as _wlutz
 from pymedphys._experimental.wlutz import reporting as _reporting
 
@@ -47,7 +49,10 @@ def calculations_ui(
 ):
     st.write("## Calculations")
 
-    plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
+    if advanced_mode:
+        plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
+    else:
+        plot_x_axis = "Gantry"
 
     ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 
@@ -71,9 +76,12 @@ def calculations_ui(
         )
 
         plot_when_data_missing = st.checkbox("Plot when data missing", value=True)
+
+        fill_errors_with_nan = st.checkbox("Fill errors with nan", value=True)
     else:
         deviation_plot_threshold = 0.5
         plot_when_data_missing = False
+        fill_errors_with_nan = True
 
     if st.button("Calculate"):
         run_calculation(
@@ -87,11 +95,8 @@ def calculations_ui(
             plot_when_data_missing,
             advanced_mode,
             plot_x_axis,
+            fill_errors_with_nan,
         )
-
-        st.write("### Overview of calculations")
-
-        st.write("`TODO: Provide an appropriate overview.`")
 
 
 def run_calculation(
@@ -105,6 +110,7 @@ def run_calculation(
     plot_when_data_missing,
     advanced_mode,
     plot_x_axis,
+    fill_errors_with_nan,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -150,6 +156,7 @@ def run_calculation(
                 edge_lengths,
                 icom_field_rotation,
                 penumbra,
+                fill_errors_with_nan,
             )
 
         columns_to_check_for_deviation = [
@@ -279,6 +286,9 @@ def run_calculation(
                 ["diff_x", "diff_y"], ["Transverse", "Radial"]
             ):
                 plot_filename = f"{treatment}-{port}-{orientation}.png"
+                plot_filename = _pp_filesystem_utilities.make_a_valid_directory_name(
+                    plot_filename
+                )
                 plot_filepath = wlutz_directory_by_date.joinpath(plot_filename)
 
                 mask = (contextualised_results["treatment"] == treatment) & (
@@ -368,6 +378,7 @@ def get_results_for_image(
     edge_lengths,
     icom_field_rotation,
     penumbra,
+    fill_errors_with_nan,
 ):
 
     results_data = []
@@ -381,6 +392,7 @@ def get_results_for_image(
             edge_lengths,
             penumbra,
             icom_field_rotation,
+            fill_errors_with_nan,
         )
         results_data.append(
             {
@@ -443,10 +455,22 @@ def _get_full_image_path(database_directory, relative_image_path):
 
 @st.cache(show_spinner=False)
 def _calculate_wlutz(
-    image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+    image_path,
+    algorithm,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+    icom_field_rotation,
+    fill_errors_with_nan,
 ):
     field_centre, bb_centre = _wlutz.calculate(
-        image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+        image_path,
+        algorithm,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+        icom_field_rotation,
+        fill_errors_with_nan=fill_errors_with_nan,
     )
 
     return field_centre, bb_centre

@@ -42,8 +42,11 @@ import functools
 from typing import List, Tuple
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pylinac as _pylinac_installed
 from pymedphys._imports import scipy, skimage
+
+from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
+    pylinac as _pylinac_installed,
+)
 
 from .core import geometry as _vendor_geometry
 from .core import image as _vendor_image

@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Cancer Care Associates
+# Copyright (C) 2020-2021 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,109 +14,37 @@
 
 
 import base64
-import io
 import pathlib
 
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
 
-from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities import config as _config
-
-from pymedphys._experimental.streamlit.apps.wlutz import _utilities
-
-CATEGORY = categories.PLANNING
-TITLE = "Writing Excel Demo"
-
-HOME = pathlib.Path.home()
-PYMEDPHYS_LIBRARY_ROOT = pathlib.Path(__file__).parents[3]
-LOGO_PATH = PYMEDPHYS_LIBRARY_ROOT.joinpath("_streamlit", "pymedphys-title.png")
+from . import _utilities
 
 FIGURE_CELL_HEIGHT = 15
 
 
-def main():
-    config = _config.get_config()
-
-    if st.button("Make demo.xlsx"):
-        st.write(f"`{PYMEDPHYS_LIBRARY_ROOT}`")
-
-        fig, ax = plt.subplots()
-        ax.plot([0, 1], [1, 0])
-        st.pyplot(fig)
-
-        xlsx_filepath = HOME.joinpath(".pymedphys", "demo.xlsx")
-
-        with io.BytesIO() as in_memory_file:
-            with xlsxwriter.Workbook(xlsx_filepath) as workbook:
-                worksheet = workbook.add_worksheet()
-                worksheet.insert_image("A1", LOGO_PATH)
-
-                fig.savefig(in_memory_file, format="png")
-                worksheet.insert_image(
-                    "A10", "a_plot.png", {"image_data": in_memory_file}
-                )
-
-        _insert_file_download_link(xlsx_filepath)
-
-    st.write("## Writing Excel file from Wlutz results")
-
-    (
-        _,
-        _,
-        wlutz_directory_by_date,
-        _,
-        _,
-        _,
-    ) = _utilities.get_directories_and_initial_database(config, refresh_cache=False)
-
-    raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
-
-    st.write(f"`{raw_results_csv_path}`")
-
-    try:
-        dataframe = _get_results(raw_results_csv_path)
-    except FileNotFoundError:
-        st.error("Winston Lutz results not yet calculated/saved for this date.")
-        st.stop()
-
-    # st.write(raw_results_dataframe)
-
-    # filtered = raw_results_dataframe
-    # for column in ["treatment", "port", "algorithm"]:
-    #     filtered = _filter_by_column(filtered, column)
-
-    dataframe = dataframe.sort_values("seconds_since_midnight")
-
-    # treatment = "00_06MV_0600DR"
-    # filtered_by_treatment = _filter_by(dataframe, "treatment", treatment)
-
-    # st.write(filtered_by_treatment)
-
+def write_excel_overview(dataframe, statistics, filepath):
     dataframe = dataframe.fillna("")
 
-    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
-    with xlsxwriter.Workbook(wlutz_xlsx_filepath) as workbook:
+    with xlsxwriter.Workbook(filepath) as workbook:
         summary_worksheet = workbook.add_worksheet(name="Summary")
         algorithm_worksheet = workbook.add_worksheet(name="Algorithms")
         raw_data_worksheet = workbook.add_worksheet(name="Raw Data")
-        interpolated_data_worksheet = workbook.add_worksheet(name="Interpolated Data")
 
-        print(summary_worksheet, interpolated_data_worksheet)
+        _write_data_get_references(
+            data_column_start="A",
+            data_header="Summary Statistics",
+            dataframe=statistics,
+            worksheet=summary_worksheet,
+        )
 
         _create_algorithms_chart_sheet(
             dataframe, workbook, raw_data_worksheet, algorithm_worksheet
         )
 
-    _insert_file_download_link(wlutz_xlsx_filepath)
-
-
-def _filter_by(dataframe, column, value):
-    filtered = dataframe.loc[dataframe[column] == value]
-
-    return filtered
+    _insert_file_download_link(filepath)
 
 
 def _create_algorithms_chart_sheet(
@@ -129,12 +57,12 @@ def _create_algorithms_chart_sheet(
     treatments.sort()
 
     for treatment in treatments:
-        filtered_by_treatment = _filter_by(dataframe, "treatment", treatment)
+        filtered_by_treatment = _utilities.filter_by(dataframe, "treatment", treatment)
 
         ports = filtered_by_treatment["port"].unique()
         ports.sort()
         for port in ports:
-            filtered_by_port = _filter_by(filtered_by_treatment, "port", port)
+            filtered_by_port = _utilities.filter_by(filtered_by_treatment, "port", port)
 
             chart_transverse = workbook.add_chart(
                 {"type": "scatter", "subtype": "straight"}
@@ -147,7 +75,7 @@ def _create_algorithms_chart_sheet(
             algorithms.sort()
 
             for algorithm in algorithms:
-                filtered_by_algorithm = _filter_by(
+                filtered_by_algorithm = _utilities.filter_by(
                     filtered_by_port, "algorithm", algorithm
                 )
 
@@ -219,14 +147,6 @@ def _write_data_get_references(
         ] = f"={sheet_name}!${column_letter}$3:${column_letter}${last_row_number}"
 
     return references, last_col_letter_with_gap
-
-
-def _filter_by_column(dataframe, column):
-    options = list(dataframe[column].unique())
-    selected = st.radio(column, options)
-    filtered = dataframe.loc[dataframe[column] == selected]
-
-    return filtered
 
 
 @st.cache()

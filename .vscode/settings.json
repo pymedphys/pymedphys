@@ -116,6 +116,7 @@
     "apputils",
     "arange",
     "asar",
+    "asarray",
     "asdict",
     "asname",
     "assoc",

@@ -22,6 +22,12 @@ from pymedphys._streamlit.utilities import misc
 from . import _dbf
 
 
+def filter_by(dataframe, column, value):
+    filtered = dataframe.loc[dataframe[column] == value]
+
+    return filtered
+
+
 def filepath_to_filename(path):
     path = pathlib.Path(path)
     filename = path.name

@@ -16,6 +16,7 @@
 import datetime
 
 from pymedphys._imports import altair as alt
+from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
@@ -24,7 +25,17 @@ from pymedphys._imports import streamlit_ace, tomlkit
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-from . import _angles, _calculation, _config, _filtering, _frames, _sync, _utilities
+from . import (
+    _angles,
+    _calculation,
+    _config,
+    _corrections,
+    _excel,
+    _filtering,
+    _frames,
+    _sync,
+    _utilities,
+)
 
 
 def main():
@@ -182,10 +193,27 @@ def main():
     ]:
         _table_transfer_via_interpolation(icom_datasets, database_table, column)
 
+    # st.write(icom_datasets)
+
+    icom_seconds = icom_datasets["seconds_since_midnight"]
+    iview_seconds = database_table["seconds_since_midnight"]
+
+    alignment_indices = np.argmin(
+        np.abs(icom_seconds.values[None, :] - iview_seconds.values[:, None]), axis=1
+    )
+    # st.write(alignment_indices)
+    # st.write(len(alignment_indices))
+    # st.write(len(iview_seconds))
+
+    energies = icom_datasets["energy"].values[alignment_indices]
+    # st.write(energies)
+
+    database_table["energy"] = energies
+
     database_table["width"] = database_table["x_upper"] - database_table["x_lower"]
     database_table["length"] = database_table["y_upper"] - database_table["y_lower"]
 
-    # st.write(database_table)
+    # st.write(database_table[["treatment", "energy"]])
 
     if advanced_mode:
         st.write(database_table)
@@ -198,6 +226,96 @@ def main():
         penumbra,
         advanced_mode,
     )
+
+    _presentation_of_results(wlutz_directory_by_date)
+
+
+def _presentation_of_results(wlutz_directory_by_date):
+    st.write("## Overview of Results")
+
+    raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
+    calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
+
+    dataframe = calculated_results.sort_values("seconds_since_midnight")
+    dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
+
+    statistics = _overview_statistics(dataframe_by_algorithm)
+    st.write(statistics)
+
+    st.write(
+        """
+            `TODO:`
+            * Create figures here organised first by energy, then by
+              direction, then treatment.
+              * These figures will collate all ports for a given setup
+                onto one plot
+              * Only include PyMedPhys results for these.
+            * Beneath each figure write out the statistics for that
+              figure.
+            * Write those created figures to the Excel overview.
+    """
+    )
+
+    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
+    _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
+
+    st.write("### Experimental iCom and collimator corrections")
+
+    experimental_collimator_corrections = st.checkbox(
+        "Turn on experimental collimator and iCom correction statistics?"
+    )
+    if experimental_collimator_corrections:
+        st.write("#### Statistics")
+
+        (
+            dataframe_with_corrections,
+            collimator_correction,
+        ) = _corrections.apply_corrections(dataframe_by_algorithm)
+
+        dataframe_with_corrections["diff_x"] = dataframe_with_corrections[
+            "diff_x_coll_corrected"
+        ]
+        dataframe_with_corrections["diff_y"] = dataframe_with_corrections[
+            "diff_y_coll_corrected"
+        ]
+
+        statistics_with_corrections = _overview_statistics(dataframe_with_corrections)
+        st.write(statistics_with_corrections)
+
+        st.write("#### Predicted Collimator Rotation Correction")
+        st.write(
+            f"""
+                * Shift in MLC travel direction =
+                  `{round(collimator_correction[0], 2)}` mm
+                * Shift in Jaw travel direction =
+                  `{round(collimator_correction[1], 2)}` mm
+            """
+        )
+
+
+def _overview_statistics(dataframe):
+    statistics = []
+    energies = dataframe["energy"].unique()
+    energies = natsort.natsorted(energies)
+
+    column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
+    for energy in energies:
+        dataframe_by_energy = _utilities.filter_by(dataframe, "energy", energy)
+
+        for column in ["diff_y", "diff_x"]:
+            statistics.append(
+                {
+                    "energy": energy,
+                    "direction": column_direction_map[column],
+                    "min": np.nanmin(dataframe_by_energy[column]),
+                    "max": np.nanmax(dataframe_by_energy[column]),
+                    "mean": np.nanmean(dataframe_by_energy[column]),
+                    "median": np.nanmedian(dataframe_by_energy[column]),
+                }
+            )
+
+    statistics = pd.DataFrame.from_dict(statistics).round(2)
+    return statistics
 
 
 def _set_parameters():
