@@ -1,5 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
-
+# Copyright (C) 2019,2021 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,23 +10,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import ast
-import os
+import pathlib
 
-from stdlib_list import stdlib_list
-
-STDLIB = set(stdlib_list())
-
-IMPORT_TYPES = {
-    type(ast.parse("import george").body[0]),  # type: ignore
-    type(ast.parse("import george as macdonald").body[0]),  # type: ignore
-}
-
-IMPORT_FROM_TYPES = {
-    type(ast.parse("from george import macdonald").body[0])  # type: ignore
-}
-
-ALL_IMPORT_TYPES = IMPORT_TYPES.union(IMPORT_FROM_TYPES)
+HERE = pathlib.Path(__file__).parent.resolve()
+LIB_PATH = HERE.parents[3]
 
 CONVERSIONS = {
     "attr": "attrs",
@@ -40,67 +28,111 @@ CONVERSIONS = {
 }
 
 
-def get_imports(filepath, relative_filepath, internal_packages, depth):
-    with open(filepath, "r") as file:
-        data = file.read()
+def get_module_dependencies(
+    lib_path=LIB_PATH,
+    conversions=None,
+    package_name="pymedphys",
+    apipkg_name="pymedphys._imports",
+):
+    if conversions is None:
+        conversions = CONVERSIONS
 
-    parsed = ast.parse(data)
-    imports = [node for node in ast.walk(parsed) if type(node) in ALL_IMPORT_TYPES]
+    all_filepaths = list(lib_path.glob("**/*.py"))
+    module_to_filepath_map = {
+        _path_to_module(filepath, lib_path): filepath for filepath in all_filepaths
+    }
 
-    stdlib_imports = set()
-    external_imports = set()
-    internal_package_imports = set()
-    internal_module_imports = set()
-    internal_file_imports = set()
+    all_internal_modules = set(module_to_filepath_map.keys())
 
-    def get_base_converted_module(name):
-        name = name.split(".")[0]
+    module_dependencies = {}
 
+    for module, filepath in module_to_filepath_map.items():
+        raw_imports = _get_file_imports(filepath, lib_path, apipkg_name)
+        module_imports = set()
+        for an_import in raw_imports:
+            module_name = _convert_import_to_module_name(
+                an_import, package_name, all_internal_modules, conversions
+            )
+            module_imports.add(module_name)
+
+        module_dependencies[module] = module_imports
+
+    return module_dependencies
+
+
+def _convert_import_to_module_name(
+    an_import, package_name, all_internal_modules, conversions
+):
+    if an_import.startswith(package_name):
+        if an_import in all_internal_modules:
+            return an_import
+        else:
+            adjusted_import = ".".join(an_import.split(".")[:-1])
+            if not adjusted_import in all_internal_modules:
+                print(an_import)
+                print(adjusted_import)
+                raise ValueError()
+            return adjusted_import
+    else:
+        adjusted_import = an_import.split(".")[0]
         try:
-            name = CONVERSIONS[name]
+            adjusted_import = conversions[adjusted_import]
         except KeyError:
             pass
 
-        return name
+        return adjusted_import
 
-    def add_level_0(name):
-        base_converted = get_base_converted_module(name)
 
-        if base_converted in STDLIB:
-            stdlib_imports.add(base_converted)
-        elif base_converted in internal_packages:
-            internal_package_imports.add(name)
-        else:
-            external_imports.add(base_converted)
+def _get_file_imports(filepath, library_path, apipkg_name):
+    relative_path = filepath.relative_to(library_path)
 
-    for an_import in imports:
-        if type(an_import) in IMPORT_TYPES:
-            for alias in an_import.names:
-                add_level_0(alias.name)
+    with open(filepath, "r") as file:
+        module_contents = file.read()
 
-        elif type(an_import) in IMPORT_FROM_TYPES:
-            if an_import.level == 0:
-                add_level_0(an_import.module)
-            elif an_import.level == 1 and depth == 2:
-                module_path = relative_filepath.split(os.sep)[0:2] + [an_import.module]
-                internal_file_imports.add(".".join(module_path))
-            elif (an_import.level == 1 and depth == 1) or (
-                an_import.level == 2 and depth == 2
-            ):
-                module_path = relative_filepath.split(os.sep)[0:1] + [an_import.module]
-                internal_module_imports.add(".".join(module_path))
+    parsed = ast.parse(module_contents)
+    all_import_nodes = [
+        node
+        for node in ast.walk(parsed)
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+    ]
+
+    import_nodes = [node for node in all_import_nodes if isinstance(node, ast.Import)]
+    import_from_nodes = [
+        node for node in all_import_nodes if isinstance(node, ast.ImportFrom)
+    ]
+
+    imports = set()
+
+    for node in import_nodes:
+        for alias in node.names:
+            imports.add(alias.name)
+
+    for node in import_from_nodes:
+        if node.level == 0:
+            if node.module.startswith(apipkg_name):
+                for alias in node.names:
+                    imports.add(alias.name)
             else:
-                raise ValueError(
-                    "Unexpected depth and import level of relative " "import"
-                )
+                for alias in node.names:
+                    imports.add(f"{node.module}.{alias.name}")
 
         else:
-            raise TypeError("Unexpected import type")
+            module = ".".join(relative_path.parts[: -node.level])
 
-    return {
-        "stdlib": stdlib_imports,
-        "external": external_imports,
-        "internal_package": internal_package_imports,
-        "internal_module": internal_module_imports,
-        "internal_file": internal_file_imports,
-    }
+            if node.module:
+                module = f"{module}.{node.module}"
+
+            for alias in node.names:
+                imports.add(f"{module}.{alias.name}")
+
+    return imports
+
+
+def _path_to_module(filepath, library_path):
+    relative_path = filepath.relative_to(library_path)
+    if relative_path.name == "__init__.py":
+        relative_path = relative_path.parent
+
+    module_name = ".".join(relative_path.with_suffix("").parts)
+
+    return module_name
