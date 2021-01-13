@@ -7,11 +7,16 @@ import attr
 import black
 import dateutil
 import dbfread
+import dicompylercore
 import keyring
+import natsort
 import packaging
+import plotly
+import plotly.express
 import psutil
 import pymssql
 import requests
+import streamlit_ace
 import timeago
 import toml
 import tomlkit
@@ -20,9 +25,11 @@ import watchdog
 import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
+import xlsxwriter
 import xmltodict
 import yaml
 
+import altair
 import imageio
 import matplotlib
 import matplotlib.patches
@@ -50,7 +57,6 @@ import skimage
 import skimage.draw
 import skimage.filters
 import skimage.measure
-
 import streamlit
 import streamlit.bootstrap
 import streamlit.cli
@@ -62,4 +68,5 @@ import pydicom.filebase
 import pydicom.sequence
 import pydicom.uid
 import pylinac
+import pylinac.winston_lutz
 import pynetdicom

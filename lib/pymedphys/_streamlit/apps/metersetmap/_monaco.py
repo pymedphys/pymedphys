@@ -28,7 +28,7 @@ def read_monaco_patient_name(monaco_patient_directory):
 
 
 def monaco_input_method(
-    patient_id="", key_namespace="", advanced_mode_local=False, site=None, **_
+    config, patient_id="", key_namespace="", advanced_mode_local=False, site=None, **_
 ):
     (
         monaco_site,
@@ -37,7 +37,7 @@ def monaco_input_method(
         plan_directory,
         patient_directory,
     ) = st_monaco.monaco_patient_directory_picker(
-        patient_id, key_namespace, advanced_mode_local, site
+        config, patient_id, key_namespace, advanced_mode_local, site
     )
 
     patient_name = read_monaco_patient_name(str(patient_directory))
@@ -45,7 +45,7 @@ def monaco_input_method(
     st.write(f"Patient Name: `{patient_name}`")
 
     all_tel_paths = list(plan_directory.glob("**/*tel.1"))
-    all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
+    all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime, reverse=True)
 
     plan_names_to_choose_from = [
         str(path.relative_to(plan_directory)) for path in all_tel_paths

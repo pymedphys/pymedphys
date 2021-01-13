@@ -279,5 +279,6 @@ v*.tar.gz
 *.exe
 
 *-demo
+*-demo-files
 downloads/
 offline/

@@ -20,7 +20,9 @@ from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
 from pymedphys._imports import streamlit as st
 
 
-def filter_image_sets(to_be_filtered: "pd.DataFrame") -> "pd.DataFrame":
+def filter_image_sets(
+    to_be_filtered: "pd.DataFrame", advanced_mode: bool
+) -> "pd.DataFrame":
     """Filter an iView image set pandas DataFrame via streamlit user input.
 
     Filtering is undergone by machine_id, patient_id, datetime,
@@ -38,33 +40,36 @@ def filter_image_sets(to_be_filtered: "pd.DataFrame") -> "pd.DataFrame":
     patient_id = st.radio("Patient", filtered["patient_id"].unique())
     filtered = filtered.loc[filtered["patient_id"] == patient_id]
 
-    # Time
-    time = filtered["datetime"].dt.time
+    if advanced_mode:
+        # Time
+        time = filtered["datetime"].dt.time
 
-    time_step = datetime.timedelta(minutes=1)
-    min_time = (np.min(filtered["datetime"])).floor("min").time()
-    max_time = (np.max(filtered["datetime"])).ceil("min").time()
+        time_step = datetime.timedelta(minutes=1)
+        min_time = (np.min(filtered["datetime"])).floor("min").time()
+        max_time = (np.max(filtered["datetime"])).ceil("min").time()
 
-    time_range = st.slider(
-        "Time",
-        min_value=min_time,
-        max_value=max_time,
-        step=time_step,
-        value=[min_time, max_time],
-    )
+        time_range = st.slider(
+            "Time",
+            min_value=min_time,
+            max_value=max_time,
+            step=time_step,
+            value=[min_time, max_time],
+        )
 
-    filtered = filtered.loc[(time >= time_range[0]) & (time <= time_range[1])]
+        filtered = filtered.loc[(time >= time_range[0]) & (time <= time_range[1])]
 
-    # Treatments
-    unique_treatments = filtered["treatment"].unique().tolist()
-    selected_treatments = st.multiselect(
-        "Treatment", unique_treatments, default=sorted(unique_treatments)
-    )
-    filtered = filtered.loc[filtered["treatment"].isin(selected_treatments)]
+        # Treatments
+        unique_treatments = filtered["treatment"].unique().tolist()
+        selected_treatments = st.multiselect(
+            "Treatment", unique_treatments, default=sorted(unique_treatments)
+        )
+        filtered = filtered.loc[filtered["treatment"].isin(selected_treatments)]
 
-    # Ports
-    unique_ports = filtered["port"].unique().tolist()
-    selected_ports = st.multiselect("Ports", unique_ports, default=sorted(unique_ports))
-    filtered = filtered.loc[filtered["port"].isin(selected_ports)]
+        # Ports
+        unique_ports = filtered["port"].unique().tolist()
+        selected_ports = st.multiselect(
+            "Ports", unique_ports, default=sorted(unique_ports)
+        )
+        filtered = filtered.loc[filtered["port"].isin(selected_ports)]
 
     return filtered

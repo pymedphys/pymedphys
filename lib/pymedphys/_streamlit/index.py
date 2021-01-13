@@ -12,108 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import pathlib
+import re
 import time
 
+from pymedphys._imports import PIL
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit.apps import metersetmap as _metersetmap
-from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
+from pymedphys._streamlit import apps as _stable_apps
 from pymedphys._streamlit.utilities import session
 
-from pymedphys._experimental.streamlit.apps import anonymise_monaco as _anonymise_monaco
-from pymedphys._experimental.streamlit.apps import dashboard as _dashboard
-from pymedphys._experimental.streamlit.apps import electrons as _electrons
-from pymedphys._experimental.streamlit.apps import iviewdb as _iviewdb
-from pymedphys._experimental.streamlit.apps import wlutz as _wlutz
+from pymedphys._experimental.streamlit import apps as _experimental_apps
+
+from . import categories
 
 HERE = pathlib.Path(__file__).parent.resolve()
-FAVICON = str(HERE.joinpath("pymedphys.png"))
+FAVICON = str(HERE.joinpath("pymedphys-favicon.png"))
 TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
-
-APPLICATION_CATEGORIES = {
-    "mature": {
-        "title": "Mature",
-        "description": """
-            These are mature applications. They are in wide use, and
-            they have a high level of automated test coverage.
-        """,
-    },
-    "maturing": {
-        "title": "Maturing",
-        "description": """
-            These are relatively new applications. They potentially
-            only have limited use within the community, but the still
-            adhere to high quality standards with a level of automated
-            test coverage that can be expected for a mature application.
-        """,
-    },
-    "raw": {
-        "title": "Raw",
-        "description": """
-            These are relatively new applications. They possibly only
-            have minimal use within the community, and they have at
-            least some automated test coverage. It is likely that these
-            applications and their respective configurations will still
-            be changing as time goes on.
-        """,
-    },
-    "beta": {
-        "title": "Beta",
-        "description": """
-            These applications may not be in use at all within the
-            community. They potentially may only have minimal automated
-            test coverage.
-        """,
-    },
-    "experimental": {
-        "title": "Experimental",
-        "description": """
-            These applications may not be in use at all within the
-            community and they may not have any automated test coverage.
-            **They may not even work**.
-        """,
-    },
-}
-
-
-APPLICATION_OPTIONS = {
-    "metersetmap": {
-        "category": "raw",
-        "label": "MetersetMap Comparison",
-        "callable": _metersetmap.main,
-    },
-    "pseudonymise": {
-        "category": "raw",
-        "label": "DICOM Pseudonymisation",
-        "callable": _pseudonymise.main,
-    },
-    "dashboard": {
-        "category": "experimental",
-        "label": "Clinical Dashboard",
-        "callable": _dashboard.main,
-    },
-    "electrons": {
-        "category": "experimental",
-        "label": "Electron Insert Factor Modelling",
-        "callable": _electrons.main,
-    },
-    "anonymise-monaco": {
-        "category": "experimental",
-        "label": "Anonymising Monaco Backend Files",
-        "callable": _anonymise_monaco.main,
-    },
-    "wlutz": {
-        "category": "experimental",
-        "label": "Winston-Lutz",
-        "callable": _wlutz.main,
-    },
-    "iviewdb": {
-        "category": "experimental",
-        "label": "iView Database Explorer",
-        "callable": _iviewdb.main,
-    },
-}
 
 
 def get_url_app():
@@ -135,62 +51,81 @@ def swap_app(app):
     st.experimental_rerun()
 
 
-def index():
-    st.write(
-        """
-        # Index of applications available
+def index(application_options):
+    st.image(PIL.Image.open(TITLE_LOGO))
 
-        The following applications are organised by category where each
-        category is representative of the maturity of the tool.
-        """
-    )
+    title_filter = st.text_input("Filter")
+    pattern = re.compile(f".*{title_filter}.*", re.IGNORECASE)
 
-    for category_key, category in APPLICATION_CATEGORIES.items():
-        st.write(
-            f"""
-                ## {category["title"]}
-                {category["description"]}
-            """
-        )
-
-        st.write("---")
-
+    for category in categories.APPLICATION_CATEGORIES:
         applications_in_this_category = [
             item
-            for item in APPLICATION_OPTIONS.items()
-            if item[1]["category"] == category_key
+            for item in application_options.items()
+            if item[1].CATEGORY == category and pattern.match(item[1].TITLE)
         ]
 
-        if not applications_in_this_category:
+        if not title_filter or applications_in_this_category:
+            st.write(
+                f"""
+                    ## {category}
+                """
+            )
+
+        if not applications_in_this_category and not title_filter:
             st.write("> *No applications are currently in this category.*")
+            continue
+
+        applications_in_this_category = sorted(
+            applications_in_this_category, key=_application_sorting_key
+        )
 
         for app_key, application in applications_in_this_category:
-            if st.button(application["label"]):
+            if st.button(application.TITLE):
                 swap_app(app_key)
 
-        st.write("---")
+
+def _application_sorting_key(application):
+    return application[1].TITLE.lower()
+
+
+def _get_apps_from_module(module):
+    apps = {
+        item.replace("_", "-"): getattr(module, item)
+        for item in dir(module)
+        if not item.startswith("_")
+    }
+
+    return apps
 
 
 def main():
     st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
     session_state = session.session_state(app=get_url_app())
 
+    stable_apps = _get_apps_from_module(_stable_apps)
+    experimental_apps = _get_apps_from_module(_experimental_apps)
+
+    application_options = {**stable_apps, **experimental_apps}
+
     if (
         session_state.app != "index"
-        and not session_state.app in APPLICATION_OPTIONS.keys()
+        and not session_state.app in application_options.keys()
     ):
         swap_app("index")
 
     if session_state.app != "index":
+        st.title(application_options[session_state.app].TITLE)
         if st.sidebar.button("Return to Index"):
             swap_app("index")
 
         st.sidebar.write("---")
 
     if session_state.app == "index":
-        application_function = index
+        application_function = functools.partial(
+            index, application_options=application_options
+        )
     else:
-        application_function = APPLICATION_OPTIONS[session_state.app]["callable"]
+        application_function = application_options[session_state.app].main
 
     application_function()
 

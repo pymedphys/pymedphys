@@ -32,5 +32,10 @@
   "negative-metersetmap.trf": "https://zenodo.org/record/3973722/files/negative_mu_density.trf?download=1",
   "trf-references-and-baselines.zip": "https://zenodo.org/record/4087961/files/trf-references-and-baselines.zip?download=1",
   "dicom-to-delivery-issue-#1047.zip": "https://github.com/pymedphys/pymedphys/files/5212087/NPCA_Anonymised.zip",
-  "dicom-trf-pairs.zip": "https://zenodo.org/record/4255822/files/dicom_trf_pairs.zip?download=1"
+  "dicom-trf-pairs.zip": "https://zenodo.org/record/4255822/files/dicom_trf_pairs.zip?download=1",
+  "previously_failing_iview_images.zip": "https://zenodo.org/record/4397768/files/previously_failing_iview_images.zip?download=1",
+  "pylinac_offset.png": "https://zenodo.org/record/4387050/files/pylinac_offset.png?download=1",
+  "iview-images-where-wlutz-should-fail-fast.zip": "https://zenodo.org/record/4391411/files/should-raise-error.zip?download=1",
+  "saturated-images.zip": "https://zenodo.org/record/4393748/files/saturated-images.zip?download=1",
+  "wlutz-demo-files.zip": "https://zenodo.org/record/4433187/files/wlutz-demo-files.zip?download=1"
 }

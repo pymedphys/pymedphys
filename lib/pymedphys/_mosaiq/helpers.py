@@ -15,7 +15,6 @@
 """Some helper utility functions for accessing Mosaiq SQL.
 """
 
-import collections
 import datetime
 
 from pymedphys._imports import pandas as pd
@@ -23,7 +22,7 @@ from pymedphys._imports import pandas as pd
 import pymedphys._utilities.patient
 
 from .connect import execute_sql
-from .constants import FIELD_TYPES, ORIENTATION
+from .constants import FIELD_TYPES
 
 
 def get_treatment_times(cursor, field_id):
@@ -349,138 +348,3 @@ def get_recently_completed_qcls_across_sites(
     results = results.sort_values(by="actual_completed_time", ascending=False)
 
     return results
-
-
-def get_all_treatment_data(cursor, mrn):
-
-    dataframe_column_to_sql_reference = collections.OrderedDict(
-        [
-            ("mrn", "Ident.IDA"),
-            ("first_name", "Patient.First_Name"),
-            ("last_name", "Patient.Last_Name"),
-            ("dob", "Patient.Birth_DtTm"),
-            ("machine", "Staff.Last_Name"),
-            ("field_id", "TxField.FLD_ID"),
-            ("field_label", "TxField.Field_Label"),
-            ("field_name", "TxField.Field_Name"),
-            ("target", "Site.Target"),
-            ("rx_depth", "Site.Rx_Depth"),
-            ("target_units", "Site.Target_Units"),
-            ("technique", "Site.Technique"),
-            ("modality", "Site.Modality"),
-            ("energy [MV]", "TxFieldPoint.Energy"),
-            ("fraction_dose [cGy]", "Site.Dose_Tx"),
-            ("total_dose [cGy]", "Site.Dose_Ttl"),
-            ("fractions", "Site.Fractions"),
-            ("fraction_pattern", "Site.Frac_Pattern"),
-            ("notes", "Site.Notes"),
-            ("field_version", "TxField.Version"),
-            ("monitor_units", "TxField.Meterset"),
-            ("meterset_rate", "TxFieldPoint.Meterset_Rate"),
-            ("field_type", "TxField.Type_Enum"),
-            ("gantry_angle", "TxFieldPoint.Gantry_Ang"),
-            ("collimator_angle", "TxFieldPoint.Coll_Ang"),
-            ("ssd [cm]", "TxField.Ssd"),
-            ("sad [cm]", "TxField.SAD"),
-            ("site", "Site.Site_Name"),
-            ("dyn_wedge", "TxField.Dyn_Wedge"),
-            ("wdg_appl", "TxField.Wdg_Appl"),
-            ("block", "TxField.Block"),
-            ("blk_desc", "TxField.Blk_Desc"),
-            ("comp_fda", "TxField.Comp_Fda"),
-            ("fda_desc", "TxField.FDA_Desc"),
-            ("bolus", "TxField.Bolus"),
-            ("iso_x [cm]", "SiteSetup.Isocenter_Position_X"),
-            ("iso_y [cm]", "SiteSetup.Isocenter_Position_Y"),
-            ("iso_z [cm]", "SiteSetup.Isocenter_Position_Z"),
-            ("position", "SiteSetup.Patient_Orient"),
-            ("field_x [cm]", "TxFieldPoint.Field_X"),
-            ("coll_x1 [cm]", "TxFieldPoint.Coll_X1"),
-            ("coll_x2 [cm]", "TxFieldPoint.Coll_X2"),
-            ("field_y [cm]", "TxFieldPoint.Field_Y"),
-            ("coll_y1 [cm]", "TxFieldPoint.Coll_Y1"),
-            ("coll_y2 [cm]", "TxFieldPoint.Coll_Y2"),
-            ("couch_vrt [cm]", "TxFieldPoint.Couch_Vrt"),
-            ("couch_lat [cm]", "TxFieldPoint.Couch_Lat"),
-            ("couch_lng [cm]", "TxFieldPoint.Couch_Lng"),
-            ("couch_ang", "TxFieldPoint.Couch_Ang"),
-            ("tolerance", "TxField.Tol_Tbl_ID"),
-            ("time", "TxField.BackupTimer"),
-            ("site_setup_status", "SiteSetup.Status_Enum"),
-            ("site_status", "Site.Status_Enum"),
-            ("hidden", "TxField.IsHidden"),
-            ("site version", "Site.Version"),
-            ("create_id", "Site.Create_ID"),
-            ("field_approval", "TxField.Sanct_ID"),
-        ]
-    )
-
-    columns = list(dataframe_column_to_sql_reference.keys())
-    select_string = "SELECT " + ",\n\t\t    ".join(
-        dataframe_column_to_sql_reference.values()
-    )
-
-    sql_string = (
-        select_string
-        + """
-                FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint, Staff
-                WHERE
-                    TxField.Pat_ID1 = Ident.Pat_ID1 AND
-                    TxField.Machine_ID_Staff_ID = Staff.Staff_ID AND
-                    TxFieldPoint.FLD_ID = TxField.FLD_ID AND
-                    TxFieldPoint.Point = 0 AND
-                    Patient.Pat_ID1 = Ident.Pat_ID1 AND
-                    SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
-                    TxField.SIT_Set_ID = Site.SIT_Set_ID AND
-                    Site.Version = 0 AND
-                    SiteSetup.Version = 0 AND
-                    Ident.IDA = %(patient_id)s
-                """
-    )
-
-    table = execute_sql(
-        cursor=cursor, sql_string=sql_string, parameters={"patient_id": mrn}
-    )
-
-    mosaiq_fields = pd.DataFrame(data=table, columns=columns)
-
-    mosaiq_fields.drop_duplicates(inplace=True)
-    mosaiq_fields["field_type"] = [
-        FIELD_TYPES[item] for item in mosaiq_fields["field_type"]
-    ]
-
-    mosaiq_fields["position"] = [
-        ORIENTATION[item] for item in mosaiq_fields["position"]
-    ]
-
-    # reformat some fields to create the 'rx' field
-    rx = []
-    for i in mosaiq_fields.index:
-        rx.append(
-            str(
-                mosaiq_fields["target"][i]
-                + " "
-                + str(mosaiq_fields["rx_depth"][i])
-                + str(mosaiq_fields["target_units"][i])
-            )
-            + str(mosaiq_fields["modality"][i])
-        )
-    mosaiq_fields["rx"] = rx
-
-    return mosaiq_fields
-
-
-def get_staff_initials(cursor, staff_id):
-    initials = execute_sql(
-        cursor,
-        """
-        SELECT
-        Staff.Initials
-        FROM Staff
-        WHERE
-        Staff.Staff_ID = %(staff_id)s
-        """,
-        {"staff_id": staff_id},
-    )
-
-    return initials
