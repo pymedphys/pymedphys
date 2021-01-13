@@ -295,6 +295,7 @@
     "nbstripout",
     "ndarray",
     "ndimage",
+    "networkx",
     "niter",
     "nopep",
     "noqa",
