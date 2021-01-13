@@ -13,9 +13,7 @@
 
 import ast
 import pathlib
-from typing import Dict, MutableSet
-
-from typing_extensions import Literal
+from typing import Dict, MutableSet, Tuple
 
 HERE = pathlib.Path(__file__).parent.resolve()
 LIB_PATH = HERE.parents[1]
@@ -30,9 +28,7 @@ CONVERSIONS = {
     "yaml": "PyYAML",
 }
 
-DependencyOptions = Literal["raw", "module"]
-Dependencies = Dict[DependencyOptions, MutableSet]
-DependencyMap = Dict[str, Dependencies]
+DependencyMap = Dict[str, MutableSet[Tuple[str, str, str]]]
 
 
 def get_module_dependencies(
@@ -47,8 +43,9 @@ def get_module_dependencies(
     -------
     DependencyMap
         Each key represents an internal module within PyMedPhys. Each
-        item is a dictionary containing both the raw imports and those
-        imports converted to module names.
+        item is a set of tuples containing first the import within the
+        module, second, the module which that import is pulled from,
+        and last the variable name of that import within the module.
     """
     if conversions is None:
         conversions = CONVERSIONS
@@ -63,7 +60,6 @@ def get_module_dependencies(
     for module, filepath in module_to_filepath_map.items():
         raw_imports = _get_file_imports(filepath, lib_path, apipkg_name)
 
-        appended_raw_imports = set()
         module_imports = set()
         for an_import, name_in_module in raw_imports:
             try:
@@ -75,13 +71,9 @@ def get_module_dependencies(
                     f"While parsing an import within {module} an error occurred"
                 ) from e
 
-            module_imports.add(module_name)
-            appended_raw_imports.add((an_import, module_name, name_in_module))
+            module_imports.add((an_import, module_name, name_in_module))
 
-        module_dependencies[module] = {
-            "raw": appended_raw_imports,
-            "module": module_imports,
-        }
+        module_dependencies[module] = module_imports
 
     return module_dependencies
 
