@@ -20,6 +20,7 @@ from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities import config as _config
 
 from pymedphys._experimental.streamlit.apps.wlutz import _utilities
 from pymedphys._experimental.wlutz import transformation as _transformation
@@ -32,6 +33,7 @@ AGREEING_GANTRY_TOLERANCE = 10  # degrees
 
 
 def main():
+    config = _config.get_config()
     (
         _,
         _,
@@ -39,7 +41,7 @@ def main():
         _,
         _,
         _,
-    ) = _utilities.get_directories_and_initial_database(refresh_cache=False)
+    ) = _utilities.get_directories_and_initial_database(config, refresh_cache=False)
 
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
 

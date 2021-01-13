@@ -34,7 +34,7 @@ def main():
     """
     )
     dicomFiles = st.file_uploader(
-        "Please select a RP file.", force=True, accept_multiple_files=True
+        "Please select a RP file.", accept_multiple_files=True
     )
 
     files = {}

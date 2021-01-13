@@ -21,22 +21,12 @@ from typing import Callable, Dict
 from pymedphys._imports import streamlit as st
 from typing_extensions import Literal
 
-import pymedphys
 from pymedphys import _config as pmp_config
 
 
-def download_and_extract_demo_data(cwd):
-    pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=cwd)
-
-
 @st.cache
-def get_config():
-    try:
-        result = pmp_config.get_config()
-    except FileNotFoundError:
-        cwd = pathlib.Path.cwd()
-        download_and_extract_demo_data(cwd)
-        result = pmp_config.get_config(cwd.joinpath("pymedphys-gui-demo"))
+def get_config(path=None):
+    result = pmp_config.get_config(path=path)
 
     return result
 
@@ -61,7 +51,7 @@ DirectoriesForSite = Dict[DirectoryConfigOptions, pathlib.Path]
 
 
 @st.cache
-def get_site_directories() -> Dict[str, DirectoriesForSite]:
+def get_site_directories(config) -> Dict[str, DirectoriesForSite]:
     """A config wrapper that retrieves a dictionary that maps site to directories.
 
     Returns
@@ -71,8 +61,6 @@ def get_site_directories() -> Dict[str, DirectoriesForSite]:
         dictionary that is indexed by directory type.
 
     """
-    config = get_config()
-
     site_directory_functions: Dict[DirectoryConfigOptions, Callable] = {
         "monaco": get_monaco_from_site_config,
         "escan": functools.partial(

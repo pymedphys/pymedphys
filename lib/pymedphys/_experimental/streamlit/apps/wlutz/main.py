@@ -20,10 +20,11 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import streamlit_ace, tomlkit
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-from . import _angles, _calculation, _filtering, _frames, _sync, _utilities
+from . import _angles, _calculation, _config, _filtering, _frames, _sync, _utilities
 
 
 def main():
@@ -34,7 +35,14 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
-    bb_diameter, penumbra, advanced_mode = _set_parameters()
+    bb_diameter, penumbra, advanced_mode, demo_mode = _set_parameters()
+    config = _config.get_config(demo_mode)
+
+    if demo_mode and advanced_mode:
+        st.write("## Demo Configuration")
+        config = tomlkit.loads(
+            streamlit_ace.st_ace(value=tomlkit.dumps(config), language="toml")
+        )
 
     refresh_cache = st.button("Re-query databases")
     (
@@ -44,7 +52,7 @@ def main():
         database_table,
         selected_date,
         selected_machine_id,
-    ) = _utilities.get_directories_and_initial_database(refresh_cache)
+    ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
 
     icom_patients_directory = icom_directory.joinpath("patients")
 
@@ -194,6 +202,13 @@ def main():
 
 def _set_parameters():
     st.sidebar.write("# Configuration")
+
+    try:
+        _config.get_config(False)
+        demo_mode = st.sidebar.checkbox("Demo Mode", value=False)
+    except FileNotFoundError:
+        demo_mode = True
+
     advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
 
     st.sidebar.write("# Parameters")
@@ -201,7 +216,7 @@ def _set_parameters():
     bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
-    return bb_diameter, penumbra, advanced_mode
+    return bb_diameter, penumbra, advanced_mode, demo_mode
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):

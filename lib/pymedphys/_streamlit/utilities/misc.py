@@ -4,11 +4,11 @@
 
 from pymedphys._imports import streamlit as st
 
-from . import config
+from . import config as _config
 
 
-def site_picker(radio_label, default=None, key=None):
-    site_directories = config.get_site_directories()
+def site_picker(config, radio_label, default=None, key=None):
+    site_directories = _config.get_site_directories(config)
     site_options = list(site_directories.keys())
 
     if default is None:
@@ -20,10 +20,12 @@ def site_picker(radio_label, default=None, key=None):
     return chosen_site
 
 
-def get_site_and_directory(radio_label, directory_label, default=None, key=None):
-    site_directories = config.get_site_directories()
+def get_site_and_directory(
+    config, radio_label, directory_label, default=None, key=None
+):
+    site_directories = _config.get_site_directories(config)
 
-    chosen_site = site_picker(radio_label, default=default, key=key)
+    chosen_site = site_picker(config, radio_label, default=default, key=key)
     directory = site_directories[chosen_site][directory_label]
 
     return chosen_site, directory

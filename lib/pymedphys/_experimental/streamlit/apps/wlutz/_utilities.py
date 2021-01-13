@@ -38,9 +38,9 @@ def expand_border_events(mask):
     return combined
 
 
-def get_directories_and_initial_database(refresh_cache):
-    site_directories = _config.get_site_directories()
-    chosen_site = misc.site_picker("Site")
+def get_directories_and_initial_database(config, refresh_cache):
+    site_directories = _config.get_site_directories(config)
+    chosen_site = misc.site_picker(config, "Site")
 
     database_directory = site_directories[chosen_site]["iviewdb"]
 
@@ -48,7 +48,6 @@ def get_directories_and_initial_database(refresh_cache):
 
     database_table = _load_database_with_cache(database_directory, refresh_cache)
 
-    config = _config.get_config()
     linac_map = {site["name"]: site["linac"] for site in config["site"]}
 
     alias_map = {}
