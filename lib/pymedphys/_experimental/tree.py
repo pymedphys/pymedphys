@@ -15,6 +15,8 @@ import ast
 import pathlib
 from typing import Dict, MutableSet
 
+from typing_extensions import Literal
+
 HERE = pathlib.Path(__file__).parent.resolve()
 LIB_PATH = HERE.parents[1]
 
@@ -28,7 +30,9 @@ CONVERSIONS = {
     "yaml": "PyYAML",
 }
 
-DependencyMap = Dict[str, MutableSet]
+DependencyOptions = Literal["raw", "module"]
+Dependencies = Dict[DependencyOptions, MutableSet]
+DependencyMap = Dict[str, Dependencies]
 
 
 def get_module_dependencies(
@@ -42,8 +46,9 @@ def get_module_dependencies(
     Returns
     -------
     DependencyMap
-        Each key represents an internal module within PyMedPhys. Each item
-        is the set of imports within that module.
+        Each key represents an internal module within PyMedPhys. Each
+        item is a dictionary containing both the raw imports and those
+        imports converted to module names.
     """
     if conversions is None:
         conversions = CONVERSIONS
@@ -57,8 +62,10 @@ def get_module_dependencies(
     module_dependencies: DependencyMap = {}
     for module, filepath in module_to_filepath_map.items():
         raw_imports = _get_file_imports(filepath, lib_path, apipkg_name)
+
+        appended_raw_imports = set()
         module_imports = set()
-        for an_import in raw_imports:
+        for an_import, name_in_module in raw_imports:
             try:
                 module_name = _convert_import_to_module_name(
                     an_import, package_name, all_internal_modules, conversions
@@ -69,10 +76,38 @@ def get_module_dependencies(
                 ) from e
 
             module_imports.add(module_name)
+            appended_raw_imports.add((an_import, module_name, name_in_module))
 
-        module_dependencies[module] = module_imports
+        module_dependencies[module] = {
+            "raw": appended_raw_imports,
+            "module": module_imports,
+        }
 
     return module_dependencies
+
+
+def _convert_import_to_module_name(
+    an_import, package_name, all_internal_modules, conversions
+):
+    if an_import.startswith(package_name):
+        if an_import in all_internal_modules:
+            return an_import
+        else:
+            adjusted_import = ".".join(an_import.split(".")[:-1])
+            if not adjusted_import in all_internal_modules:
+                raise ValueError(
+                    f"An internal import `{an_import}` did not appear to exist"
+                    "within the provided internal modules."
+                )
+            return adjusted_import
+    else:
+        adjusted_import = an_import.split(".")[0].replace("_", "-")
+        try:
+            adjusted_import = conversions[adjusted_import]
+        except KeyError:
+            pass
+
+        return adjusted_import
 
 
 def _path_to_module(filepath, library_path):
@@ -106,16 +141,21 @@ def _get_file_imports(filepath, library_path, apipkg_name):
     imports = set()
     for node in import_nodes:
         for alias in node.names:
-            imports.add(alias.name)
+            imports.add((alias.name, _get_asname_with_fallback(alias)))
 
     for node in import_from_nodes:
         if node.level == 0:
             if node.module.startswith(apipkg_name):
                 for alias in node.names:
-                    imports.add(alias.name)
+                    imports.add((alias.name, _get_asname_with_fallback(alias)))
             else:
                 for alias in node.names:
-                    imports.add(f"{node.module}.{alias.name}")
+                    imports.add(
+                        (
+                            f"{node.module}.{alias.name}",
+                            _get_asname_with_fallback(alias),
+                        )
+                    )
 
         else:
             module = ".".join(relative_path.parts[: -node.level])
@@ -124,30 +164,15 @@ def _get_file_imports(filepath, library_path, apipkg_name):
                 module = f"{module}.{node.module}"
 
             for alias in node.names:
-                imports.add(f"{module}.{alias.name}")
+                imports.add(
+                    (f"{module}.{alias.name}", _get_asname_with_fallback(alias))
+                )
 
     return imports
 
 
-def _convert_import_to_module_name(
-    an_import, package_name, all_internal_modules, conversions
-):
-    if an_import.startswith(package_name):
-        if an_import in all_internal_modules:
-            return an_import
-        else:
-            adjusted_import = ".".join(an_import.split(".")[:-1])
-            if not adjusted_import in all_internal_modules:
-                raise ValueError(
-                    f"An internal import `{an_import}` did not appear to exist"
-                    "within the provided internal modules."
-                )
-            return adjusted_import
+def _get_asname_with_fallback(alias):
+    if alias.asname:
+        return alias.asname
     else:
-        adjusted_import = an_import.split(".")[0].replace("_", "-")
-        try:
-            adjusted_import = conversions[adjusted_import]
-        except KeyError:
-            pass
-
-        return adjusted_import
+        return alias.name
