@@ -13,6 +13,7 @@
 
 import ast
 import pathlib
+from typing import Dict, MutableSet
 
 HERE = pathlib.Path(__file__).parent.resolve()
 LIB_PATH = HERE.parents[1]
@@ -27,13 +28,23 @@ CONVERSIONS = {
     "yaml": "PyYAML",
 }
 
+DependencyMap = Dict[str, MutableSet]
+
 
 def get_module_dependencies(
     lib_path=LIB_PATH,
     conversions=None,
     package_name="pymedphys",
     apipkg_name="pymedphys._imports",
-):
+) -> DependencyMap:
+    """Determine PyMedPhys' dependency tree.
+
+    Returns
+    -------
+    DependencyMap
+        Each key represents an internal module within PyMedPhys. Each item
+        is the set of imports within that module.
+    """
     if conversions is None:
         conversions = CONVERSIONS
 
@@ -43,14 +54,20 @@ def get_module_dependencies(
     }
     all_internal_modules = set(module_to_filepath_map.keys())
 
-    module_dependencies = {}
+    module_dependencies: DependencyMap = {}
     for module, filepath in module_to_filepath_map.items():
         raw_imports = _get_file_imports(filepath, lib_path, apipkg_name)
         module_imports = set()
         for an_import in raw_imports:
-            module_name = _convert_import_to_module_name(
-                an_import, package_name, all_internal_modules, conversions
-            )
+            try:
+                module_name = _convert_import_to_module_name(
+                    an_import, package_name, all_internal_modules, conversions
+                )
+            except ValueError as e:
+                raise ValueError(
+                    f"While parsing an import within {module} an error occurred"
+                ) from e
+
             module_imports.add(module_name)
 
         module_dependencies[module] = module_imports
@@ -121,9 +138,10 @@ def _convert_import_to_module_name(
         else:
             adjusted_import = ".".join(an_import.split(".")[:-1])
             if not adjusted_import in all_internal_modules:
-                print(an_import)
-                print(adjusted_import)
-                raise ValueError()
+                raise ValueError(
+                    f"An internal import `{an_import}` did not appear to exist"
+                    "within the provided internal modules."
+                )
             return adjusted_import
     else:
         adjusted_import = an_import.split(".")[0].replace("_", "-")
