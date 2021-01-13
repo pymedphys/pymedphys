@@ -74,7 +74,7 @@ def _convert_import_to_module_name(
                 raise ValueError()
             return adjusted_import
     else:
-        adjusted_import = an_import.split(".")[0]
+        adjusted_import = an_import.split(".")[0].replace("_", "-")
         try:
             adjusted_import = conversions[adjusted_import]
         except KeyError:
