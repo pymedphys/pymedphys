@@ -23,7 +23,7 @@ from pymedphys._streamlit.utilities import misc
 from . import _dbf
 
 
-def iterate_over_columns(dataframe, columns, callbacks, previous=tuple()):
+def iterate_over_columns(dataframe, data, columns, callbacks, previous=tuple()):
     column = columns[0]
     callback = callbacks[0]
 
@@ -34,10 +34,13 @@ def iterate_over_columns(dataframe, columns, callbacks, previous=tuple()):
             continue
 
         args = previous + (item,)
-        callback(filtered_dataframe, *args)
+
+        if callback is not None:
+            callback(filtered_dataframe, data, *args)
+
         if len(columns) > 1:
             iterate_over_columns(
-                filtered_dataframe, columns[1:], callbacks[1:], previous=args
+                filtered_dataframe, data, columns[1:], callbacks[1:], previous=args
             )
 
 

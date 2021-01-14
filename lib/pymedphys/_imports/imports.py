@@ -26,6 +26,7 @@ import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
 import xlsxwriter
+import xlsxwriter.worksheet
 import xmltodict
 import yaml
 

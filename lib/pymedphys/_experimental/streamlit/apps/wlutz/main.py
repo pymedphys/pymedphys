@@ -278,10 +278,10 @@ def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
 
 
 def _overview_figures(dataframe):
-    def _energy_callback(_, energy):
+    def _energy_callback(_dataframe, _data, energy):
         st.write(f"### {energy}")
 
-    def _treatment_callback(dataframe, energy, treatment):
+    def _treatment_callback(dataframe, _data, energy, treatment):
         st.write(f"#### {treatment}")
 
         for title, column, axis in [
@@ -313,10 +313,12 @@ def _overview_figures(dataframe):
             st.altair_chart(altair_chart, use_container_width=True)
             st.write(_overview_statistics(dataframe, directions=(column,)))
 
-    columns = ["energy", "treatment"]
-    callbacks = [_energy_callback, _treatment_callback]
-
-    _utilities.iterate_over_columns(dataframe, columns, callbacks)
+    _utilities.iterate_over_columns(
+        dataframe,
+        data=None,
+        columns=["energy", "treatment"],
+        callbacks=[_energy_callback, _treatment_callback],
+    )
 
     st.write(
         """

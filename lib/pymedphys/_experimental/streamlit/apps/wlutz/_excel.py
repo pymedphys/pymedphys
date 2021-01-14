@@ -16,6 +16,7 @@
 import base64
 import pathlib
 
+from pymedphys._imports import natsort
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
@@ -40,11 +41,46 @@ def write_excel_overview(dataframe, statistics, filepath):
             worksheet=summary_worksheet,
         )
 
-        _create_algorithms_chart_sheet(
-            dataframe, workbook, raw_data_worksheet, algorithm_worksheet
-        )
+        references = _write_diff_data(dataframe, raw_data_worksheet)
+        st.write(references)
+
+        # _create_algorithms_chart_sheet(
+        #     dataframe, workbook, raw_data_worksheet, algorithm_worksheet
+        # )
 
     _insert_file_download_link(filepath)
+
+
+def _write_diff_data(
+    dataframe: "pd.DataFrame", worksheet: "xlsxwriter.worksheet.Worksheet"
+):
+    data = {"column_start": "A", "references": {}, "worksheet": worksheet}
+
+    def _treatment_callback(_dataframe, data, treatment):
+        data["references"][treatment] = {}
+
+    def _port_callback(_dataframe, data, treatment, port):
+        data["references"][treatment][port] = {}
+
+    def _algorithm_callback(dataframe, data, treatment, port, algorithm):
+        data_header = f"{treatment} | {port} | {algorithm}"
+
+        (
+            data["references"][treatment][port][algorithm],
+            data["column_start"],
+        ) = _write_data_get_references(
+            data["column_start"],
+            data_header,
+            dataframe[["gantry", "diff_x", "diff_y"]],
+            data["worksheet"],
+        )
+
+    columns = ["treatment", "port", "algorithm"]
+    callbacks = [_treatment_callback, _port_callback, _algorithm_callback]
+
+    _utilities.iterate_over_columns(dataframe, data, columns, callbacks)
+
+    return data["references"]
 
 
 def _create_algorithms_chart_sheet(
@@ -144,7 +180,7 @@ def _write_data_get_references(
 
         references[
             column
-        ] = f"={sheet_name}!${column_letter}$3:${column_letter}${last_row_number}"
+        ] = f"='{sheet_name}'!${column_letter}$3:${column_letter}${last_row_number}"
 
     return references, last_col_letter_with_gap
 
