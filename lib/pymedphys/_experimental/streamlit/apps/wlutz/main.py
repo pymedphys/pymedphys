@@ -175,8 +175,6 @@ def main():
         database_table["datetime"] - midnight
     ).dt.total_seconds()
 
-    # st.write(icom_datasets)
-
     icom_datasets["x_lower"] = icom_datasets["centre_x"] - icom_datasets["width"] / 2
     icom_datasets["x_upper"] = icom_datasets["centre_x"] + icom_datasets["width"] / 2
     icom_datasets["y_lower"] = icom_datasets["centre_y"] - icom_datasets["length"] / 2
@@ -193,27 +191,18 @@ def main():
     ]:
         _table_transfer_via_interpolation(icom_datasets, database_table, column)
 
-    # st.write(icom_datasets)
-
     icom_seconds = icom_datasets["seconds_since_midnight"]
     iview_seconds = database_table["seconds_since_midnight"]
 
     alignment_indices = np.argmin(
         np.abs(icom_seconds.values[None, :] - iview_seconds.values[:, None]), axis=1
     )
-    # st.write(alignment_indices)
-    # st.write(len(alignment_indices))
-    # st.write(len(iview_seconds))
 
     energies = icom_datasets["energy"].values[alignment_indices]
-    # st.write(energies)
-
     database_table["energy"] = energies
 
     database_table["width"] = database_table["x_upper"] - database_table["x_lower"]
     database_table["length"] = database_table["y_upper"] - database_table["y_lower"]
-
-    # st.write(database_table[["treatment", "energy"]])
 
     if advanced_mode:
         st.write(database_table)
@@ -227,14 +216,18 @@ def main():
         advanced_mode,
     )
 
-    _presentation_of_results(wlutz_directory_by_date)
+    _presentation_of_results(wlutz_directory_by_date, advanced_mode)
 
 
-def _presentation_of_results(wlutz_directory_by_date):
-    st.write("## Overview of Results")
-
+def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
-    calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
+
+    try:
+        calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
+    except FileNotFoundError:
+        return
+
+    st.write("## Overview of Results")
 
     dataframe = calculated_results.sort_values("seconds_since_midnight")
     dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
@@ -259,38 +252,41 @@ def _presentation_of_results(wlutz_directory_by_date):
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
 
-    st.write("### Experimental iCom and collimator corrections")
+    if advanced_mode:
+        st.write("### Experimental iCom and collimator corrections")
 
-    experimental_collimator_corrections = st.checkbox(
-        "Turn on experimental collimator and iCom correction statistics?"
-    )
-    if experimental_collimator_corrections:
-        st.write("#### Statistics")
-
-        (
-            dataframe_with_corrections,
-            collimator_correction,
-        ) = _corrections.apply_corrections(dataframe_by_algorithm)
-
-        dataframe_with_corrections["diff_x"] = dataframe_with_corrections[
-            "diff_x_coll_corrected"
-        ]
-        dataframe_with_corrections["diff_y"] = dataframe_with_corrections[
-            "diff_y_coll_corrected"
-        ]
-
-        statistics_with_corrections = _overview_statistics(dataframe_with_corrections)
-        st.write(statistics_with_corrections)
-
-        st.write("#### Predicted Collimator Rotation Correction")
-        st.write(
-            f"""
-                * Shift in MLC travel direction =
-                  `{round(collimator_correction[0], 2)}` mm
-                * Shift in Jaw travel direction =
-                  `{round(collimator_correction[1], 2)}` mm
-            """
+        experimental_collimator_corrections = st.checkbox(
+            "Turn on experimental collimator and iCom correction statistics?"
         )
+        if experimental_collimator_corrections:
+            st.write("#### Statistics")
+
+            (
+                dataframe_with_corrections,
+                collimator_correction,
+            ) = _corrections.apply_corrections(dataframe_by_algorithm)
+
+            dataframe_with_corrections["diff_x"] = dataframe_with_corrections[
+                "diff_x_coll_corrected"
+            ]
+            dataframe_with_corrections["diff_y"] = dataframe_with_corrections[
+                "diff_y_coll_corrected"
+            ]
+
+            statistics_with_corrections = _overview_statistics(
+                dataframe_with_corrections
+            )
+            st.write(statistics_with_corrections)
+
+            st.write("#### Predicted Collimator Rotation Correction")
+            st.write(
+                f"""
+                    * Shift in MLC travel direction =
+                    `{round(collimator_correction[0], 2)}` mm
+                    * Shift in Jaw travel direction =
+                    `{round(collimator_correction[1], 2)}` mm
+                """
+            )
 
 
 def _overview_statistics(dataframe):
