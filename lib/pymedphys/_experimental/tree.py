@@ -37,20 +37,51 @@ CONVERSIONS = {
 DependencyMap = Dict[str, MutableSet[Tuple[str, str, str]]]
 
 
-def create_trees(svg_path: pathlib.Path = SVG_PATH):
+def create_trees(svg_path: pathlib.Path = SVG_PATH, lib_path=LIB_PATH):
     module_dependencies = get_module_dependencies()
     internal_modules = set(module_dependencies.keys())
 
     module_api_map = _get_public_api_map(module_dependencies, internal_modules)
 
+    module_to_url_map = _get_module_to_url_map(lib_path)
+
     for module_name, api_names in module_api_map.items():
         _create_svg(
             api_names,
             module_name,
+            module_to_url_map,
             module_dependencies,
             internal_modules,
             output_directory=svg_path,
         )
+
+
+def _get_module_to_url_map(lib_path):
+    module_to_filepath_map = _get_module_to_filepath_map(lib_path)
+
+    module_to_url_map = {
+        module: _filepath_to_url(lib_path, filepath)
+        for module, filepath in module_to_filepath_map.items()
+    }
+
+    return module_to_url_map
+
+
+def _filepath_to_url(lib_path, filepath):
+    relative_path = filepath.relative_to(lib_path)
+    relative_path = str(relative_path).replace("\\", "/")
+    url = f"https://github.com/pymedphys/pymedphys/tree/main/lib/{relative_path}"
+
+    return url
+
+
+def _get_module_to_filepath_map(lib_path):
+    all_filepaths = list(lib_path.glob("**/*.py"))
+    module_to_filepath_map = {
+        _path_to_module(filepath, lib_path): filepath for filepath in all_filepaths
+    }
+
+    return module_to_filepath_map
 
 
 def get_module_dependencies(
@@ -72,10 +103,7 @@ def get_module_dependencies(
     if conversions is None:
         conversions = CONVERSIONS
 
-    all_filepaths = list(lib_path.glob("**/*.py"))
-    module_to_filepath_map = {
-        _path_to_module(filepath, lib_path): filepath for filepath in all_filepaths
-    }
+    module_to_filepath_map = _get_module_to_filepath_map(lib_path)
     all_internal_modules = set(module_to_filepath_map.keys())
 
     module_dependencies: DependencyMap = {}
@@ -138,7 +166,12 @@ def _get_public_api_map(module_dependencies, internal_modules, root="pymedphys")
 
 
 def _create_svg(
-    api_names, module_name, module_dependencies, internal_modules, output_directory
+    api_names,
+    module_name,
+    module_to_url_map,
+    module_dependencies,
+    internal_modules,
+    output_directory,
 ):
     di_graph = networkx.DiGraph()
     di_graph.add_node(module_name)
@@ -158,20 +191,27 @@ def _create_svg(
                 di_graph.add_node(dependency[1])
                 di_graph.add_edge(node, dependency[1])
 
+    node_urls = ""
+    for node in di_graph.nodes:
+        print(module_to_url_map[node])
+        node_urls += f'"{node}" [URL="{module_to_url_map[node]}"];\n'
+
     for api_name in api_names:
+        node_urls += f'"{api_name}" [URL="{module_to_url_map[module_name]}"];\n'
         di_graph.add_node(api_name)
         di_graph.add_edge(api_name, module_name)
 
     edges = ""
     for edge in di_graph.edges:
-        edges = edges + f'"{edge[0]}" -> "{edge[1]}";\n'
+        edges += f'"{edge[0]}" -> "{edge[1]}";\n'
 
     graphviz.dot_string_to_svg(
         f"""
             digraph sample {{
                 {{
-                    node [shape=rectangle];
+                    {node_urls}
                 }}
+
                 rankdir = LR;
                 {edges}
             }}

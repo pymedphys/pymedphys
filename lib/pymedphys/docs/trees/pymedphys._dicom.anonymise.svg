@@ -12,14 +12,20 @@
 <!-- pymedphys._dicom.anonymise -->
 <g id="node1" class="node">
 <title>pymedphys._dicom.anonymise</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/anonymise/__init__.py" xlink:title="pymedphys._dicom.anonymise">
 <ellipse fill="none" stroke="black" cx="482.51" cy="-45" rx="151.37" ry="18"/>
 <text text-anchor="middle" x="482.51" y="-41.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.anonymise</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.anonymise.core -->
 <g id="node2" class="node">
 <title>pymedphys._dicom.anonymise.core</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/anonymise/core.py" xlink:title="pymedphys._dicom.anonymise.core">
 <ellipse fill="none" stroke="black" cx="844.78" cy="-72" rx="174.67" ry="18"/>
 <text text-anchor="middle" x="844.78" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.anonymise.core</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.anonymise&#45;&gt;pymedphys._dicom.anonymise.core -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys._dicom.anonymise.api -->
 <g id="node3" class="node">
 <title>pymedphys._dicom.anonymise.api</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/anonymise/api.py" xlink:title="pymedphys._dicom.anonymise.api">
 <ellipse fill="none" stroke="black" cx="844.78" cy="-18" rx="168.97" ry="18"/>
 <text text-anchor="middle" x="844.78" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.anonymise.api</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.anonymise&#45;&gt;pymedphys._dicom.anonymise.api -->
 <g id="edge2" class="edge">
@@ -42,8 +51,11 @@
 <!-- pymedphys._dicom.constants -->
 <g id="node4" class="node">
 <title>pymedphys._dicom.constants</title>
+<g id="a_node4"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/__init__.py" xlink:title="pymedphys._dicom.constants">
 <ellipse fill="none" stroke="black" cx="1249.3" cy="-126" rx="146.77" ry="18"/>
 <text text-anchor="middle" x="1249.3" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.anonymise.core&#45;&gt;pymedphys._dicom.constants -->
 <g id="edge3" class="edge">
@@ -54,8 +66,11 @@
 <!-- pymedphys._dicom.anonymise.strategy -->
 <g id="node5" class="node">
 <title>pymedphys._dicom.anonymise.strategy</title>
+<g id="a_node5"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/anonymise/strategy.py" xlink:title="pymedphys._dicom.anonymise.strategy">
 <ellipse fill="none" stroke="black" cx="1249.3" cy="-72" rx="193.87" ry="18"/>
 <text text-anchor="middle" x="1249.3" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.anonymise.strategy</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.anonymise.core&#45;&gt;pymedphys._dicom.anonymise.strategy -->
 <g id="edge4" class="edge">
@@ -64,10 +79,13 @@
 <polygon fill="black" stroke="black" points="1045.32,-75.5 1055.32,-72 1045.32,-68.5 1045.32,-75.5"/>
 </g>
 <!-- pymedphys._dicom.utilities -->
-<g id="node6" class="node">
+<g id="node9" class="node">
 <title>pymedphys._dicom.utilities</title>
+<g id="a_node9"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/utilities/__init__.py" xlink:title="pymedphys._dicom.utilities">
 <ellipse fill="none" stroke="black" cx="1249.3" cy="-18" rx="137.58" ry="18"/>
 <text text-anchor="middle" x="1249.3" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.utilities</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.anonymise.api&#45;&gt;pymedphys._dicom.utilities -->
 <g id="edge5" class="edge">
@@ -76,10 +94,13 @@
 <polygon fill="black" stroke="black" points="1101.24,-21.5 1111.24,-18 1101.24,-14.5 1101.24,-21.5"/>
 </g>
 <!-- pymedphys._dicom.constants.uuid -->
-<g id="node7" class="node">
+<g id="node6" class="node">
 <title>pymedphys._dicom.constants.uuid</title>
+<g id="a_node6"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/uuid.py" xlink:title="pymedphys._dicom.constants.uuid">
 <ellipse fill="none" stroke="black" cx="1679.81" cy="-180" rx="170.07" ry="18"/>
 <text text-anchor="middle" x="1679.81" y="-176.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants.uuid</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.constants&#45;&gt;pymedphys._dicom.constants.uuid -->
 <g id="edge6" class="edge">
@@ -88,10 +109,13 @@
 <polygon fill="black" stroke="black" points="1559.27,-168.46 1569.63,-166.24 1560.15,-161.52 1559.27,-168.46"/>
 </g>
 <!-- pymedphys._dicom.constants.core -->
-<g id="node8" class="node">
+<g id="node7" class="node">
 <title>pymedphys._dicom.constants.core</title>
+<g id="a_node7"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/core.py" xlink:title="pymedphys._dicom.constants.core">
 <ellipse fill="none" stroke="black" cx="1679.81" cy="-126" rx="169.77" ry="18"/>
 <text text-anchor="middle" x="1679.81" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants.core</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.constants&#45;&gt;pymedphys._dicom.constants.core -->
 <g id="edge7" class="edge">
@@ -100,10 +124,13 @@
 <polygon fill="black" stroke="black" points="1500.12,-129.5 1510.12,-126 1500.12,-122.5 1500.12,-129.5"/>
 </g>
 <!-- pymedphys._dicom.constants.orientation -->
-<g id="node9" class="node">
+<g id="node8" class="node">
 <title>pymedphys._dicom.constants.orientation</title>
+<g id="a_node8"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/orientation.py" xlink:title="pymedphys._dicom.constants.orientation">
 <ellipse fill="none" stroke="black" cx="1679.81" cy="-72" rx="200.66" ry="18"/>
 <text text-anchor="middle" x="1679.81" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants.orientation</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.constants&#45;&gt;pymedphys._dicom.constants.orientation -->
 <g id="edge8" class="edge">
@@ -114,8 +141,11 @@
 <!-- pymedphys._dicom.utilities.files -->
 <g id="node10" class="node">
 <title>pymedphys._dicom.utilities.files</title>
+<g id="a_node10"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/utilities/files.py" xlink:title="pymedphys._dicom.utilities.files">
 <ellipse fill="none" stroke="black" cx="1679.81" cy="-18" rx="159.47" ry="18"/>
 <text text-anchor="middle" x="1679.81" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.utilities.files</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.utilities&#45;&gt;pymedphys._dicom.utilities.files -->
 <g id="edge9" class="edge">
@@ -126,8 +156,11 @@
 <!-- pymedphys.dicom.anonymise -->
 <g id="node11" class="node">
 <title>pymedphys.dicom.anonymise</title>
+<g id="a_node11"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/anonymise/__init__.py" xlink:title="pymedphys.dicom.anonymise">
 <ellipse fill="none" stroke="black" cx="147.54" cy="-45" rx="147.57" ry="18"/>
 <text text-anchor="middle" x="147.54" y="-41.3" font-family="Times,serif" font-size="14.00">pymedphys.dicom.anonymise</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.dicom.anonymise&#45;&gt;pymedphys._dicom.anonymise -->
 <g id="edge10" class="edge">

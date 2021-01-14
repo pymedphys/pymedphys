@@ -12,14 +12,20 @@
 <!-- pymedphys._mosaiq.helpers -->
 <g id="node1" class="node">
 <title>pymedphys._mosaiq.helpers</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_mosaiq/helpers.py" xlink:title="pymedphys._mosaiq.helpers">
 <ellipse fill="none" stroke="black" cx="420.77" cy="-72" rx="141.88" ry="18"/>
 <text text-anchor="middle" x="420.77" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._mosaiq.helpers</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._mosaiq.constants -->
 <g id="node2" class="node">
 <title>pymedphys._mosaiq.constants</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_mosaiq/constants.py" xlink:title="pymedphys._mosaiq.constants">
 <ellipse fill="none" stroke="black" cx="750.54" cy="-126" rx="152.17" ry="18"/>
 <text text-anchor="middle" x="750.54" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._mosaiq.constants</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._mosaiq.helpers&#45;&gt;pymedphys._mosaiq.constants -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys._mosaiq.connect -->
 <g id="node3" class="node">
 <title>pymedphys._mosaiq.connect</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_mosaiq/connect.py" xlink:title="pymedphys._mosaiq.connect">
 <ellipse fill="none" stroke="black" cx="750.54" cy="-72" rx="143.77" ry="18"/>
 <text text-anchor="middle" x="750.54" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._mosaiq.connect</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._mosaiq.helpers&#45;&gt;pymedphys._mosaiq.connect -->
 <g id="edge2" class="edge">
@@ -42,8 +51,11 @@
 <!-- pymedphys._utilities.patient -->
 <g id="node4" class="node">
 <title>pymedphys._utilities.patient</title>
+<g id="a_node4"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_utilities/patient.py" xlink:title="pymedphys._utilities.patient">
 <ellipse fill="none" stroke="black" cx="750.54" cy="-18" rx="142.97" ry="18"/>
 <text text-anchor="middle" x="750.54" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._utilities.patient</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._mosaiq.helpers&#45;&gt;pymedphys._utilities.patient -->
 <g id="edge3" class="edge">
@@ -54,8 +66,11 @@
 <!-- pymedphys.mosaiq.qcls -->
 <g id="node5" class="node">
 <title>pymedphys.mosaiq.qcls</title>
+<g id="a_node5"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_mosaiq/helpers.py" xlink:title="pymedphys.mosaiq.qcls">
 <ellipse fill="none" stroke="black" cx="121.54" cy="-72" rx="121.58" ry="18"/>
 <text text-anchor="middle" x="121.54" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys.mosaiq.qcls</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.mosaiq.qcls&#45;&gt;pymedphys._mosaiq.helpers -->
 <g id="edge4" class="edge">

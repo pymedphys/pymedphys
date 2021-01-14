@@ -12,14 +12,20 @@
 <!-- pymedphys._gamma.implementation.shell -->
 <g id="node1" class="node">
 <title>pymedphys._gamma.implementation.shell</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_gamma/implementation/shell.py" xlink:title="pymedphys._gamma.implementation.shell">
 <ellipse fill="none" stroke="black" cx="443.51" cy="-45" rx="206.06" ry="18"/>
 <text text-anchor="middle" x="443.51" y="-41.3" font-family="Times,serif" font-size="14.00">pymedphys._gamma.implementation.shell</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._gamma.utilities -->
 <g id="node2" class="node">
 <title>pymedphys._gamma.utilities</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_gamma/utilities/__init__.py" xlink:title="pymedphys._gamma.utilities">
 <ellipse fill="none" stroke="black" cx="851.28" cy="-72" rx="143.77" ry="18"/>
 <text text-anchor="middle" x="851.28" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._gamma.utilities</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._gamma.implementation.shell&#45;&gt;pymedphys._gamma.utilities -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys._utilities.createshells -->
 <g id="node3" class="node">
 <title>pymedphys._utilities.createshells</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_utilities/createshells.py" xlink:title="pymedphys._utilities.createshells">
 <ellipse fill="none" stroke="black" cx="851.28" cy="-18" rx="165.97" ry="18"/>
 <text text-anchor="middle" x="851.28" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._utilities.createshells</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._gamma.implementation.shell&#45;&gt;pymedphys._utilities.createshells -->
 <g id="edge2" class="edge">
@@ -42,8 +51,11 @@
 <!-- pymedphys._gamma.utilities.core -->
 <g id="node4" class="node">
 <title>pymedphys._gamma.utilities.core</title>
+<g id="a_node4"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_gamma/utilities/core.py" xlink:title="pymedphys._gamma.utilities.core">
 <ellipse fill="none" stroke="black" cx="1220.05" cy="-72" rx="167.07" ry="18"/>
 <text text-anchor="middle" x="1220.05" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._gamma.utilities.core</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._gamma.utilities&#45;&gt;pymedphys._gamma.utilities.core -->
 <g id="edge3" class="edge">
@@ -54,8 +66,11 @@
 <!-- pymedphys.gamma -->
 <g id="node5" class="node">
 <title>pymedphys.gamma</title>
+<g id="a_node5"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_gamma/implementation/shell.py" xlink:title="pymedphys.gamma">
 <ellipse fill="none" stroke="black" cx="100.74" cy="-45" rx="100.98" ry="18"/>
 <text text-anchor="middle" x="100.74" y="-41.3" font-family="Times,serif" font-size="14.00">pymedphys.gamma</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.gamma&#45;&gt;pymedphys._gamma.implementation.shell -->
 <g id="edge4" class="edge">

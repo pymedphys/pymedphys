@@ -9,17 +9,23 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 94)">
 <title>sample</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-94 605.45,-94 605.45,4 -4,4"/>
-<!-- pymedphys.mosaiq.execute -->
-<g id="node1" class="node">
-<title>pymedphys.mosaiq.execute</title>
-<ellipse fill="none" stroke="black" cx="139.09" cy="-72" rx="139.18" ry="18"/>
-<text text-anchor="middle" x="139.09" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys.mosaiq.execute</text>
-</g>
 <!-- pymedphys._mosaiq.connect -->
-<g id="node2" class="node">
+<g id="node1" class="node">
 <title>pymedphys._mosaiq.connect</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_mosaiq/connect.py" xlink:title="pymedphys._mosaiq.connect">
 <ellipse fill="none" stroke="black" cx="457.81" cy="-45" rx="143.77" ry="18"/>
 <text text-anchor="middle" x="457.81" y="-41.3" font-family="Times,serif" font-size="14.00">pymedphys._mosaiq.connect</text>
+</a>
+</g>
+</g>
+<!-- pymedphys.mosaiq.execute -->
+<g id="node2" class="node">
+<title>pymedphys.mosaiq.execute</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_mosaiq/connect.py" xlink:title="pymedphys.mosaiq.execute">
+<ellipse fill="none" stroke="black" cx="139.09" cy="-72" rx="139.18" ry="18"/>
+<text text-anchor="middle" x="139.09" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys.mosaiq.execute</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.mosaiq.execute&#45;&gt;pymedphys._mosaiq.connect -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys.mosaiq.connect -->
 <g id="node3" class="node">
 <title>pymedphys.mosaiq.connect</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_mosaiq/connect.py" xlink:title="pymedphys.mosaiq.connect">
 <ellipse fill="none" stroke="black" cx="139.09" cy="-18" rx="139.18" ry="18"/>
 <text text-anchor="middle" x="139.09" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys.mosaiq.connect</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.mosaiq.connect&#45;&gt;pymedphys._mosaiq.connect -->
 <g id="edge2" class="edge">

@@ -12,14 +12,20 @@
 <!-- pymedphys._dicom.dose -->
 <g id="node1" class="node">
 <title>pymedphys._dicom.dose</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/dose.py" xlink:title="pymedphys._dicom.dose">
 <ellipse fill="none" stroke="black" cx="610.55" cy="-234" rx="123.48" ry="18"/>
 <text text-anchor="middle" x="610.55" y="-230.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.dose</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.coords -->
 <g id="node2" class="node">
 <title>pymedphys._dicom.coords</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/coords.py" xlink:title="pymedphys._dicom.coords">
 <ellipse fill="none" stroke="black" cx="916.93" cy="-315" rx="132.68" ry="18"/>
 <text text-anchor="middle" x="916.93" y="-311.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.coords</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.dose&#45;&gt;pymedphys._dicom.coords -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys._dicom.structure -->
 <g id="node3" class="node">
 <title>pymedphys._dicom.structure</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/structure/__init__.py" xlink:title="pymedphys._dicom.structure">
 <ellipse fill="none" stroke="black" cx="916.93" cy="-261" rx="145.67" ry="18"/>
 <text text-anchor="middle" x="916.93" y="-257.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.structure</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.dose&#45;&gt;pymedphys._dicom.structure -->
 <g id="edge2" class="edge">
@@ -42,8 +51,11 @@
 <!-- pymedphys._dicom.constants -->
 <g id="node4" class="node">
 <title>pymedphys._dicom.constants</title>
+<g id="a_node4"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/__init__.py" xlink:title="pymedphys._dicom.constants">
 <ellipse fill="none" stroke="black" cx="916.93" cy="-207" rx="146.77" ry="18"/>
 <text text-anchor="middle" x="916.93" y="-203.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.dose&#45;&gt;pymedphys._dicom.constants -->
 <g id="edge3" class="edge">
@@ -54,8 +66,11 @@
 <!-- pymedphys._dicom.rtplan -->
 <g id="node5" class="node">
 <title>pymedphys._dicom.rtplan</title>
+<g id="a_node5"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/rtplan/__init__.py" xlink:title="pymedphys._dicom.rtplan">
 <ellipse fill="none" stroke="black" cx="916.93" cy="-99" rx="129.98" ry="18"/>
 <text text-anchor="middle" x="916.93" y="-95.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.rtplan</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.dose&#45;&gt;pymedphys._dicom.rtplan -->
 <g id="edge4" class="edge">
@@ -66,8 +81,11 @@
 <!-- pymedphys._dicom.constants.uuid -->
 <g id="node6" class="node">
 <title>pymedphys._dicom.constants.uuid</title>
+<g id="a_node6"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/uuid.py" xlink:title="pymedphys._dicom.constants.uuid">
 <ellipse fill="none" stroke="black" cx="1300.64" cy="-288" rx="170.07" ry="18"/>
 <text text-anchor="middle" x="1300.64" y="-284.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants.uuid</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.constants&#45;&gt;pymedphys._dicom.constants.uuid -->
 <g id="edge5" class="edge">
@@ -78,8 +96,11 @@
 <!-- pymedphys._dicom.constants.core -->
 <g id="node7" class="node">
 <title>pymedphys._dicom.constants.core</title>
+<g id="a_node7"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/core.py" xlink:title="pymedphys._dicom.constants.core">
 <ellipse fill="none" stroke="black" cx="1300.64" cy="-234" rx="169.77" ry="18"/>
 <text text-anchor="middle" x="1300.64" y="-230.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants.core</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.constants&#45;&gt;pymedphys._dicom.constants.core -->
 <g id="edge6" class="edge">
@@ -90,8 +111,11 @@
 <!-- pymedphys._dicom.constants.orientation -->
 <g id="node8" class="node">
 <title>pymedphys._dicom.constants.orientation</title>
+<g id="a_node8"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/constants/orientation.py" xlink:title="pymedphys._dicom.constants.orientation">
 <ellipse fill="none" stroke="black" cx="1300.64" cy="-180" rx="200.66" ry="18"/>
 <text text-anchor="middle" x="1300.64" y="-176.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.constants.orientation</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.constants&#45;&gt;pymedphys._dicom.constants.orientation -->
 <g id="edge7" class="edge">
@@ -102,8 +126,11 @@
 <!-- pymedphys._dicom.rtplan.core -->
 <g id="node9" class="node">
 <title>pymedphys._dicom.rtplan.core</title>
+<g id="a_node9"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/rtplan/core.py" xlink:title="pymedphys._dicom.rtplan.core">
 <ellipse fill="none" stroke="black" cx="1300.64" cy="-126" rx="153.27" ry="18"/>
 <text text-anchor="middle" x="1300.64" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.rtplan.core</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.rtplan&#45;&gt;pymedphys._dicom.rtplan.core -->
 <g id="edge8" class="edge">
@@ -114,8 +141,11 @@
 <!-- pymedphys._dicom.rtplan.build -->
 <g id="node10" class="node">
 <title>pymedphys._dicom.rtplan.build</title>
+<g id="a_node10"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/rtplan/build.py" xlink:title="pymedphys._dicom.rtplan.build">
 <ellipse fill="none" stroke="black" cx="1300.64" cy="-72" rx="156.77" ry="18"/>
 <text text-anchor="middle" x="1300.64" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.rtplan.build</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.rtplan&#45;&gt;pymedphys._dicom.rtplan.build -->
 <g id="edge9" class="edge">
@@ -126,8 +156,11 @@
 <!-- pymedphys._dicom.rtplan.adjust -->
 <g id="node11" class="node">
 <title>pymedphys._dicom.rtplan.adjust</title>
+<g id="a_node11"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/rtplan/adjust.py" xlink:title="pymedphys._dicom.rtplan.adjust">
 <ellipse fill="none" stroke="black" cx="1300.64" cy="-18" rx="161.67" ry="18"/>
 <text text-anchor="middle" x="1300.64" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.rtplan.adjust</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.rtplan&#45;&gt;pymedphys._dicom.rtplan.adjust -->
 <g id="edge10" class="edge">
@@ -138,8 +171,11 @@
 <!-- pymedphys._utilities.transforms -->
 <g id="node12" class="node">
 <title>pymedphys._utilities.transforms</title>
+<g id="a_node12"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_utilities/transforms/__init__.py" xlink:title="pymedphys._utilities.transforms">
 <ellipse fill="none" stroke="black" cx="1698.66" cy="-126" rx="161.37" ry="18"/>
 <text text-anchor="middle" x="1698.66" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._utilities.transforms</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.rtplan.core&#45;&gt;pymedphys._utilities.transforms -->
 <g id="edge11" class="edge">
@@ -150,8 +186,11 @@
 <!-- pymedphys._utilities.transforms.bipolar -->
 <g id="node13" class="node">
 <title>pymedphys._utilities.transforms.bipolar</title>
+<g id="a_node13"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_utilities/transforms/bipolar.py" xlink:title="pymedphys._utilities.transforms.bipolar">
 <ellipse fill="none" stroke="black" cx="2092.13" cy="-126" rx="196.07" ry="18"/>
 <text text-anchor="middle" x="2092.13" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._utilities.transforms.bipolar</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._utilities.transforms&#45;&gt;pymedphys._utilities.transforms.bipolar -->
 <g id="edge12" class="edge">
@@ -162,8 +201,11 @@
 <!-- pymedphys.dicom.zyx_and_dose_from_dataset -->
 <g id="node14" class="node">
 <title>pymedphys.dicom.zyx_and_dose_from_dataset</title>
+<g id="a_node14"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/dose.py" xlink:title="pymedphys.dicom.zyx_and_dose_from_dataset">
 <ellipse fill="none" stroke="black" cx="225.53" cy="-315" rx="225.56" ry="18"/>
 <text text-anchor="middle" x="225.53" y="-311.3" font-family="Times,serif" font-size="14.00">pymedphys.dicom.zyx_and_dose_from_dataset</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.dicom.zyx_and_dose_from_dataset&#45;&gt;pymedphys._dicom.dose -->
 <g id="edge13" class="edge">
@@ -174,8 +216,11 @@
 <!-- pymedphys.dicom.profile -->
 <g id="node15" class="node">
 <title>pymedphys.dicom.profile</title>
+<g id="a_node15"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/dose.py" xlink:title="pymedphys.dicom.profile">
 <ellipse fill="none" stroke="black" cx="225.53" cy="-261" rx="127.28" ry="18"/>
 <text text-anchor="middle" x="225.53" y="-257.3" font-family="Times,serif" font-size="14.00">pymedphys.dicom.profile</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.dicom.profile&#45;&gt;pymedphys._dicom.dose -->
 <g id="edge14" class="edge">
@@ -186,8 +231,11 @@
 <!-- pymedphys.dicom.depth_dose -->
 <g id="node16" class="node">
 <title>pymedphys.dicom.depth_dose</title>
+<g id="a_node16"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/dose.py" xlink:title="pymedphys.dicom.depth_dose">
 <ellipse fill="none" stroke="black" cx="225.53" cy="-207" rx="150.27" ry="18"/>
 <text text-anchor="middle" x="225.53" y="-203.3" font-family="Times,serif" font-size="14.00">pymedphys.dicom.depth_dose</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.dicom.depth_dose&#45;&gt;pymedphys._dicom.dose -->
 <g id="edge15" class="edge">
@@ -198,8 +246,11 @@
 <!-- pymedphys.dicom.dicom_dose_interpolate -->
 <g id="node17" class="node">
 <title>pymedphys.dicom.dicom_dose_interpolate</title>
+<g id="a_node17"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/dose.py" xlink:title="pymedphys.dicom.dicom_dose_interpolate">
 <ellipse fill="none" stroke="black" cx="225.53" cy="-153" rx="206.86" ry="18"/>
 <text text-anchor="middle" x="225.53" y="-149.3" font-family="Times,serif" font-size="14.00">pymedphys.dicom.dicom_dose_interpolate</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.dicom.dicom_dose_interpolate&#45;&gt;pymedphys._dicom.dose -->
 <g id="edge16" class="edge">

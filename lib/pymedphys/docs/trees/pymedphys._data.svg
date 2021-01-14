@@ -12,14 +12,20 @@
 <!-- pymedphys._data -->
 <g id="node1" class="node">
 <title>pymedphys._data</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_data/__init__.py" xlink:title="pymedphys._data">
 <ellipse fill="none" stroke="black" cx="437.01" cy="-99" rx="91.78" ry="18"/>
 <text text-anchor="middle" x="437.01" y="-95.3" font-family="Times,serif" font-size="14.00">pymedphys._data</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._data.download -->
 <g id="node2" class="node">
 <title>pymedphys._data.download</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_data/download.py" xlink:title="pymedphys._data.download">
 <ellipse fill="none" stroke="black" cx="703.74" cy="-99" rx="139.18" ry="18"/>
 <text text-anchor="middle" x="703.74" y="-95.3" font-family="Times,serif" font-size="14.00">pymedphys._data.download</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._data&#45;&gt;pymedphys._data.download -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys._data.retry -->
 <g id="node3" class="node">
 <title>pymedphys._data.retry</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_data/retry.py" xlink:title="pymedphys._data.retry">
 <ellipse fill="none" stroke="black" cx="1024.42" cy="-180" rx="118.08" ry="18"/>
 <text text-anchor="middle" x="1024.42" y="-176.3" font-family="Times,serif" font-size="14.00">pymedphys._data.retry</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._data.download&#45;&gt;pymedphys._data.retry -->
 <g id="edge2" class="edge">
@@ -42,8 +51,11 @@
 <!-- pymedphys._data.zenodo -->
 <g id="node4" class="node">
 <title>pymedphys._data.zenodo</title>
+<g id="a_node4"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_data/zenodo.py" xlink:title="pymedphys._data.zenodo">
 <ellipse fill="none" stroke="black" cx="1024.42" cy="-126" rx="127.28" ry="18"/>
 <text text-anchor="middle" x="1024.42" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._data.zenodo</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._data.download&#45;&gt;pymedphys._data.zenodo -->
 <g id="edge3" class="edge">
@@ -54,8 +66,11 @@
 <!-- pymedphys._utilities.filehash -->
 <g id="node5" class="node">
 <title>pymedphys._utilities.filehash</title>
+<g id="a_node5"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_utilities/filehash/__init__.py" xlink:title="pymedphys._utilities.filehash">
 <ellipse fill="none" stroke="black" cx="1024.42" cy="-72" rx="145.67" ry="18"/>
 <text text-anchor="middle" x="1024.42" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._utilities.filehash</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._data.download&#45;&gt;pymedphys._utilities.filehash -->
 <g id="edge4" class="edge">
@@ -66,8 +81,11 @@
 <!-- pymedphys._config -->
 <g id="node6" class="node">
 <title>pymedphys._config</title>
+<g id="a_node6"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_config.py" xlink:title="pymedphys._config">
 <ellipse fill="none" stroke="black" cx="1024.42" cy="-18" rx="98.58" ry="18"/>
 <text text-anchor="middle" x="1024.42" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._config</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._data.download&#45;&gt;pymedphys._config -->
 <g id="edge5" class="edge">
@@ -78,8 +96,11 @@
 <!-- pymedphys._utilities.filehash.core -->
 <g id="node7" class="node">
 <title>pymedphys._utilities.filehash.core</title>
+<g id="a_node7"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_utilities/filehash/core.py" xlink:title="pymedphys._utilities.filehash.core">
 <ellipse fill="none" stroke="black" cx="1374.99" cy="-72" rx="168.97" ry="18"/>
 <text text-anchor="middle" x="1374.99" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._utilities.filehash.core</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._utilities.filehash&#45;&gt;pymedphys._utilities.filehash.core -->
 <g id="edge6" class="edge">
@@ -90,8 +111,11 @@
 <!-- pymedphys.zip_data_paths -->
 <g id="node8" class="node">
 <title>pymedphys.zip_data_paths</title>
+<g id="a_node8"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_data/__init__.py" xlink:title="pymedphys.zip_data_paths">
 <ellipse fill="none" stroke="black" cx="154.69" cy="-153" rx="135.68" ry="18"/>
 <text text-anchor="middle" x="154.69" y="-149.3" font-family="Times,serif" font-size="14.00">pymedphys.zip_data_paths</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.zip_data_paths&#45;&gt;pymedphys._data -->
 <g id="edge7" class="edge">
@@ -102,8 +126,11 @@
 <!-- pymedphys.zenodo_data_paths -->
 <g id="node9" class="node">
 <title>pymedphys.zenodo_data_paths</title>
+<g id="a_node9"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_data/__init__.py" xlink:title="pymedphys.zenodo_data_paths">
 <ellipse fill="none" stroke="black" cx="154.69" cy="-99" rx="154.87" ry="18"/>
 <text text-anchor="middle" x="154.69" y="-95.3" font-family="Times,serif" font-size="14.00">pymedphys.zenodo_data_paths</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.zenodo_data_paths&#45;&gt;pymedphys._data -->
 <g id="edge8" class="edge">
@@ -114,8 +141,11 @@
 <!-- pymedphys.data_path -->
 <g id="node10" class="node">
 <title>pymedphys.data_path</title>
+<g id="a_node10"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_data/__init__.py" xlink:title="pymedphys.data_path">
 <ellipse fill="none" stroke="black" cx="154.69" cy="-45" rx="112.38" ry="18"/>
 <text text-anchor="middle" x="154.69" y="-41.3" font-family="Times,serif" font-size="14.00">pymedphys.data_path</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.data_path&#45;&gt;pymedphys._data -->
 <g id="edge9" class="edge">

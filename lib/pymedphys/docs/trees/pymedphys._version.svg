@@ -9,17 +9,23 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
 <title>sample</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-40 496.26,-40 496.26,4 -4,4"/>
-<!-- pymedphys.version_info -->
-<g id="node1" class="node">
-<title>pymedphys.version_info</title>
-<ellipse fill="none" stroke="black" cx="122.84" cy="-18" rx="122.68" ry="18"/>
-<text text-anchor="middle" x="122.84" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys.version_info</text>
-</g>
 <!-- pymedphys._version -->
-<g id="node2" class="node">
+<g id="node1" class="node">
 <title>pymedphys._version</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_version.py" xlink:title="pymedphys._version">
 <ellipse fill="none" stroke="black" cx="386.97" cy="-18" rx="105.08" ry="18"/>
 <text text-anchor="middle" x="386.97" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._version</text>
+</a>
+</g>
+</g>
+<!-- pymedphys.version_info -->
+<g id="node2" class="node">
+<title>pymedphys.version_info</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_version.py" xlink:title="pymedphys.version_info">
+<ellipse fill="none" stroke="black" cx="122.84" cy="-18" rx="122.68" ry="18"/>
+<text text-anchor="middle" x="122.84" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys.version_info</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.version_info&#45;&gt;pymedphys._version -->
 <g id="edge1" class="edge">

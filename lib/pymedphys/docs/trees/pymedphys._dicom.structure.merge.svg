@@ -12,14 +12,20 @@
 <!-- pymedphys._dicom.structure.merge -->
 <g id="node1" class="node">
 <title>pymedphys._dicom.structure.merge</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/structure/merge.py" xlink:title="pymedphys._dicom.structure.merge">
 <ellipse fill="none" stroke="black" cx="558.55" cy="-18" rx="178.17" ry="18"/>
 <text text-anchor="middle" x="558.55" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.structure.merge</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.structure -->
 <g id="node2" class="node">
 <title>pymedphys._dicom.structure</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/structure/__init__.py" xlink:title="pymedphys._dicom.structure">
 <ellipse fill="none" stroke="black" cx="918.22" cy="-18" rx="145.67" ry="18"/>
 <text text-anchor="middle" x="918.22" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._dicom.structure</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._dicom.structure.merge&#45;&gt;pymedphys._dicom.structure -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys.dicom.merge_contours -->
 <g id="node3" class="node">
 <title>pymedphys.dicom.merge_contours</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_dicom/structure/merge.py" xlink:title="pymedphys.dicom.merge_contours">
 <ellipse fill="none" stroke="black" cx="172.23" cy="-18" rx="172.47" ry="18"/>
 <text text-anchor="middle" x="172.23" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys.dicom.merge_contours</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.dicom.merge_contours&#45;&gt;pymedphys._dicom.structure.merge -->
 <g id="edge2" class="edge">

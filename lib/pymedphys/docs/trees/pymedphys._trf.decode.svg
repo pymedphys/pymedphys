@@ -12,14 +12,20 @@
 <!-- pymedphys._trf.decode -->
 <g id="node1" class="node">
 <title>pymedphys._trf.decode</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_trf/decode/__init__.py" xlink:title="pymedphys._trf.decode">
 <ellipse fill="none" stroke="black" cx="358.37" cy="-72" rx="118.08" ry="18"/>
 <text text-anchor="middle" x="358.37" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._trf.decode</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._trf.decode.trf2pandas -->
 <g id="node2" class="node">
 <title>pymedphys._trf.decode.trf2pandas</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_trf/decode/trf2pandas.py" xlink:title="pymedphys._trf.decode.trf2pandas">
 <ellipse fill="none" stroke="black" cx="684.25" cy="-72" rx="171.67" ry="18"/>
 <text text-anchor="middle" x="684.25" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._trf.decode.trf2pandas</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._trf.decode&#45;&gt;pymedphys._trf.decode.trf2pandas -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys._trf.decode.partition -->
 <g id="node3" class="node">
 <title>pymedphys._trf.decode.partition</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_trf/decode/partition.py" xlink:title="pymedphys._trf.decode.partition">
 <ellipse fill="none" stroke="black" cx="1053.02" cy="-126" rx="161.37" ry="18"/>
 <text text-anchor="middle" x="1053.02" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys._trf.decode.partition</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._trf.decode.trf2pandas&#45;&gt;pymedphys._trf.decode.partition -->
 <g id="edge2" class="edge">
@@ -42,8 +51,11 @@
 <!-- pymedphys._trf.decode.table -->
 <g id="node4" class="node">
 <title>pymedphys._trf.decode.table</title>
+<g id="a_node4"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_trf/decode/table.py" xlink:title="pymedphys._trf.decode.table">
 <ellipse fill="none" stroke="black" cx="1053.02" cy="-72" rx="144.07" ry="18"/>
 <text text-anchor="middle" x="1053.02" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._trf.decode.table</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._trf.decode.trf2pandas&#45;&gt;pymedphys._trf.decode.table -->
 <g id="edge3" class="edge">
@@ -54,8 +66,11 @@
 <!-- pymedphys._trf.decode.header -->
 <g id="node5" class="node">
 <title>pymedphys._trf.decode.header</title>
+<g id="a_node5"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_trf/decode/header.py" xlink:title="pymedphys._trf.decode.header">
 <ellipse fill="none" stroke="black" cx="1053.02" cy="-18" rx="153.27" ry="18"/>
 <text text-anchor="middle" x="1053.02" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys._trf.decode.header</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._trf.decode.trf2pandas&#45;&gt;pymedphys._trf.decode.header -->
 <g id="edge4" class="edge">
@@ -66,8 +81,11 @@
 <!-- pymedphys._trf.decode.constants -->
 <g id="node6" class="node">
 <title>pymedphys._trf.decode.constants</title>
+<g id="a_node6"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_trf/decode/constants.py" xlink:title="pymedphys._trf.decode.constants">
 <ellipse fill="none" stroke="black" cx="1415.94" cy="-72" rx="165.97" ry="18"/>
 <text text-anchor="middle" x="1415.94" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys._trf.decode.constants</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._trf.decode.table&#45;&gt;pymedphys._trf.decode.constants -->
 <g id="edge5" class="edge">
@@ -78,8 +96,11 @@
 <!-- pymedphys.trf.read -->
 <g id="node7" class="node">
 <title>pymedphys.trf.read</title>
+<g id="a_node7"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_trf/decode/__init__.py" xlink:title="pymedphys.trf.read">
 <ellipse fill="none" stroke="black" cx="102.04" cy="-72" rx="102.08" ry="18"/>
 <text text-anchor="middle" x="102.04" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys.trf.read</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.trf.read&#45;&gt;pymedphys._trf.decode -->
 <g id="edge6" class="edge">

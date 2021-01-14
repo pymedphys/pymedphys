@@ -12,14 +12,20 @@
 <!-- pymedphys._electronfactors -->
 <g id="node1" class="node">
 <title>pymedphys._electronfactors</title>
+<g id="a_node1"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys._electronfactors">
 <ellipse fill="none" stroke="black" cx="835.43" cy="-234" rx="141.88" ry="18"/>
 <text text-anchor="middle" x="835.43" y="-230.3" font-family="Times,serif" font-size="14.00">pymedphys._electronfactors</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._electronfactors.core -->
 <g id="node2" class="node">
 <title>pymedphys._electronfactors.core</title>
+<g id="a_node2"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/core.py" xlink:title="pymedphys._electronfactors.core">
 <ellipse fill="none" stroke="black" cx="1215.9" cy="-261" rx="164.37" ry="18"/>
 <text text-anchor="middle" x="1215.9" y="-257.3" font-family="Times,serif" font-size="14.00">pymedphys._electronfactors.core</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._electronfactors&#45;&gt;pymedphys._electronfactors.core -->
 <g id="edge1" class="edge">
@@ -30,8 +36,11 @@
 <!-- pymedphys._electronfactors.visualisation -->
 <g id="node3" class="node">
 <title>pymedphys._electronfactors.visualisation</title>
+<g id="a_node3"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/visualisation.py" xlink:title="pymedphys._electronfactors.visualisation">
 <ellipse fill="none" stroke="black" cx="1215.9" cy="-207" rx="202.56" ry="18"/>
 <text text-anchor="middle" x="1215.9" y="-203.3" font-family="Times,serif" font-size="14.00">pymedphys._electronfactors.visualisation</text>
+</a>
+</g>
 </g>
 <!-- pymedphys._electronfactors&#45;&gt;pymedphys._electronfactors.visualisation -->
 <g id="edge2" class="edge">
@@ -42,8 +51,11 @@
 <!-- pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse -->
 <g id="node4" class="node">
 <title>pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse</title>
+<g id="a_node4"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-450" rx="319.24" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-446.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse&#45;&gt;pymedphys._electronfactors -->
 <g id="edge3" class="edge">
@@ -54,8 +66,11 @@
 <!-- pymedphys.electronfactors.calculate_percent_prediction_differences -->
 <g id="node5" class="node">
 <title>pymedphys.electronfactors.calculate_percent_prediction_differences</title>
+<g id="a_node5"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.calculate_percent_prediction_differences">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-396" rx="328.74" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-392.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.calculate_percent_prediction_differences</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.calculate_percent_prediction_differences&#45;&gt;pymedphys._electronfactors -->
 <g id="edge4" class="edge">
@@ -66,8 +81,11 @@
 <!-- pymedphys.electronfactors.calculate_deformability -->
 <g id="node6" class="node">
 <title>pymedphys.electronfactors.calculate_deformability</title>
+<g id="a_node6"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.calculate_deformability">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-342" rx="248.06" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-338.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.calculate_deformability</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.calculate_deformability&#45;&gt;pymedphys._electronfactors -->
 <g id="edge5" class="edge">
@@ -78,8 +96,11 @@
 <!-- pymedphys.electronfactors.spline_model -->
 <g id="node7" class="node">
 <title>pymedphys.electronfactors.spline_model</title>
+<g id="a_node7"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.spline_model">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-288" rx="200.36" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-284.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.spline_model</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.spline_model&#45;&gt;pymedphys._electronfactors -->
 <g id="edge6" class="edge">
@@ -90,8 +111,11 @@
 <!-- pymedphys.electronfactors.plot_model -->
 <g id="node8" class="node">
 <title>pymedphys.electronfactors.plot_model</title>
+<g id="a_node8"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.plot_model">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-234" rx="190.37" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-230.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.plot_model</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.plot_model&#45;&gt;pymedphys._electronfactors -->
 <g id="edge7" class="edge">
@@ -102,8 +126,11 @@
 <!-- pymedphys.electronfactors.spline_model_with_deformability -->
 <g id="node9" class="node">
 <title>pymedphys.electronfactors.spline_model_with_deformability</title>
+<g id="a_node9"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.spline_model_with_deformability">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-180" rx="291.65" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-176.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.spline_model_with_deformability</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.spline_model_with_deformability&#45;&gt;pymedphys._electronfactors -->
 <g id="edge8" class="edge">
@@ -114,8 +141,11 @@
 <!-- pymedphys.electronfactors.parameterise_insert -->
 <g id="node10" class="node">
 <title>pymedphys.electronfactors.parameterise_insert</title>
+<g id="a_node10"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.parameterise_insert">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-126" rx="233.16" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-122.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.parameterise_insert</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.parameterise_insert&#45;&gt;pymedphys._electronfactors -->
 <g id="edge9" class="edge">
@@ -126,8 +156,11 @@
 <!-- pymedphys.electronfactors.create_transformed_mesh -->
 <g id="node11" class="node">
 <title>pymedphys.electronfactors.create_transformed_mesh</title>
+<g id="a_node11"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.create_transformed_mesh">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-72" rx="260.75" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-68.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.create_transformed_mesh</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.create_transformed_mesh&#45;&gt;pymedphys._electronfactors -->
 <g id="edge10" class="edge">
@@ -138,8 +171,11 @@
 <!-- pymedphys.electronfactors.convert2_ratio_perim_area -->
 <g id="node12" class="node">
 <title>pymedphys.electronfactors.convert2_ratio_perim_area</title>
+<g id="a_node12"><a xlink:href="https://github.com/pymedphys/pymedphys/tree/main/lib/pymedphys/_electronfactors/__init__.py" xlink:title="pymedphys.electronfactors.convert2_ratio_perim_area">
 <ellipse fill="none" stroke="black" cx="328.87" cy="-18" rx="263.75" ry="18"/>
 <text text-anchor="middle" x="328.87" y="-14.3" font-family="Times,serif" font-size="14.00">pymedphys.electronfactors.convert2_ratio_perim_area</text>
+</a>
+</g>
 </g>
 <!-- pymedphys.electronfactors.convert2_ratio_perim_area&#45;&gt;pymedphys._electronfactors -->
 <g id="edge11" class="edge">
