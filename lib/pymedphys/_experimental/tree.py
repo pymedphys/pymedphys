@@ -193,8 +193,11 @@ def _create_svg(
 
     node_urls = ""
     for node in di_graph.nodes:
-        print(module_to_url_map[node])
-        node_urls += f'"{node}" [URL="{module_to_url_map[node]}"];\n'
+        node_urls += (
+            f'"{node}" '
+            f'[label="{remove_prefix(node, "pymedphys.")}" '
+            f'URL="{module_to_url_map[node]}"];\n'
+        )
 
     for api_name in api_names:
         node_urls += f'"{api_name}" [URL="{module_to_url_map[module_name]}"];\n'
@@ -207,7 +210,7 @@ def _create_svg(
 
     graphviz.dot_string_to_svg(
         f"""
-            digraph sample {{
+            digraph "{module_name}" {{
                 {{
                     {node_urls}
                 }}
@@ -218,6 +221,11 @@ def _create_svg(
         """,
         output_directory / f"{module_name}.svg",
     )
+
+
+# https://stackoverflow.com/a/16892491/3912576
+def remove_prefix(text, prefix):
+    return text[text.startswith(prefix) and len(prefix) :]
 
 
 def _convert_import_to_module_name(
