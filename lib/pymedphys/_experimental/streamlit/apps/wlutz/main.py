@@ -19,7 +19,7 @@ from pymedphys._imports import altair as alt
 from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import scipy
+from pymedphys._imports import plt, scipy
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import streamlit_ace, tomlkit
 
@@ -235,19 +235,7 @@ def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
     statistics = _overview_statistics(dataframe_by_algorithm)
     st.write(statistics)
 
-    st.write(
-        """
-            `TODO:`
-            * Create figures here organised first by energy, then by
-              direction, then treatment.
-              * These figures will collate all ports for a given setup
-                onto one plot
-              * Only include PyMedPhys results for these.
-            * Beneath each figure write out the statistics for that
-              figure.
-            * Write those created figures to the Excel overview.
-    """
-    )
+    _overview_figures(dataframe_by_algorithm)
 
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
@@ -289,7 +277,77 @@ def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
             )
 
 
-def _overview_statistics(dataframe):
+def _overview_figures(dataframe):
+    energies = natsort.natsorted(dataframe["energy"].unique())
+
+    for energy in energies:
+        st.write(f"### {energy}")
+        dataframe_by_energy = _utilities.filter_by(dataframe, "energy", energy)
+        treatments = natsort.natsorted(dataframe["treatment"].unique())
+
+        for treatment in treatments:
+            dataframe_by_energy_treatment = _utilities.filter_by(
+                dataframe_by_energy, "treatment", treatment
+            )
+
+            if len(dataframe_by_energy_treatment) == 0:
+                continue
+
+            st.write(f"#### {treatment}")
+
+            for title, column, axis in [
+                ("Radial", "diff_y", "y-axis"),
+                ("Transverse", "diff_x", "x-axis"),
+            ]:
+                altair_chart = (
+                    alt.Chart(dataframe_by_energy_treatment)
+                    .mark_line(point=True)
+                    .encode(
+                        x=alt.X("gantry", axis=alt.Axis(title="Gantry")),
+                        y=alt.Y(
+                            column,
+                            axis=alt.Axis(title=f"iView {axis} (mm) [Field - BB]"),
+                        ),
+                        color=alt.Color("port", legend=alt.Legend(title="Port")),
+                        tooltip=[
+                            "time",
+                            "port",
+                            "diff_x",
+                            "diff_y",
+                            "gantry",
+                            "collimator",
+                            "turn_table",
+                            "filename",
+                        ],
+                    )
+                ).properties(title=f"{title} | {energy} | {treatment}")
+
+                st.altair_chart(altair_chart, use_container_width=True)
+                st.write(
+                    _overview_statistics(
+                        dataframe_by_energy_treatment, directions=(column,)
+                    )
+                )
+
+    # dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
+
+    st.write(
+        """
+            `TODO:`
+            * Use the data collected on the `2020-12-17` as the reference
+            * Create figures here organised first by energy, then by treatment,
+              then direction.
+              * These figures will collate all ports for a given setup
+                onto one plot
+              * Only include PyMedPhys results for these.
+            * Beneath each figure write out the statistics for that
+              figure.
+            * Write those created figures to the Excel overview.
+        """
+    )
+
+
+def _overview_statistics(dataframe, directions=("diff_y", "diff_x")):
     statistics = []
     energies = dataframe["energy"].unique()
     energies = natsort.natsorted(energies)
@@ -298,7 +356,7 @@ def _overview_statistics(dataframe):
     for energy in energies:
         dataframe_by_energy = _utilities.filter_by(dataframe, "energy", energy)
 
-        for column in ["diff_y", "diff_x"]:
+        for column in directions:
             statistics.append(
                 {
                     "energy": energy,
