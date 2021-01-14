@@ -247,4 +247,6 @@ def main():
             st.dataframe(mosaiq_table, height=1000)
 
         if "rs" in files and "rd" in files:
-            plot_dvh(files["rs"], files["rd"])
+            show_dvh = st.checkbox("Create DVH Plot")
+            if show_dvh:
+                plot_dvh(files["rs"], files["rd"])

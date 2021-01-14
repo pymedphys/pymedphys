@@ -8,6 +8,8 @@ import black
 import dateutil
 import dbfread
 import dicompylercore
+import dicompylercore.dicomparser as dicomparser
+import dicompylercore.dvhcalc as dvhcalc
 import keyring
 import packaging
 import plotly
