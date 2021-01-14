@@ -213,7 +213,6 @@ def _create_svg(
                     {node_urls}
                 }}
 
-                rankdir = LR;
                 {edges}
             }}
         """,
