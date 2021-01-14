@@ -17,14 +17,6 @@ from copy import copy
 
 import networkx as nx
 
-from .utilities import (
-    create_href,
-    create_labels,
-    get_levels,
-    remove_prefix,
-    save_dot_file,
-)
-
 ROOT = os.getcwd()
 
 

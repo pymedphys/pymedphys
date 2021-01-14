@@ -21,10 +21,10 @@ formats
 
 # pylint: disable = unused-import
 
-import textwrap
+import textwrap as _textwrap
 
 from ._metersetmap.metersetmap import calc_metersetmap as calculate
 from ._metersetmap.metersetmap import display_metersetmap as display
 from ._metersetmap.metersetmap import get_grid as grid
 
-WARNING_MESSAGE = textwrap.dedent(__doc__.split("WARNING::")[-1])
+WARNING_MESSAGE = _textwrap.dedent(__doc__.split("WARNING::")[-1])

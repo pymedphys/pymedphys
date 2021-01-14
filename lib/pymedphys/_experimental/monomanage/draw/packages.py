@@ -16,8 +16,6 @@ import os
 
 import networkx as nx
 
-from .utilities import create_link, save_dot_file
-
 ROOT = os.getcwd()
 
 
