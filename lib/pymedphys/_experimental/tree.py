@@ -12,11 +12,17 @@
 # limitations under the License.
 
 import ast
+import collections
 import pathlib
 from typing import Dict, MutableSet, Tuple
 
+import networkx
+
+from . import graphviz
+
 HERE = pathlib.Path(__file__).parent.resolve()
 LIB_PATH = HERE.parents[1]
+SVG_PATH = LIB_PATH / "pymedphys" / "docs" / "trees"
 
 CONVERSIONS = {
     "attr": "attrs",
@@ -29,6 +35,22 @@ CONVERSIONS = {
 }
 
 DependencyMap = Dict[str, MutableSet[Tuple[str, str, str]]]
+
+
+def create_trees(svg_path: pathlib.Path = SVG_PATH):
+    module_dependencies = get_module_dependencies()
+    internal_modules = set(module_dependencies.keys())
+
+    module_api_map = _get_public_api_map(module_dependencies, internal_modules)
+
+    for module_name, api_names in module_api_map.items():
+        _create_svg(
+            api_names,
+            module_name,
+            module_dependencies,
+            internal_modules,
+            output_directory=svg_path,
+        )
 
 
 def get_module_dependencies(
@@ -76,6 +98,86 @@ def get_module_dependencies(
         module_dependencies[module] = module_imports
 
     return module_dependencies
+
+
+def _get_exposed_internal_imports(module, module_dependencies, internal_modules):
+    return [
+        item
+        for item in module_dependencies[module]
+        if not item[2].startswith("_") and item[1] in internal_modules
+    ]
+
+
+def _get_public_api_map(module_dependencies, internal_modules, root="pymedphys"):
+    top_level_api = _get_exposed_internal_imports(
+        root, module_dependencies, internal_modules
+    )
+    module_apis = [item[0] for item in top_level_api if item[0] == item[1]]
+
+    second_level_apis = {}
+    for module in module_apis:
+        second_level_apis[module] = _get_exposed_internal_imports(
+            module, module_dependencies, internal_modules
+        )
+
+    exposure_module_maps = {
+        f"{root}.{item[2]}": item[1] for item in top_level_api if item[0] != item[1]
+    }
+
+    for module, second_level_api in second_level_apis.items():
+        exposure_module_maps = {
+            **exposure_module_maps,
+            **{f"{module}.{item[2]}": item[1] for item in second_level_api},
+        }
+
+    module_api_map = collections.defaultdict(lambda: [])
+    for key, item in exposure_module_maps.items():
+        module_api_map[item].append(key)
+
+    return module_api_map
+
+
+def _create_svg(
+    api_names, module_name, module_dependencies, internal_modules, output_directory
+):
+    di_graph = networkx.DiGraph()
+    di_graph.add_node(module_name)
+    traversal_nodes = {module_name}
+
+    while traversal_nodes:
+        node = traversal_nodes.pop()
+        raw_dependencies = module_dependencies[node]
+
+        for dependency in raw_dependencies:
+            if (
+                not dependency[2].startswith("_")
+                and not dependency[1] in di_graph
+                and dependency[1] in internal_modules
+            ):
+                traversal_nodes.add(dependency[1])
+                di_graph.add_node(dependency[1])
+                di_graph.add_edge(node, dependency[1])
+
+    for api_name in api_names:
+        di_graph.add_node(api_name)
+        di_graph.add_edge(api_name, module_name)
+
+    edges = ""
+    for edge in di_graph.edges:
+        edges = edges + f'"{edge[0]}" -> "{edge[1]}";\n'
+
+    graphviz.dot_string_to_svg(
+        f"""
+            digraph sample {{
+                {{
+                    node [shape=rectangle];
+                }}
+                rankdir = LR;
+                {edges}
+            }}
+        """,
+        output_directory / f"{module_name}.svg",
+    )
 
 
 def _convert_import_to_module_name(
