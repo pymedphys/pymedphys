@@ -92,7 +92,6 @@ packages = [
     "pymedphys.tests.experimental.mapcheck",
     "pymedphys.tests.experimental.mephysto",
     "pymedphys.tests.experimental.paulking",
-    "pymedphys.tests.experimental.paulking.film",
     "pymedphys.tests.experimental.paulking.test_coll",
     "pymedphys.tests.experimental.pinnacle",
     "pymedphys.tests.experimental.profiler",
@@ -137,7 +136,6 @@ package_data = {
         "e2e/cypress/support/*",
         "experimental/mephysto/data/baselines/*",
         "experimental/mephysto/data/measurements/*",
-        "experimental/paulking/film/data/*",
     ],
 }
 
@@ -161,6 +159,7 @@ extras_require = {
         "scikit-image",
         "pymssql",
         "natsort",
+        "tomlkit",
         "pynetdicom",
         "pylibjpeg-libjpeg",
         "dbfread",
@@ -196,7 +195,6 @@ extras_require = {
         "mypy",
         "rope",
         "doc8",
-        "tomlkit",
         "readme-renderer",
     ],
     "dicom": ["pynetdicom", "pylibjpeg-libjpeg", "pydicom>=2.0.0"],
@@ -210,7 +208,7 @@ extras_require = {
     ],
     "doctests": ["pylinac==2.3.2", "tensorflow>=2.2.0", "sphinx-book-theme"],
     "ml": ["tensorflow>=2.2.0"],
-    "propagate": ["black>=19.3b0,<20.0", "tomlkit"],
+    "propagate": ["black>=19.3b0,<20.0"],
     "tests": [
         "pytest",
         "pytest-sugar",
@@ -236,6 +234,7 @@ extras_require = {
         "scikit-image",
         "pymssql",
         "natsort",
+        "tomlkit",
         "pynetdicom",
         "pylibjpeg-libjpeg",
         "dbfread",
