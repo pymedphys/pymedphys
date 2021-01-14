@@ -48,7 +48,7 @@ def write_excel_overview(dataframe, statistics, filepath):
         raw_data_worksheet = workbook.add_worksheet(name="Raw Data")
 
         references = _write_diff_data(dataframe, raw_data_worksheet)
-        st.write(references)
+        # st.write(references)
 
         _create_algorithms_chart_sheet(workbook, algorithm_worksheet, references)
         _create_overview_sheet(

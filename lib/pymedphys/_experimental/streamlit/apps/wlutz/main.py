@@ -320,20 +320,20 @@ def _overview_figures(dataframe):
         callbacks=[_energy_callback, _treatment_callback],
     )
 
-    st.write(
-        """
-            `TODO:`
-            * Use the data collected on the `2020-12-17` as the reference
-            * Create figures here organised first by energy, then by treatment,
-              then direction.
-              * These figures will collate all ports for a given setup
-                onto one plot
-              * Only include PyMedPhys results for these.
-            * Beneath each figure write out the statistics for that
-              figure.
-            * Write those created figures to the Excel overview.
-        """
-    )
+    # st.write(
+    #     """
+    #         `TODO:`
+    #         * Use the data collected on the `2020-12-17` as the reference
+    #         * Create figures here organised first by energy, then by treatment,
+    #           then direction.
+    #           * These figures will collate all ports for a given setup
+    #             onto one plot
+    #           * Only include PyMedPhys results for these.
+    #         * Beneath each figure write out the statistics for that
+    #           figure.
+    #         * Write those created figures to the Excel overview.
+    #     """
+    # )
 
 
 def _overview_statistics(dataframe, directions=("diff_y", "diff_x")):
