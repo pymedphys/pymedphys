@@ -92,7 +92,6 @@ packages = [
     "pymedphys.tests.experimental.mapcheck",
     "pymedphys.tests.experimental.mephysto",
     "pymedphys.tests.experimental.paulking",
-    "pymedphys.tests.experimental.paulking.film",
     "pymedphys.tests.experimental.paulking.test_coll",
     "pymedphys.tests.experimental.pinnacle",
     "pymedphys.tests.experimental.profiler",
@@ -137,7 +136,6 @@ package_data = {
         "e2e/cypress/support/*",
         "experimental/mephysto/data/baselines/*",
         "experimental/mephysto/data/measurements/*",
-        "experimental/paulking/film/data/*",
     ],
 }
 
