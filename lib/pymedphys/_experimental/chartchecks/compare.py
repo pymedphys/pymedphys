@@ -185,11 +185,9 @@ def compare_to_mosaiq(dicom_table, mos_table):
                     [mos_table.iloc[field][label]], columns=[label]
                 )
 
-                # add_dicom = dicom_table.iloc[field][label]
-                # add_mosaiq = mos_table.iloc[field][label]
-                # breakpoint()
                 dicom_list = pd.concat([dicom_list, add_dicom], axis=1)
                 mosaiq_list = pd.concat([mosaiq_list, add_mosaiq], axis=1)
+
             # continue if the value is not in Mosaiq
             else:
                 continue

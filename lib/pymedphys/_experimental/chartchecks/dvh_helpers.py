@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# from dicompyler-core import dic
 from pymedphys._imports import dicompylercore
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plotly, plt
@@ -26,7 +27,6 @@ def plot_dvh(rs_file, rd_file):
         "P:/Share/Chris/Test_Patient/RD.1.3.46.670589.13.15476.20191204085119.163981"
     )
     # rp_file = "P:/Share/Chris/Test_Patient/RP.1.3.46.670589.13.15476.20191204085117.752796"
-
     rs = dicompylercore.dicomparser.DicomParser(rs_file)
     # rd = dicomparser.DicomParser(rd_file)
     # rp = dicomparser.DicomParser(rp_file)

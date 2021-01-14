@@ -14,6 +14,8 @@
 
 import streamlit as st
 
+# from dicompylercore import dicomparser.dicomparser.DicomParser
+
 from pymedphys._mosaiq import connect
 
 from pymedphys._experimental.chartchecks.compare import color_results, compare_to_mosaiq

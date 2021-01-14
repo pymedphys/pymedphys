@@ -59,11 +59,9 @@ def compare_delivered_to_planned(patient):
         patient_results = pd.DataFrame()
         try:
             # current_fx = max(delivered_values["fraction"])
-            todays_date = date.today()
-            week_ago = timedelta(days=7)
-            delivered_values = delivered_values[
-                delivered_values["date"] > todays_date - week_ago
-            ]
+            todays_date = pd.Timestamp("today").floor("D")
+            week_ago = todays_date + pd.offsets.Day(-7)
+            delivered_values = delivered_values[delivered_values["date"] > week_ago]
         except (TypeError, ValueError, AttributeError):
             print("fraction field empty")
         primary_checks = {
@@ -113,6 +111,7 @@ def compare_single_incomplete(patient):
 @st.cache(ttl=86400)
 def compare_all_incompletes(incomplete_qcls):
     overall_results = pd.DataFrame()
+    breakpoint()
     if not incomplete_qcls.empty:
         for patient in incomplete_qcls.index:
             patient_results = pd.DataFrame()

@@ -65,10 +65,10 @@ def main():
     if patient_select != "< Select a patient >":
         mrn = patient_select.split(",")[0]
         # planned, delivered, patient_results = compare_single_incomplete(mrn)
-        todays_date = date.today()
-        week_ago = timedelta(days=7)
+        todays_date = pd.Timestamp("today").floor("D")
+        week_ago = todays_date + pd.offsets.Day(-7)
         delivered = get_delivered_fields(mrn)
-        delivered_this_week = delivered[delivered["date"] > todays_date - week_ago]
+        delivered_this_week = delivered[delivered["date"] > week_ago]
 
         # plot the couch coordinates for each delivered beam
         # st.write(planned)
@@ -95,4 +95,8 @@ def main():
         # st.write(delivered)
         # st.write(patient_results)
 
-        plot_couch_positions(delivered)
+        # Create a checkbox to allow users to view treatment couch position history
+        show_couch_positions = st.checkbox("Plot couch position history.")
+        if show_couch_positions:
+            st.subheader("Couch Positions")
+            plot_couch_positions(delivered)
