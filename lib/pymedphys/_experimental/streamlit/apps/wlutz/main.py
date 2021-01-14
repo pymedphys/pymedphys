@@ -278,58 +278,45 @@ def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
 
 
 def _overview_figures(dataframe):
-    energies = natsort.natsorted(dataframe["energy"].unique())
-
-    for energy in energies:
+    def _energy_callback(_, energy):
         st.write(f"### {energy}")
-        dataframe_by_energy = _utilities.filter_by(dataframe, "energy", energy)
-        treatments = natsort.natsorted(dataframe["treatment"].unique())
 
-        for treatment in treatments:
-            dataframe_by_energy_treatment = _utilities.filter_by(
-                dataframe_by_energy, "treatment", treatment
-            )
+    def _treatment_callback(dataframe, energy, treatment):
+        st.write(f"#### {treatment}")
 
-            if len(dataframe_by_energy_treatment) == 0:
-                continue
-
-            st.write(f"#### {treatment}")
-
-            for title, column, axis in [
-                ("Radial", "diff_y", "y-axis"),
-                ("Transverse", "diff_x", "x-axis"),
-            ]:
-                altair_chart = (
-                    alt.Chart(dataframe_by_energy_treatment)
-                    .mark_line(point=True)
-                    .encode(
-                        x=alt.X("gantry", axis=alt.Axis(title="Gantry")),
-                        y=alt.Y(
-                            column,
-                            axis=alt.Axis(title=f"iView {axis} (mm) [Field - BB]"),
-                        ),
-                        color=alt.Color("port", legend=alt.Legend(title="Port")),
-                        tooltip=[
-                            "time",
-                            "port",
-                            "diff_x",
-                            "diff_y",
-                            "gantry",
-                            "collimator",
-                            "turn_table",
-                            "filename",
-                        ],
-                    )
-                ).properties(title=f"{title} | {energy} | {treatment}")
-
-                st.altair_chart(altair_chart, use_container_width=True)
-                st.write(
-                    _overview_statistics(
-                        dataframe_by_energy_treatment, directions=(column,)
-                    )
+        for title, column, axis in [
+            ("Radial", "diff_y", "y-axis"),
+            ("Transverse", "diff_x", "x-axis"),
+        ]:
+            altair_chart = (
+                alt.Chart(dataframe)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("gantry", axis=alt.Axis(title="Gantry")),
+                    y=alt.Y(
+                        column, axis=alt.Axis(title=f"iView {axis} (mm) [Field - BB]")
+                    ),
+                    color=alt.Color("port", legend=alt.Legend(title="Port")),
+                    tooltip=[
+                        "time",
+                        "port",
+                        "diff_x",
+                        "diff_y",
+                        "gantry",
+                        "collimator",
+                        "turn_table",
+                        "filename",
+                    ],
                 )
+            ).properties(title=f"{title} | {energy} | {treatment}")
 
-    # dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
+            st.altair_chart(altair_chart, use_container_width=True)
+            st.write(_overview_statistics(dataframe, directions=(column,)))
+
+    columns = ["energy", "treatment"]
+    callbacks = [_energy_callback, _treatment_callback]
+
+    _utilities.iterate_over_columns(dataframe, columns, callbacks)
 
     st.write(
         """

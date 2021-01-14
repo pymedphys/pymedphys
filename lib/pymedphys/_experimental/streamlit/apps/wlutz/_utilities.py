@@ -14,12 +14,31 @@
 
 import pathlib
 
+from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
 from . import _dbf
+
+
+def iterate_over_columns(dataframe, columns, callbacks, previous=tuple()):
+    column = columns[0]
+    callback = callbacks[0]
+
+    sorted_items = natsort.natsorted(dataframe[column].unique())
+    for item in sorted_items:
+        filtered_dataframe = filter_by(dataframe, column, item)
+        if len(filtered_dataframe) == 0:
+            continue
+
+        args = previous + (item,)
+        callback(filtered_dataframe, *args)
+        if len(columns) > 1:
+            iterate_over_columns(
+                filtered_dataframe, columns[1:], callbacks[1:], previous=args
+            )
 
 
 def filter_by(dataframe, column, value):
