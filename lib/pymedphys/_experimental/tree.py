@@ -182,13 +182,11 @@ def _create_svg(
         raw_dependencies = module_dependencies[node]
 
         for dependency in raw_dependencies:
-            if (
-                not dependency[2].startswith("_")
-                and not dependency[1] in di_graph
-                and dependency[1] in internal_modules
-            ):
-                traversal_nodes.add(dependency[1])
-                di_graph.add_node(dependency[1])
+            if not dependency[2].startswith("_") and dependency[1] in internal_modules:
+                if not dependency[1] in di_graph:
+                    traversal_nodes.add(dependency[1])
+                    di_graph.add_node(dependency[1])
+
                 di_graph.add_edge(node, dependency[1])
 
     node_urls = ""
