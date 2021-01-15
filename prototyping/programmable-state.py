@@ -62,6 +62,7 @@ state.fahrenheit.link_to(state.celsius, calc_celsius_from_fahrenheit)
 
 
 # ---------------------------------------------------------------------
+
 # To decouple different sections of a streamlit app, it can be spread
 # over multiple Python files, the `st.state.get` object can be called
 # a second time in the same streamlit session
