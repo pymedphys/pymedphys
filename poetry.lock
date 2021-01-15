@@ -2838,9 +2838,9 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
-docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book", "sphinx", "sphinxcontrib-bibtex"]
+docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "jupyter-book"]
 doctests = ["pylinac", "tensorflow", "sphinx-book-theme"]
 ml = ["tensorflow"]
 propagate = ["black"]
@@ -2850,7 +2850,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "392bb0f09abec376a91aabdc425f5ae1133853f586900bee4c430d8a5cdffc21"
+content-hash = "2d202cee0f3bcaa01762fe04e1f1388dc2219254ed1fbf672ed5a742a039976b"
 
 [metadata.files]
 absl-py = [
