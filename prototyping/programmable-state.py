@@ -89,31 +89,30 @@ st.slider(
     step=step,
 )
 
-another_state_object.kelvin.link_to(
-    another_state_object.celsius, calc_celsius_from_kelvin
-)
-
 # Importantly, the directional 'master' graph is defined each run. The
 # master graph can change between reruns:
 if st.checkbox("Auto update Kelvin?"):
     # Why someone would want to unlink the kelvin slider... I don't
     # know. But... for the example :).
 
-    # Also... different "state" instances still point to the same
-    # underlying state objects, so it's okay to link between different
-    # instantiations of `st.state.get`.
-    state.celsius.link_to(another_state_object.kelvin, calc_kelvin)
+    another_state_object.celsius.link_to(another_state_object.kelvin, calc_kelvin)
 
-    try:
-        # But even still, it is expected that the following won't work:
-        st.write(
-            "This is not expected to work -- "
-            f"Fahrenheit: {another_state_object.fahrenheit.value}"
-        )
-        # since fahrenheit wasn't called when `another_state_object` was
-        # created.
-    except:
-        pass
+
+# Also... different "state" instances still point to the same
+# underlying state objects, so it's okay to link between different
+# instantiations of `st.state.get`.
+another_state_object.kelvin.link_to(state.celsius, calc_celsius_from_kelvin)
+
+try:
+    # But even still, it is expected that the following won't work:
+    st.write(
+        "This is not expected to work -- "
+        f"Fahrenheit: {another_state_object.fahrenheit.value}"
+    )
+    # since fahrenheit wasn't called when `another_state_object` was
+    # created.
+except:
+    pass
 
 
 if st.button("Take me to absolute zero!"):
