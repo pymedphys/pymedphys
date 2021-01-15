@@ -16,7 +16,6 @@ def calc_celsius_from_fahrenheit(fahrenheit):
 starting_value = 0
 state = st.state.get(celsius=starting_value, fahrenheit=calc_fahrenheit(starting_value))
 
-
 min_value = absolute_zero
 max_value = 300
 step = 0.25
