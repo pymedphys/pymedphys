@@ -100,9 +100,20 @@ if st.checkbox("Auto update Kelvin?"):
     # know. But... for the example :).
 
     # Also... different "state" instances still point to the same
-    # underlying state object, so it's okay to link between different
+    # underlying state objects, so it's okay to link between different
     # instantiations of `st.state.get`.
     state.celsius.link_to(another_state_object.kelvin, calc_kelvin)
+
+    try:
+        # But even still, it is expected that the following won't work:
+        st.write(
+            "This is not expected to work -- "
+            f"Fahrenheit: {another_state_object.fahrenheit.value}"
+        )
+        # since fahrenheit wasn't called when `another_state_object` was
+        # created.
+    except:
+        pass
 
 
 if st.button("Take me to absolute zero!"):
