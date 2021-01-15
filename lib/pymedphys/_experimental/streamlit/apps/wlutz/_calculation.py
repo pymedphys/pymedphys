@@ -47,7 +47,7 @@ def calculations_ui(
     penumbra,
     advanced_mode,
 ):
-    st.write("## Calculations")
+    st.write("## Run Calculations")
 
     if advanced_mode:
         plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])

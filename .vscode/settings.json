@@ -193,6 +193,7 @@
     "filebrowser",
     "filedialog",
     "fileeditor",
+    "fillna",
     "findbb",
     "finditer",
     "flakey",

@@ -2868,9 +2868,9 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "semver", "stdlib_list", "pydeps", "jupyter-book", "sphinx", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "semver", "stdlib_list", "pydeps", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
-docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "semver", "stdlib_list", "pydeps", "jupyter-book", "sphinx", "sphinxcontrib-bibtex"]
+docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "semver", "stdlib_list", "pydeps", "jupyter-book"]
 doctests = ["pylinac", "tensorflow", "sphinx-book-theme"]
 ml = ["tensorflow"]
 propagate = ["black"]
@@ -2880,7 +2880,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "9f7359bcce7d1d5093bad13b230c0bed6d354faf1ae3785a3c25f820d2529941"
+content-hash = "504f2cad83f8b030d3c03d9ee7adcd7639323c8dd2a03a7f95b46f21627f7e2f"
 
 [metadata.files]
 absl-py = [
