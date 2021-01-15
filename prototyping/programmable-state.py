@@ -21,15 +21,12 @@ min_value = absolute_zero
 max_value = 300
 step = 0.25
 
+# Build the widget objects to be "state aware", as in, if a state
+# object is passed as a value, have the widget respond automatically
+# to state updates
+
 st.slider(
-    "Celsius",
-    # Build the widget objects to be "state aware", as in, if a state
-    # object is passed as a value, have the widget respond automatically
-    # to state updates
-    value=state.celsius,
-    min_value=min_value,
-    max_value=max_value,
-    step=step,
+    "Celsius", value=state.celsius, min_value=min_value, max_value=max_value, step=step
 )
 
 st.slider(
