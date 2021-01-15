@@ -77,8 +77,18 @@ def calc_kelvin(celsius):
 # This will error out if the state.get function hasn't been previously
 # called with a celsius **kwarg passed to it. Also, it is okay to add
 # items to the state method call that weren't passed previously.
-
 another_state_object = st.state.get("celsius", kelvin=calc_kelvin(starting_value))
+
+# In this case though it is expected that the following won't work:
+try:
+    st.write(
+        "This is not expected to work -- "
+        f"Fahrenheit: {another_state_object.fahrenheit.value}"
+    )
+    # since fahrenheit wasn't called when `another_state_object` was
+    # created.
+except:
+    pass
 
 
 st.slider(
@@ -102,18 +112,6 @@ if st.checkbox("Auto update Kelvin?"):
 # underlying state objects, so it's okay to link between different
 # instantiations of `st.state.get`.
 another_state_object.kelvin.link_to(state.celsius, calc_celsius_from_kelvin)
-
-try:
-    # But even still, it is expected that the following won't work:
-    st.write(
-        "This is not expected to work -- "
-        f"Fahrenheit: {another_state_object.fahrenheit.value}"
-    )
-    # since fahrenheit wasn't called when `another_state_object` was
-    # created.
-except:
-    pass
-
 
 if st.button("Take me to absolute zero!"):
     another_state_object.kelvin.update(0)
