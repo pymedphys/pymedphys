@@ -2,14 +2,15 @@ import streamlit as st
 
 absolute_zero = -273.25
 fahrenheit_gradient = 9.0 / 5.0
+fahrenheit_offset = 32
 
 
 def calc_fahrenheit(celsius):
-    return fahrenheit_gradient * celsius + 32
+    return fahrenheit_gradient * celsius + fahrenheit_offset
 
 
 def calc_celsius_from_fahrenheit(fahrenheit):
-    return (fahrenheit - 32) / fahrenheit_gradient
+    return (fahrenheit - fahrenheit_offset) / fahrenheit_gradient
 
 
 starting_value = 0
@@ -45,6 +46,7 @@ st.slider(
 # a directional acyclic graph. When traversing these links should any
 # traversal along an edge on the 'master' graph causes a cycle, have
 # that edge not be traversed for that particular UI interaction.
+
 state.celsius.link_to(state.fahrenheit, calc_fahrenheit)
 state.fahrenheit.link_to(state.celsius, calc_celsius_from_fahrenheit)
 
@@ -79,6 +81,7 @@ def calc_kelvin(celsius):
 # This will error out if the state.get function hasn't been previously
 # called with a celsius **kwarg passed to it. Also, it is okay to add
 # items to the state method call that weren't passed previously.
+
 another_state_object = st.state.get("celsius", kelvin=calc_kelvin(starting_value))
 
 
