@@ -98,7 +98,11 @@ another_state_object.kelvin.link_to(
 if st.checkbox("Auto update Kelvin?"):
     # Why someone would want to unlink the kelvin slider... I don't
     # know. But... for the example :).
-    another_state_object.celsius.link_to(another_state_object.kelvin, calc_kelvin)
+
+    # Also... different "state" instances still point to the same
+    # underlying state object, so it's okay to link between different
+    # instantiations of `st.state.get`.
+    state.celsius.link_to(another_state_object.kelvin, calc_kelvin)
 
 
 if st.button("Take me to absolute zero!"):
