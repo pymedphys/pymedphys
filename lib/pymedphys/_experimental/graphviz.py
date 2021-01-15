@@ -46,19 +46,3 @@ def dot_string_to_svg(dot_contents, output_path):
         subprocess.check_output([dot, "-Tsvg", reduced_dot_file, "-o", svg_path])
 
         shutil.move(svg_path, output_path)
-
-
-def create_href(text):
-    return "#{}".format(text.replace("_", "-").replace(".", "-"))
-
-
-def create_link(text):
-    return '[URL="{}"]'.format(create_href(text))
-
-
-def create_labels(label_map):
-    labels = ""
-    for node, label in label_map.items():
-        labels += '"{}" [label="{}"] {};\n'.format(node, label, create_link(node))
-
-    return labels
