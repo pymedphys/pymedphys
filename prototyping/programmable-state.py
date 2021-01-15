@@ -115,3 +115,6 @@ st.write(
 
     """
 )
+
+if state.celsius.value >= 100:
+    st.write("It's boiling in here!")
