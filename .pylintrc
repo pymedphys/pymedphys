@@ -38,4 +38,5 @@ extension-pkg-whitelist =
     tensorflow.data.experimental,
     scipy.special,
     win32api,
-    pynetdicom.sop_class
+    pynetdicom.sop_class,
+    streamlit

@@ -37,7 +37,7 @@ ipykernel==5.4.3; python_version >= "3.6"
 ipython-genutils==0.2.0; python_version >= "3.6"
 ipython==7.16.1; python_version >= "3.6"
 ipywidgets==7.6.3; python_version >= "3.6"
-isort==4.3.21; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5"
+isort==5.7.0; python_version >= "3.6" and python_version < "4.0"
 jedi==0.18.0; python_version >= "3.6"
 jeepney==0.6.0; sys_platform == "linux" and python_version >= "3.6"
 jinja2==2.11.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
@@ -83,12 +83,12 @@ pydicom==2.1.2; python_full_version >= "3.6.1"
 pygments==2.7.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 pylibjpeg-libjpeg==1.1.0; python_version >= "3.6"
 pylinac==2.3.2
-pylint==2.3.1; python_version >= "3.4"
+pylint==2.6.0; python_version >= "3.5"
 pymssql==2.1.5
 pynetdicom==1.5.5
 pyparsing==2.4.7; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
 pyrsistent==0.17.3; python_version >= "3.6"
-pytest-pylint==0.15.1; python_version >= "3.5"
+pytest-pylint==0.18.0; python_version >= "3.5"
 pytest-rerunfailures==9.1.1; python_version >= "3.5"
 pytest-sugar==0.9.4
 pytest==6.2.1; python_version >= "3.6"
