@@ -3,6 +3,7 @@
 import tkinter
 import tkinter.filedialog
 
+import astroid
 import attr
 import black
 import dateutil

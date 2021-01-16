@@ -195,6 +195,7 @@ extras_require = {
         "pytest-pylint",
         "pytest-rerunfailures",
         "python_dateutil",
+        "astroid",
         "pre-commit",
         "black>=19.3b0,<20.0",
         "mypy",
@@ -225,6 +226,7 @@ extras_require = {
         "pytest-pylint",
         "pytest-rerunfailures",
         "python_dateutil",
+        "astroid",
     ],
     "user": [
         "tqdm",

@@ -15,6 +15,9 @@
 import os
 import pathlib
 import subprocess
+import sys
+
+from pymedphys._imports import astroid
 
 import pymedphys._utilities.test as pmp_test_utils
 
@@ -26,6 +29,10 @@ def run_tests(_, remaining):
     original_cwd = os.getcwd()
 
     if "--pylint" in remaining:
+        # https://github.com/PyCQA/pylint/issues/158#issuecomment-163172974
+        astroid.MANAGER.astroid_cache.clear()
+        sys.setrecursionlimit(1500)
+
         remaining.append(f"--pylint-rcfile={str(PYLINT_RC_FILE)}")
 
         if LIBRARY_ROOT.parent.name == "lib":

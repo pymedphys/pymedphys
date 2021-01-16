@@ -120,6 +120,7 @@
     "asdict",
     "asname",
     "assoc",
+    "astroid",
     "astype",
     "atol",
     "autofunction",
