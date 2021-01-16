@@ -14,9 +14,11 @@
 
 import os
 import pathlib
-import sys
+import subprocess
 
 from pymedphys._imports import pytest
+
+import pymedphys._utilities.test as pmp_test_utils
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
@@ -25,22 +27,36 @@ PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
 def run_tests(_, remaining):
     original_cwd = os.getcwd()
 
-    if "--pylint" in remaining:
-        remaining.append(f"--pylint-rcfile={str(PYLINT_RC_FILE)}")
-        sys.setrecursionlimit(2000)
-
-        if LIBRARY_ROOT.parent.name == "lib":
-            working_directory_to_use = LIBRARY_ROOT.parent.parent
-        else:
-            working_directory_to_use = LIBRARY_ROOT.parent
-
-    else:
-        working_directory_to_use = LIBRARY_ROOT
-
-    os.chdir(working_directory_to_use)
+    os.chdir(LIBRARY_ROOT)
     print(f"Running tests with cwd set to:\n    {os.getcwd()}\n")
 
     try:
         pytest.main(remaining + ["--pyargs", "pymedphys"])
+    finally:
+        os.chdir(original_cwd)
+
+
+def run_pylint(_):
+    original_cwd = os.getcwd()
+
+    if LIBRARY_ROOT.parent.name == "lib":
+        working_directory_to_use = LIBRARY_ROOT.parent.parent
+    else:
+        working_directory_to_use = LIBRARY_ROOT.parent
+
+    os.chdir(working_directory_to_use)
+
+    python_executable = pmp_test_utils.get_executable_even_when_embedded()
+    command = [
+        python_executable,
+        "-m",
+        "pylint",
+        "pymedphys",
+        '--init-hook="import sys; sys.setrecursionlimit(2000)"',
+        f"--rcfile={str(PYLINT_RC_FILE)}",
+    ]
+
+    try:
+        subprocess.check_call(command)
     finally:
         os.chdir(original_cwd)
