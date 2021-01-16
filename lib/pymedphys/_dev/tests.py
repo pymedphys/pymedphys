@@ -45,6 +45,7 @@ def run_pylint(_, remaining):
         working_directory_to_use = LIBRARY_ROOT.parent
 
     os.chdir(working_directory_to_use)
+    print(f"Linting with cwd set to:\n    {os.getcwd()}\n")
 
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
     command = [
