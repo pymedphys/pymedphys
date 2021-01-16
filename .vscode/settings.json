@@ -374,6 +374,7 @@
     "scipy",
     "sdist",
     "semver",
+    "setrecursionlimit",
     "settingeditor",
     "setup",
     "setuptools",
