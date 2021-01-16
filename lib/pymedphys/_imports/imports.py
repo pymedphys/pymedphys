@@ -3,7 +3,6 @@
 import tkinter
 import tkinter.filedialog
 
-import astroid
 import attr
 import black
 import dateutil
@@ -16,6 +15,7 @@ import plotly
 import plotly.express
 import psutil
 import pymssql
+import pytest
 import requests
 import streamlit_ace
 import timeago

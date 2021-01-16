@@ -14,12 +14,9 @@
 
 import os
 import pathlib
-import subprocess
 import sys
 
-from pymedphys._imports import astroid
-
-import pymedphys._utilities.test as pmp_test_utils
+from pymedphys._imports import pytest
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
@@ -29,11 +26,8 @@ def run_tests(_, remaining):
     original_cwd = os.getcwd()
 
     if "--pylint" in remaining:
-        # https://github.com/PyCQA/pylint/issues/158#issuecomment-163172974
-        astroid.MANAGER.astroid_cache.clear()
-        sys.setrecursionlimit(1500)
-
         remaining.append(f"--pylint-rcfile={str(PYLINT_RC_FILE)}")
+        sys.setrecursionlimit(2000)
 
         if LIBRARY_ROOT.parent.name == "lib":
             working_directory_to_use = LIBRARY_ROOT.parent.parent
@@ -45,24 +39,7 @@ def run_tests(_, remaining):
     os.chdir(working_directory_to_use)
     print(f"Running tests with cwd set to:\n    {os.getcwd()}\n")
 
-    python_executable = pmp_test_utils.get_executable_even_when_embedded()
-
     try:
-        # By prepending the python executable like this, instead of
-        # searching the user's path for pytest it will explicitly use
-        # the pytest that is installed within the Python distribution
-        # that called ``pymedphys dev tests``.
-
-        # This supports a range of cases, such as poetry virtual
-        # environments, and embedded python installs.
-        command = (
-            [python_executable, "-m", "pytest"]
-            + remaining
-            + ["--pyargs", "pymedphys", "--failed-first"]
-        )
-
-        print(f"Running the following command:\n    {' '.join(command)}\n")
-
-        subprocess.check_call(command)
+        pytest.main(remaining + ["--pyargs", "pymedphys"])
     finally:
         os.chdir(original_cwd)
