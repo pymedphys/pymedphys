@@ -33,6 +33,16 @@ def run_tests(_, remaining):
             working_directory_to_use = LIBRARY_ROOT.parent.parent
         else:
             working_directory_to_use = LIBRARY_ROOT.parent
+
+        # try:
+        #     import __main__  # pylint: disable = missing-import
+
+        #     try:
+        #         __main__.__file__
+        #     except AttributeError:
+        #         __main__.__file__ = "pymedphys"
+        # except ImportError:
+        #     pass
     else:
         working_directory_to_use = LIBRARY_ROOT
 
