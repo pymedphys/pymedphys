@@ -36,7 +36,7 @@ def run_tests(_, remaining):
         os.chdir(original_cwd)
 
 
-def run_pylint(_):
+def run_pylint(_, remaining):
     original_cwd = os.getcwd()
 
     if LIBRARY_ROOT.parent.name == "lib":
@@ -52,9 +52,8 @@ def run_pylint(_):
         "-m",
         "pylint",
         "pymedphys",
-        '--init-hook="import sys; sys.setrecursionlimit(2000)"',
         f"--rcfile={str(PYLINT_RC_FILE)}",
-    ]
+    ] + remaining
 
     try:
         subprocess.check_call(command)
