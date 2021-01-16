@@ -59,6 +59,10 @@ def main():
         )
 
     subprocess.check_call(
+        f"{prepend}cmd.exe /C pymedphys dev lint -v", cwd=BUILD_DIST, shell=True
+    )
+
+    subprocess.check_call(
         f"{prepend}cmd.exe /C pymedphys dev tests -v", cwd=BUILD_DIST, shell=True
     )
 
