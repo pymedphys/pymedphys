@@ -47,5 +47,5 @@ def main(_):
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
-    command = [python_executable, "-m", "streamlit", streamlit_script_path]
+    command = [python_executable, "-m", "streamlit", "run", streamlit_script_path]
     subprocess.check_call(command)
