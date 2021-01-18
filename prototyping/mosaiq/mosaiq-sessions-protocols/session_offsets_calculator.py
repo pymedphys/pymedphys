@@ -1,3 +1,5 @@
+# prototype session and session offset calculator
+
 from datetime import datetime, timedelta
 from sklearn.cluster import AgglomerativeClustering
 from pymedphys import mosaiq
@@ -148,10 +150,7 @@ def session_offsets_for_site(cursor, sit_set_id, interval=timedelta(hours=1)):
     ):
 
         # calculate the time window within which the offset may occur
-        window_start, window_end = (
-            start_session - interval,
-            end_session,
-        )
+        window_start, window_end = (start_session - interval, end_session)
 
         # query for offsets within the time window
         result = mosaiq.execute(
