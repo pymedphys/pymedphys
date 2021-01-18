@@ -40,9 +40,6 @@ REQUIREMENTS_TXT = REPO_ROOT.joinpath("requirements.txt")
 REQUIREMENTS_DEV_TXT = REPO_ROOT.joinpath("requirements-dev.txt")
 REQUIREMENTS_USER_TXT = REPO_ROOT.joinpath("requirements-deploy.txt")
 
-ROOT_PYLINT = REPO_ROOT.joinpath(".pylintrc")
-LIBRARY_PYLINT = LIBRARY_PATH.joinpath(".pylintrc")
-
 ROOT_README = REPO_ROOT.joinpath("README.rst")
 DOCS_README = DOCS_PATH.joinpath("README.rst")
 
@@ -88,7 +85,6 @@ def propagate_all(args):
 
 def propagate_file_copies_into_library():
     files_to_copy = [
-        (ROOT_PYLINT, LIBRARY_PYLINT),
         (DOCS_README, ROOT_README),
         (DOCS_CHANGELOG, ROOT_CHANGELOG),
         (DOCS_CONTRIBUTING, ROOT_CONTRIBUTING),
@@ -103,7 +99,7 @@ def _copy_file_with_autogen_message(original_path, target_path):
         comment_syntax = ("<!-- ", " -->")
     elif target_path.suffix == ".rst":
         comment_syntax = ("..\n    ", "")
-    elif target_path.name == ".pylintrc" or target_path.suffix == ".py":
+    elif target_path.suffix == ".py":
         comment_syntax = ("# ", "")
     else:
         raise ValueError(f"Invalid file suffix. Suffix was {target_path.suffix}")

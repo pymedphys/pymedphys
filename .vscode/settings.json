@@ -16,6 +16,10 @@
   "python.linting.enabled": true,
   "python.linting.lintOnSave": true,
   "python.linting.pylintEnabled": true,
+  "python.linting.pylintArgs": [
+    "--rcfile",
+    "./lib/pymedphys/.pylintrc"
+  ],
   "python.linting.mypyEnabled": true,
   "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
@@ -120,6 +124,7 @@
     "asdict",
     "asname",
     "assoc",
+    "astroid",
     "astype",
     "atol",
     "autofunction",
@@ -369,6 +374,7 @@
     "scipy",
     "sdist",
     "semver",
+    "setrecursionlimit",
     "settingeditor",
     "setup",
     "setuptools",

@@ -379,7 +379,7 @@ jobs:
       - name: Run pylint tests
         if: matrix.os == 'ubuntu' && ( matrix.task == 'tests' || matrix.task == 'updates' )
         run: |
-          poetry run pymedphys dev tests --pylint --pylint-jobs=1
+          poetry run pymedphys dev lint
 
 ## Slow
 

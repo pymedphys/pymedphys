@@ -15,6 +15,7 @@ import plotly
 import plotly.express
 import psutil
 import pymssql
+import pytest
 import requests
 import streamlit_ace
 import timeago
@@ -59,8 +60,6 @@ import skimage.draw
 import skimage.filters
 import skimage.measure
 import streamlit
-import streamlit.bootstrap
-import streamlit.cli
 
 import libjpeg
 import pydicom
