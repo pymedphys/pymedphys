@@ -2,7 +2,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports.slow import tensorflow as tf
 
 
-def unet(grid_size, output_channels):
+def unet(grid_size, output_channels, max_filter_num=None):
     inputs = tf.keras.layers.Input((grid_size, grid_size, 1))
     x = inputs
     skips = []
@@ -12,7 +12,7 @@ def unet(grid_size, output_channels):
         encode_layer_dropout,
         decode_layer_filter_numbers,
         decode_layer_dropout,
-    ) = _get_unet_parameters(grid_size)
+    ) = _get_unet_parameters(grid_size, max_filter_num)
 
     for number_of_filters, dropout_rate in zip(
         encode_layer_filter_numbers, encode_layer_dropout
@@ -44,7 +44,7 @@ def unet(grid_size, output_channels):
     return model
 
 
-def _get_unet_parameters(grid_size):
+def _get_unet_parameters(grid_size, max_filter_num=None):
     drop_out_rate_start = 0.2
     drop_out_rate_step = 0.1
     drop_out_rate_max = 0.4
@@ -63,6 +63,10 @@ def _get_unet_parameters(grid_size):
     for i in range(1, number_of_encode_layers):
         previous = encode_layer_filter_numbers[i - 1]
         new = previous * 2
+
+        if (not max_filter_num is None) and (new > max_filter_num):
+            new = max_filter_num
+
         encode_layer_filter_numbers.append(new)
 
     encode_layer_dropout = []
@@ -75,10 +79,18 @@ def _get_unet_parameters(grid_size):
 
     number_of_decode_layers = number_of_encode_layers
 
-    decode_layer_filter_numbers = [encode_layer_filter_numbers[-1] * 2]
+    decode_starting_filters = encode_layer_filter_numbers[-1] * 2
+    if (not max_filter_num is None) and (decode_starting_filters > max_filter_num):
+        decode_starting_filters = max_filter_num
+
+    decode_layer_filter_numbers = [decode_starting_filters]
     for i in range(1, number_of_decode_layers):
         previous = decode_layer_filter_numbers[i - 1]
         new = previous / 2
+
+        if new < number_of_filters_start:
+            new = number_of_filters_start
+
         decode_layer_filter_numbers.append(new)
 
     decode_layer_dropout = [drop_out_rate_max] * number_of_decode_layers
