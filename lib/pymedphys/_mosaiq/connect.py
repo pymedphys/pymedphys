@@ -27,7 +27,7 @@ class WrongUsernameOrPassword(ValueError):
 
 
 def connect_with_credential(
-    sql_server_and_port, username, password
+    sql_server_and_port, username, password, database="MOSAIQ"
 ) -> "pymssql.Connection":
     """Connects to a Mosaiq database.
 
@@ -37,6 +37,7 @@ def connect_with_credential(
         A server and port separated by a colon (:). Eg "localhost:8888".
     username : str
     password : str
+    database : str
 
     Returns
     -------
@@ -52,7 +53,7 @@ def connect_with_credential(
     server, port = _separate_server_port_string(sql_server_and_port)
 
     try:
-        conn = pymssql.connect(server, username, password, "MOSAIQ", port=port)
+        conn = pymssql.connect(server, username, password, database=database, port=port)
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
         if error_message.startswith(b"Login failed for user"):
@@ -64,8 +65,7 @@ def connect_with_credential(
 
 
 def execute_sql(cursor, sql_string, parameters=None):
-    """Executes a given SQL string on an SQL cursor.
-    """
+    """Executes a given SQL string on an SQL cursor."""
     try:
         cursor.execute(sql_string, parameters)
     except Exception:
@@ -151,7 +151,11 @@ def delete_credentials(sql_server_and_port):
 
 
 def _connect_with_credential_then_prompt_if_fail(
-    sql_server_and_port, user_input=input, password_input=getpass, output=print
+    sql_server_and_port,
+    user_input=input,
+    password_input=getpass,
+    output=print,
+    database="MOSAIQ",
 ) -> "pymssql.Connection":
     """Connects to a Mosaiq database utilising credentials saved with
     the keyring library.
@@ -170,6 +174,8 @@ def _connect_with_credential_then_prompt_if_fail(
     output : callable, optional
         A function which displays responses to the user, by default the
         built-in ``print``.
+    database : str
+        name of the Mosaiq database to be connected
 
     Returns
     -------
@@ -192,7 +198,7 @@ def _connect_with_credential_then_prompt_if_fail(
     )
 
     try:
-        conn = pymssql.connect(server, user, password, "MOSAIQ", port=port)
+        conn = pymssql.connect(server, user, password, database=database, port=port)
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
         if error_message.startswith(b"Login failed for user"):
@@ -222,7 +228,11 @@ def _connect_with_credential_then_prompt_if_fail(
 
 
 def single_connect(
-    sql_server_and_port, user_input=input, password_input=getpass, output=print
+    sql_server_and_port,
+    user_input=input,
+    password_input=getpass,
+    output=print,
+    database="MOSAIQ",
 ):
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
@@ -232,19 +242,21 @@ def single_connect(
         user_input=user_input,
         password_input=password_input,
         output=output,
+        database=database,
     )
 
     return conn, conn.cursor()
 
 
-def multi_connect(sql_server_and_ports):
-    """Create SQL connections and cursors.
-    """
+def multi_connect(sql_server_and_ports, database="MOSAIQ"):
+    """Create SQL connections and cursors."""
     connections = dict()
     cursors = dict()
 
     for server_port in sql_server_and_ports:
-        connections[server_port], cursors[server_port] = single_connect(server_port)
+        connections[server_port], cursors[server_port] = single_connect(
+            server_port, database=database
+        )
 
     return connections, cursors
 
@@ -254,14 +266,13 @@ def single_close(connection):
 
 
 def multi_close(connections):
-    """Close the SQL connections.
-    """
+    """Close the SQL connections."""
     for _, item in connections.items():
         single_close(item)
 
 
 @contextmanager
-def connect(sql_server_and_ports):
+def connect(sql_server_and_ports, database="MOSAIQ"):
     """A controlled execution class that opens and closes multiple SQL
     connections.
 
@@ -278,7 +289,7 @@ def connect(sql_server_and_ports):
         sql_server_and_ports_as_list = list(sql_server_and_ports)
         return_unnested_cursor = False
 
-    connections, cursors = multi_connect(sql_server_and_ports_as_list)
+    connections, cursors = multi_connect(sql_server_and_ports_as_list, database)
     try:
         if return_unnested_cursor:
             cursors = cursors[sql_server_and_ports]
