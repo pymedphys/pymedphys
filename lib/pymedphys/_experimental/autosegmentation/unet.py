@@ -9,6 +9,8 @@ def unet(
     number_of_filters_start=32,
     min_grid_size=8,
     num_of_fc=2,
+    batch_normalisation=True,
+    use_dropout=True,
 ):
     inputs = tf.keras.layers.Input((grid_size, grid_size, 1))
     x = inputs
@@ -20,14 +22,21 @@ def unet(
         decode_layer_filter_numbers,
         decode_layer_dropout,
     ) = _get_unet_parameters(
-        grid_size, max_filter_num, number_of_filters_start, min_grid_size
+        grid_size,
+        max_filter_num,
+        number_of_filters_start,
+        min_grid_size,
+        use_dropout=use_dropout,
     )
 
     for number_of_filters, dropout_rate in zip(
         encode_layer_filter_numbers, encode_layer_dropout
     ):
         x, skip = encode(
-            x, number_of_filters=number_of_filters, dropout_rate=dropout_rate
+            x,
+            number_of_filters=number_of_filters,
+            dropout_rate=dropout_rate,
+            batch_normalisation=batch_normalisation,
         )
         skips.append(skip)
 
@@ -45,13 +54,18 @@ def unet(
             min_grid_size,
             input_output_channels_of_fc_layer,
             num_of_fc=num_of_fc,
+            batch_normalisation=batch_normalisation,
         )
 
     for skip, number_of_filters, dropout_rate in zip(
         skips, decode_layer_filter_numbers, decode_layer_dropout
     ):
         x = decode(
-            x, skip, number_of_filters=number_of_filters, dropout_rate=dropout_rate
+            x,
+            skip,
+            number_of_filters=number_of_filters,
+            dropout_rate=dropout_rate,
+            batch_normalisation=batch_normalisation,
         )
 
     x = tf.keras.layers.Conv2D(
@@ -99,7 +113,11 @@ def _fully_connected_bottom(
 
 
 def _get_unet_parameters(
-    grid_size, max_filter_num=None, number_of_filters_start=32, min_grid_size=8
+    grid_size,
+    max_filter_num=None,
+    number_of_filters_start=32,
+    min_grid_size=8,
+    use_dropout=True,
 ):
     drop_out_rate_start = 0.2
     drop_out_rate_step = 0.1
@@ -121,14 +139,6 @@ def _get_unet_parameters(
 
         encode_layer_filter_numbers.append(new)
 
-    encode_layer_dropout = []
-    for i in range(number_of_encode_layers):
-        dropout = drop_out_rate_start + drop_out_rate_step * i
-        if dropout > drop_out_rate_max:
-            dropout = drop_out_rate_max
-
-        encode_layer_dropout.append(dropout)
-
     number_of_decode_layers = number_of_encode_layers
 
     decode_starting_filters = encode_layer_filter_numbers[-1] * 2
@@ -145,7 +155,19 @@ def _get_unet_parameters(
 
         decode_layer_filter_numbers.append(new)
 
-    decode_layer_dropout = [drop_out_rate_max] * number_of_decode_layers
+    if use_dropout:
+        encode_layer_dropout = []
+        for i in range(number_of_encode_layers):
+            dropout = drop_out_rate_start + drop_out_rate_step * i
+            if dropout > drop_out_rate_max:
+                dropout = drop_out_rate_max
+
+            encode_layer_dropout.append(dropout)
+
+        decode_layer_dropout = [drop_out_rate_max] * number_of_decode_layers
+    else:
+        decode_layer_dropout = [1] * number_of_decode_layers
+        encode_layer_dropout = decode_layer_dropout
 
     return (
         encode_layer_filter_numbers,
