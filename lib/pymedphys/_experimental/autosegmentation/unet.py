@@ -2,7 +2,14 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports.slow import tensorflow as tf
 
 
-def unet(grid_size, output_channels, max_filter_num=None):
+def unet(
+    grid_size,
+    output_channels,
+    max_filter_num=None,
+    number_of_filters_start=32,
+    min_grid_size=8,
+    num_of_fc=2,
+):
     inputs = tf.keras.layers.Input((grid_size, grid_size, 1))
     x = inputs
     skips = []
@@ -12,7 +19,9 @@ def unet(grid_size, output_channels, max_filter_num=None):
         encode_layer_dropout,
         decode_layer_filter_numbers,
         decode_layer_dropout,
-    ) = _get_unet_parameters(grid_size, max_filter_num)
+    ) = _get_unet_parameters(
+        grid_size, max_filter_num, number_of_filters_start, min_grid_size
+    )
 
     for number_of_filters, dropout_rate in zip(
         encode_layer_filter_numbers, encode_layer_dropout
@@ -23,6 +32,20 @@ def unet(grid_size, output_channels, max_filter_num=None):
         skips.append(skip)
 
     skips.reverse()
+
+    if num_of_fc is not None:
+        input_output_channels_of_fc_layer = encode_layer_filter_numbers[-1]
+        dense_channels = input_output_channels_of_fc_layer * 4
+        if not max_filter_num is None and dense_channels > max_filter_num:
+            dense_channels = max_filter_num
+
+        x = _fully_connected_bottom(
+            x,
+            dense_channels,
+            min_grid_size,
+            input_output_channels_of_fc_layer,
+            num_of_fc=num_of_fc,
+        )
 
     for skip, number_of_filters, dropout_rate in zip(
         skips, decode_layer_filter_numbers, decode_layer_dropout
@@ -44,14 +67,43 @@ def unet(grid_size, output_channels, max_filter_num=None):
     return model
 
 
-def _get_unet_parameters(grid_size, max_filter_num=None):
+def _fully_connected_bottom(
+    x,
+    dense_channels,
+    min_grid_size,
+    input_output_channels_of_fc_layer,
+    num_of_fc=2,
+    batch_normalisation=True,
+):
+    start = x
+    x = tf.keras.layers.Conv2D(
+        dense_channels, min_grid_size, padding="valid", kernel_initializer="he_normal"
+    )(x)
+    for _ in range(num_of_fc):
+        residual = x
+        x = _batch_normalisation(x, batch_normalisation)
+        x = _activation(x)
+        x = tf.keras.layers.Dense(dense_channels)(x)
+        x = tf.keras.layers.Add()([residual, x])
+
+    x = _batch_normalisation(x, batch_normalisation)
+    x = _activation(x)
+    x = tf.keras.layers.Dense(
+        input_output_channels_of_fc_layer * min_grid_size * min_grid_size
+    )(x)
+    x = tf.keras.layers.Reshape(
+        (min_grid_size, min_grid_size, input_output_channels_of_fc_layer)
+    )(x)
+    x = tf.keras.layers.Add()([start, x])
+    return x
+
+
+def _get_unet_parameters(
+    grid_size, max_filter_num=None, number_of_filters_start=32, min_grid_size=8
+):
     drop_out_rate_start = 0.2
     drop_out_rate_step = 0.1
     drop_out_rate_max = 0.4
-
-    min_grid_size = 8
-
-    number_of_filters_start = 32
 
     number_of_encode_layers = np.log2(grid_size / min_grid_size)
     if number_of_encode_layers != round(number_of_encode_layers):
