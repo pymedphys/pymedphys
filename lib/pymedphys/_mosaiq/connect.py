@@ -24,6 +24,10 @@ from pymedphys._imports import keyring, pymssql
 KEYRING_SCOPE = "PyMedPhys_SQLLogin_Mosaiq"
 
 
+def get_storage_name(hostname, port=1433, database="MOSAIQ"):
+    return f"{KEYRING_SCOPE}_{hostname}:{port}/{database}"
+
+
 class WrongUsernameOrPassword(ValueError):
     pass
 
@@ -195,7 +199,7 @@ def _connect_with_credential_then_prompt_if_fail(
 
     """
     server, port = _separate_server_port_string(sql_server_and_port)
-    storage_name = f"{KEYRING_SCOPE}_{sql_server_and_port}/{database}"
+    storage_name = get_storage_name(server, port=port, database=database)
 
     user, password = _get_username_password(
         storage_name,

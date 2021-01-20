@@ -14,7 +14,9 @@
 
 from pymedphys._imports import streamlit as st
 
+from pymedphys._mosaiq import _separate_server_port_string
 from pymedphys._mosaiq import connect as msq_connect
+from pymedphys._mosaiq import get_storage_name
 
 
 def uncached_get_mosaiq_cursor(server):
@@ -36,7 +38,11 @@ def uncached_get_mosaiq_cursor(server):
         The Mosaiq SQL cursor for the connection.
 
     """
-    username, password = msq_connect.get_username_and_password_without_prompt(server)
+    server, port = _separate_server_port_string(server)
+    storage_name = get_storage_name(server, port)
+    username, password = msq_connect.get_username_and_password_without_prompt(
+        storage_name
+    )
 
     if password:
         try:
@@ -88,6 +94,5 @@ def get_mosaiq_cursor(server):
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def get_mosaiq_cursor_in_bucket(server):
-    """This allows the output cursor cache to be mutated by the user code
-    """
+    """This allows the output cursor cache to be mutated by the user code"""
     return {"cursor": uncached_get_mosaiq_cursor(server)}
