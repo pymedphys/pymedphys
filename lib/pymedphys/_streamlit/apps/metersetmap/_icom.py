@@ -43,7 +43,9 @@ def load_icom_streams(icom_paths):
 
 # TODO: Split this up to search by site
 # See <https://github.com/pymedphys/pymedphys/issues/1141>
-def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
+def icom_input_method(
+    config, patient_id="", key_namespace="", advanced_mode_local=False, **_
+):
     """Streamlit GUI method to facilitate iCOM data provision to the
     mudensity GUI.
 
@@ -103,7 +105,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
 
     """
 
-    icom_directories = _config.get_default_icom_directories()
+    icom_directories = _config.get_default_icom_directories(config)
 
     if advanced_mode_local:
         st.write("iCOM patient directories", icom_directories)

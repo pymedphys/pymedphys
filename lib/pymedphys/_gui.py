@@ -15,8 +15,9 @@
 
 import pathlib
 import shutil
+import subprocess
 
-from pymedphys._imports import streamlit as st
+import pymedphys._utilities.test as pmp_test_utils
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -45,12 +46,6 @@ def main(_):
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
-    # This direct private call is undergone so as to guarantee that the
-    # same Python that called ``pymedphys gui`` is the same Python that
-    # is used to run streamlit.
-
-    # Unfortunately streamlit does not as of yet support
-    # ``python -m streamlit``. See <https://github.com/streamlit/streamlit/pull/2351>
-    # for more details.
-    st._is_running_with_streamlit = True
-    st.bootstrap.run(streamlit_script_path, "", [])
+    python_executable = pmp_test_utils.get_executable_even_when_embedded()
+    command = [python_executable, "-m", "streamlit", "run", streamlit_script_path]
+    subprocess.check_call(command)

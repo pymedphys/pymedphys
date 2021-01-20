@@ -4,7 +4,6 @@
 import os
 
 import pytest
-import pytest_pylint.plugin
 
 SKIPPING_CONFIG = {
     "slow": {
@@ -73,12 +72,6 @@ def pytest_collection_modifyitems(config, items):
             for item in items:
                 if key not in item.keywords:
                     item.add_marker(skip)
-
-    if config.getoption("--pylint"):
-        skip = pytest.mark.skip(reason="Don't run tests when running pylint")
-        for item in items:
-            if not isinstance(item, pytest_pylint.plugin.PyLintItem):
-                item.add_marker(skip)
 
 
 def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument

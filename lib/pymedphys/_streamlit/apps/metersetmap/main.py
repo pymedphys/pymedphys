@@ -14,6 +14,7 @@
 
 
 import base64
+import functools
 import os
 import pathlib
 import subprocess
@@ -25,20 +26,13 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
-from pymedphys._imports import timeago
+from pymedphys._imports import streamlit_ace, timeago, tomlkit
 
 import pymedphys
-from pymedphys._streamlit.apps.metersetmap import (
-    _config,
-    _dicom,
-    _icom,
-    _monaco,
-    _mosaiq,
-    _trf,
-)
-from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc
+
+from . import _config, _dicom, _icom, _monaco, _mosaiq, _trf
 
 DATA_OPTION_LABELS = {
     "monaco": "Monaco tel.1 filepath",
@@ -100,13 +94,15 @@ def trf_status(linac_id, backup_directory):
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-def show_status_indicators():
+def show_status_indicators(config):
     if st.sidebar.button("Check status of iCOM and backups"):
         try:
-            linac_icom_live_stream_directories = (
-                _config.get_icom_live_stream_directories()
+            linac_icom_live_stream_directories = _config.get_icom_live_stream_directories(
+                config
             )
-            linac_indexed_backups_directory = _config.get_indexed_backups_directory()
+            linac_indexed_backups_directory = _config.get_indexed_backups_directory(
+                config
+            )
         except KeyError:
             st.sidebar.write(
                 _exceptions.ConfigMissing(
@@ -352,9 +348,7 @@ def calculate_gamma(reference_metersetmap, evaluation_metersetmap, gamma_options
     return gamma
 
 
-def advanced_debugging():
-    config = st_config.get_config()
-
+def advanced_debugging(config):
     st.sidebar.markdown("# Advanced Debugging")
     if st.sidebar.button("Compare Baseline to Output Directory"):
         st.write(
@@ -560,7 +554,28 @@ def main():
         """
     )
 
-    config = st_config.get_config()
+    st.sidebar.markdown(
+        """
+        # Configuration Choice
+        """
+    )
+
+    config_options = list(_config.CONFIG_OPTIONS.keys())
+
+    try:
+        _config.get_config(config_options[0])
+    except FileNotFoundError:
+        config_options.pop(0)
+
+    config_mode = st.sidebar.radio("Config Mode", options=config_options)
+    config = _config.get_config(config_mode)
+
+    show_config = st.sidebar.checkbox("Show/edit config", False)
+    if show_config:
+        st.write("## Configuration")
+        config = tomlkit.loads(
+            streamlit_ace.st_ace(value=tomlkit.dumps(config), language="toml")
+        )
 
     st.sidebar.markdown(
         """
@@ -595,7 +610,7 @@ def main():
         """
     )
 
-    show_status_indicators()
+    show_status_indicators(config)
 
     st.sidebar.markdown(
         """
@@ -606,7 +621,7 @@ def main():
     )
     advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-    gamma_options = _config.get_gamma_options(advanced_mode)
+    gamma_options = _config.get_gamma_options(config, advanced_mode)
 
     data_option_functions = {
         "monaco": _monaco.monaco_input_method,
@@ -625,7 +640,9 @@ def main():
 
     data_method_map = {}
     for method in available_data_methods:
-        data_method_map[DATA_OPTION_LABELS[method]] = data_option_functions[method]
+        data_method_map[DATA_OPTION_LABELS[method]] = functools.partial(
+            data_option_functions[method], config=config
+        )
 
     st.write(
         """
@@ -681,7 +698,11 @@ def main():
         default_site = reference_results.get("site", None)
 
     _, escan_directory = st_misc.get_site_and_directory(
-        "eScan Site", "escan", default=default_site, key="escan_export_site_picker"
+        config,
+        "eScan Site",
+        "escan",
+        default=default_site,
+        key="escan_export_site_picker",
     )
 
     escan_directory = pathlib.Path(os.path.expanduser(escan_directory)).resolve()
@@ -743,4 +764,4 @@ def main():
         )
 
     if advanced_mode:
-        advanced_debugging()
+        advanced_debugging(config)

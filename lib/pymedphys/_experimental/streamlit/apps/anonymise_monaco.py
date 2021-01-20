@@ -21,6 +21,7 @@ import tempfile
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
 from pymedphys._streamlit.utilities import rerun as st_rerun
@@ -33,6 +34,8 @@ ANON_DEMOGRAPHIC_FILE = HERE.joinpath("data", "demographic.000000")
 
 
 def main():
+    config = _config.get_config()
+
     st.write("## Select Patient")
 
     (
@@ -41,13 +44,14 @@ def main():
         patient_id,
         _,
         patient_directory,
-    ) = st_monaco.monaco_patient_directory_picker(advanced_mode_local=True)
+    ) = st_monaco.monaco_patient_directory_picker(config, advanced_mode_local=True)
 
     st.write(f"Directory to anonymise: `{patient_directory}`")
 
     st.write("## Select Export Location")
 
     _, export_directory = st_misc.get_site_and_directory(
+        config,
         "Site to save anonymised zip file",
         "anonymised_monaco",
         default=monaco_site,

@@ -16,14 +16,26 @@
 import datetime
 
 from pymedphys._imports import altair as alt
+from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import streamlit_ace, tomlkit
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-from . import _angles, _calculation, _filtering, _frames, _sync, _utilities
+from . import (
+    _angles,
+    _calculation,
+    _config,
+    _corrections,
+    _excel,
+    _filtering,
+    _frames,
+    _sync,
+    _utilities,
+)
 
 
 def main():
@@ -34,7 +46,14 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
-    bb_diameter, penumbra, advanced_mode = _set_parameters()
+    bb_diameter, penumbra, advanced_mode, demo_mode = _set_parameters()
+    config = _config.get_config(demo_mode)
+
+    if demo_mode and advanced_mode:
+        st.write("## Demo Configuration")
+        config = tomlkit.loads(
+            streamlit_ace.st_ace(value=tomlkit.dumps(config), language="toml")
+        )
 
     refresh_cache = st.button("Re-query databases")
     (
@@ -44,7 +63,7 @@ def main():
         database_table,
         selected_date,
         selected_machine_id,
-    ) = _utilities.get_directories_and_initial_database(refresh_cache)
+    ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
 
     icom_patients_directory = icom_directory.joinpath("patients")
 
@@ -156,8 +175,6 @@ def main():
         database_table["datetime"] - midnight
     ).dt.total_seconds()
 
-    # st.write(icom_datasets)
-
     icom_datasets["x_lower"] = icom_datasets["centre_x"] - icom_datasets["width"] / 2
     icom_datasets["x_upper"] = icom_datasets["centre_x"] + icom_datasets["width"] / 2
     icom_datasets["y_lower"] = icom_datasets["centre_y"] - icom_datasets["length"] / 2
@@ -174,10 +191,18 @@ def main():
     ]:
         _table_transfer_via_interpolation(icom_datasets, database_table, column)
 
+    icom_seconds = icom_datasets["seconds_since_midnight"]
+    iview_seconds = database_table["seconds_since_midnight"]
+
+    alignment_indices = np.argmin(
+        np.abs(icom_seconds.values[None, :] - iview_seconds.values[:, None]), axis=1
+    )
+
+    energies = icom_datasets["energy"].values[alignment_indices]
+    database_table["energy"] = energies
+
     database_table["width"] = database_table["x_upper"] - database_table["x_lower"]
     database_table["length"] = database_table["y_upper"] - database_table["y_lower"]
-
-    # st.write(database_table)
 
     if advanced_mode:
         st.write(database_table)
@@ -191,9 +216,145 @@ def main():
         advanced_mode,
     )
 
+    _presentation_of_results(wlutz_directory_by_date, advanced_mode)
+
+
+def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
+    raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
+
+    try:
+        calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
+    except FileNotFoundError:
+        return
+
+    st.write("## Overview of Results")
+
+    dataframe = calculated_results.sort_values("seconds_since_midnight")
+    dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
+
+    statistics = _overview_statistics(dataframe_by_algorithm)
+    st.write(statistics)
+
+    _overview_figures(dataframe_by_algorithm)
+
+    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
+    _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
+
+    if advanced_mode:
+        st.write("### Experimental iCom and collimator corrections")
+
+        experimental_collimator_corrections = st.checkbox(
+            "Turn on experimental collimator and iCom correction statistics?"
+        )
+        if experimental_collimator_corrections:
+            st.write("#### Statistics")
+
+            (
+                dataframe_with_corrections,
+                collimator_correction,
+            ) = _corrections.apply_corrections(dataframe_by_algorithm)
+
+            dataframe_with_corrections["diff_x"] = dataframe_with_corrections[
+                "diff_x_coll_corrected"
+            ]
+            dataframe_with_corrections["diff_y"] = dataframe_with_corrections[
+                "diff_y_coll_corrected"
+            ]
+
+            statistics_with_corrections = _overview_statistics(
+                dataframe_with_corrections
+            )
+            st.write(statistics_with_corrections)
+
+            st.write("#### Predicted Collimator Rotation Correction")
+            st.write(
+                f"""
+                    * Shift in MLC travel direction =
+                    `{round(collimator_correction[0], 2)}` mm
+                    * Shift in Jaw travel direction =
+                    `{round(collimator_correction[1], 2)}` mm
+                """
+            )
+
+
+def _overview_figures(dataframe):
+    def _energy_callback(_dataframe, _data, energy):
+        st.write(f"### {energy}")
+
+    def _treatment_callback(dataframe, _data, energy, treatment):
+        st.write(f"#### {treatment}")
+
+        for title, column, axis in [
+            ("Radial", "diff_y", "y-axis"),
+            ("Transverse", "diff_x", "x-axis"),
+        ]:
+            altair_chart = (
+                alt.Chart(dataframe)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("gantry", axis=alt.Axis(title="Gantry")),
+                    y=alt.Y(
+                        column, axis=alt.Axis(title=f"iView {axis} (mm) [Field - BB]")
+                    ),
+                    color=alt.Color("port", legend=alt.Legend(title="Port")),
+                    tooltip=[
+                        "time",
+                        "port",
+                        "diff_x",
+                        "diff_y",
+                        "gantry",
+                        "collimator",
+                        "turn_table",
+                        "filename",
+                    ],
+                )
+            ).properties(title=f"{title} | {energy} | {treatment}")
+
+            st.altair_chart(altair_chart, use_container_width=True)
+            st.write(_overview_statistics(dataframe, directions=(column,)))
+
+    _utilities.iterate_over_columns(
+        dataframe,
+        data=None,
+        columns=["energy", "treatment"],
+        callbacks=[_energy_callback, _treatment_callback],
+    )
+
+
+def _overview_statistics(dataframe, directions=("diff_y", "diff_x")):
+    statistics = []
+    energies = dataframe["energy"].unique()
+    energies = natsort.natsorted(energies)
+
+    column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
+    for energy in energies:
+        dataframe_by_energy = _utilities.filter_by(dataframe, "energy", energy)
+
+        for column in directions:
+            statistics.append(
+                {
+                    "energy": energy,
+                    "direction": column_direction_map[column],
+                    "min": np.nanmin(dataframe_by_energy[column]),
+                    "max": np.nanmax(dataframe_by_energy[column]),
+                    "mean": np.nanmean(dataframe_by_energy[column]),
+                    "median": np.nanmedian(dataframe_by_energy[column]),
+                }
+            )
+
+    statistics = pd.DataFrame.from_dict(statistics).round(2)
+    return statistics
+
 
 def _set_parameters():
     st.sidebar.write("# Configuration")
+
+    try:
+        _config.get_config(False)
+        demo_mode = st.sidebar.checkbox("Demo Mode", value=False)
+    except FileNotFoundError:
+        demo_mode = True
+
     advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
 
     st.sidebar.write("# Parameters")
@@ -201,7 +362,7 @@ def _set_parameters():
     bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
-    return bb_diameter, penumbra, advanced_mode
+    return bb_diameter, penumbra, advanced_mode, demo_mode
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):

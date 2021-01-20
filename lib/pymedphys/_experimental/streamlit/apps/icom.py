@@ -16,7 +16,8 @@
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities import config, misc
+from pymedphys._streamlit.utilities import config as _config
+from pymedphys._streamlit.utilities import misc
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
@@ -25,8 +26,10 @@ TITLE = "iCom Logs Explorer"
 
 
 def main():
-    site_directories = config.get_site_directories()
-    chosen_site = misc.site_picker("Site")
+    config = _config.get_config()
+
+    site_directories = _config.get_site_directories(config)
+    chosen_site = misc.site_picker(config, "Site")
     icom_directory = site_directories[chosen_site]["icom"]
     icom_patients_directory = icom_directory.joinpath("patients")
     st.write(icom_patients_directory)

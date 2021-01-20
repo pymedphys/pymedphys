@@ -14,12 +14,40 @@
 
 import pathlib
 
+from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
 from . import _dbf
+
+
+def iterate_over_columns(dataframe, data, columns, callbacks, previous=tuple()):
+    column = columns[0]
+    callback = callbacks[0]
+
+    sorted_items = natsort.natsorted(dataframe[column].unique())
+    for item in sorted_items:
+        filtered_dataframe = filter_by(dataframe, column, item)
+        if len(filtered_dataframe) == 0:
+            continue
+
+        args = previous + (item,)
+
+        if callback is not None:
+            callback(filtered_dataframe, data, *args)
+
+        if len(columns) > 1:
+            iterate_over_columns(
+                filtered_dataframe, data, columns[1:], callbacks[1:], previous=args
+            )
+
+
+def filter_by(dataframe, column, value):
+    filtered = dataframe.loc[dataframe[column] == value]
+
+    return filtered
 
 
 def filepath_to_filename(path):
@@ -38,9 +66,9 @@ def expand_border_events(mask):
     return combined
 
 
-def get_directories_and_initial_database(refresh_cache):
-    site_directories = _config.get_site_directories()
-    chosen_site = misc.site_picker("Site")
+def get_directories_and_initial_database(config, refresh_cache):
+    site_directories = _config.get_site_directories(config)
+    chosen_site = misc.site_picker(config, "Site")
 
     database_directory = site_directories[chosen_site]["iviewdb"]
 
@@ -48,7 +76,6 @@ def get_directories_and_initial_database(refresh_cache):
 
     database_table = _load_database_with_cache(database_directory, refresh_cache)
 
-    config = _config.get_config()
     linac_map = {site["name"]: site["linac"] for site in config["site"]}
 
     alias_map = {}

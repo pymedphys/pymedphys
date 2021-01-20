@@ -49,7 +49,7 @@ def main():
 
     # Select patient DICOM files for pre-treatment check. Multiple files can be selected.
     dicomFiles = st.file_uploader(
-        "Please select a RP file.", force=True, accept_multiple_files=True
+        "Please select a RP file.", accept_multiple_files=True
     )
 
     # Create a structure to identify different types of DICOM files.
