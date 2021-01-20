@@ -111,7 +111,6 @@ def compare_single_incomplete(patient):
 @st.cache(ttl=86400)
 def compare_all_incompletes(incomplete_qcls):
     overall_results = pd.DataFrame()
-    breakpoint()
     if not incomplete_qcls.empty:
         for patient in incomplete_qcls.index:
             patient_results = pd.DataFrame()

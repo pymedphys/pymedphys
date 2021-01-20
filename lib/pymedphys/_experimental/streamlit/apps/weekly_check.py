@@ -19,7 +19,10 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
 
-from pymedphys._experimental.chartchecks.compare import weekly_check_color_results
+from pymedphys._experimental.chartchecks.compare import (
+    specific_patient_weekly_check_color_results,
+    weekly_check_color_results,
+)
 from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     compare_all_incompletes,
     get_delivered_fields,
@@ -91,6 +94,21 @@ def main():
                     "new_field",
                 ]
             ].style.background_gradient(cmap="Greys")
+        )
+
+        st.write(
+            delivered_this_week[
+                [
+                    "date",
+                    "fraction",
+                    "total_dose_delivered",
+                    "site",
+                    "field_name",
+                    "was_overridden",
+                    "partial_treatment",
+                    "new_field",
+                ]
+            ].style.apply(specific_patient_weekly_check_color_results, axis=1)
         )
         # st.write(delivered)
         # st.write(patient_results)

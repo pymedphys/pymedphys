@@ -12,21 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymedphys._imports import dicomparser, dvhcalc
+from pymedphys._imports import dicomparser, dvh, dvhcalc
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plotly, plt
+from pymedphys._imports import plotly, plt, pydicom
 from pymedphys._imports import streamlit as st
 
 
 def plot_dvh(rs_file, rd_file):
-    rs_file = (
-        "P:/Share/Chris/Test_Patient/RS.1.3.46.670589.13.15476.20191204085114.491830"
-    )
-    rd_file = (
-        "P:/Share/Chris/Test_Patient/RD.1.3.46.670589.13.15476.20191204085119.163981"
-    )
-    # rp_file = "P:/Share/Chris/Test_Patient/RP.1.3.46.670589.13.15476.20191204085117.752796"
-    rs = dicomparser.DicomParser(rs_file)
+
+    ds_input: pydicom.FileDataset = pydicom.dcmread(rs_file, force=True)
+
+    dd_input: pydicom.FileDataset = pydicom.dcmread(rd_file, force=True)
+
+    rs = dicomparser.DicomParser(ds_input)
     # rd = dicomparser.DicomParser(rd_file)
     # rp = dicomparser.DicomParser(rp_file)
 
@@ -35,10 +33,10 @@ def plot_dvh(rs_file, rd_file):
     # traces = []
     fig = plt.subplots()[0]
     for i in range(1, len(structures) + 1):
-        calcdvh = dvhcalc.get_dvh(rs_file, rd_file, i)
+        calcdvh = dvhcalc.get_dvh(ds_input, dd_input, i)
         dvh_structures["name"].append(calcdvh.name)
-        dvh_structures["bincenters"].append(calcdvh.bincenters)
-        dvh_structures["counts"].append(calcdvh.counts)
+        dvh_structures["bincenters"].append(calcdvh.bincenters[0::20])
+        dvh_structures["counts"].append(calcdvh.counts[0::20])
         dvh_structures["volume"].append(calcdvh.volume)
     #     ax.plot(structures[i]['bincenters'], structures[i]['counts']/structures[i]['volume'], label = calcdvh.name)
     #     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)

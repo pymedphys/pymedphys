@@ -36,6 +36,9 @@ def color_results(val):  # pylint: disable = too-many-return-statements
         "modality",
         "technique",
         "backup_time",
+        "couch_lat [cm]",
+        "couch_lng [cm]",
+        "couch_vrt [cm]",
     ]
 
     # set any values which cannot accurately be compared as yellow (#FDFF8A)
@@ -226,6 +229,23 @@ def weekly_check_color_results(val):
     for failure in failures:
         # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
         if failure in set(val):
+            failure_flag += 1
+        else:
+            failure_flag += 0
+
+    if failure_flag == 0:
+        return ["background-color: #C1FFC1"] * len(val)
+    else:
+        return ["background-color: #EE6363"] * len(val)
+
+
+def specific_patient_weekly_check_color_results(val):
+    failures = ["was_overridden", "new_field", "partial_treatment"]
+    failure_flag = 0
+    for failure in failures:
+        print(val[failure])
+        # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
+        if val[failure] is True:
             failure_flag += 1
         else:
             failure_flag += 0

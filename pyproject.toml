@@ -134,6 +134,7 @@ rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["dev", "propagate"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
+streamlit-analytics = "^0.1.2"
 
 
 [tool.poetry.extras]

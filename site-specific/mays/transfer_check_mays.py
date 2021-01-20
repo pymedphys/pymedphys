@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import streamlit as st
+import streamlit_analytics
 
 # from dicompylercore import dicomparser.dicomparser.DicomParser
 
@@ -31,7 +32,7 @@ from pymedphys._experimental.chartchecks.tolerance_constants import (
 
 from pymedphys._experimental.chartchecks.dvh_helpers import plot_dvh
 
-
+streamlit_analytics.start_tracking()
 # currdir = os.getcwd()
 server = "PRDMOSAIQIWVV01.utmsa.local"
 
@@ -240,3 +241,4 @@ if "rp" in files:
 
     # if 'rs' in files and 'rd' in files:
     #     plot_dvh(files['rs'], files['rd'])
+streamlit_analytics.stop_tracking()

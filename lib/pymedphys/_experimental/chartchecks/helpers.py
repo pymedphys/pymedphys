@@ -85,6 +85,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "field_label": dicom.BeamSequence[bn - 1].BeamName,
                 "field_name": dicom.BeamSequence[bn - 1].BeamDescription,
                 "machine": dicom.BeamSequence[bn - 1].TreatmentMachineName,
+                "manufacturer": dicom.BeamSequence[bn - 1].Manufacturer,
                 "rx": prescriptionDescription[fn - 1],
                 "modality": dicom.BeamSequence[bn - 1].RadiationType,
                 "position": dicom.PatientSetupSequence[0].PatientPosition,
@@ -167,6 +168,16 @@ def get_all_dicom_treatment_info(dicomFile):
                 ].ReferencedToleranceTableNumber
             except (TypeError, ValueError, AttributeError):
                 dicomBeam["tolerance"] = 0
+
+            if dicomBeam["manufacturer"] == "Varian":
+
+                dicomBeam["gantry_angle"] = (180 - dicomBeam["gantry_angle"]) % 360
+                dicomBeam["collimator_angle"] = (
+                    180 - dicomBeam["collimator_angle"]
+                ) % 360
+                dicomBeam["couch_ang"] = (180 - dicomBeam["couch_ang"]) % 360
+                dicomBeam["coll_x1 [cm]"] = dicomBeam["coll_x1 [cm]"] * (-1)
+                dicomBeam["coll_y1 [cm]"] = dicomBeam["coll_y1 [cm]"] * (-1)
 
             table = table.append(dicomBeam, ignore_index=True, sort=False)
 
