@@ -85,18 +85,18 @@ def execute_sql(cursor, sql_string, parameters=None):
 
 
 def get_username_and_password_without_prompt(storage_name):
-    user = keyring.get_password("MosaiqSQL_username", storage_name)
-    password = keyring.get_password("MosaiqSQL_password", storage_name)
+    user = keyring.get_password("PyMedPhys_MosaiqSQL_username", storage_name)
+    password = keyring.get_password("PyMedPhys_MosaiqSQL_password", storage_name)
 
     return user, password
 
 
 def save_username(storage_name, username):
-    keyring.set_password("MosaiqSQL_username", storage_name, username)
+    keyring.set_password("PyMedPhys_MosaiqSQL_username", storage_name, username)
 
 
 def save_password(storage_name, password):
-    keyring.set_password("MosaiqSQL_password", storage_name, password)
+    keyring.set_password("PyMedPhys_MosaiqSQL_password", storage_name, password)
 
 
 def _get_username_password(
@@ -147,8 +147,8 @@ def _separate_server_port_string(sql_server_and_port):
 
 def delete_credentials(storage_name):
     try:
-        keyring.delete_password("MosaiqSQL_username", storage_name)
-        keyring.delete_password("MosaiqSQL_password", storage_name)
+        keyring.delete_password("PyMedPhys_MosaiqSQL_username", storage_name)
+        keyring.delete_password("PyMedPhys_MosaiqSQL_password", storage_name)
     except keyring.errors.PasswordDeleteError:
         pass
 
