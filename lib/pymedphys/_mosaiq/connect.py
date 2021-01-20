@@ -84,30 +84,34 @@ def execute_sql(cursor, sql_string, parameters=None):
     return data
 
 
-def get_username_and_password_without_prompt(storage_name):
-    user = keyring.get_password("MosaiqSQL_username", storage_name)
-    password = keyring.get_password("MosaiqSQL_password", storage_name)
+def get_username_and_password_without_prompt(storage_name, database="MOSAIQ"):
+    user = keyring.get_password(f"{database}SQL_username", storage_name)
+    password = keyring.get_password(f"{database}SQL_password", storage_name)
 
     return user, password
 
 
-def save_username(sql_server_and_port, username):
-    keyring.set_password("MosaiqSQL_username", sql_server_and_port, username)
+def save_username(sql_server_and_port, username, database="MOSAIQ"):
+    keyring.set_password(f"{database}SQL_password", sql_server_and_port, username)
 
 
-def save_password(sql_server_and_port, password):
-    keyring.set_password("MosaiqSQL_password", sql_server_and_port, password)
+def save_password(sql_server_and_port, password, database="MOSAIQ"):
+    keyring.set_password(f"{database}SQL_password", sql_server_and_port, password)
 
 
 def _get_username_password(
-    storage_name, user_input=input, password_input=getpass, output=print
+    storage_name,
+    user_input=input,
+    password_input=getpass,
+    output=print,
+    database="MOSAIQ",
 ):
-    user, password = get_username_and_password_without_prompt(storage_name)
+    user, password = get_username_and_password_without_prompt(storage_name, database)
 
     if user is None or user == "":
         output(
             "Provide a user that only has `db_datareader` access to the "
-            "Mosaiq database at `{}`".format(storage_name)
+            "'{}' database at '{}'".format(database, storage_name)
         )
         user = user_input()
         if user == "":
@@ -118,7 +122,9 @@ def _get_username_password(
 
     if password is None:
         output(
-            "Provide password for '{}' server and '{}' user".format(storage_name, user)
+            "Provide password for '{}' server, '{}' database and '{}' user".format(
+                storage_name, database, user
+            )
         )
         password = password_input()
         save_password(storage_name, password)
@@ -142,10 +148,10 @@ def _separate_server_port_string(sql_server_and_port):
     return server, port
 
 
-def delete_credentials(sql_server_and_port):
+def delete_credentials(sql_server_and_port, database="MOSAIQ"):
     try:
-        keyring.delete_password("MosaiqSQL_username", sql_server_and_port)
-        keyring.delete_password("MosaiqSQL_password", sql_server_and_port)
+        keyring.delete_password(f"{database}SQL_password", sql_server_and_port)
+        keyring.delete_password(f"{database}SQL_password", sql_server_and_port)
     except keyring.errors.PasswordDeleteError:
         pass
 
@@ -195,6 +201,7 @@ def _connect_with_credential_then_prompt_if_fail(
         user_input=user_input,
         password_input=password_input,
         output=output,
+        database=database,
     )
 
     try:
@@ -204,7 +211,7 @@ def _connect_with_credential_then_prompt_if_fail(
         if error_message.startswith(b"Login failed for user"):
             output("Login failed, wiping the saved username and password.")
 
-            delete_credentials(sql_server_and_port)
+            delete_credentials(sql_server_and_port, database=database)
 
             output("Please try login again:")
             conn = _connect_with_credential_then_prompt_if_fail(sql_server_and_port)
