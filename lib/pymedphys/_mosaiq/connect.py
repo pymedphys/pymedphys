@@ -21,7 +21,7 @@ from getpass import getpass
 
 from pymedphys._imports import keyring, pymssql
 
-KEYRING_SCOPE = "PyMedPhys_MosaiqSQL"
+KEYRING_SCOPE = "PyMedPhys_SQLLogin_Mosaiq"
 
 
 class WrongUsernameOrPassword(ValueError):
@@ -87,18 +87,18 @@ def execute_sql(cursor, sql_string, parameters=None):
 
 
 def get_username_and_password_without_prompt(storage_name):
-    user = keyring.get_password(storage_name, f"{KEYRING_SCOPE}_username")
-    password = keyring.get_password(storage_name, f"{KEYRING_SCOPE}_password")
+    user = keyring.get_password(storage_name, "username")
+    password = keyring.get_password(storage_name, "password")
 
     return user, password
 
 
 def save_username(storage_name, username):
-    keyring.set_password(storage_name, f"{KEYRING_SCOPE}_username", username)
+    keyring.set_password(storage_name, "username", username)
 
 
 def save_password(storage_name, password):
-    keyring.set_password(storage_name, f"{KEYRING_SCOPE}_password", password)
+    keyring.set_password(storage_name, "password", password)
 
 
 def _get_username_password(
@@ -149,8 +149,8 @@ def _separate_server_port_string(sql_server_and_port):
 
 def delete_credentials(storage_name):
     try:
-        keyring.delete_password(storage_name, f"{KEYRING_SCOPE}_username")
-        keyring.delete_password(storage_name, f"{KEYRING_SCOPE}_password")
+        keyring.delete_password(storage_name, "username")
+        keyring.delete_password(storage_name, "password")
     except keyring.errors.PasswordDeleteError:
         pass
 
@@ -195,7 +195,7 @@ def _connect_with_credential_then_prompt_if_fail(
 
     """
     server, port = _separate_server_port_string(sql_server_and_port)
-    storage_name = f"{sql_server_and_port}/{database}"
+    storage_name = f"{KEYRING_SCOPE}_{sql_server_and_port}/{database}"
 
     user, password = _get_username_password(
         storage_name,
