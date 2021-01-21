@@ -1,11 +1,11 @@
 from pymedphys._imports import altair as alt
 from pymedphys._imports import dicomparser, dvhcalc
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plotly, plt, pydicom
+from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 files = st.file_uploader("select file to upload", accept_multiple_files=True)
-file = "P:\Share\Chris\Test_Patient\RS.1.3.46.670589.13.15476.20191204085114.491830"
+file = "P:/Share/Chris/Test_Patient/RS.1.3.46.670589.13.15476.20191204085114.491830"
 st.write(files)
 # st.write(bytes_data)
 
