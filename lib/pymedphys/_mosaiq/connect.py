@@ -25,6 +25,22 @@ KEYRING_SCOPE = "PyMedPhys_SQLLogin_Mosaiq"
 
 
 def get_storage_name(hostname, port=1433, database="MOSAIQ"):
+    """returns the storage name for a given DB server + port + name
+
+    Parameters
+    ----------
+    hostname : str
+        db server name
+    port : int, optional
+        db server port, by default 1433
+    database : str, optional
+        db name, by default "MOSAIQ"
+
+    Returns
+    -------
+    str
+        the storage name to be used with keyring
+    """
     return f"{KEYRING_SCOPE}_{hostname}:{port}/{database}"
 
 
@@ -56,7 +72,7 @@ def connect_with_credential(
         If the wrong credentials are provided.
 
     """
-    server, port = _separate_server_port_string(sql_server_and_port)
+    server, port = separate_server_port_string(sql_server_and_port)
 
     try:
         conn = pymssql.connect(server, username, password, database=database, port=port)
@@ -135,7 +151,24 @@ def _get_username_password(
     return user, password
 
 
-def _separate_server_port_string(sql_server_and_port):
+def separate_server_port_string(sql_server_and_port):
+    """separates a server:port string
+
+    Parameters
+    ----------
+    sql_server_and_port : str
+        the server:port string
+
+    Returns
+    -------
+    tuple
+        server (str) and port number
+
+    Raises
+    ------
+    ValueError
+        if the string isn't properly formatted
+    """
     split_tuple = str(sql_server_and_port).split(":")
     if len(split_tuple) == 1:
         server = split_tuple[0]
@@ -198,7 +231,7 @@ def _connect_with_credential_then_prompt_if_fail(
     Streamlit.
 
     """
-    server, port = _separate_server_port_string(sql_server_and_port)
+    server, port = separate_server_port_string(sql_server_and_port)
     storage_name = get_storage_name(server, port=port, database=database)
 
     user, password = _get_username_password(
