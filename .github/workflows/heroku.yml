@@ -17,5 +17,6 @@ jobs:
       - name: Install and Run Cypress
         run: |
           yarn
+          export CYPRESS_PYMEDPHYS_GUI_URL="https://app.pymedphys.com"
           yarn cypress run
         working-directory: ./lib/pymedphys/tests/e2e
