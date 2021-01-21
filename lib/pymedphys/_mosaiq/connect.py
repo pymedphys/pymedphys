@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Derek Lane, Cancer Care Associates
 # Copyright (C) 2018 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +22,35 @@ from getpass import getpass
 
 from pymedphys._imports import keyring, pymssql
 
+KEYRING_SCOPE = "PyMedPhys_SQLLogin_Mosaiq"
+
+
+def get_storage_name(hostname, port=1433, database="MOSAIQ"):
+    """returns the storage name for a given DB server + port + name
+
+    Parameters
+    ----------
+    hostname : str
+        db server name
+    port : int, optional
+        db server port, by default 1433
+    database : str, optional
+        db name, by default "MOSAIQ"
+
+    Returns
+    -------
+    str
+        the storage name to be used with keyring
+    """
+    return f"{KEYRING_SCOPE}_{hostname}:{port}/{database}"
+
 
 class WrongUsernameOrPassword(ValueError):
     pass
 
 
 def connect_with_credential(
-    sql_server_and_port, username, password
+    sql_server_and_port, username, password, database="MOSAIQ"
 ) -> "pymssql.Connection":
     """Connects to a Mosaiq database.
 
@@ -37,6 +60,7 @@ def connect_with_credential(
         A server and port separated by a colon (:). Eg "localhost:8888".
     username : str
     password : str
+    database : str
 
     Returns
     -------
@@ -49,10 +73,10 @@ def connect_with_credential(
         If the wrong credentials are provided.
 
     """
-    server, port = _separate_server_port_string(sql_server_and_port)
+    server, port = separate_server_port_string(sql_server_and_port)
 
     try:
-        conn = pymssql.connect(server, username, password, "MOSAIQ", port=port)
+        conn = pymssql.connect(server, username, password, database=database, port=port)
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
         if error_message.startswith(b"Login failed for user"):
@@ -64,8 +88,7 @@ def connect_with_credential(
 
 
 def execute_sql(cursor, sql_string, parameters=None):
-    """Executes a given SQL string on an SQL cursor.
-    """
+    """Executes a given SQL string on an SQL cursor."""
     try:
         cursor.execute(sql_string, parameters)
     except Exception:
@@ -85,18 +108,18 @@ def execute_sql(cursor, sql_string, parameters=None):
 
 
 def get_username_and_password_without_prompt(storage_name):
-    user = keyring.get_password("MosaiqSQL_username", storage_name)
-    password = keyring.get_password("MosaiqSQL_password", storage_name)
+    user = keyring.get_password(storage_name, "username")
+    password = keyring.get_password(storage_name, "password")
 
     return user, password
 
 
-def save_username(sql_server_and_port, username):
-    keyring.set_password("MosaiqSQL_username", sql_server_and_port, username)
+def save_username(storage_name, username):
+    keyring.set_password(storage_name, "username", username)
 
 
-def save_password(sql_server_and_port, password):
-    keyring.set_password("MosaiqSQL_password", sql_server_and_port, password)
+def save_password(storage_name, password):
+    keyring.set_password(storage_name, "password", password)
 
 
 def _get_username_password(
@@ -106,8 +129,9 @@ def _get_username_password(
 
     if user is None or user == "":
         output(
-            "Provide a user that only has `db_datareader` access to the "
-            "Mosaiq database at `{}`".format(storage_name)
+            "Provide a user that only has `db_datareader` access to '{}'".format(
+                storage_name
+            )
         )
         user = user_input()
         if user == "":
@@ -118,7 +142,9 @@ def _get_username_password(
 
     if password is None:
         output(
-            "Provide password for '{}' server and '{}' user".format(storage_name, user)
+            "Provide password for '{}' server+database and '{}' user".format(
+                storage_name, user
+            )
         )
         password = password_input()
         save_password(storage_name, password)
@@ -126,7 +152,24 @@ def _get_username_password(
     return user, password
 
 
-def _separate_server_port_string(sql_server_and_port):
+def separate_server_port_string(sql_server_and_port):
+    """separates a server:port string
+
+    Parameters
+    ----------
+    sql_server_and_port : str
+        the server:port string
+
+    Returns
+    -------
+    tuple
+        server (str) and port number
+
+    Raises
+    ------
+    ValueError
+        if the string isn't properly formatted
+    """
     split_tuple = str(sql_server_and_port).split(":")
     if len(split_tuple) == 1:
         server = split_tuple[0]
@@ -142,16 +185,20 @@ def _separate_server_port_string(sql_server_and_port):
     return server, port
 
 
-def delete_credentials(sql_server_and_port):
+def delete_credentials(storage_name):
     try:
-        keyring.delete_password("MosaiqSQL_username", sql_server_and_port)
-        keyring.delete_password("MosaiqSQL_password", sql_server_and_port)
+        keyring.delete_password(storage_name, "username")
+        keyring.delete_password(storage_name, "password")
     except keyring.errors.PasswordDeleteError:
         pass
 
 
 def _connect_with_credential_then_prompt_if_fail(
-    sql_server_and_port, user_input=input, password_input=getpass, output=print
+    sql_server_and_port,
+    user_input=input,
+    password_input=getpass,
+    output=print,
+    database="MOSAIQ",
 ) -> "pymssql.Connection":
     """Connects to a Mosaiq database utilising credentials saved with
     the keyring library.
@@ -170,6 +217,8 @@ def _connect_with_credential_then_prompt_if_fail(
     output : callable, optional
         A function which displays responses to the user, by default the
         built-in ``print``.
+    database : str
+        name of the Mosaiq database to be connected
 
     Returns
     -------
@@ -183,25 +232,29 @@ def _connect_with_credential_then_prompt_if_fail(
     Streamlit.
 
     """
-    server, port = _separate_server_port_string(sql_server_and_port)
+    server, port = separate_server_port_string(sql_server_and_port)
+    storage_name = get_storage_name(server, port=port, database=database)
+
     user, password = _get_username_password(
-        sql_server_and_port,
+        storage_name,
         user_input=user_input,
         password_input=password_input,
         output=output,
     )
 
     try:
-        conn = pymssql.connect(server, user, password, "MOSAIQ", port=port)
+        conn = pymssql.connect(server, user, password, database=database, port=port)
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
         if error_message.startswith(b"Login failed for user"):
             output("Login failed, wiping the saved username and password.")
 
-            delete_credentials(sql_server_and_port)
+            delete_credentials(storage_name)
 
             output("Please try login again:")
-            conn = _connect_with_credential_then_prompt_if_fail(sql_server_and_port)
+            conn = _connect_with_credential_then_prompt_if_fail(
+                sql_server_and_port, database=database
+            )
         else:
             output(
                 "Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
@@ -222,7 +275,11 @@ def _connect_with_credential_then_prompt_if_fail(
 
 
 def single_connect(
-    sql_server_and_port, user_input=input, password_input=getpass, output=print
+    sql_server_and_port,
+    user_input=input,
+    password_input=getpass,
+    output=print,
+    database="MOSAIQ",
 ):
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
@@ -232,19 +289,21 @@ def single_connect(
         user_input=user_input,
         password_input=password_input,
         output=output,
+        database=database,
     )
 
     return conn, conn.cursor()
 
 
-def multi_connect(sql_server_and_ports):
-    """Create SQL connections and cursors.
-    """
+def multi_connect(sql_server_and_ports, database="MOSAIQ"):
+    """Create SQL connections and cursors."""
     connections = dict()
     cursors = dict()
 
     for server_port in sql_server_and_ports:
-        connections[server_port], cursors[server_port] = single_connect(server_port)
+        connections[server_port], cursors[server_port] = single_connect(
+            server_port, database=database
+        )
 
     return connections, cursors
 
@@ -254,14 +313,13 @@ def single_close(connection):
 
 
 def multi_close(connections):
-    """Close the SQL connections.
-    """
+    """Close the SQL connections."""
     for _, item in connections.items():
         single_close(item)
 
 
 @contextmanager
-def connect(sql_server_and_ports):
+def connect(sql_server_and_ports, database="MOSAIQ"):
     """A controlled execution class that opens and closes multiple SQL
     connections.
 
@@ -278,7 +336,7 @@ def connect(sql_server_and_ports):
         sql_server_and_ports_as_list = list(sql_server_and_ports)
         return_unnested_cursor = False
 
-    connections, cursors = multi_connect(sql_server_and_ports_as_list)
+    connections, cursors = multi_connect(sql_server_and_ports_as_list, database)
     try:
         if return_unnested_cursor:
             cursors = cursors[sql_server_and_ports]
