@@ -1,0 +1,21 @@
+name: Heroku
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  OnlineApp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '14'
+
+      - name: Install and Run Cypress
+        run: |
+          yarn
+          yarn cypress run
+        working-directory: ./lib/pymedphys/tests/e2e
