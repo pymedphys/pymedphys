@@ -62,7 +62,7 @@ def uncached_get_mosaiq_cursor(server):
     )
 
     if username:
-        msq_connect.save_username(server, username)
+        msq_connect.save_username(storage_name, username)
 
     if not password:
         password = ""
@@ -75,7 +75,7 @@ def uncached_get_mosaiq_cursor(server):
     )
 
     if password:
-        msq_connect.save_password(server, password)
+        msq_connect.save_password(storage_name, password)
 
     if st.button("Connect"):
         st.experimental_rerun()
