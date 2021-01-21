@@ -8,6 +8,9 @@ import black
 import dateutil
 import dbfread
 import dicompylercore
+import dicompylercore.dicomparser as dicomparser
+import dicompylercore.dvh as dvh
+import dicompylercore.dvhcalc as dvhcalc
 import keyring
 import natsort
 import packaging
@@ -18,6 +21,7 @@ import pymssql
 import pytest
 import requests
 import streamlit_ace
+import streamlit_analytics
 import timeago
 import toml
 import tomlkit

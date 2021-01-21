@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import date, timedelta
+# from datetime import date, timedelta
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
 
-from pymedphys._experimental.chartchecks.compare import weekly_check_color_results
+from pymedphys._experimental.chartchecks.compare import (
+    specific_patient_weekly_check_color_results,
+    weekly_check_color_results,
+)
 from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     compare_all_incompletes,
     get_delivered_fields,
@@ -65,10 +68,10 @@ def main():
     if patient_select != "< Select a patient >":
         mrn = patient_select.split(",")[0]
         # planned, delivered, patient_results = compare_single_incomplete(mrn)
-        todays_date = date.today()
-        week_ago = timedelta(days=7)
+        todays_date = pd.Timestamp("today").floor("D")
+        week_ago = todays_date + pd.offsets.Day(-7)
         delivered = get_delivered_fields(mrn)
-        delivered_this_week = delivered[delivered["date"] > todays_date - week_ago]
+        delivered_this_week = delivered[delivered["date"] > week_ago]
 
         # plot the couch coordinates for each delivered beam
         # st.write(planned)
@@ -92,7 +95,26 @@ def main():
                 ]
             ].style.background_gradient(cmap="Greys")
         )
+
+        st.write(
+            delivered_this_week[
+                [
+                    "date",
+                    "fraction",
+                    "total_dose_delivered",
+                    "site",
+                    "field_name",
+                    "was_overridden",
+                    "partial_treatment",
+                    "new_field",
+                ]
+            ].style.apply(specific_patient_weekly_check_color_results, axis=1)
+        )
         # st.write(delivered)
         # st.write(patient_results)
 
-        plot_couch_positions(delivered)
+        # Create a checkbox to allow users to view treatment couch position history
+        show_couch_positions = st.checkbox("Plot couch position history.")
+        if show_couch_positions:
+            st.subheader("Couch Positions")
+            plot_couch_positions(delivered)

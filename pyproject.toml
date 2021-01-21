@@ -134,6 +134,7 @@ mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
+streamlit-analytics = "^0.1.2"
 
 
 [tool.poetry.extras]
