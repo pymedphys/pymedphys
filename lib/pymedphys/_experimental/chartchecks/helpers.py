@@ -39,7 +39,7 @@ def get_all_dicom_treatment_info(dicomFile):
     except (TypeError, ValueError, AttributeError):
         prescriptionDescription = ""
 
-    for fraction in dicom.FractionGroupSequence:
+    for fraction in dicom[0x300A, 0x0070]:
         for beam in fraction.ReferencedBeamSequence:
             bn = (
                 beam.ReferencedBeamNumber
@@ -334,13 +334,14 @@ def get_all_treatment_history_data(cursor, mrn):
         [
             ("dose_ID", "TrackTreatment.DHS_ID"),
             ("pat_ID", "Dose_Hst.Pat_ID1"),
+            ("mrn", "Ident.IDA"),
             ("first_name", "Patient.First_Name"),
             ("last_name", "Patient.Last_Name"),
             ("date", "Fld_Hst.Tx_DtTm"),
             ("site", "Site.Site_Name"),
             ("field_name", "TxField.Field_Name"),
             ("field_label", "TxField.Field_Label"),
-            ("fraction", "Dose_Hst.Fractions_Tx"),
+            ("fx", "Dose_Hst.Fractions_Tx"),
             ("rx", "Site.Dose_Ttl"),
             ("actual fx dose", "Dose_Hst.Dose_Tx_Act"),
             ("actual rx", "Dose_Hst.Dose_Ttl_Act"),
@@ -366,7 +367,7 @@ def get_all_treatment_history_data(cursor, mrn):
             ("site_setup_version", "SiteSetup.Version"),
             ("was_verified", "Dose_Hst.WasVerified"),
             ("was_overridden", "Dose_Hst.WasOverridden"),
-            ("partial_treatment", "Dose_Hst.PartiallyTreated"),
+            ("partial_tx", "Dose_Hst.PartiallyTreated"),
             ("vmi_error", "Dose_Hst.VMIError"),
             ("new_field", "Dose_Hst.NewFieldDef"),
             ("been_charted", "Dose_Hst.HasBeenCharted"),

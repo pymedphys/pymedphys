@@ -240,7 +240,7 @@ def weekly_check_colour_results(val):
 
 
 def specific_patient_weekly_check_colour_results(val):
-    failures = ["was_overridden", "new_field", "partial_treatment"]
+    failures = ["was_overridden", "new_field", "partial_tx"]
     failure_flag = 0
     for failure in failures:
         print(val[failure])
