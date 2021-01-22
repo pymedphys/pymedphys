@@ -17,7 +17,10 @@ from pymedphys._imports import streamlit as st
 from pymedphys._mosaiq import connect
 from pymedphys._streamlit import categories
 
-from pymedphys._experimental.chartchecks.compare import color_results, compare_to_mosaiq
+from pymedphys._experimental.chartchecks.compare import (
+    colour_results,
+    compare_to_mosaiq,
+)
 from pymedphys._experimental.chartchecks.dvh_helpers import plot_dvh
 from pymedphys._experimental.chartchecks.helpers import (
     get_all_dicom_treatment_info,
@@ -71,11 +74,15 @@ def main():
     if "rp" in files:
 
         # Create a dataframe of plan information from DICOM RP file
-        dicom_table = get_all_dicom_treatment_info(files["rp"])
-        dicom_table["tolerance"] = [
-            TOLERANCE_TYPES[item] for item in dicom_table["tolerance"]
-        ]
-        dicom_table = dicom_table.sort_values(["field_label"])
+        try:
+            dicom_table = get_all_dicom_treatment_info(files["rp"])
+            dicom_table["tolerance"] = [
+                TOLERANCE_TYPES[item] for item in dicom_table["tolerance"]
+            ]
+            dicom_table = dicom_table.sort_values(["field_label"])
+        except (AttributeError):
+            st.write("Please select a new RP file.")
+            st.stop()
 
         # Using MRN from RP file, find patient in MOSAIQ and perform query
         mrn = dicom_table.iloc[0]["mrn"]
@@ -219,7 +226,7 @@ def main():
             )
 
             # Format dataframe to color code results and then write the dataframe
-            display_results = display_results.style.apply(color_results, axis=1)
+            display_results = display_results.style.apply(colour_results, axis=1)
             st.dataframe(display_results.set_precision(2), height=1000)
 
             # Extract and write fractionation pattern from MOSAIQ for the specific field

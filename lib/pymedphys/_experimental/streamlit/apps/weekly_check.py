@@ -20,8 +20,8 @@ from pymedphys._imports import streamlit as st
 from pymedphys._streamlit import categories
 
 from pymedphys._experimental.chartchecks.compare import (
-    specific_patient_weekly_check_color_results,
-    weekly_check_color_results,
+    specific_patient_weekly_check_colour_results,
+    weekly_check_colour_results,
 )
 from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     compare_all_incompletes,
@@ -38,10 +38,13 @@ def main():
     # currdir = os.getcwd()
 
     incomplete_qcls = show_incomplete_weekly_checks()
+    # incomplete_qcls = incomplete_qcls.copy()
     incomplete_qcls = incomplete_qcls.drop_duplicates(subset=["patient_id"])
     incomplete_qcls = incomplete_qcls.set_index("patient_id")
 
     delivered, overall_results = compare_all_incompletes(incomplete_qcls)[1:]
+    # delivered = delivered.copy()
+    # overall_results = overall_results.copy()
     overall_results = overall_results.set_index("patient_id")
 
     weekly_check_results = pd.concat(
@@ -50,7 +53,7 @@ def main():
     weekly_check_results = weekly_check_results.sort_values(["first_name"])
     weekly_check_results = weekly_check_results.reset_index()
     weekly_check_results_stylized = weekly_check_results.style.apply(
-        weekly_check_color_results, axis=1
+        weekly_check_colour_results, axis=1
     )
     st.write(weekly_check_results_stylized)
 
@@ -108,7 +111,7 @@ def main():
                     "partial_treatment",
                     "new_field",
                 ]
-            ].style.apply(specific_patient_weekly_check_color_results, axis=1)
+            ].style.apply(specific_patient_weekly_check_colour_results, axis=1)
         )
         # st.write(delivered)
         # st.write(patient_results)

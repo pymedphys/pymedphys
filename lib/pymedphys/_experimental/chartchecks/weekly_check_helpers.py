@@ -30,38 +30,36 @@ from pymedphys._experimental.chartchecks.helpers import (
 
 def get_delivered_fields(patient):
     with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        delivered_values = get_all_treatment_history_data(cursor, patient)
-    return delivered_values
+        delivered = get_all_treatment_history_data(cursor, patient)
+    return delivered
 
 
 def show_incomplete_weekly_checks():
     with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        incomplete_qcls = get_incomplete_qcls(cursor, "Physics Resident")
+        incomplete = get_incomplete_qcls(cursor, "Physics Resident")
         todays_date = date.today() + timedelta(days=1)
         todays_date = todays_date.strftime("%b %d, %Y")
         # todays_date = "Dec 4, 2020"
-        incomplete_qcls = incomplete_qcls[
-            (incomplete_qcls["task"] == "Weekly Chart Check")
-            & (incomplete_qcls["due"] == todays_date)
+        incomplete = incomplete[
+            (incomplete["task"] == "Weekly Chart Check")
+            & (incomplete["due"] == todays_date)
         ]
-        incomplete_qcls = incomplete_qcls.drop(
-            columns=["instructions", "task", "due", "comment"]
-        )
-        incomplete_qcls = incomplete_qcls.reset_index(drop=True)
+        incomplete = incomplete.drop(columns=["instructions", "task", "due", "comment"])
+        incomplete = incomplete.reset_index(drop=True)
 
-    return incomplete_qcls
+    return incomplete
 
 
 def compare_delivered_to_planned(patient):
     with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        delivered_values = get_all_treatment_history_data(cursor, patient)
-        planned_values = get_all_treatment_data(cursor, patient)
+        delivered = get_delivered_fields(patient)
+        planned = get_all_treatment_data(cursor, patient)
         patient_results = pd.DataFrame()
         try:
             # current_fx = max(delivered_values["fraction"])
             todays_date = pd.Timestamp("today").floor("D")
             week_ago = todays_date + pd.offsets.Day(-7)
-            delivered_values = delivered_values[delivered_values["date"] > week_ago]
+            delivered = delivered[delivered["date"] > week_ago]
         except (TypeError, ValueError, AttributeError):
             print("fraction field empty")
         primary_checks = {
@@ -73,32 +71,25 @@ def compare_delivered_to_planned(patient):
             "partial_treatment": "",
         }
 
-        if True in delivered_values["was_overridden"].values:
+        if True in delivered["was_overridden"].values:
             primary_checks["was_overridden"] = "Treatment Overridden"
 
-        if True in delivered_values["new_field"].values:
+        if True in delivered["new_field"].values:
             primary_checks["new_field"] = "New Field Delivered"
 
-        if not all(delivered_values["site_version"]) == 0:
+        if not all(delivered["site_version"]) == 0:
             primary_checks["rx_change"] = "Prescription Altered"
 
-        if not all(delivered_values["site_setup_version"]) == 0:
+        if not all(delivered["site_setup_version"]) == 0:
             primary_checks["site_setup_change"] = "Site Setup Altered"
 
-        if True in delivered_values["partial_treatment"].values:
+        if True in delivered["partial_treatment"].values:
             primary_checks["partial_treatment"] = "Partial Treatment"
 
         for key, item in primary_checks.items():
             patient_results[key] = [item]
 
-    # delivered_parameters = delivered_values.columns
-    # planned_parameters = planned_values.columns
-    # for field in range(0, len(delivered_values)):
-    #     for parameter in delivered_parameters:
-    #         if parameter in planned_parameters:
-    #             field[parameter] ==
-
-    return planned_values, delivered_values, patient_results
+    return planned, delivered, patient_results
 
 
 def compare_single_incomplete(patient):

@@ -26,7 +26,7 @@ from pymedphys._imports import pandas as pd
 #             uncomparable = yellow
 
 
-def color_results(val):  # pylint: disable = too-many-return-statements
+def colour_results(val):  # pylint: disable = too-many-return-statements
     not_in = [
         "field_type",
         "machine",
@@ -216,7 +216,7 @@ def compare_to_mosaiq(dicom_table, mos_table):
 #######################################################################################################################
 
 
-def weekly_check_color_results(val):
+def weekly_check_colour_results(val):
     failures = [
         "Unverified Treatment",
         "Partial Treatment",
@@ -239,7 +239,7 @@ def weekly_check_color_results(val):
         return ["background-color: #EE6363"] * len(val)
 
 
-def specific_patient_weekly_check_color_results(val):
+def specific_patient_weekly_check_colour_results(val):
     failures = ["was_overridden", "new_field", "partial_treatment"]
     failure_flag = 0
     for failure in failures:

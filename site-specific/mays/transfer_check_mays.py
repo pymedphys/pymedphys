@@ -19,7 +19,10 @@ import streamlit_analytics
 
 from pymedphys._mosaiq import connect
 
-from pymedphys._experimental.chartchecks.compare import color_results, compare_to_mosaiq
+from pymedphys._experimental.chartchecks.compare import (
+    colour_results,
+    compare_to_mosaiq,
+)
 from pymedphys._experimental.chartchecks.helpers import (
     get_all_dicom_treatment_info,
     get_all_treatment_data,
@@ -214,7 +217,7 @@ if "rp" in files:
         )
 
         # Format dataframe to color code results and then write the dataframe
-        display_results = display_results.style.apply(color_results, axis=1)
+        display_results = display_results.style.apply(colour_results, axis=1)
         st.dataframe(display_results.set_precision(2), height=1000)
 
         # Extract and write fractionation pattern from MOSAIQ for the specific field
