@@ -40,17 +40,12 @@ def main():
     incomplete_qcls = show_incomplete_weekly_checks()
     incomplete_qcls = incomplete_qcls.copy()
     incomplete_qcls = incomplete_qcls.drop_duplicates(subset=["patient_id"])
-    incomplete_qcls = incomplete_qcls.set_index("patient_id")
+    # incomplete_qcls = incomplete_qcls.set_index("patient_id")
 
-    all_delivered, overall_results = compare_all_incompletes(incomplete_qcls)[1:]
+    all_delivered, weekly_check_results = compare_all_incompletes(incomplete_qcls)[1:]
     all_delivered = all_delivered.astype({"pat_ID": "str"})
-    overall_results = overall_results.set_index("patient_id")
-
-    weekly_check_results = pd.concat(
-        [incomplete_qcls.copy(), overall_results.copy()], axis=1, sort=True
-    )
     weekly_check_results = weekly_check_results.sort_values(["first_name"])
-    weekly_check_results = weekly_check_results.reset_index()
+    weekly_check_results = weekly_check_results.reset_index(drop=True)
     weekly_check_results_stylized = weekly_check_results.style.apply(
         weekly_check_colour_results, axis=1
     )

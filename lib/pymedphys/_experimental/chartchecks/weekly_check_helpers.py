@@ -59,6 +59,8 @@ def compare_delivered_to_planned(patient):
             print("fraction field empty")
         primary_checks = {
             "patient_id": patient,
+            "first_name": delivered_this_week.iloc[0]["first_name"],
+            "last_name": delivered_this_week.iloc[0]["last_name"],
             "was_overridden": "",
             "new_field": "",
             "rx_change": "",
@@ -93,7 +95,7 @@ def compare_all_incompletes(incomplete_qcls):
     all_delivered = pd.DataFrame()
     overall_results = pd.DataFrame()
     if not incomplete_qcls.empty:
-        for patient in incomplete_qcls.index:
+        for patient in incomplete_qcls["patient_id"]:
             (
                 planned_values,
                 delivered_values,
