@@ -243,7 +243,6 @@ def specific_patient_weekly_check_colour_results(val):
     failures = ["was_overridden", "new_field", "partial_tx"]
     failure_flag = 0
     for failure in failures:
-        print(val[failure])
         # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
         if val[failure] is True:
             failure_flag += 1

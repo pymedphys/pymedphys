@@ -78,7 +78,17 @@ def main():
             + delivered_this_week.iloc[0]["last_name"]
         )
 
-        st.write(
+        delivered_this_week["rx_change"] = 0
+        for field in range(0, len(delivered_this_week)):
+            if delivered_this_week.iloc[field]["site_version"] != 0:
+                delivered_this_week.iloc[field]["rx_change"] = 1
+
+        delivered_this_week["site_setup_change"] = 0
+        for field in range(0, len(delivered_this_week)):
+            if delivered_this_week.iloc[field]["site_setup_version"] != 0:
+                delivered_this_week.iloc[field]["site_setup_change"] = 1
+
+        st.table(
             delivered_this_week[
                 [
                     "date",
@@ -89,6 +99,8 @@ def main():
                     "was_overridden",
                     "partial_tx",
                     "new_field",
+                    "rx_change",
+                    "site_setup_change",
                 ]
             ].style.apply(specific_patient_weekly_check_colour_results, axis=1)
         )
