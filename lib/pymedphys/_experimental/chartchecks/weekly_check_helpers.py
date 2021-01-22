@@ -122,7 +122,7 @@ def plot_couch_positions(delivered):
         "couch_lat": "orange",
         "couch_lng": "green",
     }
-    for key in couch_directions.keys():
+    for key in couch_directions:
         fx = delivered[key].index
         positions = delivered[key].values
         mean = np.mean(positions)
@@ -147,7 +147,7 @@ def plot_couch_deltas(delivered):
         "couch_lat": "orange",
         "couch_lng": "green",
     }
-    for key in couch_directions.keys():
+    for key in couch_directions:
         fx = delivered[key].index
         positions = delivered[key].values
         deltas = positions - delivered.iloc[0][key]

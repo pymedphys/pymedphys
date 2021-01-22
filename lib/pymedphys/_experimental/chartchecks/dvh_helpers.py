@@ -33,7 +33,7 @@ def plot_dvh(rs_file, rd_file):
     # traces = []
     fig = plt.subplots()[0]
     for i in range(1, len(structures) + 1):
-        calcdvh = dvhcalc.get_dvh(ds_input, dd_input, i, binsize=10)
+        calcdvh = dvhcalc.get_dvh(ds_input, dd_input, i)
         dvh_structures["name"].append(calcdvh.name)
         dvh_structures["bincenters"].append(calcdvh.bincenters)
         dvh_structures["counts"].append(calcdvh.counts)

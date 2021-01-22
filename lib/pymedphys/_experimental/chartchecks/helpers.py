@@ -175,7 +175,7 @@ def get_all_dicom_treatment_info(dicomFile):
 
             if dicom_beam["manufacturer"] == "Varian":
 
-                angle_keys = [key for key in dicom_beam.keys() if "angle" in key]
+                angle_keys = [key for key in dicom_beam if "angle" in key]
                 for key in angle_keys:
                     dicom_beam[key] = _invert_angle(dicom_beam[key])
 

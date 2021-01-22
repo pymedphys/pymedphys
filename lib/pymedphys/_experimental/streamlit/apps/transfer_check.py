@@ -14,7 +14,6 @@
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._mosaiq import connect
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities.mosaiq import uncached_get_mosaiq_cursor
 
@@ -87,7 +86,7 @@ def main():
                 TOLERANCE_TYPES[item] for item in dicom_table["tolerance"]
             ]
             dicom_table = dicom_table.sort_values(["field_label"])
-        except (AttributeError):
+        except AttributeError:
             st.write("Please select a new RP file.")
             st.stop()
 
