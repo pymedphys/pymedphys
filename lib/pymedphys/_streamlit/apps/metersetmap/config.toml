@@ -8,13 +8,13 @@ default_reference = "dicom"
 default_evaluation = "trf"
 
 [[site]]
-name = "default-site-name"
+name = "a-demo-site-name"
 
     [site.export-directories]
-    escan = '~/mudensity-demo/pdf'
+    escan = '~/pymedphys-gui-metersetmap'
 
 [output]
-png_directory = '~/mudensity-demo/png'
+png_directory = '~/pymedphys-gui-metersetmap'
 
 [gamma]
 dose_percent_threshold = 2

@@ -18,6 +18,7 @@ from pymedphys._gui import main
 def gui_cli(subparsers):
     parser = subparsers.add_parser("gui", help=("Run the PyMedPhys GUI."))
 
+    parser.add_argument("--port")
     parser.set_defaults(func=main)
 
     return parser

@@ -417,8 +417,8 @@ def run_calculation(
     reference_results,
     evaluation_results,
     gamma_options,
-    escan_directory,
-    png_output_directory,
+    escan_directory: pathlib.Path,
+    png_output_directory: pathlib.Path,
 ):
     st.write("Calculating Reference MetersetMap...")
     reference_metersetmap = calculate_batch_metersetmap(reference_results["deliveries"])
@@ -444,7 +444,7 @@ def run_calculation(
         escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
     )
     png_record_directory = png_output_directory.joinpath(output_base_filename)
-    png_record_directory.mkdir(exist_ok=True)
+    png_record_directory.mkdir(exist_ok=True, parents=True)
     png_filepath = str(png_record_directory.joinpath("report.png").resolve())
 
     try:

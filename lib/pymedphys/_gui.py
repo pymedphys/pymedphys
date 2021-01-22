@@ -38,7 +38,7 @@ def fill_streamlit_credentials():
         pass
 
 
-def main(_):
+def main(args):
     """Boot up the pymedphys GUI
 
     """
@@ -46,6 +46,17 @@ def main(_):
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
+    if args.port:
+        append = ["--server.port", args.port]
+    else:
+        append = []
+
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
-    command = [python_executable, "-m", "streamlit", "run", streamlit_script_path]
+    command = [
+        python_executable,
+        "-m",
+        "streamlit",
+        "run",
+        streamlit_script_path,
+    ] + append
     subprocess.check_call(command)
