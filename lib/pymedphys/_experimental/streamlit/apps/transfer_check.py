@@ -16,6 +16,7 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import connect
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities.mosaiq import uncached_get_mosaiq_cursor
 
 from pymedphys._experimental.chartchecks.compare import (
     colour_results,
@@ -36,8 +37,14 @@ CATEGORY = categories.PRE_ALPHA
 TITLE = "Pre-Treatment Data Transfer Check"
 
 
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def get_mosaiq_cursor(server):
+    return uncached_get_mosaiq_cursor(server)
+
+
 def main():
     server = "PRDMOSAIQIWVV01.utmsa.local"
+    cursor = get_mosaiq_cursor(server)
 
     st.sidebar.header("Instructions:")
     st.sidebar.markdown(
@@ -86,16 +93,16 @@ def main():
 
         # Using MRN from RP file, find patient in MOSAIQ and perform query
         mrn = dicom_table.iloc[0]["mrn"]
-        with connect.connect(server) as cursor:
-            mosaiq_table = get_all_treatment_data(cursor, mrn)
 
-            if mosaiq_table.iloc[0]["create_id"] is not None:
-                try:
-                    site_initials = get_staff_initials(
-                        cursor, str(int(mosaiq_table.iloc[0]["create_id"]))
-                    )
-                except (TypeError, ValueError, AttributeError):
-                    site_initials = ""
+        mosaiq_table = get_all_treatment_data(cursor, mrn)
+
+        if mosaiq_table.iloc[0]["create_id"] is not None:
+            try:
+                site_initials = get_staff_initials(
+                    cursor, str(int(mosaiq_table.iloc[0]["create_id"]))
+                )
+            except (TypeError, ValueError, AttributeError):
+                site_initials = ""
 
         # Limit MOSAIQ results to only the most current site and field versions for comparison
         mosaiq_table = mosaiq_table[
@@ -207,10 +214,10 @@ def main():
                 field_approval_id = mosaiq_table[
                     mosaiq_table["field_name"] == field_selection
                 ]["field_approval"]
-                with connect.connect(server) as cursor:
-                    field_approval_initials = get_staff_initials(
-                        cursor, str(int(field_approval_id.iloc[0]))
-                    )
+
+                field_approval_initials = get_staff_initials(
+                    cursor, str(int(field_approval_id.iloc[0]))
+                )
                 st.write("**Field Approved by: **", field_approval_initials[0][0])
             except (TypeError, ValueError, AttributeError):
                 st.write("This field is not approved.")
