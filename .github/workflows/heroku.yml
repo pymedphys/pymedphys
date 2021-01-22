@@ -11,7 +11,7 @@ jobs:
       - name: Pre-Heat Online App
         run: |
           curl -s -o /dev/null https://app.pymedphys.com -w ''%{http_code}''
-          
+
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
@@ -21,11 +21,11 @@ jobs:
         working-directory: lib/pymedphys/tests/e2e
         run: |
           yarn
-          
+
       - name: Wait for Online App to Start
         run: |
           while [[ "$(curl -s -o /dev/null https://app.pymedphys.com -w ''%{http_code}'')" != "200" ]]; do sleep 1; done
-          
+
       - name: Run Cypress
         working-directory: lib/pymedphys/tests/e2e
         run: |
