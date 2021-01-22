@@ -8,14 +8,26 @@ jobs:
   OnlineApp:
     runs-on: ubuntu-latest
     steps:
+      - name: Pre-Heat Online App
+        run: |
+          curl -s -o /dev/null https://app.pymedphys.com -w ''%{http_code}''
+          
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
           node-version: '14'
 
-      - name: Install and Run Cypress
+      - name: Install Cypress
+        working-directory: lib/pymedphys/tests/e2e
         run: |
           yarn
+          
+      - name: Wait for Online App to Start
+        run: |
+          while [[ "$(curl -s -o /dev/null https://app.pymedphys.com -w ''%{http_code}'')" != "200" ]]; do sleep 1; done
+          
+      - name: Run Cypress
+        working-directory: lib/pymedphys/tests/e2e
+        run: |
           export CYPRESS_PYMEDPHYS_GUI_URL="https://app.pymedphys.com"
           yarn cypress run --spec cypress/integration/streamlit/metersetmap.spec.js
-        working-directory: lib/pymedphys/tests/e2e
