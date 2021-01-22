@@ -173,8 +173,8 @@ def compare_to_mosaiq(dicom_table, mos_table):
     values_table = pd.DataFrame()
     to_be_compared = dicom_table.columns
     mos_index = mos_table.columns
-    dicom_list = pd.DataFrame()
-    mosaiq_list = pd.DataFrame()
+    dicom_df = pd.DataFrame()
+    mosaiq_df = pd.DataFrame()
 
     for field in range(len(dicom_table)):
         for label in to_be_compared:
@@ -188,18 +188,18 @@ def compare_to_mosaiq(dicom_table, mos_table):
                     [mos_table.iloc[field][label]], columns=[label]
                 )
 
-                dicom_list = pd.concat([dicom_list, add_dicom], axis=1)
-                mosaiq_list = pd.concat([mosaiq_list, add_mosaiq], axis=1)
+                dicom_df = pd.concat([dicom_df, add_dicom], axis=1)
+                mosaiq_df = pd.concat([mosaiq_df, add_mosaiq], axis=1)
 
             # continue if the value is not in Mosaiq
             else:
                 continue
 
-        values_table = values_table.append(dicom_list, ignore_index=True)
-        values_table = values_table.append(mosaiq_list, ignore_index=True)
+        values_table = values_table.append(dicom_df, ignore_index=True)
+        values_table = values_table.append(mosaiq_df, ignore_index=True)
 
-        dicom_list = pd.DataFrame()
-        mosaiq_list = pd.DataFrame()
+        dicom_df = pd.DataFrame()
+        mosaiq_df = pd.DataFrame()
 
     values_index = []
     for value in dicom_table[:]["field_name"]:
