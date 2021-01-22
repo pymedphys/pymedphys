@@ -2,7 +2,7 @@ name: Heroku
 
 on:
   schedule:
-    - cron:  '*/15 * * * *'
+    - cron:  '*/10 * * * *'
 
 jobs:
   OnlineApp:
