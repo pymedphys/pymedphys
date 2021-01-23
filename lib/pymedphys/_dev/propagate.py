@@ -228,30 +228,15 @@ def _propagate_setup():
 def _propagate_requirements():
     """Propagates requirement files for use without Poetry.
     """
-    # The docs are included within ``requirements.txt`` due to netlify
-    # reading this file and spinning it up. The few extra dependencies
-    # for users who choose to go this route isn't such a bad trade off
-    # here.
-    _make_requirements_txt(["user", "docs"], "requirements.txt", editable=False)
+    _make_requirements_txt(["user"], "requirements.txt")
+    _make_requirements_txt(["dev"], "requirements-dev.txt")
 
-    # The editable install `-e` used here means that should a user edit
-    # the git repo they will be utilising their edits within their
-    # environment as opposed to what was originally installed.
-    _make_requirements_txt(["dev"], "requirements-dev.txt", editable=True)
-
-    # TODO: Once the hashes pinning issue in poetry is fixed, remove the
-    # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
-    # for more details.
     _make_requirements_txt(
         ["user", "tests"], "requirements-deploy.txt", include_pymedphys=False
     )
 
-    _make_requirements_txt(["user"], "requirements-user.txt", editable=True)
 
-
-def _make_requirements_txt(
-    extras: List[str], filename: str, include_pymedphys=True, editable=True
-):
+def _make_requirements_txt(extras: List[str], filename: str, include_pymedphys=True):
     """Create a requirements.txt file with poetry pins.
 
     Parameters
@@ -264,14 +249,14 @@ def _make_requirements_txt(
     include_pymedphys : bool, optional
         Whether or not the requirements file should include an
         installation of the git repo, by default True.
-    editable : bool, optional
-        Whether or not the pymedphys install should be 'editable', by
-        default True.
     """
     filepath = REPO_ROOT.joinpath(filename)
 
     poetry_environment_flags = " ".join([f"-E {item}" for item in extras])
 
+    # TODO: Once the hashes pinning issue in poetry is fixed, remove the
+    # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
+    # for more details.
     subprocess.check_call(
         (
             "poetry export --without-hashes "
@@ -284,9 +269,7 @@ def _make_requirements_txt(
     )
 
     if include_pymedphys:
-        pymedphys_install_command = f".[{','.join(extras)}]\n"
-        if editable:
-            pymedphys_install_command = f"-e {pymedphys_install_command}"
+        pymedphys_install_command = f"-e .[{','.join(extras)}]\n"
 
         with open(filepath, "a") as f:
             f.write(pymedphys_install_command)
