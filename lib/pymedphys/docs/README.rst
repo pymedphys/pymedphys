@@ -11,10 +11,10 @@
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|streamlit| |build| |docs| |pypi| |python| |license|
+|online-app| |build| |docs| |pypi| |python| |license|
 
-.. |streamlit| image:: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
-    :target: https://share.streamlit.io/pymedphys/pymedphys/main/app.py
+.. |online-app| image :: https://github.com/pymedphys/pymedphys/workflows/OnlineApp/badge.svg
+    :target: https://app.pymedphys.com
 
 .. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/PullRequest
     :target: https://github.com/pymedphys/pymedphys/actions
