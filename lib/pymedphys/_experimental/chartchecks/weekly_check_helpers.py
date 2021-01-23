@@ -28,160 +28,135 @@ from pymedphys._experimental.chartchecks.helpers import (
 )
 
 
-def get_delivered_fields(patient):
-    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        delivered_values = get_all_treatment_history_data(cursor, patient)
-    return delivered_values
-
-
 def show_incomplete_weekly_checks():
     with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        incomplete_qcls = get_incomplete_qcls(cursor, "Physics Resident")
-        todays_date = date.today() + timedelta(days=1)
+        incomplete = get_incomplete_qcls(cursor, "Physics Resident")
+        todays_date = date.today() + timedelta(days=3)
         todays_date = todays_date.strftime("%b %d, %Y")
         # todays_date = "Dec 4, 2020"
-        incomplete_qcls = incomplete_qcls[
-            (incomplete_qcls["task"] == "Weekly Chart Check")
-            & (incomplete_qcls["due"] == todays_date)
+        incomplete = incomplete[
+            (incomplete["task"] == "Weekly Chart Check")
+            & (incomplete["due"] == todays_date)
         ]
-        incomplete_qcls = incomplete_qcls.drop(
-            columns=["instructions", "task", "due", "comment"]
-        )
-        incomplete_qcls = incomplete_qcls.reset_index(drop=True)
+        incomplete = incomplete.drop(columns=["instructions", "task", "due", "comment"])
+        incomplete = incomplete.reset_index(drop=True)
 
-    return incomplete_qcls
+    return incomplete
 
 
 def compare_delivered_to_planned(patient):
     with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        delivered_values = get_all_treatment_history_data(cursor, patient)
-        planned_values = get_all_treatment_data(cursor, patient)
+        delivered = get_all_treatment_history_data(cursor, patient)
+        planned = get_all_treatment_data(cursor, patient)
         patient_results = pd.DataFrame()
         try:
-            # current_fx = max(delivered_values["fraction"])
+            # current_fx = max(delivered_values["fx"])
             todays_date = pd.Timestamp("today").floor("D")
             week_ago = todays_date + pd.offsets.Day(-7)
-            delivered_values = delivered_values[delivered_values["date"] > week_ago]
+            delivered_this_week = delivered.copy()
+            delivered_this_week = delivered_this_week[delivered["date"] > week_ago]
         except (TypeError, ValueError, AttributeError):
             print("fraction field empty")
         primary_checks = {
             "patient_id": patient,
+            "first_name": delivered_this_week.iloc[0]["first_name"],
+            "last_name": delivered_this_week.iloc[0]["last_name"],
             "was_overridden": "",
             "new_field": "",
             "rx_change": "",
             "site_setup_change": "",
-            "partial_treatment": "",
+            "partial_tx": "",
         }
 
-        if True in delivered_values["was_overridden"].values:
+        if True in delivered_this_week["was_overridden"].values:
             primary_checks["was_overridden"] = "Treatment Overridden"
 
-        if True in delivered_values["new_field"].values:
+        if True in delivered_this_week["new_field"].values:
             primary_checks["new_field"] = "New Field Delivered"
 
-        if not all(delivered_values["site_version"]) == 0:
+        if not all(delivered_this_week["site_version"]) == 0:
             primary_checks["rx_change"] = "Prescription Altered"
 
-        if not all(delivered_values["site_setup_version"]) == 0:
+        if not all(delivered_this_week["site_setup_version"]) == 0:
             primary_checks["site_setup_change"] = "Site Setup Altered"
 
-        if True in delivered_values["partial_treatment"].values:
-            primary_checks["partial_treatment"] = "Partial Treatment"
+        if True in delivered_this_week["partial_tx"].values:
+            primary_checks["partial_tx"] = "Partial Treatment"
 
         for key, item in primary_checks.items():
             patient_results[key] = [item]
 
-    # delivered_parameters = delivered_values.columns
-    # planned_parameters = planned_values.columns
-    # for field in range(0, len(delivered_values)):
-    #     for parameter in delivered_parameters:
-    #         if parameter in planned_parameters:
-    #             field[parameter] ==
-
-    return planned_values, delivered_values, patient_results
-
-
-def compare_single_incomplete(patient):
-    planned_values, delivered_values, patient_results = compare_delivered_to_planned(
-        patient
-    )
-    return planned_values, delivered_values, patient_results
+    return planned, delivered, patient_results
 
 
 @st.cache(ttl=86400)
 def compare_all_incompletes(incomplete_qcls):
+    all_planned = pd.DataFrame()
+    all_delivered = pd.DataFrame()
     overall_results = pd.DataFrame()
     if not incomplete_qcls.empty:
-        for patient in incomplete_qcls.index:
-            patient_results = pd.DataFrame()
+        for patient in incomplete_qcls["patient_id"]:
             (
                 planned_values,
                 delivered_values,
                 patient_results,
             ) = compare_delivered_to_planned(patient)
+
+            all_planned = all_planned.append(planned_values)
+            all_delivered = all_delivered.append(delivered_values)
             overall_results = overall_results.append(patient_results)
 
-        return planned_values, delivered_values, overall_results
+        return all_planned, all_delivered, overall_results
 
     else:
         return None, None, "No weeklys due today, but thanks for trying."
 
 
 def plot_couch_positions(delivered):
-    delivered = delivered.drop_duplicates(subset=["fraction"])
+    delivered = delivered.drop_duplicates(subset=["fx"])
     delivered = delivered.reset_index(drop=True)
 
     fig, ax = plt.subplots()
-    ax.scatter(
-        delivered["couch_vrt"].index,
-        delivered["couch_vrt"].values,
-        label="couch_vrt",
-        marker=".",
-    )
-    ax.axhline(
-        np.mean(delivered["couch_vrt"].values) + np.std(delivered["couch_vrt"].values),
-        color="blue",
-        linestyle=":",
-    )
-    ax.axhline(
-        np.mean(delivered["couch_vrt"].values) - np.std(delivered["couch_vrt"].values),
-        color="blue",
-        linestyle=":",
-    )
+    couch_directions = {
+        "couch_vrt": "blue",
+        "couch_lat": "orange",
+        "couch_lng": "green",
+    }
+    for key in couch_directions:
+        fx = delivered[key].index
+        positions = delivered[key].values
+        mean = np.mean(positions)
+        std = np.std(positions)
 
-    ax.scatter(
-        delivered["couch_lat"].index,
-        delivered["couch_lat"].values,
-        label="couch_lat",
-        marker=".",
-    )
-    ax.axhline(
-        np.mean(delivered["couch_lat"].values) + np.std(delivered["couch_lat"].values),
-        color="orange",
-        linestyle=":",
-    )
-    ax.axhline(
-        np.mean(delivered["couch_lat"].values) - np.std(delivered["couch_lat"].values),
-        color="orange",
-        linestyle=":",
-    )
+        ax.scatter(fx, positions, label=key, color=couch_directions[key], marker=".")
+        ax.axhline(mean + std, color=couch_directions[key], linestyle=":")
+        ax.axhline(mean - std, color=couch_directions[key], linestyle=":")
 
-    ax.scatter(
-        delivered["couch_lng"].index,
-        delivered["couch_lng"].values,
-        label="couch_lng",
-        marker=".",
-    )
-    ax.axhline(
-        np.mean(delivered["couch_lng"].values) + np.std(delivered["couch_lng"].values),
-        color="green",
-        linestyle=":",
-    )
-    ax.axhline(
-        np.mean(delivered["couch_lng"].values) - np.std(delivered["couch_lng"].values),
-        color="green",
-        linestyle=":",
-    )
+    ax.set_title("Couch Positions for Each Beam On")
+    ax.legend()
+    st.pyplot(fig)
+
+
+def plot_couch_deltas(delivered):
+    delivered = delivered.drop_duplicates(subset=["fx"])
+    delivered = delivered.reset_index(drop=True)
+
+    fig, ax = plt.subplots()
+    couch_directions = {
+        "couch_vrt": "blue",
+        "couch_lat": "orange",
+        "couch_lng": "green",
+    }
+    for key in couch_directions:
+        fx = delivered[key].index
+        positions = delivered[key].values
+        deltas = positions - delivered.iloc[0][key]
+        mean = np.mean(deltas)
+        std = np.std(deltas)
+
+        ax.scatter(fx, deltas, label=key, color=couch_directions[key], marker=".")
+        ax.axhline(mean + std, color=couch_directions[key], linestyle=":")
+        ax.axhline(mean - std, color=couch_directions[key], linestyle=":")
 
     ax.set_title("Couch Positions for Each Beam On")
     ax.legend()
