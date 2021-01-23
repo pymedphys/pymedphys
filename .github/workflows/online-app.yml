@@ -2,7 +2,7 @@ name: OnlineApp
 
 on:
   schedule:
-    - cron: '00,10,20,30,40,50 * * * *'
+    - cron: '*/5 * * * *'
 
 jobs:
   Cypress:
