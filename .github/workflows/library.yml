@@ -404,7 +404,7 @@ jobs:
           poetry run pymedphys dev docs
 
       - name: Deploy docs
-        if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'release' && if steps.extract_branch.outputs.branch == 'main'
+        if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'release'
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
