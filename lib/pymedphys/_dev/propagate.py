@@ -228,7 +228,7 @@ def _propagate_setup():
 def _propagate_requirements():
     """Propagates requirement files for use without Poetry.
     """
-    _make_requirements_txt(["user"], "requirements.txt")
+    _make_requirements_txt(["user"], "requirements.txt", editable=False)
     _make_requirements_txt(["dev"], "requirements-dev.txt")
 
     _make_requirements_txt(
@@ -236,7 +236,9 @@ def _propagate_requirements():
     )
 
 
-def _make_requirements_txt(extras: List[str], filename: str, include_pymedphys=True):
+def _make_requirements_txt(
+    extras: List[str], filename: str, include_pymedphys=True, editable=True
+):
     """Create a requirements.txt file with poetry pins.
 
     Parameters
@@ -249,6 +251,9 @@ def _make_requirements_txt(extras: List[str], filename: str, include_pymedphys=T
     include_pymedphys : bool, optional
         Whether or not the requirements file should include an
         installation of the git repo, by default True.
+    editable : bool, optional
+        Whether or not the pymedphys install should be 'editable', by
+        default True.
     """
     filepath = REPO_ROOT.joinpath(filename)
 
@@ -269,7 +274,9 @@ def _make_requirements_txt(extras: List[str], filename: str, include_pymedphys=T
     )
 
     if include_pymedphys:
-        pymedphys_install_command = f"-e .[{','.join(extras)}]\n"
+        pymedphys_install_command = f".[{','.join(extras)}]\n"
+        if editable:
+            pymedphys_install_command = f"-e {pymedphys_install_command}"
 
         with open(filepath, "a") as f:
             f.write(pymedphys_install_command)
