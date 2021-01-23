@@ -106,14 +106,6 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
 
     steps:
-      - name: Extract branch name
-        run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-      - name: Test branch name
-        run: |
-          echo ${{ steps.extract_branch.outputs.branch }}
-
       - uses: actions/checkout@v2
 
       - name: Set up Python ${{ matrix.python-version }}
