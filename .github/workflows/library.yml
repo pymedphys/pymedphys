@@ -106,6 +106,14 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
 
     steps:
+      - name: Extract branch name
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Test branch name
+        run: |
+          echo ${{ steps.extract_branch.outputs.branch }}
+
       - uses: actions/checkout@v2
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -394,6 +402,15 @@ jobs:
         if: matrix.task == 'docs' || matrix.task == 'updates'
         run: |
           poetry run pymedphys dev docs
+
+      - name: Deploy docs
+        if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'release' && if steps.extract_branch.outputs.branch == 'main'
+        uses: JamesIves/github-pages-deploy-action@3.7.1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: docs # The branch the action should deploy to.
+          FOLDER: lib/pymedphys/docs/_build/html # The folder the action should deploy.
+          CLEAN: true # Automatically remove deleted files from the deploy branch
 
 ## Stackoverflow
 
