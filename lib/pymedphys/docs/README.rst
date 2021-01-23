@@ -13,7 +13,7 @@ and open source distribution. Open code is better science.**
 
 |online-app| |build| |docs| |pypi| |python| |license|
 
-.. |online-app| image :: https://github.com/pymedphys/pymedphys/workflows/OnlineApp/badge.svg
+.. |online-app| image:: https://github.com/pymedphys/pymedphys/workflows/OnlineApp/badge.svg
     :target: https://app.pymedphys.com
 
 .. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/PullRequest
