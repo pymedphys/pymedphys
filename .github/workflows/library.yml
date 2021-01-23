@@ -395,6 +395,12 @@ jobs:
         run: |
           poetry run pymedphys dev docs
 
+      - name: Add GitHub Pages Config Files
+        if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'push'
+        run : |
+          echo docs.pymedphys.com > lib/pymedphys/docs/_build/html/CNAME
+          touch lib/pymedphys/docs/_build/html/.nojekyll
+
       - name: Deploy docs
         if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'push'
         uses: JamesIves/github-pages-deploy-action@3.7.1
