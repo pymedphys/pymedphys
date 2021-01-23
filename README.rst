@@ -24,10 +24,10 @@ and open source distribution. Open code is better science.**
 
 |online-app| |build| |docs| |pypi| |python| |license|
 
-.. |online-app| image:: https://github.com/pymedphys/pymedphys/workflows/OnlineApp/badge.svg
+.. |online-app| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/OnlineApp?event=schedule&label=app
     :target: https://app.pymedphys.com
 
-.. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/PullRequest
+.. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/Library
     :target: https://github.com/pymedphys/pymedphys/actions
 
 .. |docs| image:: https://img.shields.io/netlify/c702e3b2-f436-46a3-b461-00a8a55bcdba
