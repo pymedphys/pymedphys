@@ -19,7 +19,7 @@ from collections import defaultdict
 from typing import Dict
 
 from pymedphys._imports import natsort
-from pymedphys._imports import pandas as pd
+from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
 

@@ -26,7 +26,7 @@ from pymedphys._imports import pandas as pd
 #             uncomparable = yellow
 
 
-def color_results(val):  # pylint: disable = too-many-return-statements
+def colour_results(val):  # pylint: disable = too-many-return-statements
     not_in = [
         "field_type",
         "machine",
@@ -36,6 +36,9 @@ def color_results(val):  # pylint: disable = too-many-return-statements
         "modality",
         "technique",
         "backup_time",
+        "couch_lat [cm]",
+        "couch_lng [cm]",
+        "couch_vrt [cm]",
     ]
 
     # set any values which cannot accurately be compared as yellow (#FDFF8A)
@@ -170,8 +173,8 @@ def compare_to_mosaiq(dicom_table, mos_table):
     values_table = pd.DataFrame()
     to_be_compared = dicom_table.columns
     mos_index = mos_table.columns
-    dicom_list = pd.DataFrame()
-    mosaiq_list = pd.DataFrame()
+    dicom_df = pd.DataFrame()
+    mosaiq_df = pd.DataFrame()
 
     for field in range(len(dicom_table)):
         for label in to_be_compared:
@@ -185,14 +188,18 @@ def compare_to_mosaiq(dicom_table, mos_table):
                     [mos_table.iloc[field][label]], columns=[label]
                 )
 
-                dicom_list[label] = add_dicom
-                mosaiq_list[label] = add_mosaiq
+                dicom_df = pd.concat([dicom_df, add_dicom], axis=1)
+                mosaiq_df = pd.concat([mosaiq_df, add_mosaiq], axis=1)
+
             # continue if the value is not in Mosaiq
             else:
                 continue
 
-        values_table = values_table.append(dicom_list, ignore_index=True)
-        values_table = values_table.append(mosaiq_list, ignore_index=True)
+        values_table = values_table.append(dicom_df, ignore_index=True)
+        values_table = values_table.append(mosaiq_df, ignore_index=True)
+
+        dicom_df = pd.DataFrame()
+        mosaiq_df = pd.DataFrame()
 
     values_index = []
     for value in dicom_table[:]["field_name"]:
@@ -201,6 +208,7 @@ def compare_to_mosaiq(dicom_table, mos_table):
 
     values_table["beam_index"] = pd.Series(values_index).values
     values_table = values_table.set_index("beam_index", drop=True)
+    values_table = values_table.round(2)
 
     return values_table
 
@@ -208,7 +216,7 @@ def compare_to_mosaiq(dicom_table, mos_table):
 #######################################################################################################################
 
 
-def weekly_check_color_results(val):
+def weekly_check_colour_results(val):
     failures = [
         "Unverified Treatment",
         "Partial Treatment",
@@ -221,6 +229,22 @@ def weekly_check_color_results(val):
     for failure in failures:
         # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
         if failure in set(val):
+            failure_flag += 1
+        else:
+            failure_flag += 0
+
+    if failure_flag == 0:
+        return ["background-color: #C1FFC1"] * len(val)
+    else:
+        return ["background-color: #EE6363"] * len(val)
+
+
+def specific_patient_weekly_check_colour_results(val):
+    failures = ["was_overridden", "new_field", "partial_tx"]
+    failure_flag = 0
+    for failure in failures:
+        # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
+        if val[failure] is True:
             failure_flag += 1
         else:
             failure_flag += 0

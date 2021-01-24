@@ -1,4 +1,4 @@
-name: All
+name: Library
 
 on:
   push:
@@ -379,7 +379,7 @@ jobs:
       - name: Run pylint tests
         if: matrix.os == 'ubuntu' && ( matrix.task == 'tests' || matrix.task == 'updates' )
         run: |
-          poetry run pymedphys dev tests --pylint --pylint-jobs=1
+          poetry run pymedphys dev lint
 
 ## Slow
 
@@ -394,6 +394,21 @@ jobs:
         if: matrix.task == 'docs' || matrix.task == 'updates'
         run: |
           poetry run pymedphys dev docs
+
+      - name: Add GitHub Pages Config Files
+        if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'push'
+        run : |
+          echo docs.pymedphys.com > lib/pymedphys/docs/_build/html/CNAME
+          touch lib/pymedphys/docs/_build/html/.nojekyll
+
+      - name: Deploy docs
+        if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@3.7.1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: docs # The branch the action should deploy to.
+          FOLDER: lib/pymedphys/docs/_build/html # The folder the action should deploy.
+          CLEAN: true # Automatically remove deleted files from the deploy branch
 
 ## Stackoverflow
 

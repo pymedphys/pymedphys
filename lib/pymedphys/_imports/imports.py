@@ -8,6 +8,9 @@ import black
 import dateutil
 import dbfread
 import dicompylercore
+import dicompylercore.dicomparser as dicomparser
+import dicompylercore.dvh as dvh
+import dicompylercore.dvhcalc as dvhcalc
 import keyring
 import natsort
 import packaging
@@ -15,8 +18,10 @@ import plotly
 import plotly.express
 import psutil
 import pymssql
+import pytest
 import requests
 import streamlit_ace
+import streamlit_analytics
 import timeago
 import toml
 import tomlkit
@@ -59,8 +64,6 @@ import skimage.draw
 import skimage.filters
 import skimage.measure
 import streamlit
-import streamlit.bootstrap
-import streamlit.cli
 
 import libjpeg
 import pydicom

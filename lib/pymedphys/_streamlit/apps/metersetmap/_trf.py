@@ -71,7 +71,6 @@ def get_logfile_mosaiq_info(
     return details
 
 
-@st.cache()
 def _attempt_patient_name_from_mosaiq(config, headers):
     UNKNOWN_PATIENT_NAME = "Unknown"
 

@@ -26,6 +26,10 @@ from pymedphys._mosaiq.connect import execute_sql
 from .tolerance_constants import FIELD_TYPES, ORIENTATION
 
 
+def _invert_angle(angle):
+    return (180 - angle) % 360
+
+
 def get_all_dicom_treatment_info(dicomFile):
     dicom = pydicom.dcmread(dicomFile)
     table = pd.DataFrame()
@@ -35,7 +39,7 @@ def get_all_dicom_treatment_info(dicomFile):
     except (TypeError, ValueError, AttributeError):
         prescriptionDescription = ""
 
-    for fraction in dicom.FractionGroupSequence:
+    for fraction in dicom[0x300A, 0x0070]:
         for beam in fraction.ReferencedBeamSequence:
             bn = (
                 beam.ReferencedBeamNumber
@@ -75,7 +79,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 / 10
             )
 
-            dicomBeam = {
+            dicom_beam = {
                 "site": dicom.RTPlanName,
                 "mrn": dicom.PatientID,
                 "first_name": dicom.PatientName.given_name,
@@ -85,6 +89,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "field_label": dicom.BeamSequence[bn - 1].BeamName,
                 "field_name": dicom.BeamSequence[bn - 1].BeamDescription,
                 "machine": dicom.BeamSequence[bn - 1].TreatmentMachineName,
+                "manufacturer": dicom.BeamSequence[bn - 1].Manufacturer,
                 "rx": prescriptionDescription[fn - 1],
                 "modality": dicom.BeamSequence[bn - 1].RadiationType,
                 "position": dicom.PatientSetupSequence[0].PatientPosition,
@@ -155,20 +160,29 @@ def get_all_dicom_treatment_info(dicomFile):
                 "couch_lng [cm]": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .TableTopLongitudinalPosition,
-                "couch_ang": dicom.BeamSequence[bn - 1]
+                "couch_angle": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .TableTopEccentricAngle,
                 "technique": "",
             }
 
             try:
-                dicomBeam["tolerance"] = dicom.BeamSequence[
+                dicom_beam["tolerance"] = dicom.BeamSequence[
                     bn - 1
                 ].ReferencedToleranceTableNumber
             except (TypeError, ValueError, AttributeError):
-                dicomBeam["tolerance"] = 0
+                dicom_beam["tolerance"] = 0
 
-            table = table.append(dicomBeam, ignore_index=True, sort=False)
+            if dicom_beam["manufacturer"] == "Varian":
+
+                angle_keys = [key for key in dicom_beam if "angle" in key]
+                for key in angle_keys:
+                    dicom_beam[key] = _invert_angle(dicom_beam[key])
+
+                dicom_beam["coll_x1 [cm]"] = dicom_beam["coll_x1 [cm]"] * (-1)
+                dicom_beam["coll_y1 [cm]"] = dicom_beam["coll_y1 [cm]"] * (-1)
+
+            table = table.append(dicom_beam, ignore_index=True, sort=False)
 
     # table["tolerance"] = [
     #     tolerance_constants.TOLERANCE_TYPES[item] for item in table["tolerance"]
@@ -230,7 +244,7 @@ def get_all_treatment_data(cursor, mrn):
             ("couch_vrt [cm]", "TxFieldPoint.Couch_Vrt"),
             ("couch_lat [cm]", "TxFieldPoint.Couch_Lat"),
             ("couch_lng [cm]", "TxFieldPoint.Couch_Lng"),
-            ("couch_ang", "TxFieldPoint.Couch_Ang"),
+            ("couch_angle", "TxFieldPoint.Couch_Ang"),
             ("tolerance", "TxField.Tol_Tbl_ID"),
             ("backup_time", "TxField.BackupTimer"),
             ("site_setup_status", "SiteSetup.Status_Enum"),
@@ -320,13 +334,14 @@ def get_all_treatment_history_data(cursor, mrn):
         [
             ("dose_ID", "TrackTreatment.DHS_ID"),
             ("pat_ID", "Dose_Hst.Pat_ID1"),
+            ("mrn", "Ident.IDA"),
             ("first_name", "Patient.First_Name"),
             ("last_name", "Patient.Last_Name"),
             ("date", "Fld_Hst.Tx_DtTm"),
             ("site", "Site.Site_Name"),
             ("field_name", "TxField.Field_Name"),
             ("field_label", "TxField.Field_Label"),
-            ("fraction", "Dose_Hst.Fractions_Tx"),
+            ("fx", "Dose_Hst.Fractions_Tx"),
             ("rx", "Site.Dose_Ttl"),
             ("actual fx dose", "Dose_Hst.Dose_Tx_Act"),
             ("actual rx", "Dose_Hst.Dose_Ttl_Act"),
@@ -337,7 +352,7 @@ def get_all_treatment_history_data(cursor, mrn):
             ("couch_vrt", "TxFieldPoint_Hst.Couch_Vrt"),
             ("couch_lat", "TxFieldPoint_Hst.Couch_Lat"),
             ("couch_lng", "TxFieldPoint_Hst.Couch_Lng"),
-            ("couch_ang", "TxFieldPoint_Hst.Couch_Ang"),
+            ("couch_angle", "TxFieldPoint_Hst.Couch_Ang"),
             ("coll_x1", "TxFieldPoint_Hst.Coll_X1"),
             ("coll_x2", "TxFieldPoint_Hst.Coll_X2"),
             ("field_x", "TxFieldPoint_Hst.Field_X"),
@@ -352,7 +367,7 @@ def get_all_treatment_history_data(cursor, mrn):
             ("site_setup_version", "SiteSetup.Version"),
             ("was_verified", "Dose_Hst.WasVerified"),
             ("was_overridden", "Dose_Hst.WasOverridden"),
-            ("partial_treatment", "Dose_Hst.PartiallyTreated"),
+            ("partial_tx", "Dose_Hst.PartiallyTreated"),
             ("vmi_error", "Dose_Hst.VMIError"),
             ("new_field", "Dose_Hst.NewFieldDef"),
             ("been_charted", "Dose_Hst.HasBeenCharted"),

@@ -22,16 +22,13 @@
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|streamlit| |build| |docs| |pypi| |python| |license|
+|online-app| |build| |pypi| |python| |license|
 
-.. |streamlit| image:: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
-    :target: https://share.streamlit.io/pymedphys/pymedphys/main/app.py
+.. |online-app| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/OnlineApp?event=schedule&label=online-app
+    :target: https://app.pymedphys.com
 
-.. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/PullRequest
+.. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/Library
     :target: https://github.com/pymedphys/pymedphys/actions
-
-.. |docs| image:: https://img.shields.io/netlify/c702e3b2-f436-46a3-b461-00a8a55bcdba
-    :target: https://app.netlify.com/sites/pymedphys/deploys
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
     :target: https://pypi.org/project/pymedphys/

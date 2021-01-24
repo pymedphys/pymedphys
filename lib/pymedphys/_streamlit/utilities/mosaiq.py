@@ -36,7 +36,11 @@ def uncached_get_mosaiq_cursor(server):
         The Mosaiq SQL cursor for the connection.
 
     """
-    username, password = msq_connect.get_username_and_password_without_prompt(server)
+    server, port = msq_connect.separate_server_port_string(server)
+    storage_name = msq_connect.get_storage_name(server, port)
+    username, password = msq_connect.get_username_and_password_without_prompt(
+        storage_name
+    )
 
     if password:
         try:
@@ -58,7 +62,7 @@ def uncached_get_mosaiq_cursor(server):
     )
 
     if username:
-        msq_connect.save_username(server, username)
+        msq_connect.save_username(storage_name, username)
 
     if not password:
         password = ""
@@ -71,7 +75,7 @@ def uncached_get_mosaiq_cursor(server):
     )
 
     if password:
-        msq_connect.save_password(server, password)
+        msq_connect.save_password(storage_name, password)
 
     if st.button("Connect"):
         st.experimental_rerun()
@@ -88,6 +92,5 @@ def get_mosaiq_cursor(server):
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def get_mosaiq_cursor_in_bucket(server):
-    """This allows the output cursor cache to be mutated by the user code
-    """
+    """This allows the output cursor cache to be mutated by the user code"""
     return {"cursor": uncached_get_mosaiq_cursor(server)}
