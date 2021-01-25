@@ -3,9 +3,7 @@
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/ca501275227f190a77e641a75af925d9070952b6/lib/pymedphys/docs/_static/pymedphys_title.svg
     :target: https://docs.pymedphys.com/
 
-
 .. START_OF_DOCS_IMPORT
-
 
 **A community effort to develop an open standard library for Medical Physics
 in Python. We build high quality, transparent software together via peer review
@@ -28,32 +26,25 @@ and open source distribution. Open code is better science.**
 .. |license| image:: https://img.shields.io/pypi/l/pymedphys
     :target: https://choosealicense.com/licenses/apache-2.0/
 
+|
+|
+
 
 What is PyMedPhys?
-------------------
+==================
 
-PyMedPhys is an open-source Medical Physics python library built by an open community
-that values and prioritises code sharing, review, improvement, and learning from each
-other. It is inspired by the collaborative work of our physics peers in astronomy and
-the `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
+PyMedPhys is an open-source Medical Physics python library built by an open
+community that values and prioritises code sharing, review, improvement, and
+learning from each other. It is inspired by the collaborative work of our
+physics peers in astronomy and the `Astropy Project`_. PyMedPhys is available
+on `PyPI`_ and `GitHub`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
-
-Mailing list
-------------
-
-A great way to get started with PyMedPhys is to sign up to `the mailing list`_ and
-introducing yourself! Tell us a bit about where you're from, what you're doing, and what
-brings you to PyMedPhys!
-
-.. _`the mailing list`: https://groups.google.com/g/pymedphys
-
-
 Beta level of development
--------------------------
+**********************************
 
 PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
 stay in this stage until the version number leaves ``0.x.x`` and enters
@@ -65,19 +56,30 @@ any code that was using the old version of pymedphys. We try to be abreast of
 this by providing details of any breaking changes from one release to the next
 within the `Release Notes`_.
 
+Mailing list
+**************
+
+A great way to get started with PyMedPhys is to sign up to `the mailing list`_
+and introducing yourself! Tell us a bit about where you're from, what you're
+doing, and what brings you to PyMedPhys!
+
+.. _`the mailing list`: https://groups.google.com/g/pymedphys
+
+|
+|
 
 
 Documentation
--------------
+==================
 
 For App Users
-.............
+****************************
 
 Documentation of the PyMedPhys application's graphical user interface doesn't
 yet exist. Watch this space.
 
 For Python Users
-................
+****************************
 
 - Absolute Beginners Tutorial **[Doesn't yet exist]**
 
@@ -121,9 +123,8 @@ For Python Users
 
   - List of the most important terms
 
-
 For Contributors
-................
+****************************
 
 - `Getting Started Contributing`_ **[Under construction]**
 
@@ -136,15 +137,17 @@ For Contributors
 
 - Maintainers Guide **[Doesn't yet exist]**
 
+|
+|
 
 Our Team
---------
+========
 
 PyMedPhys is what it is today due to its maintainers and contributors both past
 and present. Here is our team.
 
 Maintainers
-...........
+****************************
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
@@ -159,7 +162,7 @@ Maintainers
 |rccc| |sjs|
 
 Active contributors
-...................
+****************************
 
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
@@ -190,9 +193,8 @@ Active contributors
 
 |uth| |uoc| |hgugm|
 
-
 Maintainer emeritus
-...................
+****************************
 
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
@@ -202,7 +204,7 @@ Maintainer emeritus
 |rah|
 
 Past contributors
-.................
+****************************
 
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
