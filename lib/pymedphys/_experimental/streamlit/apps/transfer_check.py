@@ -197,7 +197,7 @@ def main():
         ]
         dicom_field_selection = dicom_table[
             dicom_table["field_label"] == selected_label.values[0]
-        ]["field_name"][0]
+        ]["field_name"].values[0]
         st.subheader("Comparison")
 
         # If a field is selected, write a side by side comparison of the DICOM and MOSAIQ plan information
@@ -208,7 +208,7 @@ def main():
                 "**RX**: ",
                 dicom_table[dicom_table["field_label"] == selected_label.values[0]][
                     "rx"
-                ][0],
+                ].values[0],
             )
 
             # Check if field has been approved, print initials of whoever approved
