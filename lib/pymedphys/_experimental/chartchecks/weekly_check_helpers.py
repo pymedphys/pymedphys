@@ -14,9 +14,8 @@
 
 from datetime import date, timedelta
 
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plotly, plt
+from pymedphys._imports import plotly
 from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import connect
@@ -117,10 +116,10 @@ def plot_couch_positions(delivered):
     delivered = delivered.reset_index(drop=True)
     couches = pd.DataFrame()
     couches_df = pd.DataFrame()
-    for dir in ["couch_vrt", "couch_lat", "couch_lng"]:
+    for direction in ["couch_vrt", "couch_lat", "couch_lng"]:
         couches["fx"] = delivered.index
-        couches["direction"] = dir
-        couches["position"] = delivered[dir]
+        couches["direction"] = direction
+        couches["position"] = delivered[direction]
         couches_df = couches_df.append(couches)
         couches = pd.DataFrame()
 
@@ -138,10 +137,10 @@ def plot_couch_deltas(delivered):
     delivered = delivered.reset_index(drop=True)
     couches = pd.DataFrame()
     couches_df = pd.DataFrame()
-    for dir in ["couch_vrt", "couch_lat", "couch_lng"]:
+    for direction in ["couch_vrt", "couch_lat", "couch_lng"]:
         couches["fx"] = delivered.index
-        couches["direction"] = dir
-        couches["position"] = delivered[dir]
+        couches["direction"] = direction
+        couches["position"] = delivered[direction]
         couches["diff"] = couches["position"] - couches.iloc[0]["position"]
         couches_df = couches_df.append(couches)
         couches = pd.DataFrame()
