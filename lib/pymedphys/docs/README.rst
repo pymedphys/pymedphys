@@ -8,7 +8,7 @@
 
 
 **A community effort to develop an open standard library for Medical Physics
-in Python. Building quality transparent software together via peer review
+in Python. We build high quality, transparent software together via peer review
 and open source distribution. Open code is better science.**
 
 |online-app| |build| |pypi| |python| |license|
@@ -32,11 +32,10 @@ and open source distribution. Open code is better science.**
 What is PyMedPhys?
 ------------------
 
-An open-source Medical Physics python library with a focus on being
-a place to share, review, improve, and transparently learn off of each
-other's code. It is inspired by the collaborative work of our physics peers
-in astronomy and their `Astropy Project`_. PyMedPhys is available on `PyPI`_
-and `GitHub`_.
+PyMedPhys is an open-source Medical Physics python library built by an open community
+that values and prioritises code sharing, review, improvement, and learning from each
+other. It is inspired by the collaborative work of our physics peers in astronomy and
+the `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
