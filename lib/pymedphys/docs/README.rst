@@ -45,9 +45,9 @@ the `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
 Mailing list
 ------------
 
-If you would like to dive into the community a great place to get started is
-to sign up to `the mailing list`_ and say hi by introducing yourself with
-where you're from, and what you hope to achieve with PyMedPhys.
+A great way to get started with PyMedPhys is to sign up to `the mailing list`_ and
+introducing yourself! Tell us a bit about where you're from, what you're doing, and what
+brings you to PyMedPhys!
 
 .. _`the mailing list`: https://groups.google.com/g/pymedphys
 
