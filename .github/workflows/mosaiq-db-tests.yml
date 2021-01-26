@@ -152,6 +152,5 @@ jobs:
 ## Mosaiq_db tests -- only run on Ubuntu because needs container
 
       - name: Run MSQ database tests
-        if: matrix.os == 'ubuntu'
         run: |
           poetry run pymedphys dev tests -v --mosaiqdb
