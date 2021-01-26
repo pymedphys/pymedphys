@@ -66,6 +66,8 @@ xlsxwriter = { version = "*", optional = true }  # groups = ["user", "dev"]
 plotly = { version = "*", optional = true }  # groups = ["user", "dev"]
 dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
 
+sqlalchemy = {version = "*", optional = true } # groups = ["user", "tests"]
+
 # The following lower bounded packages are due to certain APIs utilised
 numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev"]
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev"]
