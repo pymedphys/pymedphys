@@ -89,7 +89,6 @@ def get_all_dicom_treatment_info(dicomFile):
                 "field_label": dicom.BeamSequence[bn - 1].BeamName,
                 "field_name": dicom.BeamSequence[bn - 1].BeamDescription,
                 "machine": dicom.BeamSequence[bn - 1].TreatmentMachineName,
-                "manufacturer": dicom.BeamSequence[bn - 1].Manufacturer,
                 "rx": prescriptionDescription[fn - 1],
                 "modality": dicom.BeamSequence[bn - 1].RadiationType,
                 "position": dicom.PatientSetupSequence[0].PatientPosition,
@@ -173,7 +172,7 @@ def get_all_dicom_treatment_info(dicomFile):
             except (TypeError, ValueError, AttributeError):
                 dicom_beam["tolerance"] = 0
 
-            if dicom_beam["manufacturer"] == "Varian":
+            if dicom_beam["machine"] == "Vault 1-IMRT":
 
                 angle_keys = [key for key in dicom_beam if "angle" in key]
                 for key in angle_keys:

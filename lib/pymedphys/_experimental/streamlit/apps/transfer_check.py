@@ -15,7 +15,7 @@
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities.mosaiq import uncached_get_mosaiq_cursor
+from pymedphys._streamlit.utilities.mosaiq import get_mosaiq_cursor
 
 from pymedphys._experimental.chartchecks.compare import (
     colour_results,
@@ -34,11 +34,6 @@ from pymedphys._experimental.chartchecks.tolerance_constants import (
 
 CATEGORY = categories.PRE_ALPHA
 TITLE = "Pre-Treatment Data Transfer Check"
-
-
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
-def get_mosaiq_cursor(server):
-    return uncached_get_mosaiq_cursor(server)
 
 
 def main():
@@ -80,15 +75,12 @@ def main():
     if "rp" in files:
 
         # Create a dataframe of plan information from DICOM RP file
-        try:
-            dicom_table = get_all_dicom_treatment_info(files["rp"])
-            dicom_table["tolerance"] = [
-                TOLERANCE_TYPES[item] for item in dicom_table["tolerance"]
-            ]
-            dicom_table = dicom_table.sort_values(["field_label"])
-        except AttributeError:
-            st.write("Please select a new RP file.")
-            st.stop()
+        # try:
+        dicom_table = get_all_dicom_treatment_info(files["rp"])
+        dicom_table = dicom_table.sort_values(["field_label"])
+        # except AttributeError:
+        #     st.write("Please select a new RP file.")
+        #     st.stop()
 
         # Using MRN from RP file, find patient in MOSAIQ and perform query
         mrn = dicom_table.iloc[0]["mrn"]
@@ -200,13 +192,24 @@ def main():
 
         # create a radio selection of fields to compare, only fields within selected rx appear as choices
         field_selection = st.radio("Select field to compare:", rx_fields)
+        selected_label = mosaiq_table[mosaiq_table["field_name"] == field_selection][
+            "field_label"
+        ]
+        dicom_field_selection = dicom_table[
+            dicom_table["field_label"] == selected_label.values[0]
+        ]["field_name"].values[0]
         st.subheader("Comparison")
 
         # If a field is selected, write a side by side comparison of the DICOM and MOSAIQ plan information
         if len(field_selection) != 0:
 
             # Write prescription listed in the RP file
-            st.write("**RX**: ", results[field_selection + "_DICOM"]["rx"])
+            st.write(
+                "**RX**: ",
+                dicom_table[dicom_table["field_label"] == selected_label.values[0]][
+                    "rx"
+                ].values[0],
+            )
 
             # Check if field has been approved, print initials of whoever approved
             try:
@@ -222,8 +225,8 @@ def main():
                 st.write("This field is not approved.")
 
             # Use radio field selection to format which fields to write from results dataframe
-            dicom_field = str(field_selection) + "_DICOM"
-            mosaiq_field = str(field_selection) + "_MOSAIQ"
+            dicom_field = str(dicom_field_selection) + "_DICOM"
+            mosaiq_field = str(dicom_field_selection) + "_MOSAIQ"
             display_results = results[[dicom_field, mosaiq_field]]
 
             # Drop general patient info as it's already displayed above
