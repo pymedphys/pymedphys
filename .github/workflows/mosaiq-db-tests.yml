@@ -30,10 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.8
 
       - name: Get full Python version
         id: full-python-version
@@ -70,12 +70,6 @@ jobs:
         with:
           version: 1.1.4
           virtualenvs-create: true
-
-      - name: Update PATH in Windows
-        if: matrix.os == 'windows'
-        run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.poetry\bin"
-          Get-Content -Path $env:GITHUB_PATH
 
       - name: Configure Poetry to not use experimental installer
         run: |
@@ -118,7 +112,7 @@ jobs:
         id: poetry-cache
         with:
           path: .venv
-          key: venv-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+          key: venv-tests-ubuntu-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
       # This is from <https://github.com/python-poetry/poetry/blob/639d5e057/.github/workflows/main.yml#L57-L60>
       - name: Ensure cache is healthy
@@ -149,7 +143,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
-          key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
+          key: pymedphys-tests-ubuntu-${{ hashFiles('**/hashes.json') }}
 
 # -----------------------------------------------------------------------------
 
