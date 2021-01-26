@@ -9,57 +9,12 @@ on:
     types:
       - created
 
-
 jobs:
 
 # =============================================================================
 
   TestMosaiqDb:
     if: github.event_name != 'release'  # Skip on release while building out the CI
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ubuntu'] # , 'macos', 'windows']
-        task: ['tests'] # , 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright']
-        exclude:
-          - os: 'ubuntu'
-            task: 'binary'
-
-          - os: 'windows'
-            task: 'stackoverflow'
-          - os: 'windows'
-            task: 'updates'
-          - os: 'windows'
-            task: 'cypress'
-          - os: 'windows'
-            task: 'slow'
-          - os: 'windows'
-            task: 'pyright'
-
-          - os: 'macos'
-            task: 'stackoverflow'
-          - os: 'macos'
-            task: 'updates'
-          - os: 'macos'
-            task: 'cypress'
-          - os: 'macos'
-            task: 'slow'
-          - os: 'macos'
-            task: 'binary'
-          - os: 'macos'
-            task: 'pyright'
-
-        include:
-          # Version numbers chosen so that highest and lowest Python version is
-          # utilised, 3.7 is chosen on Windows to align with Jupyter Book until
-          # https://github.com/executablebooks/jupyter-book/issues/906 is fixed.
-          # See https://jupyterbook.org/advanced/advanced.html#working-on-windows
-          - os: 'ubuntu'
-            python-version: 3.8
-          - os: 'windows'
-            python-version: 3.7
-          - os: 'macos'
-            python-version: 3.6
 
     runs-on: ubuntu-latest
 
@@ -100,7 +55,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
+          key: pip-tests-ubuntu-${{ steps.full-python-version.outputs.version }}
 
 # -----------------------------------------------------------------------------
 
@@ -131,22 +86,14 @@ jobs:
 # No import and run CLI with no dependencies
 
       - name: Build wheel
-        if: matrix.task == 'tests'
         run: |
           poetry build --format wheel
 
       - name: Install wheel
-        if: matrix.task == 'tests' && matrix.os == 'windows'
-        run: |
-          python -m pip install (Get-Item .\dist\*.whl)
-
-      - name: Install wheel
-        if: matrix.task == 'tests' && matrix.os != 'windows'
         run: |
           python -m pip install ./dist/*.whl
 
       - name: Run clean tests
-        if: matrix.task == 'tests'
         run: |
           pymedphys --help
           python -c "import pymedphys"
@@ -155,7 +102,6 @@ jobs:
 
       # Remove confusion for tests down the line
       - name: Remove base install of pymedphys
-        if: matrix.task == 'tests'
         run: |
           pip uninstall -y pymedphys
 
@@ -181,20 +127,11 @@ jobs:
         run: |
           timeout 10s poetry run pip --version || rm -rf .venv
 
-
-# Install Node
-
-      - uses: actions/setup-node@v1
-        if: matrix.task == 'cypress' || matrix.task == 'pyright'
-        with:
-          node-version: '14'
-
 # -----------------------------------------------------------------------------
 
 ## Install with Tests Environment
 
       - name: Install a tests environment
-        if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
         run: |
           poetry install -E user -E tests
 
@@ -204,13 +141,11 @@ jobs:
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
         run: |
           echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
       - name: PyMedPhys Cache
         id: pymedphys-cache
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
         uses: actions/cache@v2
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
@@ -220,9 +155,9 @@ jobs:
 
 # TESTS
 
-## Msq_db tests -- only run on Ubuntu because needs container
+## Mosaiq_db tests -- only run on Ubuntu because needs container
 
       - name: Run MSQ database tests
         if: matrix.os == 'ubuntu'
         run: |
-          poetry run pymedphys dev tests -v --msq_db
+          poetry run pymedphys dev tests -v --mosaiqdb

@@ -1,9 +1,10 @@
 import pymssql
+import pytest
 
 
-@pytest.mark.msq_db
+@pytest.mark.mosaiqdb
 def test_can_we_db():
-    conn = pymssql.connect(".", user="sa", password="passWord123")
+    conn = pymssql.connect(".", user="sa", password="sqlServerPassw0rd")
     cursor = conn.cursor()
     cursor.execute("select * from sys.databases")
 
@@ -12,4 +13,4 @@ def test_can_we_db():
     print(databases)
 
     # and check that the correct number are present
-    assert len(databases) == 4
+    assert len(databases) >= 4
