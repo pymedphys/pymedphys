@@ -61,8 +61,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright']
+        os: ['ubuntu'] # , 'macos', 'windows']
+        task: ['tests'] # , 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright']
         exclude:
           - os: 'ubuntu'
             task: 'binary'
@@ -107,6 +107,7 @@ jobs:
 
     services:
       SQLServer:
+        if: matrix.os == 'ubuntu'
         image: mcr.microsoft.com/mssql/server:2017-latest
         env:
           ACCEPT_EULA: Y
@@ -396,6 +397,13 @@ jobs:
         if: matrix.task == 'slow'
         run: |
           poetry run pymedphys dev tests -v --slow
+
+## MsqDb tests -- only run on Ubuntu because needs container
+
+      - name: Run MSQ database tests
+        if: matrix.os == 'ubuntu'
+        run: |
+          poetry run pymedphys dev tests -v --msq_db
 
 ## Docs
 
