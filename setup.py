@@ -110,8 +110,7 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys._experimental.streamlit.apps": ["data/*"],
+    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/apps/data/*"],
     "pymedphys.docs": [
         "_static/*",
         "background/*",
@@ -128,17 +127,16 @@ package_data = {
         "trees/*",
         "tutes/*",
     ],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/*",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
-    ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/.gitignore",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
     ],
 }
 
@@ -196,7 +194,7 @@ extras_require = {
         "pytest-rerunfailures",
         "python_dateutil",
         "pre-commit",
-        "black>=19.3b0,<20.0",
+        "black>=20.8b1,<21.0",
         "mypy",
         "rope",
         "doc8",
@@ -215,7 +213,7 @@ extras_require = {
     ],
     "doctests": ["pylinac==2.3.2", "tensorflow>=2.2.0", "sphinx-book-theme"],
     "ml": ["tensorflow>=2.2.0"],
-    "propagate": ["black>=19.3b0,<20.0"],
+    "propagate": ["black>=20.8b1,<21.0"],
     "tests": [
         "pytest",
         "pytest-sugar",
