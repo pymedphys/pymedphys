@@ -1,0 +1,228 @@
+name: MosaiqDbTests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  release:
+    types:
+      - created
+
+
+jobs:
+
+# =============================================================================
+
+  TestMosaiqDb:
+    if: github.event_name != 'release'  # Skip on release while building out the CI
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu'] # , 'macos', 'windows']
+        task: ['tests'] # , 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright']
+        exclude:
+          - os: 'ubuntu'
+            task: 'binary'
+
+          - os: 'windows'
+            task: 'stackoverflow'
+          - os: 'windows'
+            task: 'updates'
+          - os: 'windows'
+            task: 'cypress'
+          - os: 'windows'
+            task: 'slow'
+          - os: 'windows'
+            task: 'pyright'
+
+          - os: 'macos'
+            task: 'stackoverflow'
+          - os: 'macos'
+            task: 'updates'
+          - os: 'macos'
+            task: 'cypress'
+          - os: 'macos'
+            task: 'slow'
+          - os: 'macos'
+            task: 'binary'
+          - os: 'macos'
+            task: 'pyright'
+
+        include:
+          # Version numbers chosen so that highest and lowest Python version is
+          # utilised, 3.7 is chosen on Windows to align with Jupyter Book until
+          # https://github.com/executablebooks/jupyter-book/issues/906 is fixed.
+          # See https://jupyterbook.org/advanced/advanced.html#working-on-windows
+          - os: 'ubuntu'
+            python-version: 3.8
+          - os: 'windows'
+            python-version: 3.7
+          - os: 'macos'
+            python-version: 3.6
+
+    runs-on: ubuntu-latest
+
+    services:
+      SQLServer:
+        image: mcr.microsoft.com/mssql/server:2017-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: sqlServerPassw0rd
+        ports:
+          - 1433:1433
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Get full Python version
+        id: full-python-version
+        shell: bash
+        run: |
+          echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
+
+# -----------------------------------------------------------------------------
+
+# Set up pip
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          python -m pip install -U pip # to ensure version > 20 to have cache dir
+          echo "::set-output name=dir::$(pip cache dir)"
+
+      - name: Pip Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
+
+# -----------------------------------------------------------------------------
+
+# Upgrade pip and setuptools, and install poetry
+
+      - name: Upgrade pip and setuptools
+        run: |
+          pip install --upgrade pip setuptools
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.1.1
+        with:
+          version: 1.1.4
+          virtualenvs-create: true
+
+      - name: Update PATH in Windows
+        if: matrix.os == 'windows'
+        run: |
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.poetry\bin"
+          Get-Content -Path $env:GITHUB_PATH
+
+      - name: Configure Poetry to not use experimental installer
+        run: |
+          poetry config experimental.new-installer false
+
+# -----------------------------------------------------------------------------
+
+# No import and run CLI with no dependencies
+
+      - name: Build wheel
+        if: matrix.task == 'tests'
+        run: |
+          poetry build --format wheel
+
+      - name: Install wheel
+        if: matrix.task == 'tests' && matrix.os == 'windows'
+        run: |
+          python -m pip install (Get-Item .\dist\*.whl)
+
+      - name: Install wheel
+        if: matrix.task == 'tests' && matrix.os != 'windows'
+        run: |
+          python -m pip install ./dist/*.whl
+
+      - name: Run clean tests
+        if: matrix.task == 'tests'
+        run: |
+          pymedphys --help
+          python -c "import pymedphys"
+          python -c "import pymedphys.beta"
+          python -c "import pymedphys.experimental"
+
+      # Remove confusion for tests down the line
+      - name: Remove base install of pymedphys
+        if: matrix.task == 'tests'
+        run: |
+          pip uninstall -y pymedphys
+
+# -----------------------------------------------------------------------------
+
+# Set up Poetry
+
+      - name: Configure poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Poetry Cache
+        uses: actions/cache@v2
+        id: poetry-cache
+        with:
+          path: .venv
+          key: venv-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+
+      # This is from <https://github.com/python-poetry/poetry/blob/639d5e057/.github/workflows/main.yml#L57-L60>
+      - name: Ensure cache is healthy
+        if: steps.poetry-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          timeout 10s poetry run pip --version || rm -rf .venv
+
+
+# Install Node
+
+      - uses: actions/setup-node@v1
+        if: matrix.task == 'cypress' || matrix.task == 'pyright'
+        with:
+          node-version: '14'
+
+# -----------------------------------------------------------------------------
+
+## Install with Tests Environment
+
+      - name: Install a tests environment
+        if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
+        run: |
+          poetry install -E user -E tests
+
+# -----------------------------------------------------------------------------
+
+# PyMedPhys Data Cache
+
+      - name: Get PyMedPhys cache directory
+        id: pymedphys-cache-location
+        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        run: |
+          echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
+
+      - name: PyMedPhys Cache
+        id: pymedphys-cache
+        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pymedphys-cache-location.outputs.dir }}
+          key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
+
+# -----------------------------------------------------------------------------
+
+# TESTS
+
+## Msq_db tests -- only run on Ubuntu because needs container
+
+      - name: Run MSQ database tests
+        if: matrix.os == 'ubuntu'
+        run: |
+          poetry run pymedphys dev tests -v --msq_db
