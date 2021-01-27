@@ -26,6 +26,8 @@ def connect(
     port: int = 1433,
     database: str = "MOSAIQ",
     alias: Optional[str] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
 ) -> "pymssql.Cursor":
     """Connect to a Mosaiq SQL server.
 
@@ -47,6 +49,14 @@ def connect(
         A human readable representation of the server, this is the name
         of the server presented to the user should there not be
         credentials already on the machine, by default "hostname:port/database"
+    username : Optional[str], optional
+        Provide a username to login to the database with, by default the
+        username is either pulled from the system's credential storage,
+        or an interactive prompt is used.
+    password : Optional[str], optional
+        Provide a password to login to the database with, by default the
+        password is either pulled from the system's credential storage,
+        or an interactive prompt is used.
 
     Returns
     -------
@@ -55,9 +65,15 @@ def connect(
         ``pymedphys.mosaiq.execute`` to be able to run queries.
 
     """
-    username, password = _credentials.get_username_password_with_prompt_fallback(
-        hostname=hostname, port=port, database=database, alias=alias
-    )
+    if username is None and password is None:
+        username, password = _credentials.get_username_password_with_prompt_fallback(
+            hostname=hostname, port=port, database=database, alias=alias
+        )
+    if username is None or password is None:
+        raise ValueError(
+            "Must either provide both username and password, or neither of them."
+        )
+
     conn = _connect.connect_with_credential(
         username, password, hostname=hostname, port=port, database=database
     )
