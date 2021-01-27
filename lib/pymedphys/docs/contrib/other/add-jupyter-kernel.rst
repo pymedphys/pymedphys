@@ -1,6 +1,6 @@
-==============================
-Add Jupyter kernel with poetry
-==============================
+================================
+Add Jupyter kernel with *poetry*
+================================
 
 The following command can be used to set up a Jupyter kernel within poetry
 

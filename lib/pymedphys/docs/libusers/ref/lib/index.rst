@@ -1,4 +1,5 @@
-PyMedPhys Library Modules
+=========================
+The PyMedPhys Library
 =========================
 
 PyMedPhys has a range of modules that are able to be exposed from within Python

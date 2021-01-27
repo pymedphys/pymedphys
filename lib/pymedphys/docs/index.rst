@@ -23,41 +23,37 @@
 
 .. toctree::
     :hidden:
-    :maxdepth: 2
-    :caption: Tutorials
+    :maxdepth: 3
+    :caption: App Users Guide
 
-    tutes/index
-
-.. toctree::
-    :hidden:
-    :maxdepth: 2
-    :caption: How-to Guides
-
-    howto/index
-    howto/get-started
-    howto/gamma/index
-    howto/advanced/index
+    appusers/index
 
 .. toctree::
     :hidden:
-    :maxdepth: 2
-    :caption: Reference
+    :maxdepth: 3
+    :caption: Library Users Guide
 
-    ref/index
-    ref/lib/index
-    ref/cli/index
-    ref/gui/index
-    release-notes
-    genindex
+    libusers/index
+    libusers/tutes/index
+    libusers/howto/index
+    libusers/ref/index
+    libusers/background/index
 
 
 .. toctree::
     :hidden:
-    :maxdepth: 2
-    :caption: Background
+    :maxdepth: 3
+    :caption: Contributors Guide
 
-    background/index
-    background/open-source-benefits
-    background/autocontouring
-    background/elekta-logfiles
-    background/file-structure
+    contrib/index
+    contrib/setups/index
+    contrib/other/index
+
+
+.. toctree::
+    :hidden:
+    :maxdepth: 3
+    :caption: General
+
+    general/file-structure
+    general/open-source-benefits
