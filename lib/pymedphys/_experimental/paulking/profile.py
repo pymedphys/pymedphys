@@ -34,7 +34,7 @@ from scipy import interpolate
 
 
 class Profile:
-    """  One-dimensional distribution of intensity vs position.
+    """One-dimensional distribution of intensity vs position.
 
     Attributes
     ----------
@@ -60,7 +60,7 @@ class Profile:
     """
 
     def __init__(self, x=np.array([]), y=np.array([]), meta={}):
-        """ create profile
+        """create profile
 
         Parameters
         ----------
@@ -144,7 +144,7 @@ class Profile:
     __imul__ = __mul__
 
     def from_lists(self, x, y, meta={}):
-        """  import x and y lists
+        """import x and y lists
 
         Parameters
         ----------
@@ -170,7 +170,7 @@ class Profile:
         return Profile(x=x, y=y, meta=meta)
 
     def from_tuples(self, list_of_tuples, meta={}):
-        """  import list of (x,y) tuples
+        """import list of (x,y) tuples
 
         Parameters
         ----------
@@ -192,7 +192,7 @@ class Profile:
         return Profile(x=x, y=y, meta=meta)
 
     def from_pulse(self, centre, width, domain, increment, meta={}):
-        """ create pulse of unit height
+        """create pulse of unit height
 
         Parameters
         ----------
@@ -221,7 +221,7 @@ class Profile:
         return Profile().from_lists(x_vals, y, meta=meta)
 
     def from_snc_profiler(self, file_name, axis):
-        """ import profile form SNC Profiler file
+        """import profile form SNC Profiler file
 
         Parameters
         ----------
@@ -277,7 +277,7 @@ class Profile:
             raise TypeError("axis must be 'tvs' or 'rad'")
 
     def from_narrow_png(self, file_name, step_size=0.1):
-        """ import from png file
+        """import from png file
 
         Source file is a full color PNG, sufficiently narrow that
         density is uniform along its short dimension. The image density along
@@ -349,7 +349,7 @@ class Profile:
         return Profile().from_tuples(zipped_profile)
 
     def get_y(self, x):
-        """ y-value at distance x
+        """y-value at distance x
 
         Return a y value based on interpolation of source data for a
         supplied distance.
@@ -369,7 +369,7 @@ class Profile:
             return np.nan
 
     def get_x(self, y):
-        """ tuple of x-values at intensity y
+        """tuple of x-values at intensity y
 
         Return distance values based on interpolation of source data for a
         supplied y value.
@@ -382,7 +382,7 @@ class Profile:
         -------
         tuple : (x1, x2, ...)
 
-         """
+        """
 
         dose_step = (max(self.y) - min(self.y)) / 100
         x_ = self.resample_y(dose_step).x
@@ -399,7 +399,7 @@ class Profile:
         return tuple(dists)
 
     def get_increment(self):
-        """ minimum step-size increment
+        """minimum step-size increment
 
         Returns
         -------
@@ -413,7 +413,7 @@ class Profile:
             return steps.min()
 
     def plot(self, marker="o-"):
-        """ profile plot
+        """profile plot
 
         Parameters
         ----------
@@ -429,7 +429,7 @@ class Profile:
         return
 
     def slice_segment(self, start=-np.inf, stop=np.inf):
-        """ slice between given end-points
+        """slice between given end-points
 
         Resulting profile is comprised of those points in the source
         profile whose distance values are not-less-than start and
@@ -457,7 +457,7 @@ class Profile:
         return Profile(new_x, new_y)
 
     def resample_x(self, step):
-        """ resampled x-values at a given increment
+        """resampled x-values at a given increment
 
         Resulting profile has stepsize of the indicated step based on
         linear interpolation over the points of the source profile.
@@ -478,7 +478,7 @@ class Profile:
         return Profile(new_x, new_y, self.meta)
 
     def resample_y(self, step):
-        """ resampled y-values at a given increment
+        """resampled y-values at a given increment
 
         Resulting profile has nonuniform step-size, but each step
         represents and approximately equal step in dose.
@@ -515,7 +515,7 @@ class Profile:
         return Profile().from_lists(resamp_x, resamp_y, meta=self.meta)
 
     def make_normal_y(self, x=0.0, y=1.0):
-        """ normalised to dose at distance
+        """normalised to dose at distance
 
         Source profile values multiplied by scaling factor to yield the specified dose at
         the specified distance. If distance is not specified, the central axis value is
@@ -538,7 +538,7 @@ class Profile:
         return Profile(new_x, new_y, meta=self.meta)
 
     def get_edges(self):
-        """ x-values of profile edges (left, right)
+        """x-values of profile edges (left, right)
 
         Notes
         -----
@@ -555,7 +555,7 @@ class Profile:
         return (lt_edge, rt_edge)
 
     def make_normal_x(self):
-        """ normalised to distance at edges
+        """normalised to distance at edges
 
         Source profile distances multiplied by scaling factor to yield unit distance
         at beam edges. [1]_ [2]_
@@ -589,7 +589,7 @@ class Profile:
         return Profile(new_x, self.y, meta=self.meta)
 
     def slice_umbra(self):
-        """ umbra central 80%
+        """umbra central 80%
 
         Source dose profile sliced to include only the central region between beam edges.
 
@@ -606,7 +606,7 @@ class Profile:
         return Profile(x=new_x, y=new_y, meta=self.meta)
 
     def slice_penumbra(self):
-        """ penumbra (20 -> 80%, 80 -> 20%)
+        """penumbra (20 -> 80%, 80 -> 20%)
 
         Source dose profile sliced to include only the penumbral edges, where the dose
         transitions from 20% - 80% of the umbra dose, as precent at the umbra edge,
@@ -635,7 +635,7 @@ class Profile:
         return (lt_penum, rt_penum)
 
     def slice_shoulders(self):
-        """ shoulders (penumbra -> umbra, umbra -> penumbra)
+        """shoulders (penumbra -> umbra, umbra -> penumbra)
 
         Source dose profile sliced to include only the profile shoulders,
         outside the central 80% of of the profile but inside the region bounded
@@ -660,7 +660,7 @@ class Profile:
         return (lt_should, rt_should)
 
     def slice_tails(self):
-        """ tails (-> penumbra, penumbra ->)
+        """tails (-> penumbra, penumbra ->)
 
         Source dose profile sliced to include only the profile tail,
         outside the beam penumbra.
@@ -683,7 +683,7 @@ class Profile:
         return (lt_tail, rt_tail)
 
     def get_flatness(self):
-        """ dose range relative to mean
+        """dose range relative to mean
 
         Calculated as the dose range normalized to mean dose.
 
@@ -696,7 +696,7 @@ class Profile:
         return (max(dose) - min(dose)) / np.average(dose)
 
     def get_symmetry(self):
-        """ max point diff relative to mean
+        """max point diff relative to mean
 
         Calculated as the maximum difference between corresponding points
         on opposite sides of the profile center, relative to mean dose.
@@ -710,7 +710,7 @@ class Profile:
         return max(np.abs(np.subtract(dose, dose[::-1]) / np.average(dose)))
 
     def make_symmetric(self):
-        """ avg of corresponding points
+        """avg of corresponding points
 
         Created by averaging over corresponding +/- distances,
         except at the endpoints.
@@ -733,7 +733,7 @@ class Profile:
         return Profile(x=new_x, y=new_y, meta=self.meta)
 
     def make_centered(self):
-        """ shift to align edges
+        """shift to align edges
 
         Created by shifting the profile based on edge locations.
 
@@ -746,7 +746,7 @@ class Profile:
         return self - np.average(self.get_edges())
 
     def make_flipped(self):
-        """ flip L -> R
+        """flip L -> R
 
         Created by reversing the sequence of y values.
 
@@ -759,7 +759,7 @@ class Profile:
         return Profile(x=self.x, y=self.y[::-1], meta=self.meta)
 
     def align_to(self, other):
-        """ shift self to align to other
+        """shift self to align to other
 
         Calculated using shift that produces greatest peak correlation between
         the curves. Flips the curve left-to-right, if this creates a better fit.
@@ -817,7 +817,7 @@ class Profile:
             return self + best_offset
 
     def cross_calibrate(self, reference, measured):
-        """ density mapping, reference -> measured
+        """density mapping, reference -> measured
 
         Calculated by overlaying intensity curves and observing values at
         corresponding points. Note that the result is an unsmoothed, collection

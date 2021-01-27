@@ -35,8 +35,7 @@ def zyx_and_dose_from_dataset(dataset):
 
 
 def dose_from_dataset(ds, set_transfer_syntax_uid=True):
-    r"""Extract the dose grid from a DICOM RT Dose file.
-    """
+    r"""Extract the dose grid from a DICOM RT Dose file."""
 
     if set_transfer_syntax_uid:
         ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian

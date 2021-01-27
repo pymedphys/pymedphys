@@ -16,8 +16,7 @@ from pymedphys._imports import numpy as np
 
 
 def find_relevant_control_points(mu):
-    """Returns that control points that had an MU difference either side.
-    """
+    """Returns that control points that had an MU difference either side."""
     mu_diff = np.diff(mu)
     no_change = mu_diff == 0
     try:

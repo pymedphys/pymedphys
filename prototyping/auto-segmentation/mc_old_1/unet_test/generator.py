@@ -185,6 +185,5 @@ class DataGen(tf.keras.utils.Sequence):
         return int(np.ceil(len(self.input_paths) / float(self.batch_size)))
 
     def on_epoch_end(self):
-        """Updates indexes after each epoch
-        """
+        """Updates indexes after each epoch"""
         None

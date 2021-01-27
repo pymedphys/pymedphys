@@ -22,8 +22,7 @@ from .create import dicom_dataset_from_dict
 
 
 def adjust_machine_name(dicom_dataset, new_machine_name):
-    """Change the machine name within the DICOM header
-    """
+    """Change the machine name within the DICOM header"""
 
     new_dicom_dataset = deepcopy(dicom_dataset)
 
@@ -56,8 +55,7 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
 def adjust_rel_elec_density(
     dicom_dataset, adjustment_map, ignore_missing_structure=False
 ):
-    """Append or adjust relative electron densities of structures
-    """
+    """Append or adjust relative electron densities of structures"""
 
     new_dicom_dataset = deepcopy(dicom_dataset)
 
@@ -132,8 +130,7 @@ def RED_adjustment_map_from_structure_names(structure_names):
 
 
 def adjust_RED_by_structure_name(dicom_dataset):
-    """Adjust the structure electron density based on structure name.
-    """
+    """Adjust the structure electron density based on structure name."""
     structure_names = [
         structure_set.ROIName for structure_set in dicom_dataset.StructureSetROISequence
     ]

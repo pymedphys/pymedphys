@@ -27,8 +27,7 @@ from jinja2 import Template
 
 
 def _create_comparison_table(data):
-    """Create a table for displaying the results.
-    """
+    """Create a table for displaying the results."""
     keys = np.sort(list(data.keys()))
     return pd.DataFrame(
         columns=["Result"], index=keys, data=[data[key] for key in keys]
@@ -36,8 +35,7 @@ def _create_comparison_table(data):
 
 
 def create_reports(input_directory, output_directory):
-    """Create a report for every timestamp within the input directory.
-    """
+    """Create a report for every timestamp within the input directory."""
     all_comparison_data = _compare(input_directory)
 
     for timestamp, comparison_data in all_comparison_data.items():
@@ -61,8 +59,7 @@ def create_reports(input_directory, output_directory):
 
 
 def _create_report(output_filepath, comparison_data, field_overviews):
-    """Create the report according to report_template.html.
-    """
+    """Create the report according to report_template.html."""
     nbccc_fields = field_overviews["nbccc"]
     rccc_fields = field_overviews["rccc"]
     tests = _create_comparison_table(comparison_data)

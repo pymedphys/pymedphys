@@ -120,9 +120,11 @@ def compare_all_incompletes(incomplete_qcls):
     if not incomplete_qcls.empty:
         for patient in incomplete_qcls.index:
             patient_results = pd.DataFrame()
-            planned_values, delivered_values, patient_results = compare_delivered_to_planned(
-                patient
-            )
+            (
+                planned_values,
+                delivered_values,
+                patient_results,
+            ) = compare_delivered_to_planned(patient)
             overall_results = overall_results.append(patient_results)
 
         return planned_values, delivered_values, overall_results
