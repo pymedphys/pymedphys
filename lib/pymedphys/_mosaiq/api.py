@@ -31,7 +31,7 @@ def connect(
 
     The first time running this function on a system will result in a
     prompt to login to the Mosaiq SQL server. The provided credentials
-    will be stored within the operating systems password storage
+    will be stored within the operating system's password storage
     facilities. Subsequent calls to this function will pull from that
     password storage in order to connect.
 
