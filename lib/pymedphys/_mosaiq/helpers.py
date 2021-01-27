@@ -21,12 +21,11 @@ from pymedphys._imports import pandas as pd
 
 import pymedphys._utilities.patient
 
-from .connect import execute_sql
-from .constants import FIELD_TYPES
+from . import api, constants
 
 
 def get_treatment_times(cursor, field_id):
-    treatment_time_results = execute_sql(
+    treatment_time_results = api.execute(
         cursor,
         """
         SELECT
@@ -50,7 +49,7 @@ def get_patient_fields(cursor, patient_id):
     """Returns all of the patient fields for a given Patient ID."""
     patient_id = str(patient_id)
 
-    patient_field_results = execute_sql(
+    patient_field_results = api.execute(
         cursor,
         """
         SELECT
@@ -85,7 +84,7 @@ def get_patient_fields(cursor, patient_id):
 
     table.drop_duplicates(inplace=True)
 
-    table["field_type"] = [FIELD_TYPES[item] for item in table["field_type"]]
+    table["field_type"] = [constants.FIELD_TYPES[item] for item in table["field_type"]]
 
     return table
 
@@ -93,7 +92,7 @@ def get_patient_fields(cursor, patient_id):
 def get_patient_name(cursor, patient_id):
     patient_id = str(patient_id)
 
-    patient_name_results = execute_sql(
+    patient_name_results = api.execute(
         cursor,
         """
         SELECT
@@ -129,7 +128,7 @@ def get_patient_name(cursor, patient_id):
 
 
 def get_treatments(cursor, start, end, machine):
-    treatment_results = execute_sql(
+    treatment_results = api.execute(
         cursor,
         """
         SELECT
@@ -178,7 +177,7 @@ def get_treatments(cursor, start, end, machine):
         ],
     )
 
-    table["field_type"] = [FIELD_TYPES[item] for item in table["field_type"]]
+    table["field_type"] = [constants.FIELD_TYPES[item] for item in table["field_type"]]
 
     table = table.sort_values("start")
 
@@ -186,7 +185,7 @@ def get_treatments(cursor, start, end, machine):
 
 
 def get_staff_name(cursor, staff_id):
-    data = execute_sql(
+    data = api.execute(
         cursor,
         """
         SELECT
@@ -219,7 +218,7 @@ def get_staff_name(cursor, staff_id):
 
 
 def get_qcls_by_date(cursor, location, start, end):
-    data = execute_sql(
+    data = api.execute(
         cursor,
         """
         SELECT
@@ -264,7 +263,7 @@ def get_qcls_by_date(cursor, location, start, end):
 
 
 def get_incomplete_qcls(cursor, location):
-    data = execute_sql(
+    data = api.execute(
         cursor,
         """
         SELECT
