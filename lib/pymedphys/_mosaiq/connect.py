@@ -33,12 +33,12 @@ def connect_with_credential(
 
     Parameters
     ----------
-    hostname : str
-        The hostname of the server.
     username : str
     password : str
-    database : str, optional
+    hostname : str
+        The hostname of the server.
     port : int, optional
+    database : str, optional
 
     Returns
     -------
