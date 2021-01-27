@@ -53,14 +53,12 @@ any code that was using the old version of pymedphys. We try to be abreast of
 this by providing details of any breaking changes from one release to the next
 within the `Release Notes`_.
 
-Mailing list
+Community
 **************
 
-A great way to get started with PyMedPhys is to sign up to `the mailing list`_
-and introducing yourself! Tell us a bit about where you're from, what you're
-doing, and what brings you to PyMedPhys!
-
-.. _`the mailing list`: https://groups.google.com/g/pymedphys
+There is a community over at <https://pymedphys.discourse.group/> to help you
+find your feet using PyMedPhys. Please reach out over there and we'd love to
+help!
 
 
 Documentation
