@@ -47,7 +47,7 @@ def get_logfile_mosaiq_info(
     details = []
 
     cursors = {
-        server: st_mosaiq.get_cached_mosaiq_cursor(**server)
+        server["alias"]: st_mosaiq.get_cached_mosaiq_cursor(**server)
         for server in mosaiq_servers
     }
 
@@ -55,8 +55,8 @@ def get_logfile_mosaiq_info(
         machine_id = header["machine"]
         centre = machine_centre_map[machine_id]
         mosaiq_timezone = mosaiq_details[centre]["timezone"]
-        server = mosaiq_details[centre]["server"]
-        cursor = cursors[server]
+        server_alias = mosaiq_details[centre]["server"]["alias"]
+        cursor = cursors[server_alias]
 
         field_label = header["field_label"]
         field_name = header["field_name"]
