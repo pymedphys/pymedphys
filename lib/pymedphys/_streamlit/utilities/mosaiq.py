@@ -105,7 +105,7 @@ def get_uncached_mosaiq_cursor(
 
     st.stop()
 
-    return  # This is okay that is unreachable, it's just there to make pylint happy.
+    return None  # It's okay that this is unreachable, it's there to make pylint happy.
 
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
