@@ -42,42 +42,30 @@ def get_username_password_with_prompt_fallback(
     output: Callable = print,
     alias: Optional[str] = None,
 ):
+    if alias is None:
+        alias = _get_storage_name(hostname=hostname, port=port, database=database)
+
     user, password = get_username_and_password_without_prompt_fallback(
         hostname=hostname, port=port, database=database
     )
 
     if user is None or user == "":
-        output(
-            "Provide a user that only has `db_datareader` access to '{}'".format(
-                storage_name
-            )
-        )
+        output(f"Provide a user that only has `db_datareader` access to '{alias}'")
         user = user_input()
         if user == "":
             error_message = "Username should not be blank."
             output(error_message)
             raise ValueError(error_message)
-        save_username(storage_name, user)
+
+        save_username(user, hostname=hostname, port=port, database=database)
 
     if password is None:
-        output(
-            "Provide password for '{}' server+database and '{}' user".format(
-                storage_name, user
-            )
-        )
+        output(f"Provide the password for the '{user}' user on '{alias}'")
         password = password_input()
-        save_password(storage_name, password)
+
+        save_password(password, hostname=hostname, port=port, database=database)
 
     return user, password
-
-
-def delete_credentials(hostname, port=1433, database="MOSAIQ"):
-    storage_name = _get_storage_name(hostname=hostname, port=port, database=database)
-    try:
-        keyring.delete_password(storage_name, USERNAME_KEY)
-        keyring.delete_password(storage_name, PASSWORD_KEY)
-    except keyring.errors.PasswordDeleteError:
-        pass
 
 
 def save_username(username, hostname, port=1433, database="MOSAIQ"):
@@ -88,6 +76,12 @@ def save_username(username, hostname, port=1433, database="MOSAIQ"):
 def save_password(password, hostname, port=1433, database="MOSAIQ"):
     storage_name = _get_storage_name(hostname=hostname, port=port, database=database)
     keyring.set_password(storage_name, PASSWORD_KEY, password)
+
+
+def delete_credentials(hostname, port=1433, database="MOSAIQ"):
+    storage_name = _get_storage_name(hostname=hostname, port=port, database=database)
+    keyring.delete_password(storage_name, USERNAME_KEY)
+    keyring.delete_password(storage_name, PASSWORD_KEY)
 
 
 def _get_storage_name(hostname, port=1433, database="MOSAIQ"):

@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from getpass import getpass
 from typing import Callable
 
-from pymedphys._imports import pymssql
+from pymedphys._imports import keyring, pymssql
 
 from . import credentials as _credentials
 from . import utilities as _utilities
@@ -232,11 +232,14 @@ def _connect_with_credential_then_prompt_if_fail(
         if error_message.startswith(b"Login failed for user"):
             output("Login failed, wiping the saved username and password.")
 
-            _credentials.delete_credentials(
-                hostname=hostname,
-                port=port,
-                database=database,
-            )
+            try:
+                _credentials.delete_credentials(
+                    hostname=hostname,
+                    port=port,
+                    database=database,
+                )
+            except keyring.errors.PasswordDeleteError:
+                pass
 
             output("Please try login again:")
             conn = _connect_with_credential_then_prompt_if_fail(
