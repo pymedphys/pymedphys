@@ -38,8 +38,7 @@ REFERENCE_METERSETMAP = [
 
 
 def test_partial_jaws():
-    """Partial jaw location should give a fractional result.
-    """
+    """Partial jaw location should give a fractional result."""
     _, metersetmap = calc_single_control_point(
         MLC, JAW, leaf_pair_widths=LEAF_PAIR_WIDTHS
     )

@@ -51,8 +51,7 @@ class make_gen(tf.keras.utils.Sequence):
         return int(np.ceil(len(self.input_paths) / float(self.batch_size)))
 
     def on_epoch_end(self):
-        """Updates indexes after each epoch
-        """
+        """Updates indexes after each epoch"""
         if self.shuffle_on_end == True:
             self.inputs, self.truths = self.suffle_together(self.inputs, self.truths)
 

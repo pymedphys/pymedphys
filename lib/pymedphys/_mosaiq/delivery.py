@@ -207,8 +207,7 @@ def check_all_items_equal_length(items, name):
 
 
 def decode_msq_mlc(raw_bytes):
-    """Convert MLCs from Mosaiq SQL byte format to cm floats.
-    """
+    """Convert MLCs from Mosaiq SQL byte format to cm floats."""
     raw_bytes = mosaiq_mlc_missing_byte_workaround(raw_bytes)
 
     length = check_all_items_equal_length(raw_bytes, "mlc bytes")

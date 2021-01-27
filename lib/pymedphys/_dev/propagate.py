@@ -226,8 +226,7 @@ def _propagate_setup():
 
 
 def _propagate_requirements():
-    """Propagates requirement files for use without Poetry.
-    """
+    """Propagates requirement files for use without Poetry."""
     _make_requirements_txt(["user"], "requirements.txt", editable=False)
     _make_requirements_txt(["dev"], "requirements-dev.txt")
 
@@ -312,8 +311,7 @@ def propagate_extras():
 
 
 def _propagate_pyproject_hash():
-    """Store the pyproject content hash metadata for verification of propagation.
-    """
+    """Store the pyproject content hash metadata for verification of propagation."""
 
     with open(POETRY_LOCK_PATH) as f:
         poetry_lock_contents = tomlkit.loads(f.read())

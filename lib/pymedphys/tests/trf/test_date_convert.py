@@ -18,16 +18,17 @@ from pymedphys._trf.manage import identify
 
 
 def test_date_convert_parity():
-    """Verify that using pandas instead of dateutil achieves the same end
-    """
+    """Verify that using pandas instead of dateutil achieves the same end"""
     path = pymedphys.data_path("negative-metersetmap.trf")
     header, _ = pymedphys.trf.read(path)
 
     utc_date = header["date"][0]
     timezone = "Australia/Sydney"
 
-    dateutil_version = identify._date_convert_using_dateutil(  # pylint: disable = protected-access
-        utc_date, timezone
+    dateutil_version = (
+        identify._date_convert_using_dateutil(  # pylint: disable = protected-access
+            utc_date, timezone
+        )
     )
     pandas_version = identify.date_convert(utc_date, timezone)
 

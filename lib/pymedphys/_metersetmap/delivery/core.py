@@ -38,8 +38,10 @@ class DeliveryMetersetMap(DeliveryBase):
 
         filtered_delivery = self._filter_cps()
 
-        masked_by_gantry = filtered_delivery._mask_by_gantry(  # pylint: disable = protected-access
-            gantry_angles, gantry_tolerance
+        masked_by_gantry = (
+            filtered_delivery._mask_by_gantry(  # pylint: disable = protected-access
+                gantry_angles, gantry_tolerance
+            )
         )
 
         metersetmaps = []
