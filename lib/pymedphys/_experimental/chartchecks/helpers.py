@@ -21,7 +21,7 @@ import collections
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
 
-from pymedphys._mosaiq.connect import execute_sql
+import pymedphys._mosaiq.api as pp_mosaiq
 
 from .tolerance_constants import FIELD_TYPES, ORIENTATION
 
@@ -279,8 +279,8 @@ def get_all_treatment_data(cursor, mrn):
                 """
     )
 
-    table = execute_sql(
-        cursor=cursor, sql_string=sql_string, parameters={"patient_id": mrn}
+    table = pp_mosaiq.execute(
+        cursor=cursor, query=sql_string, parameters={"patient_id": mrn}
     )
 
     mosaiq_fields = pd.DataFrame(data=table, columns=columns)
@@ -312,7 +312,7 @@ def get_all_treatment_data(cursor, mrn):
 
 
 def get_staff_initials(cursor, staff_id):
-    initials = execute_sql(
+    initials = pp_mosaiq.execute(
         cursor,
         """
         SELECT
@@ -408,8 +408,8 @@ def get_all_treatment_history_data(cursor, mrn):
         """,
     )
 
-    table = execute_sql(
-        cursor=cursor, sql_string=sql_string[0], parameters={"mrn": mrn}
+    table = pp_mosaiq.execute(
+        cursor=cursor, query=sql_string[0], parameters={"mrn": mrn}
     )
 
     treatment_history = pd.DataFrame(data=table, columns=columns)

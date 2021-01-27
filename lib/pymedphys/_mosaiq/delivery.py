@@ -25,8 +25,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
-from .connect import execute_sql
-from .constants import FIELD_TYPES
+from . import api, constants
 
 
 @functools.lru_cache()
@@ -65,9 +64,9 @@ def get_field_type(cursor, field_id):
 
     parameters = {"field_id": field_id}
 
-    sql_result = execute_sql(cursor, execute_string, parameters)
+    sql_result = api.execute(cursor, execute_string, parameters)
 
-    return FIELD_TYPES[sql_result[0][0]]
+    return constants.FIELD_TYPES[sql_result[0][0]]
 
 
 def get_mosaiq_delivery_details(
@@ -138,7 +137,7 @@ def get_mosaiq_delivery_details(
         "field_name": field_name,
     }
 
-    sql_result = execute_sql(cursor, execute_string, parameters)
+    sql_result = api.execute(cursor, execute_string, parameters)
 
     if len(sql_result) > 1:
         for result in sql_result[1::]:
@@ -165,7 +164,7 @@ def get_mosaiq_delivery_details(
     OISDeliveryDetails = create_ois_delivery_details_class()
     delivery_details = OISDeliveryDetails(*sql_result[0])
 
-    delivery_details.field_type = FIELD_TYPES[delivery_details.field_type]
+    delivery_details.field_type = constants.FIELD_TYPES[delivery_details.field_type]
 
     return delivery_details
 
@@ -258,7 +257,7 @@ def delivery_data_sql(cursor, field_id):
         txfield_results: The results from the TxField table.
         txfieldpoint_results: The results from the TxFieldPoint table.
     """
-    txfield_results = execute_sql(
+    txfield_results = api.execute(
         cursor,
         """
         SELECT
@@ -271,7 +270,7 @@ def delivery_data_sql(cursor, field_id):
     )
 
     txfieldpoint_results = np.array(
-        execute_sql(
+        api.execute(
             cursor,
             """
         SELECT

@@ -15,7 +15,7 @@
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities.mosaiq import get_mosaiq_cursor
+from pymedphys._streamlit.utilities.mosaiq import get_cached_mosaiq_cursor
 
 from pymedphys._experimental.chartchecks.compare import (
     colour_results,
@@ -38,7 +38,7 @@ TITLE = "Pre-Treatment Data Transfer Check"
 
 def main():
     server = "PRDMOSAIQIWVV01.utmsa.local"
-    cursor = get_mosaiq_cursor(server)
+    cursor = get_cached_mosaiq_cursor(server)
 
     st.sidebar.header("Instructions:")
     st.sidebar.markdown(

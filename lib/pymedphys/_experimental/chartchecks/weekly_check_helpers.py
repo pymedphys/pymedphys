@@ -18,7 +18,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plotly
 from pymedphys._imports import streamlit as st
 
-from pymedphys._mosaiq import connect
+import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.helpers import get_incomplete_qcls
 
 from pymedphys._experimental.chartchecks.helpers import (
@@ -28,62 +28,64 @@ from pymedphys._experimental.chartchecks.helpers import (
 
 
 def show_incomplete_weekly_checks():
-    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        incomplete = get_incomplete_qcls(cursor, "Physics Resident")
-        todays_date = date.today() + timedelta(days=3)
-        todays_date = todays_date.strftime("%b %d, %Y")
-        # todays_date = "Dec 4, 2020"
-        incomplete = incomplete[
-            (incomplete["task"] == "Weekly Chart Check")
-            & (incomplete["due"] == todays_date)
-        ]
-        incomplete = incomplete.drop(columns=["instructions", "task", "due", "comment"])
-        incomplete = incomplete.reset_index(drop=True)
+    cursor = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+
+    incomplete = get_incomplete_qcls(cursor, "Physics Resident")
+    todays_date = date.today() + timedelta(days=3)
+    todays_date = todays_date.strftime("%b %d, %Y")
+    # todays_date = "Dec 4, 2020"
+    incomplete = incomplete[
+        (incomplete["task"] == "Weekly Chart Check")
+        & (incomplete["due"] == todays_date)
+    ]
+    incomplete = incomplete.drop(columns=["instructions", "task", "due", "comment"])
+    incomplete = incomplete.reset_index(drop=True)
 
     return incomplete
 
 
 def compare_delivered_to_planned(patient):
-    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        delivered = get_all_treatment_history_data(cursor, patient)
-        planned = get_all_treatment_data(cursor, patient)
-        patient_results = pd.DataFrame()
-        try:
-            # current_fx = max(delivered_values["fx"])
-            todays_date = pd.Timestamp("today").floor("D")
-            week_ago = todays_date + pd.offsets.Day(-7)
-            delivered_this_week = delivered.copy()
-            delivered_this_week = delivered_this_week[delivered["date"] > week_ago]
-        except (TypeError, ValueError, AttributeError):
-            print("fraction field empty")
-        primary_checks = {
-            "patient_id": patient,
-            "first_name": delivered_this_week.iloc[0]["first_name"],
-            "last_name": delivered_this_week.iloc[0]["last_name"],
-            "was_overridden": "",
-            "new_field": "",
-            "rx_change": "",
-            "site_setup_change": "",
-            "partial_tx": "",
-        }
+    cursor = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
-        if True in delivered_this_week["was_overridden"].values:
-            primary_checks["was_overridden"] = "Treatment Overridden"
+    delivered = get_all_treatment_history_data(cursor, patient)
+    planned = get_all_treatment_data(cursor, patient)
+    patient_results = pd.DataFrame()
+    try:
+        # current_fx = max(delivered_values["fx"])
+        todays_date = pd.Timestamp("today").floor("D")
+        week_ago = todays_date + pd.offsets.Day(-7)
+        delivered_this_week = delivered.copy()
+        delivered_this_week = delivered_this_week[delivered["date"] > week_ago]
+    except (TypeError, ValueError, AttributeError):
+        print("fraction field empty")
+    primary_checks = {
+        "patient_id": patient,
+        "first_name": delivered_this_week.iloc[0]["first_name"],
+        "last_name": delivered_this_week.iloc[0]["last_name"],
+        "was_overridden": "",
+        "new_field": "",
+        "rx_change": "",
+        "site_setup_change": "",
+        "partial_tx": "",
+    }
 
-        if True in delivered_this_week["new_field"].values:
-            primary_checks["new_field"] = "New Field Delivered"
+    if True in delivered_this_week["was_overridden"].values:
+        primary_checks["was_overridden"] = "Treatment Overridden"
 
-        if not all(delivered_this_week["site_version"]) == 0:
-            primary_checks["rx_change"] = "Prescription Altered"
+    if True in delivered_this_week["new_field"].values:
+        primary_checks["new_field"] = "New Field Delivered"
 
-        if not all(delivered_this_week["site_setup_version"]) == 0:
-            primary_checks["site_setup_change"] = "Site Setup Altered"
+    if not all(delivered_this_week["site_version"]) == 0:
+        primary_checks["rx_change"] = "Prescription Altered"
 
-        if True in delivered_this_week["partial_tx"].values:
-            primary_checks["partial_tx"] = "Partial Treatment"
+    if not all(delivered_this_week["site_setup_version"]) == 0:
+        primary_checks["site_setup_change"] = "Site Setup Altered"
 
-        for key, item in primary_checks.items():
-            patient_results[key] = [item]
+    if True in delivered_this_week["partial_tx"].values:
+        primary_checks["partial_tx"] = "Partial Treatment"
+
+    for key, item in primary_checks.items():
+        patient_results[key] = [item]
 
     return planned, delivered, patient_results
 
