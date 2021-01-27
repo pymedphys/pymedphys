@@ -45,7 +45,7 @@ def connect(
         The MSSQL database name, by default "MOSAIQ"
     alias : Optional[str], optional
         A human readable representation of the server, this is the name
-        of the server presented to the user should their not be
+        of the server presented to the user should there not be
         credentials already on the machine, by default "hostname:port/database"
 
     Returns
