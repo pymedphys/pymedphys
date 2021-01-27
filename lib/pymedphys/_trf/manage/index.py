@@ -24,7 +24,7 @@ from glob import glob
 
 from pymedphys._imports import attr
 
-import pymedphys._mosaiq as pmp_mosaiq
+import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import Header, decode_header_from_file
 from pymedphys._utilities.filehash import hash_file
@@ -302,7 +302,7 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
     ]
 
     cursors = [
-        pmp_mosaiq.connect(hostname=item[0], port=item[1]) for item in hostname_ports
+        _pp_mosaiq.connect(hostname=item[0], port=item[1]) for item in hostname_ports
     ]
 
     print("Globbing index directory...")
