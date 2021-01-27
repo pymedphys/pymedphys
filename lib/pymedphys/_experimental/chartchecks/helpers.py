@@ -21,7 +21,7 @@ import collections
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
 
-import pymedphys._mosaiq as pp_mosaiq
+import pymedphys._mosaiq.api as pp_mosaiq
 
 from .tolerance_constants import FIELD_TYPES, ORIENTATION
 

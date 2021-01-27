@@ -30,9 +30,13 @@ def main():
     centres = ["rccc", "nbcc", "sash"]
     # centres = ["nbcc"]
     servers = {
-        "rccc": "msqsql",
-        "nbcc": "physics-server:31433",
-        "sash": "physics-server",
+        "rccc": {"hostname": "msqsql", "alias": "RCCC Mosaiq SQL Server"},
+        "nbcc": {
+            "hostname": "physics-server",
+            "port": 31433,
+            "alias": "NBCC Mosaiq SQL Server",
+        },
+        "sash": {"hostname": "physics-server", "alias": "SASH Mosaiq SQL Server"},
     }
     physics_locations = {
         "rccc": "Physics_Check",
@@ -41,7 +45,7 @@ def main():
     }
 
     cursors = {
-        centre: st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre])
+        centre: st_mosaiq.get_cached_mosaiq_cursor_in_dict(**servers[centre])
         for centre in centres
     }
 
@@ -60,8 +64,8 @@ def main():
             )
         except (pymssql.InterfaceError, pymssql.OperationalError) as e:
             st.write(e)
-            cursor_bucket["cursor"] = st_mosaiq.uncached_get_mosaiq_cursor(
-                servers[centre]
+            cursor_bucket["cursor"] = st_mosaiq.get_uncached_mosaiq_cursor(
+                **servers[centre]
             )
             table = msq_helpers.get_incomplete_qcls(
                 cursor_bucket["cursor"], physics_location
