@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Generator, Optional, Tuple
 
 from pymedphys._imports import pymssql  # pylint: disable = unused-import
 
@@ -83,7 +83,7 @@ def connect(
 
 def execute(
     cursor: "pymssql.Cursor", query: str, parameters: Dict = None
-) -> List[Tuple[str, ...]]:
+) -> Generator[Tuple[str, ...], None, None]:
     """Execute SQL queries on a Mosaiq database.
 
     Parameters
@@ -106,16 +106,18 @@ def execute(
 
     Returns
     -------
-    List[Tuple[str]]
+    results : Generator[Tuple[str, ...], None, None]
         The results from the database query organised so that each row
-        is an item within the returned list.
+        is an item within the returned generator. These results can be
+        wrapped in the ``list`` function by calling ``list(results)`` to
+        allow these to be indexable by row.
 
     Examples
     --------
     >>> import pymedphys.mosaiq
     >>> cursor = pymedphys.mosaiq.connect('msqsql')  # doctest: +SKIP
 
-    >>> pymedphys.mosaiq.execute(
+    >>> results = pymedphys.mosaiq.execute(
     ...     cursor,
     ...     '''
     ...     SELECT
@@ -129,6 +131,8 @@ def execute(
     ...     ''',
     ...     {"last_name": "PHANTOM"},
     ... )  # doctest: +SKIP
+
+    >>> list(results)  # doctest: +SKIP
     [('654324', 'PHANTOM', 'CATPHAN'),
      ('944444', 'PHANTOM', 'DELTA4'),
      ('654321', 'PHANTOM', 'PELVIS'),
@@ -143,12 +147,9 @@ def execute(
         print("query:\n    {}\nparameters:\n    {}".format(query, parameters))
         raise
 
-    data = []
     while True:
         row: Tuple[str, ...] = cursor.fetchone()
         if row is None:
             break
 
-        data.append(row)
-
-    return data
+        yield row
