@@ -32,11 +32,11 @@ def main():
     servers = {
         "rccc": {"hostname": "msqsql", "alias": "RCCC Mosaiq SQL Server"},
         "nbcc": {
-            "hostname": "physics-server",
+            "hostname": "rccc-physicssvr",
             "port": 31433,
             "alias": "NBCC Mosaiq SQL Server",
         },
-        "sash": {"hostname": "physics-server", "alias": "SASH Mosaiq SQL Server"},
+        "sash": {"hostname": "rccc-physicssvr", "alias": "SASH Mosaiq SQL Server"},
     }
     physics_locations = {
         "rccc": "Physics_Check",

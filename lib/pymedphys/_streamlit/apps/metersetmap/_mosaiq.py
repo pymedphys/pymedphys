@@ -53,7 +53,7 @@ def mosaiq_input_method(config, patient_id="", key_namespace="", site=None, **_)
     )
     st.write(patient_id)
 
-    cursor = st_mosaiq.get_cached_mosaiq_cursor(server)
+    cursor = st_mosaiq.get_cached_mosaiq_cursor(**server)
 
     if patient_id == "":
         return {}
