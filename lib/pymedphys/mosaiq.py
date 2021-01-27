@@ -1,3 +1,3 @@
 # pylint: disable = unused-import, missing-docstring
 
-from ._mosaiq import connect, execute
+from ._mosaiq.api import connect, execute

@@ -16,7 +16,7 @@ from typing import Optional
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._mosaiq import connect as _connect
+import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq import credentials as _credentials
 
 
@@ -55,7 +55,7 @@ def get_uncached_mosaiq_cursor(
 
     if password:
         try:
-            conn = _connect.connect_with_credential(
+            conn = _pp_mosaiq.connect(
                 username, password, hostname=hostname, port=port, database=database
             )
             cursor = conn.cursor()
