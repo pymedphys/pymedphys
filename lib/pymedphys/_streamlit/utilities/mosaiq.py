@@ -26,17 +26,23 @@ def get_uncached_mosaiq_cursor(
     database: str = "MOSAIQ",
     alias: Optional[str] = None,
 ):
-    """Get the Mosaiq SQL cursor. Prompt user for username and password if needed.
+    """Get the Mosaiq SQL cursor.
+
+    User is prompted using the streamlit interface if needed credentials
+    do not exist.
 
     Parameters
     ----------
-    server : str
-        The hostname and optionally the port, separated by a colon (:).
-        The following are all valid options:
-
-            * msqsql
-            * msqsql:1433
-            * 127.0.0.1:8888
+    hostname : str
+        The IP address or hostname of the SQL server.
+    port : int, optional
+        The port at which the SQL server is hosted, by default 1433
+    database : str, optional
+        The MSSQL database name, by default "MOSAIQ"
+    alias : Optional[str], optional
+        A human readable representation of the server, this is the name
+        of the server presented to the user should their not be
+        credentials already on the machine, by default "hostname:port/database"
 
     Returns
     -------
@@ -106,6 +112,26 @@ def get_uncached_mosaiq_cursor(
 def get_cached_mosaiq_cursor(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
 ):
+    """A streamlit cached version of ``get_uncached_mosaiq_cursor``.
+
+    Parameters
+    ----------
+    hostname : str
+        The IP address or hostname of the SQL server.
+    port : int, optional
+        The port at which the SQL server is hosted, by default 1433
+    database : str, optional
+        The MSSQL database name, by default "MOSAIQ"
+    alias : Optional[str], optional
+        A human readable representation of the server, this is the name
+        of the server presented to the user should their not be
+        credentials already on the machine, by default "hostname:port/database"
+
+    Returns
+    -------
+    cursor : pymssql.Cursor
+        The Mosaiq SQL cursor for the connection.
+    """
     return get_uncached_mosaiq_cursor(
         hostname=hostname, port=port, database=database, alias=alias
     )
@@ -115,7 +141,30 @@ def get_cached_mosaiq_cursor(
 def get_cached_mosaiq_cursor_in_dict(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
 ):
-    """This allows the output cursor cache to be mutated by the user code"""
+    """A streamlit cached version of ``get_uncached_mosaiq_cursor`` with mutable output.
+
+    This is designed so that the cached cursor can be mutated as needed
+    within the calling code.
+
+    Parameters
+    ----------
+    hostname : str
+        The IP address or hostname of the SQL server.
+    port : int, optional
+        The port at which the SQL server is hosted, by default 1433
+    database : str, optional
+        The MSSQL database name, by default "MOSAIQ"
+    alias : Optional[str], optional
+        A human readable representation of the server, this is the name
+        of the server presented to the user should their not be
+        credentials already on the machine, by default "hostname:port/database"
+
+    Returns
+    -------
+    Dict["cursor", pymssql.Cursor]
+        A dictionary containing the Mosaiq SQL cursor for the connection.
+
+    """
     return {
         "cursor": get_uncached_mosaiq_cursor(
             hostname=hostname, port=port, database=database, alias=alias

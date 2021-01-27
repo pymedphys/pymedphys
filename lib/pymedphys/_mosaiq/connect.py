@@ -36,9 +36,11 @@ def connect_with_credential(
     username : str
     password : str
     hostname : str
-        The hostname of the server.
+        The IP address or hostname of the SQL server.
     port : int, optional
+        The port at which the SQL server is hosted, by default 1433
     database : str, optional
+        The MSSQL database name, by default "MOSAIQ"
 
     Returns
     -------
