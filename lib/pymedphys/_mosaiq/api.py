@@ -144,7 +144,7 @@ def execute(
     try:
         cursor.execute(query, parameters)
     except Exception:
-        print("query:\n    {}\nparameters:\n    {}".format(query, parameters))
+        print(f"query:\n    {query}\nparameters:\n    {parameters}")
         raise
 
     while True:
