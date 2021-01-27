@@ -1,5 +1,5 @@
 ===================================
-Linux Contributor Environment Setup
+Linux Setup
 ===================================
 
 Overview

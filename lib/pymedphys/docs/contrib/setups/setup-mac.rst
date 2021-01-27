@@ -1,5 +1,5 @@
 ===================================
-MacOS Contributor Environment Setup
+MacOS Setup
 ===================================
 
 Overview

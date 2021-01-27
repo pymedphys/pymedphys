@@ -1,5 +1,5 @@
 =====================================
-Windows Contributor Environment Setup
+Windows Setup
 =====================================
 
 All contributor installation steps can be completed without administration
