@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
+
 from pymedphys._imports import streamlit as st
 
-from pymedphys._mosaiq import connect as msq_connect
+from pymedphys._mosaiq import connect as _connect
+from pymedphys._mosaiq import credentials as _credentials
 
 
-def uncached_get_mosaiq_cursor(server):
+def get_uncached_mosaiq_cursor(
+    hostname: str,
+    port: int = 1433,
+    database: str = "MOSAIQ",
+    alias: Optional[str] = None,
+):
     """Get the Mosaiq SQL cursor. Prompt user for username and password if needed.
 
     Parameters
@@ -36,18 +44,23 @@ def uncached_get_mosaiq_cursor(server):
         The Mosaiq SQL cursor for the connection.
 
     """
-    server, port = msq_connect.separate_server_port_string(server)
-    storage_name = msq_connect.get_storage_name(server, port)
-    username, password = msq_connect.get_username_and_password_without_prompt(
-        storage_name
+    if alias is None:
+        alias = _credentials.get_keyring_storage_name(
+            hostname=hostname, port=port, database=database
+        )
+
+    username, password = _credentials.get_username_and_password_without_prompt_fallback(
+        hostname=hostname, port=port, database=database
     )
 
     if password:
         try:
-            conn = msq_connect.connect_with_credential(server, username, password)
+            conn = _connect.connect_with_credential(
+                username, password, hostname=hostname, port=port, database=database
+            )
             cursor = conn.cursor()
             return cursor
-        except msq_connect.WrongUsernameOrPassword as e:
+        except _credentials.WrongUsernameOrPassword as e:
             st.write(e)
 
     st.write("## Login to Mosaiq SQL Database")
@@ -56,13 +69,15 @@ def uncached_get_mosaiq_cursor(server):
         username = ""
 
     username = st.text_input(
-        label=f"Username for the SQL server on {server}",
+        label=f"Username for the SQL server on {alias}",
         value=username,
-        key=f"MosaiqSQLUsername_{server}",
+        key=f"MosaiqSQLUsername_{alias}",
     )
 
     if username:
-        msq_connect.save_username(storage_name, username)
+        _credentials.save_username(
+            username, hostname=hostname, port=port, database=database
+        )
 
     if not password:
         password = ""
@@ -71,26 +86,36 @@ def uncached_get_mosaiq_cursor(server):
         label="Password",
         value=password,
         type="password",
-        key=f"MosaiqSQLPassword_{server}",
+        key=f"MosaiqSQLPassword_{alias}",
     )
 
     if password:
-        msq_connect.save_password(storage_name, password)
+        _credentials.save_password(
+            password, hostname=hostname, port=port, database=database
+        )
 
     if st.button("Connect"):
         st.experimental_rerun()
 
     st.stop()
 
-    return None
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def get_cached_mosaiq_cursor(
+    hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
+):
+    return get_uncached_mosaiq_cursor(
+        hostname=hostname, port=port, database=database, alias=alias
+    )
 
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
-def get_mosaiq_cursor(server):
-    return uncached_get_mosaiq_cursor(server)
-
-
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
-def get_mosaiq_cursor_in_bucket(server):
+def get_cached_mosaiq_cursor_in_dict(
+    hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
+):
     """This allows the output cursor cache to be mutated by the user code"""
-    return {"cursor": uncached_get_mosaiq_cursor(server)}
+    return {
+        "cursor": get_uncached_mosaiq_cursor(
+            hostname=hostname, port=port, database=database, alias=alias
+        )
+    }

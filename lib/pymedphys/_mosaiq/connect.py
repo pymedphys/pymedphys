@@ -27,16 +27,12 @@ from . import credentials as _credentials
 from . import utilities as _utilities
 
 
-class WrongUsernameOrPassword(ValueError):
-    pass
-
-
 def connect_with_credential(
-    hostname: str,
     username: str,
     password: str,
-    database: str = "MOSAIQ",
+    hostname: str,
     port: int = 1433,
+    database: str = "MOSAIQ",
 ) -> "pymssql.Connection":
     """Connects to a Mosaiq database.
 
@@ -68,7 +64,7 @@ def connect_with_credential(
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
         if error_message.startswith(b"Login failed for user"):
-            raise WrongUsernameOrPassword("Wrong credentials")
+            raise _credentials.WrongUsernameOrPassword("Wrong credentials")
 
         raise
 
