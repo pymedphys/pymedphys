@@ -55,5 +55,6 @@
     :maxdepth: 3
     :caption: General
 
+    general/index
     general/file-structure
     general/open-source-benefits
