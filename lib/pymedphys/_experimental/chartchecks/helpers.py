@@ -163,6 +163,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 .ControlPointSequence[0]
                 .TableTopEccentricAngle,
                 "technique": "",
+                "control_points": dicom.BeamSequence[bn - 1].NumberOfControlPoints,
             }
 
             try:
@@ -217,6 +218,7 @@ def get_all_treatment_data(cursor, mrn):
             ("field_version", "TxField.Version"),
             ("monitor_units", "TxField.Meterset"),
             ("meterset_rate", "TxFieldPoint.Meterset_Rate"),
+            ("control_points", "TxField.ControlPoints"),
             ("field_type", "TxField.Type_Enum"),
             ("gantry_angle", "TxFieldPoint.Gantry_Ang"),
             ("collimator_angle", "TxFieldPoint.Coll_Ang"),
@@ -225,6 +227,8 @@ def get_all_treatment_data(cursor, mrn):
             ("site", "Site.Site_Name"),
             ("dyn_wedge", "TxField.Dyn_Wedge"),
             ("wedge", "TxField.Wdg_Appl"),
+            ("wedge_slot", "TxField.WdgApplSlot"),
+            ("motorized_wedge", "TxFieldPoint.IsMotorizedWedgeIn"),
             ("block", "TxField.Block"),
             ("blk_desc", "TxField.Blk_Desc"),
             ("compensator", "TxField.Comp_Fda"),
