@@ -11,7 +11,35 @@ def connect(
     port: int = 1433,
     database: str = "MOSAIQ",
     alias: Optional[str] = None,
-):
+) -> "pymssql.Cursor":
+    """Connect to a Mosaiq SQL server.
+
+    The first time running this function on a system will result in a
+    prompt to login to the Mosaiq SQL server. The provided credentials
+    will be stored within the operating systems password storage
+    facilities. Subsequent calls to this function will pull from that
+    password storage in order to connect.
+
+    Parameters
+    ----------
+    hostname : str
+        The IP address or hostname of the SQL server.
+    port : int, optional
+        The port at which the SQL server is hosted, by default 1433
+    database : str, optional
+        The MSSQL database name, by default "MOSAIQ"
+    alias : Optional[str], optional
+        A human readable representation of the server, this is the name
+        of the server presented to the user should their not be
+        credentials already on the machine, by default "hostname:port/database"
+
+    Returns
+    -------
+    pymssql.Cursor
+        A database cursor. This cursor can be passed to
+        ``pymedphys.mosaiq.execute`` to be able to run queries.
+
+    """
     username, password = _credentials.get_username_password_with_prompt_fallback(
         hostname=hostname, port=port, database=database, alias=alias
     )
