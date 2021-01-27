@@ -77,7 +77,7 @@ def execute(
         ``pymedphys.mosaiq.connect``
     query : str
         The SQL query to execute. Do not parse Python variables directly
-        into this string. Instead utilise create this string as if you
+        into this string. Instead create this string as if you
         are going to call ``format`` on it
         (https://docs.python.org/3/library/stdtypes.html#str.format)
         and then utilise the parameters optional argument to this
