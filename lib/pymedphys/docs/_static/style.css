@@ -8,15 +8,19 @@ body {
 
 .header-style, h1, .h1 {
     font-size: 230% !important;
+    margin-top: 1.5em !important;
 }
 .header-style, h2, .h2 {
     font-size: 160% !important;
+    margin-top: 1.5em !important;
 }
 .header-style, h3, .h3 {
     font-size: 100% !important;
+    margin-top: 1em !important;
 }
 .header-style, h4, .h4 {
     font-size: 60% !important;
+    margin-top: 1em !important;
 }
 
 .title-logo {

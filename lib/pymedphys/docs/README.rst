@@ -26,8 +26,6 @@ and open source distribution. Open code is better science.**
 .. |license| image:: https://img.shields.io/pypi/l/pymedphys
     :target: https://choosealicense.com/licenses/apache-2.0/
 
-|
-|
 
 What is PyMedPhys?
 ==================
@@ -43,7 +41,7 @@ on `PyPI`_ and `GitHub`_.
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
 Beta level of development
-**********************************
+*************************
 
 PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
 stay in this stage until the version number leaves ``0.x.x`` and enters
@@ -64,11 +62,9 @@ doing, and what brings you to PyMedPhys!
 
 .. _`the mailing list`: https://groups.google.com/g/pymedphys
 
-|
-|
 
 Documentation
-==================
+=============
 
 The PyMedPhys documentation is split into four categories:
 
@@ -83,8 +79,6 @@ either the PyMedPhys library or the PyMedPhys app.
 
 `4. General`_: Material that may apply to any visitor to PyMedPhys.
 
-|
-|
 
 Our Team
 ========
@@ -93,7 +87,7 @@ PyMedPhys is what it is today due to its maintainers and contributors both past
 and present. Here is our team.
 
 Maintainers
-****************************
+***********
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia

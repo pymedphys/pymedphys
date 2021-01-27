@@ -4,7 +4,7 @@ Overview
 
 Resources to assist users of the PyMedPhys library. If you're experienced with
 Python but brand new to PyMedPhys, `start here`_.
-|
+
 The **Library Users Guide** is separated into following sub-categories:
 
 - *Tutorials*
