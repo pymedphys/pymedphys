@@ -68,17 +68,24 @@ Documentation
 
 The PyMedPhys documentation is split into four categories:
 
-`1. App Users Guide`_: for those who only wish to use ready-made PyMedPhys
-tools
+1. `App Users Guide`_: for those who only wish to use ready-made PyMedPhys
+   tools
 
-`2. Library Users Guide`_: for those building their own Python apps who wish to
-incorporate elements of the PyMedPhys library
+.. _`App Users Guide`: https://docs.pympedphys.com/appusers/index.rst
 
-`3. Contributors Guide`_: for those who wish to make new contributions to
-either the PyMedPhys library or the PyMedPhys app.
+2. `Library Users Guide`_: for those building their own Python apps who wish to
+   incorporate elements of the PyMedPhys library
 
-`4. General`_: Material that may apply to any visitor to PyMedPhys.
+.. _`Library Users Guide`: https://docs.pympedphys.com/libusers/index.rst
 
+3. `Contributors Guide`_: for those who wish to make new contributions to
+   either the PyMedPhys library or the PyMedPhys app.
+
+.. _`Contributors Guide`: https://docs.pympedphys.com/contrib/index.rst
+
+4. `General`_: Material that may apply to any visitor to PyMedPhys.
+
+.. _`General`: https://docs.pympedphys.com/general/index.rst
 
 Our Team
 ========
@@ -198,8 +205,3 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 .. _`Release Notes`: ./CHANGELOG.md
-
-.. _`1. App Users Guide`: https://docs.pympedphys.com/appusers/index.rst
-.. _`2. Library Users Guide`: https://docs.pympedphys.com/libusers/index.rst
-.. _`3. Contributors Guide`: https://docs.pympedphys.com/contrib/index.rst
-.. _`4. General`: https://docs.pympedphys.com/general/index.rst
