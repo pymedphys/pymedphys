@@ -46,6 +46,7 @@
     :caption: Contributors Guide
 
     contrib/index
+    contrib/documentation
     contrib/setups/index
     contrib/other/index
 
