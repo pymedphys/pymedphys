@@ -30,8 +30,7 @@ msq_x.use_mlc_missing_byte_workaround()
 
 
 def display_fields(patient_ids, sql_users, sql_servers):
-    """Display all fields stored under a given Patient ID.
-    """
+    """Display all fields stored under a given Patient ID."""
     with msq_c.multi_mosaiq_connect(sql_users, sql_servers) as cursors:
         for key in sql_servers:
             display(
@@ -41,8 +40,7 @@ def display_fields(patient_ids, sql_users, sql_servers):
 
 
 def display_fields_overview(fields, sql_users, sql_servers):
-    """Display an overview for a given list of fields.
-    """
+    """Display an overview for a given list of fields."""
     with msq_c.multi_mosaiq_connect(sql_users, sql_servers) as cursors:
         for key in sql_servers:
             display(Markdown("# {} fields overview".format(key.upper())))
@@ -56,8 +54,7 @@ def display_fields_overview(fields, sql_users, sql_servers):
 
 
 def _pull_fields_sql_data(fields, sql_users, sql_servers):
-    """Pull the SQL data for all of the fields provided in the list.
-    """
+    """Pull the SQL data for all of the fields provided in the list."""
     with msq_c.multi_mosaiq_connect(sql_users, sql_servers) as cursors:
         data = dict()
         for key, cursor in cursors.items():
@@ -67,15 +64,13 @@ def _pull_fields_sql_data(fields, sql_users, sql_servers):
 
 
 def _create_directory(directory):
-    """Creates a directory if it doesn't already exist.
-    """
+    """Creates a directory if it doesn't already exist."""
     if not os.path.exists(directory):
         os.makedirs(directory)
 
 
 def save_data_to_csv(directory, fields, sql_users, sql_servers):
-    """Pull the data for the given fields and save to a set of csv files.
-    """
+    """Pull the data for the given fields and save to a set of csv files."""
     _create_directory(directory)
     centre_data = _pull_fields_sql_data(fields, sql_users, sql_servers)
 

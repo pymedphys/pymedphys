@@ -47,8 +47,7 @@ def get_treatment_times(cursor, field_id):
 
 
 def get_patient_fields(cursor, patient_id):
-    """Returns all of the patient fields for a given Patient ID.
-    """
+    """Returns all of the patient fields for a given Patient ID."""
     patient_id = str(patient_id)
 
     patient_field_results = execute_sql(
