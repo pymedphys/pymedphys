@@ -56,9 +56,9 @@ within the `Release Notes`_.
 Community
 **************
 
-There is a community over at <https://pymedphys.discourse.group/> to help you
-find your feet using PyMedPhys. Please reach out over there and we'd love to
-help!
+There is a community over at `Discourse <https://pymedphys.discourse.group/>`_
+to help you find your feet using PyMedPhys. Please reach out over there and
+we'd love to help!
 
 
 Documentation
