@@ -30,9 +30,9 @@ from pymedphys._experimental.chartchecks.helpers import (
 def show_incomplete_weekly_checks():
     with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
         incomplete = get_incomplete_qcls(cursor, "Physics Resident")
-        todays_date = date.today() + timedelta(days=3)
+        todays_date = date.today() + timedelta(days=1)
         todays_date = todays_date.strftime("%b %d, %Y")
-        # todays_date = "Dec 4, 2020"
+
         incomplete = incomplete[
             (incomplete["task"] == "Weekly Chart Check")
             & (incomplete["due"] == todays_date)
@@ -125,7 +125,7 @@ def plot_couch_positions(delivered):
 
     fig = plotly.express.scatter(couches_df, x="fx", y="position", color="direction")
     fig.update_layout(
-        title="Couch Positions",
+        title="<b>Couch Positions<b>",
         yaxis_title="Difference from First Tx [cm]",
         xaxis_title="Fx",
     )
@@ -138,7 +138,7 @@ def plot_couch_deltas(delivered):
     couches = pd.DataFrame()
     couches_df = pd.DataFrame()
     for direction in ["couch_vrt", "couch_lat", "couch_lng"]:
-        couches["fx"] = delivered.index
+        couches["fx"] = delivered["fx"]
         couches["direction"] = direction
         couches["position"] = delivered[direction]
         couches["diff"] = couches["position"] - couches.iloc[0]["position"]
@@ -146,8 +146,20 @@ def plot_couch_deltas(delivered):
         couches = pd.DataFrame()
 
     fig = plotly.express.scatter(couches_df, x="fx", y="diff", color="direction")
+    fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor="LightPink")
+    # fig.add_shape(type='line',
+    #               x0=0,
+    #               y0=0,
+    #               x1=couches_df["fx"].max(),
+    #               y1=0,
+    #               line=dict(color='Red',
+    #                         dash='dashdot',
+    #                         width=2),
+    #               xref='x',
+    #               yref='y'
+    #               )
     fig.update_layout(
-        title="Couch Deltas for Each Beam On",
+        title="<b>Couch Deltas for Each Beam On<b>",
         yaxis_title="Difference from First Tx [cm]",
         xaxis_title="Fx",
     )
