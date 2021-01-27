@@ -42,7 +42,7 @@ every Linac delivery for the previous 8 days to a time resolution of 25 Hz.
 
 A portion of an example decoded logfile looks like the following:
 
-.. image:: ../img/logfile_example.png
+.. image:: ../../img/logfile_example.png
 
 The log files contain information such as MLC and Jaw positions, MU delivered,
 gantry
@@ -58,7 +58,7 @@ delivery time as well
 as other parameters such as field ID and description the logfile is aligned to
 Patient Name and ID. Example SQL to achieve this looks like the following:
 
-.. image:: ../img/sql_example.png
+.. image:: ../../img/sql_example.png
 
 An index is then created, at this current time the index is json file, but this
 has issues when the index becomes large. It is expected that a backwards
@@ -66,7 +66,7 @@ incompatible change will occur in the near future converting the index json
 format into SQLite. An example entry within this index looks like the
 following:
 
-.. image:: ../img/index_example.png
+.. image:: ../../img/index_example.png
 
 This process of extracting and indexing can be set to run at a regular interval
 so that an up to date logfile index is available.
