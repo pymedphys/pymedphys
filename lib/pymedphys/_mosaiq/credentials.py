@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 from getpass import getpass
 from typing import Callable, Optional
 
@@ -30,13 +31,26 @@ class WrongUsernameOrPassword(ValueError):
 def get_username_and_password_without_prompt_fallback(
     hostname, port=1433, database="MOSAIQ"
 ):
+    username = get_username(hostname=hostname, port=port, database=database)
+    password = get_password(hostname=hostname, port=port, database=database)
+
+    return username, password
+
+
+def get_username(hostname: str, port: int = 1433, database: str = "MOSAIQ"):
     storage_name = get_keyring_storage_name(
         hostname=hostname, port=port, database=database
     )
-    user = keyring.get_password(storage_name, USERNAME_KEY)
-    password = keyring.get_password(storage_name, PASSWORD_KEY)
+    username = keyring.get_password(storage_name, USERNAME_KEY)
+    return username
 
-    return user, password
+
+def get_password(hostname: str, port: int = 1433, database: str = "MOSAIQ"):
+    storage_name = get_keyring_storage_name(
+        hostname=hostname, port=port, database=database
+    )
+    password = keyring.get_password(storage_name, PASSWORD_KEY)
+    return password
 
 
 def get_username_password_with_prompt_fallback(
@@ -102,6 +116,7 @@ def delete_credentials(hostname: str, port: int = 1433, database: str = "MOSAIQ"
     keyring.delete_password(storage_name, PASSWORD_KEY)
 
 
+@functools.lru_cache()
 def get_keyring_storage_name(hostname, port=1433, database="MOSAIQ"):
     """returns the storage name for a given DB server + port + name
 

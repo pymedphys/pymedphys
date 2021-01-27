@@ -46,7 +46,10 @@ def get_logfile_mosaiq_info(
 ):
     details = []
 
-    cursors = {server: st_mosaiq.get_mosaiq_cursor(server) for server in mosaiq_servers}
+    cursors = {
+        server: st_mosaiq.get_cached_mosaiq_cursor(**server)
+        for server in mosaiq_servers
+    }
 
     for _, header in headers.iterrows():
         machine_id = header["machine"]

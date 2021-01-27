@@ -47,6 +47,7 @@ name = "rccc"
     timezone = "Australia/Sydney"
     hostname = "msqsql"
     port = 1433
+    alias = "RCCC Mosaiq SQL Server"
 
     [[site.linac]]
     name = "2619"
@@ -81,6 +82,7 @@ name = "nbcc"
     timezone = "Australia/Sydney"
     hostname = "rccc-physicssvr"
     port = 31433
+    alias = "NBCC Mosaiq SQL Server"
 
     [[site.linac]]
     name = "4299"
@@ -111,6 +113,7 @@ name = "sash"
     timezone = "Australia/Sydney"
     hostname = "rccc-physicssvr"
     port = 1433
+    alias = "SASH Mosaiq SQL Server"
 
     [[site.linac]]
     name = "9002"

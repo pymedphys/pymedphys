@@ -86,12 +86,30 @@ def get_machine_centre_map(config):
     return machine_centre_map
 
 
+def _get_alias_with_fallback(site_mosaiq_config):
+    try:
+        return site_mosaiq_config["alias"]
+    except KeyError:
+        pass
+
+    try:
+        port = site_mosaiq_config["port"]
+    except KeyError:
+        port = 1433
+
+    return f"{site_mosaiq_config['hostname']}:{port}"
+
+
 @st.cache
 def get_mosaiq_details(config):
     mosaiq_details = {
         site["name"]: {
             "timezone": site["mosaiq"]["timezone"],
-            "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
+            "server": {
+                "hostname": site["mosaiq"]["hostname"],
+                "port": site["mosaiq"]["port"],
+                "alias": _get_alias_with_fallback(site["mosaiq"]),
+            },
         }
         for site in config["site"]
     }
