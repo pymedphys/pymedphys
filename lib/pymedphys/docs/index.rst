@@ -30,7 +30,7 @@
 
 .. toctree::
     :hidden:
-    :maxdepth: 3
+    :maxdepth: 4
     :caption: Library Users Guide
 
     libusers/index

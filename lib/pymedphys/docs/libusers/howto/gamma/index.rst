@@ -1,5 +1,9 @@
-.. toctree::
-    :maxdepth: 1
+=====
+Gamma
+=====
 
-    gamma/effect-of-noise
-    gamma/from-dicom
+.. toctree::
+    :maxdepth: 2
+
+    effect-of-noise
+    from-dicom

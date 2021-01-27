@@ -1,5 +1,5 @@
 ==================
-How-To Get Started
+Get Started
 ==================
 
 Install Python
