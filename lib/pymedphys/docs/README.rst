@@ -64,10 +64,10 @@ we'd love to help!
 Documentation
 =============
 
-The PyMedPhys documentation is split into four categories:
+The PyMedPhys documentation is split into five categories:
 
 1. `App Users Guide`_: for those who only wish to use ready-made PyMedPhys
-   tools
+   GUI tools.
 
 .. _`App Users Guide`: https://docs.pympedphys.com/appusers/index.rst
 
@@ -75,6 +75,12 @@ The PyMedPhys documentation is split into four categories:
    incorporate elements of the PyMedPhys library
 
 .. _`Library Users Guide`: https://docs.pympedphys.com/libusers/index.rst
+
+3. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made Command Line
+   Interface (e.g. to help automate existing workflows with minimal
+   programming).
+
+.. _`CLI Users Guide`: https://docs.pympedphys.com/cliusers/index.rst
 
 3. `Contributors Guide`_: for those who wish to make new contributions to
    either the PyMedPhys library or the PyMedPhys app.
@@ -200,6 +206,6 @@ Past contributors
 
 .. _`Ingham Institute`: https://inghaminstitute.org.au/
 
-.. END_OF_DOCS_IMPORT
-
 .. _`Release Notes`: ./CHANGELOG.md
+
+.. END_OF_DOCS_IMPORT
