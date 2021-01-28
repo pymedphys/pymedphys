@@ -83,13 +83,13 @@ if "rp" in files:
 
     # Using MRN from RP file, find patient in MOSAIQ and perform query
     mrn = dicom_table.iloc[0]["mrn"]
-    with connect.connect(server) as cursor:
-        mosaiq_table = get_all_treatment_data(cursor, mrn)
+    with connect.connect(server) as connection:
+        mosaiq_table = get_all_treatment_data(connection, mrn)
 
         if mosaiq_table.iloc[0]["create_id"] is not None:
             try:
                 site_initials = get_staff_initials(
-                    cursor, str(int(mosaiq_table.iloc[0]["create_id"]))
+                    connection, str(int(mosaiq_table.iloc[0]["create_id"]))
                 )
             except (TypeError, ValueError, AttributeError):
                 site_initials = ""
@@ -198,9 +198,9 @@ if "rp" in files:
             field_approval_id = mosaiq_table[
                 mosaiq_table["field_name"] == field_selection
             ]["field_approval"]
-            with connect.connect(server) as cursor:
+            with connect.connect(server) as connection:
                 field_approval_initials = get_staff_initials(
-                    cursor, str(int(field_approval_id.iloc[0]))
+                    connection, str(int(field_approval_id.iloc[0]))
                 )
             st.write("**Field Approved by: **", field_approval_initials[0][0])
         except (TypeError, ValueError, AttributeError):

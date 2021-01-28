@@ -17,7 +17,7 @@
 """A toolbox for connecting to Mosaiq SQL.
 """
 
-from typing import Dict, Generator, Tuple
+from typing import Dict, List, Tuple, cast
 
 from pymedphys._imports import pymssql
 
@@ -34,7 +34,7 @@ class Connection:
         database: str = "MOSAIQ",
     ):
         try:
-            self._pymssql_connection = pymssql.connect(
+            self._connection = pymssql.connect(
                 hostname, username, password, database=database, port=port
             )
         except pymssql.OperationalError as error:
@@ -46,26 +46,32 @@ class Connection:
 
             raise
 
-        self._cursor = self._pymssql_connection.cursor()
-
-    def execute(
-        self, query: str, parameters: Dict = None
-    ) -> Generator[Tuple[str, ...], None, None]:
-        try:
-            self._cursor.execute(query, parameters)
-        except Exception:
-            print(f"query:\n    {query}\nparameters:\n    {parameters}")
-            raise
-
-        while True:
-            row: Tuple[str, ...] = self._cursor.fetchone()
-            if row is None:
-                break
-
-            yield row
+    def cursor(self) -> "Cursor":
+        return Cursor(self._connection)
 
     def close(self):
-        self._pymssql_connection.close()
+        self._connection.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+class Cursor:
+    def __init__(self, connection: "pymssql.Connection"):
+        self._cursor = connection.cursor()
+
+    def close(self):
+        self._cursor.close()
+
+    def execute(self, query: str, parameters: Dict = None):
+        self._cursor.execute(query, parameters)
+
+    def fetchall(self) -> List[Tuple[str, ...]]:
+        results = cast(List[Tuple[str, ...]], self._cursor.fetchall())
+        return results
 
     def __enter__(self):
         return self
@@ -96,8 +102,8 @@ def connect_with_credentials(
 
     Returns
     -------
-    conn : pymssql.Connection
-        The Connection object to the database.
+    connection : pymedphys.mosaiq.Connection
+        A connection object to the database for execution.
 
     Raises
     ------

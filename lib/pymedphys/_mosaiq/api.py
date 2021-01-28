@@ -13,12 +13,13 @@
 # limitations under the License.
 
 
-from typing import Dict, Generator, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from . import connect as _connect
 from . import credentials as _credentials
 
 Connection = _connect.Connection
+Cursor = _connect.Cursor
 
 
 def connect(
@@ -28,7 +29,7 @@ def connect(
     alias: Optional[str] = None,
     username: Optional[str] = None,
     password: Optional[str] = None,
-) -> Connection:
+) -> _connect.Connection:
     """Connect to a Mosaiq SQL server.
 
     The first time running this function on a system will result in a
@@ -38,7 +39,7 @@ def connect(
     password storage in order to connect.
 
     Can optionally be called as a context manager. This will have the
-    extra benefit of closing the database connection once leaving the
+    extra benefit of closing the database cursor once leaving the
     context manager.
 
     Parameters
@@ -65,11 +66,11 @@ def connect(
     Returns
     -------
     pymedphys.mosaiq.Connection
-        A database connection. This connection can be passed to
+        A database connecting. This connection can be passed to
         ``pymedphys.mosaiq.execute`` to be able to run queries.
 
         The method ``close`` can be called on this object to close the
-        connection.
+        database connection.
 
     """
     if username is None and password is None:
@@ -90,7 +91,7 @@ def connect(
 
 def execute(
     connection: Connection, query: str, parameters: Dict = None
-) -> Generator[Tuple[str, ...], None, None]:
+) -> List[Tuple[str, ...]]:
     """Execute SQL queries on a Mosaiq database.
 
     Parameters
@@ -189,4 +190,7 @@ def execute(
     3     000003 2021-03-08 23:59:59
     """
 
-    return connection.execute(query=query, parameters=parameters)
+    with connection.cursor() as cursor:
+        cursor.execute(query=query, parameters=parameters)
+
+        return cursor.fetchall()
