@@ -165,8 +165,7 @@ def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
 
 
 def create_bb_to_minimise(field, bb_diameter):
-    """This is a numpy vectorised version of `create_bb_to_minimise_simple`
-    """
+    """This is a numpy vectorised version of `create_bb_to_minimise_simple`"""
 
     points_to_check_edge_agreement, dist = interppoints.create_bb_points_function(
         bb_diameter

@@ -128,8 +128,7 @@ class DicomImage(DicomBase):
 
 
 class DicomSeries:
-    """A series of DicomImages within the same study set.
-    """
+    """A series of DicomImages within the same study set."""
 
 
 class DicomStructure(DicomBase):
@@ -150,5 +149,4 @@ class DicomStudy:
 
 
 class DicomCollection:
-    """A DicomCollection can hold an arbitrary number of DicomStudy objects.
-    """
+    """A DicomCollection can hold an arbitrary number of DicomStudy objects."""

@@ -197,8 +197,7 @@ def get_incomplete_qcls(cursor, location):
 
 
 def get_patient_fields(cursor, patient_id):
-    """Returns all of the patient fields for a given Patient ID.
-    """
+    """Returns all of the patient fields for a given Patient ID."""
     patient_id = str(patient_id)
 
     patient_field_results = pymedphys.mosaiq.execute(

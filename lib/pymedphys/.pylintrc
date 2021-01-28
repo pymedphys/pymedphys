@@ -35,13 +35,9 @@ disable =
 max-line-length=88
 
 extension-pkg-whitelist =
+    win32file,
+    win32api,
     pymssql,
     numpy,
-    win32file,
-    tensorflow,
-    tensorflow.__version__,
-    tensorflow.data.experimental,
     scipy.special,
-    win32api,
     pynetdicom.sop_class,
-    streamlit

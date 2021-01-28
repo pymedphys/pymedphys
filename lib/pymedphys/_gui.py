@@ -39,9 +39,7 @@ def fill_streamlit_credentials():
 
 
 def main(args):
-    """Boot up the pymedphys GUI
-
-    """
+    """Boot up the pymedphys GUI"""
     fill_streamlit_credentials()
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
