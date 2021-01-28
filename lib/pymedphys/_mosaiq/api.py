@@ -13,16 +13,14 @@
 # limitations under the License.
 
 
-import contextlib
 from typing import Dict, Generator, Optional, Tuple
-
-from pymedphys._imports import pymssql  # pylint: disable = unused-import
 
 from . import connect as _connect
 from . import credentials as _credentials
 
+Connection = _connect.Connection
 
-@contextlib.contextmanager
+
 def connect(
     hostname: str,
     port: int = 1433,
@@ -30,7 +28,7 @@ def connect(
     alias: Optional[str] = None,
     username: Optional[str] = None,
     password: Optional[str] = None,
-) -> "pymssql.Cursor":
+) -> Connection:
     """Connect to a Mosaiq SQL server.
 
     The first time running this function on a system will result in a
@@ -38,6 +36,10 @@ def connect(
     will be stored within the operating system's password storage
     facilities. Subsequent calls to this function will pull from that
     password storage in order to connect.
+
+    Can optionally be called as a context manager. This will have the
+    extra benefit of closing the database connection once leaving the
+    context manager.
 
     Parameters
     ----------
@@ -62,9 +64,12 @@ def connect(
 
     Returns
     -------
-    pymssql.Cursor
-        A database cursor. This cursor can be passed to
+    pymedphys.mosaiq.Connection
+        A database connection. This connection can be passed to
         ``pymedphys.mosaiq.execute`` to be able to run queries.
+
+        The method ``close`` can be called on this object to close the
+        connection.
 
     """
     if username is None and password is None:
@@ -76,26 +81,22 @@ def connect(
             "Must either provide both username and password, or neither of them."
         )
 
-    try:
-        conn = _connect.connect_with_credential(
-            username, password, hostname=hostname, port=port, database=database
-        )
-        cursor = conn.cursor()
-        yield cursor
+    connection = _connect.connect_with_credentials(
+        username, password, hostname=hostname, port=port, database=database
+    )
 
-    finally:
-        conn.close()
+    return connection
 
 
 def execute(
-    cursor: "pymssql.Cursor", query: str, parameters: Dict = None
+    connection: Connection, query: str, parameters: Dict = None
 ) -> Generator[Tuple[str, ...], None, None]:
     """Execute SQL queries on a Mosaiq database.
 
     Parameters
     ----------
-    cursor : pymssql.Cursor
-        A database cursor. This can be retrieved by calling
+    connection : pymedphys.mosaiq.Connection
+        A database connection. This can be retrieved by calling
         ``pymedphys.mosaiq.connect``
     query : str
         The SQL query to execute. Do not parse Python variables directly
@@ -120,11 +121,14 @@ def execute(
 
     Examples
     --------
+    Directly calling the connection object and listing all patients that
+    have the last name of "PHANTOM".
+
     >>> import pymedphys.mosaiq
-    >>> cursor = pymedphys.mosaiq.connect('msqsql')  # doctest: +SKIP
+    >>> connection = pymedphys.mosaiq.connect('msqsql')  # doctest: +SKIP
 
     >>> results = pymedphys.mosaiq.execute(
-    ...     cursor,
+    ...     connection,
     ...     '''
     ...     SELECT
     ...         Ident.IDA,
@@ -145,17 +149,44 @@ def execute(
      ('012534', 'PHANTOM', 'QUASAR4D'),
      ('987654', 'PHANTOM', 'RESPIRATORY'),
      ('654325', 'PHANTOM', 'RW3')]
+
+    Connecting via a context manager and using pandas to present the
+    results as a table.
+
+    >>> import pandas as pd
+    >>> import pymedphys.mosaiq
+
+    >>> with pymedphys.mosaiq.connect('msqsql') as connection:  # doctest: +SKIP
+    ...     results = pymedphys.mosaiq.execute(
+    ...         connection,
+    ...         '''
+    ...         SELECT
+    ...             Ident.IDA,
+    ...             Chklist.Due_DtTm
+    ...         FROM Chklist, Staff, Ident
+    ...         WHERE
+    ...             Chklist.Pat_ID1 = Ident.Pat_ID1 AND
+    ...             Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+    ...             Staff.Last_Name = %(qcl_location)s AND
+    ...             Chklist.Complete = 0
+    ...         ''',
+    ...         {"qcl_location": "Physics_Check"},
+    ...     )
+    ...
+    ...     table = pd.DataFrame(
+    ...         data=results,
+    ...         columns=[
+    ...             "patient_id",
+    ...             "due",
+    ...         ],
+    ...     )
+
+    >>> table  # doctest: +SKIP
+      patient_id                 due
+    0     000000 2021-02-01 23:59:59
+    1     000001 2021-02-01 23:59:59
+    2     000002 2021-02-01 23:59:59
+    3     000003 2021-03-08 23:59:59
     """
 
-    try:
-        cursor.execute(query, parameters)
-    except Exception:
-        print(f"query:\n    {query}\nparameters:\n    {parameters}")
-        raise
-
-    while True:
-        row: Tuple[str, ...] = cursor.fetchone()
-        if row is None:
-            break
-
-        yield row
+    return connection.execute(query=query, parameters=parameters)

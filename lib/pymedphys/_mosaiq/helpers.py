@@ -24,9 +24,9 @@ import pymedphys._utilities.patient
 from . import api, constants
 
 
-def get_treatment_times(cursor, field_id):
+def get_treatment_times(connection, field_id):
     treatment_time_results = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             TrackTreatment.Create_DtTm,
@@ -45,12 +45,12 @@ def get_treatment_times(cursor, field_id):
     )
 
 
-def get_patient_fields(cursor, patient_id):
+def get_patient_fields(connection, patient_id):
     """Returns all of the patient fields for a given Patient ID."""
     patient_id = str(patient_id)
 
     patient_field_results = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             TxField.FLD_ID,
@@ -89,11 +89,11 @@ def get_patient_fields(cursor, patient_id):
     return table
 
 
-def get_patient_name(cursor, patient_id):
+def get_patient_name(connection, patient_id):
     patient_id = str(patient_id)
 
     patient_name_results = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             Patient.Last_Name,
@@ -127,9 +127,9 @@ def get_patient_name(cursor, patient_id):
     return patient_name
 
 
-def get_treatments(cursor, start, end, machine):
+def get_treatments(connection, start, end, machine):
     treatment_results = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             Ident.IDA,
@@ -184,9 +184,9 @@ def get_treatments(cursor, start, end, machine):
     return table
 
 
-def get_staff_name(cursor, staff_id):
+def get_staff_name(connection, staff_id):
     data = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             Staff.Initials,
@@ -217,9 +217,9 @@ def get_staff_name(cursor, staff_id):
     return results
 
 
-def get_qcls_by_date(cursor, location, start, end):
+def get_qcls_by_date(connection, location, start, end):
     data = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             Ident.IDA,
@@ -262,9 +262,9 @@ def get_qcls_by_date(cursor, location, start, end):
     return results
 
 
-def get_incomplete_qcls(cursor, location):
+def get_incomplete_qcls(connection, location):
     data = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             Ident.IDA,
@@ -300,49 +300,5 @@ def get_incomplete_qcls(cursor, location):
     )
 
     results = results.sort_values(by=["due"], ascending=True)
-
-    return results
-
-
-def get_incomplete_qcls_across_sites(cursors, servers, centres, locations):
-    results = pd.DataFrame()
-
-    for centre in centres:
-        cursor = cursors[servers[centre]]
-
-        incomplete_qcls = get_incomplete_qcls(cursor, locations[centre])
-        incomplete_qcls["centre"] = [centre] * len(incomplete_qcls)
-
-        results = results.append(incomplete_qcls)
-
-    results = results.sort_values(by="due")
-
-    return results
-
-
-def get_recently_completed_qcls_across_sites(
-    cursors, servers, centres, locations, days=7
-):
-    now = datetime.datetime.now()
-    days_ago = now - datetime.timedelta(days=days)
-    tomorrow = now + datetime.timedelta(days=1)
-
-    days_ago_string = "{} 00:00:00".format(days_ago.strftime("%Y-%m-%d"))
-    tomorrow_string = "{} 00:00:00".format(tomorrow.strftime("%Y-%m-%d"))
-
-    results = pd.DataFrame()
-
-    for centre in centres:
-        cursor = cursors[servers[centre]]
-
-        qcls = get_qcls_by_date(
-            cursor, locations[centre], days_ago_string, tomorrow_string
-        )
-
-        qcls["centre"] = [centre] * len(qcls)
-
-        results = results.append(qcls)
-
-    results = results.sort_values(by="actual_completed_time", ascending=False)
 
     return results

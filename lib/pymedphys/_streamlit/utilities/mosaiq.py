@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import Dict, Optional
 
 from pymedphys._imports import streamlit as st
+from typing_extensions import Literal
 
 from pymedphys._mosaiq import connect as _connect
 from pymedphys._mosaiq import credentials as _credentials
 
 
-def get_uncached_mosaiq_cursor(
+def get_uncached_mosaiq_connection(
     hostname: str,
     port: int = 1433,
     database: str = "MOSAIQ",
     alias: Optional[str] = None,
-):
-    """Get the Mosaiq SQL cursor.
+) -> _connect.Connection:
+    """Get the Mosaiq SQL database connection.
 
     User is prompted using the streamlit interface if needed credentials
     do not exist.
@@ -46,8 +47,8 @@ def get_uncached_mosaiq_cursor(
 
     Returns
     -------
-    cursor : pymssql.Cursor
-        The Mosaiq SQL cursor for the connection.
+    connection : pymedphys.mosaiq.connection
+        The Mosaiq SQL database connection.
 
     """
     if alias is None:
@@ -61,11 +62,10 @@ def get_uncached_mosaiq_cursor(
 
     if password:
         try:
-            conn = _connect.connect_with_credential(
+            connection = _connect.connect_with_credentials(
                 username, password, hostname=hostname, port=port, database=database
             )
-            cursor = conn.cursor()
-            return cursor
+            return connection
         except _credentials.WrongUsernameOrPassword as e:
             st.write(e)
 
@@ -109,10 +109,10 @@ def get_uncached_mosaiq_cursor(
 
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
-def get_cached_mosaiq_cursor(
+def get_cached_mosaiq_connection(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
-):
-    """A streamlit cached version of ``get_uncached_mosaiq_cursor``.
+) -> _connect.Connection:
+    """A streamlit cached version of ``get_uncached_mosaiq_connection``.
 
     Parameters
     ----------
@@ -129,21 +129,21 @@ def get_cached_mosaiq_cursor(
 
     Returns
     -------
-    cursor : pymssql.Cursor
-        The Mosaiq SQL cursor for the connection.
+    connection : pymedphys.mosaiq.Connection
+        The Mosaiq SQL connection for the database.
     """
-    return get_uncached_mosaiq_cursor(
+    return get_uncached_mosaiq_connection(
         hostname=hostname, port=port, database=database, alias=alias
     )
 
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
-def get_cached_mosaiq_cursor_in_dict(
+def get_cached_mosaiq_connection_in_dict(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
-):
-    """A streamlit cached version of ``get_uncached_mosaiq_cursor`` with mutable output.
+) -> Dict[Literal["connection"], _connect.Connection]:
+    """A streamlit cached version of ``get_uncached_mosaiq_connection`` with mutable output.
 
-    This is designed so that the cached cursor can be mutated as needed
+    This is designed so that the cached connection can be mutated as needed
     within the calling code.
 
     Parameters
@@ -161,12 +161,12 @@ def get_cached_mosaiq_cursor_in_dict(
 
     Returns
     -------
-    Dict["cursor", pymssql.Cursor]
-        A dictionary containing the Mosaiq SQL cursor for the connection.
+    Dict["connection", pymedphys.mosaiq.Connection]
+        A dictionary containing the Mosaiq SQL connection for the database.
 
     """
     return {
-        "cursor": get_uncached_mosaiq_cursor(
+        "connection": get_uncached_mosaiq_connection(
             hostname=hostname, port=port, database=database, alias=alias
         )
     }

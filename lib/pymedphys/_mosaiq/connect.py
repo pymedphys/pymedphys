@@ -17,18 +17,73 @@
 """A toolbox for connecting to Mosaiq SQL.
 """
 
+from typing import Dict, Generator, Tuple
+
 from pymedphys._imports import pymssql
 
 from . import credentials as _credentials
 
 
-def connect_with_credential(
+class Connection:
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        hostname: str,
+        port: int = 1433,
+        database: str = "MOSAIQ",
+    ):
+        try:
+            self._pymssql_connection = pymssql.connect(
+                hostname, username, password, database=database, port=port
+            )
+        except pymssql.OperationalError as error:
+            error_message = error.args[0][1]
+            if error_message.startswith(b"Login failed for user"):
+                raise _credentials.WrongUsernameOrPassword(
+                    "Wrong credentials"
+                ) from error
+
+            raise
+
+        self._cursor = self._pymssql_connection.cursor()
+
+    def execute(
+        self, query: str, parameters: Dict = None
+    ) -> Generator[Tuple[str, ...], None, None]:
+        try:
+            self._cursor.execute(query, parameters)
+        except Exception:
+            print(f"query:\n    {query}\nparameters:\n    {parameters}")
+            raise
+
+        while True:
+            row: Tuple[str, ...] = self._cursor.fetchone()
+            if row is None:
+                break
+
+            yield row
+
+    def close(self):
+        self._pymssql_connection.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def __hash__(self):
+        return id(self._cursor)
+
+
+def connect_with_credentials(
     username: str,
     password: str,
     hostname: str,
     port: int = 1433,
     database: str = "MOSAIQ",
-) -> "pymssql.Connection":
+) -> Connection:
     """Connects to a Mosaiq database.
 
     Parameters
@@ -53,16 +108,12 @@ def connect_with_credential(
         If the wrong credentials are provided.
 
     """
+    connection = Connection(
+        username=username,
+        password=password,
+        hostname=hostname,
+        port=port,
+        database=database,
+    )
 
-    try:
-        conn = pymssql.connect(
-            hostname, username, password, database=database, port=port
-        )
-    except pymssql.OperationalError as error:
-        error_message = error.args[0][1]
-        if error_message.startswith(b"Login failed for user"):
-            raise _credentials.WrongUsernameOrPassword("Wrong credentials") from error
-
-        raise
-
-    return conn
+    return connection

@@ -161,8 +161,8 @@ def calc_metersetmap(
     >>> import pymedphys
     >>>
     >>> def metersetmap_from_mosaiq(msq_server_name, field_id):
-    ...     with pymedphys.mosaiq.connect(msq_server_name) as cursor:
-    ...         delivery = pymedphys.Delivery.from_mosaiq(cursor, field_id)
+    ...     with pymedphys.mosaiq.connect(msq_server_name) as connection:
+    ...         delivery = pymedphys.Delivery.from_mosaiq(connection, field_id)
     ...
     ...     grid = pymedphys.metersetmap.grid()
     ...     metersetmap = delivery.metersetmap()

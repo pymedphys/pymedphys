@@ -28,9 +28,9 @@ from pymedphys._experimental.chartchecks.helpers import (
 
 
 def show_incomplete_weekly_checks():
-    cursor = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
-    incomplete = get_incomplete_qcls(cursor, "Physics Resident")
+    incomplete = get_incomplete_qcls(connection, "Physics Resident")
     todays_date = date.today() + timedelta(days=3)
     todays_date = todays_date.strftime("%b %d, %Y")
     # todays_date = "Dec 4, 2020"
@@ -45,10 +45,10 @@ def show_incomplete_weekly_checks():
 
 
 def compare_delivered_to_planned(patient):
-    cursor = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
-    delivered = get_all_treatment_history_data(cursor, patient)
-    planned = get_all_treatment_data(cursor, patient)
+    delivered = get_all_treatment_history_data(connection, patient)
+    planned = get_all_treatment_data(connection, patient)
     patient_results = pd.DataFrame()
     try:
         # current_fx = max(delivered_values["fx"])
