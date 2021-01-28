@@ -72,12 +72,12 @@ The PyMedPhys documentation is split into five categories:
 .. _`App Users Guide`: https://docs.pympedphys.com/appusers/index.rst
 
 2. `Library Users Guide`_: for those building their own Python apps who wish to
-   incorporate elements of the PyMedPhys library
+   incorporate elements of the PyMedPhys library.
 
 .. _`Library Users Guide`: https://docs.pympedphys.com/libusers/index.rst
 
-3. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made Command Line
-   Interface (e.g. to help automate existing workflows with minimal
+3. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
+   line interface (e.g. to help automate existing workflows with minimal
    programming).
 
 .. _`CLI Users Guide`: https://docs.pympedphys.com/cliusers/index.rst
