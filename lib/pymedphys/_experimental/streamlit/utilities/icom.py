@@ -99,7 +99,8 @@ def _get_service_icom_paths(root_directory):
     service_mode_directories = [
         item.name
         for item in root_directory.glob("*")
-        if item.name.startswith("Deliver")
+        # Hardcoded the Mosaiq ID in for now
+        if item.name.startswith("Deliver") or item.name.startswith("WLutz")
     ]
 
     service_icom_paths = []
