@@ -430,7 +430,7 @@ def get_grid(
 
     Examples
     --------
-    See `pymedphys.metersetmap.calculate`_.
+    See :func:`pymedphys.metersetmap.calculate`.
     """
 
     leaf_pair_widths = np.array(leaf_pair_widths)
@@ -493,7 +493,7 @@ def display_metersetmap(
 
     Examples
     --------
-    See `pymedphys.metersetmap.calculate`_.
+    See :func:`pymedphys.metersetmap.calculate`.
     """
     if grid_resolution is None:
         grid_resolution = grid["mlc"][1] - grid["mlc"][0]

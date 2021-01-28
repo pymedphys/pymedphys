@@ -13,3 +13,4 @@ itself. Below is the documentation for a range of these libraries.
     metersetmap
     electronfactors
     experimental/index
+    ../../genindex
