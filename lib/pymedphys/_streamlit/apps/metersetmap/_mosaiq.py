@@ -14,6 +14,7 @@
 
 from pymedphys._imports import streamlit as st
 
+import pymedphys._mosaiq.api as pp_mosaiq
 import pymedphys._mosaiq.credentials as _pp_msq_credentials
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit.apps.metersetmap import _config, _deliveries
@@ -21,12 +22,12 @@ from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
 
-@st.cache()
+@st.cache(hash_funcs={pp_mosaiq.Connection: id})
 def get_patient_fields(connection, patient_id):
     return msq_helpers.get_patient_fields(connection, patient_id)
 
 
-@st.cache()
+@st.cache(hash_funcs={pp_mosaiq.Connection: id})
 def get_patient_name(connection, patient_id):
     return msq_helpers.get_patient_name(connection, patient_id)
 

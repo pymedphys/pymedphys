@@ -73,9 +73,6 @@ class Connection:
     def __exit__(self, *_):
         self.close()
 
-    def __hash__(self):
-        return id(self._cursor)
-
 
 def connect_with_credentials(
     username: str,

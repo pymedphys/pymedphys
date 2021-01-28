@@ -15,8 +15,6 @@
 """Some helper utility functions for accessing Mosaiq SQL.
 """
 
-import datetime
-
 from pymedphys._imports import pandas as pd
 
 import pymedphys._utilities.patient
