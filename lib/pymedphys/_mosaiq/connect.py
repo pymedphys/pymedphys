@@ -17,7 +17,7 @@
 """A toolbox for connecting to Mosaiq SQL.
 """
 
-from typing import Dict, List, Tuple, cast
+from typing import Dict, List, Tuple
 
 from pymedphys._imports import pymssql
 
@@ -70,7 +70,8 @@ class Cursor:
         self._cursor.execute(query, parameters)
 
     def fetchall(self) -> List[Tuple[str, ...]]:
-        results = cast(List[Tuple[str, ...]], self._cursor.fetchall())
+        results: List[Tuple[str, ...]] = self._cursor.fetchall()
+
         return results
 
     def __enter__(self):

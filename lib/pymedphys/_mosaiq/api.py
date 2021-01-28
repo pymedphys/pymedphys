@@ -192,5 +192,6 @@ def execute(
 
     with connection.cursor() as cursor:
         cursor.execute(query=query, parameters=parameters)
+        results: List[Tuple[str, ...]] = cursor.fetchall()
 
-        return cursor.fetchall()
+        return results
