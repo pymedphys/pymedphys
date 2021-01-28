@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymedphys._imports import pymssql
 from pymedphys._imports import streamlit as st
 
 import pymedphys._mosaiq.credentials as _pp_msq_credentials

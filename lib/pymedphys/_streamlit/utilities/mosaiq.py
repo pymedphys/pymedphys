@@ -105,7 +105,7 @@ def get_uncached_mosaiq_connection(
 
     st.stop()
 
-    return None  # It's okay that this is unreachable, it's there to make pylint happy.
+    raise ValueError("This should never be reached")
 
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-from pymedphys._imports import pymssql
 from pymedphys._imports import streamlit as st
 
 import pymedphys
