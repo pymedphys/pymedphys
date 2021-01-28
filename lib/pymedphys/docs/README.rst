@@ -200,3 +200,9 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 .. _`Release Notes`: ./CHANGELOG.md
+
+.. _`App Users Guide`: https://docs.pymedphys.com/app/index.rst
+.. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.rst
+.. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.rst
+.. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.rst
+.. _`General`: https://docs.pymedphys.com/general/index.rst
