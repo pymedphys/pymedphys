@@ -35,7 +35,7 @@ def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
 
 
-@st.cache(allow_output_mutation=True)
+@st.cache(hash_funcs={pymedphys.mosaiq.Connection: id}, allow_output_mutation=True)
 def delivery_from_mosaiq(connection_and_field_id):
     connection, field_id = connection_and_field_id
     return pymedphys.Delivery.from_mosaiq(connection, field_id)
