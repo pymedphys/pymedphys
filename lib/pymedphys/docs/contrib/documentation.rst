@@ -17,8 +17,9 @@ Starting a live update documentation server
 -------------------------------------------
 
 Assuming you have set up your machine according to the appropriate development
-guide (:doc:`setup-linux`, :doc:`setup-mac`, :doc:`setup-win`) you can then run
-the following within a terminal to build the documentation:
+guide (:doc:`setups/setup-win`, :doc:`setups/setup-linux`,
+:doc:`setups/setup-mac`) you can then run the following within a terminal to
+build the documentation:
 
 .. code:: bash
 
