@@ -67,7 +67,7 @@ Documentation
 The PyMedPhys documentation is split into five categories:
 
 1. `App Users Guide`_: for those who only wish to use ready-made PyMedPhys
-   GUI tools.
+   tools.
 
 2. `Library Users Guide`_: for those building their own Python apps who wish to
    incorporate elements of the PyMedPhys library.

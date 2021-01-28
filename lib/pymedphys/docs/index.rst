@@ -14,6 +14,12 @@
 
 .. toctree::
     :hidden:
+    :maxdepth: 1
+
+    release-notes
+
+.. toctree::
+    :hidden:
     :maxdepth: 3
     :caption: App Users Guide
 
