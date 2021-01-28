@@ -194,4 +194,4 @@ def execute(
         cursor.execute(query=query, parameters=parameters)
         results: List[Tuple[str, ...]] = cursor.fetchall()
 
-        return results
+    return results
