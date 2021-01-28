@@ -75,13 +75,12 @@ def main():
     if "rp" in files:
 
         # Create a dataframe of plan information from DICOM RP file
-        # try:
-        dicom_table = get_all_dicom_treatment_info(files["rp"])
-        dicom_table = dicom_table.sort_values(["field_label"])
-        st.text(dicom_table.iloc[0]["wedge_MU"])
-        # except AttributeError:
-        #     st.write("Please select a new RP file.")
-        #     st.stop()
+        try:
+            dicom_table = get_all_dicom_treatment_info(files["rp"])
+            dicom_table = dicom_table.sort_values(["field_label"])
+        except AttributeError:
+            st.write("Please select a new RP file.")
+            st.stop()
 
         # Using MRN from RP file, find patient in MOSAIQ and perform query
         mrn = dicom_table.iloc[0]["mrn"]

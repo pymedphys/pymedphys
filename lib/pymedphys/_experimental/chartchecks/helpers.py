@@ -78,15 +78,17 @@ def get_all_dicom_treatment_info(dicomFile):
 
     for fraction in dicom[0x300A, 0x0070]:
         for beam in fraction.ReferencedBeamSequence:
-            bn = (
-                beam.ReferencedBeamNumber
-            )  # pull beam reference number for simplification
-            doseRef = fraction.ReferencedDoseReferenceSequence[
+            bn = beam.ReferencedBeamNumber
+            dose_ref_number = fraction.ReferencedDoseReferenceSequence[
                 0
-            ].ReferencedDoseReferenceNumber  # pull dose reference number for simplification
+            ].ReferencedDoseReferenceNumber
+            dose_ref = dicom.DoseReferenceSequence[dose_ref_number - 1]
             fn = fraction.FractionGroupNumber
+            field = dicom.BeamSequence[bn - 1]
+            first_cp = field.ControlPointSequence[0]
 
-            colls = get_dicom_coll_info(dicom.BeamSequence[bn - 1])
+            colls = get_dicom_coll_info(field)
+            iso = first_cp.IsocenterPosition
 
             dicom_beam = {
                 "site": dicom.RTPlanName,
@@ -94,84 +96,46 @@ def get_all_dicom_treatment_info(dicomFile):
                 "first_name": dicom.PatientName.given_name,
                 "last_name": dicom.PatientName.family_name,
                 "dob": dicom.PatientBirthDate,
-                "dose_reference": doseRef,
-                "field_label": dicom.BeamSequence[bn - 1].BeamName,
-                "field_name": dicom.BeamSequence[bn - 1].BeamDescription,
-                "machine": dicom.BeamSequence[bn - 1].TreatmentMachineName,
+                "dose_reference": dose_ref_number,
+                "field_label": field.BeamName,
+                "field_name": field.BeamDescription,
+                "machine": field.TreatmentMachineName,
                 "rx": prescriptionDescription[fn - 1],
-                "modality": dicom.BeamSequence[bn - 1].RadiationType,
+                "modality": field.RadiationType,
                 "position": dicom.PatientSetupSequence[0].PatientPosition,
-                "fraction_dose [cGy]": dicom.DoseReferenceSequence[
-                    doseRef - 1
-                ].TargetPrescriptionDose
+                "fraction_dose [cGy]": dose_ref.TargetPrescriptionDose
                 * 100
                 / fraction.NumberOfFractionsPlanned,
-                "total_dose [cGy]": dicom.DoseReferenceSequence[
-                    doseRef - 1
-                ].TargetPrescriptionDose
-                * 100,
+                "total_dose [cGy]": dose_ref.TargetPrescriptionDose * 100,
                 "fractions": fraction.NumberOfFractionsPlanned,
                 "BEAM NUMBER": bn,
-                "energy [MV]": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .NominalBeamEnergy,
+                "energy [MV]": first_cp.NominalBeamEnergy,
                 "monitor_units": beam.BeamMeterset,
-                "meterset_rate": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .DoseRateSet,
-                "number_of_wedges": dicom.BeamSequence[bn - 1].NumberOfWedges,
-                "block": dicom.BeamSequence[bn - 1].NumberOfBlocks,
-                "compensator": dicom.BeamSequence[bn - 1].NumberOfCompensators,
-                "bolus": dicom.BeamSequence[bn - 1].NumberOfBoli,
-                "gantry_angle": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .GantryAngle,
-                "collimator_angle": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .BeamLimitingDeviceAngle,
-                "field_type": dicom.BeamSequence[bn - 1].BeamType,
-                "ssd [cm]": round(
-                    dicom.BeamSequence[bn - 1]
-                    .ControlPointSequence[0]
-                    .SourceToSurfaceDistance
-                    / 10,
-                    1,
-                ),
-                "sad [cm]": round(
-                    dicom.BeamSequence[bn - 1].SourceAxisDistance / 10, 1
-                ),
-                "iso_x [cm]": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .IsocenterPosition[0]
-                / 10,
-                "iso_y [cm]": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .IsocenterPosition[1]
-                / 10,
-                "iso_z [cm]": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .IsocenterPosition[2]
-                / 10,
+                "meterset_rate": first_cp.DoseRateSet,
+                "number_of_wedges": field.NumberOfWedges,
+                "block": field.NumberOfBlocks,
+                "compensator": field.NumberOfCompensators,
+                "bolus": field.NumberOfBoli,
+                "gantry_angle": first_cp.GantryAngle,
+                "collimator_angle": first_cp.BeamLimitingDeviceAngle,
+                "field_type": field.BeamType,
+                "ssd [cm]": round(first_cp.SourceToSurfaceDistance / 10, 1),
+                "sad [cm]": round(field.SourceAxisDistance / 10, 1),
+                "iso_x [cm]": iso[0] / 10,
+                "iso_y [cm]": iso[1] / 10,
+                "iso_z [cm]": iso[2] / 10,
                 "field_x [cm]": round(colls["coll_x2"] - colls["coll_x1"], 1),
                 "coll_x1 [cm]": round(colls["coll_x1"], 1),
                 "coll_x2 [cm]": round(colls["coll_x2"], 1),
                 "field_y [cm]": round(colls["coll_y2"] - colls["coll_y1"], 1),
                 "coll_y1 [cm]": round(colls["coll_y1"], 1),
                 "coll_y2 [cm]": round(colls["coll_y2"], 1),
-                "couch_vrt [cm]": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopVerticalPosition,
-                "couch_lat [cm]": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopLateralPosition,
-                "couch_lng [cm]": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopLongitudinalPosition,
-                "couch_angle": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopEccentricAngle,
+                "couch_vrt [cm]": first_cp.TableTopVerticalPosition,
+                "couch_lat [cm]": first_cp.TableTopLateralPosition,
+                "couch_lng [cm]": first_cp.TableTopLongitudinalPosition,
+                "couch_angle": first_cp.TableTopEccentricAngle,
                 "technique": "",
-                "control_points": dicom.BeamSequence[bn - 1].NumberOfControlPoints,
+                "control_points": field.NumberOfControlPoints,
             }
 
             if dicom_beam["number_of_wedges"] != 0:
