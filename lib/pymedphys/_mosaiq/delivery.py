@@ -137,7 +137,7 @@ def get_mosaiq_delivery_details(
         "field_name": field_name,
     }
 
-    sql_result = list(api.execute(connection, execute_string, parameters))
+    sql_result = api.execute(connection, execute_string, parameters)
 
     if len(sql_result) > 1:
         for result in sql_result[1::]:
