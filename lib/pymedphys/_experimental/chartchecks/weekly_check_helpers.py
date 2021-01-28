@@ -117,7 +117,7 @@ def plot_couch_positions(delivered):
     couches = pd.DataFrame()
     couches_df = pd.DataFrame()
     for direction in ["couch_vrt", "couch_lat", "couch_lng"]:
-        couches["fx"] = delivered.index
+        couches["fx"] = delivered["fx"]
         couches["direction"] = direction
         couches["position"] = delivered[direction]
         couches_df = couches_df.append(couches)
@@ -128,6 +128,7 @@ def plot_couch_positions(delivered):
         title="<b>Couch Positions<b>",
         yaxis_title="Difference from First Tx [cm]",
         xaxis_title="Fx",
+        xaxis=dict(tickmode="linear", tick0=0, dtick=1),
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -162,5 +163,6 @@ def plot_couch_deltas(delivered):
         title="<b>Couch Deltas for Each Beam On<b>",
         yaxis_title="Difference from First Tx [cm]",
         xaxis_title="Fx",
+        xaxis=dict(tickmode="linear", tick0=0, dtick=1),
     )
     st.plotly_chart(fig, use_container_width=True)
