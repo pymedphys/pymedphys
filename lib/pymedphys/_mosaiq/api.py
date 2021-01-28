@@ -47,13 +47,13 @@ def connect(
     hostname : str
         The IP address or hostname of the SQL server.
     port : int, optional
-        The port at which the SQL server is hosted, by default 1433
+        The port at which the SQL server is hosted, by default ``1433``
     database : str, optional
-        The MSSQL database name, by default "MOSAIQ"
+        The MSSQL database name, by default ``"MOSAIQ"``
     alias : Optional[str], optional
         A human readable representation of the server, this is the name
         of the server presented to the user should there not be
-        credentials already on the machine, by default "hostname:port/database"
+        credentials already on the machine, by default ``"hostname:port/database"``
     username : Optional[str], optional
         Provide a username to login to the database with, by default the
         username is either pulled from the system's credential storage,
@@ -65,12 +65,16 @@ def connect(
 
     Returns
     -------
-    pymedphys.mosaiq.Connection
+    connection : pymedphys.mosaiq.Connection
         A database connection. This connection can be passed to
-        ``pymedphys.mosaiq.execute`` to be able to run queries.
+        :func:`pymedphys.mosaiq.execute` to be able to run queries.
 
-        The method ``close`` can be called on this object to close the
+        The method ``close()`` can be called on this object to close the
         database connection.
+
+    Examples
+    --------
+    See :func:`pymedphys.mosaiq.execute` for examples of usage.
 
     """
     if username is None and password is None:
@@ -121,7 +125,7 @@ def execute(
     Examples
     --------
     Directly calling the connection object and listing all patients that
-    have the last name of "PHANTOM".
+    have the last name of ``"PHANTOM"``.
 
     >>> import pymedphys.mosaiq
     >>> connection = pymedphys.mosaiq.connect('msqsql')  # doctest: +SKIP
