@@ -29,7 +29,7 @@ def connect(
     alias: Optional[str] = None,
     username: Optional[str] = None,
     password: Optional[str] = None,
-) -> _connect.Connection:
+) -> Connection:
     """Connect to a Mosaiq SQL server.
 
     The first time running this function on a system will result in a
