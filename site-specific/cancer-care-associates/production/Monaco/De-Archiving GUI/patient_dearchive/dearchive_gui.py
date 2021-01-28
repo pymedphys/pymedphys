@@ -24,8 +24,7 @@ from PyQt4 import QtCore, QtGui
 
 
 class ProgressBarWorker(QtCore.QThread):
-    """Thread for determining amount of data transfered.
-    """
+    """Thread for determining amount of data transfered."""
 
     percent = QtCore.pyqtSignal(object)
 
@@ -45,8 +44,7 @@ class ProgressBarWorker(QtCore.QThread):
 
 
 class DeArchiveWorker(QtCore.QThread):
-    """Thread for completing the de-archive task.
-    """
+    """Thread for completing the de-archive task."""
 
     error = QtCore.pyqtSignal(object)
     success = QtCore.pyqtSignal()

@@ -227,8 +227,7 @@ class SingleProfile(ProfileMixin):
 
     @property
     def _grounded_values(self):
-        """Ground the profile such that the lowest value is 0.
-        """
+        """Ground the profile such that the lowest value is 0."""
         min_val = self.values.min()
         grounded_values = self.values - min_val
         return grounded_values

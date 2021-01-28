@@ -68,8 +68,7 @@ def filter_identifying_keywords(keywords_to_leave_unchanged, identifying_keyword
 
 
 def non_private_tags_in_dicom_dataset(ds):
-    """Return all non-private tags from a DICOM dataset.
-    """
+    """Return all non-private tags from a DICOM dataset."""
 
     non_private_tags = []
 
@@ -110,8 +109,7 @@ def unknown_tags_in_dicom_dataset(ds):
 def anonymise_tags(
     ds_anon, keywords_to_anonymise, replace_values, replacement_strategy=None
 ):
-    """Anonymise all desired DICOM elements.
-    """
+    """Anonymise all desired DICOM elements."""
     if not replace_values and replacement_strategy is not None:
         logging.warning(
             "Conflicting approach to anonymisation specified, a replacement strategy was specified in addition to a directive"

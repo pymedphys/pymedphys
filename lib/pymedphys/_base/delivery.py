@@ -160,9 +160,10 @@ class DeliveryBase(DeliveryNamedTuple):
                 raise ValueError("Duplicate gantry angles not yet supported")
 
         try:
-            assert np.all(np.sum(masks, axis=0) == 1), (
-                "Not all beams were captured by the gantry tolerance of "
-                " {}".format(gantry_tol)
+            assert np.all(
+                np.sum(masks, axis=0) == 1
+            ), "Not all beams were captured by the gantry tolerance of " " {}".format(
+                gantry_tol
             )
         except AssertionError:
             if not allow_missing_angles:

@@ -262,8 +262,7 @@ class PinnacleExport:
             convert_image(image, export_path)
 
     def log_images(self):
-        """Outputs all images found in the Pinnacle data to the log.
-        """
+        """Outputs all images found in the Pinnacle data to the log."""
 
         for i in self.images:
             image_header = i.image_header
@@ -287,15 +286,13 @@ class PinnacleExport:
             self.logger.info("%s: %s %s", modality, series_uid, series_date_time)
 
     def log_plan_names(self):
-        """Outputs all plans found in the Pinnacle data to the log.
-        """
+        """Outputs all plans found in the Pinnacle data to the log."""
 
         for p in self.plans:
             self.logger.info(p.plan_info["PlanName"])
 
     def log_trial_names(self):
-        """Outputs all trials found in the Pinnacle data to the log.
-        """
+        """Outputs all trials found in the Pinnacle data to the log."""
 
         for p in self.plans:
             self.logger.info("### %s ###", p.plan_info["PlanName"])

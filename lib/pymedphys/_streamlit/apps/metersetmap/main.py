@@ -97,8 +97,8 @@ def trf_status(linac_id, backup_directory):
 def show_status_indicators(config):
     if st.sidebar.button("Check status of iCOM and backups"):
         try:
-            linac_icom_live_stream_directories = _config.get_icom_live_stream_directories(
-                config
+            linac_icom_live_stream_directories = (
+                _config.get_icom_live_stream_directories(config)
             )
             linac_indexed_backups_directory = _config.get_indexed_backups_directory(
                 config
@@ -650,34 +650,42 @@ def main():
         """
     )
 
-    st.write(
-        """
-        ### Reference
-        """
-    )
+    st.write("---")
 
-    reference_results = get_input_data_ui(
-        overview_updater_map,
-        data_method_map,
-        default_reference,
-        "reference",
-        advanced_mode,
-    )
+    ref_col, eval_col = st.beta_columns(2)
 
-    st.write(
-        """
-        ### Evaluation
-        """
-    )
+    with ref_col:
+        st.write(
+            """
+            ### Reference
+            """
+        )
 
-    evaluation_results = get_input_data_ui(
-        overview_updater_map,
-        data_method_map,
-        default_evaluation,
-        "evaluation",
-        advanced_mode,
-        **reference_results,
-    )
+        reference_results = get_input_data_ui(
+            overview_updater_map,
+            data_method_map,
+            default_reference,
+            "reference",
+            advanced_mode,
+        )
+
+    with eval_col:
+        st.write(
+            """
+            ### Evaluation
+            """
+        )
+
+        evaluation_results = get_input_data_ui(
+            overview_updater_map,
+            data_method_map,
+            default_evaluation,
+            "evaluation",
+            advanced_mode,
+            **reference_results,
+        )
+
+    st.write("---")
 
     st.write(
         """

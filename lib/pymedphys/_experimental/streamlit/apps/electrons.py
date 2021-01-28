@@ -116,13 +116,15 @@ def main():
     if patient_id == "":
         st.stop()
 
-    rccc_string_search_pattern = r"\\monacoda\FocalData\RCCC\1~Clinical\*~{}\plan\*\*tel.1".format(
-        patient_id
+    rccc_string_search_pattern = (
+        r"\\monacoda\FocalData\RCCC\1~Clinical\*~{}\plan\*\*tel.1".format(patient_id)
     )
     rccc_filepath_list = glob(rccc_string_search_pattern)
 
-    nbccc_string_search_pattern = r"\\tunnel-nbcc-monaco\FOCALDATA\NBCCC\1~Clinical\*~{}\plan\*\*tel.1".format(
-        patient_id
+    nbccc_string_search_pattern = (
+        r"\\tunnel-nbcc-monaco\FOCALDATA\NBCCC\1~Clinical\*~{}\plan\*\*tel.1".format(
+            patient_id
+        )
     )
     nbccc_filepath_list = glob(nbccc_string_search_pattern)
 

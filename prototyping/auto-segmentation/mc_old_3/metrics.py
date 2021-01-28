@@ -24,34 +24,34 @@ import lookup_tables  # pylint: disable=relative-beyond-top-level
 def compute_surface_distances(mask_gt, mask_pred, spacing_mm):
     """Compute closest distances from all surface points to the other surface.
 
-  Finds all surface elements "surfels" in the ground truth mask `mask_gt` and
-  the predicted mask `mask_pred`, computes their area in mm^2 and the distance
-  to the closest point on the other surface. It returns two sorted lists of
-  distances together with the corresponding surfel areas. If one of the masks
-  is empty, the corresponding lists are empty and all distances in the other
-  list are `inf`.
+    Finds all surface elements "surfels" in the ground truth mask `mask_gt` and
+    the predicted mask `mask_pred`, computes their area in mm^2 and the distance
+    to the closest point on the other surface. It returns two sorted lists of
+    distances together with the corresponding surfel areas. If one of the masks
+    is empty, the corresponding lists are empty and all distances in the other
+    list are `inf`.
 
-  Args:
-    mask_gt: 3-dim Numpy array of type bool. The ground truth mask.
-    mask_pred: 3-dim Numpy array of type bool. The predicted mask.
-    spacing_mm: 3-element list-like structure. Voxel spacing in x0, x1 and x2
-        direction.
+    Args:
+      mask_gt: 3-dim Numpy array of type bool. The ground truth mask.
+      mask_pred: 3-dim Numpy array of type bool. The predicted mask.
+      spacing_mm: 3-element list-like structure. Voxel spacing in x0, x1 and x2
+          direction.
 
-  Returns:
-    A dict with:
-    "distances_gt_to_pred": 1-dim numpy array of type float. The distances in mm
-        from all ground truth surface elements to the predicted surface,
-        sorted from smallest to largest.
-    "distances_pred_to_gt": 1-dim numpy array of type float. The distances in mm
-        from all predicted surface elements to the ground truth surface,
-        sorted from smallest to largest.
-    "surfel_areas_gt": 1-dim numpy array of type float. The area in mm^2 of
-        the ground truth surface elements in the same order as
-        distances_gt_to_pred
-    "surfel_areas_pred": 1-dim numpy array of type float. The area in mm^2 of
-        the predicted surface elements in the same order as
-        distances_pred_to_gt
-  """
+    Returns:
+      A dict with:
+      "distances_gt_to_pred": 1-dim numpy array of type float. The distances in mm
+          from all ground truth surface elements to the predicted surface,
+          sorted from smallest to largest.
+      "distances_pred_to_gt": 1-dim numpy array of type float. The distances in mm
+          from all predicted surface elements to the ground truth surface,
+          sorted from smallest to largest.
+      "surfel_areas_gt": 1-dim numpy array of type float. The area in mm^2 of
+          the ground truth surface elements in the same order as
+          distances_gt_to_pred
+      "surfel_areas_pred": 1-dim numpy array of type float. The area in mm^2 of
+          the predicted surface elements in the same order as
+          distances_pred_to_gt
+    """
 
     # compute the area for all 256 possible surface elements
     # (given a 2x2x2 neighbourhood) according to the spacing_mm
@@ -186,20 +186,20 @@ def compute_surface_distances(mask_gt, mask_pred, spacing_mm):
 def compute_average_surface_distance(surface_distances):
     """Returns the average surface distance.
 
-  Computes the average surface distances by correctly taking the area of each
-  surface element into account. Call compute_surface_distances(...) before, to
-  obtain the `surface_distances` dict.
+    Computes the average surface distances by correctly taking the area of each
+    surface element into account. Call compute_surface_distances(...) before, to
+    obtain the `surface_distances` dict.
 
-  Args:
-    surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
-    "surfel_areas_gt", "surfel_areas_pred" created by
-    compute_surface_distances()
+    Args:
+      surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
+      "surfel_areas_gt", "surfel_areas_pred" created by
+      compute_surface_distances()
 
-  Returns:
-    A tuple with two float values: the average distance (in mm) from the
-    ground truth surface to the predicted surface and the average distance from
-    the predicted surface to the ground truth surface.
-  """
+    Returns:
+      A tuple with two float values: the average distance (in mm) from the
+      ground truth surface to the predicted surface and the average distance from
+      the predicted surface to the ground truth surface.
+    """
     distances_gt_to_pred = surface_distances["distances_gt_to_pred"]
     distances_pred_to_gt = surface_distances["distances_pred_to_gt"]
     surfel_areas_gt = surface_distances["surfel_areas_gt"]
@@ -216,20 +216,20 @@ def compute_average_surface_distance(surface_distances):
 def compute_robust_hausdorff(surface_distances, percent):
     """Computes the robust Hausdorff distance.
 
-  Computes the robust Hausdorff distance. "Robust", because it uses the
-  `percent` percentile of the distances instead of the maximum distance. The
-  percentage is computed by correctly taking the area of each surface element
-  into account.
+    Computes the robust Hausdorff distance. "Robust", because it uses the
+    `percent` percentile of the distances instead of the maximum distance. The
+    percentage is computed by correctly taking the area of each surface element
+    into account.
 
-  Args:
-    surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
-      "surfel_areas_gt", "surfel_areas_pred" created by
-      compute_surface_distances()
-    percent: a float value between 0 and 100.
+    Args:
+      surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
+        "surfel_areas_gt", "surfel_areas_pred" created by
+        compute_surface_distances()
+      percent: a float value between 0 and 100.
 
-  Returns:
-    a float value. The robust Hausdorff distance in mm.
-  """
+    Returns:
+      a float value. The robust Hausdorff distance in mm.
+    """
     distances_gt_to_pred = surface_distances["distances_gt_to_pred"]
     distances_pred_to_gt = surface_distances["distances_pred_to_gt"]
     surfel_areas_gt = surface_distances["surfel_areas_gt"]
@@ -258,21 +258,21 @@ def compute_robust_hausdorff(surface_distances, percent):
 def compute_surface_overlap_at_tolerance(surface_distances, tolerance_mm):
     """Computes the overlap of the surfaces at a specified tolerance.
 
-  Computes the overlap of the ground truth surface with the predicted surface
-  and vice versa allowing a specified tolerance (maximum surface-to-surface
-  distance that is regarded as overlapping). The overlapping fraction is
-  computed by correctly taking the area of each surface element into account.
+    Computes the overlap of the ground truth surface with the predicted surface
+    and vice versa allowing a specified tolerance (maximum surface-to-surface
+    distance that is regarded as overlapping). The overlapping fraction is
+    computed by correctly taking the area of each surface element into account.
 
-  Args:
-    surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
-      "surfel_areas_gt", "surfel_areas_pred" created by
-      compute_surface_distances()
-    tolerance_mm: a float value. The tolerance in mm
+    Args:
+      surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
+        "surfel_areas_gt", "surfel_areas_pred" created by
+        compute_surface_distances()
+      tolerance_mm: a float value. The tolerance in mm
 
-  Returns:
-    A tuple of two float values. The overlap fraction (0.0 - 1.0) of the ground
-    truth surface with the predicted surface and vice versa.
-  """
+    Returns:
+      A tuple of two float values. The overlap fraction (0.0 - 1.0) of the ground
+      truth surface with the predicted surface and vice versa.
+    """
     distances_gt_to_pred = surface_distances["distances_gt_to_pred"]
     distances_pred_to_gt = surface_distances["distances_pred_to_gt"]
     surfel_areas_gt = surface_distances["surfel_areas_gt"]
@@ -289,22 +289,22 @@ def compute_surface_overlap_at_tolerance(surface_distances, tolerance_mm):
 def compute_surface_dice_at_tolerance(surface_distances, tolerance_mm):
     """Computes the _surface_ DICE coefficient at a specified tolerance.
 
-  Computes the _surface_ DICE coefficient at a specified tolerance. Not to be
-  confused with the standard _volumetric_ DICE coefficient. The surface DICE
-  measaures the overlap of two surfaces instead of two volumes. A surface
-  element is counted as overlapping (or touching), when the closest distance to
-  the other surface is less or equal to the specified tolerance. The DICE
-  coefficient is in the range between 0.0 (no overlap) to 1.0 (perfect overlap).
+    Computes the _surface_ DICE coefficient at a specified tolerance. Not to be
+    confused with the standard _volumetric_ DICE coefficient. The surface DICE
+    measaures the overlap of two surfaces instead of two volumes. A surface
+    element is counted as overlapping (or touching), when the closest distance to
+    the other surface is less or equal to the specified tolerance. The DICE
+    coefficient is in the range between 0.0 (no overlap) to 1.0 (perfect overlap).
 
-  Args:
-    surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
-      "surfel_areas_gt", "surfel_areas_pred" created by
-      compute_surface_distances()
-    tolerance_mm: a float value. The tolerance in mm
+    Args:
+      surface_distances: dict with "distances_gt_to_pred", "distances_pred_to_gt"
+        "surfel_areas_gt", "surfel_areas_pred" created by
+        compute_surface_distances()
+      tolerance_mm: a float value. The tolerance in mm
 
-  Returns:
-    A float value. The surface DICE coefficient (0.0 - 1.0).
-  """
+    Returns:
+      A float value. The surface DICE coefficient (0.0 - 1.0).
+    """
     distances_gt_to_pred = surface_distances["distances_gt_to_pred"]
     distances_pred_to_gt = surface_distances["distances_pred_to_gt"]
     surfel_areas_gt = surface_distances["surfel_areas_gt"]
@@ -320,16 +320,16 @@ def compute_surface_dice_at_tolerance(surface_distances, tolerance_mm):
 def compute_dice_coefficient(mask_gt, mask_pred):
     """Compute soerensen-dice coefficient.
 
-  compute the soerensen-dice coefficient between the ground truth mask `mask_gt`
-  and the predicted mask `mask_pred`.
+    compute the soerensen-dice coefficient between the ground truth mask `mask_gt`
+    and the predicted mask `mask_pred`.
 
-  Args:
-    mask_gt: 3-dim Numpy array of type bool. The ground truth mask.
-    mask_pred: 3-dim Numpy array of type bool. The predicted mask.
+    Args:
+      mask_gt: 3-dim Numpy array of type bool. The ground truth mask.
+      mask_pred: 3-dim Numpy array of type bool. The predicted mask.
 
-  Returns:
-    the dice coeffcient as float. If both masks are empty, the result is NaN.
-  """
+    Returns:
+      the dice coeffcient as float. If both masks are empty, the result is NaN.
+    """
     volume_sum = mask_gt.sum() + mask_pred.sum()
     if volume_sum == 0:
         return np.NaN
