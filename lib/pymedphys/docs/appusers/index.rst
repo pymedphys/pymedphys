@@ -13,12 +13,7 @@ GUI by typing the following command in a terminal or command prompt:
 
     pymedphys gui
 
-Documentation
-*************
-
-- :doc:`MetersetMap Comparison<metersetmap>`
-
-- :doc:`Psuedonymisation<pseudonymisation>`
+You can find the Technical Reference for the App :doc:`here<ref/index>`
 
 Streamlit
 *********

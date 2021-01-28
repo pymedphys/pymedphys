@@ -13,8 +13,7 @@
     :caption: App Users Guide
 
     appusers/index
-    appusers/metersetmap
-    appusers/pseudonymisation
+    appusers/ref/index
 
 .. toctree::
     :hidden:
