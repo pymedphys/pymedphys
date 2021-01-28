@@ -4,10 +4,10 @@ Overview
 
 PyMedPhys ships with a graphical user interface (GUI). If you've already
 installed `pymedphys` (see
-:doc:`Getting Started<../libusers/howto/get-started>`), you can start the
+:doc:`Getting Started<../lib/howto/get-started>`), you can start the
 GUI by typing the following command in a terminal or command prompt:
 
-.. _`Getting Started`: https://docs.pympedphys.com/libusers/howto/get-started.rst
+.. _`Getting Started`: https://docs.pympedphys.com/lib/howto/get-started.rst
 
 .. code:: bash
 

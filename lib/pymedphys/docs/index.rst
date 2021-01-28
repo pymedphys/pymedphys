@@ -8,9 +8,9 @@
 
 .. _`Release Notes`: release-notes.html
 
-.. _`App Users Guide`: appusers/index.html
-.. _`Library Users Guide`: libusers/index.html
-.. _`CLI Users Guide`: cliusers/index.html
+.. _`App Users Guide`: app/index.html
+.. _`Library Users Guide`: lib/index.html
+.. _`CLI Users Guide`: cli/index.html
 .. _`Contributors Guide`: contrib/index.html
 .. _`General`: general/index.html
 
@@ -25,27 +25,27 @@
     :maxdepth: 3
     :caption: App Users Guide
 
-    appusers/index
-    appusers/ref/index
+    app/index
+    app/ref/index
 
 .. toctree::
     :hidden:
     :maxdepth: 3
     :caption: Library Users Guide
 
-    libusers/index
-    libusers/tutes/index
-    libusers/howto/index
-    libusers/ref/index
-    libusers/background/index
+    lib/index
+    lib/tutes/index
+    lib/howto/index
+    lib/ref/index
+    lib/background/index
 
 .. toctree::
     :hidden:
     :maxdepth: 3
     :caption: CLI Users Guide
 
-    cliusers/index
-    cliusers/ref/index
+    cli/index
+    cli/ref/index
 
 .. toctree::
     :hidden:
