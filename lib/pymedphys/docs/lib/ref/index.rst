@@ -12,5 +12,4 @@ itself. Below is the documentation for a range of these libraries.
     dicom
     gamma
     metersetmap
-    electronfactors
     experimental/index
