@@ -8,9 +8,9 @@ itself. Below is the documentation for a range of these libraries.
 .. toctree::
     :maxdepth: 2
 
+    ../../genindex
     dicom
     gamma
     metersetmap
     electronfactors
     experimental/index
-    ../../genindex
