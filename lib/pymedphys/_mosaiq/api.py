@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import contextlib
 from typing import Dict, Generator, Optional, Tuple
 
 from pymedphys._imports import pymssql  # pylint: disable = unused-import
@@ -21,6 +22,7 @@ from . import connect as _connect
 from . import credentials as _credentials
 
 
+@contextlib.contextmanager
 def connect(
     hostname: str,
     port: int = 1433,
@@ -74,11 +76,15 @@ def connect(
             "Must either provide both username and password, or neither of them."
         )
 
-    conn = _connect.connect_with_credential(
-        username, password, hostname=hostname, port=port, database=database
-    )
-    cursor = conn.cursor()
-    return cursor
+    try:
+        conn = _connect.connect_with_credential(
+            username, password, hostname=hostname, port=port, database=database
+        )
+        cursor = conn.cursor()
+        yield cursor
+
+    finally:
+        conn.close()
 
 
 def execute(
