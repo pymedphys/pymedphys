@@ -114,11 +114,9 @@ def execute(
 
     Returns
     -------
-    results : Generator[Tuple[str, ...], None, None]
+    results : List[Tuple[str, ...]]
         The results from the database query organised so that each row
-        is an item within the returned generator. These results can be
-        wrapped in the ``list`` function by calling ``list(results)`` to
-        allow these to be indexable by row.
+        is an item within the returned list.
 
     Examples
     --------

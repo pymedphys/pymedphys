@@ -25,6 +25,11 @@ from . import credentials as _credentials
 
 
 class Connection:
+    """A Mosaiq DB Connection object.
+
+    A wrapper around the ``pymssql.Connection`` object.
+    """
+
     def __init__(
         self,
         username: str,
@@ -60,6 +65,11 @@ class Connection:
 
 
 class Cursor:
+    """A Mosaiq DB Cursor object.
+
+    A wrapper around the ``pymssql.Cursor`` object.
+    """
+
     def __init__(self, connection: "pymssql.Connection"):
         self._cursor = connection.cursor()
 
