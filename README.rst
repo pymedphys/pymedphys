@@ -108,7 +108,13 @@ Maintainers
 
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
-|rccc| |sjs|
+* `Matthew Jennings`_
+    * `Royal Adelaide Hospital`_, Australia
+
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
+
+
+|rccc| |sjs| |rah|
 
 Active contributors
 ****************************
@@ -142,15 +148,6 @@ Active contributors
 
 |uth| |uoc| |hgugm|
 
-Maintainer emeritus
-****************************
-
-* `Matthew Jennings`_
-    * `Royal Adelaide Hospital`_, Australia
-
-.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
-
-|rah|
 
 Past contributors
 ****************************
