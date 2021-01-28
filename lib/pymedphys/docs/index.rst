@@ -6,6 +6,8 @@
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
+.. _`Release Notes`: release-notes.html
+
 .. _`App Users Guide`: appusers/index.html
 .. _`Library Users Guide`: libusers/index.html
 .. _`CLI Users Guide`: cliusers/index.html
