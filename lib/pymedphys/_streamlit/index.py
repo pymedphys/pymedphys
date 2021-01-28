@@ -17,7 +17,6 @@ import pathlib
 import re
 import time
 
-from pymedphys._imports import PIL
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import apps as _stable_apps
@@ -25,11 +24,11 @@ from pymedphys._streamlit.utilities import session
 
 from pymedphys._experimental.streamlit import apps as _experimental_apps
 
-from . import categories
+from . import categories as _categories
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys-favicon.png"))
-TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
+TITLE_LOGO = str(HERE.joinpath("pymedphys-title.svg"))
 
 
 def get_url_app():
@@ -52,36 +51,56 @@ def swap_app(app):
 
 
 def index(application_options):
-    st.image(PIL.Image.open(TITLE_LOGO))
+    with open(TITLE_LOGO) as f:
+        svg_logo_text = f.read()
 
-    title_filter = st.text_input("Filter")
+    st.components.v1.html(
+        f"""
+            <div style="text-align:center;">
+                {svg_logo_text}
+            </div>
+        """
+    )
+
+    _, central_header_column, _ = st.beta_columns((1, 2, 1))
+
+    title_filter = central_header_column.text_input("Filter")
     pattern = re.compile(f".*{title_filter}.*", re.IGNORECASE)
 
-    for category in categories.APPLICATION_CATEGORIES:
-        applications_in_this_category = [
-            item
-            for item in application_options.items()
-            if item[1].CATEGORY == category and pattern.match(item[1].TITLE)
-        ]
+    num_columns = len(_categories.APPLICATION_CATEGORIES_BY_COLUMN.keys())
+    columns = st.beta_columns(num_columns)
 
-        if not title_filter or applications_in_this_category:
-            st.write(
-                f"""
-                    ## {category}
-                """
+    for (
+        column_index,
+        categories,
+    ) in _categories.APPLICATION_CATEGORIES_BY_COLUMN.items():
+        column = columns[column_index]
+
+        for category in categories:
+            applications_in_this_category = [
+                item
+                for item in application_options.items()
+                if item[1].CATEGORY == category and pattern.match(item[1].TITLE)
+            ]
+
+            if not title_filter or applications_in_this_category:
+                column.write(
+                    f"""
+                        ## {category}
+                    """
+                )
+
+            if not applications_in_this_category and not title_filter:
+                column.write("> *No applications are currently in this category.*")
+                continue
+
+            applications_in_this_category = sorted(
+                applications_in_this_category, key=_application_sorting_key
             )
 
-        if not applications_in_this_category and not title_filter:
-            st.write("> *No applications are currently in this category.*")
-            continue
-
-        applications_in_this_category = sorted(
-            applications_in_this_category, key=_application_sorting_key
-        )
-
-        for app_key, application in applications_in_this_category:
-            if st.button(application.TITLE):
-                swap_app(app_key)
+            for app_key, application in applications_in_this_category:
+                if column.button(application.TITLE):
+                    swap_app(app_key)
 
 
 def _application_sorting_key(application):
@@ -99,7 +118,7 @@ def _get_apps_from_module(module):
 
 
 def main():
-    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
+    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="wide")
     session_state = session.session_state(app=get_url_app())
 
     stable_apps = _get_apps_from_module(_stable_apps)

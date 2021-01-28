@@ -46,7 +46,7 @@ DOCS_README = DOCS_PATH.joinpath("README.rst")
 DOCS_CHANGELOG = DOCS_PATH.joinpath("release-notes.md")
 ROOT_CHANGELOG = REPO_ROOT.joinpath("CHANGELOG.md")
 
-DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contributing", "index.md")
+DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contrib", "index.md")
 ROOT_CONTRIBUTING = REPO_ROOT.joinpath("CONTRIBUTING.md")
 
 AUTOGEN_MESSAGE = [
@@ -226,8 +226,7 @@ def _propagate_setup():
 
 
 def _propagate_requirements():
-    """Propagates requirement files for use without Poetry.
-    """
+    """Propagates requirement files for use without Poetry."""
     _make_requirements_txt(["user"], "requirements.txt", editable=False)
     _make_requirements_txt(["dev"], "requirements-dev.txt")
 
@@ -312,8 +311,7 @@ def propagate_extras():
 
 
 def _propagate_pyproject_hash():
-    """Store the pyproject content hash metadata for verification of propagation.
-    """
+    """Store the pyproject content hash metadata for verification of propagation."""
 
     with open(POETRY_LOCK_PATH) as f:
         poetry_lock_contents = tomlkit.loads(f.read())

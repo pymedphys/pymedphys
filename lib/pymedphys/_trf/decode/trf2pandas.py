@@ -58,8 +58,7 @@ def header_as_dataframe(trf_header_contents):
 
 
 def decode_trf(filepath):
-    """DEPRECATED
-    """
+    """DEPRECATED"""
     _, table_dataframe = trf2pandas(filepath)
 
     return table_dataframe

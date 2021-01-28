@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymedphys._imports import keyring, pymssql
+from pymedphys._imports import pymssql
 from pymedphys._imports import streamlit as st
 
+import pymedphys._mosaiq.credentials as _pp_msq_credentials
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit.apps.metersetmap import _config, _deliveries
 from pymedphys._streamlit.utilities import misc as st_misc
@@ -39,9 +40,12 @@ def mosaiq_input_method(config, patient_id="", key_namespace="", site=None, **_)
     )
 
     server = mosaiq_details[mosaiq_site]["server"]
-    st.write(f"Mosaiq Hostname: `{server}`")
+    alias = server["alias"]
+    st.write(f"Using Mosaiq: `{alias}`")
 
-    sql_user = keyring.get_password("MosaiqSQL_username", server)
+    sql_user = _pp_msq_credentials.get_username(
+        hostname=server["hostname"], port=server["port"]
+    )
     st.write(f"Mosaiq SQL login being used: `{sql_user}`")
 
     patient_id = st.text_input(
@@ -49,7 +53,7 @@ def mosaiq_input_method(config, patient_id="", key_namespace="", site=None, **_)
     )
     st.write(patient_id)
 
-    cursor = st_mosaiq.get_mosaiq_cursor(server)
+    cursor = st_mosaiq.get_cached_mosaiq_cursor(**server)
 
     if patient_id == "":
         return {}

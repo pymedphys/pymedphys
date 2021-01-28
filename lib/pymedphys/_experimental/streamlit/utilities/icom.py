@@ -99,7 +99,8 @@ def _get_service_icom_paths(root_directory):
     service_mode_directories = [
         item.name
         for item in root_directory.glob("*")
-        if item.name.startswith("Deliver")
+        # Hardcoded the Mosaiq ID in for now
+        if item.name.startswith("Deliver") or item.name.startswith("WLutz")
     ]
 
     service_icom_paths = []
@@ -121,12 +122,14 @@ def _get_file_datetimes(icom_paths):
     return timestamps
 
 
-@st.cache(show_spinner=False)
+@st.cache(show_spinner=False, suppress_st_warning=True)
 def _get_relevant_times(filepath):
     icom_datetime, meterset, machine_id = get_icom_datetimes_meterset_machine(filepath)
 
-    machine_id = machine_id.unique()
+    machine_id = machine_id.dropna().unique()
     if len(machine_id) != 1:
+        st.write(filepath)
+        st.write(machine_id)
         raise ValueError("Only one machine id per file expected")
 
     machine_id = machine_id[0]

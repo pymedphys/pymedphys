@@ -132,7 +132,7 @@ python_dateutil = { version = "*", optional = true }  # groups = ["dev", "tests"
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
-black = { version = "^19.3b0", optional = true }  # groups = ["dev", "propagate"]
+black = { version = "^20.8b1", optional = true }  # groups = ["dev", "propagate"]
 mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]

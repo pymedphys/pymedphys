@@ -221,8 +221,7 @@ def test_if_in_cube(point_test, cube_definition):
 
 
 def dose_inside_cube(x_dose, y_dose, z_dose, dose, cube):
-    """Find the dose just within the given cube.
-    """
+    """Find the dose just within the given cube."""
     cube_definition = cubify(cube)
     print(cube_definition)
     vertices = cube_vertices(cube_definition)

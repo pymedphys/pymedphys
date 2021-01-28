@@ -182,8 +182,10 @@ class DeliveryDicom(DeliveryBase):
 
         gantry_tol = utilities.gantry_tol_from_gantry_angles(template_gantry_angles)
 
-        all_masked_delivery_data = filtered._mask_by_gantry(  # pylint: disable = protected-access
-            template_gantry_angles, gantry_tol
+        all_masked_delivery_data = (
+            filtered._mask_by_gantry(  # pylint: disable = protected-access
+                template_gantry_angles, gantry_tol
+            )
         )
 
         fraction_index = _pmp_rtplan.get_fraction_group_index(
@@ -254,8 +256,10 @@ class DeliveryDicom(DeliveryBase):
 
         control_points = beam.ControlPointSequence
 
-        beam_limiting_device_position_sequences = _pmp_rtplan.get_cp_attribute_leaning_on_prior(
-            control_points, "BeamLimitingDevicePositionSequence"
+        beam_limiting_device_position_sequences = (
+            _pmp_rtplan.get_cp_attribute_leaning_on_prior(
+                control_points, "BeamLimitingDevicePositionSequence"
+            )
         )
 
         dicom_mlcs = _pmp_rtplan.get_leaf_jaw_positions_for_type(
