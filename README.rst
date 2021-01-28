@@ -14,12 +14,10 @@
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/ca501275227f190a77e641a75af925d9070952b6/lib/pymedphys/docs/_static/pymedphys_title.svg
     :target: https://docs.pymedphys.com/
 
-
 .. START_OF_DOCS_IMPORT
 
-
 **A community effort to develop an open standard library for Medical Physics
-in Python. Building quality transparent software together via peer review
+in Python. We build high quality, transparent software together via peer review
 and open source distribution. Open code is better science.**
 
 |online-app| |build| |pypi| |python| |license|
@@ -41,31 +39,20 @@ and open source distribution. Open code is better science.**
 
 
 What is PyMedPhys?
-------------------
+==================
 
-An open-source Medical Physics python library with a focus on being
-a place to share, review, improve, and transparently learn off of each
-other's code. It is inspired by the collaborative work of our physics peers
-in astronomy and their `Astropy Project`_. PyMedPhys is available on `PyPI`_
-and `GitHub`_.
+PyMedPhys is an open-source Medical Physics python library built by an open
+community that values and prioritises code sharing, review, improvement, and
+learning from each other. It is inspired by the collaborative work of our
+physics peers in astronomy and the `Astropy Project`_. PyMedPhys is available
+on `PyPI`_ and `GitHub`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
-
-Mailing list
-------------
-
-If you would like to dive into the community a great place to get started is
-to sign up to `the mailing list`_ and say hi by introducing yourself with
-where you're from, and what you hope to achieve with PyMedPhys.
-
-.. _`the mailing list`: https://groups.google.com/g/pymedphys
-
-
 Beta level of development
--------------------------
+*************************
 
 PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
 stay in this stage until the version number leaves ``0.x.x`` and enters
@@ -77,86 +64,39 @@ any code that was using the old version of pymedphys. We try to be abreast of
 this by providing details of any breaking changes from one release to the next
 within the `Release Notes`_.
 
+Community
+**************
+
+There is a community over at `Discourse <https://pymedphys.discourse.group/>`_
+to help you find your feet using PyMedPhys. Please reach out over there and
+we'd love to help!
 
 
 Documentation
--------------
+=============
 
-For App Users
-.............
+The PyMedPhys documentation is split into five categories:
 
-Documentation of the PyMedPhys application's graphical user interface doesn't
-yet exist. Watch this space.
-
-For Python Users
-................
-
-- Absolute Beginners Tutorial **[Doesn't yet exist]**
-
-  - Start here if you are new to Python and would like an in-depth instruction on
-    how to get started.
-
-- `Quickstart How-To Guide`_
-
-  - Start here if you are fluent in Python and just want a quick instruction on how
-    to get started.
-
-- `Tutorials`_
-
-  - A range of lessons that take you through various complete projects with the
-    intent to be able to show you what can be achieved with writing PyMedPhys based
-    Python software yourself.
-  - These are aimed at you if you don't yet know what you can achieve with
-    PyMedPhys but you would like to learn.
-
-- `How-To Guides`_
-
-  - Guides and recipes for common problems and tasks. These are aimed for you if
-    you already know how to use Python and PyMedPhys and are looking for direction
-    on a specific task you are trying to solve.
-
-- `Reference`_
-
-  - Technical reference for the `library`_ (modules, functions and classes),
-    as well as the available `command line tools`_. This is where you will find
-    listed information for the exposed functionality of PyMedPhys.
-  - This is aimed at you if you know exactly the feature you would like to use, you
-    just want to see what inputs it requires and what outputs it gives.
-
-- `Background`_
-
-  - Explanation and discussion of key topics and concepts. This is aimed at you if
-    you are looking to be able to think about PyMedPhys and its implementations at
-    a higher level and understand more about them.
-
-- Glossary **[Doesn't yet exist]**
-
-  - List of the most important terms
-
-
-For Contributors
-................
-
-- `Getting Started Contributing`_ **[Under construction]**
-
-  - Start here for learning how to contribute to PyMedPhys.
-
-- Developer Guide **[Doesn't yet exist]**
-- `Documentation Guide`_
-
-  - How to contribute to this documentation.
-
-- Maintainers Guide **[Doesn't yet exist]**
+1. `App Users Guide`_: for those who only wish to use ready-made PyMedPhys
+   tools.
+2. `Library Users Guide`_: for those building their own Python apps who wish to
+   incorporate elements of the PyMedPhys library.
+3. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
+   line interface (e.g. to help automate existing workflows with minimal
+   programming).
+4. `Contributors Guide`_: for those who wish to make new contributions to
+   either the PyMedPhys library or the PyMedPhys app.
+5. `General`_: Material that may apply to any visitor to PyMedPhys.
 
 
 Our Team
---------
+========
 
 PyMedPhys is what it is today due to its maintainers and contributors both past
 and present. Here is our team.
 
 Maintainers
-...........
+***********
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
@@ -171,7 +111,7 @@ Maintainers
 |rccc| |sjs|
 
 Active contributors
-...................
+****************************
 
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
@@ -202,9 +142,8 @@ Active contributors
 
 |uth| |uoc| |hgugm|
 
-
 Maintainer emeritus
-...................
+****************************
 
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
@@ -214,7 +153,7 @@ Maintainer emeritus
 |rah|
 
 Past contributors
-.................
+****************************
 
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
@@ -267,17 +206,10 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
-.. _`Tutorials`: https://docs.pymedphys.com/tutes
-
-.. _`How-To Guides`: https://docs.pymedphys.com/howto
-.. _`Quickstart How-To Guide`: https://docs.pymedphys.com/howto/get-started
-
-.. _`Reference`: https://docs.pymedphys.com/ref
-.. _`Background`: https://docs.pymedphys.com/background
-
-.. _`library`: https://docs.pymedphys.com/ref/lib
-.. _`command line tools`: https://docs.pymedphys.com/ref/cli
-
 .. _`Release Notes`: ./CHANGELOG.md
-.. _`Getting Started Contributing`: ./CONTRIBUTING.md
-.. _`Documentation Guide`: https://docs.pymedphys.com/howto/advanced/documentation.rst
+
+.. _`App Users Guide`: https://docs.pymedphys.com/app/index.rst
+.. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.rst
+.. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.rst
+.. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.rst
+.. _`General`: https://docs.pymedphys.com/general/index.rst

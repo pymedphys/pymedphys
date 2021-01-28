@@ -46,7 +46,7 @@ DOCS_README = DOCS_PATH.joinpath("README.rst")
 DOCS_CHANGELOG = DOCS_PATH.joinpath("release-notes.md")
 ROOT_CHANGELOG = REPO_ROOT.joinpath("CHANGELOG.md")
 
-DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contributing", "index.md")
+DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contrib", "index.md")
 ROOT_CONTRIBUTING = REPO_ROOT.joinpath("CONTRIBUTING.md")
 
 AUTOGEN_MESSAGE = [
