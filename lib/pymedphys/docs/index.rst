@@ -6,6 +6,11 @@
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
+.. _`App Users Guide`: appusers/index.html
+.. _`Library Users Guide`: libusers/index.html
+.. _`CLI Users Guide`: cliusers/index.html
+.. _`Contributors Guide`: contrib/index.html
+.. _`General`: general/index.html
 
 .. toctree::
     :hidden:
