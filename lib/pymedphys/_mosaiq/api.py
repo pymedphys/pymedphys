@@ -66,7 +66,7 @@ def connect(
     Returns
     -------
     pymedphys.mosaiq.Connection
-        A database connecting. This connection can be passed to
+        A database connection. This connection can be passed to
         ``pymedphys.mosaiq.execute`` to be able to run queries.
 
         The method ``close`` can be called on this object to close the
@@ -126,7 +126,7 @@ def execute(
     >>> import pymedphys.mosaiq
     >>> connection = pymedphys.mosaiq.connect('msqsql')  # doctest: +SKIP
 
-    >>> results = pymedphys.mosaiq.execute(
+    >>> pymedphys.mosaiq.execute(
     ...     connection,
     ...     '''
     ...     SELECT
@@ -140,8 +140,6 @@ def execute(
     ...     ''',
     ...     {"last_name": "PHANTOM"},
     ... )  # doctest: +SKIP
-
-    >>> list(results)  # doctest: +SKIP
     [('654324', 'PHANTOM', 'CATPHAN'),
      ('944444', 'PHANTOM', 'DELTA4'),
      ('654321', 'PHANTOM', 'PELVIS'),
@@ -171,16 +169,14 @@ def execute(
     ...         ''',
     ...         {"qcl_location": "Physics_Check"},
     ...     )
-    ...
-    ...     table = pd.DataFrame(
-    ...         data=results,
-    ...         columns=[
-    ...             "patient_id",
-    ...             "due",
-    ...         ],
-    ...     )
 
-    >>> table  # doctest: +SKIP
+    >>> pd.DataFrame(  # doctest: +SKIP
+    ...     data=results,
+    ...     columns=[
+    ...         "patient_id",
+    ...         "due",
+    ...     ],
+    ... )
       patient_id                 due
     0     000000 2021-02-01 23:59:59
     1     000001 2021-02-01 23:59:59
