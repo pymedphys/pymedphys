@@ -16,7 +16,7 @@
 
 .. toctree::
     :hidden:
-    :maxdepth: 4
+    :maxdepth: 3
     :caption: Library Users Guide
 
     libusers/index
@@ -25,6 +25,13 @@
     libusers/ref/index
     libusers/background/index
 
+.. toctree::
+    :hidden:
+    :maxdepth: 3
+    :caption: Command Line Interface Users Guide
+
+    cliusers/index
+    cliusers/ref/index
 
 .. toctree::
     :hidden:

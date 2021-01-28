@@ -22,10 +22,9 @@ The **Library Users Guide** is separated into following sub-categories:
 |
 - :doc:`Reference<ref/index>`
 
-  - Technical reference for the :doc:`library<ref/lib/index>` (modules,
-    functions and classes), as well as the available
-    :doc:`command line tools<ref/cli/index>`. This is where you will find
-    listed information for the exposed functionality of PyMedPhys.
+  - Technical reference for the PyMedPhys library (modules, functions and
+    classes). This is where you will find listed information for the exposed
+    functionality of the PyMedPhys library.
   - This is aimed at you if you know exactly the feature you would like to use,
     you just want to see what inputs it requires and what outputs it gives.
 |
