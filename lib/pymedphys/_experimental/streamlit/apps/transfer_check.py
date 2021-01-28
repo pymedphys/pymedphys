@@ -78,6 +78,7 @@ def main():
         # try:
         dicom_table = get_all_dicom_treatment_info(files["rp"])
         dicom_table = dicom_table.sort_values(["field_label"])
+        st.text(dicom_table.iloc[0]["wedge_MU"])
         # except AttributeError:
         #     st.write("Please select a new RP file.")
         #     st.stop()

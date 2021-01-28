@@ -30,6 +30,43 @@ def _invert_angle(angle):
     return (180 - angle) % 360
 
 
+def get_dicom_wedge_info(beam_reference, field):
+
+    for cp in field.ControlPointSequence:
+        if cp.WedgePositionSequence[0].WedgePosition == "OUT":
+            wedge_MU = cp.CumulativeMetersetWeight
+            break
+
+    wedge_info = {
+        "wedge_type": field.WedgeSequence[0].WedgeType,
+        "wedge_angle": field.WedgeSequence[0].WedgeAngle,
+        "wedge_orienttation": field.WedgeSequence[0].WedgeOrientation,
+        "wedge_MU": wedge_MU * beam_reference.BeamMeterset,
+    }
+    return wedge_info
+
+
+def get_dicom_coll_info(field):
+
+    keys = {
+        "coll_x1": [0, 0],
+        "coll_x2": [0, 1],
+        "coll_y1": [1, 0],
+        "coll_y2": [1, 1],
+    }
+
+    colls = {}
+    for key, value in keys.items():
+        colls[key] = (
+            field.ControlPointSequence[0]
+            .BeamLimitingDevicePositionSequence[value[0]]
+            .LeafJawPositions[value[1]]
+            / 10
+        )
+
+    return colls
+
+
 def get_all_dicom_treatment_info(dicomFile):
     dicom = pydicom.dcmread(dicomFile)
     table = pd.DataFrame()
@@ -49,35 +86,7 @@ def get_all_dicom_treatment_info(dicomFile):
             ].ReferencedDoseReferenceNumber  # pull dose reference number for simplification
             fn = fraction.FractionGroupNumber
 
-            coll_x1 = (
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .BeamLimitingDevicePositionSequence[0]
-                .LeafJawPositions[0]
-                / 10
-            )
-            coll_x2 = (
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .BeamLimitingDevicePositionSequence[0]
-                .LeafJawPositions[1]
-                / 10
-            )
-
-            coll_y1 = (
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .BeamLimitingDevicePositionSequence[1]
-                .LeafJawPositions[0]
-                / 10
-            )
-            coll_y2 = (
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .BeamLimitingDevicePositionSequence[1]
-                .LeafJawPositions[1]
-                / 10
-            )
+            colls = get_dicom_coll_info(dicom.BeamSequence[bn - 1])
 
             dicom_beam = {
                 "site": dicom.RTPlanName,
@@ -110,8 +119,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "meterset_rate": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .DoseRateSet,
-                "backup_time": "",
-                "wedge": dicom.BeamSequence[bn - 1].NumberOfWedges,
+                "number_of_wedges": dicom.BeamSequence[bn - 1].NumberOfWedges,
                 "block": dicom.BeamSequence[bn - 1].NumberOfBlocks,
                 "compensator": dicom.BeamSequence[bn - 1].NumberOfCompensators,
                 "bolus": dicom.BeamSequence[bn - 1].NumberOfBoli,
@@ -144,12 +152,12 @@ def get_all_dicom_treatment_info(dicomFile):
                 .ControlPointSequence[0]
                 .IsocenterPosition[2]
                 / 10,
-                "field_x [cm]": round(coll_x2 - coll_x1, 1),
-                "coll_x1 [cm]": round(coll_x1, 1),
-                "coll_x2 [cm]": round(coll_x2, 1),
-                "field_y [cm]": round(coll_y2 - coll_y1, 1),
-                "coll_y1 [cm]": round(coll_y1, 1),
-                "coll_y2 [cm]": round(coll_y2, 1),
+                "field_x [cm]": round(colls["coll_x2"] - colls["coll_x1"], 1),
+                "coll_x1 [cm]": round(colls["coll_x1"], 1),
+                "coll_x2 [cm]": round(colls["coll_x2"], 1),
+                "field_y [cm]": round(colls["coll_y2"] - colls["coll_y1"], 1),
+                "coll_y1 [cm]": round(colls["coll_y1"], 1),
+                "coll_y2 [cm]": round(colls["coll_y2"], 1),
                 "couch_vrt [cm]": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .TableTopVerticalPosition,
@@ -166,6 +174,11 @@ def get_all_dicom_treatment_info(dicomFile):
                 "control_points": dicom.BeamSequence[bn - 1].NumberOfControlPoints,
             }
 
+            if dicom_beam["number_of_wedges"] != 0:
+                dicom_beam.update(
+                    get_dicom_wedge_info(beam, dicom.BeamSequence[bn - 1])
+                )
+
             try:
                 dicom_beam["tolerance"] = dicom.BeamSequence[
                     bn - 1
@@ -173,7 +186,7 @@ def get_all_dicom_treatment_info(dicomFile):
             except (TypeError, ValueError, AttributeError):
                 dicom_beam["tolerance"] = 0
 
-            if dicom_beam["machine"] == "Vault 1-IMRT":
+            if dicom_beam["machine"] in ["Vault 1-IMRT", "Dual-120"]:
 
                 angle_keys = [key for key in dicom_beam if "angle" in key]
                 for key in angle_keys:
