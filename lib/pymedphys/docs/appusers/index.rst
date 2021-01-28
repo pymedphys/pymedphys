@@ -3,8 +3,11 @@ Overview
 ========
 
 PyMedPhys ships with a graphical user interface (GUI). If you've already
-installed `pymedphys` (see `Getting Started`_), you can start the GUI by
-typing the following command in a terminal or command prompt:
+installed `pymedphys` (see
+:doc:`Getting Started<../libusers/howto/get-started>`), you can start the
+GUI by typing the following command in a terminal or command prompt:
+
+.. _`Getting Started`: https://docs.pympedphys.com/libusers/howto/get-started.rst
 
 .. code:: bash
 
@@ -13,11 +16,9 @@ typing the following command in a terminal or command prompt:
 Documentation
 *************
 
-Existing tools:
-
 - :doc:`MetersetMap Comparison<metersetmap>`
 
-- :doc:`Psuedonymisation<pseudobymisation>`
+- :doc:`Psuedonymisation<pseudonymisation>`
 
 Streamlit
 *********
