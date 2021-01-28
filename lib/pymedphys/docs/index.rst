@@ -16,12 +16,6 @@
 
 .. toctree::
     :hidden:
-    :maxdepth: 1
-
-    release-notes
-
-.. toctree::
-    :hidden:
     :maxdepth: 3
     :caption: App Users Guide
 
@@ -64,5 +58,6 @@
     :caption: General
 
     general/index
+    release-notes
     general/file-structure
     general/open-source-benefits
