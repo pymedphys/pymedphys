@@ -30,7 +30,7 @@
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: Command Line Interface Users Guide
+    :caption: CLI Users Guide
 
     cliusers/index
     cliusers/ref/index
