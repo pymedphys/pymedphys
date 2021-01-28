@@ -7,20 +7,20 @@ body {
 }
 
 .header-style, h1, .h1 {
-    font-size: 230% !important;
+    /* font-size: 240% !important; */
     margin-top: 1.5em !important;
 }
 .header-style, h2, .h2 {
-    font-size: 160% !important;
+    /* font-size: 180% !important; */
     margin-top: 1.5em !important;
 }
 .header-style, h3, .h3 {
-    font-size: 100% !important;
-    margin-top: 1em !important;
+    /* font-size: 160% !important; */
+    margin-top: 1.5em !important;
 }
 .header-style, h4, .h4 {
-    font-size: 100% !important;
-    margin-top: 1em !important;
+    /* font-size: 135% !important; */
+    margin-top: 1.5em !important;
 }
 
 .title-logo {
