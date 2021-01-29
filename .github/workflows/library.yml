@@ -19,6 +19,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - name: Set up Python 3.8
         uses: actions/setup-python@v1
         with:
@@ -38,9 +41,6 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
-          git config pull.ff only
-          git pull origin $BRANCH
-          git checkout $BRANCH
           git commit -m "Fix pre-commit failures" -a
           exit 1
         env:
