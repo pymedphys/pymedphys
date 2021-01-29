@@ -40,8 +40,11 @@ jobs:
           git config --local user.name "PyMedPhys Pre-Commit Bot"
           git commit -m "Fix pre-commit failures" -a
           git config pull.ff only
-          git pull
+          git fetch $BRANCH
+          git checkout $BRANCH
           exit 1
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
       - name: Push changes
         if: failure()
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
