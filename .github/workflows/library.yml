@@ -354,8 +354,12 @@ jobs:
         run: |
           git commit -m "Fix propagate failures" -a
           git config pull.ff only
-          git pull
+          git config pull.ff only
+          git fetch $BRANCH
+          git checkout $BRANCH
           exit 1
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
           
       - name: Push changes
         if: failure()
