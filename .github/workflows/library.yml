@@ -342,21 +342,6 @@ jobs:
 
 # TESTS
 
-      - name: Get PyMedPhys cache directory
-        id: pymedphys-cache-location
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
-        run: |
-          echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
-
-      - name: PyMedPhys Cache
-        id: pymedphys-cache
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.pymedphys-cache-location.outputs.dir }}
-          key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
-
-
 ## Propagate
       - name: See if propagate is needed
         if: matrix.task == 'propagate'
