@@ -208,8 +208,8 @@ Past contributors
 
 .. _`Release Notes`: ./CHANGELOG.md
 
-.. _`App Users Guide`: https://docs.pymedphys.com/app/index.html
 .. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.html
 .. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.html
+.. _`App Users Guide`: https://docs.pymedphys.com/app/index.html
 .. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.html
 .. _`General`: https://docs.pymedphys.com/general/index.html
