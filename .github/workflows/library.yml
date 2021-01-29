@@ -43,8 +43,6 @@ jobs:
           git config --local user.name "PyMedPhys Pre-Commit Bot"
           git commit -m "Fix pre-commit failures" -a
           exit 1
-        env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
       - name: Push changes
         if: failure()
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
@@ -60,7 +58,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright', 'propagate']
         exclude:
           - os: 'ubuntu'
             task: 'binary'
@@ -75,6 +73,8 @@ jobs:
             task: 'slow'
           - os: 'windows'
             task: 'pyright'
+          - os: 'windows'
+            task: 'propagate'
 
           - os: 'macos'
             task: 'stackoverflow'
@@ -88,6 +88,8 @@ jobs:
             task: 'binary'
           - os: 'macos'
             task: 'pyright'
+          - os: 'macos'
+            task: 'propagate'
 
         include:
           # Version numbers chosen so that highest and lowest Python version is
@@ -105,6 +107,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        if: matrix.task != 'propagate'
+
+      - uses: actions/checkout@v2
+        if: matrix.task == 'propagate'
+        with:
+          persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -272,7 +281,7 @@ jobs:
 ## Install remaining packages for pyright
 
       - name: Install a propagate environment
-        if: matrix.task == 'pyright'
+        if: matrix.task == 'pyright' || matrix.task == 'propagate'
         run: |
           poetry install -E propagate
 
@@ -333,12 +342,10 @@ jobs:
 
 # TESTS
 
-## Propagate       
+## Propagate
       - name: See if propagate is needed
-        if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+        if: matrix.task == 'propagate'
         run: |
-          poetry install -E propagate
-
           poetry run pymedphys dev propagate
 
           git config --local user.email "propagate-bot@pymedphys.com"
@@ -348,21 +355,17 @@ jobs:
 
           git status
           git diff-index --quiet HEAD --
-          
+
       - name: Fix any issues
-        if: failure()
+        if: matrix.task == 'propagate' && failure()
         run: |
           git commit -m "Fix propagate failures" -a
-          git config pull.ff only
-          git config pull.ff only
-          git fetch $BRANCH
-          git checkout $BRANCH
           exit 1
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
-          
+
       - name: Push changes
-        if: failure()
+        if: matrix.task == 'propagate' && failure()
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
