@@ -23,6 +23,8 @@ from pymedphys._imports import streamlit as st
 import pydicom
 from pydicom.errors import InvalidDicomError
 
+from pymedphys._dicom.coords import xyz_axes_from_dataset
+from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._streamlit import categories
 
 # from pymedphys._streamlit.utilities import config as _config
@@ -31,6 +33,13 @@ CATEGORY = categories.PRE_ALPHA
 TITLE = "Sum Two DICOM Doses"
 
 HERE = pathlib.Path(__file__).parent.resolve()
+
+
+def _axes_in_datasets_match(datasets):
+
+    all_axes = [xyz_axes_from_dataset(ds) for ds in datasets]
+
+    return all(a == all_axes[0] for a in all_axes)
 
 
 def _check_files_valid(files):
@@ -54,24 +63,36 @@ def _check_files_valid(files):
     return datasets
 
 
+def sum_doses_in_datasets(datasets):
+
+    ds_summed = copy.copy(datasets[0])
+
+    ds_summed.DoseSummationType = "MULTI_PLAN"
+    ds_summed.DoseGridScaling = sum([ds.DoseGridScaling for ds in datasets])
+
+    pixel_arrays_rescaled = [
+        ds.DoseGridScaling / ds_summed.DoseGridScaling * ds.pixel_array
+        for ds in datasets
+    ]
+    pixel_array_summed = sum(pixel_arrays_rescaled)
+
+    ds_summed.PixelData = pixel_array_summed.tobytes()
+
+
 def main():
 
-    fh1 = st.file_uploader(
-        "Upload the first DICOM Dose file. This is used as a template"
-        "for the summed dose",
+    files = st.file_uploader(
+        "Upload DICOM RT Dose files for which to add dose. You must "
+        "add two or more. The first file uploaded will be used as a "
+        "template for the summed DICOM RT Dose file.",
         ["dcm"],
-        accept_multiple_files=False,
-    )
-
-    fh2 = st.file_uploader(
-        "Upload the second DICOM Dose file.",
-        ["dcm"],
-        accept_multiple_files=False,
+        accept_multiple_files=True,
     )
 
     if st.button("Sum Doses"):
 
-        datasets = _check_files_valid([fh1, fh2])
+        datasets = _check_files_valid(files)
 
-        # if datasets:
-        #     doses =
+        if datasets:
+            if _axes_in_datasets_match(datasets):
+                ds_summed = sum_doses_in_datasets(datasets)
