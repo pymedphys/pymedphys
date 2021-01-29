@@ -31,7 +31,7 @@ def show_incomplete_weekly_checks():
     cursor = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
     incomplete = get_incomplete_qcls(cursor, "Physics Resident")
-    todays_date = date.today() + timedelta(days=3)
+    todays_date = date.today() + timedelta(days=1)
     todays_date = todays_date.strftime("%b %d, %Y")
     # todays_date = "Dec 4, 2020"
     incomplete = incomplete[
@@ -119,19 +119,22 @@ def plot_couch_positions(delivered):
     couches = pd.DataFrame()
     couches_df = pd.DataFrame()
     for direction in ["couch_vrt", "couch_lat", "couch_lng"]:
-        couches["fx"] = delivered.index
+        couches["fx"] = delivered["fx"]
         couches["direction"] = direction
         couches["position"] = delivered[direction]
         couches_df = couches_df.append(couches)
         couches = pd.DataFrame()
 
-    fig = plotly.express.scatter(couches_df, x="fx", y="position", color="direction")
-    fig.update_layout(
-        title="Couch Positions",
-        yaxis_title="Difference from First Tx [cm]",
-        xaxis_title="Fx",
+    couch_fig = plotly.express.scatter(
+        couches_df, x="fx", y="position", color="direction"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    couch_fig.update_layout(
+        title="<b>Couch Positions<b>",
+        yaxis_title="Couch Position [cm]",
+        xaxis_title="Fx",
+        xaxis=dict(tickmode="linear", tick0=0, dtick=1),
+    )
+    st.plotly_chart(couch_fig, use_container_width=True)
 
 
 def plot_couch_deltas(delivered):
@@ -140,17 +143,19 @@ def plot_couch_deltas(delivered):
     couches = pd.DataFrame()
     couches_df = pd.DataFrame()
     for direction in ["couch_vrt", "couch_lat", "couch_lng"]:
-        couches["fx"] = delivered.index
+        couches["fx"] = delivered["fx"]
         couches["direction"] = direction
         couches["position"] = delivered[direction]
         couches["diff"] = couches["position"] - couches.iloc[0]["position"]
         couches_df = couches_df.append(couches)
         couches = pd.DataFrame()
 
-    fig = plotly.express.scatter(couches_df, x="fx", y="diff", color="direction")
-    fig.update_layout(
-        title="Couch Deltas for Each Beam On",
+    deltas_fig = plotly.express.scatter(couches_df, x="fx", y="diff", color="direction")
+    deltas_fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor="LightPink")
+    deltas_fig.update_layout(
+        title="<b>Couch Deltas for Each Beam On<b>",
         yaxis_title="Difference from First Tx [cm]",
         xaxis_title="Fx",
+        xaxis=dict(tickmode="linear", tick0=0, dtick=1),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(deltas_fig, use_container_width=True)

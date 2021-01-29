@@ -110,6 +110,5 @@ def main():
         # Create a checkbox to allow users to view treatment couch position history
         show_couch_positions = st.checkbox("Plot couch position history.")
         if show_couch_positions:
-            st.subheader("Couch Positions")
             plot_couch_positions(delivered)
             plot_couch_deltas(delivered)
