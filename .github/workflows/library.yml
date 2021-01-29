@@ -18,13 +18,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Extract branch name
-        run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-      - name: Test branch name
-        run: |
-          echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v2
       - name: Set up Python 3.8
         uses: actions/setup-python@v1
@@ -52,7 +45,7 @@ jobs:
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.extract_branch.outputs.branch }}
+          branch: ${{ github.event.pull_request.head.ref }}
 
 # =============================================================================
 
@@ -335,14 +328,7 @@ jobs:
 
 # TESTS
 
-## Propagate
-
-      - name: Extract branch name
-        if: matrix.os == 'ubuntu' && matrix.task == 'tests'
-        run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-        
+## Propagate       
       - name: See if propagate is needed
         if: matrix.os == 'ubuntu' && matrix.task == 'tests'
         run: |
@@ -369,7 +355,7 @@ jobs:
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.extract_branch.outputs.branch }}
+          branch: ${{ github.event.pull_request.head.ref }}
 
 ## Pyright
 
