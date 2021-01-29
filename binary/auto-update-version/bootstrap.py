@@ -5,6 +5,7 @@ import pathlib
 import shutil
 import subprocess
 import textwrap
+import traceback
 
 PYTHON_ENVIRONMENT_POINTER = "https://bootstrap.pymedphys.com/python-urls/win-amd64"
 GET_PYMEDPHYS_URL = "https://bootstrap.pymedphys.com/get-pymedphys.py"
@@ -62,7 +63,10 @@ def main():
 
                     {contents_of_python_environment}
 
-                Error message:
+                The traceback of the error:
+
+                {traceback}
+
                 """
             ).format(
                 help_text=help_text,
@@ -70,8 +74,11 @@ def main():
                 python_environment_url=python_environment_url,
                 get_pymedphys_contents=get_pymedphys_contents,
                 contents_of_python_environment=contents_of_python_environment,
+                traceback=textwrap.indent(traceback.format_exc(), "    "),
             )
             print(debug_information_string)
+
+            input("Press Enter to continue...")
 
             raise
 
