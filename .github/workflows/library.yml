@@ -39,6 +39,7 @@ jobs:
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
           git commit -m "Fix pre-commit failures" -a
+          git config pull.ff only
           git pull
           exit 1
       - name: Push changes
@@ -349,6 +350,7 @@ jobs:
         if: failure()
         run: |
           git commit -m "Fix propagate failures" -a
+          git config pull.ff only
           git pull
           exit 1
           
