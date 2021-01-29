@@ -56,10 +56,10 @@ within the `Release Notes`_.
 Community
 **************
 
-There is a community over at `Discourse <https://pymedphys.discourse.group/>`_
-to help you find your feet using PyMedPhys. Please reach out over there and
-we'd love to help!
-
+PyMedPhys has a `Discourse community <https://pymedphys.discourse.group/>`_
+to both help you find your feet using PyMedPhys and to facilitate collaboration
+and general discussion. Please reach out over there and we'd love to get to
+know you!
 
 Documentation
 =============
