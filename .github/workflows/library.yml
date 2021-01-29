@@ -342,10 +342,27 @@ jobs:
 
 # TESTS
 
+      - name: Get PyMedPhys cache directory
+        id: pymedphys-cache-location
+        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        run: |
+          echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
+
+      - name: PyMedPhys Cache
+        id: pymedphys-cache
+        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pymedphys-cache-location.outputs.dir }}
+          key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
+
+
 ## Propagate
       - name: See if propagate is needed
         if: matrix.task == 'propagate'
+        id: propagate-test
         run: |
+          echo "::set-output name=status::before"
           poetry run pymedphys dev propagate
 
           git config --local user.email "propagate-bot@pymedphys.com"
@@ -354,11 +371,13 @@ jobs:
           git add poetry.lock setup.py
           git commit -m "commit changes to poetry.lock and setup.py"
 
+          echo "::set-output name=status::committed"
+
           git status
           git diff-index --quiet HEAD --
 
       - name: Fix any issues
-        if: matrix.task == 'propagate' && failure()
+        if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
         run: |
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
@@ -369,7 +388,7 @@ jobs:
           BRANCH: ${{ github.event.pull_request.head.ref }}
 
       - name: Push changes
-        if: matrix.task == 'propagate' && failure()
+        if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
