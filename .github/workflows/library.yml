@@ -38,10 +38,10 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
-          git commit -m "Fix pre-commit failures" -a
           git config pull.ff only
+          git pull origin $BRANCH
           git checkout $BRANCH
-          git pull $BRANCH
+          git commit -m "Fix pre-commit failures" -a
           exit 1
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
