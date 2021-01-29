@@ -1,12 +1,14 @@
-import sys
-import urllib.request
-import urllib.error
-import tempfile
+import functools
 import pathlib
 import shutil
 import subprocess
+import sys
+import tempfile
 import textwrap
+import time
 import traceback
+import urllib.error
+import urllib.request
 
 import tqdm
 
@@ -22,15 +24,11 @@ class DownloadProgressBar(tqdm.tqdm):
         self.update(b * bsize - self.n)
 
 
-import time
-from functools import wraps
-
-
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     """Retry calling the decorated function using an exponential backoff."""
 
     def deco_retry(f):
-        @wraps(f)
+        @functools.wraps(f)
         def f_retry(*args, **kwargs):
             mtries, mdelay = tries, delay
             while mtries > 1:
