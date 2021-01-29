@@ -18,14 +18,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Extract branch name
-        run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-      - name: Test branch name
-        run: |
-          echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - name: Set up Python 3.8
         uses: actions/setup-python@v1
         with:
@@ -49,10 +45,10 @@ jobs:
           exit 1
       - name: Push changes
         if: failure()
-        uses: ad-m/github-push-action@02b0b75
+        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.extract_branch.outputs.branch }}
+          github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
+          branch: ${{ github.event.pull_request.head.ref }}
 
 # =============================================================================
 
@@ -62,7 +58,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright', 'propagate']
         exclude:
           - os: 'ubuntu'
             task: 'binary'
@@ -77,6 +73,8 @@ jobs:
             task: 'slow'
           - os: 'windows'
             task: 'pyright'
+          - os: 'windows'
+            task: 'propagate'
 
           - os: 'macos'
             task: 'stackoverflow'
@@ -90,6 +88,8 @@ jobs:
             task: 'binary'
           - os: 'macos'
             task: 'pyright'
+          - os: 'macos'
+            task: 'propagate'
 
         include:
           # Version numbers chosen so that highest and lowest Python version is
@@ -107,6 +107,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        if: matrix.task != 'propagate'
+
+      - uses: actions/checkout@v2
+        if: matrix.task == 'propagate'
+        with:
+          persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -274,7 +281,7 @@ jobs:
 ## Install remaining packages for pyright
 
       - name: Install a propagate environment
-        if: matrix.task == 'pyright'
+        if: matrix.task == 'pyright' || matrix.task == 'propagate'
         run: |
           poetry install -E propagate
 
@@ -336,21 +343,41 @@ jobs:
 # TESTS
 
 ## Propagate
-
       - name: See if propagate is needed
-        if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+        if: matrix.task == 'propagate'
+        id: propagate-test
         run: |
-          poetry install -E propagate
-
+          echo "::set-output name=status::before"
           poetry run pymedphys dev propagate
 
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
+
           git add poetry.lock setup.py
-          git commit -m "dummy commit"
+          git commit -m "commit changes to poetry.lock and setup.py"
+
+          echo "::set-output name=status::committed"
 
           git status
           git diff-index --quiet HEAD --
+
+      - name: Fix any issues
+        if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
+        run: |
+          git config --local user.email "propagate-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Propagate Bot"
+
+          git commit -m "Fix propagate failures" -a
+          exit 1
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+
+      - name: Push changes
+        if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
+        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
+        with:
+          github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
+          branch: ${{ github.event.pull_request.head.ref }}
 
 ## Pyright
 
