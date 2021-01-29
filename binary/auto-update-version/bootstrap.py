@@ -32,7 +32,8 @@ def main():
         command = [str(python_exe), str(get_pymedphys_filepath)] + sys.argv[1:]
 
         subprocess.check_call(
-            command, cwd=python_environment_directory,
+            command,
+            cwd=python_environment_directory,
         )
 
 
