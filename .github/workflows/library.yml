@@ -337,6 +337,12 @@ jobs:
 
 ## Propagate
 
+      - name: Extract branch name
+        if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+        
       - name: See if propagate is needed
         if: matrix.os == 'ubuntu' && matrix.task == 'tests'
         run: |
@@ -347,10 +353,23 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
           git add poetry.lock setup.py
-          git commit -m "dummy commit"
+          git commit -m "commit changes to poetry.lock and setup.py"
 
           git status
           git diff-index --quiet HEAD --
+          
+      - name: Fix any issues
+        if: failure()
+        run: |
+          git commit -m "Fix propagate failures" -a
+          exit 1
+          
+      - name: Push changes
+        if: failure()
+        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
 
 ## Pyright
 
