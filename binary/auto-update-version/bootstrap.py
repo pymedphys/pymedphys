@@ -59,8 +59,7 @@ def download_with_progress(url, filepath, description):
 
 
 def main():
-    downloading_prompt = "Downloading installation files..."
-    print(downloading_prompt)
+    print("Downloading installation files...")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         get_pymedphys_filepath = pathlib.Path(temp_dir).joinpath("get-pymedphys.py")
