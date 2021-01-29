@@ -18,6 +18,7 @@ import plotly
 import plotly.express
 import psutil
 import pymssql
+import sqlalchemy
 import pytest
 import requests
 import streamlit_ace
