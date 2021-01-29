@@ -24,7 +24,7 @@ class DownloadProgressBar(tqdm.tqdm):
         self.update(b * bsize - self.n)
 
 
-def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
+def retry(ExceptionToCheck, tries=4, delay=3, backoff=2):
     """Retry calling the decorated function using an exponential backoff."""
 
     def deco_retry(f):
@@ -36,10 +36,7 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
                     return f(*args, **kwargs)
                 except ExceptionToCheck as e:
                     msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
-                    if logger:
-                        logger.warning(msg)
-                    else:
-                        print(msg)
+                    print(msg)
                     time.sleep(mdelay)
                     mtries -= 1
                     mdelay *= backoff
