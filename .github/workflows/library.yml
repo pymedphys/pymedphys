@@ -49,7 +49,7 @@ jobs:
           exit 1
       - name: Push changes
         if: failure()
-        uses: ad-m/github-push-action@02b0b75
+        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ steps.extract_branch.outputs.branch }}
