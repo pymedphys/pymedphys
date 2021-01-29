@@ -350,6 +350,7 @@ jobs:
 
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
+
           git add poetry.lock setup.py
           git commit -m "commit changes to poetry.lock and setup.py"
 
@@ -359,6 +360,9 @@ jobs:
       - name: Fix any issues
         if: matrix.task == 'propagate' && failure()
         run: |
+          git config --local user.email "propagate-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Propagate Bot"
+
           git commit -m "Fix propagate failures" -a
           exit 1
         env:
