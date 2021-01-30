@@ -415,7 +415,6 @@ jobs:
         run: |
           poetry run pymedphys dev tests -v --slow
 
-
 ## Docs
 
       - name: Build docs
