@@ -20,6 +20,7 @@ import psutil
 import pymssql
 import pytest
 import requests
+import sqlalchemy
 import streamlit_ace
 import streamlit_analytics
 import timeago
