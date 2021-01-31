@@ -108,9 +108,6 @@ sphinxcontrib-napoleon = { version = "*", optional = true }  # groups = ["dev", 
 sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs", "doctests"]
 
 networkx = { version = "*", optional = true }  # groups = ["dev", "docs"]
-semver = { version = "*", optional = true }  # groups = ["dev", "docs"]
-stdlib_list = { version = "*", optional = true }  # groups = ["dev", "docs"]
-pydeps = { version = "*", optional = true }  # groups = ["dev", "docs"]
 
 # Jupyter book has a lower bound due to 0.8 being a major breaking change
 # version
