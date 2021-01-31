@@ -115,7 +115,6 @@ pybtex==0.23.0; python_version >= "3.6" and python_full_version < "3.0.0" or pyt
 pycparser==2.20; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "linux" or sys_platform == "linux" and python_version >= "3.6" and python_full_version >= "3.6.0"
 pydata-sphinx-theme==0.4.1; python_version >= "3.6"
 pydeck==0.5.0; python_version >= "3.6"
-pydeps==1.9.13
 pydicom==2.1.2; python_full_version >= "3.6.1"
 pygments==2.7.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 pylibjpeg-libjpeg==1.1.0; python_version >= "3.6"
