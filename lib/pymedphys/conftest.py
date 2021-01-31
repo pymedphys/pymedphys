@@ -30,6 +30,12 @@ SKIPPING_CONFIG = {
         "description": "mark test as using pylinac",
         "skip_otherwise": False,
     },
+    "mosaiqdb": {
+        "options": ["--run-only-mosaiqdb", "--mosaiqdb"],
+        "help": "run only the tests that use mosaiq db",
+        "description": "mark test as using mosaiq db",
+        "skip_otherwise": True,
+    },
 }
 
 
