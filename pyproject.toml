@@ -52,7 +52,7 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
+pymssql = { version = "*", optional = true }  # groups = ["user", "dev"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev"]
 natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
