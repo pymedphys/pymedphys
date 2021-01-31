@@ -16,7 +16,7 @@ jobs:
           git config --local user.name "PyMedPhys Merge Conflicts Bot"
 
           git fetch origin main
-          git merge origin/main
+          git merge origin/main || true
 
           CONFLICTS=$(git ls-files -u | grep 'poetry.lock\|setup.py\|requirements\|pyproject.hash' | wc -l)
 
