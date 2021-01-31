@@ -55,8 +55,7 @@ jobs:
           git fetch origin main
           git merge origin/main || true
 
-          poetry-merge-lock
-          poetry run pymedphys dev propagate
+          poetry run pymedphys dev propagate || poetry-merge-lock && poetry run pymedphys dev propagate
 
           git add poetry.lock setup.py requirements* pyproject.hash
           git commit -m "Merge origin/main, fix merge conflicts from 'pymedphys dev propagate'"
