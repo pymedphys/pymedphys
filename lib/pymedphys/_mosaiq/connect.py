@@ -17,18 +17,87 @@
 """A toolbox for connecting to Mosaiq SQL.
 """
 
+from typing import Dict, List, Tuple
+
 from pymedphys._imports import pymssql
 
 from . import credentials as _credentials
 
 
-def connect_with_credential(
+class Connection:
+    """A Mosaiq DB Connection object.
+
+    A wrapper around the ``pymssql.Connection`` object.
+    """
+
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        hostname: str,
+        port: int = 1433,
+        database: str = "MOSAIQ",
+    ):
+        try:
+            self._connection = pymssql.connect(
+                hostname, username, password, database=database, port=port
+            )
+        except pymssql.OperationalError as error:
+            error_message = error.args[0][1]
+            if error_message.startswith(b"Login failed for user"):
+                raise _credentials.WrongUsernameOrPassword(
+                    "Wrong credentials"
+                ) from error
+
+            raise
+
+    def cursor(self) -> "Cursor":
+        return Cursor(self._connection)
+
+    def close(self):
+        self._connection.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+class Cursor:
+    """A Mosaiq DB Cursor object.
+
+    A wrapper around the ``pymssql.Cursor`` object.
+    """
+
+    def __init__(self, connection: "pymssql.Connection"):
+        self._cursor = connection.cursor()
+
+    def close(self):
+        self._cursor.close()
+
+    def execute(self, query: str, parameters: Dict = None):
+        self._cursor.execute(query, parameters)
+
+    def fetchall(self) -> List[Tuple[str, ...]]:
+        results: List[Tuple[str, ...]] = self._cursor.fetchall()
+
+        return results
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+def connect_with_credentials(
     username: str,
     password: str,
     hostname: str,
     port: int = 1433,
     database: str = "MOSAIQ",
-) -> "pymssql.Connection":
+) -> Connection:
     """Connects to a Mosaiq database.
 
     Parameters
@@ -44,8 +113,8 @@ def connect_with_credential(
 
     Returns
     -------
-    conn : pymssql.Connection
-        The Connection object to the database.
+    connection : pymedphys.mosaiq.Connection
+        A connection object to the database for execution.
 
     Raises
     ------
@@ -53,16 +122,12 @@ def connect_with_credential(
         If the wrong credentials are provided.
 
     """
+    connection = Connection(
+        username=username,
+        password=password,
+        hostname=hostname,
+        port=port,
+        database=database,
+    )
 
-    try:
-        conn = pymssql.connect(
-            hostname, username, password, database=database, port=port
-        )
-    except pymssql.OperationalError as error:
-        error_message = error.args[0][1]
-        if error_message.startswith(b"Login failed for user"):
-            raise _credentials.WrongUsernameOrPassword("Wrong credentials") from error
-
-        raise
-
-    return conn
+    return connection

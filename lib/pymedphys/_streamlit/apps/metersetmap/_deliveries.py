@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-from pymedphys._imports import pymssql
 from pymedphys._imports import streamlit as st
 
 import pymedphys
@@ -36,10 +35,10 @@ def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
 
 
-@st.cache(hash_funcs={pymssql.Cursor: id}, allow_output_mutation=True)
-def delivery_from_mosaiq(cursor_and_field_id):
-    cursor, field_id = cursor_and_field_id
-    return pymedphys.Delivery.from_mosaiq(cursor, field_id)
+@st.cache(hash_funcs={pymedphys.mosaiq.Connection: id}, allow_output_mutation=True)
+def delivery_from_mosaiq(connection_and_field_id):
+    connection, field_id = connection_and_field_id
+    return pymedphys.Delivery.from_mosaiq(connection, field_id)
 
 
 def cached_deliveries_loading(inputs, method_function):
