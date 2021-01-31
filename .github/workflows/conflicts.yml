@@ -57,7 +57,7 @@ jobs:
           poetry run pymedphys dev propagate
 
           git add poetry.lock setup.py requirements* pyproject.hash
-          git commit -m "Commit fixes to propagate merge conflicts"
+          git commit -m "Merge origin/main, fix merge conflicts from 'pymedphys dev propagate'"
 
       - name: Push changes
         if: steps.conflicts.outputs.status == 'true'
