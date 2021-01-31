@@ -1,11 +1,7 @@
-import pymssql
-import pytest
-from pymedphys._imports import sqlalchemy
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import pymssql, pytest, sqlalchemy
 
-import pandas as pd
-
-from pymedphys import mosaiq
-from pymedphys._mosaiq import connect as msq_connect
+import pymedphys.mosaiq
 
 
 @pytest.mark.mosaiqdb
@@ -30,14 +26,16 @@ def test_mock_patient_table():
         "Patient", engine, if_exists="replace", index=True, index_label="Pat_Id1"
     )
 
-    connection = msq_connect.connect_with_credential(
-        sa_user, sa_password, msq_server, port=1433, database=test_db_name
+    connection = pymedphys.mosaiq.connect(
+        msq_server,
+        port=1433,
+        database=test_db_name,
+        username=sa_user,
+        password=sa_password,
     )
 
-    cursor = connection.cursor()
-
-    result_all = mosaiq.execute(
-        cursor,
+    result_all = pymedphys.mosaiq.execute(
+        connection,
         """
         SELECT
             Pat_Id1,
@@ -52,8 +50,8 @@ def test_mock_patient_table():
 
     assert len(result_all) == 3
 
-    result_moe = mosaiq.execute(
-        cursor,
+    result_moe = pymedphys.mosaiq.execute(
+        connection,
         """
         SELECT
             Pat_Id1,

@@ -1,5 +1,4 @@
-import pymssql
-import pytest
+from pymedphys._imports import pymssql, pytest
 
 
 @pytest.mark.mosaiqdb
