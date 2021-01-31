@@ -53,12 +53,12 @@ jobs:
 # =============================================================================
 
   Tests:
-    if: false
     strategy:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright', 'propagate']
+        # task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright', 'propagate']
+        task: ['propagate']
         exclude:
           - os: 'ubuntu'
             task: 'binary'
