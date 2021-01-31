@@ -370,8 +370,6 @@ jobs:
 
           git commit -m "Fix propagate failures" -a
           exit 1
-        env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
 
       - name: Push changes
         if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
