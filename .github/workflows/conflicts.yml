@@ -44,14 +44,14 @@ jobs:
         run: |
           poetry install -E propagate
 
-      - name: Fix poetry.lock conflicts
+      - name: Fix conflicts
         if: steps.conflicts.outputs.status == 'true'
         run: |
           git config --local user.email "merge-conflicts-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Merge Conflicts Bot"
 
           git fetch origin main
-          git merge origin/main
+          git merge origin/main || true
 
           git checkout HEAD poetry.lock setup.py requirements* pyproject.hash
           poetry run pymedphys dev propagate
