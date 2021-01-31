@@ -18,13 +18,25 @@ def test_mock_patient_table():
     cursor.execute(f"create database {test_db_name}")
     cursor.close()
 
-    patient_df = pd.DataFrame([("Larry"), ("Moe"), ("Curly")], columns=["FirstName"])
+    patient_df = pd.DataFrame(
+        [("Larry", "Fine"), ("Moe", "Howard"), ("Curly", "Howard")],
+        columns=["First_Name", "Last_Name"],
+    )
     patient_df.index = patient_df.index + 10001  # use the index+10001 as the Pat_ID1
+
+    ident_df = pd.DataFrame([("MR8001"), ("MR8002"), ("MR8003")], columns=["IDA"])
+    ident_df.index = (
+        ident_df.index + 10001
+    )  # use index+10001 in the same order as Pat_ID1
 
     conn_str = f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db_name}"
     engine = sqlalchemy.create_engine(conn_str, echo=False)
+
     patient_df.to_sql(
         "Patient", engine, if_exists="replace", index=True, index_label="Pat_Id1"
+    )
+    ident_df.to_sql(
+        "Ident", engine, if_exists="replace", index=True, index_label="Pat_Id1"
     )
 
     connection = pymedphys.mosaiq.connect(
@@ -51,18 +63,6 @@ def test_mock_patient_table():
 
     assert len(result_all) == 3
 
-    result_moe = pymedphys.mosaiq.execute(
-        connection,
-        """
-        SELECT
-            Pat_Id1,
-            FirstName
-        FROM Patient
-        WHERE Pat_Id1 = %(pat_id1)s
-        """,
-        {"pat_id1": 10002},
-    )
+    moe_patient_name = pymedphys.mosaiq.helpers.get_patient_name(connection, "MR8002")
 
-    assert len(result_moe) == 1
-    assert result_moe[0][0] == 10002
-    assert result_moe[0][1] == "Moe"
+    assert moe_patient_name == "Howard, Moe"
