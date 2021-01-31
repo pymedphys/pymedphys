@@ -26,8 +26,6 @@ def test_object_consistency():
 
     filtered._metersets(0, 0)
 
-    assert False
-
 
 def test_base_object():
     empty = Delivery._empty()
