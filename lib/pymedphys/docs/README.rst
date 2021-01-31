@@ -30,7 +30,7 @@ and open source distribution. Open code is better science.**
 What is PyMedPhys?
 ==================
 
-PyMedPhys is an open-source Medical Physics python library built by an open
+PyMedPhys is an open source Medical Physics python library built by an open
 community that values and prioritises code sharing, review, improvement, and
 learning from each other. It is inspired by the collaborative work of our
 physics peers in astronomy and the `Astropy Project`_. PyMedPhys is available
