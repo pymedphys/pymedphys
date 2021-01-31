@@ -24,7 +24,8 @@ jobs:
             echo "::set-output name=status::true"
           fi
 
-          git stash --include-untracked
+          git reset HEAD
+          git stash
 
       - name: Set up Python 3.8
         if: steps.conflicts.outputs.status == 'true'
