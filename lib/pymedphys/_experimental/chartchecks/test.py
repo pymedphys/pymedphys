@@ -7,7 +7,7 @@ from pymedphys._imports import streamlit as st
 
 def main():
     files = st.file_uploader("select file to upload", accept_multiple_files=True)
-    file = "P:/Share/Chris/Test_Patient/RS.1.3.46.670589.13.15476.20191204085114.491830"
+    # file = "P:/Share/Chris/Test_Patient/RS.1.3.46.670589.13.15476.20191204085114.491830"
     st.write(files)
     # st.write(bytes_data)
 
