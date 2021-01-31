@@ -215,7 +215,6 @@ extras_require = {
     ],
     "doctests": ["pylinac==2.3.2", "tensorflow>=2.2.0", "sphinx-book-theme"],
     "ml": ["tensorflow>=2.2.0"],
-    "mosaiq": ["pymssql"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
         "pytest",
