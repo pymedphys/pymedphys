@@ -16,6 +16,7 @@ def test_mock_patient_table():
     conn.autocommit(True)
     cursor = conn.cursor()
     cursor.execute(f"create database {test_db_name}")
+    cursor.close()
 
     patient_df = pd.DataFrame([("Larry"), ("Moe"), ("Curly")], columns=["FirstName"])
     patient_df.index = patient_df.index + 10001  # use the index+10001 as the Pat_ID1
@@ -65,5 +66,3 @@ def test_mock_patient_table():
     assert len(result_moe) == 1
     assert result_moe[0][0] == 10002
     assert result_moe[0][1] == "Moe"
-
-    cursor.close()
