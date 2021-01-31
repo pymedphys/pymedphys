@@ -53,12 +53,12 @@ jobs:
 # =============================================================================
 
   Tests:
-    if: github.event_name != 'release'  # Skip on release while building out the CI
     strategy:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
         task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright', 'propagate']
+
         exclude:
           - os: 'ubuntu'
             task: 'binary'
@@ -369,8 +369,6 @@ jobs:
 
           git commit -m "Fix propagate failures" -a
           exit 1
-        env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
 
       - name: Push changes
         if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
