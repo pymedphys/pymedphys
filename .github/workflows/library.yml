@@ -477,7 +477,7 @@ jobs:
           git fetch origin main
           git merge origin/main
 
-          CONFLICTS=$(git ls-files -u | grep 'poetry.lock\|setup.py\|requirements' | wc -l)
+          CONFLICTS=$(git ls-files -u | grep 'poetry.lock\|setup.py\|requirements\|pyproject.hash' | wc -l)
 
           if [ "$CONFLICTS" -gt 0 ] ; then
             echo "::set-output name=status::true"
@@ -511,7 +511,7 @@ jobs:
           git fetch origin main
           git merge origin/main
 
-          git checkout HEAD poetry.lock setup.py requirements*
+          git checkout HEAD poetry.lock setup.py requirements* pyproject.hash
           poetry run pymedphys dev propagate
 
           git commit -m "Commit fixes to propagate merge conflicts"
