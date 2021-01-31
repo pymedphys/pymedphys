@@ -53,7 +53,7 @@ jobs:
           git fetch origin main
           git merge origin/main || true
 
-          git checkout HEAD poetry.lock setup.py requirements* pyproject.hash
+          git checkout HEAD poetry.lock
           poetry run pymedphys dev propagate
 
           git add poetry.lock setup.py requirements* pyproject.hash
