@@ -13,5 +13,4 @@ itself. Below is the documentation for a range of these libraries.
     gamma
     mosaiq
     metersetmap
-    electronfactors
     experimental/index

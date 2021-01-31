@@ -20,7 +20,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
-import pymedphys.electronfactors as electronfactors
+import pymedphys._electronfactors as electronfactors
 from pymedphys._streamlit import categories
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
