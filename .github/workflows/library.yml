@@ -475,6 +475,9 @@ jobs:
           git config --local user.name "PyMedPhys Merge Conflicts Bot"
 
           git fetch origin main
+          git fetch origin $BRANCH
+
+          git checkout $BRANCH
           git merge origin/main
 
           CONFLICTS=$(git ls-files -u | grep 'poetry.lock\|setup.py\|requirements\|pyproject.hash' | wc -l)
@@ -484,6 +487,8 @@ jobs:
           fi
 
           git stash --include-untracked
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
 
       - name: Set up Python 3.8
         if: steps.conflicts.outputs.status == 'true'
