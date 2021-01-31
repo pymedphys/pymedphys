@@ -66,7 +66,7 @@ def date_convert(date, timezone):
     return mosaiq_string_time, path_string_time
 
 
-def identify_logfile(cursor, filepath, timezone):
+def identify_logfile(connection, filepath, timezone):
     header = decode_header_from_file(filepath)
 
     if header.field_label == "":
@@ -75,7 +75,7 @@ def identify_logfile(cursor, filepath, timezone):
     mosaiq_string_time, _ = date_convert(header.date, timezone)
 
     delivery_details = get_mosaiq_delivery_details(
-        cursor,
+        connection,
         header.machine,
         mosaiq_string_time,
         header.field_label,

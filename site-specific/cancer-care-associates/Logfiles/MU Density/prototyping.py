@@ -154,9 +154,9 @@ def plot_and_save_results(
     return fig
 
 
-def get_incomplete_qcls(cursor, location):
+def get_incomplete_qcls(connection, location):
     data = pymedphys.mosaiq.execute(
-        cursor,
+        connection,
         """
         SELECT
             Ident.IDA,
@@ -196,12 +196,12 @@ def get_incomplete_qcls(cursor, location):
     return results
 
 
-def get_patient_fields(cursor, patient_id):
+def get_patient_fields(connection, patient_id):
     """Returns all of the patient fields for a given Patient ID."""
     patient_id = str(patient_id)
 
     patient_field_results = pymedphys.mosaiq.execute(
-        cursor,
+        connection,
         """
         SELECT
             TxField.FLD_ID,
