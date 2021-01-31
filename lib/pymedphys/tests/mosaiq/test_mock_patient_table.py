@@ -13,59 +13,56 @@ def test_mock_patient_table():
     sa_user = "sa"
     sa_password = "sqlServerPassw0rd"
 
-    # sa connection to create/drop the test database
-    sql_sa_connection = pymssql.connect(msq_server, user=sa_user, password=sa_password)
-    sql_sa_connection.autocommit(True)
+    # sa connection to create the test database
+    with pymssql.connect(
+        msq_server, user=sa_user, password=sa_password
+    ) as sql_sa_connection:
 
-    try:
+        sql_sa_connection.autocommit(True)
+
         # create the test db
-        cursor = sql_sa_connection.cursor()
-        cursor.execute(
-            f"""
-            IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '{test_db_name}')
-            BEGIN
-                CREATE DATABASE {test_db_name};
-            END
-            """
-        )
-        cursor.close()
+        with sql_sa_connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '{test_db_name}')
+                BEGIN
+                    CREATE DATABASE {test_db_name};
+                END
+                """
+            )
 
-        # create dataframes for the Patient and Ident tables
-        patient_df = pd.DataFrame(
-            [("Larry", "Fine"), ("Moe", "Howard"), ("Curly", "Howard")],
-            columns=["First_Name", "Last_Name"],
-        )
-        patient_df.index = (
-            patient_df.index + 10001
-        )  # use the index+10001 as the Pat_ID1
+    # create dataframes for the Patient and Ident tables
+    patient_df = pd.DataFrame(
+        [("Larry", "Fine"), ("Moe", "Howard"), ("Curly", "Howard")],
+        columns=["First_Name", "Last_Name"],
+    )
+    patient_df.index = patient_df.index + 10001  # use the index+10001 as the Pat_ID1
 
-        ident_df = pd.DataFrame([("MR8001"), ("MR8002"), ("MR8003")], columns=["IDA"])
-        ident_df.index = (
-            ident_df.index + 10001
-        )  # use index+10001 in the same order as Pat_ID1
+    ident_df = pd.DataFrame([("MR8001"), ("MR8002"), ("MR8003")], columns=["IDA"])
+    ident_df.index = (
+        ident_df.index + 10001
+    )  # use index+10001 in the same order as Pat_ID1
 
-        # now use SQLAlchemy to populate the two tables
-        conn_str = (
-            f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db_name}"
-        )
-        engine = sqlalchemy.create_engine(conn_str, echo=False)
+    # now use SQLAlchemy to populate the two tables
+    conn_str = f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db_name}"
+    engine = sqlalchemy.create_engine(conn_str, echo=False)
 
-        patient_df.to_sql(
-            "Patient", engine, if_exists="replace", index=True, index_label="Pat_Id1"
-        )
-        ident_df.to_sql(
-            "Ident", engine, if_exists="replace", index=True, index_label="Pat_Id1"
-        )
+    patient_df.to_sql(
+        "Patient", engine, if_exists="replace", index=True, index_label="Pat_Id1"
+    )
+    ident_df.to_sql(
+        "Ident", engine, if_exists="replace", index=True, index_label="Pat_Id1"
+    )
+
+    with connect(
+        msq_server,
+        port=1433,
+        database=test_db_name,
+        username=sa_user,
+        password=sa_password,
+    ) as connection:
 
         # test a generic query for patient info
-        connection = connect(
-            msq_server,
-            port=1433,
-            database=test_db_name,
-            username=sa_user,
-            password=sa_password,
-        )
-
         result_all = execute(
             connection,
             """
@@ -87,12 +84,3 @@ def test_mock_patient_table():
         moe_patient_name = get_patient_name(connection, "MR8002")
 
         assert moe_patient_name == "HOWARD, Moe"
-
-    finally:
-        # close the pymedphys connection
-        if connection:
-            connection.close()
-
-        # clean up!
-        if sql_sa_connection:
-            sql_sa_connection.close()
