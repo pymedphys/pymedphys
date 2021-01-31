@@ -470,8 +470,6 @@ jobs:
       - name: See if there are merge conflicts
         id: conflicts
         run: |
-
-
           git config --local user.email "merge-conflicts-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Merge Conflicts Bot"
 
@@ -505,6 +503,7 @@ jobs:
 
       - name: Fix poetry.lock conflicts
         if: steps.conflicts.outputs.status == 'true'
+        run: |
           git config --local user.email "merge-conflicts-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Merge Conflicts Bot"
 
@@ -522,9 +521,6 @@ jobs:
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
           branch: ${{ github.event.pull_request.head.ref }}
-
-
-
 
 
   PyPI:
