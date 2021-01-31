@@ -460,8 +460,8 @@ jobs:
 
   PropagateConflictFixes:
     runs-on: ubuntu-latest
-    needs:
-      - PreCommit
+    # needs:
+    #   - PreCommit
       # - Tests
     steps:
       - uses: actions/checkout@v2
