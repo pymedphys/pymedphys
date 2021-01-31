@@ -63,3 +63,25 @@ def run_pylint(_, remaining):
         subprocess.check_call(command)
     finally:
         os.chdir(original_cwd)
+
+
+def run_doctests(_, remaining):
+    original_cwd = os.getcwd()
+
+    os.chdir(LIBRARY_ROOT)
+    print(f"Running doctests with cwd set to:\n    {os.getcwd()}\n")
+
+    python_executable = pmp_test_utils.get_executable_even_when_embedded()
+    command = [
+        python_executable,
+        "-m",
+        "pytest",
+        "--pyargs",
+        "pymedphys",
+        "--doctest-modules",
+    ] + remaining
+
+    try:
+        subprocess.check_call(command)
+    finally:
+        os.chdir(original_cwd)
