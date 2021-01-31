@@ -56,6 +56,7 @@ jobs:
           git checkout HEAD poetry.lock setup.py requirements* pyproject.hash
           poetry run pymedphys dev propagate
 
+          git add poetry.lock setup.py requirements* pyproject.hash
           git commit -m "Commit fixes to propagate merge conflicts"
 
       - name: Push changes
