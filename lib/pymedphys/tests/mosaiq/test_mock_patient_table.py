@@ -63,6 +63,6 @@ def test_mock_patient_table():
 
     assert len(result_all) == 3
 
-    moe_patient_name = pymedphys.mosaiq.helpers.get_patient_name(connection, "MR8002")
+    moe_patient_name = mosaiq.helpers.get_patient_name(connection, "MR8002")
 
     assert moe_patient_name == "Howard, Moe"
