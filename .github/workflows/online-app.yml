@@ -1,10 +1,6 @@
 name: OnlineApp
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
   schedule:
     - cron: '*/5 * * * *'
 
