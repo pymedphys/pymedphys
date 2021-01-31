@@ -64,4 +64,4 @@ jobs:
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
-          branch: ${{ github.event.pull_request.head.ref }}
+          branch: ${{ github.ref }}
