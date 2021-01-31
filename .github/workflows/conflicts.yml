@@ -43,6 +43,8 @@ jobs:
         if: steps.conflicts.outputs.status == 'true'
         run: |
           poetry install -E propagate
+          pip install pipx
+          pipx install poetry-merge-lock
 
       - name: Fix conflicts
         if: steps.conflicts.outputs.status == 'true'
@@ -53,7 +55,7 @@ jobs:
           git fetch origin main
           git merge origin/main || true
 
-          git checkout HEAD poetry.lock
+          poetry-merge-lock
           poetry run pymedphys dev propagate
 
           git add poetry.lock setup.py requirements* pyproject.hash
