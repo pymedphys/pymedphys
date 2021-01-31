@@ -35,7 +35,6 @@ def colour_results(val):  # pylint: disable = too-many-return-statements
         "tolerance",
         "modality",
         "technique",
-        "backup_time",
         "couch_lat [cm]",
         "couch_lng [cm]",
         "couch_vrt [cm]",

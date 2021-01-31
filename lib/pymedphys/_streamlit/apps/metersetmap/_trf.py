@@ -46,8 +46,8 @@ def get_logfile_mosaiq_info(
 ):
     details = []
 
-    cursors = {
-        server["alias"]: st_mosaiq.get_cached_mosaiq_cursor(**server)
+    connections = {
+        server["alias"]: st_mosaiq.get_cached_mosaiq_connection(**server)
         for server in mosaiq_servers
     }
 
@@ -56,14 +56,14 @@ def get_logfile_mosaiq_info(
         centre = machine_centre_map[machine_id]
         mosaiq_timezone = mosaiq_details[centre]["timezone"]
         server_alias = mosaiq_details[centre]["server"]["alias"]
-        cursor = cursors[server_alias]
+        connection = connections[server_alias]
 
         field_label = header["field_label"]
         field_name = header["field_name"]
         utc_date = header["date"]
 
         current_details = pmp_index.get_logfile_mosaiq_info(
-            cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
+            connection, machine_id, utc_date, mosaiq_timezone, field_label, field_name
         )
         current_details = pd.Series(data=current_details)
 
