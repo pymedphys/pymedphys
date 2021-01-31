@@ -44,8 +44,8 @@ def main():
         "sash": "Physics_Check",
     }
 
-    cursors = {
-        centre: st_mosaiq.get_cached_mosaiq_cursor_in_dict(**servers[centre])
+    connections = {
+        centre: st_mosaiq.get_cached_mosaiq_connection_in_dict(**servers[centre])
         for centre in centres
     }
 
@@ -55,20 +55,20 @@ def main():
     for centre in centres:
         st.write(f"## {centre.upper()}")
 
-        cursor_bucket = cursors[centre]
+        connection_bucket = connections[centre]
         physics_location = physics_locations[centre]
 
         try:
             table = msq_helpers.get_incomplete_qcls(
-                cursor_bucket["cursor"], physics_location
+                connection_bucket["connection"], physics_location
             )
         except (pymssql.InterfaceError, pymssql.OperationalError) as e:
             st.write(e)
-            cursor_bucket["cursor"] = st_mosaiq.get_uncached_mosaiq_cursor(
+            connection_bucket["connection"] = st_mosaiq.get_uncached_mosaiq_connection(
                 **servers[centre]
             )
             table = msq_helpers.get_incomplete_qcls(
-                cursor_bucket["cursor"], physics_location
+                connection_bucket["connection"], physics_location
             )
 
         table_dict = collections.OrderedDict()

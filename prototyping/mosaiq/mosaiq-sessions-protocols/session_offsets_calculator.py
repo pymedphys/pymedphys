@@ -83,7 +83,7 @@ def cluster_sessions(tx_datetimes, interval=timedelta(hours=3)):
     yield (current_session_number, start_session, end_session)
 
 
-def sessions_for_site(cursor, sit_set_id):
+def sessions_for_site(connection, sit_set_id):
     """Determines the sessions for the given site (by SIT_SET_ID)
 
     uses cluster_sessions after querying for the Dose_Hst.Tx_DtTm
@@ -91,7 +91,7 @@ def sessions_for_site(cursor, sit_set_id):
 
     Parameters
     ----------
-    cursor : pymssql cursor opened with pymedphys.mosaiq.connect
+    connection : pymssql connection opened with pymedphys.mosaiq.connect
 
     sit_set_id : int
         the SIT_SET_ID for the site of interest
@@ -102,7 +102,7 @@ def sessions_for_site(cursor, sit_set_id):
         same format as returned by cluster_sessions
     """
     result = mosaiq.execute(
-        cursor,
+        connection,
         """
         SELECT
             Tx_DtTm
@@ -122,12 +122,12 @@ def sessions_for_site(cursor, sit_set_id):
     return cluster_sessions(dose_hst_datetimes)
 
 
-def session_offsets_for_site(cursor, sit_set_id, interval=timedelta(hours=1)):
+def session_offsets_for_site(connection, sit_set_id, interval=timedelta(hours=1)):
     """extract the session offsets (one offset per session ) for the given site
 
     Parameters
     ----------
-    cursor : pymssql cursor opened with pymedphys.mosaiq.connect
+    connection : pymssql connection opened with pymedphys.mosaiq.connect
 
     sit_set_id : int
         the SIT_SET_ID for the site of interest
@@ -146,7 +146,7 @@ def session_offsets_for_site(cursor, sit_set_id, interval=timedelta(hours=1)):
         or None if no offset was found for the sessions
     """
     for session_num, start_session, end_session in sessions_for_site(
-        cursor, sit_set_id
+        connection, sit_set_id
     ):
 
         # calculate the time window within which the offset may occur
@@ -154,7 +154,7 @@ def session_offsets_for_site(cursor, sit_set_id, interval=timedelta(hours=1)):
 
         # query for offsets within the time window
         result = mosaiq.execute(
-            cursor,
+            connection,
             """
             SELECT
                 Study_DtTm,
