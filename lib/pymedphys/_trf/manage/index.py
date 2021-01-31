@@ -124,11 +124,22 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
 
 
 def get_logfile_mosaiq_info(
-    cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name, buffer=240
+    connection,
+    machine_id,
+    utc_date,
+    mosaiq_timezone,
+    field_label,
+    field_name,
+    buffer=240,
 ):
     mosaiq_string_time, _ = date_convert(utc_date, mosaiq_timezone)
     delivery_details = get_mosaiq_delivery_details(
-        cursor, machine_id, mosaiq_string_time, field_label, field_name, buffer=buffer
+        connection,
+        machine_id,
+        mosaiq_string_time,
+        field_label,
+        field_name,
+        buffer=buffer,
     )
 
     return attr.asdict(delivery_details)
@@ -136,7 +147,7 @@ def get_logfile_mosaiq_info(
 
 # TODO Split this function up into smaller functions for easier reuse.
 def file_ready_to_be_indexed(
-    cursors,
+    connections,
     filehash_list,
     to_be_indexed_dict,
     unknown_error_in_logfile,
@@ -175,7 +186,7 @@ def file_ready_to_be_indexed(
 
         try:
             delivery_details = get_mosaiq_delivery_details(
-                cursors[server],
+                connections[server],
                 header.machine,
                 mosaiq_string_time,
                 header.field_label,
@@ -296,14 +307,10 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
 
     print("\nConnecting to Mosaiq SQL servers...")
 
-    hostname_ports = [
-        _separate_server_port_string(server_port)
+    connections = {
+        server_port: _pp_mosaiq.connect(*_separate_server_port_string(server_port))
         for server_port in sql_server_and_ports
-    ]
-
-    cursors = [
-        _pp_mosaiq.connect(hostname=item[0], port=item[1]) for item in hostname_ports
-    ]
+    }
 
     print("Globbing index directory...")
     to_be_indexed = glob(
@@ -341,7 +348,7 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
             )
 
         file_ready_to_be_indexed(
-            cursors,
+            connections,
             list(hashset.difference(indexset)),
             to_be_indexed_dict,
             unknown_error_in_logfile,

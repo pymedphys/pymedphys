@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymedphys._imports import pymssql
 from pymedphys._imports import streamlit as st
 
+import pymedphys
 import pymedphys._mosaiq.credentials as _pp_msq_credentials
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit.apps.metersetmap import _config, _deliveries
@@ -22,14 +22,14 @@ from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
 
-@st.cache(hash_funcs={pymssql.Cursor: id})
-def get_patient_fields(cursor, patient_id):
-    return msq_helpers.get_patient_fields(cursor, patient_id)
+@st.cache(hash_funcs={pymedphys.mosaiq.Connection: id})
+def get_patient_fields(connection, patient_id):
+    return msq_helpers.get_patient_fields(connection, patient_id)
 
 
-@st.cache(hash_funcs={pymssql.Cursor: id})
-def get_patient_name(cursor, patient_id):
-    return msq_helpers.get_patient_name(cursor, patient_id)
+@st.cache(hash_funcs={pymedphys.mosaiq.Connection: id})
+def get_patient_name(connection, patient_id):
+    return msq_helpers.get_patient_name(connection, patient_id)
 
 
 def mosaiq_input_method(config, patient_id="", key_namespace="", site=None, **_):
@@ -53,16 +53,16 @@ def mosaiq_input_method(config, patient_id="", key_namespace="", site=None, **_)
     )
     st.write(patient_id)
 
-    cursor = st_mosaiq.get_cached_mosaiq_cursor(**server)
+    connection = st_mosaiq.get_cached_mosaiq_connection(**server)
 
     if patient_id == "":
         return {}
 
-    patient_name = get_patient_name(cursor, patient_id)
+    patient_name = get_patient_name(connection, patient_id)
 
     st.write(f"Patient Name: `{patient_name}`")
 
-    patient_fields = get_patient_fields(cursor, patient_id)
+    patient_fields = get_patient_fields(connection, patient_id)
 
     st.write(
         """
@@ -80,9 +80,11 @@ def mosaiq_input_method(config, patient_id="", key_namespace="", site=None, **_)
         "Select Mosaiq field id(s)", field_ids, key=f"{key_namespace}_mosaiq_field_id"
     )
 
-    cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
+    connection_and_field_ids = [
+        (connection, field_id) for field_id in selected_field_ids
+    ]
     deliveries = _deliveries.cached_deliveries_loading(
-        cursor_and_field_ids, _deliveries.delivery_from_mosaiq
+        connection_and_field_ids, _deliveries.delivery_from_mosaiq
     )
     identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
 
