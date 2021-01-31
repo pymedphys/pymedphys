@@ -467,7 +467,65 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Fix any issues
+      - name: See if there are merge conflicts
+        id: conflicts
+        run: |
+
+
+          git config --local user.email "merge-conflicts-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Merge Conflicts Bot"
+
+          git fetch origin main
+          git merge origin/main
+
+          CONFLICTS=$(git ls-files -u | grep 'poetry.lock\|setup.py\|requirements' | wc -l)
+
+          if [ "$CONFLICTS" -gt 0 ] ; then
+            echo "::set-output name=status::true"
+          fi
+
+          git stash --include-untracked
+
+      - name: Set up Python 3.8
+        if: steps.conflicts.outputs.status == 'true'
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install Poetry
+        if: steps.conflicts.outputs.status == 'true'
+        uses: snok/install-poetry@v1.1.1
+        with:
+          version: 1.1.4
+
+      - name: Install PyMedPhys with propagate environment
+        if: steps.conflicts.outputs.status == 'true'
+        run: |
+          poetry install -E propagate
+
+      - name: Fix poetry.lock conflicts
+        if: steps.conflicts.outputs.status == 'true'
+          git config --local user.email "merge-conflicts-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Merge Conflicts Bot"
+
+          git fetch origin main
+          git merge origin/main
+
+          git checkout HEAD poetry.lock setup.py requirements*
+          poetry run pymedphys dev propagate
+
+          git commit -m "Commit fixes to propagate merge conflicts"
+
+      - name: Push changes
+        if: steps.conflicts.outputs.status == 'true'
+        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
+        with:
+          github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
+          branch: ${{ github.event.pull_request.head.ref }}
+
+
+
+
 
   PyPI:
     # needs:
