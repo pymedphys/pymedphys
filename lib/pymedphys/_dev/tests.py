@@ -15,6 +15,7 @@
 import os
 import pathlib
 import subprocess
+import sys
 
 from pymedphys._imports import pytest
 
@@ -31,9 +32,11 @@ def run_tests(_, remaining):
     print(f"Running tests with cwd set to:\n    {os.getcwd()}\n")
 
     try:
-        pytest.main(remaining + ["--pyargs", "pymedphys"])
+        exit_code = pytest.main(remaining + ["--pyargs", "pymedphys"])
     finally:
         os.chdir(original_cwd)
+
+    sys.exit(exit_code)
 
 
 def run_pylint(_, remaining):
