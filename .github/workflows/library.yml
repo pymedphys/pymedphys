@@ -459,6 +459,7 @@ jobs:
 
 
   PropagateConflictFixes:
+    runs-on: ubuntu-latest
     needs:
       - PreCommit
       # - Tests
