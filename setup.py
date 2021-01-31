@@ -104,6 +104,7 @@ packages = [
     "pymedphys.tests.metersetmap",
     "pymedphys.tests.mocks",
     "pymedphys.tests.monaco",
+    "pymedphys.tests.mosaiq",
     "pymedphys.tests.trf",
     "pymedphys.tests.utilities",
 ]
@@ -214,6 +215,7 @@ extras_require = {
     ],
     "doctests": ["pylinac==2.3.2", "tensorflow>=2.2.0", "sphinx-book-theme"],
     "ml": ["tensorflow>=2.2.0"],
+    "mosaiq": ["pymssql", "sqlalchemy"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
         "pytest",
