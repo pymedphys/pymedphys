@@ -53,7 +53,7 @@ jobs:
 # =============================================================================
 
   Tests:
-    if: github.event_name != 'release'  # Skip on release while building out the CI
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -457,6 +457,17 @@ jobs:
           name: cypress-videos
           path: pymedphys/tests/e2e/cypress/videos
 
+
+  PropagateConflictFixes:
+    needs:
+      - PreCommit
+      # - Tests
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Fix any issues
 
   PyPI:
     # needs:
