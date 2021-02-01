@@ -15,9 +15,7 @@
 
 import pathlib
 
-import pytest
-
-import pydicom
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.collection import DicomBase
 from pymedphys._dicom.rtplan import (

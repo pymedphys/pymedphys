@@ -39,5 +39,4 @@ extension-pkg-whitelist =
     win32api,
     pymssql,
     numpy,
-    scipy.special,
-    pynetdicom.sop_class,
+    scipy.special

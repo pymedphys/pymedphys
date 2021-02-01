@@ -19,11 +19,8 @@ from os.path import abspath, dirname
 from os.path import join as pjoin
 from zipfile import ZipFile
 
-import pytest
-
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download

@@ -43,11 +43,8 @@ import os
 import tempfile
 from zipfile import ZipFile
 
-import pytest
-
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._data import download
 from pymedphys.experimental.pinnacle import PinnacleExport

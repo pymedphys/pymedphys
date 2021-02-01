@@ -19,12 +19,9 @@ import operator
 import os
 from pathlib import Path
 
-import pytest
-
-import numpy as np
-import pandas as pd
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._data import download
 from pymedphys.dicom import depth_dose, profile
