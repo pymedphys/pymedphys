@@ -147,7 +147,7 @@ def propagate_lock_requirements_setup_and_hash():
 
 
 def _update_poetry_lock():
-    subprocess.check_call("poetry update pymedphys", shell=True)
+    subprocess.check_call("poetry lock --no-update", shell=True)
 
 
 def read_pyproject():
