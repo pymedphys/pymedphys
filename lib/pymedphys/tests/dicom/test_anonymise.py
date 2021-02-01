@@ -139,7 +139,7 @@ def _get_non_anonymous_replacement_value(keyword):
         "OW": (2).to_bytes(2, "little"),
         "PN": "Smith",
         "SH": "Smith",
-        "SQ": [pydicom.sequence.Sequence([]), pydicom.sequence.Sequence([])],
+        "SQ": [pydicom.dataset.Dataset([]), pydicom.dataset.Dataset([])],
         "ST": "Smith",
         "TM": "000700.000000",
         "UI": "1118",
