@@ -53,12 +53,12 @@ jobs:
 # =============================================================================
 
   Tests:
-    if: github.event_name != 'release'  # Skip on release while building out the CI
     strategy:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
         task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright', 'propagate']
+
         exclude:
           - os: 'ubuntu'
             task: 'binary'
