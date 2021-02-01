@@ -1,3 +1,10 @@
+# A test which runs the e2e cypress tests on the online hosted version of the PyMedPhys app
+# which is at https://app.pymedphys.com. This test is on a schedule so that there is a
+# track record of the application running with time.
+
+# It does not make sense to run it on PR or push as any particular PR or push won't yet actually
+# be live on the web-app. This test is independent of any given branch.
+
 name: OnlineApp
 
 on:
