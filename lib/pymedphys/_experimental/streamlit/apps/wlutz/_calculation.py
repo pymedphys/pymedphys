@@ -47,7 +47,12 @@ def calculations_ui(
     penumbra,
     advanced_mode,
 ):
-    st.write("## Run Calculations")
+    st.write("## Calculations")
+
+    st.write("### Calculation options")
+
+    if not advanced_mode:
+        st.write("*More calculation options are available by ticking advanced mode*")
 
     if advanced_mode:
         plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
@@ -82,6 +87,10 @@ def calculations_ui(
         deviation_plot_threshold = 0.5
         plot_when_data_missing = False
         fill_errors_with_nan = True
+
+    st.checkbox("Only calculate cardinal angles")
+
+    st.write("### Run calculations")
 
     if st.button("Calculate"):
         run_calculation(

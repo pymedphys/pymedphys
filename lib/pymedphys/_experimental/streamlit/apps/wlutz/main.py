@@ -216,18 +216,41 @@ def main():
         advanced_mode,
     )
 
+    st.write("---")
+
     _presentation_of_results(wlutz_directory_by_date, advanced_mode)
 
 
 def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
+    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
 
     try:
         calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
     except FileNotFoundError:
         return
 
-    st.write("## Overview of Results")
+    st.write(
+        f"""
+        ## Overview of results already calculated
+
+        Here are the results loaded from the CSV file saved at:
+
+            {raw_results_csv_path.resolve()}
+
+        As calculations are undergone using the above they are added to
+        this file, which is then loaded to produce the following collated
+        plots and Excel overview file. The Excel overview file location
+        is saved at:
+
+            {wlutz_xlsx_filepath.resolve()}
+
+        You can also download that file by using the link at the bottom
+        of this page.
+
+        ---
+        """
+    )
 
     dataframe = calculated_results.sort_values("seconds_since_midnight")
     dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
@@ -236,8 +259,6 @@ def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
     st.write(statistics)
 
     _overview_figures(dataframe_by_algorithm)
-
-    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
 
     if advanced_mode:
