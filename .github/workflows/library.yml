@@ -399,7 +399,7 @@ jobs:
       - name: Run doctest tests
         if: matrix.os == 'ubuntu' && matrix.task == 'tests'
         run: |
-          poetry run pymedphys dev tests -v --doctest-modules
+          poetry run pymedphys dev doctests -v
 
 ## Pylint
 

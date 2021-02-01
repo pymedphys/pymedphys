@@ -16,8 +16,6 @@ import os
 import pathlib
 import subprocess
 
-from pymedphys._imports import pytest
-
 import pymedphys._utilities.test as pmp_test_utils
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
@@ -25,13 +23,31 @@ PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
 
 
 def run_tests(_, remaining):
+    _call_pytest(remaining, "pytest")
+
+
+def run_doctests(_, remaining):
+    remaining = ["--doctest-modules"] + remaining
+    _call_pytest(remaining, "doctests")
+
+
+def _call_pytest(remaining, label):
     original_cwd = os.getcwd()
 
     os.chdir(LIBRARY_ROOT)
-    print(f"Running tests with cwd set to:\n    {os.getcwd()}\n")
+    print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
+
+    python_executable = pmp_test_utils.get_executable_even_when_embedded()
+    command = [
+        python_executable,
+        "-m",
+        "pytest",
+        "--pyargs",
+        "pymedphys",
+    ] + remaining
 
     try:
-        pytest.main(remaining + ["--pyargs", "pymedphys"])
+        subprocess.check_call(command)
     finally:
         os.chdir(original_cwd)
 

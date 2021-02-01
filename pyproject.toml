@@ -128,7 +128,7 @@ python_dateutil = { version = "*", optional = true }  # groups = ["dev", "tests"
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
-black = { version = "^20.8b1", optional = true }  # groups = ["dev", "propagate"]
+black = { version = "^20.8b1", optional = true }  # groups = ["dev", "propagate", "doctests"]
 mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
@@ -141,7 +141,7 @@ dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests"
 mosaiq = ["pymssql", "sqlalchemy"]
 propagate = ["tomlkit", "black"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
-doctests = ["pylinac", "tensorflow", "sphinx-book-theme"]
+doctests = ["pylinac", "tensorflow", "sphinx-book-theme", "black"]
 comparables = ["flashgamma"]
 ml = ["tensorflow"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book"]
