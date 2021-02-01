@@ -23,6 +23,19 @@ import pymedphys._utilities.test as pmp_test_utils
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
+def run_test_commands_with_gui_process(commands):
+    gui_command = [
+        pmp_test_utils.get_executable_even_when_embedded(),
+        "-m",
+        "pymedphys",
+        "gui",
+    ]
+
+    with pmp_test_utils.process(gui_command, cwd=HERE):
+        for command in commands:
+            subprocess.check_call(command, cwd=HERE, shell=True)
+
+
 @pytest.mark.cypress
 def test_cypress():
     pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=HERE)
@@ -32,14 +45,4 @@ def test_cypress():
         extract_directory=HERE.joinpath("cypress", "fixtures"),
     )
 
-    command = [
-        pmp_test_utils.get_executable_even_when_embedded(),
-        "-m",
-        "pymedphys",
-        "gui",
-    ]
-
-    with pmp_test_utils.process(command, cwd=HERE):
-        subprocess.check_call("yarn", cwd=HERE, shell=True)
-
-        subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
+    run_test_commands_with_gui_process(["yarn", "yarn cypress run"])

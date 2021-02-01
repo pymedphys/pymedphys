@@ -17,6 +17,7 @@ import pathlib
 import subprocess
 
 import pymedphys._utilities.test as pmp_test_utils
+import pymedphys.tests.e2e.test_cypress as cypress_test_suite
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
@@ -76,3 +77,7 @@ def run_pylint(_, remaining):
         subprocess.check_call(command)
     finally:
         os.chdir(original_cwd)
+
+
+def run_cypress(_):
+    cypress_test_suite.run_test_commands_with_gui_process(["yarn cypress open"])
