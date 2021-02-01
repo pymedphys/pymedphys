@@ -136,7 +136,7 @@ package_data = {
         "dicom/data/rtplan/*",
         "dicom/scratch/*",
         "e2e/cypress/*",
-        "e2e/cypress/fixtures/*",
+        "e2e/cypress/fixtures/.gitignore",
         "e2e/cypress/integration/streamlit/*",
         "e2e/cypress/plugins/*",
         "e2e/cypress/support/*",
