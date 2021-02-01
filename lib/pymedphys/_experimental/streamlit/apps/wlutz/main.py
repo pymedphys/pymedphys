@@ -229,11 +229,13 @@ def _user_selected_angles(name, default_selection, default_tolerance):
     name = name.capitalize()
     default_selection = ", ".join(np.array(default_selection).astype(str))
 
+    st.write(f"### {name} filtering")
+
     angles = st.text_input(f"{name} angles", default_selection)
     angles = np.array(angles.split(",")).astype(float)
     st.write(f"`{angles}`")
 
-    tolerance = st.number_input(f"{name} angle tolerance", default_tolerance)
+    tolerance = st.number_input(f"{name} angle tolerance", 0, None, default_tolerance)
 
     return angles, tolerance
 
@@ -248,7 +250,6 @@ def _angle_filtering(database_table):
         ("collimator", 5, collimator_column),
     ]:
         with column:
-            st.write(f"### {name.capitalize()} filtering")
             angles[name] = _user_selected_angles(name, default_angles, tolerance)
 
     st.write(database_table)
