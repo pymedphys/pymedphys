@@ -1,0 +1,68 @@
+on:
+  push:
+
+jobs:
+  FixPropagateConflicts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: See if there are merge conflicts
+        id: conflicts
+        run: |
+          git config --local user.email "merge-conflicts-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Merge Conflicts Bot"
+
+          git fetch origin main
+          git merge origin/main || true
+
+          CONFLICTS=$(git ls-files -u | grep 'poetry.lock\|setup.py\|requirements\|pyproject.hash' | wc -l)
+
+          if [ "$CONFLICTS" -gt 0 ] ; then
+            echo "::set-output name=status::true"
+          fi
+
+          git reset HEAD
+          git stash
+
+      - name: Set up Python 3.8
+        if: steps.conflicts.outputs.status == 'true'
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install Poetry
+        if: steps.conflicts.outputs.status == 'true'
+        uses: snok/install-poetry@v1.1.1
+        with:
+          version: 1.1.4
+
+      - name: Install PyMedPhys with propagate environment
+        if: steps.conflicts.outputs.status == 'true'
+        run: |
+          poetry install -E propagate
+          pip install pipx
+          pipx install poetry-merge-lock
+
+      - name: Fix conflicts
+        if: steps.conflicts.outputs.status == 'true'
+        run: |
+          git config --local user.email "merge-conflicts-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Merge Conflicts Bot"
+
+          git fetch origin main
+          git merge origin/main || true
+
+          poetry run pymedphys dev propagate || poetry-merge-lock && poetry run pymedphys dev propagate
+
+          git add poetry.lock setup.py requirements* pyproject.hash
+          git commit -m "Merge origin/main, fix merge conflicts from 'pymedphys dev propagate'"
+
+      - name: Push changes
+        if: steps.conflicts.outputs.status == 'true'
+        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
+        with:
+          github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
+          branch: ${{ github.ref }}
