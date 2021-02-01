@@ -15,11 +15,9 @@
 import warnings
 from pathlib import Path
 
+from pymedphys._imports import imageio
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt
-
-import imageio
-from scipy.optimize import basinhopping
+from pymedphys._imports import plt, scipy
 
 from .optical_density import calc_net_od
 
@@ -31,7 +29,9 @@ def create_dose_function(net_od, dose):
     dose = np.array(dose, copy=False)
 
     to_minimise = create_to_minimise(net_od, dose)
-    result = basinhopping(to_minimise, [np.max(dose) / np.max(net_od), 1, 1])
+    result = scipy.optimise.basinhopping(
+        to_minimise, [np.max(dose) / np.max(net_od), 1, 1]
+    )
 
     return create_cal_fit(*result.x)
 

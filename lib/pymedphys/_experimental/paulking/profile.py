@@ -425,7 +425,7 @@ class Profile:
         plt.show()
         return
 
-    def slice_segment(self, start=-np.inf, stop=np.inf):
+    def slice_segment(self, start=None, stop=None):
         """slice between given end-points
 
         Resulting profile is comprised of those points in the source
@@ -442,6 +442,13 @@ class Profile:
         Profile
 
         """
+
+        if start is None:
+            start = -np.inf
+
+        if stop is None:
+            stop = np.inf
+
         try:
             start = max(start, min(self.x))  # default & limit to curve ends
             stop = min(stop, max(self.x))
