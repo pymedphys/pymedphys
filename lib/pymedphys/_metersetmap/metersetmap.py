@@ -296,6 +296,8 @@ def calc_single_control_point(
            [0.14, 0.86, 1.  , 1.  , 1.  , 0.86, 0.14],
            [0.03, 0.17, 0.2 , 0.2 , 0.2 , 0.17, 0.03]])
     """
+    mlc = np.array(mlc, copy=False)
+    jaw = np.array(jaw, copy=False)
 
     leaf_pair_widths = np.array(leaf_pair_widths)
     leaf_division = leaf_pair_widths / grid_resolution
