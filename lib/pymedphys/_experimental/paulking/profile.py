@@ -21,12 +21,9 @@ import copy
 import os
 from typing import Callable
 
+from pymedphys._imports import PIL, matplotlib
 from pymedphys._imports import numpy as np
-
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-import PIL
-from scipy import interpolate
+from pymedphys._imports import plt, scipy
 
 # from .._level1.coreobjects import _PyMedPhysBase
 
@@ -80,7 +77,7 @@ class Profile:
         if len(self.x) < 2:
             self.interp = None
         else:
-            self.interp = interpolate.interp1d(
+            self.interp = scipy.interpolate.interp1d(
                 self.x, self.y, bounds_error=False, fill_value=0.0
             )
 
@@ -304,7 +301,7 @@ class Profile:
         assert image_file.mode == "RGB"
         dpi_horiz, dpi_vert = image_file.info["dpi"]
 
-        image_array = mpimg.imread(file_name)
+        image_array = matplotlib.image.imread(file_name)
 
         # DIMENSIONS TO AVG ACROSS DIFFERENT FOR HORIZ VS VERT IMG
         if image_array.shape[0] > 5 * image_array.shape[1]:  # VERT

@@ -58,7 +58,7 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "OW": (2).to_bytes(2, "little"),
     "PN": "Smith",
     "SH": "Smith",
-    "SQ": [pydicom.dataset.Dataset(), pydicom.dataset.Dataset()],
+    "SQ": [[], []],
     "ST": "Smith",
     "TM": "000700.000000",
     "UI": "1118",

@@ -34,8 +34,6 @@ PENUMBRA = 2
 BB_DIAMETER = 8
 
 ALGORITHM_PYMEDPHYS = "PyMedPhys"
-ALGORITHM_PYLINAC = f"PyLinac v{_pylinac_installed.__version__}"
-ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
 
 
 def data_files():

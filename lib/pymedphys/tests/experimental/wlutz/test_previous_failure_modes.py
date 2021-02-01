@@ -28,8 +28,11 @@ PENUMBRA = 2
 BB_DIAMETER = 8
 
 ALGORITHM_PYMEDPHYS = "PyMedPhys"
-ALGORITHM_PYLINAC = f"PyLinac v{_pylinac_installed.__version__}"
-ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
+
+
+def get_pylinac_algorithm():
+    ALGORITHM_PYLINAC = f"PyLinac v{_pylinac_installed.__version__}"
+    return ALGORITHM_PYLINAC
 
 
 def data_files():
@@ -81,7 +84,7 @@ def test_offset_pylinac():
     )
 
     _compare_to_expected(
-        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYLINAC
+        filename, expected_field_centre, expected_bb_centre, get_pylinac_algorithm()
     )
 
 

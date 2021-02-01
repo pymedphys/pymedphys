@@ -18,11 +18,8 @@ from pymedphys._imports import pytest
 from pymedphys._metersetmap.metersetmap import calc_metersetmap
 
 MU = [0, 30]
-
-MLC = np.array([[[4, -3], [4, -3], [4, -3]], [[-3, 4], [-3, 4], [-3, 4]]])
-
-JAW = np.array([[3, 3], [3, 3]])
-
+MLC = [[[4, -3], [4, -3], [4, -3]], [[-3, 4], [-3, 4], [-3, 4]]]
+JAW = [[3, 3], [3, 3]]
 LEAF_PAIR_WIDTHS = [2, 2, 2]
 
 

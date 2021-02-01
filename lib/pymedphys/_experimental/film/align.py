@@ -14,12 +14,7 @@
 
 
 from pymedphys._imports import numpy as np
-
-import skimage
-import skimage.color.adapt_rgb
-import skimage.filters
-from scipy.interpolate import RegularGridInterpolator
-from scipy.optimize import basinhopping
+from pymedphys._imports import scipy, skimage
 
 
 def align_images(
@@ -55,7 +50,7 @@ def align_images(
 
         return np.sum((interpolated - ref_edge_filtered) ** 2) - np.sum(interpolated)
 
-    result = basinhopping(
+    result = scipy.optimize.basinhopping(
         to_minimise,
         [0, 0, 0],
         niter_success=5,
@@ -77,7 +72,7 @@ def align_images(
 def create_image_interpolation(axes, image):
     x_span, y_span = axes
 
-    return RegularGridInterpolator(
+    return scipy.interpolate.RegularGridInterpolator(
         (x_span, y_span), image, bounds_error=False, fill_value=0
     )
 

@@ -39,6 +39,7 @@ import yaml
 import altair
 import imageio
 import matplotlib
+import matplotlib.image
 import matplotlib.patches
 import matplotlib.path
 import matplotlib.pyplot
@@ -61,6 +62,7 @@ import shapely.affinity
 import shapely.geometry
 import shapely.ops
 import skimage
+import skimage.color.adapt_rgb
 import skimage.draw
 import skimage.filters
 import skimage.measure
