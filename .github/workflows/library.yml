@@ -376,7 +376,7 @@ jobs:
 
       - name: Push changes
         if: steps.propagate-test.outputs.status == 'failed'
-        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
+        uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
           branch: ${{ github.event.pull_request.head.ref }}
