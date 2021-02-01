@@ -39,7 +39,7 @@ def fixture_check_create_test_db():
 
 
 @pytest.fixture(name="create_mock_patients")
-def fixture_create_mock_patients(check_create_test_db):
+def fixture_create_mock_patients():
     """ creates a mock patient, with small Patient and Ident tables with relevant attributes"""
 
     # create a single dataframe combining the Patient and Ident tables
@@ -68,7 +68,7 @@ def fixture_create_mock_patients(check_create_test_db):
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_name(create_mock_patients):
+def test_get_patient_name():
     """ tests the get_patient_name helper function"""
 
     with connect(
