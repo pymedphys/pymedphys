@@ -56,7 +56,7 @@ class Profile:
 
     """
 
-    def __init__(self, x=np.array([]), y=np.array([]), meta={}):
+    def __init__(self, x=tuple(), y=tuple(), meta={}):
         """create profile
 
         Parameters

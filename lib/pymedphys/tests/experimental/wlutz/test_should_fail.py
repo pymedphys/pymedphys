@@ -24,9 +24,6 @@ from pymedphys._imports import numpy as np
 
 import pymedphys
 
-from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
-    pylinac as _pylinac_installed,
-)
 from pymedphys._experimental.wlutz import main as _wlutz
 
 EDGE_LENGTHS = [20, 26]

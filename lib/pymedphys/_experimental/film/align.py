@@ -18,8 +18,15 @@ from pymedphys._imports import scipy, skimage
 
 
 def align_images(
-    ref_axes, ref_image, moving_axes, moving_image, max_shift=np.inf, max_rotation=30
+    ref_axes, ref_image, moving_axes, moving_image, max_shift=None, max_rotation=30
 ):
+    if max_shift is None:
+        max_shift = np.inf
+
+    @skimage.color.adapt_rgb.adapt_rgb(as_gray)
+    def scharr_gray(image):
+        return skimage.filters.scharr(image)
+
     ref_edge_filtered = scharr_gray(ref_image)
     moving_edge_filtered = scharr_gray(moving_image)
 
@@ -57,8 +64,8 @@ def align_images(
         minimizer_kwargs={
             "method": "L-BFGS-B",
             "bounds": (
-                (-max_shift, max_shift),
-                (-max_shift, max_shift),
+                (-max_shift, max_shift),  # pylint: disable = invalid-unary-operand-type
+                (-max_shift, max_shift),  # pylint: disable = invalid-unary-operand-type
                 (-max_rotation, max_rotation),
             ),
         },
@@ -120,8 +127,3 @@ def do_rotation(x_span, y_span, angle):
 def as_gray(image_filter, image, *args, **kwargs):
     gray_image = skimage.color.rgb2gray(image)
     return image_filter(gray_image, *args, **kwargs)
-
-
-@skimage.color.adapt_rgb.adapt_rgb(as_gray)
-def scharr_gray(image):
-    return skimage.filters.scharr(image)
