@@ -16,8 +16,7 @@ connection_str = f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db
 engine = sqlalchemy.create_engine(connection_str, echo=False)
 
 
-@pytest.fixture(name="check_create_test_db")
-def fixture_check_create_test_db():
+def create_test_db():
     """ will create the test database, if it does not already exist on the instance """
     # sa connection to create the test database
     with pymssql.connect(
@@ -41,6 +40,8 @@ def fixture_check_create_test_db():
 @pytest.fixture(name="create_mock_patients")
 def fixture_create_mock_patients():
     """ creates a mock patient, with small Patient and Ident tables with relevant attributes"""
+
+    create_test_db()
 
     # create a single dataframe combining the Patient and Ident tables
     patient_ident_df = pd.DataFrame(
