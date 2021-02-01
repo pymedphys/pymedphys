@@ -207,6 +207,16 @@ def main():
     if advanced_mode:
         st.write(database_table)
 
+    st.write("## Gantry angle filtering")
+
+    if st.checkbox("Only calculate at specific gantry angles"):
+        specific_angles = st.text_input(
+            "Comma separated angles to select", "-180, -90, 0, 90, 180"
+        )
+        specific_angles = np.array(specific_angles.split(",")).astype(float)
+        st.write(f"Angles chosen: `{specific_angles}`")
+        tolerance = st.number_input("Gantry angle tolerance", 10)
+
     _calculation.calculations_ui(
         database_table,
         database_directory,
