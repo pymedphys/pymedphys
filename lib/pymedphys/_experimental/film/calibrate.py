@@ -29,7 +29,7 @@ def create_dose_function(net_od, dose):
     dose = np.array(dose, copy=False)
 
     to_minimise = create_to_minimise(net_od, dose)
-    result = scipy.optimise.basinhopping(
+    result = scipy.optimize.basinhopping(
         to_minimise, [np.max(dose) / np.max(net_od), 1, 1]
     )
 
