@@ -34,12 +34,12 @@ if dicomFile is not None:
     dicom_table = dicom_table.sort_values(["field_label"])
 
     mrn = dicom_table.iloc[0]["mrn"]
-    with connect.connect(server) as cursor:
-        mosaiq_table = get_all_treatment_data(cursor, mrn)
+    with connect.connect(server) as connection:
+        mosaiq_table = get_all_treatment_data(connection, mrn)
         if mosaiq_table.iloc[0]["create_id"] is not None:
             try:
                 site_initials = get_staff_initials(
-                    cursor, str(mosaiq_table.iloc[0]["create_id"])
+                    connection, str(mosaiq_table.iloc[0]["create_id"])
                 )
             except:
                 site_initials = ""
@@ -135,9 +135,9 @@ if dicomFile is not None:
             field_approval_id = mosaiq_table[
                 mosaiq_table["field_name"] == field_selection
             ]["field_approval"]
-            with connect.connect(server) as cursor:
+            with connect.connect(server) as connection:
                 field_approval_initials = get_staff_initials(
-                    cursor, str(int(field_approval_id.iloc[0]))
+                    connection, str(int(field_approval_id.iloc[0]))
                 )
             st.write("**Field Approved by: **", field_approval_initials[0][0])
         except:

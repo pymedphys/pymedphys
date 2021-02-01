@@ -24,8 +24,8 @@ dicom_table = get_all_dicom_treatment_info(dicomFile)
 mrn = dicom_table.iloc[0]["mrn"]
 
 # host_name = 'prwinvds006.utmsa.local'
-with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-    mosaiq_table = get_all_treatment_data(cursor, mrn)
+with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as connection:
+    mosaiq_table = get_all_treatment_data(connection, mrn)
 
 field_version = max(mosaiq_table["field_version"])
 mosaiq_table = mosaiq_table[mosaiq_table["field_version"] == field_version]

@@ -33,14 +33,14 @@ from pymedphys._mosaiq.helpers import (
 
 
 def get_delivered_fields(patient):
-    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        delivered_values = get_all_treatment_history_data(cursor, patient)
+    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as connection:
+        delivered_values = get_all_treatment_history_data(connection, patient)
     return delivered_values
 
 
 def show_incomplete_weekly_checks():
-    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        incomplete_qcls = get_incomplete_qcls(cursor, "Physics Resident")
+    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as connection:
+        incomplete_qcls = get_incomplete_qcls(connection, "Physics Resident")
         todays_date = date.today() + timedelta(days=1)
         todays_date = todays_date.strftime("%b %d, %Y")
         # todays_date = "Dec 4, 2020"
@@ -57,9 +57,9 @@ def show_incomplete_weekly_checks():
 
 
 def compare_delivered_to_planned(patient):
-    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
-        delivered_values = get_all_treatment_history_data(cursor, patient)
-        planned_values = get_all_treatment_data(cursor, patient)
+    with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as connection:
+        delivered_values = get_all_treatment_history_data(connection, patient)
+        planned_values = get_all_treatment_data(connection, patient)
         patient_results = pd.DataFrame()
         try:
             current_fx = max(delivered_values["fraction"])
