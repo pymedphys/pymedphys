@@ -207,7 +207,9 @@ def main():
     if advanced_mode:
         st.write(database_table)
 
-    database_table = _gantry_angle_filtering(database_table)
+    st.write("## Gantry and collimator angle filtering")
+    if st.checkbox("Only calculate at specific gantry angles"):
+        database_table = _angle_filtering(database_table)
 
     _calculation.calculations_ui(
         database_table,
@@ -223,33 +225,43 @@ def main():
     _presentation_of_results(wlutz_directory_by_date, advanced_mode)
 
 
-def _gantry_angle_filtering(database_table):
+def _user_selected_angles(name, default_selection, default_tolerance):
+    name = name.capitalize()
+    default_selection = ", ".join(default_selection)
+
+    angles = st.text_input(f"{name} angles", default_selection)
+    angles = np.array(angles.split(",")).astype(float)
+    st.write(f"`{angles}`")
+
+    tolerance = st.number_input(f"{name} angle tolerance", default_tolerance)
+
+    return angles, tolerance
+
+
+def _angle_filtering(database_table):
+    default_angles = [-180, -90, 0, 90, 180]
+    angles = {}
+    for name, tolerance in [("gantry", 10), ("collimator", 5)]:
+        angles[name] = _user_selected_angles(name, default_angles, tolerance)
+
+    st.write(database_table)
+
     def _treatment_callback(_dataframe, _data, treatment):
         st.write(f"### {treatment}")
 
-    def _port_callback(_dataframe, _data, treatment, port):
+    def _port_callback(dataframe, _data, treatment, port):
         st.write(f"#### {port}")
 
-    st.write("## Gantry angle filtering")
+        st.write(dataframe["gantry"])
 
-    if st.checkbox("Only calculate at specific gantry angles"):
-        specific_angles = st.text_input(
-            "Comma separated angles to select", "-180, -90, 0, 90, 180"
-        )
-        specific_angles = np.array(specific_angles.split(",")).astype(float)
-        st.write(f"Angles chosen: `{specific_angles}`")
-        tolerance = st.number_input("Gantry angle tolerance", 10)
+    collated_filtered_dataframes = []
 
-        st.write(database_table)
-
-        collated_filtered_dataframes = []
-
-        _utilities.iterate_over_columns(
-            database_table,
-            data=collated_filtered_dataframes,
-            columns=["treatment", "port"],
-            callbacks=[_treatment_callback, _port_callback],
-        )
+    _utilities.iterate_over_columns(
+        database_table,
+        data=collated_filtered_dataframes,
+        columns=["treatment", "port"],
+        callbacks=[_treatment_callback, _port_callback],
+    )
 
     return database_table
 
