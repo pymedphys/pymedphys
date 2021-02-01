@@ -8,6 +8,7 @@ def dev_cli(subparsers):
     add_test_parser(dev_subparsers)
     add_lint_parser(dev_subparsers)
     add_propagate_parser(dev_subparsers)
+    add_doctests_parser(dev_subparsers)
 
     return dev_parser
 
@@ -31,6 +32,11 @@ def add_test_parser(dev_subparsers):
 def add_lint_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("lint")
     parser.set_defaults(func=tests.run_pylint)
+
+
+def add_doctests_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser("doctests")
+    parser.set_defaults(func=tests.run_doctests)
 
 
 def add_propagate_parser(dev_subparsers):
