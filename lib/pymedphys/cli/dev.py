@@ -9,6 +9,7 @@ def dev_cli(subparsers):
     add_lint_parser(dev_subparsers)
     add_propagate_parser(dev_subparsers)
     add_doctests_parser(dev_subparsers)
+    add_cypress_parser(dev_subparsers)
 
     return dev_parser
 
@@ -55,3 +56,8 @@ def add_propagate_parser(dev_subparsers):
     )
 
     parser.set_defaults(func=propagate.propagate_all)
+
+
+def add_cypress_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser("cypress")
+    parser.set_defaults(func=tests.run_cypress)
