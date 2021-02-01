@@ -20,8 +20,7 @@ should fail instead of producing a return value.
 
 import pytest
 import toml
-
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import pymedphys
 

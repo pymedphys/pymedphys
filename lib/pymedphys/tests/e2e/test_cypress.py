@@ -15,7 +15,7 @@
 import pathlib
 import subprocess
 
-import pytest
+from pymedphys._imports import pytest
 
 import pymedphys
 import pymedphys._utilities.test as pmp_test_utils

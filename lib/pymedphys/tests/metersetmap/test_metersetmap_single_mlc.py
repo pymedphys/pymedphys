@@ -19,7 +19,7 @@
 """Testing of a single mlc pair.
 """
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._metersetmap.metersetmap import single_mlc_pair
 

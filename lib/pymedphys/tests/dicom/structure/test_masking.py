@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import pytest
-
-import numpy as np
-import shapely.geometry
+from pymedphys._imports import numpy as np
+from pymedphys._imports import shapely
 
 from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.create import dicom_dataset_from_dict

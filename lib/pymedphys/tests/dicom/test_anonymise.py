@@ -11,13 +11,7 @@ from os.path import join as pjoin
 from shutil import copyfile
 from uuid import uuid4
 
-import pytest
-
-import pydicom
-import pydicom.datadict
-import pydicom.dataset
-import pydicom.filereader
-import pydicom.tag
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._data import download

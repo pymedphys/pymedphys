@@ -16,9 +16,7 @@ import pathlib
 import subprocess
 import tempfile
 
-import pytest
-
-import pydicom
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 import pymedphys._utilities.test as pmp_test_utils

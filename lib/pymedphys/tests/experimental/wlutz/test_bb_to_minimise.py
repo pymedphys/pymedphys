@@ -13,11 +13,10 @@
 # limitations under the License.
 
 
-import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import floats
-
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 import pymedphys
 

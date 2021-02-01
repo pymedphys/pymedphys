@@ -19,7 +19,7 @@
 """Regression testing of the single control point function.
 """
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._metersetmap.metersetmap import calc_single_control_point
 
