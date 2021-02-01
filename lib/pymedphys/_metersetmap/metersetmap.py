@@ -616,6 +616,9 @@ def _determine_reference_grid_position(top_of_reference_leaf, grid_resolution):
 
 
 def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths, grid_resolution):
+    mlc = np.array(mlc, copy=False)
+    jaw = np.array(jaw, copy=False)
+
     min_y = np.min(-jaw[:, 0])
     max_y = np.max(jaw[:, 1])
 
