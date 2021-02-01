@@ -13,9 +13,7 @@
 # limitations under the License.
 
 
-import pytest
-
-import pydicom
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.create import dicom_dataset_from_dict
 

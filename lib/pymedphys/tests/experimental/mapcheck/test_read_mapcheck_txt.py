@@ -14,7 +14,7 @@
 
 import os
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import pymedphys
 from pymedphys.experimental.fileformats import read_mapcheck

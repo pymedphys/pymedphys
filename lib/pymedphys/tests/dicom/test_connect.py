@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=redefined-outer-name
+
+# pylint: disable=redefined-outer-name, no-member
 
 import pathlib
 import shutil
@@ -20,11 +21,7 @@ import tempfile
 import time
 from unittest.mock import Mock
 
-import pytest
-
-import pydicom
-from pynetdicom import AE, VerificationPresentationContexts
-from pynetdicom.sop_class import RTPlanStorage  # pylint: disable=no-name-in-module
+from pymedphys._imports import pydicom, pynetdicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.connect.listen import (
@@ -75,8 +72,8 @@ def test_dicom_listener_echo(listener):
     """Test to ensure that running dicom listener responds to C-ECHO"""
 
     # Send C-ECHO
-    ae = AE()
-    ae.requested_contexts = VerificationPresentationContexts
+    ae = pynetdicom.AE()
+    ae.requested_contexts = pynetdicom.VerificationPresentationContexts
 
     assoc = ae.associate(listener.host, listener.port, ae_title=listener.ae_title)
 
@@ -95,7 +92,7 @@ def test_dicom_listener_echo(listener):
 
 @pytest.fixture()
 def test_dataset():
-    """pytest fixture to returna a dummy DICOM dataset for testing
+    """pytest fixture to returns a dummy DICOM dataset for testing
 
     Returns
     -------
@@ -110,7 +107,7 @@ def test_dataset():
     patient_id = "987654321PyMedPhysID"
     test_dataset = dicom_dataset_from_dict(
         {
-            "SOPClassUID": RTPlanStorage,
+            "SOPClassUID": pynetdicom.sop_class.RTPlanStorage,
             "SOPInstanceUID": test_uid,
             "SeriesInstanceUID": test_series_uid,
             "StudyInstanceUID": test_study_uid,
@@ -125,7 +122,7 @@ def test_dataset():
         dicom_dataset_from_dict(
             {
                 "FileMetaInformationVersion": "01",
-                "MediaStorageSOPClassUID": RTPlanStorage,
+                "MediaStorageSOPClassUID": pynetdicom.sop_class.RTPlanStorage,
                 "MediaStorageSOPInstanceUID": test_uid,
                 "TransferSyntaxUID": pydicom.uid.ImplicitVRLittleEndian,
                 "ImplementationClassUID": pydicom.uid.PYDICOM_IMPLEMENTATION_UID,
@@ -164,8 +161,8 @@ def test_dicom_listener_send(listener, test_dataset):
     METHOD_MOCK.reset_mock()
 
     # Send the data to the listener
-    ae = AE()
-    ae.add_requested_context(RTPlanStorage)
+    ae = pynetdicom.AE()
+    ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
     assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
     assert assoc.is_established
     status = assoc.send_c_store(test_dataset)
@@ -201,8 +198,8 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     METHOD_MOCK.reset_mock()
 
     # Send the data to the listener
-    ae = AE()
-    ae.add_requested_context(RTPlanStorage)
+    ae = pynetdicom.AE()
+    ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
     assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
     assert assoc.is_established
     status = assoc.send_c_store(test_dataset)
@@ -210,8 +207,8 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     assoc.release()
 
     # Send again, should succeed without writing the same file again
-    ae = AE()
-    ae.add_requested_context(RTPlanStorage)
+    ae = pynetdicom.AE()
+    ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
     assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
     assert assoc.is_established
     status = assoc.send_c_store(test_dataset)
@@ -229,8 +226,8 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     ds.save_as(file_path, write_like_original=False)
 
     # Send again, should save the file in the orphan directory
-    ae = AE()
-    ae.add_requested_context(RTPlanStorage)
+    ae = pynetdicom.AE()
+    ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
     assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
     assert assoc.is_established
     status = assoc.send_c_store(test_dataset)
@@ -277,8 +274,8 @@ def test_dicom_listener_cli(test_dataset):
         with process(command):
 
             # Send the data to the listener
-            ae = AE()
-            ae.add_requested_context(RTPlanStorage)
+            ae = pynetdicom.AE()
+            ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
             assoc = ae.associate("127.0.0.1", TEST_PORT, ae_title=scp_ae_title)
 
             # Give the process a few seconds to start up

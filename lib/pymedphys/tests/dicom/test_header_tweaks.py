@@ -17,11 +17,8 @@ import os
 import subprocess
 import uuid
 
-import pytest
-
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.create import dicom_dataset_from_dict

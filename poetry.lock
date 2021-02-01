@@ -2843,6 +2843,7 @@ dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book"]
 doctests = ["pylinac", "tensorflow", "sphinx-book-theme", "black"]
 ml = ["tensorflow"]
+mosaiq = ["pymssql", "sqlalchemy", "pandas"]
 propagate = ["tomlkit", "black"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil"]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn"]
@@ -2850,7 +2851,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "0d1f15fcc44183419b83b56fedff34eda69afc2d71af2fe5bc4bcad14078c1e0"
+content-hash = "7e95b6bf5f1a9378906988fcdf7e33a573a828c9e89203053721b5c6426b214d"
 
 [metadata.files]
 absl-py = [

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import pytest
+from pymedphys._imports import pytest
 
 import pymedphys
 

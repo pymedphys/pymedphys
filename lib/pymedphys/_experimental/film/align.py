@@ -14,17 +14,19 @@
 
 
 from pymedphys._imports import numpy as np
-
-import skimage
-import skimage.color.adapt_rgb
-import skimage.filters
-from scipy.interpolate import RegularGridInterpolator
-from scipy.optimize import basinhopping
+from pymedphys._imports import scipy, skimage
 
 
 def align_images(
-    ref_axes, ref_image, moving_axes, moving_image, max_shift=np.inf, max_rotation=30
+    ref_axes, ref_image, moving_axes, moving_image, max_shift=None, max_rotation=30
 ):
+    if max_shift is None:
+        max_shift = np.inf
+
+    @skimage.color.adapt_rgb.adapt_rgb(as_gray)
+    def scharr_gray(image):
+        return skimage.filters.scharr(image)
+
     ref_edge_filtered = scharr_gray(ref_image)
     moving_edge_filtered = scharr_gray(moving_image)
 
@@ -55,15 +57,15 @@ def align_images(
 
         return np.sum((interpolated - ref_edge_filtered) ** 2) - np.sum(interpolated)
 
-    result = basinhopping(
+    result = scipy.optimize.basinhopping(
         to_minimise,
         [0, 0, 0],
         niter_success=5,
         minimizer_kwargs={
             "method": "L-BFGS-B",
             "bounds": (
-                (-max_shift, max_shift),
-                (-max_shift, max_shift),
+                (-max_shift, max_shift),  # pylint: disable = invalid-unary-operand-type
+                (-max_shift, max_shift),  # pylint: disable = invalid-unary-operand-type
                 (-max_rotation, max_rotation),
             ),
         },
@@ -77,7 +79,7 @@ def align_images(
 def create_image_interpolation(axes, image):
     x_span, y_span = axes
 
-    return RegularGridInterpolator(
+    return scipy.interpolate.RegularGridInterpolator(
         (x_span, y_span), image, bounds_error=False, fill_value=0
     )
 
@@ -125,8 +127,3 @@ def do_rotation(x_span, y_span, angle):
 def as_gray(image_filter, image, *args, **kwargs):
     gray_image = skimage.color.rgb2gray(image)
     return image_filter(gray_image, *args, **kwargs)
-
-
-@skimage.color.adapt_rgb.adapt_rgb(as_gray)
-def scharr_gray(image):
-    return skimage.filters.scharr(image)
