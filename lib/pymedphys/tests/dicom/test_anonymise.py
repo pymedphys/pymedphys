@@ -44,27 +44,6 @@ TEST_ANON_BASENAME_DICT = {
     "RIBT.not_quite_anonymised.dcm": "RIBT.1.2.392.200036.9123.100.30.310.200.12.1.20191125110540243000_Anonymised.dcm",
 }
 
-VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
-    "AE": "AnAETitle",
-    "AS": "1Y",
-    "CS": "SMITH",
-    "DA": "20190429",
-    "DS": "11111111.9",
-    "DT": "20190429000700.000000",
-    "LO": "Smith",
-    "LT": "LongText",
-    "OB": (2).to_bytes(2, "little"),
-    "OB or OW": (2).to_bytes(2, "little"),
-    "OW": (2).to_bytes(2, "little"),
-    "PN": "Smith",
-    "SH": "Smith",
-    "SQ": [[], []],
-    "ST": "Smith",
-    "TM": "000700.000000",
-    "UI": "1118",
-    "US": 11111,
-}
-
 
 @functools.lru_cache()
 def get_rtplan_test_file_path():
@@ -145,6 +124,28 @@ def _check_is_anonymised_dataset_file_and_dir(
 def _get_non_anonymous_replacement_value(keyword):
     """Get an appropriate dummy non-anonymised value for a DICOM element based
     on its value representation (VR)"""
+
+    VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
+        "AE": "AnAETitle",
+        "AS": "1Y",
+        "CS": "SMITH",
+        "DA": "20190429",
+        "DS": "11111111.9",
+        "DT": "20190429000700.000000",
+        "LO": "Smith",
+        "LT": "LongText",
+        "OB": (2).to_bytes(2, "little"),
+        "OB or OW": (2).to_bytes(2, "little"),
+        "OW": (2).to_bytes(2, "little"),
+        "PN": "Smith",
+        "SH": "Smith",
+        "SQ": [pydicom.sequence.Sequence([]), pydicom.sequence.Sequence([])],
+        "ST": "Smith",
+        "TM": "000700.000000",
+        "UI": "1118",
+        "US": 11111,
+    }
+
     vr = get_baseline_keyword_vr_dict()[keyword]
     return VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
 
