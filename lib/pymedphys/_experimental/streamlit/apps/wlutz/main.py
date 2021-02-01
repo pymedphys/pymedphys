@@ -207,15 +207,7 @@ def main():
     if advanced_mode:
         st.write(database_table)
 
-    st.write("## Gantry angle filtering")
-
-    if st.checkbox("Only calculate at specific gantry angles"):
-        specific_angles = st.text_input(
-            "Comma separated angles to select", "-180, -90, 0, 90, 180"
-        )
-        specific_angles = np.array(specific_angles.split(",")).astype(float)
-        st.write(f"Angles chosen: `{specific_angles}`")
-        tolerance = st.number_input("Gantry angle tolerance", 10)
+    database_table = _gantry_angle_filtering(database_table)
 
     _calculation.calculations_ui(
         database_table,
@@ -229,6 +221,37 @@ def main():
     st.write("---")
 
     _presentation_of_results(wlutz_directory_by_date, advanced_mode)
+
+
+def _gantry_angle_filtering(database_table):
+    def _treatment_callback(_dataframe, _data, treatment):
+        st.write(f"### {treatment}")
+
+    def _port_callback(_dataframe, _data, treatment, port):
+        st.write(f"#### {port}")
+
+    st.write("## Gantry angle filtering")
+
+    if st.checkbox("Only calculate at specific gantry angles"):
+        specific_angles = st.text_input(
+            "Comma separated angles to select", "-180, -90, 0, 90, 180"
+        )
+        specific_angles = np.array(specific_angles.split(",")).astype(float)
+        st.write(f"Angles chosen: `{specific_angles}`")
+        tolerance = st.number_input("Gantry angle tolerance", 10)
+
+        st.write(database_table)
+
+        collated_filtered_dataframes = []
+
+        _utilities.iterate_over_columns(
+            database_table,
+            data=collated_filtered_dataframes,
+            columns=["treatment", "port"],
+            callbacks=[_treatment_callback, _port_callback],
+        )
+
+    return database_table
 
 
 def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
