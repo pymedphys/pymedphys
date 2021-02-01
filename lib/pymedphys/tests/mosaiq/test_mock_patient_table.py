@@ -16,7 +16,8 @@ connection_str = f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db
 engine = sqlalchemy.create_engine(connection_str, echo=False)
 
 
-def create_test_db():
+@pytest.fixture(name="check_create_test_db")
+def fixture_check_create_test_db():
     """ will create the test database, if it does not already exist on the instance """
     # sa connection to create the test database
     with pymssql.connect(
@@ -38,10 +39,10 @@ def create_test_db():
 
 
 @pytest.fixture(name="create_mock_patients")
-def fixture_create_mock_patients():
+def fixture_create_mock_patients(
+    check_create_test_db,  # pylint: disable = unused-import
+):
     """ creates a mock patient, with small Patient and Ident tables with relevant attributes"""
-
-    create_test_db()
 
     # create a single dataframe combining the Patient and Ident tables
     patient_ident_df = pd.DataFrame(
@@ -69,7 +70,7 @@ def fixture_create_mock_patients():
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_name():
+def test_get_patient_name(create_mock_patients):  # pylint: disable = unused-import
     """ tests the get_patient_name helper function"""
 
     with connect(
