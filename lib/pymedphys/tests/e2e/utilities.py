@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Cancer Care Associates
+# Copyright (C) 2021 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,22 +13,22 @@
 # limitations under the License.
 
 
-import pytest
+import pathlib
+import subprocess
 
-import pymedphys
+import pymedphys._utilities.test as pmp_test_utils
 
-from . import utilities
+HERE = pathlib.Path(__file__).parent.resolve()
 
 
-@pytest.mark.cypress
-def test_cypress():
-    pymedphys.zip_data_paths(
-        "metersetmap-gui-e2e-data.zip", extract_directory=utilities.HERE
-    )
+def run_test_commands_with_gui_process(commands):
+    gui_command = [
+        pmp_test_utils.get_executable_even_when_embedded(),
+        "-m",
+        "pymedphys",
+        "gui",
+    ]
 
-    pymedphys.zip_data_paths(
-        "dummy-ct-and-struct.zip",
-        extract_directory=utilities.HERE.joinpath("cypress", "fixtures"),
-    )
-
-    utilities.run_test_commands_with_gui_process(["yarn", "yarn cypress run"])
+    with pmp_test_utils.process(gui_command, cwd=HERE):
+        for command in commands:
+            subprocess.check_call(command, cwd=HERE, shell=True)
