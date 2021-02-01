@@ -16,8 +16,8 @@ connection_str = f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db
 engine = sqlalchemy.create_engine(connection_str, echo=False)
 
 
-@pytest.fixture
-def check_create_test_db():
+@pytest.fixture(name="check_create_test_db")
+def fixture_check_create_test_db():
     """ will create the test database, if it does not already exist on the instance """
     # sa connection to create the test database
     with pymssql.connect(
@@ -38,11 +38,11 @@ def check_create_test_db():
             )
 
 
-@pytest.fixture
-def create_mock_patients(check_create_test_db):
-    """ creates a mock patient, with small Patient and Ident tables with relevent attributes"""
+@pytest.fixture(name="create_mock_patients")
+def fixture_create_mock_patients(check_create_test_db):
+    """ creates a mock patient, with small Patient and Ident tables with relevant attributes"""
 
-    # create dataframes for the Patient and Ident tables
+    # create a single dataframe combining the Patient and Ident tables
     patient_ident_df = pd.DataFrame(
         [
             ("Larry", "Fine", "MR8001"),
@@ -51,11 +51,11 @@ def create_mock_patients(check_create_test_db):
         ],
         columns=["First_Name", "Last_Name", "IDA"],
     )
-    patient_ident_df.index = (
-        patient_ident_df.index + 10001
-    )  # use the index+10001 as the Pat_ID1
 
-    # now use SQLAlchemy to populate the two tables from the single composite
+    # use the index+10001 as the Pat_ID1
+    patient_ident_df.index = patient_ident_df.index + 10001
+
+    # now SQLAlchemy to populate the two tables from the single composite
     patient_ident_df.drop(columns=["IDA"]).to_sql(
         "Patient", engine, if_exists="replace", index=True, index_label="Pat_Id1"
     )
@@ -63,6 +63,7 @@ def create_mock_patients(check_create_test_db):
         "Ident", engine, if_exists="replace", index=True, index_label="Pat_Id1"
     )
 
+    # return the combined dataframe, if need to be used for follow-on processing
     return patient_ident_df
 
 
@@ -90,15 +91,18 @@ def test_get_patient_name(create_mock_patients):
             """,
         )
 
+        # show us the patients
         for patient in result_all:
-            pat_id1, first_name, last_name = patient[0], patient[1], patient[2]
+            pat_id1, first_name, last_name = patient
             print(f"Pat_ID1:{pat_id1}  First Name:{first_name}  Last Name:{last_name}")
 
+        # and check that the correct number were created
         assert len(result_all) == 3
 
         # test the get_patient_name helper function
         moe_patient_name = get_patient_name(connection, "MR8002")
 
+        # finally spot check Moe
         assert moe_patient_name == "HOWARD, Moe"
 
 
