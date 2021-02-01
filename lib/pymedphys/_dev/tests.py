@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Cancer Care Associates, Simon Biggs
 # Copyright (C) 2020 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +18,7 @@ import pathlib
 import subprocess
 
 import pymedphys._utilities.test as pmp_test_utils
+import pymedphys.tests.e2e.utilities as cypress_test_utilities
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
@@ -76,3 +78,7 @@ def run_pylint(_, remaining):
         subprocess.check_call(command)
     finally:
         os.chdir(original_cwd)
+
+
+def run_cypress(_):
+    cypress_test_utilities.run_test_commands_with_gui_process(["yarn cypress open"])
