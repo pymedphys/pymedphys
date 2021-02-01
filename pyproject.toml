@@ -128,7 +128,7 @@ python_dateutil = { version = "*", optional = true }  # groups = ["dev", "tests"
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
-black = { version = "^20.8b1", optional = true }  # groups = ["dev", "propagate"]
+black = { version = "^20.8b1", optional = true }  # groups = ["dev", "propagate", "doctests"]
 mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
@@ -140,7 +140,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
 propagate = ["tomlkit", "black"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
-doctests = ["pylinac", "tensorflow", "sphinx-book-theme"]
+doctests = ["pylinac", "tensorflow", "sphinx-book-theme", "black"]
 comparables = ["flashgamma"]
 ml = ["tensorflow"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book"]
