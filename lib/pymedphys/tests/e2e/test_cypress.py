@@ -12,34 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
-import subprocess
 
 import pytest
 
 import pymedphys
-import pymedphys._utilities.test as pmp_test_utils
 
-HERE = pathlib.Path(__file__).parent.resolve()
+from . import utilities
 
 
 @pytest.mark.cypress
 def test_cypress():
-    pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=HERE)
+    pymedphys.zip_data_paths(
+        "metersetmap-gui-e2e-data.zip", extract_directory=utilities.HERE
+    )
 
     pymedphys.zip_data_paths(
         "dummy-ct-and-struct.zip",
-        extract_directory=HERE.joinpath("cypress", "fixtures"),
+        extract_directory=utilities.HERE.joinpath("cypress", "fixtures"),
     )
 
-    command = [
-        pmp_test_utils.get_executable_even_when_embedded(),
-        "-m",
-        "pymedphys",
-        "gui",
-    ]
-
-    with pmp_test_utils.process(command, cwd=HERE):
-        subprocess.check_call("yarn", cwd=HERE, shell=True)
-
-        subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
+    utilities.run_test_commands_with_gui_process(["yarn", "yarn cypress run"])

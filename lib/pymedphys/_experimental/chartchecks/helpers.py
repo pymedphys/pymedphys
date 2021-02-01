@@ -168,7 +168,7 @@ def get_all_dicom_treatment_info(dicomFile):
     return table
 
 
-def get_all_treatment_data(cursor, mrn):
+def get_all_treatment_data(connection, mrn):
 
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
@@ -261,7 +261,7 @@ def get_all_treatment_data(cursor, mrn):
     )
 
     table = pp_mosaiq.execute(
-        cursor=cursor, query=sql_string, parameters={"patient_id": mrn}
+        connection=connection, query=sql_string, parameters={"patient_id": mrn}
     )
 
     mosaiq_fields = pd.DataFrame(data=table, columns=columns)
@@ -292,9 +292,9 @@ def get_all_treatment_data(cursor, mrn):
     return mosaiq_fields
 
 
-def get_staff_initials(cursor, staff_id):
+def get_staff_initials(connection, staff_id):
     initials = pp_mosaiq.execute(
-        cursor,
+        connection,
         """
         SELECT
         Staff.Initials
@@ -308,7 +308,7 @@ def get_staff_initials(cursor, staff_id):
     return initials
 
 
-def get_all_treatment_history_data(cursor, mrn):
+def get_all_treatment_history_data(connection, mrn):
 
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
@@ -390,7 +390,7 @@ def get_all_treatment_history_data(cursor, mrn):
     )
 
     table = pp_mosaiq.execute(
-        cursor=cursor, query=sql_string[0], parameters={"mrn": mrn}
+        connection=connection, query=sql_string[0], parameters={"mrn": mrn}
     )
 
     treatment_history = pd.DataFrame(data=table, columns=columns)

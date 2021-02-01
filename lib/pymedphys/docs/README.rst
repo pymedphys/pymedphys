@@ -56,10 +56,10 @@ within the `Release Notes`_.
 Community
 **************
 
-There is a community over at `Discourse <https://pymedphys.discourse.group/>`_
-to help you find your feet using PyMedPhys. Please reach out over there and
-we'd love to help!
-
+PyMedPhys has a `Discourse community <https://pymedphys.discourse.group/>`_
+to both help you find your feet using PyMedPhys and to facilitate collaboration
+and general discussion. Please reach out over there and we'd love to get to
+know you!
 
 Documentation
 =============
@@ -68,8 +68,8 @@ The PyMedPhys documentation is split into five categories:
 
 1. `App Users Guide`_: for those who only wish to use ready-made PyMedPhys
    tools.
-2. `Library Users Guide`_: for those building their own Python apps who wish to
-   incorporate elements of the PyMedPhys library.
+2. `Library Users Guide`_: for those building their own Python apps, scripts
+   and other tools who wish to incorporate elements of the PyMedPhys library.
 3. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
    line interface (e.g. to help automate existing workflows with minimal
    programming).
@@ -81,7 +81,7 @@ The PyMedPhys documentation is split into five categories:
 Our Team
 ========
 
-PyMedPhys is what it is today due to its maintainers and contributors both past
+PyMedPhys is what it is today due to its maintainers and contributors, both past
 and present. Here is our team.
 
 Maintainers
@@ -97,7 +97,13 @@ Maintainers
 
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
-|rccc| |sjs|
+* `Matthew Jennings`_
+    * `Royal Adelaide Hospital`_, Australia
+
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
+
+
+|rccc| |sjs| |rah|
 
 Active contributors
 ****************************
@@ -131,15 +137,6 @@ Active contributors
 
 |uth| |uoc| |hgugm|
 
-Maintainer emeritus
-****************************
-
-* `Matthew Jennings`_
-    * `Royal Adelaide Hospital`_, Australia
-
-.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
-
-|rah|
 
 Past contributors
 ****************************
@@ -197,8 +194,8 @@ Past contributors
 
 .. _`Release Notes`: ./CHANGELOG.md
 
-.. _`App Users Guide`: https://docs.pymedphys.com/app/index.html
 .. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.html
 .. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.html
+.. _`App Users Guide`: https://docs.pymedphys.com/app/index.html
 .. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.html
 .. _`General`: https://docs.pymedphys.com/general/index.html

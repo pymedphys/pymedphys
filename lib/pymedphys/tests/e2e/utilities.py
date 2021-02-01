@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2021 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,16 +13,22 @@
 # limitations under the License.
 
 
-import os
+import pathlib
+import subprocess
 
-from notebook.notebookapp import NotebookApp
+import pymedphys._utilities.test as pmp_test_utils
 
-NOTEBOOK_DIRECTORY = os.path.join(os.path.dirname(__file__))
-
-
-def main():
-    NotebookApp.launch_instance(notebook_dir=NOTEBOOK_DIRECTORY)
+HERE = pathlib.Path(__file__).parent.resolve()
 
 
-if __name__ == "__main__":
-    main()
+def run_test_commands_with_gui_process(commands):
+    gui_command = [
+        pmp_test_utils.get_executable_even_when_embedded(),
+        "-m",
+        "pymedphys",
+        "gui",
+    ]
+
+    with pmp_test_utils.process(gui_command, cwd=HERE):
+        for command in commands:
+            subprocess.check_call(command, cwd=HERE, shell=True)

@@ -53,7 +53,7 @@ class NoMosaiqEntries(ValueError):
     """Raise an exception when no entry is found"""
 
 
-def get_field_type(cursor, field_id):
+def get_field_type(connection, field_id):
     execute_string = """
         SELECT
             TxField.Type_Enum
@@ -64,19 +64,19 @@ def get_field_type(cursor, field_id):
 
     parameters = {"field_id": field_id}
 
-    sql_result = api.execute(cursor, execute_string, parameters)
+    sql_result = api.execute(connection, execute_string, parameters)
 
     return constants.FIELD_TYPES[sql_result[0][0]]
 
 
 def get_mosaiq_delivery_details(
-    cursor, machine, delivery_time, field_label, field_name, buffer=0
+    connection, machine, delivery_time, field_label, field_name, buffer=0
 ):
     """Identifies the patient details for a given delivery time.
 
     Args:
     Args:
-        cursor: A pymssql cursor pointing to the Mosaiq SQL server
+        connection: A connection pointing to the Mosaiq SQL server
         machine: The name of the machine the delivery occurred on
         delivery_time: The time of the treatment delivery
         field_label: The beam field label, called Field ID within Monaco
@@ -137,14 +137,14 @@ def get_mosaiq_delivery_details(
         "field_name": field_name,
     }
 
-    sql_result = api.execute(cursor, execute_string, parameters)
+    sql_result = api.execute(connection, execute_string, parameters)
 
     if len(sql_result) > 1:
         for result in sql_result[1::]:
             if result != sql_result[0]:
                 if buffer != 0:
                     return get_mosaiq_delivery_details(
-                        cursor,
+                        connection,
                         machine,
                         delivery_time,
                         field_label,
@@ -246,11 +246,11 @@ def collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2):
     return mlc, jaw
 
 
-def delivery_data_sql(cursor, field_id):
+def delivery_data_sql(connection, field_id):
     """Get the treatment delivery data from Mosaiq given the SQL field_id
 
     Args:
-        cursor: A pymssql cursor pointing to the Mosaiq SQL server
+        connection: A connection pointing to the Mosaiq SQL server
         field_id: The Mosaiq SQL field ID
 
     Returns:
@@ -258,7 +258,7 @@ def delivery_data_sql(cursor, field_id):
         txfieldpoint_results: The results from the TxFieldPoint table.
     """
     txfield_results = api.execute(
-        cursor,
+        connection,
         """
         SELECT
             TxField.Meterset
@@ -271,7 +271,7 @@ def delivery_data_sql(cursor, field_id):
 
     txfieldpoint_results = np.array(
         api.execute(
-            cursor,
+            connection,
             """
         SELECT
             TxFieldPoint.[Index],
@@ -292,9 +292,9 @@ def delivery_data_sql(cursor, field_id):
     return txfield_results, txfieldpoint_results
 
 
-def fetch_and_verify_mosaiq_sql(cursor, field_id):
-    reference_results = delivery_data_sql(cursor, field_id)
-    test_results = delivery_data_sql(cursor, field_id)
+def fetch_and_verify_mosaiq_sql(connection, field_id):
+    reference_results = delivery_data_sql(connection, field_id)
+    test_results = delivery_data_sql(connection, field_id)
 
     agreement = False
 
@@ -308,22 +308,22 @@ def fetch_and_verify_mosaiq_sql(cursor, field_id):
             print("Mosaiq sql query gave conflicting data.")
             print("Trying again...")
             reference_results = test_results
-            test_results = delivery_data_sql(cursor, field_id)
+            test_results = delivery_data_sql(connection, field_id)
 
     return test_results
 
 
 class DeliveryMosaiq(DeliveryBase):
     @classmethod
-    def from_mosaiq(cls, cursor, field_id):
-        mosaiq_delivery_data = cls._from_mosaiq_base(cursor, field_id)
+    def from_mosaiq(cls, connection, field_id):
+        mosaiq_delivery_data = cls._from_mosaiq_base(connection, field_id)
         reference_data = (
             mosaiq_delivery_data.monitor_units,
             mosaiq_delivery_data.mlc,
             mosaiq_delivery_data.jaw,
         )
 
-        delivery_data = cls._from_mosaiq_base(cursor, field_id)
+        delivery_data = cls._from_mosaiq_base(connection, field_id)
         test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
         agreement = False
@@ -342,7 +342,7 @@ class DeliveryMosaiq(DeliveryBase):
                 )
                 print("Trying again...")
                 reference_data = test_data
-                delivery_data = cls._from_mosaiq_base(cursor, field_id)
+                delivery_data = cls._from_mosaiq_base(connection, field_id)
                 test_data = (
                     delivery_data.monitor_units,
                     delivery_data.mlc,
@@ -352,9 +352,9 @@ class DeliveryMosaiq(DeliveryBase):
         return delivery_data
 
     @classmethod
-    def _from_mosaiq_base(cls, cursor, field_id):
+    def _from_mosaiq_base(cls, connection, field_id):
         txfield_results, txfieldpoint_results = fetch_and_verify_mosaiq_sql(
-            cursor, field_id
+            connection, field_id
         )
 
         total_mu = np.array(txfield_results[0]).astype(float)
