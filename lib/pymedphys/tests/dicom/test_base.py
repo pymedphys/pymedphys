@@ -15,9 +15,7 @@
 import io
 from copy import deepcopy
 
-import pytest
-
-import pydicom.filebase
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.collection import DicomBase
 from pymedphys._dicom.create import dicom_dataset_from_dict

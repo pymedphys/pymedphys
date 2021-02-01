@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._data import download
 from pymedphys.experimental.fileformats import read_prs

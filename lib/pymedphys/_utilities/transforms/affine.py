@@ -14,23 +14,20 @@
 
 from pymedphys._imports import numpy as np
 
-from numpy import cos, radians, sin
-from numpy.linalg import norm
-
 
 def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
     r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the axis specified
     by `vector`. Transforms can be active (alibi) or passive (alias). Default is
     passive.
     """
-    unit_vector = vector / norm(vector)
+    unit_vector = vector / np.linalg.norm(vector)
 
     u_x = unit_vector[0]
     u_y = unit_vector[1]
     u_z = unit_vector[2]
 
-    s = sin(radians(theta))
-    c = cos(radians(theta))
+    s = np.sin(np.radians(theta))
+    c = np.cos(np.radians(theta))
 
     rotation_matrix = np.array(
         [
@@ -64,8 +61,8 @@ def rotate_about_x(coords_to_rotate, psi, active=False):
     r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the x-axis.
     Transforms can be active (alibi) or passive (alias), but are passive by default.
     """
-    s = sin(radians(psi))
-    c = cos(radians(psi))
+    s = np.sin(np.radians(psi))
+    c = np.cos(np.radians(psi))
 
     x_rotation_matrix = np.array([[1, 0, 0], [0, c, s], [0, -s, c]])
 
@@ -79,8 +76,8 @@ def rotate_about_y(coords_to_rotate, phi, active=False):
     r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the y-axis
     Transforms can be active (alibi) or passive (alias), but are passive by default.
     """
-    s = sin(radians(phi))
-    c = cos(radians(phi))
+    s = np.sin(np.radians(phi))
+    c = np.cos(np.radians(phi))
 
     y_rotation_matrix = np.array([[c, 0, -s], [0, 1, 0], [s, 0, c]])
     if active:
@@ -93,8 +90,8 @@ def rotate_about_z(coords_to_rotate, theta, active=False):
     r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the z-axis
     Transforms can be active (alibi) or passive (alias), but are passive by default.
     """
-    s = sin(radians(theta))
-    c = cos(radians(theta))
+    s = np.sin(np.radians(theta))
+    c = np.cos(np.radians(theta))
 
     z_rotation_matrix = np.array([[c, s, 0], [-s, c, 0], [0, 0, 1]])
 

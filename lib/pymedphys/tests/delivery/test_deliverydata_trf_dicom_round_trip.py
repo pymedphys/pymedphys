@@ -13,12 +13,8 @@
 # limitations under the License.
 
 
-import pytest
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt, pydicom, pytest
 
 import pymedphys
 from pymedphys import Delivery

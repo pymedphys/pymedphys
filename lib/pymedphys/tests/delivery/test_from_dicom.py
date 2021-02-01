@@ -15,9 +15,7 @@
 
 # pylint: disable = redefined-outer-name
 
-import pytest
-
-import pydicom
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 

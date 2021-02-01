@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._data import download
 
