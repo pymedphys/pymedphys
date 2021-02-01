@@ -40,7 +40,7 @@ def fixture_check_create_test_db():
 
 @pytest.fixture(name="create_mock_patients")
 def fixture_create_mock_patients(
-    check_create_test_db,  # pylint: disable = unused-import
+    check_create_test_db,  # pylint: disable = unused-argument
 ):
     """ creates a mock patient, with small Patient and Ident tables with relevant attributes"""
 
@@ -70,7 +70,7 @@ def fixture_create_mock_patients(
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_name(create_mock_patients):  # pylint: disable = unused-import
+def test_get_patient_name(create_mock_patients):  # pylint: disable = unused-argument
     """ tests the get_patient_name helper function"""
 
     with connect(
