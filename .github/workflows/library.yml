@@ -353,28 +353,30 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
+          git fetch origin $BRANCH
+          git checkout $BRANCH
+
           git add poetry.lock setup.py
           git commit -m "commit changes to poetry.lock and setup.py" || true
 
           echo "::set-output name=status::committed"
 
           git status
-          git diff-index --quiet HEAD --
+          git diff-index --quiet HEAD -- || echo "::set-output name=status::failed"
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
 
       - name: Fix any issues
-        if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
+        if: steps.propagate-test.outputs.status == 'failed'
         run: |
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
           git commit -m "Fix propagate failures" -a
-          exit 1
-        env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
 
       - name: Push changes
-        if: matrix.task == 'propagate' && failure() && steps.propagate-test.outputs.status == 'committed'
-        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
+        if: steps.propagate-test.outputs.status == 'failed'
+        uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
           branch: ${{ github.event.pull_request.head.ref }}
