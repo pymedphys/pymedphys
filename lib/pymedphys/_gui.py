@@ -39,15 +39,20 @@ def main(args):
     st.bootstrap.run(streamlit_script_path, "", [])
 
 
-class HelloWorldHandler(  # pylint: disable = abstract-method
-    tornado.web.RequestHandler
-):
-    def get(self):
-        self.write("Hello world!")
+def _create_handlers():
+    class HelloWorldHandler(  # pylint: disable = abstract-method
+        tornado.web.RequestHandler
+    ):
+        def get(self):
+            self.write("Hello world!")
+
+    return {"pymedphys": HelloWorldHandler}
 
 
 def _monkey_patch_streamlit_server():
     """Adds custom URL routes to Streamlit's tornado server."""
+    handlers = _create_handlers()
+
     OfficialServer = st.server.server.Server
     official_create_app = OfficialServer._create_app
 
@@ -55,9 +60,13 @@ def _monkey_patch_streamlit_server():
         app: tornado.web.Application = official_create_app(self)
 
         base: str = st.config.get_option("server.baseUrlPath")
-        pattern = st.server.server_util.make_url_path_regex(base, "pymedphys")
 
-        app.add_handlers(".*", [(pattern, HelloWorldHandler)])
+        rules: tornado.routing._RuleList = []
+        for key, handler in handlers.items():
+            pattern = st.server.server_util.make_url_path_regex(base, key)
+            rules.append((pattern, handler))
+
+        app.add_handlers(".*", rules)
 
         return app
 
