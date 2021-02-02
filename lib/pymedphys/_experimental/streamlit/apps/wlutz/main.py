@@ -14,7 +14,7 @@
 
 
 import datetime
-from typing import Dict, List, TypedDict
+from typing import Dict, List
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import natsort
@@ -23,7 +23,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import streamlit_ace, tomlkit
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
