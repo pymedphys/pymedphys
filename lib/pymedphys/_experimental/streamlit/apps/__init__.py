@@ -3,6 +3,7 @@ from . import (
     dashboard,
     dicom_explorer,
     electrons,
+    film_laser_align,
     icom,
     iviewdb,
     transfer_check,
