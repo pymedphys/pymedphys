@@ -37,9 +37,22 @@ def fill_streamlit_credentials():
         pass
 
 
+def _monkey_patch_streamlit_server():
+    OfficialServer = st.server.server.Server
+    official_create_app = OfficialServer._create_app
+
+    def patched_create_app(self):
+        app = official_create_app(self)
+        print(dir(app))
+        return app
+
+    OfficialServer._create_app = patched_create_app
+
+
 def main(args):
     """Boot up the pymedphys GUI"""
     fill_streamlit_credentials()
+    _monkey_patch_streamlit_server()
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
