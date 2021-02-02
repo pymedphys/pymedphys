@@ -20,6 +20,7 @@ cryptography==3.3.1; python_version >= "3.6" and python_full_version < "3.0.0" a
 cssselect==1.1.0; python_version >= "2.7" and python_full_version < "3.0.0" or python_full_version >= "3.4.0"
 cssutils==1.0.2
 cycler==0.10.0; python_version >= "3.6"
+data-science-types==0.2.22; python_version >= "3.6"
 dataclasses==0.8; python_version >= "3.6" and python_version < "3.7"
 dbfread==2.0.7
 decorator==4.4.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.2.0" and python_version >= "3.6"

@@ -32,6 +32,7 @@ packages = [{ include = "pymedphys", from = "lib" }]
 python = "^3.6.2"
 dataclasses = { version = "*", python = "~3.6" }
 typing-extensions = "*"
+data-science-types = "*"
 
 
 # ------- #
