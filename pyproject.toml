@@ -32,7 +32,6 @@ packages = [{ include = "pymedphys", from = "lib" }]
 python = "^3.6.2"
 dataclasses = { version = "*", python = "~3.6" }
 typing-extensions = "*"
-data-science-types = "*"
 
 
 # ------- #
@@ -52,6 +51,7 @@ scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
 Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
+data-science-types = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
