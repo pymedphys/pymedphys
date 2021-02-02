@@ -14,7 +14,6 @@
 
 
 import datetime
-from typing import Dict, List
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import natsort
@@ -23,7 +22,6 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import streamlit_ace, tomlkit
-from typing_extensions import Literal, TypedDict
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
@@ -242,11 +240,6 @@ def _user_selected_angles(name, default_selection, default_tolerance):
     return angles, tolerance
 
 
-class AngleFilteringDataDict(TypedDict):
-    dataframes: List[pd.Dataframe]
-    angles: Dict[Literal["gantry", "collimator"], List[float]]
-
-
 def _angle_filtering(database_table):
     gantry_column, collimator_column = st.beta_columns(2)
 
@@ -261,6 +254,12 @@ def _angle_filtering(database_table):
 
     st.write(database_table)
 
+    selected_gantry_angles = angles["gantry"][0]
+    gantry_angle_tolerance = angles["gantry"][1]
+
+    selected_collimator_angles = angles["collimator"][0]
+    collimator_angle_tolerance = angles["collimator"][1]
+
     def _treatment_callback(_dataframe, _data, treatment):
         st.write(f"### {treatment}")
 
@@ -269,11 +268,11 @@ def _angle_filtering(database_table):
 
         st.write(dataframe["gantry"])
 
-    data: AngleFilteringDataDict = {"dataframes": [], "angles": angles}
+    collated_dataframes = []
 
     _utilities.iterate_over_columns(
         database_table,
-        data=data,
+        data=collated_dataframes,
         columns=["treatment", "port"],
         callbacks=[_treatment_callback, _port_callback],
     )
