@@ -51,9 +51,16 @@ def _monkey_patch_streamlit_server():
         app = official_create_app(self)
         base = st.config.get_option("server.baseUrlPath")
 
-        pattern = st.server.server_util.make_url_path_regex(base, "pymedphys")
+        print(dir(app))
+        print(app.settings)
+        print(app.default_router)
+        print(dir(app.default_router))
+        print(app.default_router.named_rules)
 
-        app.add_handlers(base, [(pattern, HelloWorldHandler)])
+        pattern = st.server.server_util.make_url_path_regex(base, "pymedphys")
+        print(pattern)
+
+        app.add_handlers(".*", [(pattern, HelloWorldHandler)])
 
         return app
 
@@ -63,12 +70,14 @@ def _monkey_patch_streamlit_server():
 def main(args):
     """Boot up the pymedphys GUI"""
     fill_streamlit_credentials()
-    _monkey_patch_streamlit_server()
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
     if args.port:
         st.cli._apply_config_options_from_cli({"server.port": args.port})
+
+    # Needs to run after config has been set
+    _monkey_patch_streamlit_server()
 
     st._is_running_with_streamlit = True
     st.bootstrap.run(streamlit_script_path, "", [])
