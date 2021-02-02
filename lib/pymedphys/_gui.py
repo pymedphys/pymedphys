@@ -50,18 +50,11 @@ def _monkey_patch_streamlit_server():
     OfficialServer = st.server.server.Server
     official_create_app = OfficialServer._create_app
 
-    def patched_create_app(self):
-        app = official_create_app(self)
-        base = st.config.get_option("server.baseUrlPath")
+    def patched_create_app(self: st.server.server.Server) -> tornado.web.Application:
+        app: tornado.web.Application = official_create_app(self)
 
-        # print(dir(app))
-        # print(app.settings)
-        # print(app.default_router)
-        # print(dir(app.default_router))
-        # print(app.default_router.named_rules)
-
+        base: str = st.config.get_option("server.baseUrlPath")
         pattern = st.server.server_util.make_url_path_regex(base, "pymedphys")
-        # print(pattern)
 
         app.add_handlers(".*", [(pattern, HelloWorldHandler)])
 
