@@ -39,6 +39,7 @@ import yaml
 import altair
 import imageio
 import matplotlib
+import matplotlib.image
 import matplotlib.patches
 import matplotlib.path
 import matplotlib.pyplot
@@ -61,6 +62,7 @@ import shapely.affinity
 import shapely.geometry
 import shapely.ops
 import skimage
+import skimage.color.adapt_rgb
 import skimage.draw
 import skimage.filters
 import skimage.measure
@@ -68,10 +70,14 @@ import streamlit
 
 import libjpeg
 import pydicom
+import pydicom.datadict
 import pydicom.dataset
 import pydicom.filebase
+import pydicom.filereader
 import pydicom.sequence
+import pydicom.tag
 import pydicom.uid
 import pylinac
 import pylinac.winston_lutz
 import pynetdicom
+import pynetdicom.sop_class

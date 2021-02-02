@@ -7,9 +7,7 @@ from os.path import exists
 from os.path import join as pjoin
 from shutil import copyfile
 
-import pytest
-
-import pydicom
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.anonymise import (

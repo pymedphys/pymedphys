@@ -19,14 +19,12 @@
 """Regression testing of the single control point function.
 """
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._metersetmap.metersetmap import calc_single_control_point
 
-MLC = np.array([[[1, 1], [2, 2]], [[2, 2], [3, 3]]])
-
-JAW = np.array([[1.5, 1.2], [1.5, 1.2]])
-
+MLC = [[[1, 1], [2, 2]], [[2, 2], [3, 3]]]
+JAW = [[1.5, 1.2], [1.5, 1.2]]
 LEAF_PAIR_WIDTHS = [2, 2]
 
 REFERENCE_METERSETMAP = [

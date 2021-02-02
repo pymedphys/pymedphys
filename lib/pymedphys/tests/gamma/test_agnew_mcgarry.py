@@ -21,11 +21,8 @@ method given within the following paper:
 http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
 
-import pytest
-
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download

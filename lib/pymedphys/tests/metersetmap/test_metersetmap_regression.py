@@ -19,9 +19,8 @@
 """End to end regression testing.
 """
 
-import pytest
-
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 import pymedphys
 
