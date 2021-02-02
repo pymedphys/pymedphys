@@ -38,7 +38,9 @@ def fill_streamlit_credentials():
         pass
 
 
-class HelloWorldHandler(tornado.web.RequestHandler):
+class HelloWorldHandler(  # pylint: disable = abstract-method
+    tornado.web.RequestHandler
+):
     def get(self):
         self.write("Hello world!")
 
