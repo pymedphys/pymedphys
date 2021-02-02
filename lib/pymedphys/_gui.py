@@ -23,19 +23,20 @@ HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
 
 
-def fill_streamlit_credentials():
-    streamlit_config_dir = pathlib.Path.home().joinpath(".streamlit")
-    streamlit_config_dir.mkdir(exist_ok=True)
+def main(args):
+    """Boot up the pymedphys GUI"""
+    _fill_streamlit_credentials()
 
-    template_streamlit_credentials_file = STREAMLIT_CONTENT_DIR.joinpath(
-        "credentials.toml"
-    )
-    new_credential_file = streamlit_config_dir.joinpath("credentials.toml")
+    streamlit_script_path = str(HERE.joinpath("_app.py"))
 
-    try:
-        shutil.copy2(template_streamlit_credentials_file, new_credential_file)
-    except FileExistsError:
-        pass
+    if args.port:
+        st.cli._apply_config_options_from_cli({"server.port": args.port})
+
+    # Needs to run after config has been set
+    _monkey_patch_streamlit_server()
+
+    st._is_running_with_streamlit = True
+    st.bootstrap.run(streamlit_script_path, "", [])
 
 
 class HelloWorldHandler(  # pylint: disable = abstract-method
@@ -63,17 +64,19 @@ def _monkey_patch_streamlit_server():
     OfficialServer._create_app = patched_create_app
 
 
-def main(args):
-    """Boot up the pymedphys GUI"""
-    fill_streamlit_credentials()
+def _fill_streamlit_credentials():
+    streamlit_config_file = pathlib.Path.home().joinpath(
+        ".streamlit", "credentials.toml"
+    )
+    if streamlit_config_file.exists():
+        return
 
-    streamlit_script_path = str(HERE.joinpath("_app.py"))
+    streamlit_config_dir = streamlit_config_file.parent
+    streamlit_config_dir.mkdir(exist_ok=True)
 
-    if args.port:
-        st.cli._apply_config_options_from_cli({"server.port": args.port})
+    template_streamlit_config_file = STREAMLIT_CONTENT_DIR.joinpath("credentials.toml")
 
-    # Needs to run after config has been set
-    _monkey_patch_streamlit_server()
-
-    st._is_running_with_streamlit = True
-    st.bootstrap.run(streamlit_script_path, "", [])
+    try:
+        shutil.copy2(template_streamlit_config_file, streamlit_config_file)
+    except FileExistsError:
+        pass
