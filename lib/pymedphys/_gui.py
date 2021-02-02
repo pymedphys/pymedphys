@@ -15,9 +15,8 @@
 
 import pathlib
 import shutil
-import subprocess
 
-import pymedphys._utilities.test as pmp_test_utils
+from pymedphys._imports import streamlit as st
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -45,16 +44,7 @@ def main(args):
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
     if args.port:
-        append = ["--server.port", args.port]
-    else:
-        append = []
+        st.cli._apply_config_options_from_cli({"server.port": args.port})
 
-    python_executable = pmp_test_utils.get_executable_even_when_embedded()
-    command = [
-        python_executable,
-        "-m",
-        "streamlit",
-        "run",
-        streamlit_script_path,
-    ] + append
-    subprocess.check_call(command)
+    st._is_running_with_streamlit = True
+    st.bootstrap.run(streamlit_script_path, "", [])
