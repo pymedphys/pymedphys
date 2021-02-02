@@ -46,6 +46,7 @@ class HelloWorldHandler(  # pylint: disable = abstract-method
 
 
 def _monkey_patch_streamlit_server():
+    """Adds custom URL routes to Streamlit's tornado server."""
     OfficialServer = st.server.server.Server
     official_create_app = OfficialServer._create_app
 
