@@ -264,8 +264,6 @@ def _angle_filtering(database_table):
         st.write(f"#### {treatment}")
 
     def _port_callback(dataframe, collated_dataframes, _treatment, port):
-        st.write(f"##### {port}")
-
         dataframes = []
 
         for gantry_angle in selected_gantry_angles:
@@ -291,8 +289,12 @@ def _angle_filtering(database_table):
                 )
                 dataframes.append(masked.iloc[[closest_gantry_angle_index]])
 
+        if len(dataframes) == 0:
+            return
+
         dataframes = pd.concat(dataframes, axis=0)
 
+        st.write(f"##### {port}")
         st.write(dataframes[["gantry", "collimator"]])
 
         collated_dataframes.append(dataframes)
@@ -307,6 +309,10 @@ def _angle_filtering(database_table):
         columns=["treatment", "port"],
         callbacks=[_treatment_callback, _port_callback],
     )
+
+    if len(collated_dataframes) == 0:
+        st.error("No DataFrames match the provided filters")
+        st.stop()
 
     database_table = pd.concat(collated_dataframes, axis=0)
 
