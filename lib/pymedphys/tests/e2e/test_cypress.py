@@ -31,4 +31,6 @@ def test_cypress():
         extract_directory=utilities.HERE.joinpath("cypress", "fixtures"),
     )
 
+    pymedphys.zip_data_paths("wlutz-demo-files.zip")
+
     utilities.run_test_commands_with_gui_process(["yarn", "yarn cypress run"])
