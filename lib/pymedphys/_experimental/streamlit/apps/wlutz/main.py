@@ -251,7 +251,7 @@ def _user_selected_angles(
     return angles, tolerance
 
 
-def _angle_filtering(database_table: "pd.Dataframe"):
+def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
     gantry_column, collimator_column = st.beta_columns(2)
 
     default_gantry_angles: List[Number] = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
@@ -272,13 +272,18 @@ def _angle_filtering(database_table: "pd.Dataframe"):
     selected_collimator_angles = angles["collimator"][0]
     collimator_angle_tolerance = angles["collimator"][1]
 
-    def _treatment_callback(_dataframe, _data, treatment):
+    def _treatment_callback(_dataframe, _data, treatment: str):
         st.write(f"#### {treatment}")
 
-    def _port_callback(dataframe, collated_dataframes, _treatment, port):
+    def _port_callback(
+        dataframe: pd.DataFrame,
+        collated_dataframes: List[pd.DataFrame],
+        _treatment,
+        port: str,
+    ):
         st.write(f"##### {port}")
 
-        dataframes = []
+        dataframes: List[pd.DataFrame] = []
 
         for gantry_angle in selected_gantry_angles:
             for collimator_angle in selected_collimator_angles:
@@ -303,15 +308,15 @@ def _angle_filtering(database_table: "pd.Dataframe"):
                 )
                 dataframes.append(masked.iloc[[closest_gantry_angle_index]])
 
-        dataframes = pd.concat(dataframes, axis=0)
+        concatenated_dataframes = pd.concat(dataframes, axis=0)
 
-        st.write(dataframes[["gantry", "collimator"]])
+        st.write(concatenated_dataframes[["gantry", "collimator"]])
 
-        collated_dataframes.append(dataframes)
+        collated_dataframes.append(concatenated_dataframes)
 
     st.write("### Gantry and collimator angles selected per treatment and port")
 
-    collated_dataframes = []
+    collated_dataframes: List[pd.DataFrame] = []
 
     _utilities.iterate_over_columns(
         database_table,
