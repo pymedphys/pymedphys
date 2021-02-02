@@ -17,6 +17,7 @@ import pathlib
 import shutil
 
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import tornado
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -37,13 +38,23 @@ def fill_streamlit_credentials():
         pass
 
 
+class HelloWorldHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write("Hello world!")
+
+
 def _monkey_patch_streamlit_server():
     OfficialServer = st.server.server.Server
     official_create_app = OfficialServer._create_app
 
     def patched_create_app(self):
         app = official_create_app(self)
-        print(dir(app))
+        base = st.config.get_option("server.baseUrlPath")
+
+        pattern = st.server.server_util.make_url_path_regex(base, "pymedphys")
+
+        app.add_handlers(base, [(pattern, HelloWorldHandler)])
+
         return app
 
     OfficialServer._create_app = patched_create_app
