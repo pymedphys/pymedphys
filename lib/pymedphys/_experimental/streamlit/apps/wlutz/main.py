@@ -263,10 +263,36 @@ def _angle_filtering(database_table):
     def _treatment_callback(_dataframe, _data, treatment):
         st.write(f"### {treatment}")
 
-    def _port_callback(dataframe, _data, _treatment, port):
+    def _port_callback(dataframe, collated_dataframes, _treatment, port):
         st.write(f"#### {port}")
 
-        st.write(dataframe["gantry"])
+        dataframes = []
+
+        for gantry_angle in selected_gantry_angles:
+            for collimator_angle in selected_collimator_angles:
+                mask = (
+                    (dataframe["gantry"] >= gantry_angle - gantry_angle_tolerance)
+                    & (dataframe["gantry"] <= gantry_angle + gantry_angle_tolerance)
+                    & (
+                        dataframe["collimator"]
+                        >= collimator_angle - collimator_angle_tolerance
+                    )
+                    & (
+                        dataframe["collimator"]
+                        <= collimator_angle + collimator_angle_tolerance
+                    )
+                )
+                masked = dataframe[mask]
+                if len(masked) == 0:
+                    continue
+
+                if len(masked) == 1:
+                    dataframes.append(masked)
+
+                closest_gantry_angle_index = np.argmin(np.abs(masked - gantry_angle))
+                dataframes.append(masked.iloc[closest_gantry_angle_index])
+
+        st.write(dataframes)
 
     collated_dataframes = []
 
