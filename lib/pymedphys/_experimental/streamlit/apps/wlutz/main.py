@@ -314,7 +314,14 @@ def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
 
         collated_dataframes.append(concatenated_dataframes)
 
-    st.write("### Gantry and collimator angles selected per treatment and port")
+    st.write(
+        """
+        ### Gantry and collimator angles selected per treatment and port
+
+        Select between -180 degrees and +180 degrees. Write the angles
+        you wish to select below separated by a comma (,).
+        """
+    )
 
     collated_dataframes: List[pd.DataFrame] = []
 
