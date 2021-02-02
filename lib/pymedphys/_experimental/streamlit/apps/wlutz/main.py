@@ -332,6 +332,10 @@ def _create_portal_image_dicom_dataset(
     happily accept the created file.
     """
 
+    # TODO: Refactor this so that for all pylinac calls a full DICOM
+    # file is passed to it in the way that it expects. The image wrapper
+    # around pylinac could instead call this first.
+
     # Image plane pixel spacing.
     # Exported DICOM files have an image plane pixel spacing of 0.405,
     # with SID of 1600 and SAD of 1000. This corresponds to an iso
