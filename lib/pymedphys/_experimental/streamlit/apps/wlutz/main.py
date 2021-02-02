@@ -243,16 +243,16 @@ def _user_selected_angles(name, default_selection, default_tolerance):
 def _angle_filtering(database_table):
     gantry_column, collimator_column = st.beta_columns(2)
 
-    default_angles = [-180, -90, 0, 90, 180]
+    default_gantry_angles = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
+    default_collimator_angles = [-180, -90, 0, 90, 180]
+
     angles = {}
-    for name, tolerance, column in [
-        ("gantry", 10, gantry_column),
-        ("collimator", 5, collimator_column),
+    for name, tolerance, column, default_angles in [
+        ("gantry", 10, gantry_column, default_gantry_angles),
+        ("collimator", 5, collimator_column, default_collimator_angles),
     ]:
         with column:
             angles[name] = _user_selected_angles(name, default_angles, tolerance)
-
-    st.write(database_table)
 
     selected_gantry_angles = angles["gantry"][0]
     gantry_angle_tolerance = angles["gantry"][1]
@@ -261,10 +261,10 @@ def _angle_filtering(database_table):
     collimator_angle_tolerance = angles["collimator"][1]
 
     def _treatment_callback(_dataframe, _data, treatment):
-        st.write(f"### {treatment}")
+        st.write(f"#### {treatment}")
 
     def _port_callback(dataframe, collated_dataframes, _treatment, port):
-        st.write(f"#### {port}")
+        st.write(f"##### {port}")
 
         dataframes = []
 
@@ -286,13 +286,18 @@ def _angle_filtering(database_table):
                 if len(masked) == 0:
                     continue
 
-                if len(masked) == 1:
-                    dataframes.append(masked)
+                closest_gantry_angle_index = np.argmin(
+                    np.abs(masked["gantry"] - gantry_angle)
+                )
+                dataframes.append(masked.iloc[[closest_gantry_angle_index]])
 
-                closest_gantry_angle_index = np.argmin(np.abs(masked - gantry_angle))
-                dataframes.append(masked.iloc[closest_gantry_angle_index])
+        dataframes = pd.concat(dataframes, axis=0)
 
-        st.write(dataframes)
+        st.write(dataframes[["gantry", "collimator"]])
+
+        collated_dataframes.append(dataframes)
+
+    st.write("### Gantry and collimator angles selected per treatment and port")
 
     collated_dataframes = []
 
@@ -302,6 +307,8 @@ def _angle_filtering(database_table):
         columns=["treatment", "port"],
         callbacks=[_treatment_callback, _port_callback],
     )
+
+    database_table = pd.concat(collated_dataframes, axis=0)
 
     return database_table
 
