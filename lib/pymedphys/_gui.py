@@ -53,14 +53,14 @@ def _monkey_patch_streamlit_server():
         app = official_create_app(self)
         base = st.config.get_option("server.baseUrlPath")
 
-        print(dir(app))
-        print(app.settings)
-        print(app.default_router)
-        print(dir(app.default_router))
-        print(app.default_router.named_rules)
+        # print(dir(app))
+        # print(app.settings)
+        # print(app.default_router)
+        # print(dir(app.default_router))
+        # print(app.default_router.named_rules)
 
         pattern = st.server.server_util.make_url_path_regex(base, "pymedphys")
-        print(pattern)
+        # print(pattern)
 
         app.add_handlers(".*", [(pattern, HelloWorldHandler)])
 
