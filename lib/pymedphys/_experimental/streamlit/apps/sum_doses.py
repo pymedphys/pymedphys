@@ -28,8 +28,6 @@ from pymedphys._streamlit import categories
 CATEGORY = categories.PRE_ALPHA
 TITLE = "Sum Coincident DICOM Doses"
 
-HERE = pathlib.Path(__file__).parent.resolve()
-
 
 def main():
     left_column, right_column = st.beta_columns(2)
