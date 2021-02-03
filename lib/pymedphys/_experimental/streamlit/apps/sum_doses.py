@@ -149,9 +149,8 @@ def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
 
     if not all(ds.DoseSummationType == "PLAN" for ds in datasets):
         raise ValueError(
-            "Only DICOM RT Dose files whose DoseSummationType == 'PLAN' are supported"
+            "Only DICOM RT Doses whose DoseSummationTypes are 'PLAN' are supported"
         )
-
     if not coords_in_datasets_are_equal(datasets):
         raise ValueError("All dose grids must have perfectly coincident coordinates")
 
@@ -159,6 +158,15 @@ def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
 
     ds_summed.DoseSummationType = "MULTI_PLAN"
 
+    if not all(ds.DoseType in ("PHYSICAL", "EFFECTIVE") for ds in datasets):
+        raise ValueError(
+            "Only DICOM RT Doses whose DoseTypes are 'PHYSICAL' or "
+            "'EFFECTIVE' are supported"
+        )
+    elif any(ds.DoseType == "EFFECTIVE" for ds in datasets):
+        ds_summed.DoseType = "EFFECTIVE"
+    else:
+        ds_summed.DoseType = "PHYSICAL"
     doses = np.array([dose_from_dataset(ds) for ds in datasets])
     doses_summed = np.sum(doses, axis=0, dtype=np.float32)
 
