@@ -220,6 +220,7 @@ extras_require = {
         "tensorflow>=2.2.0",
         "sphinx-book-theme",
         "black>=20.8b1,<21.0",
+        "tabulate",
     ],
     "ml": ["tensorflow>=2.2.0"],
     "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0"],
