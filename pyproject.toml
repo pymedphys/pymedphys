@@ -52,8 +52,8 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-pymssql = { version = "*", optional = true }  # groups = ["user", "dev"]
-sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev"]
+pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
+sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
 
@@ -69,7 +69,7 @@ dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounded packages are due to certain APIs utilised
 numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev"]
-pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev"]
+pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
 # Shapely's lower bound is so that the PyPI version with wheels is used
@@ -138,6 +138,7 @@ readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn"]
 dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
+mosaiq = ["pymssql", "sqlalchemy", "pandas"]
 propagate = ["tomlkit", "black"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
 doctests = ["pylinac", "tensorflow", "sphinx-book-theme", "black"]

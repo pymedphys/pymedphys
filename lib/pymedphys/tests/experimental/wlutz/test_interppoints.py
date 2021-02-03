@@ -15,8 +15,7 @@
 
 from hypothesis import given
 from hypothesis.strategies import floats
-
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._mocks import profiles
 

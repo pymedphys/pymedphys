@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 

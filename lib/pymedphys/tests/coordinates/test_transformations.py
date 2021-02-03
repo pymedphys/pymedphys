@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._utilities.transforms.affine import (
     rotate_about_vector,
