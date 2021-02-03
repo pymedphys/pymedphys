@@ -19,7 +19,7 @@ import re
 import subprocess
 import tempfile
 
-from pymedphys._imports import tabulate
+from pymedphys._imports import tabulate, tqdm
 
 import pymedphys._utilities.test as pmp_test_utils
 import pymedphys.tests.e2e.utilities as cypress_test_utilities
@@ -79,23 +79,30 @@ def run_clean_imports(_):
     with tempfile.TemporaryDirectory() as temp_dir:
         subprocess.check_call([python_executable, "-m", "venv", temp_dir])
         new_python_executable = str(pathlib.Path(temp_dir).joinpath("bin", "python"))
+
+        print("Installing PyMedPhys with minimal dependencies...\n")
         subprocess.check_call(
             [new_python_executable, "-m", "pip", "install", "."], cwd=REPO_ROOT
         )
 
+        print("\nImporting all modules that should be able to handle a clean import...")
         _import_and_print(new_python_executable, clean_import_paths)
 
+        print("Installing PyMedPhys with tests dependencies...\n")
         subprocess.check_call(
             [new_python_executable, "-m", "pip", "install", ".[tests]"], cwd=REPO_ROOT
         )
 
+        print("\nImporting all modules that should be able to handle a tests import...")
         _import_and_print(new_python_executable, tests_import_paths)
 
 
 def _import_and_print(python_executable, import_paths):
     issues = set()
-    for import_path in import_paths:
+    for import_path in tqdm.tqdm(import_paths):
         try:
+            # TODO: This can be seriously sped up by importing them all within
+            # the same Python instance.
             subprocess.check_output(
                 [python_executable, "-c", f"import {import_path}"],
                 stderr=subprocess.STDOUT,
@@ -116,7 +123,7 @@ def _import_and_print(python_executable, import_paths):
 
     print("")
     print(tabulate.tabulate(issues, headers=["Module", "Line", "Dependency"]))
-    print("\n\n")
+    print("\n")
 
 
 def _get_problem_module_and_line_number(error_text):
