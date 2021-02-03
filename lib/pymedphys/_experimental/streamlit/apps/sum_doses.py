@@ -16,13 +16,11 @@ limitations under the License.
 import copy
 import os
 import pathlib
-from typing import Sequence, Union
+from typing import List, Sequence, Union
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
-
-from pydicom.errors import InvalidDicomError
 
 from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
@@ -35,23 +33,24 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 
 def _check_files_valid(
-    files: Sequence[Union[str, bytes, os.PathLike]]
-) -> "List[pydicom.dataset.Dataset]":
+    files: Sequence[pathlib.Path],
+) -> Union["List[pydicom.dataset.Dataset]", None]:
 
     if not len(files) >= 2:
         raise ValueError("`files` must contain at least 2 elements")
 
     datasets = []
+    ds0 = None
 
     for i, fh in enumerate(files):
         try:
             ds = pydicom.dcmread(fh)
-        except InvalidDicomError:
-            st.error(f"{fh.name} is not a valid DICOM file")
+        except pydicom.errors.InvalidDicomError:
+            st.error(f"'{fh.name}' is not a valid DICOM file")
             return None
 
         if not ds.Modality == "RTDOSE":
-            st.error(f"File {fh.name} is not a valid DICOM RT Dose file")
+            st.error(f"File '{fh.name}' is not a valid DICOM RT Dose file")
             return None
 
         if i == 0:
@@ -59,15 +58,17 @@ def _check_files_valid(
         else:
             if not ds.PatientID == ds0.PatientID:
                 st.error(
-                    f"File {fh.name} has a different DICOM Patient ID "
-                    "from the first file in the list"
+                    f"File '{fh.name}' has a different DICOM Patient "
+                    f"ID from '{files[0].name}'"
                 )
+                return None
             if not ds.DoseUnits == ds0.DoseUnits:
                 st.error(
-                    f"File {fh.name} has a different value for "
-                    "DoseUnits ({ds.DoseUnits}) from the first file in "
-                    "the list ({ds0.DoseUnits})"
+                    f"File '{fh.name}' has a different value for "
+                    f"DoseUnits ({ds.DoseUnits}) from "
+                    f"'{files[0].name}' ({ds0.DoseUnits})"
                 )
+                return None
 
         if not ds.DoseSummationType == "PLAN":
             st.error(f"File {fh.name} is not a 'plan' dose")
