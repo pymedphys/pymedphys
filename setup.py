@@ -204,6 +204,7 @@ extras_require = {
         "rope",
         "doc8",
         "readme-renderer",
+        "tabulate",
     ],
     "dicom": ["pynetdicom", "pylibjpeg-libjpeg", "pydicom>=2.0.0"],
     "docs": [
