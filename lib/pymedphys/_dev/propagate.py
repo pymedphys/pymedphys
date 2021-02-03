@@ -311,7 +311,8 @@ def propagate_extras():
     )
 
     for _, deps in extras.items():
-        deps.multiline(True)
+        if len(deps.as_string()) > 88:
+            deps.multiline(True)
 
     if pyproject_contents["tool"]["poetry"]["extras"] != extras:
         pyproject_contents["tool"]["poetry"]["extras"] = extras
