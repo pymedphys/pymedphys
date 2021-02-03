@@ -61,6 +61,10 @@ def _check_files_valid(
             st.error(f"File {fh.name} is not a valid DICOM RT Dose file")
             return None
 
+        if not ds.DoseSummationTypes == "PLAN":
+            st.error(f"File {fh.name} is not a 'plan' dose")
+            return None
+
         datasets.append(ds)
 
     return datasets
