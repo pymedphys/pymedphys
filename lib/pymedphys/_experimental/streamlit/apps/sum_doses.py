@@ -95,7 +95,6 @@ def _save_dataset_to_downloads_dir(ds: "pydicom.dataset.Dataset"):
     DOWNLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
     ds.save_as(DOWNLOADS_PATH / "RD.Summed.dcm")
-    st.write(DOWNLOADS_PATH / "RD.Summed.dcm")
 
 
 def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) -> bool:
