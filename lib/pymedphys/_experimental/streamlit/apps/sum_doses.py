@@ -29,12 +29,6 @@ from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._streamlit import categories
 
-STREAMLIT_STATIC_PATH = pathlib.Path(st.__path__[0]) / "static"
-DOWNLOADS_PATH = STREAMLIT_STATIC_PATH / "downloads"
-if not DOWNLOADS_PATH.is_dir():
-    DOWNLOADS_PATH.mkdir()
-SUMMED_DOSE_PATH = DOWNLOADS_PATH / "RD.Summed.dcm"
-
 CATEGORY = categories.PRE_ALPHA
 TITLE = "Sum Coincident DICOM Doses"
 
@@ -83,6 +77,15 @@ def _check_files_valid(
         datasets.append(ds)
 
     return datasets
+
+
+def _save_dataset_to_downloads_dir(ds: "pydicom.dataset.Dataset"):
+    STREAMLIT_STATIC_PATH = pathlib.Path(st.__path__[0]) / "static"
+
+    DOWNLOADS_PATH = STREAMLIT_STATIC_PATH / "downloads"
+    DOWNLOADS_PATH.mkdir(parents=True, exist_ok=True)
+
+    ds.save_as(DOWNLOADS_PATH / "RD.Summed.dcm")
 
 
 def coords_in_datasets_are_equal(datasets: "Sequence[pydicom.dataset.Dataset]") -> bool:
@@ -229,7 +232,7 @@ def main():
             st.write("Summing doses...")
 
             ds_summed = sum_doses_in_datasets(datasets)
-            ds_summed.save_as(SUMMED_DOSE_PATH)
+            _save_dataset_to_downloads_dir(ds_summed)
 
             st.write("Done!")
             st.markdown(
