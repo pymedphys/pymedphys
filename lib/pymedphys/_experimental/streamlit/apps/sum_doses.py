@@ -16,7 +16,7 @@ limitations under the License.
 import copy
 import os
 import pathlib
-from typing import List, Sequence, Union
+from typing import Sequence, Union
 
 from pymedphys._imports import streamlit as st
 
@@ -194,7 +194,7 @@ def sum_doses_in_datasets(
             "Only DICOM RT Doses whose DoseTypes are 'PHYSICAL' or "
             "'EFFECTIVE' are supported"
         )
-    elif any(ds.DoseType == "EFFECTIVE" for ds in datasets):
+    if any(ds.DoseType == "EFFECTIVE" for ds in datasets):
         ds_summed.DoseType = "EFFECTIVE"
     else:
         ds_summed.DoseType = "PHYSICAL"
