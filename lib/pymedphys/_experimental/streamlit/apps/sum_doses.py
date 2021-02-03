@@ -151,6 +151,12 @@ def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
         raise ValueError(
             "Only DICOM RT Doses whose DoseSummationTypes are 'PLAN' are supported"
         )
+
+    if not all(ds.DoseUnits == datasets[0].DoseUnits for ds in datasets):
+        raise ValueError(
+            "All DICOM RT Doses must have the same units ('GY or 'RELATIVE')"
+        )
+
     if not coords_in_datasets_are_equal(datasets):
         raise ValueError("All dose grids must have perfectly coincident coordinates")
 
