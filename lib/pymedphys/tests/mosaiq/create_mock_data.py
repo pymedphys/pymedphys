@@ -5,7 +5,6 @@ from struct import pack
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, pytest, sqlalchemy
-from pymedphys._imports import sqlalchemy
 
 from pymedphys._mosaiq.helpers import get_patient_fields, get_patient_name
 from pymedphys.mosaiq import connect, execute
@@ -228,13 +227,13 @@ def create_mock_treatment_fields(site_df=None):
         "TxFieldPoint",
         index_label="TFP_ID",
         dtype={
-            "Index": Numeric(precision=9, scale=3),
-            "A_Leaf_Set": LargeBinary(length=200),
-            "B_Leaf_Set": LargeBinary(length=200),
-            "Gantry_Ang": Numeric(precision=4, scale=1),
-            "Coll_Ang": Numeric(precision=4, scale=1),
-            "Coll_Y1": Numeric(precision=4, scale=1),
-            "Coll_Y2": Numeric(precision=4, scale=1),
+            "Index": sqlalchemy.types.Numeric(precision=9, scale=3),
+            "A_Leaf_Set": sqlalchemy.types.LargeBinary(length=200),
+            "B_Leaf_Set": sqlalchemy.types.LargeBinary(length=200),
+            "Gantry_Ang": sqlalchemy.types.Numeric(precision=4, scale=1),
+            "Coll_Ang": sqlalchemy.types.Numeric(precision=4, scale=1),
+            "Coll_Y1": sqlalchemy.types.Numeric(precision=4, scale=1),
+            "Coll_Y2": sqlalchemy.types.Numeric(precision=4, scale=1),
         },
     )
 
