@@ -213,13 +213,17 @@ def sum_doses_in_datasets(
 
 def main():
 
-    files = st.file_uploader(
-        "Upload DICOM RT Dose files for which to add dose. You must "
-        "add two or more. The first file uploaded will be used as a "
-        "template for the summed DICOM RT Dose file.",
-        ["dcm"],
-        accept_multiple_files=True,
-    )
+    left_column, right_column = st.beta_columns(2)
+
+    with left_column:
+        st.write("## Upload DICOM RT Dose files")
+        files = st.file_uploader(
+            "Upload at least two DICOM RT Dose files whose doses you'd "
+            "like to add together. The first file uploaded will be "
+            "used as a template for the summed DICOM RT Dose file.",
+            ["dcm"],
+            accept_multiple_files=True,
+        )
 
     if st.button("Sum Doses"):
 
@@ -227,8 +231,18 @@ def main():
 
         if datasets:
 
-            st.write(f"**Patient ID**:\t{datasets[0].PatientID}")
-            st.write(f"**Patient Name**:\t{datasets[0].PatientName}")
+            with right_column:
+                st.write(
+                    f"""
+
+                    ## Details
+
+                    * Patient ID: `{datasets[0].PatientID}`
+                    * Patient Name: `{datasets[0].PatientName}`
+                    """
+                )
+
+            st.write("---")
             st.write("Summing doses...")
 
             ds_summed = sum_doses_in_datasets(datasets)
