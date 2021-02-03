@@ -53,6 +53,10 @@ def _axes_in_datasets_match(datasets):
     return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
 
 
+def _patient_ids_match(datasets):
+    return all(ds.PatientId == datasets[0].PatientId for ds in datasets)
+
+
 def _check_files_valid(files):
     datasets = []
 
@@ -87,6 +91,12 @@ def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
         A new DICOM RT Dose dataset whose dose is the sum of all doses
         within `datasets`
     """
+
+    if not _patient_ids_match(datasets):
+        raise ValueError("Patient ID must match for all datasets")
+
+    if not _axes_in_datasets_match(datasets):
+        raise ValueError("All dose grids must have perfectly coincident coordinates")
 
     ds_summed = copy.deepcopy(datasets[0])
 
@@ -123,12 +133,9 @@ def main():
         datasets = _check_files_valid(files)
 
         if datasets:
-            if _axes_in_datasets_match(datasets):
-                ds_summed = sum_doses_in_datasets(datasets)
-                ds_summed.save_as(SUMMED_DOSE_PATH)
-                st.markdown(
-                    "Download the summed DICOM dose file from "
-                    "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)"
-                )
-            else:
-                st.write("mismatch")
+            ds_summed = sum_doses_in_datasets(datasets)
+            ds_summed.save_as(SUMMED_DOSE_PATH)
+            st.markdown(
+                "Download the summed DICOM dose file from "
+                "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)"
+            )
