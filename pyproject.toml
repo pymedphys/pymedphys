@@ -133,7 +133,7 @@ mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
-tabulate = { version = "*", optional = true }  # groups = ["dev"]
+tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
 
 
 [tool.poetry.extras]
