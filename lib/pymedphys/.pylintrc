@@ -27,7 +27,8 @@ disable =
     import-outside-toplevel,
     no-else-return,
     unbalanced-tuple-unpacking,
-    raise-missing-from
+    raise-missing-from,
+    import-error
 
 
 [FORMAT]

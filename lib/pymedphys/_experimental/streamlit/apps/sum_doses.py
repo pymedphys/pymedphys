@@ -15,7 +15,7 @@ limitations under the License.
 
 import copy
 import pathlib
-from typing import Sequence, Union
+from typing import List, Sequence, Union
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
