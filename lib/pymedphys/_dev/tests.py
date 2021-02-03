@@ -19,6 +19,8 @@ import re
 import subprocess
 import tempfile
 
+from pymedphys._imports import tabulate
+
 import pymedphys._utilities.test as pmp_test_utils
 import pymedphys.tests.e2e.utilities as cypress_test_utilities
 
@@ -74,31 +76,60 @@ def run_clean_imports(_):
             [new_python_executable, "-m", "pip", "install", "."], cwd=REPO_ROOT
         )
 
-        for import_path in clean_import_paths:
-            _import_and_print(new_python_executable, import_path)
+        _import_and_print(new_python_executable, clean_import_paths)
 
         subprocess.check_call(
             [new_python_executable, "-m", "pip", "install", ".[tests]"], cwd=REPO_ROOT
         )
 
-        for import_path in tests_import_paths:
-            _import_and_print(new_python_executable, import_path)
+        _import_and_print(new_python_executable, tests_import_paths)
 
 
-def _import_and_print(python_executable, import_path):
-    try:
-        subprocess.check_output(
-            [python_executable, "-c", f"import {import_path}"],
-            stderr=subprocess.STDOUT,
-        )
-    except subprocess.CalledProcessError as e:
-        match = re.search(
-            "ModuleNotFoundError: No module named '(.*)'", e.output.decode()
-        )
+def _import_and_print(python_executable, import_paths):
+    issues = set()
+    for import_path in import_paths:
         try:
-            print(f"{import_path} -- {match.group(1)}")
-        except AttributeError:
-            print(e.output.decode())
+            subprocess.check_output(
+                [python_executable, "-c", f"import {import_path}"],
+                stderr=subprocess.STDOUT,
+            )
+        except subprocess.CalledProcessError as e:
+            error_text = e.output.decode()
+
+            match = re.search("ModuleNotFoundError: No module named '(.*)'", error_text)
+            try:
+                module, line = _get_problem_module_and_line_number(error_text)
+                dependency = match.group(1)
+
+                issues.add((module, line, dependency))
+
+            except (AttributeError, ValueError):
+                print(f"When importing {import_path} the following error occurred:")
+                print(error_text)
+
+    print("")
+    print(tabulate.tabulate(issues, headers=["Module", "Line", "Dependency"]))
+    print("\n\n")
+
+
+def _get_problem_module_and_line_number(error_text):
+    error_list = error_text.split("\n")
+    has_apipkg = ["apipkg" in item for item in error_list]
+    try:
+        i = has_apipkg.index(True) - 2  # The module traceback before apipkg failed
+    except ValueError:
+        i = -4  #
+
+    relevant_line = error_list[i]
+    module = (
+        re.search(r"(pymedphys.*)\.py", relevant_line)
+        .group(1)
+        .replace(os.sep, ".")
+        .replace("-", "_")
+    )
+    line = int(re.search(r"line (\d+),", relevant_line).group(1))
+
+    return module, line
 
 
 def run_doctests(_, remaining):
