@@ -143,7 +143,7 @@ def get_pretty_patient_name_from_dicom_dataset(
         capitalised. If False, surname will be in title case. Defaults
         to True.
 
-    surname_first : bool
+    include_honorific: bool
         If True, the pretty patient name will include the patient's
         honorific at the beginning, if it exists. Defaults to False.
 
