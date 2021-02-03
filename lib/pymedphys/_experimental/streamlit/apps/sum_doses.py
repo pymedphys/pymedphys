@@ -43,7 +43,7 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 def _check_files_valid(
     files: Sequence[Union[str, bytes, os.PathLike]]
-) -> List[pydicom.dataset.Dataset]:
+) -> "List[pydicom.dataset.Dataset]":
 
     if not len(files) >= 2:
         raise ValueError("`files` must contain at least 2 elements")
@@ -85,7 +85,7 @@ def _check_files_valid(
     return datasets
 
 
-def coords_in_datasets_are_equal(datasets: Sequence[pydicom.dataset.Dataset]) -> bool:
+def coords_in_datasets_are_equal(datasets: "Sequence[pydicom.dataset.Dataset]") -> bool:
     """True if all DICOM datasets have perfectly matching coordinates
 
     Parameters
@@ -116,7 +116,7 @@ def coords_in_datasets_are_equal(datasets: Sequence[pydicom.dataset.Dataset]) ->
 
 
 def patient_ids_in_datasets_are_equal(
-    datasets: Sequence[pydicom.dataset.Dataset],
+    datasets: "Sequence[pydicom.dataset.Dataset]",
 ) -> bool:
     """True if all DICOM datasets have the same Patient ID
 
@@ -139,8 +139,8 @@ def patient_ids_in_datasets_are_equal(
 
 
 def sum_doses_in_datasets(
-    datasets: Sequence[pydicom.dataset.Dataset],
-) -> pydicom.dataset.Dataset:
+    datasets: "Sequence[pydicom.dataset.Dataset]",
+) -> "pydicom.dataset.Dataset":
     """Sum two or more DICOM dose grids and save to new DICOM RT
     Dose dataset"
 
