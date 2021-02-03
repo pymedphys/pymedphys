@@ -50,7 +50,7 @@ def _check_files_valid(
 
     datasets = []
 
-    for fh in files:
+    for i, fh in enumerate(files):
         try:
             ds = pydicom.dcmread(fh)
         except InvalidDicomError:
@@ -61,7 +61,22 @@ def _check_files_valid(
             st.error(f"File {fh.name} is not a valid DICOM RT Dose file")
             return None
 
-        if not ds.DoseSummationTypes == "PLAN":
+        if i == 0:
+            ds0 = ds
+        else:
+            if not ds.PatientID == ds0.PatientID:
+                st.error(
+                    f"File {fh.name} has a different DICOM Patient ID "
+                    "from the first file in the list"
+                )
+            if not ds.DoseUnits == ds0.DoseUnits:
+                st.error(
+                    f"File {fh.name} has a different value for "
+                    "DoseUnits ({ds.DoseUnits}) from the first file in "
+                    "the list ({ds0.DoseUnits})"
+                )
+
+        if not ds.DoseSummationType == "PLAN":
             st.error(f"File {fh.name} is not a 'plan' dose")
             return None
 
@@ -120,7 +135,7 @@ def patient_ids_in_datasets_are_equal(
     if not len(datasets) >= 2:
         raise ValueError("At least two datasets must be provided for comparison")
 
-    return all(ds.PatientId == datasets[0].PatientId for ds in datasets)
+    return all(ds.PatientID == datasets[0].PatientID for ds in datasets)
 
 
 def sum_doses_in_datasets(
@@ -190,9 +205,6 @@ def sum_doses_in_datasets(
 
     ds_summed.PixelData = pixel_array_summed.tobytes()
 
-    st.write(np.max(datasets[0].pixel_array))
-    st.write(np.max(ds_summed.pixel_array))
-
     return ds_summed
 
 
@@ -211,9 +223,16 @@ def main():
         datasets = _check_files_valid(files)
 
         if datasets:
+
+            st.write(f"**Patient ID**:\t{datasets[0].PatientID}")
+            st.write(f"**Patient Name**:\t{datasets[0].PatientName}")
+            st.write("Summing doses...")
+
             ds_summed = sum_doses_in_datasets(datasets)
             ds_summed.save_as(SUMMED_DOSE_PATH)
+
+            st.write("Done!")
             st.markdown(
-                "Download the summed DICOM dose file from "
-                "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)"
+                "*Download the summed DICOM dose file from "
+                "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)*"
             )
