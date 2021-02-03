@@ -303,6 +303,16 @@ def propagate_extras():
                 except KeyError:
                     extras[group] = [key]
 
+    for group, deps in extras.items():
+        extras[group] = sorted(deps)
+
+    extras = tomlkit.item(
+        extras, _parent=pyproject_contents["tool"]["poetry"], _sort_keys=True
+    )
+
+    for _, deps in extras.items():
+        deps.multiline(True)
+
     if pyproject_contents["tool"]["poetry"]["extras"] != extras:
         pyproject_contents["tool"]["poetry"]["extras"] = extras
 
