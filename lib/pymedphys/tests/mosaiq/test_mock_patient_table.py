@@ -2,8 +2,16 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, pytest, sqlalchemy
 
+from pymedphys._mosaiq.delivery import delivery_data_sql
 from pymedphys._mosaiq.helpers import get_patient_fields, get_patient_name
 from pymedphys.mosaiq import connect, execute
+
+from .create_mock_data import (
+    check_create_test_db,
+    create_mock_patients,
+    create_mock_treatment_fields,
+    create_mock_treatment_sites,
+)
 
 msq_server = "."
 test_db_name = "MosaiqTest77008"
@@ -11,67 +19,18 @@ test_db_name = "MosaiqTest77008"
 sa_user = "sa"
 sa_password = "sqlServerPassw0rd"
 
-# set up a SQLAlchemy engine to be used for populating tables
-connection_str = f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db_name}"
-engine = sqlalchemy.create_engine(connection_str, echo=False)
-
 
 @pytest.fixture(name="check_create_test_db")
 def fixture_check_create_test_db():
     """ will create the test database, if it does not already exist on the instance """
-    # sa connection to create the test database
-    with pymssql.connect(
-        msq_server, user=sa_user, password=sa_password
-    ) as sql_sa_connection:
-
-        sql_sa_connection.autocommit(True)
-
-        # create the test db
-        with sql_sa_connection.cursor() as cursor:
-            cursor.execute(
-                f"""
-                IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '{test_db_name}')
-                BEGIN
-                    CREATE DATABASE {test_db_name};
-                END
-                """
-            )
-
-
-@pytest.fixture(name="create_mock_patients")
-def fixture_create_mock_patients(
-    check_create_test_db,  # pylint: disable = unused-argument
-):
-    """ creates a mock patient, with small Patient and Ident tables with relevant attributes"""
-
-    # create a single dataframe combining the Patient and Ident tables
-    patient_ident_df = pd.DataFrame(
-        [
-            ("Larry", "Fine", "MR8001"),
-            ("Moe", "Howard", "MR8002"),
-            ("Curly", "Howard", "MR8003"),
-        ],
-        columns=["First_Name", "Last_Name", "IDA"],
-    )
-
-    # use the index+10001 as the Pat_ID1
-    patient_ident_df.index = patient_ident_df.index + 10001
-
-    # now SQLAlchemy to populate the two tables from the single composite
-    patient_ident_df.drop(columns=["IDA"]).to_sql(
-        "Patient", engine, if_exists="replace", index=True, index_label="Pat_Id1"
-    )
-    patient_ident_df.drop(columns=["First_Name", "Last_Name"]).to_sql(
-        "Ident", engine, if_exists="replace", index=True, index_label="Pat_Id1"
-    )
-
-    # return the combined dataframe, if need to be used for follow-on processing
-    return patient_ident_df
+    check_create_test_db()
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_name(create_mock_patients):  # pylint: disable = unused-argument
+def test_get_patient_name(check_create_test_db):  # pylint: disable = unused-argument
     """ tests the get_patient_name helper function"""
+
+    create_mock_patients()
 
     with connect(
         msq_server,
@@ -109,49 +68,13 @@ def test_get_patient_name(create_mock_patients):  # pylint: disable = unused-arg
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_fields(create_mock_patients):
+def test_get_patient_fields(check_create_test_db):
     """ creates basic tx field and site metadata for the mock patients """
 
     # the create_mock_patients output is the patient_ident dataframe
-    patient_ident_df = create_mock_patients
-
-    # set up site to have same rows as patient_ident
-    site_df = patient_ident_df.drop(columns=["First_Name", "Last_Name", "IDA"])
-    site_df["Site_Name"] = "rx1"
-    site_df["Pat_ID1"] = site_df.index
-    site_df.index = np.arange(1, len(site_df) + 1)
-
-    # populate a list of tx_fields, 3 for each site
-    tx_fields = []
-    for sit_set_id, site in site_df.iterrows():
-        tx_fields += [
-            ("A", "FieldA", 1, "MU", 1, site["Pat_ID1"], sit_set_id),
-            ("B", "FieldB", 1, "MU", 1, site["Pat_ID1"], sit_set_id),
-            ("C", "FieldC", 1, "MU", 1, site["Pat_ID1"], sit_set_id),
-        ]
-
-    # now create the tx_field dataframe
-    txfield_df = pd.DataFrame(
-        tx_fields,
-        columns=[
-            "Field_Label",
-            "Field_Name",
-            "Version",
-            "Meterset",
-            "Type_Enum",
-            "Pat_ID1",
-            "SIT_SET_ID",
-        ],
-    )
-    txfield_df.index += 1
-
-    # now use SQLAlchemy to populate the two tables
-    site_df.to_sql(
-        "Site", engine, if_exists="replace", index=True, index_label="SIT_SET_ID"
-    )
-    txfield_df.to_sql(
-        "TxField", engine, if_exists="replace", index=True, index_label="FLD_ID"
-    )
+    mock_patient_ident_df = create_mock_patients()
+    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df)
+    create_mock_treatment_fields(mock_site_df)
 
     with connect(
         msq_server,
@@ -162,15 +85,29 @@ def test_get_patient_fields(create_mock_patients):
     ) as connection:
 
         # test the get_patient_fields helper function
-        txfield_df = get_patient_fields(connection, "MR8002")
-        print(txfield_df)
+        fields_for_moe_df = get_patient_fields(connection, "MR8002")
+        print(fields_for_moe_df)
 
         # make sure the correct number of rows were returned
-        assert len(txfield_df) == 3
+        assert len(fields_for_moe_df) == 3
 
         # for each treatment field
-        for fld_id, txfield in txfield_df.iterrows():
+        for fld_id, txfield in fields_for_moe_df.iterrows():
             print(fld_id, txfield)
 
             # check that the field label matches the field name
             assert f"Field{txfield['field_label']}" == txfield["field_name"]
+
+            # check for txfield control points
+            field_results, point_results = delivery_data_sql(
+                connection, txfield["field_id"]
+            )
+
+            assert field_results[0][0] == "MU"
+            print(point_results)
+
+            # iterate over the txfield results and see if they match
+            current_index = 0.0
+            for tx_point in point_results:
+                assert tx_point[0] >= current_index
+                current_index = tx_point[0]
