@@ -139,7 +139,7 @@ def _get_problem_module_and_line_number(error_text):
     try:
         i = has_apipkg.index(True) - 2  # The module traceback before apipkg failed
     except ValueError:
-        i = -4  #
+        i = -4  # The last line in the traceback containing module information
 
     relevant_line = error_list[i]
     module = (
