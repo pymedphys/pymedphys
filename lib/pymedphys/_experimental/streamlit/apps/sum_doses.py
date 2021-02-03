@@ -72,7 +72,21 @@ def _check_files_valid(files):
     return datasets
 
 
-def sum_doses_in_datasets(datasets):
+def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
+    """Sum two or more DICOM dose grids and save to new DICOM RT
+    Dose dataset"
+
+    Parameters
+    ----------
+    datasets : list of pydicom.dataset.Dataset
+        [description]
+
+    Returns
+    -------
+    ds_summed : pydicom.dataset.Dataset
+        A new DICOM RT Dose dataset whose dose is the sum of all doses
+        within `datasets`
+    """
 
     ds_summed = copy.deepcopy(datasets[0])
 
