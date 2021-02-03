@@ -283,7 +283,7 @@ jobs:
       - name: Install a propagate environment
         if: matrix.task == 'pyright' || matrix.task == 'propagate'
         run: |
-          poetry install -E propagate
+          poetry install -E propagate || poetry lock --no-update && poetry install -E propagate
 
 ## Update all packages and then install with tests environment
 
