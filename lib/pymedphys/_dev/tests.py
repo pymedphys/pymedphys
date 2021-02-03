@@ -43,8 +43,6 @@ def run_clean_imports(_):
     ignore_scopes = ["pymedphys.docs", "pymedphys._imports"]
     tests_scopes = ["pymedphys.conftest", "pymedphys.tests"]
 
-    packages_to_install_anyway_for_now = ["streamlit"]
-
     relative_paths = [
         path.relative_to(LIBRARY_ROOT.parent)
         for path in LIBRARY_ROOT.parent.rglob("**/*.py")
@@ -75,11 +73,6 @@ def run_clean_imports(_):
         subprocess.check_call(
             [new_python_executable, "-m", "pip", "install", "."], cwd=REPO_ROOT
         )
-
-        for package in packages_to_install_anyway_for_now:
-            subprocess.check_call(
-                [new_python_executable, "-m", "pip", "install", package]
-            )
 
         for import_path in clean_import_paths:
             _import_and_print(new_python_executable, import_path)
