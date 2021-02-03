@@ -31,6 +31,55 @@ TITLE = "Sum Coincident DICOM Doses"
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
+def main():
+    left_column, right_column = st.beta_columns(2)
+
+    with left_column:
+        st.write("## Upload DICOM RT Dose files")
+        files: BinaryIO = st.file_uploader(
+            "Upload at least two DICOM RT Dose files whose doses you'd "
+            "like to add together. The first file uploaded will be "
+            "used as a template for the summed DICOM RT Dose file.",
+            ["dcm"],
+            accept_multiple_files=True,
+        )
+
+    if not files:
+        st.stop()
+
+    try:
+        datasets = _load_and_check_files_valid(files)
+    except ValueError as e:
+        st.write(e)
+        st.stop()
+
+    if not st.button("Sum Doses"):
+        st.stop()
+
+    with right_column:
+        st.write(
+            f"""
+
+            ## Details
+
+            * Patient ID: `{datasets[0].PatientID}`
+            * Patient Name: `{get_pretty_patient_name_from_dicom_dataset(datasets[0])}`
+            """
+        )
+
+    st.write("---")
+    st.write("Summing doses...")
+
+    ds_summed = sum_doses_in_datasets(datasets)
+    _save_dataset_to_downloads_dir(ds_summed)
+
+    st.write("Done!")
+    st.markdown(
+        "*Download the summed DICOM dose file from "
+        "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)*"
+    )
+
+
 def _load_and_check_files_valid(
     files: Sequence[BinaryIO],
 ) -> List["pydicom.dataset.Dataset"]:
@@ -43,49 +92,59 @@ def _load_and_check_files_valid(
 
     for fh in files[1:]:
         ds = _load_dicom_file(fh)
-        _validate_comparison_to_initial(fh, ds, files[0], ds0)
+
+        try:
+            _validate_comparison_to_initial(ds, ds0)
+        except ValueError:
+            st.write(
+                f"When trying to load {fh.name} and compare it to {files[0].name} "
+                "the following error occurred:"
+            )
+            raise
 
         datasets.append(ds)
 
     return datasets
 
 
+@st.cache
 def _load_dicom_file(fh: BinaryIO):
     try:
         ds = pydicom.dcmread(fh)
-    except pydicom.errors.InvalidDicomError:
-        st.error(f"'{fh.name}' is not a valid DICOM file")
-        st.stop()
+    except pydicom.errors.InvalidDicomError as e:
+        raise ValueError(f"'{fh.name}' is not a valid DICOM file") from e
 
-    _validate_dicom_dataset(fh, ds)
+    try:
+        _validate_dicom_dataset(ds)
+    except ValueError:
+        st.write(f"When trying to load {fh.name} the following error occurred:")
+
+        raise
 
     return ds
 
 
-def _validate_dicom_dataset(fh: BinaryIO, ds):
-    if not ds.Modality == "RTDOSE":
-        st.error(f"File '{fh.name}' is not a valid DICOM RT Dose file")
-        st.stop()
+@st.cache
+def _validate_dicom_dataset(ds):
+    if ds.Modality != "RTDOSE":
+        raise ValueError("File is not a valid DICOM RT Dose file")
 
-    if not ds.DoseSummationType == "PLAN":
-        st.error(f"File {fh.name} is not a 'plan' dose")
-        st.stop()
+    if ds.DoseSummationType != "PLAN":
+        raise ValueError("File is not a 'plan' dose")
 
 
-def _validate_comparison_to_initial(fh: BinaryIO, ds, fh0, ds0):
-    if not ds.PatientID == ds0.PatientID:
-        st.error(
-            f"File '{fh.name}' has a different DICOM Patient " f"ID from '{fh0.name}'"
+def _validate_comparison_to_initial(ds, ds0):
+    if ds.PatientID != ds0.PatientID:
+        raise ValueError(
+            "The files don't have the same DICOM Patient ID. "
+            f"{ds.PatientID} vs {ds0.PatientID}"
         )
-        st.stop()
 
-    if not ds.DoseUnits == ds0.DoseUnits:
-        st.error(
-            f"File '{fh.name}' has a different value for "
-            f"DoseUnits ({ds.DoseUnits}) from "
-            f"'{fh0.name}' ({ds0.DoseUnits})"
+    if ds.DoseUnits != ds0.DoseUnits:
+        raise ValueError(
+            "The files don't have the same DoseUnits. "
+            f"{ds.DoseUnits} vs {ds0.DoseUnits}"
         )
-        st.stop()
 
 
 def _save_dataset_to_downloads_dir(ds: "pydicom.dataset.Dataset"):
@@ -282,48 +341,3 @@ def sum_doses_in_datasets(
     ds_summed.PixelData = pixel_array_summed.tobytes()
 
     return ds_summed
-
-
-def main():
-    left_column, right_column = st.beta_columns(2)
-
-    with left_column:
-        st.write("## Upload DICOM RT Dose files")
-        files: BinaryIO = st.file_uploader(
-            "Upload at least two DICOM RT Dose files whose doses you'd "
-            "like to add together. The first file uploaded will be "
-            "used as a template for the summed DICOM RT Dose file.",
-            ["dcm"],
-            accept_multiple_files=True,
-        )
-
-    if not files:
-        st.stop()
-
-    if not st.button("Sum Doses"):
-        st.stop()
-
-    datasets = _load_and_check_files_valid(files)
-
-    with right_column:
-        st.write(
-            f"""
-
-            ## Details
-
-            * Patient ID: `{datasets[0].PatientID}`
-            * Patient Name: `{get_pretty_patient_name_from_dicom_dataset(datasets[0])}`
-            """
-        )
-
-    st.write("---")
-    st.write("Summing doses...")
-
-    ds_summed = sum_doses_in_datasets(datasets)
-    _save_dataset_to_downloads_dir(ds_summed)
-
-    st.write("Done!")
-    st.markdown(
-        "*Download the summed DICOM dose file from "
-        "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)*"
-    )
