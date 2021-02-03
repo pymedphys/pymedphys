@@ -14,7 +14,9 @@ limitations under the License.
 """
 
 import copy
+import os
 import pathlib
+from typing import List, Sequence, Union
 
 from pymedphys._imports import streamlit as st
 
@@ -39,25 +41,13 @@ TITLE = "Sum Coincident DICOM Doses"
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-def _axes_in_datasets_match(datasets):
+def _check_files_valid(
+    files: Sequence[Union[str, bytes, os.PathLike]]
+) -> List[pydicom.dataset.Dataset]:
 
-    # Quick shape (sanity) check
-    if not all(
-        ds.pixel_array.shape == datasets[0].pixel_array.shape for ds in datasets
-    ):
-        return False
+    if not len(files) >= 2:
+        raise ValueError("`files` must contain at least 2 elements")
 
-    # Full coord check:
-    all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
-
-    return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
-
-
-def _patient_ids_match(datasets):
-    return all(ds.PatientId == datasets[0].PatientId for ds in datasets)
-
-
-def _check_files_valid(files):
     datasets = []
 
     for fh in files:
@@ -76,21 +66,76 @@ def _check_files_valid(files):
     return datasets
 
 
+def coords_in_datasets_are_equal(datasets: Sequence[pydicom.dataset.Dataset]) -> bool:
+    """True if all DICOM datasets have perfectly matching coordinates
+
+    Parameters
+    ----------
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM datasets whose coordinates are to be
+        compared.
+
+    Returns
+    -------
+    bool
+        True if coordinates match for all datasets, False otherwise.
+    """
+
+    if not len(datasets) >= 2:
+        raise ValueError("At least two datasets must be provided for comparison")
+
+    # Quick shape (sanity) check
+    if not all(
+        ds.pixel_array.shape == datasets[0].pixel_array.shape for ds in datasets
+    ):
+        return False
+
+    # Full coord check:
+    all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
+
+    return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
+
+
+def patient_ids_in_datasets_are_equal(datasets: list[pydicom.dataset.Dataset]) -> bool:
+    """True if all DICOM datasets have the same Patient ID
+
+    Parameters
+    ----------
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM datasets whose Patient IDs are to be
+        compared.
+
+    Returns
+    -------
+    bool
+        True if Patient IDs match for all datasets, False otherwise.
+    """
+
+    if not len(datasets) >= 2:
+        raise ValueError("At least two datasets must be provided for comparison")
+
+    return all(ds.PatientId == datasets[0].PatientId for ds in datasets)
+
+
 def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
     """Sum two or more DICOM dose grids and save to new DICOM RT
     Dose dataset"
 
     Parameters
     ----------
-    datasets : list of pydicom.dataset.Dataset
-        [description]
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM RT Dose datasets whose doses are to be
+        summed.
 
     Returns
     -------
-    ds_summed : pydicom.dataset.Dataset
+    pydicom.dataset.Dataset
         A new DICOM RT Dose dataset whose dose is the sum of all doses
         within `datasets`
     """
+
+    if not len(datasets) >= 2:
+        raise ValueError("At least two datasets must be provided for comparison")
 
     if not _patient_ids_match(datasets):
         raise ValueError("Patient ID must match for all datasets")
