@@ -81,6 +81,7 @@ import libjpeg
 import pydicom
 import pydicom.datadict
 import pydicom.dataset
+import pydicom.errors
 import pydicom.filebase
 import pydicom.filereader
 import pydicom.sequence
