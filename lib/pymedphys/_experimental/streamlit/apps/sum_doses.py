@@ -162,7 +162,10 @@ def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
 
     ds_summed = copy.deepcopy(datasets[0])
 
+    ds_summed.BitsAllocated = 32
+    ds_summed.BitsStored = 32
     ds_summed.DoseSummationType = "MULTI_PLAN"
+    ds_summed.DoseComment = "Summed Dose"
 
     if not all(ds.DoseType in ("PHYSICAL", "EFFECTIVE") for ds in datasets):
         raise ValueError(
