@@ -15,7 +15,7 @@ limitations under the License.
 
 import copy
 import pathlib
-from typing import List, Sequence, Union
+from typing import List, Sequence, Optional
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -33,7 +33,7 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 def _check_files_valid(
     files: Sequence[pathlib.Path],
-) -> Union["List[pydicom.dataset.Dataset]", None]:
+) -> Optional[List["pydicom.dataset.Dataset"]]:
 
     if not len(files) >= 2:
         raise ValueError("`files` must contain at least 2 elements")
