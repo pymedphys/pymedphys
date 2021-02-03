@@ -100,7 +100,9 @@ def coords_in_datasets_are_equal(datasets: Sequence[pydicom.dataset.Dataset]) ->
     return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
 
 
-def patient_ids_in_datasets_are_equal(datasets: list[pydicom.dataset.Dataset]) -> bool:
+def patient_ids_in_datasets_are_equal(
+    datasets: Sequence[pydicom.dataset.Dataset],
+) -> bool:
     """True if all DICOM datasets have the same Patient ID
 
     Parameters
@@ -121,7 +123,9 @@ def patient_ids_in_datasets_are_equal(datasets: list[pydicom.dataset.Dataset]) -
     return all(ds.PatientId == datasets[0].PatientId for ds in datasets)
 
 
-def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
+def sum_doses_in_datasets(
+    datasets: Sequence[pydicom.dataset.Dataset],
+) -> pydicom.dataset.Dataset:
     """Sum two or more DICOM dose grids and save to new DICOM RT
     Dose dataset"
 
