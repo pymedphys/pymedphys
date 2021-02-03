@@ -335,6 +335,17 @@ python-versions = "*"
 six = "*"
 
 [[package]]
+name = "data-science-types"
+version = "0.2.22"
+description = "Type stubs for Python machine learning libraries"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.extras]
+dev = ["black", "flake8", "flake8-pyi", "matplotlib", "mypy (==0.770)", "numpy", "pandas", "pytest"]
+
+[[package]]
 name = "dataclasses"
 version = "0.8"
 description = "A backport of the dataclasses module for Python 3.6"
@@ -2838,7 +2849,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "data-science-types", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
 dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
 docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book"]
 doctests = ["pylinac", "tensorflow", "sphinx-book-theme", "black"]
@@ -2846,12 +2857,12 @@ ml = ["tensorflow"]
 mosaiq = ["pymssql", "sqlalchemy", "pandas"]
 propagate = ["tomlkit", "black"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil"]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn"]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "data-science-types", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "7e95b6bf5f1a9378906988fcdf7e33a573a828c9e89203053721b5c6426b214d"
+content-hash = "75ee4f8fcdbd4c4b85f07a4073daf3b2a921d00ce942466e51d330545940b474"
 
 [metadata.files]
 absl-py = [
@@ -3038,6 +3049,10 @@ cssutils = [
 cycler = [
     {file = "cycler-0.10.0-py2.py3-none-any.whl", hash = "sha256:1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d"},
     {file = "cycler-0.10.0.tar.gz", hash = "sha256:cd7b2d1018258d7247a71425e9f26463dfb444d411c39569972f4ce586b0c9d8"},
+]
+data-science-types = [
+    {file = "data-science-types-0.2.22.tar.gz", hash = "sha256:5b6bb2ca4cb6b8c467c799382e12156816f38122522bdaafd882d5a3828c7345"},
+    {file = "data_science_types-0.2.22-py3-none-any.whl", hash = "sha256:065475a4c5ee9b5f30883e65cdcffdd1b09a9d2e203857af25d21ffb336fece0"},
 ]
 dataclasses = [
     {file = "dataclasses-0.8-py3-none-any.whl", hash = "sha256:0201d89fa866f68c8ebd9d08ee6ff50c0b255f8ec63a71c16fda7af82bb887bf"},
