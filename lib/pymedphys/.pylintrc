@@ -28,7 +28,6 @@ disable =
     no-else-return,
     unbalanced-tuple-unpacking,
     raise-missing-from
-    import-error
 
 
 [FORMAT]
