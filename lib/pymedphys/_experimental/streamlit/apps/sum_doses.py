@@ -141,10 +141,18 @@ def sum_doses_in_datasets(datasets: list[pydicom.dataset.Dataset]):
     if not len(datasets) >= 2:
         raise ValueError("At least two datasets must be provided for comparison")
 
-    if not _patient_ids_match(datasets):
+    if not all(ds.Modality == "RTDOSE" for ds in datasets):
+        raise ValueError("`datasets` must only contain DICOM RT Dose datasets.")
+
+    if not patient_ids_in_datasets_are_equal(datasets):
         raise ValueError("Patient ID must match for all datasets")
 
-    if not _axes_in_datasets_match(datasets):
+    if not all(ds.DoseSummationType == "PLAN" for ds in datasets):
+        raise ValueError(
+            "Only DICOM RT Dose files whose DoseSummationType == 'PLAN' are supported"
+        )
+
+    if not coords_in_datasets_are_equal(datasets):
         raise ValueError("All dose grids must have perfectly coincident coordinates")
 
     ds_summed = copy.deepcopy(datasets[0])
