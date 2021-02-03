@@ -53,7 +53,7 @@ def main():
         st.write(e)
         st.stop()
 
-    if not st.button("Sum Doses"):
+    if not datasets:
         st.stop()
 
     with right_column:
@@ -66,6 +66,9 @@ def main():
             * Patient Name: `{get_pretty_patient_name_from_dicom_dataset(datasets[0])}`
             """
         )
+
+    if len(datasets) < 2:
+        st.stop()
 
     st.write("---")
     st.write("Summing doses...")
@@ -84,9 +87,6 @@ def _load_and_check_files_valid(
     files: Sequence[BinaryIO],
 ) -> List["pydicom.dataset.Dataset"]:
 
-    if not len(files) >= 2:
-        raise ValueError("`files` must contain at least 2 elements")
-
     ds0 = _load_dicom_file(files[0])
     datasets = [ds0]
 
@@ -96,7 +96,7 @@ def _load_and_check_files_valid(
         try:
             _validate_comparison_to_initial(ds, ds0)
         except ValueError:
-            st.write(
+            st.error(
                 f"When trying to load {fh.name} and compare it to {files[0].name} "
                 "the following error occurred:"
             )
@@ -107,7 +107,6 @@ def _load_and_check_files_valid(
     return datasets
 
 
-@st.cache
 def _load_dicom_file(fh: BinaryIO):
     try:
         ds = pydicom.dcmread(fh)
@@ -117,14 +116,13 @@ def _load_dicom_file(fh: BinaryIO):
     try:
         _validate_dicom_dataset(ds)
     except ValueError:
-        st.write(f"When trying to load {fh.name} the following error occurred:")
+        st.error(f"When trying to load {fh.name} the following error occurred:")
 
         raise
 
     return ds
 
 
-@st.cache
 def _validate_dicom_dataset(ds):
     if ds.Modality != "RTDOSE":
         raise ValueError("File is not a valid DICOM RT Dose file")
@@ -137,13 +135,13 @@ def _validate_comparison_to_initial(ds, ds0):
     if ds.PatientID != ds0.PatientID:
         raise ValueError(
             "The files don't have the same DICOM Patient ID. "
-            f"{ds.PatientID} vs {ds0.PatientID}"
+            f"`{ds.PatientID}` vs `{ds0.PatientID}`"
         )
 
     if ds.DoseUnits != ds0.DoseUnits:
         raise ValueError(
             "The files don't have the same DoseUnits. "
-            f"{ds.DoseUnits} vs {ds0.DoseUnits}"
+            f"`{ds.DoseUnits}` vs `{ds0.DoseUnits}`"
         )
 
 
