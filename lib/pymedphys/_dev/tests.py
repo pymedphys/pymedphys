@@ -102,7 +102,13 @@ def _import_and_print(python_executable, import_paths):
     for import_path in tqdm.tqdm(import_paths):
         try:
             # TODO: This can be seriously sped up by importing them all within
-            # the same Python instance.
+            # the same Python instance. Could make the following flag:
+            #
+            #      `pymedphys dev imports --no-isolation`
+            #
+            # Then when this version of the CLI can call that version within
+            # the created venv.
+
             subprocess.check_output(
                 [python_executable, "-c", f"import {import_path}"],
                 stderr=subprocess.STDOUT,
