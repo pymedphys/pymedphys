@@ -18,11 +18,10 @@ import os
 import pathlib
 from typing import Sequence, Union
 
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
-from pymedphys._imports import numpy as np
-
-from pymedphys._imports import pydicom
 from pydicom.errors import InvalidDicomError
 
 from pymedphys._dicom.coords import xyz_axes_from_dataset
