@@ -31,7 +31,7 @@ TITLE = "Sum Coincident DICOM Doses"
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-def _check_files_valid(
+def _load_and_check_files_valid(
     files: Sequence[BinaryIO],
 ) -> List["pydicom.dataset.Dataset"]:
 
@@ -303,7 +303,7 @@ def main():
     if not st.button("Sum Doses"):
         st.stop()
 
-    datasets = _check_files_valid(files)
+    datasets = _load_and_check_files_valid(files)
 
     with right_column:
         st.write(
