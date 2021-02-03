@@ -15,17 +15,97 @@
 
 import os
 import pathlib
+import re
 import subprocess
+import tempfile
 
 import pymedphys._utilities.test as pmp_test_utils
 import pymedphys.tests.e2e.utilities as cypress_test_utilities
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
+REPO_ROOT = LIBRARY_ROOT.parent.parent
 PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
 
 
 def run_tests(_, remaining):
     _call_pytest(remaining, "pytest")
+
+
+def _is_within_scopes(import_path, scopes):
+    for scope in scopes:
+        if import_path.startswith(scope):
+            return True
+
+    return False
+
+
+def run_clean_imports(_):
+    ignore_scopes = ["pymedphys.docs", "pymedphys._imports"]
+    tests_scopes = ["pymedphys.conftest", "pymedphys.tests"]
+
+    packages_to_install_anyway_for_now = ["streamlit"]
+
+    relative_paths = [
+        path.relative_to(LIBRARY_ROOT.parent)
+        for path in LIBRARY_ROOT.parent.rglob("**/*.py")
+    ]
+
+    all_import_paths = [
+        ".".join(path.with_suffix("").parts).replace("-", "_")
+        for path in relative_paths
+    ]
+
+    clean_import_paths = []
+    tests_import_paths = []
+    for import_path in all_import_paths:
+        if _is_within_scopes(import_path, ignore_scopes):
+            continue
+
+        if _is_within_scopes(import_path, tests_scopes):
+            tests_import_paths.append(import_path)
+            continue
+
+        clean_import_paths.append(import_path)
+
+    python_executable = pmp_test_utils.get_executable_even_when_embedded()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        subprocess.check_call([python_executable, "-m", "venv", temp_dir])
+        new_python_executable = str(pathlib.Path(temp_dir).joinpath("bin", "python"))
+        subprocess.check_call(
+            [new_python_executable, "-m", "pip", "install", "."], cwd=REPO_ROOT
+        )
+
+        for package in packages_to_install_anyway_for_now:
+            subprocess.check_call(
+                [new_python_executable, "-m", "pip", "install", package]
+            )
+
+        for import_path in clean_import_paths:
+            _import_and_print(new_python_executable, import_path)
+
+        subprocess.check_call(
+            [new_python_executable, "-m", "pip", "install", ".[tests]"], cwd=REPO_ROOT
+        )
+
+        for import_path in tests_import_paths:
+            _import_and_print(new_python_executable, import_path)
+
+
+def _import_and_print(python_executable, import_path):
+    try:
+        subprocess.check_output(
+            [python_executable, "-c", f"import {import_path}"],
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.CalledProcessError as e:
+        match = re.search(
+            "ModuleNotFoundError: No module named '(.*)'", e.output.decode()
+        )
+        try:
+            print(f"{import_path} -- {match.group(1)}")
+        except AttributeError:
+            print(e.output.decode())
 
 
 def run_doctests(_, remaining):
