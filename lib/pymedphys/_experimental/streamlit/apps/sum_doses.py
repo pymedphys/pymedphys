@@ -34,7 +34,7 @@ def main():
 
     with left_column:
         st.write("## Upload DICOM RT Dose files")
-        files: BinaryIO = st.file_uploader(
+        files: Sequence[BinaryIO] = st.file_uploader(
             "Upload at least two DICOM RT Dose files whose doses you'd "
             "like to add together. The first file uploaded will be "
             "used as a template for the summed DICOM RT Dose file.",
@@ -51,34 +51,36 @@ def main():
         st.write(e)
         st.stop()
 
-    if not datasets:
-        st.stop()
+    if st.button("Click to Sum Doses"):
 
-    with right_column:
-        st.write(
-            f"""
+        with right_column:
+            st.write(
+                f"""
 
-            ## Details
+                ## Details
 
-            * Patient ID: `{datasets[0].PatientID}`
-            * Patient Name: `{get_pretty_patient_name_from_dicom_dataset(datasets[0])}`
-            """
+                * Patient ID: `{datasets[0].PatientID}`
+                * Patient Name: `{get_pretty_patient_name_from_dicom_dataset(datasets[0])}`
+                """
+            )
+
+        if len(datasets) < 2:
+            # Note that if the user tries to remove a file that has
+            # already been uploaded, the filename disappears from view
+            # BUT st.file_uploader doesn't delete this file.
+            raise ValueError("Please upload at least two DICOM RT Dose files.")
+
+        st.write("---")
+        st.write("Summing doses...")
+
+        ds_summed = sum_doses_in_datasets(datasets)
+        _save_dataset_to_downloads_dir(ds_summed)
+
+        st.write("Done!")
+        st.markdown(
+            "*Download the summed DICOM dose file from "
+            "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)*"
         )
-
-    if len(datasets) < 2:
-        st.stop()
-
-    st.write("---")
-    st.write("Summing doses...")
-
-    ds_summed = sum_doses_in_datasets(datasets)
-    _save_dataset_to_downloads_dir(ds_summed)
-
-    st.write("Done!")
-    st.markdown(
-        "*Download the summed DICOM dose file from "
-        "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)*"
-    )
 
 
 def _load_and_check_files_valid(
@@ -91,14 +93,11 @@ def _load_and_check_files_valid(
     for fh in files[1:]:
         ds = _load_dicom_file(fh)
 
-        try:
-            _validate_comparison_to_initial(ds, ds0)
-        except ValueError:
+        if ds.PatientID != ds0.PatientID:
             st.error(
-                f"When trying to load {fh.name} and compare it to {files[0].name} "
-                "the following error occurred:"
+                f"{fh.name} has a different PatientID ({ds.PatientID}) "
+                f"from {files[0].name} ({ds0.PatientID})."
             )
-            raise
 
         datasets.append(ds)
 
@@ -114,7 +113,7 @@ def _load_dicom_file(fh: BinaryIO):
     try:
         _validate_dicom_dataset(ds)
     except ValueError:
-        st.error(f"When trying to load {fh.name} the following error occurred:")
+        st.error(f"When trying to load {fh.name}, the following error occurred:")
 
         raise
 
@@ -123,24 +122,13 @@ def _load_dicom_file(fh: BinaryIO):
 
 def _validate_dicom_dataset(ds):
     if ds.Modality != "RTDOSE":
-        raise ValueError("File is not a valid DICOM RT Dose file")
+        raise ValueError("DICOM dataset is not RT Dose")
 
     if ds.DoseSummationType != "PLAN":
-        raise ValueError("File is not a 'plan' dose")
+        raise ValueError("DICOM dataset is not a 'plan' dose")
 
-
-def _validate_comparison_to_initial(ds, ds0):
-    if ds.PatientID != ds0.PatientID:
-        raise ValueError(
-            "The files don't have the same DICOM Patient ID. "
-            f"`{ds.PatientID}` vs `{ds0.PatientID}`"
-        )
-
-    if ds.DoseUnits != ds0.DoseUnits:
-        raise ValueError(
-            "The files don't have the same DoseUnits. "
-            f"`{ds.DoseUnits}` vs `{ds0.DoseUnits}`"
-        )
+    if ds.DoseUnits != "GY":
+        raise ValueError("DICOM dataset must contain absolute dose")
 
 
 def _save_dataset_to_downloads_dir(ds: "pydicom.dataset.Dataset"):
