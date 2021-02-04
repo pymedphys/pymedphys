@@ -15,6 +15,8 @@
 
 import pathlib
 import shutil
+import uuid
+from typing import Any, Dict, Tuple
 
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import tornado
@@ -39,14 +41,45 @@ def main(args):
     st.bootstrap.run(streamlit_script_path, "", [])
 
 
-def _create_handlers():
+SessionID = uuid.UUID
+FileName = str
+FilePath = pathlib.Path
+FileLocationMap = Dict[SessionID, Dict[FileName, FilePath]]
+
+URLRoute = str
+Handler = Any
+Handlers = Dict[URLRoute, Tuple[Handler, Dict[str, Any]]]
+
+
+def _create_handlers() -> Handlers:
     class HelloWorldHandler(  # pylint: disable = abstract-method
         tornado.web.RequestHandler
     ):
         def get(self):
             self.write("Hello world!")
 
-    return {"pymedphys": HelloWorldHandler}
+    class DownloadHandler(  # pylint: disable = abstract-method
+        tornado.web.RequestHandler
+    ):
+        def initialize(self, file_location_map: FileLocationMap) -> None:
+            self.file_location_map = (  # pylint: disable = attribute-defined-outside-init
+                file_location_map
+            )
+
+        def get(self, session_id: SessionID, filename: FileName):
+            self.write(f"Session ID: {session_id}, File Name: {filename}")
+            try:
+                filepath = self.file_location_map[session_id][filename]
+            except KeyError:
+                self.write(" | No filepath found.")
+                return
+
+            self.write(f" | Filepath: {filepath}")
+
+    return {
+        "pymedphys": (HelloWorldHandler, {}),
+        "downloads/(.*)/(.*)": (DownloadHandler, {"file_location_map": {}}),
+    }
 
 
 def _monkey_patch_streamlit_server():
@@ -62,9 +95,9 @@ def _monkey_patch_streamlit_server():
         base: str = st.config.get_option("server.baseUrlPath")
 
         rules: tornado.routing._RuleList = []
-        for key, handler in handlers.items():
+        for key, (handler, kwargs) in handlers.items():
             pattern = st.server.server_util.make_url_path_regex(base, key)
-            rules.append((pattern, handler))
+            rules.append((pattern, handler, kwargs))
 
         app.add_handlers(".*", rules)
 
