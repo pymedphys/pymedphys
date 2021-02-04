@@ -69,6 +69,7 @@ def main():
             # already been uploaded, the filename disappears from view
             # BUT st.file_uploader doesn't delete this file.
             raise ValueError("Please upload at least two DICOM RT Dose files.")
+            st.stop()
 
         st.write("---")
         st.write("Summing doses...")
@@ -95,8 +96,8 @@ def _load_and_check_files_valid(
 
         if ds.PatientID != ds0.PatientID:
             st.error(
-                f"{fh.name} has a different PatientID ({ds.PatientID}) "
-                f"from {files[0].name} ({ds0.PatientID})."
+                f"'{fh.name}' has a different PatientID ({ds.PatientID}) "
+                f"from '{files[0].name}' ({ds0.PatientID})."
             )
 
         datasets.append(ds)
