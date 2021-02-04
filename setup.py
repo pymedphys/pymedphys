@@ -63,6 +63,7 @@ packages = [
     "pymedphys._streamlit",
     "pymedphys._streamlit.apps",
     "pymedphys._streamlit.apps.metersetmap",
+    "pymedphys._streamlit.server",
     "pymedphys._streamlit.utilities",
     "pymedphys._trf",
     "pymedphys._trf.decode",
