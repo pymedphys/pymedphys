@@ -1,6 +1,4 @@
-from pymedphys._imports import numpy as np
-from pymedphys._imports import pandas as pd
-from pymedphys._imports import pymssql, pytest, sqlalchemy
+from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.delivery import delivery_data_sql
 from pymedphys._mosaiq.helpers import get_patient_fields, get_patient_name
@@ -20,14 +18,14 @@ sa_user = "sa"
 sa_password = "sqlServerPassw0rd"
 
 
-@pytest.fixture(name="check_create_test_db")
+@pytest.fixture(name="do_check_create_test_db")
 def fixture_check_create_test_db():
     """ will create the test database, if it does not already exist on the instance """
     check_create_test_db()
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_name(check_create_test_db):  # pylint: disable = unused-argument
+def test_get_patient_name(do_check_create_test_db):  # pylint: disable = unused-argument
     """ tests the get_patient_name helper function"""
 
     create_mock_patients()
@@ -68,7 +66,9 @@ def test_get_patient_name(check_create_test_db):  # pylint: disable = unused-arg
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_fields(check_create_test_db):
+def test_get_patient_fields(
+    do_check_create_test_db,
+):  # pylint: disable = unused-argument
     """ creates basic tx field and site metadata for the mock patients """
 
     # the create_mock_patients output is the patient_ident dataframe
