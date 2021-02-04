@@ -48,6 +48,18 @@ file_location_map: FileLocationMap = collections.defaultdict(dict)
 
 
 def download(filename: str, filepath: pathlib.Path):
+    """Create a Streamlit download link to a given file.
+
+    Parameters
+    ----------
+    filename : str
+        The filename of the download. If a previous download link has
+        been provided with the same download name the previous filepath
+        will be overwritten.
+    filepath : pathlib.Path
+        The full filepath of the file to be downloaded.
+    """
+
     url = _add_filepath_get_url(filename, filepath)
 
     href = f"""
