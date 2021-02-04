@@ -30,7 +30,7 @@ FileLocationMap = Dict[SessionID, Dict[FileName, FilePath]]
 #
 #    <https://docs.python.org/3/glossary.html#term-global-interpreter-lock>
 
-file_location_map: FileLocationMap = collections.defaultdict(lambda: {})
+file_location_map: FileLocationMap = collections.defaultdict(dict)
 
 # TODO: Adjust this object later to hook into when Streamlit sessions are closed.
 # Potentially utilise an object similar to, or based on, session state objects?
