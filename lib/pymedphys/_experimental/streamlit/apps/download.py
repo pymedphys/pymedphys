@@ -26,6 +26,11 @@ THIS = pathlib.Path(__file__).resolve()
 
 
 def main():
-    st.write("Hello World!")
+    st.write(
+        "This is a demo Streamlit app showing how to use the `download()` function"
+    )
 
-    download("download.py", THIS)
+    filename = THIS.name
+    filepath = THIS
+
+    download(filename, filepath)
