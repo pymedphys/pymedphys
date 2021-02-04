@@ -18,7 +18,7 @@ from typing import Dict
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit.utilities.session import SessionID, get_session_id
+from .session import SessionID, get_session_id
 
 FileName = str
 FilePath = pathlib.Path

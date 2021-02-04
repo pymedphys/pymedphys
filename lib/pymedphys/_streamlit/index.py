@@ -20,7 +20,7 @@ import time
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import apps as _stable_apps
-from pymedphys._streamlit.utilities import session
+from pymedphys._streamlit.server import session
 
 from pymedphys._experimental.streamlit import apps as _experimental_apps
 
