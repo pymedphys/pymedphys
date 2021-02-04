@@ -16,8 +16,11 @@
 # It is understood that we are stepping into 'private' API usage here
 # pylint: disable = protected-access
 
+import uuid
 
 from pymedphys._imports import streamlit as st
+
+SessionID = uuid.UUID
 
 
 class SessionState:
@@ -33,9 +36,9 @@ class SessionState:
                 setattr(self, key, val)
 
 
-def get_session_id():
+def get_session_id() -> SessionID:
     ctx = st.report_thread.get_report_ctx()
-    session_id = ctx.session_id
+    session_id: SessionID = ctx.session_id
 
     return session_id
 

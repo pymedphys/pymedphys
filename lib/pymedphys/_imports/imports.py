@@ -25,6 +25,7 @@ import sklearn.cluster
 import sqlalchemy
 import streamlit_ace
 import streamlit_analytics
+import tabulate
 import timeago
 import toml
 import tomlkit

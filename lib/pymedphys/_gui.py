@@ -15,9 +15,15 @@
 
 import pathlib
 import shutil
+from typing import Any, Dict, Tuple
 
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import tornado
+
+from pymedphys._streamlit.server.downloads import FileLocationMap, FileName, SessionID
+from pymedphys._streamlit.server.downloads import (
+    file_location_map as _file_location_map,
+)
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -39,14 +45,41 @@ def main(args):
     st.bootstrap.run(streamlit_script_path, "", [])
 
 
-def _create_handlers():
+URLRoute = str
+Handler = Any
+Handlers = Dict[URLRoute, Tuple[Handler, Dict[str, Any]]]
+
+
+def _create_handlers() -> Handlers:
     class HelloWorldHandler(  # pylint: disable = abstract-method
         tornado.web.RequestHandler
     ):
         def get(self):
             self.write("Hello world!")
 
-    return {"pymedphys": HelloWorldHandler}
+    class DownloadHandler(  # pylint: disable = abstract-method
+        tornado.web.RequestHandler
+    ):
+        def initialize(self, file_location_map: FileLocationMap) -> None:
+            self.file_location_map = (  # pylint: disable = attribute-defined-outside-init
+                file_location_map
+            )
+
+        def get(self, session_id: SessionID, filename: FileName):
+            filepath = self.file_location_map[session_id][filename]
+
+            with open(filepath, "rb") as f:
+                self.write(f.read())
+
+            self.finish()
+
+    return {
+        "pymedphys": (HelloWorldHandler, {}),
+        "downloads/(.*)/(.*)": (
+            DownloadHandler,
+            {"file_location_map": _file_location_map},
+        ),
+    }
 
 
 def _monkey_patch_streamlit_server():
@@ -62,9 +95,9 @@ def _monkey_patch_streamlit_server():
         base: str = st.config.get_option("server.baseUrlPath")
 
         rules: tornado.routing._RuleList = []
-        for key, handler in handlers.items():
+        for key, (handler, kwargs) in handlers.items():
             pattern = st.server.server_util.make_url_path_regex(base, key)
-            rules.append((pattern, handler))
+            rules.append((pattern, handler, kwargs))
 
         app.add_handlers(".*", rules)
 
