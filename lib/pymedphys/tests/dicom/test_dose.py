@@ -102,17 +102,35 @@ def test_require_patient_orientation():
 @pytest.mark.pydicom
 def test_sum_doses_in_datasets():
 
-    data1 = np.array([[[30, 20], [10, 5]], [[40, 25], [15, 8]]], dtype=np.uint32) * int(
-        1e6
-    )
-    scale1 = 1e-8
+    data1 = (
+        np.array(
+            [
+                [[0.90, 0.80, 0.70], [0.60, 0.50, 0.40]],
+                [[0.91, 0.81, 0.71], [0.61, 0.51, 0.41]],
+                [[0.92, 0.82, 0.72], [0.62, 0.52, 0.42]],
+                [[0.93, 0.83, 0.73], [0.63, 0.53, 0.43]],
+            ]
+        )
+        * int(1e2)
+    ).astype(np.uint32)
 
-    data2 = np.array(
-        [[[350, 400], [450, 475]], [[300, 375], [425, 460]]], dtype=np.uint32
-    ) * int(1e6)
-    scale2 = 2e-9
+    scale1 = 1e-2
 
-    expected_sum = np.ones((2, 2, 2))
+    data2 = (
+        np.array(
+            [
+                [[0.10, 0.20, 0.30], [0.40, 0.50, 0.60]],
+                [[0.09, 0.19, 0.29], [0.39, 0.49, 0.59]],
+                [[0.08, 0.18, 0.28], [0.38, 0.48, 0.58]],
+                [[0.07, 0.17, 0.27], [0.37, 0.47, 0.57]],
+            ]
+        )
+        * int(2e8)
+    ).astype(np.uint32)
+
+    scale2 = 5e-9
+
+    expected_sum = np.ones((4, 2, 3))
 
     test_dicom_dict = {
         "PatientID": "PMP",
@@ -121,12 +139,12 @@ def test_sum_doses_in_datasets():
         "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
         "BitsAllocated": 32,
         "Rows": 2,
-        "Columns": 2,
+        "Columns": 3,
         "PixelRepresentation": 0,
         "SamplesPerPixel": 1,
         "PhotometricInterpretation": "MONOCHROME2",
-        "PixelSpacing": [2.0, 2.0],
-        "GridFrameOffsetVector": [0.0, 2.0],
+        "PixelSpacing": [1.0, 1.0],
+        "GridFrameOffsetVector": [0, 1, 2, 3],
         "PixelData": data1.tobytes(),
         "DoseGridScaling": scale1,
         "DoseSummationType": "PLAN",
