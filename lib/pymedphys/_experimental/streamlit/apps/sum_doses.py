@@ -22,7 +22,7 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._dicom.dose import sum_doses_in_datasets
-from pymedphys._dicom.utilities import get_pretty_patient_name_from_dicom_dataset
+from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
 
 CATEGORY = categories.PRE_ALPHA
@@ -60,7 +60,7 @@ def main():
                 ## Details
 
                 * Patient ID: `{datasets[0].PatientID}`
-                * Patient Name: `{get_pretty_patient_name_from_dicom_dataset(datasets[0])}`
+                * Patient Name: `{pretty_patient_name(datasets[0])}`
                 """
             )
 
