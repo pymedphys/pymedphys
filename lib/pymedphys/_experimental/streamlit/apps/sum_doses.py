@@ -69,7 +69,6 @@ def main():
             # already been uploaded, the filename disappears from view
             # BUT st.file_uploader doesn't delete this file.
             raise ValueError("Please upload at least two DICOM RT Dose files.")
-            st.stop()
 
         st.write("---")
         st.write("Summing doses...")
