@@ -102,6 +102,7 @@ def test_require_patient_orientation():
 @pytest.mark.pydicom
 def test_sum_doses_in_datasets():
 
+    scale1 = 1e-2
     data1 = (
         np.array(
             [
@@ -111,11 +112,10 @@ def test_sum_doses_in_datasets():
                 [[0.93, 0.83, 0.73], [0.63, 0.53, 0.43]],
             ]
         )
-        * int(1e2)
+        / scale1
     ).astype(np.uint32)
 
-    scale1 = 1e-2
-
+    scale2 = 5e-9
     data2 = (
         np.array(
             [
@@ -125,10 +125,8 @@ def test_sum_doses_in_datasets():
                 [[0.07, 0.17, 0.27], [0.37, 0.47, 0.57]],
             ]
         )
-        * int(2e8)
+        / scale2
     ).astype(np.uint32)
-
-    scale2 = 5e-9
 
     expected_sum = np.ones((4, 2, 3))
 
@@ -166,6 +164,10 @@ def test_sum_doses_in_datasets():
     ds2.DoseType = "EFFECTIVE"
     ds_summed = sum_doses_in_datasets([ds1, ds2])
     assert ds_summed.DoseType == "EFFECTIVE"
+
+    # Single dataset
+    ds_summed = sum_doses_in_datasets([ds1])
+    assert np.allclose(dose_from_dataset(ds_summed), dose_from_dataset(ds1))
 
     # More than two doses:
     ds_summed = sum_doses_in_datasets([ds1, ds1, ds2, ds2])

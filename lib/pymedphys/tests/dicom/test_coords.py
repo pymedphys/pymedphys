@@ -112,6 +112,9 @@ def test_coords_in_datasets_are_equal():
     ds2 = copy.deepcopy(ds1)
     assert coords.coords_in_datasets_are_equal([ds1, ds2])
 
+    # only one coords supplied:
+    assert coords.coords_in_datasets_are_equal([ds1])
+
     # y-shift (for DICOM HFS)
     ds2.ImagePositionPatient = [-1.0, -1.1, -1.0]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
