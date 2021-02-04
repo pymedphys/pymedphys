@@ -365,6 +365,7 @@ def sum_doses_in_datasets(
 
     ds_summed.BitsAllocated = 32
     ds_summed.BitsStored = 32
+    ds_summed.HighBit = 31
     ds_summed.DoseSummationType = "MULTI_PLAN"
     ds_summed.DoseComment = "Summed Dose"
 
@@ -380,9 +381,7 @@ def sum_doses_in_datasets(
     doses = np.array([dose_from_dataset(ds) for ds in datasets])
     doses_summed = np.sum(doses, axis=0, dtype=np.float32)
 
-    # ds_summed.DoseGridScaling = np.max(doses_summed) / (2 ^ int(ds_summed.HighBit))
-
-    ds_summed.DoseGridScaling = np.max(doses_summed) / (2 ** 32 - 1)
+    ds_summed.DoseGridScaling = np.max(doses_summed) / (2 ** int(ds_summed.HighBit))
     pixel_array_summed = (doses_summed / ds_summed.DoseGridScaling).astype(np.uint32)
 
     ds_summed.PixelData = pixel_array_summed.tobytes()
