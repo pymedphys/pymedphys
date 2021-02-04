@@ -1,4 +1,4 @@
-# Copyright (C) 2019-21 Matthew Jennings
+# Copyright (C) 2019, 2021 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -201,9 +201,6 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
     bool
         True if coordinates match for all datasets, False otherwise.
     """
-
-    if len(datasets) == 2:
-        return True
 
     # Quick shape (sanity) check
     if not all(

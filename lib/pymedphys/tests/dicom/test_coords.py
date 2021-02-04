@@ -21,8 +21,7 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._dicom.coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
-from pymedphys._dicom.create import dicom_dataset_from_dict
+from pymedphys._dicom import coords, create
 
 ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
@@ -61,7 +60,7 @@ def run_xyz_function_tests(coord_system):
     }
 
     for orient, dicom in test_ds_dict.items():
-        test_xyz = xyz_axes_from_dataset(dicom, coord_system)
+        test_xyz = coords.xyz_axes_from_dataset(dicom, coord_system)
 
         expected_xyz[orient] = np.array(expected_xyz[orient], dtype=object)
 
@@ -109,23 +108,23 @@ def test_coords_in_datasets_are_equal():
         "PixelData": np.ones((3, 3, 3)).tobytes(),
     }
 
-    ds1 = dicom_dataset_from_dict(test_dicom_dict, ensure_file_meta=True)
+    ds1 = create.dicom_dataset_from_dict(test_dicom_dict, ensure_file_meta=True)
     ds2 = copy.deepcopy(ds1)
-    assert coords_in_datasets_are_equal([ds1, ds2])
+    assert coords.coords_in_datasets_are_equal([ds1, ds2])
 
     # y-shift (for DICOM HFS)
     ds2.ImagePositionPatient = [-1.0, -1.1, -1.0]
-    assert not coords_in_datasets_are_equal([ds1, ds2])
+    assert not coords.coords_in_datasets_are_equal([ds1, ds2])
 
     # same coords but rotated using IOP
     # (so mapping to PixelData would be incorrect)
     ds2.ImagePositionPatient = [-1.0, 1.0, 1.0]
     ds2.ImageOrientationPatient = [1.0, 0, 0, 0, -1, 0]
-    assert not coords_in_datasets_are_equal([ds1, ds2])
+    assert not coords.coords_in_datasets_are_equal([ds1, ds2])
 
     # same coords but rotated using GFOV
     # (so mapping to PixelData would be incorrect)
     ds2.ImagePositionPatient = [-1.0, -1.0, 1.0]
     ds2.ImageOrientationPatient = [1.0, 0, 0, 0, 1, 0]
     ds2.GridFrameOffsetVector = [0, -1, -2]
-    assert not coords_in_datasets_are_equal([ds1, ds2])
+    assert not coords.coords_in_datasets_are_equal([ds1, ds2])
