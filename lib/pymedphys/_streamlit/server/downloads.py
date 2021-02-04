@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import pathlib
-import uuid
 from typing import Dict
 
-SessionID = uuid.UUID
+from pymedphys._streamlit.utilities.session import SessionID, get_session_id
+
 FileName = str
 FilePath = pathlib.Path
 FileLocationMap = Dict[SessionID, Dict[FileName, FilePath]]
@@ -28,3 +28,10 @@ FileLocationMap = Dict[SessionID, Dict[FileName, FilePath]]
 #    <https://docs.python.org/3/glossary.html#term-global-interpreter-lock>
 
 file_location_map: FileLocationMap = {}
+
+# TODO: Adjust this object later to hook into when Streamlit sessions are closed.
+# Potentially utilise an object similar to, or based on, session state objects?
+
+
+def add_filepath(filename, filepath):
+    session_id = get_session_id()
