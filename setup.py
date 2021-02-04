@@ -63,6 +63,7 @@ packages = [
     "pymedphys._streamlit",
     "pymedphys._streamlit.apps",
     "pymedphys._streamlit.apps.metersetmap",
+    "pymedphys._streamlit.server",
     "pymedphys._streamlit.utilities",
     "pymedphys._trf",
     "pymedphys._trf.decode",
@@ -205,6 +206,7 @@ extras_require = {
         "rope",
         "doc8",
         "readme-renderer",
+        "tabulate",
     ],
     "dicom": ["pynetdicom", "pylibjpeg-libjpeg", "pydicom>=2.0.0"],
     "docs": [
@@ -219,6 +221,7 @@ extras_require = {
         "tensorflow>=2.2.0",
         "sphinx-book-theme",
         "black>=20.8b1,<21.0",
+        "tabulate",
     ],
     "ml": ["tensorflow>=2.2.0"],
     "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0"],

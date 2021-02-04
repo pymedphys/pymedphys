@@ -134,6 +134,7 @@ mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
+tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
 
 
 [tool.poetry.extras]
@@ -185,6 +186,7 @@ dev = [
     "streamlit",
     "streamlit-ace",
     "streamlit-analytics",
+    "tabulate",
     "timeago",
     "tomlkit",
     "tqdm",
@@ -200,7 +202,7 @@ docs = [
     "sphinx-book-theme",
     "sphinxcontrib-napoleon",
 ]
-doctests = ["black", "pylinac", "sphinx-book-theme", "tensorflow"]
+doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
 ml = ["tensorflow"]
 mosaiq = ["pandas", "pymssql", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
