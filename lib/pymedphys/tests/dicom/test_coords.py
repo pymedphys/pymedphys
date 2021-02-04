@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import json
 
 from pymedphys._imports import numpy as np
@@ -19,7 +20,8 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._dicom import coords
+from pymedphys._dicom.coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
+from pymedphys._dicom.create import dicom_dataset_from_dict
 
 ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
@@ -58,7 +60,7 @@ def run_xyz_function_tests(coord_system):
     }
 
     for orient, dicom in test_ds_dict.items():
-        test_xyz = coords.xyz_axes_from_dataset(dicom, coord_system)
+        test_xyz = xyz_axes_from_dataset(dicom, coord_system)
 
         expected_xyz[orient] = np.array(expected_xyz[orient], dtype=object)
 
@@ -88,3 +90,41 @@ def test_extract_iec_fixed_xyz():
 @pytest.mark.pydicom
 def test_extract_dicom_patient_xyz():
     run_xyz_function_tests("DICOM")
+
+
+@pytest.mark.pydicom
+def test_coords_in_datasets_are_equal():
+    test_dicom_dict = {
+        "ImagePositionPatient": [-1.0, -1.0, -1.0],
+        "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
+        "BitsAllocated": 32,
+        "Rows": 3,
+        "Columns": 3,
+        "PixelRepresentation": 0,
+        "SamplesPerPixel": 1,
+        "PhotometricInterpretation": "MONOCHROME2",
+        "PixelSpacing": [1.0, 1.0],
+        "GridFrameOffsetVector": [0.0, 1.0, 2.0],
+        "PixelData": np.ones((3, 3, 3)).tobytes(),
+    }
+
+    ds1 = dicom_dataset_from_dict(test_dicom_dict, ensure_file_meta=True)
+    ds2 = copy.deepcopy(ds1)
+    assert coords_in_datasets_are_equal([ds1, ds2])
+
+    # y-shift (for DICOM HFS)
+    ds2.ImagePositionPatient = [-1.0, -1.1, -1.0]
+    assert not coords_in_datasets_are_equal([ds1, ds2])
+
+    # same coords but rotated using IOP
+    # (so mapping to PixelData would be incorrect)
+    ds2.ImagePositionPatient = [-1.0, 1.0, 1.0]
+    ds2.ImageOrientationPatient = [1.0, 0, 0, 0, -1, 0]
+    assert not coords_in_datasets_are_equal([ds1, ds2])
+
+    # same coords but rotated using GFOV
+    # (so mapping to PixelData would be incorrect)
+    ds2.ImagePositionPatient = [-1.0, -1.0, 1.0]
+    ds2.ImageOrientationPatient = [1.0, 0, 0, 0, 1, 0]
+    ds2.GridFrameOffsetVector = [0, -1, -2]
+    assert not coords_in_datasets_are_equal([ds1, ds2])
