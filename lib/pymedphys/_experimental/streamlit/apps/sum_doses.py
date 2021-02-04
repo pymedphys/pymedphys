@@ -22,7 +22,7 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._dicom.coords import xyz_axes_from_dataset
-from pymedphys._dicom.dose import dose_from_dataset
+from pymedphys._dicom.dose import sum_doses_in_datasets
 from pymedphys._streamlit import categories
 
 CATEGORY = categories.PRE_ALPHA
@@ -255,73 +255,3 @@ def patient_ids_in_datasets_are_equal(
         raise ValueError("At least two datasets must be provided for comparison")
 
     return all(ds.PatientID == datasets[0].PatientID for ds in datasets)
-
-
-def sum_doses_in_datasets(
-    datasets: Sequence["pydicom.dataset.Dataset"],
-) -> "pydicom.dataset.Dataset":
-    """Sum two or more DICOM dose grids and save to new DICOM RT
-    Dose dataset"
-
-    Parameters
-    ----------
-    datasets : sequence of pydicom.dataset.Dataset
-        A sequence of DICOM RT Dose datasets whose doses are to be
-        summed.
-
-    Returns
-    -------
-    pydicom.dataset.Dataset
-        A new DICOM RT Dose dataset whose dose is the sum of all doses
-        within `datasets`
-    """
-
-    if not len(datasets) >= 2:
-        raise ValueError("At least two datasets must be provided for comparison")
-
-    if not all(ds.Modality == "RTDOSE" for ds in datasets):
-        raise ValueError("`datasets` must only contain DICOM RT Dose datasets.")
-
-    if not patient_ids_in_datasets_are_equal(datasets):
-        raise ValueError("Patient ID must match for all datasets")
-
-    if not all(ds.DoseSummationType == "PLAN" for ds in datasets):
-        raise ValueError(
-            "Only DICOM RT Doses whose DoseSummationTypes are 'PLAN' are supported"
-        )
-
-    if not all(ds.DoseUnits == datasets[0].DoseUnits for ds in datasets):
-        raise ValueError(
-            "All DICOM RT Doses must have the same units ('GY or 'RELATIVE')"
-        )
-
-    if not coords_in_datasets_are_equal(datasets):
-        raise ValueError("All dose grids must have perfectly coincident coordinates")
-
-    ds_summed = copy.deepcopy(datasets[0])
-
-    ds_summed.BitsAllocated = 32
-    ds_summed.BitsStored = 32
-    ds_summed.DoseSummationType = "MULTI_PLAN"
-    ds_summed.DoseComment = "Summed Dose"
-
-    if not all(ds.DoseType in ("PHYSICAL", "EFFECTIVE") for ds in datasets):
-        raise ValueError(
-            "Only DICOM RT Doses whose DoseTypes are 'PHYSICAL' or "
-            "'EFFECTIVE' are supported"
-        )
-    if any(ds.DoseType == "EFFECTIVE" for ds in datasets):
-        ds_summed.DoseType = "EFFECTIVE"
-    else:
-        ds_summed.DoseType = "PHYSICAL"
-    doses = np.array([dose_from_dataset(ds) for ds in datasets])
-    doses_summed = np.sum(doses, axis=0, dtype=np.float32)
-
-    # ds_summed.DoseGridScaling = np.max(doses_summed) / (2 ^ int(ds_summed.HighBit))
-
-    ds_summed.DoseGridScaling = np.max(doses_summed) / (2 ** 32 - 1)
-    pixel_array_summed = (doses_summed / ds_summed.DoseGridScaling).astype(np.uint32)
-
-    ds_summed.PixelData = pixel_array_summed.tobytes()
-
-    return ds_summed
