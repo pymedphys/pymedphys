@@ -15,11 +15,15 @@
 
 import pathlib
 import shutil
-import uuid
 from typing import Any, Dict, Tuple
 
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import tornado
+
+from pymedphys._streamlit.server.downloads import FileLocationMap, FileName, SessionID
+from pymedphys._streamlit.server.downloads import (
+    file_location_map as _file_location_map,
+)
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -40,11 +44,6 @@ def main(args):
     st._is_running_with_streamlit = True
     st.bootstrap.run(streamlit_script_path, "", [])
 
-
-SessionID = uuid.UUID
-FileName = str
-FilePath = pathlib.Path
-FileLocationMap = Dict[SessionID, Dict[FileName, FilePath]]
 
 URLRoute = str
 Handler = Any
@@ -67,18 +66,19 @@ def _create_handlers() -> Handlers:
             )
 
         def get(self, session_id: SessionID, filename: FileName):
-            self.write(f"Session ID: {session_id}, File Name: {filename}")
-            try:
-                filepath = self.file_location_map[session_id][filename]
-            except KeyError:
-                self.write(" | No filepath found.")
-                return
+            filepath = self.file_location_map[session_id][filename]
 
-            self.write(f" | Filepath: {filepath}")
+            with open(filepath, "rb") as f:
+                self.write(f.read())
+
+            self.finish()
 
     return {
         "pymedphys": (HelloWorldHandler, {}),
-        "downloads/(.*)/(.*)": (DownloadHandler, {"file_location_map": {}}),
+        "downloads/(.*)/(.*)": (
+            DownloadHandler,
+            {"file_location_map": _file_location_map},
+        ),
     }
 
 

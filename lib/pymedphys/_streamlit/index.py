@@ -20,7 +20,7 @@ import time
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import apps as _stable_apps
-from pymedphys._streamlit.utilities import session
+from pymedphys._streamlit import utilities
 
 from pymedphys._experimental.streamlit import apps as _experimental_apps
 
@@ -41,7 +41,7 @@ def get_url_app():
 def swap_app(app):
     st.experimental_set_query_params(app=app)
 
-    session_state = session.session_state()
+    session_state = utilities.session_state()
     session_state.app = app
 
     # Not sure why this is needed. The `set_query_params` doesn't
@@ -119,7 +119,7 @@ def _get_apps_from_module(module):
 
 def main():
     st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="wide")
-    session_state = session.session_state(app=get_url_app())
+    session_state = utilities.session_state(app=get_url_app())
 
     stable_apps = _get_apps_from_module(_stable_apps)
     experimental_apps = _get_apps_from_module(_experimental_apps)
