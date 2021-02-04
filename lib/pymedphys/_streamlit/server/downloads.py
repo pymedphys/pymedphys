@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import pathlib
 from typing import Dict
+
+from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities.session import SessionID, get_session_id
 
@@ -27,11 +30,27 @@ FileLocationMap = Dict[SessionID, Dict[FileName, FilePath]]
 #
 #    <https://docs.python.org/3/glossary.html#term-global-interpreter-lock>
 
-file_location_map: FileLocationMap = {}
+file_location_map: FileLocationMap = collections.defaultdict(lambda: {})
 
 # TODO: Adjust this object later to hook into when Streamlit sessions are closed.
 # Potentially utilise an object similar to, or based on, session state objects?
 
 
-def add_filepath(filename, filepath):
+def _add_filepath_get_url(filename: str, filepath: pathlib.Path):
     session_id = get_session_id()
+    url = f"downloads/{session_id}/{filename}"
+
+    file_location_map[session_id][filename] = filepath
+
+    return url
+
+
+def download(filename: str, filepath: pathlib.Path):
+    url = _add_filepath_get_url(filename, filepath)
+
+    href = f"""
+        <a href="{url}" download='{filename}'>
+            Click to download {filename}
+        </a>
+    """
+    st.markdown(href, unsafe_allow_html=True)
