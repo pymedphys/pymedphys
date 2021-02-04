@@ -24,7 +24,6 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
-from pymedphys._streamlit.utilities import rerun as st_rerun
 
 CATEGORY = categories.PRE_ALPHA
 TITLE = "Anonymising Monaco Backend Files"
@@ -68,7 +67,7 @@ def main():
         st.write(FileExistsError("This zip file already exists."))
         if st.button("Delete zip file"):
             zip_path.unlink()
-            st_rerun.rerun()
+            st.experimental_rerun()
 
         st.stop()
 
