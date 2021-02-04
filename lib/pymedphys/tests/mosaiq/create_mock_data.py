@@ -267,7 +267,9 @@ def create_mock_treatment_fields(site_df=None):
 
 
 def create_mock_treatment_sessions(site_df=None, txfield_df=None):
-    """ """
+    """for a given site and set of tx fields, generate treatment session data
+    (Dose_Hst and Offset) for randomly chosen treatment interval
+    """
 
     if site_df is None:
         site_df = create_mock_treatment_sites()
