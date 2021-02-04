@@ -50,7 +50,7 @@ def download(filename: str, filepath: pathlib.Path):
 
     href = f"""
         <a href="{url}" download='{filename}'>
-            Click to download {filename}
+            Click to download `{filename}`
         </a>
     """
     st.markdown(href, unsafe_allow_html=True)

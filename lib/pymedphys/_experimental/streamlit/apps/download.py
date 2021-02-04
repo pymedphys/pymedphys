@@ -20,7 +20,7 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit.server.downloads import download
 
 CATEGORY = categories.PLANNING
-TITLE = "DICOM Explorer"
+TITLE = "Download Demo"
 
 THIS = pathlib.Path(__file__).resolve()
 

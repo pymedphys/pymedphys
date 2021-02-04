@@ -13,6 +13,7 @@
 
 # pylint: disable = protected-access
 
+import json
 import pathlib
 import shutil
 from typing import Any, Dict, Tuple
@@ -66,14 +67,12 @@ def _create_handlers() -> Handlers:
             )
 
         def get(self, session_id: SessionID, filename: FileName):
-            self.write(f"Session ID: {session_id}, File Name: {filename}")
-            try:
-                filepath = self.file_location_map[session_id][filename]
-            except KeyError:
-                self.write(" | No filepath found.")
-                return
+            filepath = self.file_location_map[session_id][filename]
 
-            self.write(f" | Filepath: {filepath}")
+            with open(filepath, "rb") as f:
+                self.write(f.read())
+
+            self.finish()
 
     return {
         "pymedphys": (HelloWorldHandler, {}),
