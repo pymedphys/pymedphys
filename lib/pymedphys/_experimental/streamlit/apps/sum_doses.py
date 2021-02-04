@@ -21,7 +21,6 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
-from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.dose import sum_doses_in_datasets
 from pymedphys._dicom.utilities import get_pretty_patient_name_from_dicom_dataset
 from pymedphys._streamlit import categories
@@ -139,36 +138,6 @@ def _save_dataset_to_downloads_dir(ds: "pydicom.dataset.Dataset"):
     DOWNLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
     ds.save_as(DOWNLOADS_PATH / "RD.Summed.dcm")
-
-
-def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) -> bool:
-    """True if all DICOM datasets have perfectly matching coordinates
-
-    Parameters
-    ----------
-    datasets : sequence of pydicom.dataset.Dataset
-        A sequence of DICOM datasets whose coordinates are to be
-        compared.
-
-    Returns
-    -------
-    bool
-        True if coordinates match for all datasets, False otherwise.
-    """
-
-    if not len(datasets) >= 2:
-        raise ValueError("At least two datasets must be provided for comparison")
-
-    # Quick shape (sanity) check
-    if not all(
-        ds.pixel_array.shape == datasets[0].pixel_array.shape for ds in datasets
-    ):
-        return False
-
-    # Full coord check:
-    all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
-
-    return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
 
 
 def patient_ids_in_datasets_are_equal(
