@@ -206,4 +206,6 @@ def run_pylint(_, remaining):
 
 
 def run_cypress(_):
-    cypress_test_utilities.run_test_commands_with_gui_process(["yarn cypress open"])
+    cypress_test_utilities.run_test_commands_with_gui_process(
+        ["yarn", "yarn cypress open"]
+    )
