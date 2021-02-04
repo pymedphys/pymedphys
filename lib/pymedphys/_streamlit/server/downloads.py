@@ -30,10 +30,21 @@ FileLocationMap = Dict[SessionID, Dict[FileName, FilePath]]
 #
 #    <https://docs.python.org/3/glossary.html#term-global-interpreter-lock>
 
+# More info regarding thread-safety of default-dict:
+#
+# <https://stackoverflow.com/a/17682555/3912576>
+
+# Importantly this assumption only applies if __hash__ and __eq__ of the
+# keys don't call Python. Keys here are of str type, so OK.
+
+# Nevertheless... placing a lock around this object, or utilising a
+# Queue, in its final implementation would be prudent.
+
 file_location_map: FileLocationMap = collections.defaultdict(dict)
 
-# TODO: Adjust this object later to hook into when Streamlit sessions are closed.
-# Potentially utilise an object similar to, or based on, session state objects?
+# TODO: Adjust this object later to hook into when Streamlit sessions
+# are closed. Potentially utilise an object similar to, or based on,
+# session state objects?
 
 
 def _add_filepath_get_url(filename: str, filepath: pathlib.Path):
