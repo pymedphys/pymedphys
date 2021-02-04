@@ -166,9 +166,9 @@ def test_sum_doses_in_datasets():
         sum_doses_in_datasets([ds1, ds2])
     ds2.Modality = "RTDOSE"
 
-    # Only one dataset:
-    with pytest.raises(ValueError):
-        sum_doses_in_datasets([ds1])
+    # Nothing supplied:
+    with pytest.raises(IndexError):
+        sum_doses_in_datasets([])
 
     # BEAM dose present:
     with pytest.raises(ValueError):

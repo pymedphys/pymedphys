@@ -339,8 +339,11 @@ def sum_doses_in_datasets(
         within `datasets`
     """
 
-    if not len(datasets) >= 2:
-        raise ValueError("At least two datasets must be provided for comparison")
+    # if not datasets:
+    #     raise ValueError("`datasets` cannot be empty!")
+
+    if len(datasets) == 1:
+        return datasets[0]
 
     if not all(ds.Modality == "RTDOSE" for ds in datasets):
         raise ValueError("`datasets` must only contain DICOM RT Dose datasets.")

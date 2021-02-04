@@ -202,8 +202,8 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
         True if coordinates match for all datasets, False otherwise.
     """
 
-    if not len(datasets) >= 2:
-        raise ValueError("At least two datasets must be provided for comparison")
+    if len(datasets) == 2:
+        return True
 
     # Quick shape (sanity) check
     if not all(
