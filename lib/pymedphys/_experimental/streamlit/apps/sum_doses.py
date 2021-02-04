@@ -13,11 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import copy
 import pathlib
 from typing import BinaryIO, List, Sequence
 
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
