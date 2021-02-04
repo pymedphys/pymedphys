@@ -13,7 +13,6 @@
 
 # pylint: disable = protected-access
 
-import json
 import pathlib
 import shutil
 from typing import Any, Dict, Tuple

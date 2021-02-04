@@ -47,15 +47,6 @@ file_location_map: FileLocationMap = collections.defaultdict(dict)
 # session state objects?
 
 
-def _add_filepath_get_url(filename: str, filepath: pathlib.Path):
-    session_id = get_session_id()
-    url = f"downloads/{session_id}/{filename}"
-
-    file_location_map[session_id][filename] = filepath
-
-    return url
-
-
 def download(filename: str, filepath: pathlib.Path):
     url = _add_filepath_get_url(filename, filepath)
 
@@ -65,3 +56,12 @@ def download(filename: str, filepath: pathlib.Path):
         </a>
     """
     st.markdown(href, unsafe_allow_html=True)
+
+
+def _add_filepath_get_url(filename: str, filepath: pathlib.Path):
+    session_id = get_session_id()
+    url = f"downloads/{session_id}/{filename}"
+
+    file_location_map[session_id][filename] = filepath
+
+    return url

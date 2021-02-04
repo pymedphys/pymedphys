@@ -17,7 +17,7 @@ import pathlib
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.server.downloads import download
+from pymedphys._streamlit.utilities import download
 
 CATEGORY = categories.PLANNING
 TITLE = "Download Demo"
