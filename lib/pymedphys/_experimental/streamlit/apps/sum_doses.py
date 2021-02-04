@@ -138,26 +138,3 @@ def _save_dataset_to_downloads_dir(ds: "pydicom.dataset.Dataset"):
     DOWNLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
     ds.save_as(DOWNLOADS_PATH / "RD.Summed.dcm")
-
-
-def patient_ids_in_datasets_are_equal(
-    datasets: Sequence["pydicom.dataset.Dataset"],
-) -> bool:
-    """True if all DICOM datasets have the same Patient ID
-
-    Parameters
-    ----------
-    datasets : sequence of pydicom.dataset.Dataset
-        A sequence of DICOM datasets whose Patient IDs are to be
-        compared.
-
-    Returns
-    -------
-    bool
-        True if Patient IDs match for all datasets, False otherwise.
-    """
-
-    if not len(datasets) >= 2:
-        raise ValueError("At least two datasets must be provided for comparison")
-
-    return all(ds.PatientID == datasets[0].PatientID for ds in datasets)

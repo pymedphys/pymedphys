@@ -23,6 +23,7 @@ from pymedphys._imports import plt, pydicom, scipy
 
 from .constants import IMAGE_ORIENTATION_MAP
 from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
+from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 from .structure import pull_structure
 

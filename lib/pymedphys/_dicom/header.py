@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Matthew Jennings
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,7 @@
 
 import re
 from copy import deepcopy
+from typing import Sequence
 
 from pymedphys._imports import pydicom
 
@@ -147,3 +149,26 @@ def adjust_RED_by_structure_name_cli(args):
     new_dicom_dataset = adjust_RED_by_structure_name(dicom_dataset)
 
     pydicom.write_file(args.output_file, new_dicom_dataset)
+
+
+def patient_ids_in_datasets_are_equal(
+    datasets: Sequence["pydicom.dataset.Dataset"],
+) -> bool:
+    """True if all DICOM datasets have the same Patient ID
+
+    Parameters
+    ----------
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM datasets whose Patient IDs are to be
+        compared.
+
+    Returns
+    -------
+    bool
+        True if Patient IDs match for all datasets, False otherwise.
+    """
+
+    if not len(datasets) >= 2:
+        raise ValueError("At least two datasets must be provided for comparison")
+
+    return all(ds.PatientID == datasets[0].PatientID for ds in datasets)
