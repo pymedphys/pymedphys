@@ -187,6 +187,12 @@ def pretty_patient_name(
 
     names_as_str = str(ds.PatientName)
 
+    if include_honorific and "^^" not in names_as_str:
+        raise ValueError(
+            "The PatientName for this DICOM dataset does not contain "
+            "an honorific. Please set `include_honorific=False`"
+        )
+
     names, honorific = (
         names_as_str.split("^^") if "^^" in names_as_str else (names_as_str, "")
     )

@@ -27,6 +27,7 @@ from pymedphys._dicom.header import (
     adjust_machine_name,
     adjust_RED_by_structure_name,
     adjust_rel_elec_density,
+    pretty_patient_name,
 )
 from pymedphys._dicom.utilities import remove_file
 
@@ -280,3 +281,96 @@ def test_structure_name_based_RED_append():
     ]
 
     compare_dicom_cli(command, original_ds, expected_ds)
+
+
+@pytest.mark.pydicom
+def test_pretty_patient_name_all_params():
+
+    ds = pydicom.Dataset()
+    ds.PatientName = "last^first^middle^^hon"
+
+    pretty_name_param_expected_combos = (
+        (
+            {
+                "surname_first": True,
+                "capitalise_surname": True,
+                "include_honorific": True,
+            },
+            "Hon. LAST, First Middle",
+        ),
+        (
+            {
+                "surname_first": True,
+                "capitalise_surname": True,
+                "include_honorific": False,
+            },
+            "LAST, First Middle",
+        ),
+        (
+            {
+                "surname_first": True,
+                "capitalise_surname": False,
+                "include_honorific": True,
+            },
+            "Hon. Last, First Middle",
+        ),
+        (
+            {
+                "surname_first": True,
+                "capitalise_surname": False,
+                "include_honorific": False,
+            },
+            "Last, First Middle",
+        ),
+        (
+            {
+                "surname_first": False,
+                "capitalise_surname": True,
+                "include_honorific": True,
+            },
+            "Hon. First Middle LAST",
+        ),
+        (
+            {
+                "surname_first": False,
+                "capitalise_surname": True,
+                "include_honorific": False,
+            },
+            "First Middle LAST",
+        ),
+        (
+            {
+                "surname_first": False,
+                "capitalise_surname": False,
+                "include_honorific": True,
+            },
+            "Hon. First Middle Last",
+        ),
+        (
+            {
+                "surname_first": False,
+                "capitalise_surname": False,
+                "include_honorific": False,
+            },
+            "First Middle Last",
+        ),
+    )
+
+    for params, expected in pretty_name_param_expected_combos:
+        assert pretty_patient_name(ds, **params) == expected
+
+
+@pytest.mark.pydicom
+def test_pretty_patient_name_inputs():
+
+    ds = pydicom.Dataset()
+
+    ds.PatientName = "last^first^middle"
+    with pytest.raises(ValueError):
+        pretty_patient_name(ds, include_honorific=True)
+
+    ds.PatientName = "last^first^^HON"
+    assert pretty_patient_name(ds, include_honorific=True) == "Hon. First LAST"
+
+    ds.PatientName = "last"
+    assert pretty_patient_name(ds) == "LAST"
