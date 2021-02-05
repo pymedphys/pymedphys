@@ -25,13 +25,7 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._dicom.collection import DicomDose
-from pymedphys._dicom.create import dicom_dataset_from_dict
-from pymedphys._dicom.dose import (
-    dose_from_dataset,
-    require_patient_orientation,
-    sum_doses_in_datasets,
-)
+from pymedphys._dicom import collection, create, dose
 
 from . import test_coords
 
@@ -51,7 +45,7 @@ def test_dicom_dose_constancy():
         "dicom_dose_test_data.zip", "RD.wedge.dcm"
     )
 
-    test_dicom_dose = DicomDose.from_file(test_dicom_dose_filepath)
+    test_dicom_dose = collection.DicomDose.from_file(test_dicom_dose_filepath)
 
     with ZipFile(baseline_dicom_dose_dict_zippath, "r") as zip_ref:
         with zip_ref.open(wedge_basline_filename) as a_file:
@@ -88,15 +82,15 @@ def test_require_patient_orientation():
 
         for test_orient in test_orientations:
             if orient == test_orient:
-                require_patient_orientation(ds, test_orient)
+                dose.require_patient_orientation(ds, test_orient)
 
             elif orient == "no orient":
                 with pytest.raises(AttributeError):
-                    require_patient_orientation(ds, test_orient)
+                    dose.require_patient_orientation(ds, test_orient)
 
             else:
                 with pytest.raises(ValueError):
-                    require_patient_orientation(ds, test_orient)
+                    dose.require_patient_orientation(ds, test_orient)
 
 
 @pytest.mark.pydicom
@@ -150,59 +144,59 @@ def test_sum_doses_in_datasets():
         "DoseUnits": "GY",
     }
 
-    ds1 = dicom_dataset_from_dict(test_dicom_dict, ensure_file_meta=True)
+    ds1 = create.dicom_dataset_from_dict(test_dicom_dict, ensure_file_meta=True)
 
     ds2 = copy.deepcopy(ds1)
     ds2.PixelData = data2.tobytes()
     ds2.DoseGridScaling = scale2
 
-    ds_summed = sum_doses_in_datasets([ds1, ds2])
-    assert np.allclose(dose_from_dataset(ds_summed), expected_sum)
+    ds_summed = dose.sum_doses_in_datasets([ds1, ds2])
+    assert np.allclose(dose.dose_from_dataset(ds_summed), expected_sum)
     assert ds_summed.DoseType == "PHYSICAL"
 
     # Effective dose type:
     ds2.DoseType = "EFFECTIVE"
-    ds_summed = sum_doses_in_datasets([ds1, ds2])
+    ds_summed = dose.sum_doses_in_datasets([ds1, ds2])
     assert ds_summed.DoseType == "EFFECTIVE"
 
     # Single dataset
-    ds_summed = sum_doses_in_datasets([ds1])
-    assert np.allclose(dose_from_dataset(ds_summed), dose_from_dataset(ds1))
+    ds_summed = dose.sum_doses_in_datasets([ds1])
+    assert np.allclose(dose.dose_from_dataset(ds_summed), dose.dose_from_dataset(ds1))
 
     # More than two doses:
-    ds_summed = sum_doses_in_datasets([ds1, ds1, ds2, ds2])
-    assert np.allclose(dose_from_dataset(ds_summed), 2 * expected_sum)
+    ds_summed = dose.sum_doses_in_datasets([ds1, ds1, ds2, ds2])
+    assert np.allclose(dose.dose_from_dataset(ds_summed), 2 * expected_sum)
 
     # Unmatched patient IDs
     with pytest.raises(ValueError):
         ds2.PatientID = "PMX"
-        sum_doses_in_datasets([ds1, ds2])
+        dose.sum_doses_in_datasets([ds1, ds2])
     ds2.PatientID = "PMP"
 
     # Bad modality
     with pytest.raises(ValueError):
         ds2.Modality = "CT"
-        sum_doses_in_datasets([ds1, ds2])
+        dose.sum_doses_in_datasets([ds1, ds2])
     ds2.Modality = "RTDOSE"
 
     # Nothing supplied:
     with pytest.raises(IndexError):
-        sum_doses_in_datasets([])
+        dose.sum_doses_in_datasets([])
 
     # BEAM dose present:
     with pytest.raises(ValueError):
         ds2.DoseSummationType = "BEAM"
-        sum_doses_in_datasets([ds1, ds2])
+        dose.sum_doses_in_datasets([ds1, ds2])
     ds2.DoseSummationType = "PLAN"
 
     # Bad dose units
     with pytest.raises(ValueError):
         ds2.DoseUnits = "RELATIVE"
-        sum_doses_in_datasets([ds1, ds2])
+        dose.sum_doses_in_datasets([ds1, ds2])
     ds2.Modality = "GY"
 
     # Unmatched coords
     with pytest.raises(ValueError):
         ds2.ImagePositionPatient = [-1, -1.1, -1]
-        sum_doses_in_datasets([ds1, ds2])
+        dose.sum_doses_in_datasets([ds1, ds2])
     ds2.ImagePositionPatient = [-1, -1, -1]

@@ -48,7 +48,6 @@ def dicom_dataset_from_dict(input_dict: dict, ensure_file_meta=False, template_d
         dataset = deepcopy(template_ds)
 
     if ensure_file_meta:
-        dataset.ensure_file_meta()
         dataset.fix_meta_info(enforce_standard=False)
 
     for key, value in input_dict.items():
