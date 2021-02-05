@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+from typing import BinaryIO, Union
+
 from pymedphys._imports import streamlit as st
 
 from . import session
 
+File = Union[pathlib.Path, str, BinaryIO]
 
-def download(name: str, file: session.File):
+
+def download(name: str, file: File):
     """Create a Streamlit download link to a given file.
 
     Parameters
@@ -40,7 +45,7 @@ def download(name: str, file: session.File):
     st.markdown(href, unsafe_allow_html=True)
 
 
-def _add_file_get_url(filename: str, file: session.File):
+def _add_file_get_url(filename: str, file: File) -> str:
     session_id = session.get_session_id()
     url = f"downloads/{session_id}/{filename}"
 
