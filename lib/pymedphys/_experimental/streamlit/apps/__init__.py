@@ -5,6 +5,7 @@ from . import (
     electrons,
     icom,
     iviewdb,
+    plot_dose,
     sum_doses,
     transfer_check,
     weekly_check,
