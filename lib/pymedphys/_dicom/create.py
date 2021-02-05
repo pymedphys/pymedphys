@@ -40,15 +40,12 @@ def set_default_transfer_syntax(dataset):
         dataset.is_implicit_VR = True
 
 
-def dicom_dataset_from_dict(input_dict: dict, ensure_file_meta=False, template_ds=None):
+def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
     """Create a pydicom DICOM object from a dictionary"""
     if template_ds is None:
         dataset = pydicom.Dataset()
     else:
         dataset = deepcopy(template_ds)
-
-    if ensure_file_meta:
-        dataset.fix_meta_info(enforce_standard=False)
 
     for key, value in input_dict.items():
         if key not in get_dicom_names():
