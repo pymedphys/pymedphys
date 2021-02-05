@@ -4,8 +4,9 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 from pymedphys._imports.plotly import graph_objects as go
+from pymedphys._imports.plotly import subplots
 
-from pymedphys._dicom.coords import xyz_axes_from_dataset
+from pymedphys._dicom.coords import coords_from_xyz_axes, xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
@@ -45,15 +46,13 @@ def main():
             """
         )
 
-    x, y, z = xyz_axes_from_dataset(ds)
+    axes = xyz_axes_from_dataset(ds, coord_system="FIXED")
     dose = dose_from_dataset(ds)
     dose_max = np.max(dose)
+    idx_max = np.unravel_index(np.argmax(dose), dose.shape)
 
-    fig = go.Figure()
-    fig.update_yaxes(autorange="reversed")
-
-    for zp, dose_slice in zip(z, dose):
-        _add_dose_slice_to_fig(fig, x, y, zp, dose_slice, dose_max)
+    fig = _initialise_figure()
+    _update_fig_doses(fig, idx_max, axes, dose, dose_max)
 
     st.plotly_chart(fig)
 
@@ -79,30 +78,132 @@ def _validate_dicom_dataset(ds):
         raise ValueError("DICOM dataset is not RT Dose")
 
 
-def _add_dose_slice_to_fig(fig, x, y, z_slice, dose_slice, dose_max):
-    z_slice_as_str = "{:.2f}".format(z_slice)
-    hover_str = (
+def _update_fig_doses(fig, idx, axes, dose, dose_max):
+
+    coords = coords_from_xyz_axes(axes)
+
+    z_str = "{:.2f}".format(idx[0])
+    hover_str_transverse = (
         "Dose (Gy):  %{z:.2f}<br />"
         + "x (mm):  %{x:.2f}<br />"
         + "y (mm):  %{y:.2f}<br />"
         + "z (mm):  "
-        + z_slice_as_str
+        + z_str
     )
+
+    x_str = "{:.2f}".format(idx[1])
+    hover_str_sagittal = (
+        "Dose (Gy):  %{z:.2f}<br />"
+        + "x (mm):  "
+        + x_str
+        + "<br />"
+        + "y (mm):  %{x:.2f}<br />"
+        + "z (mm):  %{y:.2f}<br />"
+    )
+
+    y_str = "{:.2f}".format(idx[1])
+    hover_str_coronal = (
+        "Dose (Gy):  %{z:.2f}<br />"
+        + "x (mm):  %{x:.2f}<br />"
+        + "y (mm):  "
+        + y_str
+        + "<br />"
+        + "z (mm):  %{y:.2f}<br />"
+    )
+
+    # Transverse
     fig.add_trace(
         go.Heatmap(
-            colorbar=dict(title="Dose (Gy)", x=1.05, y=0.85, len=0.4),
+            colorbar=dict(title="Dose (Gy)"),
             colorscale="Jet",
             connectgaps=False,
-            hovertemplate=hover_str,
+            hovertemplate=hover_str_transverse,
             name="Dose",
-            visible=False,
-            x=x,
+            visible=True,
+            x=axes[0],
             xaxis="x",
-            y=y,
+            y=axes[1],
             yaxis="y",
-            z=dose_slice,
+            z=dose[idx[0], :, :],
             zsmooth=False,
             zmin=0,
             zmax=dose_max,
         ),
+        row=1,
+        col=1,
     )
+
+    # Sagittal
+    fig.add_trace(
+        go.Heatmap(
+            colorbar=dict(title="Dose (Gy)"),
+            colorscale="Jet",
+            connectgaps=False,
+            hovertemplate=hover_str_sagittal,
+            name="Dose",
+            visible=True,
+            x=axes[2],
+            xaxis="x",
+            y=axes[1],
+            yaxis="y",
+            z=dose[:, :, idx[2]].T,
+            zsmooth=False,
+            zmin=0,
+            zmax=dose_max,
+        ),
+        row=1,
+        col=2,
+    )
+
+    # Coronal
+    fig.add_trace(
+        go.Heatmap(
+            colorbar=dict(title="Dose (Gy)"),
+            colorscale="Jet",
+            connectgaps=False,
+            hovertemplate=hover_str_coronal,
+            name="Dose",
+            visible=True,
+            x=axes[0],
+            xaxis="x",
+            y=axes[2],
+            yaxis="y",
+            z=dose[:, idx[1], :],
+            zsmooth=False,
+            zmin=0,
+            zmax=dose_max,
+        ),
+        row=2,
+        col=1,
+    )
+
+
+def _initialise_figure():
+
+    fig = subplots.make_subplots(
+        rows=2,
+        cols=2,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "Transverse",
+            "Sagittal",
+            "Coronal",
+            "Data",
+        ),
+    )
+    fig.update_layout(
+        xaxis=dict(),
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis2=dict(scaleanchor="x", scaleratio=1),
+        yaxis2=dict(scaleanchor="y", scaleratio=1),
+        xaxis3=dict(scaleanchor="x", scaleratio=1),
+        yaxis3=dict(scaleanchor="y", scaleratio=1),
+        paper_bgcolor="LightSteelBlue",
+        height=600,
+        width=800,
+    )
+
+    fig.update_yaxes(autorange="reversed", row=1)
+    fig["layout"].update(margin=dict(l=5, r=5, b=5, t=30, pad=0))
+
+    return fig
