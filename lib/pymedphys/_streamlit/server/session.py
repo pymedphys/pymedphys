@@ -21,9 +21,9 @@ import pathlib
 import uuid
 from typing import BinaryIO, Union, cast
 
-File = Union[pathlib.Path, str, BinaryIO]
-
 from pymedphys._imports import streamlit as st
+
+File = Union[pathlib.Path, str, BinaryIO]
 
 
 class SessionState:
