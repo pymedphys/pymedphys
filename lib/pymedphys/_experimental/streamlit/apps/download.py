@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import pathlib
 
 from pymedphys._imports import streamlit as st
@@ -34,3 +35,6 @@ def main():
     filepath = THIS
 
     download(filename, filepath)
+
+    buffer = io.BytesIO("Some beautiful text!".encode())
+    download("a_text_file.txt", buffer)

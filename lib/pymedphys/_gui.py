@@ -15,15 +15,13 @@
 
 import pathlib
 import shutil
+import uuid
 from typing import Any, Dict, Tuple
 
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import tornado
 
-from pymedphys._streamlit.server.downloads import FileLocationMap, FileName, SessionID
-from pymedphys._streamlit.server.downloads import (
-    file_location_map as _file_location_map,
-)
+from pymedphys._streamlit.server import session
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -45,9 +43,7 @@ def main(args):
     st.bootstrap.run(streamlit_script_path, "", [])
 
 
-URLRoute = str
-Handler = Any
-Handlers = Dict[URLRoute, Tuple[Handler, Dict[str, Any]]]
+Handlers = Dict[str, Tuple[Any, Dict[str, Any]]]
 
 
 def _create_handlers() -> Handlers:
@@ -60,25 +56,15 @@ def _create_handlers() -> Handlers:
     class DownloadHandler(  # pylint: disable = abstract-method
         tornado.web.RequestHandler
     ):
-        def initialize(self, file_location_map: FileLocationMap) -> None:
-            self.file_location_map = (  # pylint: disable = attribute-defined-outside-init
-                file_location_map
-            )
+        def get(self, session_id: uuid.UUID, filename: str):
+            file_bytes = session.get_download_file(session_id, filename)
 
-        def get(self, session_id: SessionID, filename: FileName):
-            filepath = self.file_location_map[session_id][filename]
-
-            with open(filepath, "rb") as f:
-                self.write(f.read())
-
+            self.write(file_bytes)
             self.finish()
 
     return {
         "pymedphys": (HelloWorldHandler, {}),
-        "downloads/(.*)/(.*)": (
-            DownloadHandler,
-            {"file_location_map": _file_location_map},
-        ),
+        "downloads/(.*)/(.*)": (DownloadHandler, {}),
     }
 
 
