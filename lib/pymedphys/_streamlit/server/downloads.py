@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
-from typing import BinaryIO, Union
+import uuid
+from typing import Union
 
 from pymedphys._imports import streamlit as st
 
 from . import session
 
-File = Union[pathlib.Path, str, BinaryIO]
+FileContent = Union[str, bytes]
 
 
-def download(name: str, file: File):
+def download(name: str, content: FileContent):
     """Create a Streamlit download link to a given file.
 
     Parameters
@@ -31,11 +31,11 @@ def download(name: str, file: File):
         The filename of the download. If a previous download link has
         been provided with the same download name the previous filepath
         will be overwritten.
-    file : pathlib.Path, str, or io.BytesIO
-        The file to be downloaded.
+    content : str or bytes
+        The content of the file to be downloaded.
     """
 
-    url = _add_file_get_url(name, file)
+    url = _add_file_get_url(name, content)
 
     href = f"""
         <a href="{url}" download='{name}'>
@@ -45,10 +45,29 @@ def download(name: str, file: File):
     st.markdown(href, unsafe_allow_html=True)
 
 
-def _add_file_get_url(filename: str, file: File) -> str:
-    session_id = session.get_session_id()
-    url = f"downloads/{session_id}/{filename}"
+def get_download_file(session_id: uuid.UUID, name: str) -> bytes:
+    report_session = session.get_session(session_id=session_id)
+    content: FileContent = report_session.downloads[name]
 
-    session.set_download_file(filename, file)
+    if isinstance(content, str):
+        content = content.encode()
+
+    return content
+
+
+def set_download_file(name: str, content: FileContent):
+    report_session = session.get_session()
+
+    try:
+        report_session.downloads[name] = content
+    except AttributeError:
+        report_session.downloads = {name: content}
+
+
+def _add_file_get_url(name: str, content: FileContent) -> str:
+    session_id = session.get_session_id()
+    url = f"downloads/{session_id}/{name}"
+
+    set_download_file(name, content)
 
     return url

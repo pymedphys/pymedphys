@@ -21,7 +21,7 @@ from typing import Any, Dict, Tuple
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import tornado
 
-from pymedphys._streamlit.server import session
+from pymedphys._streamlit.server import downloads
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -56,8 +56,8 @@ def _create_handlers() -> Handlers:
     class DownloadHandler(  # pylint: disable = abstract-method
         tornado.web.RequestHandler
     ):
-        def get(self, session_id: uuid.UUID, filename: str):
-            file_bytes = session.get_download_file(session_id, filename)
+        def get(self, session_id: uuid.UUID, name: str):
+            file_bytes = downloads.get_download_file(session_id, name)
 
             self.write(file_bytes)
             self.finish()

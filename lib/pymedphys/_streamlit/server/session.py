@@ -16,10 +16,9 @@
 # It is understood that we are stepping into 'private' API usage here
 # pylint: disable = protected-access
 
-import io
 import pathlib
 import uuid
-from typing import BinaryIO, Union, cast
+from typing import BinaryIO, Union
 
 from pymedphys._imports import streamlit as st
 
@@ -54,28 +53,6 @@ def get_session(session_id: uuid.UUID = None) -> "st.report_session.ReportSessio
         st.server.server.Server.get_current()._get_session_info(session_id).session
     )
     return report_session
-
-
-def get_download_file(session_id: uuid.UUID, filename: str) -> bytes:
-    session = get_session(session_id=session_id)
-    file: File = session.downloads[filename]
-
-    if isinstance(file, io.BytesIO):
-        return file.read()
-
-    filepath = cast(Union[pathlib.Path, str], file)
-
-    with open(filepath, "rb") as fh:
-        return fh.read()
-
-
-def set_download_file(filename, file: File):
-    session = get_session()
-
-    try:
-        session.downloads[filename] = file
-    except AttributeError:
-        session.downloads = {filename: file}
 
 
 def session_state(**state):
