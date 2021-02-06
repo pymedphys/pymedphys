@@ -29,8 +29,12 @@ THIS = pathlib.Path(__file__).resolve()
 
 def main():
     st.write(
-        "This is a demo Streamlit app showing how to use the `download()` function"
+        "This is a demo Streamlit app showing how to use the "
+        "`download` function. The docstring for the "
+        "`download` function is as follows:"
     )
+
+    st.code(download.__doc__)
 
     st.write("## Download this very Python file")
 
