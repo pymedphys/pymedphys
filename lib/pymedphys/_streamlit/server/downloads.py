@@ -23,7 +23,7 @@ FileContent = Union[str, bytes]
 
 
 def download(name: str, content: FileContent):
-    """Create a Streamlit download link to a given file.
+    """Create a Streamlit download link to the given file content.
 
     Parameters
     ----------

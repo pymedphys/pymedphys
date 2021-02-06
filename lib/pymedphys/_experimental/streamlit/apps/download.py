@@ -15,6 +15,7 @@
 import io
 import pathlib
 
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
@@ -31,10 +32,24 @@ def main():
         "This is a demo Streamlit app showing how to use the `download()` function"
     )
 
-    filename = THIS.name
-    filepath = THIS
+    with open(THIS) as f:
+        # Download this very Python file
+        download(THIS.name, f.read())
 
-    download(filename, filepath)
+    download("a_text_file.txt", "Some beautiful text!")
 
-    buffer = io.BytesIO("Some beautiful text!".encode())
-    download("a_text_file.txt", buffer)
+    buffer = io.BytesIO()
+    fig, ax = plt.subplots()
+
+    left, right = st.beta_columns(2)
+
+    ax.plot([0, 1, 2], [1, -1, 1])
+
+    with left:
+        st.pyplot(fig)
+
+    fig.savefig(buffer, format="png")
+    buffer.seek(0)
+
+    with right:
+        download("plot.png", buffer.read())
