@@ -36,15 +36,17 @@ def main():
 
     st.code(download.__doc__)
 
-    st.write("## Download this very Python file")
+    st.write("## Example uses of `download`")
+
+    st.write("### Download this very Python file")
 
     with open(THIS) as f:
         download(THIS.name, f.read())
 
-    st.write("## Download a text file")
+    st.write("### Download a text file")
     download("a_text_file.txt", "Some beautiful text!")
 
-    st.write("## Download a matplotlib figure")
+    st.write("### Download a matplotlib figure")
     left, right = st.beta_columns(2)
 
     fig, ax = plt.subplots()
