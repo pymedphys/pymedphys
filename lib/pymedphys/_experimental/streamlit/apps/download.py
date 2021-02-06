@@ -32,24 +32,29 @@ def main():
         "This is a demo Streamlit app showing how to use the `download()` function"
     )
 
+    st.write("## Download this very Python file")
+
     with open(THIS) as f:
-        # Download this very Python file
         download(THIS.name, f.read())
 
+    st.write("## Download a text file")
     download("a_text_file.txt", "Some beautiful text!")
 
-    buffer = io.BytesIO()
-    fig, ax = plt.subplots()
-
+    st.write("## Download a matplotlib figure")
     left, right = st.beta_columns(2)
 
-    ax.plot([0, 1, 2], [1, -1, 1])
+    fig, ax = plt.subplots()
+    ax.plot([-1, 0, 1], [1, -1, 1])
 
     with left:
         st.pyplot(fig)
 
-    fig.savefig(buffer, format="png")
-    buffer.seek(0)
-
     with right:
-        download("plot.png", buffer.read())
+        _download_figure("plot.png", fig)
+
+
+def _download_figure(name, fig):
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format=name.split(".")[-1])
+    buffer.seek(0)
+    download(name, buffer.read())
