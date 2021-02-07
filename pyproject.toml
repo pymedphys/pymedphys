@@ -51,6 +51,7 @@ scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
 Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
+data-science-types = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
@@ -77,7 +78,7 @@ shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
 
 # Streamlit's pinning is due to its current beta nature and the fact that some
 # private APIs are utilised.
-streamlit = { version = "0.75.0", optional = true }  # groups = ["user", "dev"]
+streamlit = { version = "0.76.0", optional = true }  # groups = ["user", "dev"]
 streamlit-ace = { version = "0.0.4", optional = true }  # groups = ["user", "dev"]
 streamlit-analytics = { version = "0.1.2", optional = true }  # groups = ["user", "dev"]
 
@@ -133,19 +134,123 @@ mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
+tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
 
 
 [tool.poetry.extras]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
-mosaiq = ["pymssql", "sqlalchemy", "pandas"]
-propagate = ["tomlkit", "black"]
-dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
-doctests = ["pylinac", "tensorflow", "sphinx-book-theme", "black"]
 comparables = ["flashgamma"]
+dev = [
+    "Pillow",
+    "PyYAML",
+    "attrs",
+    "black",
+    "data-science-types",
+    "dbfread",
+    "dicompyler-core",
+    "doc8",
+    "hypothesis",
+    "imageio",
+    "jupyter-book",
+    "keyring",
+    "matplotlib",
+    "mypy",
+    "natsort",
+    "networkx",
+    "numpy",
+    "packaging",
+    "pandas",
+    "plotly",
+    "pre-commit",
+    "psutil",
+    "pydicom",
+    "pylibjpeg-libjpeg",
+    "pylinac",
+    "pylint",
+    "pymssql",
+    "pynetdicom",
+    "pytest",
+    "pytest-rerunfailures",
+    "pytest-sugar",
+    "python_dateutil",
+    "readme-renderer",
+    "requests",
+    "rope",
+    "scikit-image",
+    "scikit-learn",
+    "scipy",
+    "shapely",
+    "sphinx-argparse",
+    "sphinx-book-theme",
+    "sphinxcontrib-napoleon",
+    "sqlalchemy",
+    "streamlit",
+    "streamlit-ace",
+    "streamlit-analytics",
+    "tabulate",
+    "timeago",
+    "tomlkit",
+    "tqdm",
+    "watchdog",
+    "xlsxwriter",
+    "xmltodict",
+]
+dicom = ["pydicom", "pylibjpeg-libjpeg", "pynetdicom"]
+docs = [
+    "jupyter-book",
+    "networkx",
+    "sphinx-argparse",
+    "sphinx-book-theme",
+    "sphinxcontrib-napoleon",
+]
+doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
 ml = ["tensorflow"]
-docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book"]
-tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil"]
+mosaiq = ["pandas", "pymssql", "sqlalchemy"]
+propagate = ["black", "tomlkit"]
+tests = [
+    "hypothesis",
+    "psutil",
+    "pylint",
+    "pytest",
+    "pytest-rerunfailures",
+    "pytest-sugar",
+    "python_dateutil",
+]
+user = [
+    "Pillow",
+    "PyYAML",
+    "attrs",
+    "data-science-types",
+    "dbfread",
+    "dicompyler-core",
+    "imageio",
+    "keyring",
+    "matplotlib",
+    "natsort",
+    "numpy",
+    "packaging",
+    "pandas",
+    "plotly",
+    "pydicom",
+    "pylibjpeg-libjpeg",
+    "pylinac",
+    "pymssql",
+    "pynetdicom",
+    "requests",
+    "scikit-image",
+    "scikit-learn",
+    "scipy",
+    "shapely",
+    "sqlalchemy",
+    "streamlit",
+    "streamlit-ace",
+    "streamlit-analytics",
+    "timeago",
+    "tomlkit",
+    "tqdm",
+    "watchdog",
+    "xlsxwriter",
+    "xmltodict",
+]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"

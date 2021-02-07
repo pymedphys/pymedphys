@@ -14,6 +14,11 @@
 
 
 import datetime
+from typing import List, Union, cast
+
+from typing_extensions import Literal
+
+Number = Union[float, int]
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import natsort
@@ -229,26 +234,32 @@ def main():
     _presentation_of_results(wlutz_directory_by_date, advanced_mode)
 
 
-def _user_selected_angles(name, default_selection, default_tolerance):
-    name = name.capitalize()
-    default_selection = ", ".join(np.array(default_selection).astype(str))
+def _user_selected_angles(
+    name: Literal["gantry", "collimator"],
+    default_selection: List[Number],
+    default_tolerance: Number,
+):
+    capitalised_name = name.capitalize()
+    text_box_default = ", ".join(np.array(default_selection).astype(str))
 
-    st.write(f"### {name} filtering")
+    st.write(f"### {capitalised_name} filtering")
 
-    angles = st.text_input(f"{name} angles", default_selection)
+    angles = st.text_input(f"{capitalised_name} angles", text_box_default)
     angles = np.array(angles.split(",")).astype(float).tolist()
     st.write(f"`{angles}`")
 
-    tolerance = st.number_input(f"{name} angle tolerance", 0, None, default_tolerance)
+    tolerance = st.number_input(
+        f"{capitalised_name} angle tolerance", 0, None, default_tolerance
+    )
 
     return angles, tolerance
 
 
-def _angle_filtering(database_table):
+def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
     gantry_column, collimator_column = st.beta_columns(2)
 
-    default_gantry_angles = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
-    default_collimator_angles = [-180, -90, 0, 90, 180]
+    default_gantry_angles: List[Number] = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
+    default_collimator_angles: List[Number] = [-180, -90, 0, 90, 180]
 
     angles = {}
     for name, tolerance, column, default_angles in [
@@ -256,6 +267,7 @@ def _angle_filtering(database_table):
         ("collimator", 5, collimator_column, default_collimator_angles),
     ]:
         with column:
+            name = cast(Literal["gantry", "collimator"], name)
             angles[name] = _user_selected_angles(name, default_angles, tolerance)
 
     selected_gantry_angles = angles["gantry"][0]
@@ -264,11 +276,16 @@ def _angle_filtering(database_table):
     selected_collimator_angles = angles["collimator"][0]
     collimator_angle_tolerance = angles["collimator"][1]
 
-    def _treatment_callback(_dataframe, _data, treatment):
+    def _treatment_callback(_dataframe, _data, treatment: str):
         st.write(f"#### {treatment}")
 
-    def _port_callback(dataframe, collated_dataframes, _treatment, port):
-        dataframes = []
+    def _port_callback(
+        dataframe: pd.DataFrame,
+        collated_dataframes: List[pd.DataFrame],
+        _treatment,
+        port: str,
+    ):
+        dataframes: List[pd.DataFrame] = []
 
         for gantry_angle in selected_gantry_angles:
             for collimator_angle in selected_collimator_angles:
@@ -296,16 +313,23 @@ def _angle_filtering(database_table):
         if len(dataframes) == 0:
             return
 
-        dataframes = pd.concat(dataframes, axis=0)
+        concatenated_dataframes = pd.concat(dataframes, axis=0)
 
         st.write(f"##### {port}")
-        st.write(dataframes[["gantry", "collimator"]])
+        st.write(concatenated_dataframes[["gantry", "collimator"]])
 
-        collated_dataframes.append(dataframes)
+        collated_dataframes.append(concatenated_dataframes)
 
-    st.write("### Gantry and collimator angles selected per treatment and port")
+    st.write(
+        """
+        ### Gantry and collimator angles selected per treatment and port
 
-    collated_dataframes = []
+        Select between -180 degrees and +180 degrees. Write the angles
+        you wish to select below separated by a comma (,).
+        """
+    )
+
+    collated_dataframes: List[pd.DataFrame] = []
 
     _utilities.iterate_over_columns(
         database_table,
