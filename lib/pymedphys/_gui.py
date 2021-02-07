@@ -15,46 +15,96 @@
 
 import pathlib
 import shutil
-import subprocess
+import uuid
+from typing import Any, Dict, Tuple
 
-import pymedphys._utilities.test as pmp_test_utils
+from pymedphys._imports import streamlit as st
+from pymedphys._imports import tornado
+
+from pymedphys._streamlit.server import downloads
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
 
 
-def fill_streamlit_credentials():
-    streamlit_config_dir = pathlib.Path.home().joinpath(".streamlit")
-    streamlit_config_dir.mkdir(exist_ok=True)
-
-    template_streamlit_credentials_file = STREAMLIT_CONTENT_DIR.joinpath(
-        "credentials.toml"
-    )
-    new_credential_file = streamlit_config_dir.joinpath("credentials.toml")
-
-    try:
-        shutil.copy2(template_streamlit_credentials_file, new_credential_file)
-    except FileExistsError:
-        pass
-
-
 def main(args):
     """Boot up the pymedphys GUI"""
-    fill_streamlit_credentials()
+    _fill_streamlit_credentials()
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
     if args.port:
-        append = ["--server.port", args.port]
-    else:
-        append = []
+        st.cli._apply_config_options_from_cli({"server.port": args.port})
 
-    python_executable = pmp_test_utils.get_executable_even_when_embedded()
-    command = [
-        python_executable,
-        "-m",
-        "streamlit",
-        "run",
-        streamlit_script_path,
-    ] + append
-    subprocess.check_call(command)
+    # Needs to run after config has been set
+    _monkey_patch_streamlit_server()
+
+    st._is_running_with_streamlit = True
+    st.bootstrap.run(streamlit_script_path, "", [])
+
+
+Handlers = Dict[str, Tuple[Any, Dict[str, Any]]]
+
+
+def _create_handlers() -> Handlers:
+    class HelloWorldHandler(  # pylint: disable = abstract-method
+        tornado.web.RequestHandler
+    ):
+        def get(self):
+            self.write("Hello world!")
+
+    class DownloadHandler(  # pylint: disable = abstract-method
+        tornado.web.RequestHandler
+    ):
+        def get(self, session_id: uuid.UUID, name: str):
+            file_bytes = downloads.get_download_file(session_id, name)
+
+            self.write(file_bytes)
+            self.finish()
+
+    return {
+        "pymedphys": (HelloWorldHandler, {}),
+        "downloads/(.*)/(.*)": (DownloadHandler, {}),
+    }
+
+
+def _monkey_patch_streamlit_server():
+    """Adds custom URL routes to Streamlit's tornado server."""
+    handlers = _create_handlers()
+
+    OfficialServer = st.server.server.Server
+    official_create_app = OfficialServer._create_app
+
+    def patched_create_app(self: st.server.server.Server) -> tornado.web.Application:
+        app: tornado.web.Application = official_create_app(self)
+
+        base: str = st.config.get_option("server.baseUrlPath")
+
+        rules: tornado.routing._RuleList = []
+        for key, (handler, kwargs) in handlers.items():
+            pattern = st.server.server_util.make_url_path_regex(base, key)
+            rules.append((pattern, handler, kwargs))
+
+        app.add_handlers(".*", rules)
+
+        return app
+
+    OfficialServer._create_app = patched_create_app
+
+
+def _fill_streamlit_credentials():
+    streamlit_config_file = pathlib.Path.home().joinpath(
+        ".streamlit", "credentials.toml"
+    )
+    if streamlit_config_file.exists():
+        return
+
+    streamlit_config_dir = streamlit_config_file.parent
+    streamlit_config_dir.mkdir(exist_ok=True)
+
+    template_streamlit_config_file = STREAMLIT_CONTENT_DIR.joinpath("credentials.toml")
+
+    try:
+        shutil.copy2(template_streamlit_config_file, streamlit_config_file)
+    except FileExistsError:
+        pass

@@ -210,7 +210,7 @@ d = ["aiohttp (>=3.3.2)", "aiohttp-cors"]
 
 [[package]]
 name = "bleach"
-version = "3.2.1"
+version = "3.3.0"
 description = "An easy safelist-based HTML-sanitizing tool."
 category = "main"
 optional = true
@@ -333,6 +333,17 @@ python-versions = "*"
 
 [package.dependencies]
 six = "*"
+
+[[package]]
+name = "data-science-types"
+version = "0.2.22"
+description = "Type stubs for Python machine learning libraries"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.extras]
+dev = ["black", "flake8", "flake8-pyi", "matplotlib", "mypy (==0.770)", "numpy", "pandas", "pytest"]
 
 [[package]]
 name = "dataclasses"
@@ -2424,7 +2435,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "streamlit"
-version = "0.75.0"
+version = "0.76.0"
 description = "The fastest way to build data apps in Python"
 category = "main"
 optional = true
@@ -2474,6 +2485,17 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 streamlit = "*"
+
+[[package]]
+name = "tabulate"
+version = "0.8.7"
+description = "Pretty-print tabular data"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.extras]
+widechars = ["wcwidth"]
 
 [[package]]
 name = "tensorboard"
@@ -2838,20 +2860,20 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil", "pre-commit", "black", "mypy", "rope", "doc8", "readme-renderer"]
-dicom = ["pynetdicom", "pylibjpeg-libjpeg", "pydicom"]
-docs = ["sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "networkx", "jupyter-book"]
-doctests = ["pylinac", "tensorflow", "sphinx-book-theme", "black"]
+dev = ["Pillow", "PyYAML", "attrs", "black", "data-science-types", "dbfread", "dicompyler-core", "doc8", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pytest", "pytest-rerunfailures", "pytest-sugar", "python_dateutil", "readme-renderer", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "streamlit-analytics", "tabulate", "timeago", "tomlkit", "tqdm", "watchdog", "xlsxwriter", "xmltodict"]
+dicom = ["pydicom", "pylibjpeg-libjpeg", "pynetdicom"]
+docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
+doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
 ml = ["tensorflow"]
-mosaiq = ["pymssql", "sqlalchemy", "pandas"]
-propagate = ["tomlkit", "black"]
-tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-rerunfailures", "python_dateutil"]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "matplotlib", "scipy", "Pillow", "imageio", "scikit-image", "pymssql", "sqlalchemy", "natsort", "tomlkit", "pynetdicom", "pylibjpeg-libjpeg", "dbfread", "xmltodict", "timeago", "xlsxwriter", "plotly", "dicompyler-core", "numpy", "pandas", "pydicom", "shapely", "streamlit", "streamlit-ace", "streamlit-analytics", "pylinac", "scikit-learn"]
+mosaiq = ["pandas", "pymssql", "sqlalchemy"]
+propagate = ["black", "tomlkit"]
+tests = ["hypothesis", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python_dateutil"]
+user = ["Pillow", "PyYAML", "attrs", "data-science-types", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pymssql", "pynetdicom", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "streamlit-analytics", "timeago", "tomlkit", "tqdm", "watchdog", "xlsxwriter", "xmltodict"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "7e95b6bf5f1a9378906988fcdf7e33a573a828c9e89203053721b5c6426b214d"
+content-hash = "f5a09cbc50c89d721d542325b2f42ab90a47b1efa37afa931b164d7dd59f08a2"
 
 [metadata.files]
 absl-py = [
@@ -2942,8 +2964,8 @@ black = [
     {file = "black-20.8b1.tar.gz", hash = "sha256:1c02557aa099101b9d21496f8a914e9ed2222ef70336404eeeac8edba836fbea"},
 ]
 bleach = [
-    {file = "bleach-3.2.1-py2.py3-none-any.whl", hash = "sha256:9f8ccbeb6183c6e6cddea37592dfb0167485c1e3b13b3363bc325aa8bda3adbd"},
-    {file = "bleach-3.2.1.tar.gz", hash = "sha256:52b5919b81842b1854196eaae5ca29679a2f2e378905c346d3ca8227c2c66080"},
+    {file = "bleach-3.3.0-py2.py3-none-any.whl", hash = "sha256:6123ddc1052673e52bab52cdc955bcb57a015264a1c57d37bea2f6b817af0125"},
+    {file = "bleach-3.3.0.tar.gz", hash = "sha256:98b3170739e5e83dd9dc19633f074727ad848cbedb6026708c8ac2d3b697a433"},
 ]
 blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
@@ -2990,6 +3012,7 @@ cffi = [
     {file = "cffi-1.14.4-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:840793c68105fe031f34d6a086eaea153a0cd5c491cde82a74b420edd0a2b909"},
     {file = "cffi-1.14.4-cp39-cp39-manylinux1_i686.whl", hash = "sha256:b18e0a9ef57d2b41f5c68beefa32317d286c3d6ac0484efd10d6e07491bb95dd"},
     {file = "cffi-1.14.4-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:045d792900a75e8b1e1b0ab6787dd733a8190ffcf80e8c8ceb2fb10a29ff238a"},
+    {file = "cffi-1.14.4-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:7ef7d4ced6b325e92eb4d3502946c78c5367bc416398d387b39591532536734e"},
     {file = "cffi-1.14.4-cp39-cp39-win32.whl", hash = "sha256:ba4e9e0ae13fc41c6b23299545e5ef73055213e466bd107953e4a013a5ddd7e3"},
     {file = "cffi-1.14.4-cp39-cp39-win_amd64.whl", hash = "sha256:f032b34669220030f905152045dfa27741ce1a6db3324a5bc0b96b6c7420c87b"},
     {file = "cffi-1.14.4.tar.gz", hash = "sha256:1a465cbe98a7fd391d47dce4b8f7e5b921e6cd805ef421d04f5f66ba8f06086c"},
@@ -3037,6 +3060,10 @@ cssutils = [
 cycler = [
     {file = "cycler-0.10.0-py2.py3-none-any.whl", hash = "sha256:1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d"},
     {file = "cycler-0.10.0.tar.gz", hash = "sha256:cd7b2d1018258d7247a71425e9f26463dfb444d411c39569972f4ce586b0c9d8"},
+]
+data-science-types = [
+    {file = "data-science-types-0.2.22.tar.gz", hash = "sha256:5b6bb2ca4cb6b8c467c799382e12156816f38122522bdaafd882d5a3828c7345"},
+    {file = "data_science_types-0.2.22-py3-none-any.whl", hash = "sha256:065475a4c5ee9b5f30883e65cdcffdd1b09a9d2e203857af25d21ffb336fece0"},
 ]
 dataclasses = [
     {file = "dataclasses-0.8-py3-none-any.whl", hash = "sha256:0201d89fa866f68c8ebd9d08ee6ff50c0b255f8ec63a71c16fda7af82bb887bf"},
@@ -4243,6 +4270,7 @@ shapely = [
     {file = "Shapely-1.7.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:90a3e2ae0d6d7d50ff2370ba168fbd416a53e7d8448410758c5d6a5920646c1d"},
     {file = "Shapely-1.7.1-cp38-cp38-win32.whl", hash = "sha256:a3774516c8a83abfd1ddffb8b6ec1b0935d7fe6ea0ff5c31a18bfdae567b4eba"},
     {file = "Shapely-1.7.1-cp38-cp38-win_amd64.whl", hash = "sha256:6593026cd3f5daaea12bcc51ae5c979318070fefee210e7990cb8ac2364e79a1"},
+    {file = "Shapely-1.7.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:617bf046a6861d7c6b44d2d9cb9e2311548638e684c2cd071d8945f24a926263"},
     {file = "Shapely-1.7.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:b40cc7bb089ae4aa9ddba1db900b4cd1bce3925d2a4b5837b639e49de054784f"},
     {file = "Shapely-1.7.1-cp39-cp39-win32.whl", hash = "sha256:2df5260d0f2983309776cb41bfa85c464ec07018d88c0ecfca23d40bfadae2f1"},
     {file = "Shapely-1.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:a5c3a50d823c192f32615a2a6920e8c046b09e07a58eba220407335a9cd2e8ea"},
@@ -4376,8 +4404,8 @@ stevedore = [
     {file = "stevedore-3.3.0.tar.gz", hash = "sha256:3a5bbd0652bf552748871eaa73a4a8dc2899786bc497a2aa1fcb4dcdb0debeee"},
 ]
 streamlit = [
-    {file = "streamlit-0.75.0-py2.py3-none-any.whl", hash = "sha256:3cc77f59a8f544e932841629cdd5869b5f9553a3e9259dbfe7d4c658f54e2036"},
-    {file = "streamlit-0.75.0.tar.gz", hash = "sha256:18802290e506251cf477897c8e0a045b1d66c4cb98a7d5bfabe242ba93325341"},
+    {file = "streamlit-0.76.0-py2.py3-none-any.whl", hash = "sha256:0c358fbfc4973b4008df4a77193323154d27673024c8ef4601b778785be6e86f"},
+    {file = "streamlit-0.76.0.tar.gz", hash = "sha256:e2209a878417a2416bb4a1bca37306490d15380f9d46b06ae8ef79e3dfd7308a"},
 ]
 streamlit-ace = [
     {file = "streamlit_ace-0.0.4-1-py3-none-any.whl", hash = "sha256:471acbeee755aa16d1b1b031eb413e6e2d8ac2208bf69bc9ff748660ffe2fbee"},
@@ -4388,6 +4416,10 @@ streamlit-ace = [
 streamlit-analytics = [
     {file = "streamlit-analytics-0.1.2.tar.gz", hash = "sha256:7576aeda0985e40762295e291b2c9f853f0e33c8e57bc6b54164ac861a1d9347"},
     {file = "streamlit_analytics-0.1.2-py3-none-any.whl", hash = "sha256:a18dfb6a3f528a9e98fb3d03fefff4f0ce851c4a1a4169ca8c759e4698d969a0"},
+]
+tabulate = [
+    {file = "tabulate-0.8.7-py3-none-any.whl", hash = "sha256:ac64cb76d53b1231d364babcd72abbb16855adac7de6665122f97b593f1eb2ba"},
+    {file = "tabulate-0.8.7.tar.gz", hash = "sha256:db2723a20d04bcda8522165c73eea7c300eda74e0ce852d9022e0159d7895007"},
 ]
 tensorboard = [
     {file = "tensorboard-2.4.1-py3-none-any.whl", hash = "sha256:7b8c53c396069b618f6f276ec94fc45d17e3282d668979216e5d30be472115e4"},

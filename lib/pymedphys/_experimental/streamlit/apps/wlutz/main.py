@@ -14,6 +14,11 @@
 
 
 import datetime
+from typing import List, Union, cast
+
+from typing_extensions import Literal
+
+Number = Union[float, int]
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import natsort
@@ -207,6 +212,10 @@ def main():
     if advanced_mode:
         st.write(database_table)
 
+    st.write("## Gantry and collimator angle filtering")
+    if st.checkbox("Only calculate at specific gantry angles"):
+        database_table = _angle_filtering(database_table)
+
     _calculation.calculations_ui(
         database_table,
         database_directory,
@@ -216,18 +225,148 @@ def main():
         advanced_mode,
     )
 
+    st.write("---")
+
     _presentation_of_results(wlutz_directory_by_date, advanced_mode)
+
+
+def _user_selected_angles(
+    name: Literal["gantry", "collimator"],
+    default_selection: List[Number],
+    default_tolerance: Number,
+):
+    capitalised_name = name.capitalize()
+    text_box_default = ", ".join(np.array(default_selection).astype(str))
+
+    st.write(f"### {capitalised_name} filtering")
+
+    angles = st.text_input(f"{capitalised_name} angles", text_box_default)
+    angles = np.array(angles.split(",")).astype(float).tolist()
+    st.write(f"`{angles}`")
+
+    tolerance = st.number_input(
+        f"{capitalised_name} angle tolerance", 0, None, default_tolerance
+    )
+
+    return angles, tolerance
+
+
+def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
+    gantry_column, collimator_column = st.beta_columns(2)
+
+    default_gantry_angles: List[Number] = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
+    default_collimator_angles: List[Number] = [-180, -90, 0, 90, 180]
+
+    angles = {}
+    for name, tolerance, column, default_angles in [
+        ("gantry", 10, gantry_column, default_gantry_angles),
+        ("collimator", 5, collimator_column, default_collimator_angles),
+    ]:
+        with column:
+            name = cast(Literal["gantry", "collimator"], name)
+            angles[name] = _user_selected_angles(name, default_angles, tolerance)
+
+    selected_gantry_angles = angles["gantry"][0]
+    gantry_angle_tolerance = angles["gantry"][1]
+
+    selected_collimator_angles = angles["collimator"][0]
+    collimator_angle_tolerance = angles["collimator"][1]
+
+    def _treatment_callback(_dataframe, _data, treatment: str):
+        st.write(f"#### {treatment}")
+
+    def _port_callback(
+        dataframe: pd.DataFrame,
+        collated_dataframes: List[pd.DataFrame],
+        _treatment,
+        port: str,
+    ):
+        st.write(f"##### {port}")
+
+        dataframes: List[pd.DataFrame] = []
+
+        for gantry_angle in selected_gantry_angles:
+            for collimator_angle in selected_collimator_angles:
+                mask = (
+                    (dataframe["gantry"] >= gantry_angle - gantry_angle_tolerance)
+                    & (dataframe["gantry"] <= gantry_angle + gantry_angle_tolerance)
+                    & (
+                        dataframe["collimator"]
+                        >= collimator_angle - collimator_angle_tolerance
+                    )
+                    & (
+                        dataframe["collimator"]
+                        <= collimator_angle + collimator_angle_tolerance
+                    )
+                )
+                masked = dataframe[mask]
+                if len(masked) == 0:
+                    continue
+
+                closest_gantry_angle_index = np.argmin(
+                    np.abs(masked["gantry"] - gantry_angle)
+                )
+                dataframes.append(masked.iloc[[closest_gantry_angle_index]])
+
+        concatenated_dataframes = pd.concat(dataframes, axis=0)
+
+        st.write(concatenated_dataframes[["gantry", "collimator"]])
+
+        collated_dataframes.append(concatenated_dataframes)
+
+    st.write(
+        """
+        ### Gantry and collimator angles selected per treatment and port
+
+        Select between -180 degrees and +180 degrees. Write the angles
+        you wish to select below separated by a comma (,).
+        """
+    )
+
+    collated_dataframes: List[pd.DataFrame] = []
+
+    _utilities.iterate_over_columns(
+        database_table,
+        data=collated_dataframes,
+        columns=["treatment", "port"],
+        callbacks=[_treatment_callback, _port_callback],
+    )
+
+    database_table = pd.concat(collated_dataframes, axis=0)
+
+    return database_table
 
 
 def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
+    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
 
     try:
         calculated_results = pd.read_csv(raw_results_csv_path, index_col=False)
     except FileNotFoundError:
         return
 
-    st.write("## Overview of Results")
+    st.write(
+        f"""
+        ## Overview of results already calculated
+
+        Here are the results loaded from the CSV file saved at:
+
+            {raw_results_csv_path.resolve()}
+
+        As calculations are undergone using the above they are added to
+        this file, which is then loaded to produce the following collated
+        plots and Excel overview file. The Excel overview file location
+        is saved at:
+
+            {wlutz_xlsx_filepath.resolve()}
+
+        You can also download that file by using the link at the bottom
+        of this page.
+
+        ---
+        """
+    )
 
     dataframe = calculated_results.sort_values("seconds_since_midnight")
     dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
@@ -236,8 +375,6 @@ def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
     st.write(statistics)
 
     _overview_figures(dataframe_by_algorithm)
-
-    wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     _excel.write_excel_overview(dataframe, statistics, wlutz_xlsx_filepath)
 
     if advanced_mode:
