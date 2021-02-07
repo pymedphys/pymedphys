@@ -131,9 +131,36 @@ def create_mock_treatment_fields(site_df=None):
     tx_fields = []
     for sit_set_id, site in site_df.iterrows():
         tx_fields += [
-            ("A", "FieldA", 1, "MU", 1, site["Pat_ID1"], sit_set_id),
-            ("B", "FieldB", 1, "MU", 1, site["Pat_ID1"], sit_set_id),
-            ("C", "FieldC", 1, "MU", 1, site["Pat_ID1"], sit_set_id),
+            (
+                "A",
+                "FieldA",
+                1,
+                "MU",
+                1,
+                site["Pat_ID1"],
+                sit_set_id,
+                pack(">Q", 1000),
+            ),
+            (
+                "B",
+                "FieldB",
+                1,
+                "MU",
+                1,
+                site["Pat_ID1"],
+                sit_set_id,
+                pack(">Q", 1002),
+            ),
+            (
+                "C",
+                "FieldC",
+                1,
+                "MU",
+                1,
+                site["Pat_ID1"],
+                sit_set_id,
+                pack(">Q", 1004),
+            ),
         ]
 
     # now create the tx_field dataframe
@@ -147,11 +174,19 @@ def create_mock_treatment_fields(site_df=None):
             "Type_Enum",
             "Pat_ID1",
             "SIT_SET_ID",
+            "RowVers",
         ],
     )
     txfield_df.index += 1
 
-    dataframe_to_sql(txfield_df, "TxField", index_label="FLD_ID")
+    dataframe_to_sql(
+        txfield_df,
+        "TxField",
+        index_label="FLD_ID",
+        dtype={
+            "RowVers": sqlalchemy.types.Timestamp(),
+        },
+    )
 
     txfieldpoints = []
     for fld_id, _ in txfield_df.iterrows():
@@ -166,6 +201,7 @@ def create_mock_treatment_fields(site_df=None):
                 0.0,
                 2.6,
                 4.2,
+                pack(">Q", 1008),
             ),
             (
                 fld_id,
@@ -177,6 +213,7 @@ def create_mock_treatment_fields(site_df=None):
                 90.0,
                 0.0,
                 4.2,
+                pack(">Q", 1008),
             ),
             (
                 fld_id,
@@ -188,6 +225,7 @@ def create_mock_treatment_fields(site_df=None):
                 180.0,
                 0.0,
                 4.2,
+                pack(">Q", 1008),
             ),
             (
                 fld_id,
@@ -199,6 +237,7 @@ def create_mock_treatment_fields(site_df=None):
                 270.0,
                 0.0,
                 4.2,
+                pack(">Q", 1008),
             ),
         ]
 
@@ -230,6 +269,7 @@ def create_mock_treatment_fields(site_df=None):
             "Coll_Ang": sqlalchemy.types.Numeric(precision=4, scale=1),
             "Coll_Y1": sqlalchemy.types.Numeric(precision=4, scale=1),
             "Coll_Y2": sqlalchemy.types.Numeric(precision=4, scale=1),
+            "RowVers": sqlalchemy.types.Timestamp(),
         },
     )
 
