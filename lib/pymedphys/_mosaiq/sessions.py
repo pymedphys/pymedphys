@@ -34,8 +34,7 @@ def cluster_sessions(tx_datetimes, interval=timedelta(hours=3)):
     Examples
     --------
     >>> from datetime import datetime, timedelta
-    >>> test_datetimes = [datetime(2019, 12, 19) + timedelta(hours=h*5 + j)
-                    for h in range(3) for j in range(3)]
+    >>> test_datetimes = [datetime(2019, 12, 19) + timedelta(hours=h*5 + j) for h in range(3) for j in range(3)]
     >>> list(cluster_sessions(test_datetimes))
     [(1,
     datetime.datetime(2019, 12, 19, 0, 0),
