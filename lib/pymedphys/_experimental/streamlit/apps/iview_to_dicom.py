@@ -147,6 +147,8 @@ def _create_portal_image_dicom_dataset(
     date = datetime.strftime("%Y%m%d")
     time = datetime.strftime("%H%M%S.%f")
 
+    # Many of the below was input without a full understanding of the
+    # implications of the choices being made.
     ds = _pp_dcm_create.dicom_dataset_from_dict(
         {
             "Modality": "RTIMAGE",
