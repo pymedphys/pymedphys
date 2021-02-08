@@ -73,20 +73,20 @@ def main():
         # st.write(planned)
         # st.write(delivered_this_week)
         st.header(
-            delivered_this_week.iloc[0]["first_name"]
+            delivered_this_week.loc[0, "first_name"]
             + " "
-            + delivered_this_week.iloc[0]["last_name"]
+            + delivered_this_week.loc[0, "last_name"]
         )
 
         delivered_this_week["rx_change"] = 0
         for field in range(0, len(delivered_this_week)):
-            if delivered_this_week.iloc[field]["site_version"] != 0:
-                delivered_this_week.iloc[field]["rx_change"] = 1
+            if delivered_this_week.loc[field, "site_version"] != 0:
+                delivered_this_week.loc[field, "rx_change"] = 1
 
         delivered_this_week["site_setup_change"] = 0
         for field in range(0, len(delivered_this_week)):
-            if delivered_this_week.iloc[field]["site_setup_version"] != 0:
-                delivered_this_week.iloc[field]["site_setup_change"] = 1
+            if delivered_this_week.loc[field, "site_setup_version"] != 0:
+                delivered_this_week.loc[field, "site_setup_change"] = 1
 
         st.table(
             delivered_this_week[

@@ -83,14 +83,14 @@ def main():
             st.stop()
 
         # Using MRN from RP file, find patient in MOSAIQ and perform query
-        mrn = dicom_table.iloc[0]["mrn"]
+        mrn = dicom_table.loc[0, "mrn"]
 
         mosaiq_table = get_all_treatment_data(connection, mrn)
 
-        if mosaiq_table.iloc[0]["create_id"] is not None:
+        if mosaiq_table.loc[0, "create_id"] is not None:
             try:
                 site_initials = get_staff_initials(
-                    connection, str(int(mosaiq_table.iloc[0]["create_id"]))
+                    connection, str(int(mosaiq_table.loc[0, "create_id"]))
                 )
             except (TypeError, ValueError, AttributeError):
                 site_initials = ""
@@ -111,30 +111,28 @@ def main():
         ####################################################################################################################
         # Verify general patient information between the two systems (name, MRN, DOB)
         st.subheader("Patient:")
-        name = (
-            dicom_table.iloc[0]["first_name"] + " " + dicom_table.iloc[0]["last_name"]
-        )
+        name = dicom_table.loc[0, "first_name"] + " " + dicom_table.loc[0, "last_name"]
 
         # Compare name between DICOM and MOSAIQ and write results
         if (
             name
-            == mosaiq_table.iloc[0]["first_name"]
+            == mosaiq_table.loc[0, "first_name"]
             + " "
-            + mosaiq_table.iloc[0]["last_name"]
+            + mosaiq_table.loc[0, "last_name"]
         ):
             st.success("Name: " + name)
         else:
             st.error("Name: " + name)
 
         # Compare MRN between DICOM and MOSAIQ and write results
-        if mrn == mosaiq_table.iloc[0]["mrn"]:
+        if mrn == mosaiq_table.loc[0, "mrn"]:
             st.success("MRN: " + mrn)
         else:
             st.error("MRN: " + mrn)
 
         # Format DOB and compare between DICOM and MOSAIQ and write results
-        DOB = str(mosaiq_table.iloc[0]["dob"])[0:10]
-        dicom_DOB = dicom_table.iloc[0]["dob"]
+        DOB = str(mosaiq_table.loc[0, "dob"])[0:10]
+        dicom_DOB = dicom_table.loc[0, "dob"]
         if DOB == dicom_DOB[0:4] + "-" + dicom_DOB[4:6] + "-" + dicom_DOB[6:8]:
             st.success("DOB: " + DOB)
         else:
@@ -145,16 +143,16 @@ def main():
         st.subheader("Approval Status:")
 
         # Check site setup approval
-        if all(i == 5 for i in mosaiq_table.iloc[:]["site_setup_status"]):
+        if all(i == 5 for i in mosaiq_table.loc[:, "site_setup_status"]):
             st.success("Site Setup Approved")
         else:
-            for i in mosaiq_table.iloc[:]["site_setup_status"]:
+            for i in mosaiq_table.loc[:, "site_setup_status"]:
                 if i != 5:
                     st.error("Site Setup " + SITE_CONSTANTS[i])
                     break
 
         # Check site approval
-        if all(i == 5 for i in mosaiq_table.iloc[:]["site_status"]):
+        if all(i == 5 for i in mosaiq_table.loc[:, "site_status"]):
             st.success("RX Approved by " + str(site_initials[0][0]))
         else:
             st.error("RX Approval Pending")
@@ -164,9 +162,9 @@ def main():
 
         # Create a list of all the fields within the DICOM RP file
         index = []
-        for j in dicom_table.iloc[:]["field_label"]:
+        for j in dicom_table.loc[:, "field_label"]:
             for i in range(len(mosaiq_table)):
-                if mosaiq_table.iloc[i]["field_label"] == j:
+                if mosaiq_table.loc[i, "field_label"] == j:
                     index.append(i)
 
         # Create a list of indices which contain fields not within the RP file
