@@ -23,6 +23,7 @@ import requests
 import sqlalchemy
 import streamlit_ace
 import streamlit_analytics
+import tabulate
 import timeago
 import toml
 import tomlkit
@@ -73,6 +74,7 @@ import streamlit
 import streamlit.bootstrap
 import streamlit.cli
 import streamlit.config
+import streamlit.report_session
 import streamlit.server
 import streamlit.server.server
 import streamlit.server.server_util
