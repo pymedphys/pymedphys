@@ -192,7 +192,6 @@ def _create_portal_image_dicom_dataset(
             "ImagePlanePixelSpacing": [pixel_spacing, pixel_spacing],
         }
     )
-    file_meta = pydicom.dataset.FileMetaDataset()
-    ds.file_meta = file_meta
+    ds.file_meta = pydicom.dataset.FileMetaDataset()
 
     return ds
