@@ -5,6 +5,7 @@ from . import (
     download,
     electrons,
     icom,
+    iview_to_dicom,
     iviewdb,
     sum_doses,
     transfer_check,
