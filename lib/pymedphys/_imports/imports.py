@@ -76,6 +76,7 @@ import streamlit
 import streamlit.bootstrap
 import streamlit.cli
 import streamlit.config
+import streamlit.report_session
 import streamlit.server
 import streamlit.server.server
 import streamlit.server.server_util

@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import pathlib
 
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
@@ -27,10 +29,38 @@ THIS = pathlib.Path(__file__).resolve()
 
 def main():
     st.write(
-        "This is a demo Streamlit app showing how to use the `download()` function"
+        "This is a demo Streamlit app showing how to use the "
+        "`download` function. The docstring for the "
+        "`download` function is as follows:"
     )
 
-    filename = THIS.name
-    filepath = THIS
+    st.code(download.__doc__)
 
-    download(filename, filepath)
+    st.write("## Example uses of `download`")
+
+    st.write("### Download this very Python file")
+
+    with open(THIS) as f:
+        download(THIS.name, f.read())
+
+    st.write("### Download a text file")
+    download("a_text_file.txt", "Some beautiful text!")
+
+    st.write("### Download a matplotlib figure")
+    left, right = st.beta_columns(2)
+
+    fig, ax = plt.subplots()
+    ax.plot([-1, 0, 1], [1, -1, 1])
+
+    with left:
+        st.pyplot(fig)
+
+    with right:
+        _download_figure("plot.png", fig)
+
+
+def _download_figure(name, fig):
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format=name.split(".")[-1])
+    buffer.seek(0)
+    download(name, buffer.read())
