@@ -153,7 +153,13 @@ def _create_portal_image_dicom_dataset(
             "InstanceCreatorUID": PYMEDPHYS_ROOT_UID,
             "SOPClassUID": "1.2.840.10008.5.1.4.1.1.481.1",
             "SOPInstanceUID": pydicom.uid.generate_uid(prefix=PYMEDPHYS_ROOT_UID),
-            "ImageType": ["DERIVED", "SECONDARY", "PORTAL"],
+            # From <https://dicom.innolitics.com/ciods/cr-image/general-image/00080008>
+            #
+            # * is the image an ORIGINAL Image; an image whose pixel
+            #   values are based on original or source data
+            # * is the image a SECONDARY Image; an image created after
+            #   the initial patient examination
+            "ImageType": ["ORIGINAL", "SECONDARY", "PORTAL"],
             "PatientID": patient_id,
             "PatientName": patient_name,
             "AcquisitionDate": date,
