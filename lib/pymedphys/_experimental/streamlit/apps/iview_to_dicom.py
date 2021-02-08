@@ -27,13 +27,14 @@ TITLE = "iView to DICOM"
 
 
 def main():
+    st.write("Hello World!")
     config = st_config.get_config()
 
     (
-        database_table,
-        database_directory,
-        qa_directory,
-        selected_date,
+        _,  # database_table,
+        _,  # database_directory,
+        _,  # qa_directory,
+        _,  # selected_date,
     ) = iview_ui.iview_and_icom_filter_and_align(
         config, advanced_mode=False, filter_angles_by_default=True
     )
