@@ -184,7 +184,7 @@ def create_mock_treatment_fields(site_df=None):
         "TxField",
         index_label="FLD_ID",
         dtype={
-            "RowVers": sqlalchemy.types.Timestamp(),
+            "RowVers": sqlalchemy.types.BINARY(length=8),
         },
     )
 
@@ -213,7 +213,7 @@ def create_mock_treatment_fields(site_df=None):
                 90.0,
                 0.0,
                 4.2,
-                pack(">Q", 1008),
+                pack(">Q", 1012),
             ),
             (
                 fld_id,
@@ -225,7 +225,7 @@ def create_mock_treatment_fields(site_df=None):
                 180.0,
                 0.0,
                 4.2,
-                pack(">Q", 1008),
+                pack(">Q", 1014),
             ),
             (
                 fld_id,
@@ -237,7 +237,7 @@ def create_mock_treatment_fields(site_df=None):
                 270.0,
                 0.0,
                 4.2,
-                pack(">Q", 1008),
+                pack(">Q", 1015),
             ),
         ]
 
@@ -253,6 +253,7 @@ def create_mock_treatment_fields(site_df=None):
             "Coll_Ang",
             "Coll_Y1",
             "Coll_Y2",
+            "RowVers",
         ],
     )
     txfieldpoints_df.index += 1
@@ -269,7 +270,7 @@ def create_mock_treatment_fields(site_df=None):
             "Coll_Ang": sqlalchemy.types.Numeric(precision=4, scale=1),
             "Coll_Y1": sqlalchemy.types.Numeric(precision=4, scale=1),
             "Coll_Y2": sqlalchemy.types.Numeric(precision=4, scale=1),
-            "RowVers": sqlalchemy.types.Timestamp(),
+            "RowVers": sqlalchemy.types.BINARY(length=8),
         },
     )
 
