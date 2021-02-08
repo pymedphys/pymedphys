@@ -16,11 +16,13 @@
 # It is understood that we are stepping into 'private' API usage here
 # pylint: disable = protected-access
 
+import pathlib
 import uuid
+from typing import BinaryIO, Union
 
 from pymedphys._imports import streamlit as st
 
-SessionID = uuid.UUID
+File = Union[pathlib.Path, str, BinaryIO]
 
 
 class SessionState:
@@ -36,23 +38,29 @@ class SessionState:
                 setattr(self, key, val)
 
 
-def get_session_id() -> SessionID:
+def get_session_id() -> uuid.UUID:
     ctx = st.report_thread.get_report_ctx()
-    session_id: SessionID = ctx.session_id
+    session_id: uuid.UUID = ctx.session_id
 
     return session_id
 
 
-def get_session():
-    session_id = get_session_id()
-    return st.server.server.Server.get_current()._get_session_info(session_id).session
+def get_session(session_id: uuid.UUID = None) -> "st.report_session.ReportSession":
+    if session_id is None:
+        session_id = get_session_id()
+
+    report_session: st.report_session.ReportSession = (
+        st.server.server.Server.get_current()._get_session_info(session_id).session
+    )
+    return report_session
 
 
 def session_state(**state):
     session = get_session()
-    if hasattr(session, "_custom_session_state"):
+
+    try:
         session._custom_session_state.update(state)
-    else:
+    except AttributeError:
         session._custom_session_state = SessionState(state)
 
     return session._custom_session_state
