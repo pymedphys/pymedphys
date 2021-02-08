@@ -214,7 +214,7 @@ _DBF_DATABASE_LOADING_CONFIG = {
     },
     "patient": {
         "filename": "PATIENT.dbf",
-        "columns_to_keep": ["DBID", "ID", "LAST_NAME", "FIRST_NAME", "MID_NAME"],
+        "columns_to_keep": ["DBID", "ID", "LAST_NAME", "FIRST_NAME"],
         "column_rename_map": {"DBID": "PAT_DBID", "ID": "patient_id"},
     },
 }
