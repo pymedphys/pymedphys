@@ -184,7 +184,7 @@ def iview_and_icom_filter_and_align(
         "Filter to specific gantry and collimator angles",
         value=filter_angles_by_default,
     ):
-        database_table = _angle_filtering(database_table)
+        database_table = _angle_filtering(database_table, advanced_mode)
 
     return database_table, database_directory, qa_directory, selected_date
 
@@ -228,7 +228,19 @@ def _table_transfer_via_interpolation(source, location, key):
     location[key] = interpolation(location["seconds_since_midnight"])
 
 
-def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
+def _angle_filtering(
+    database_table: "pd.DataFrame", advanced_mode: bool
+) -> "pd.DataFrame":
+
+    st.write(
+        """
+        ### Angle filtering definitions
+
+        Select between `-180` degrees and `+180` degrees. Write the
+        angles you wish to select below separated by a comma (`,`).
+        """
+    )
+
     gantry_column, collimator_column = st.beta_columns(2)
 
     default_gantry_angles: List[Number] = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
@@ -241,7 +253,9 @@ def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
     ]:
         with column:
             name = cast(Literal["gantry", "collimator"], name)
-            angles[name] = _user_selected_angles(name, default_angles, tolerance)
+            angles[name] = _user_selected_angles(
+                name, default_angles, tolerance, advanced_mode
+            )
 
     selected_gantry_angles = angles["gantry"][0]
     gantry_angle_tolerance = angles["gantry"][1]
@@ -250,7 +264,8 @@ def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
     collimator_angle_tolerance = angles["collimator"][1]
 
     def _treatment_callback(_dataframe, _data, treatment: str):
-        st.write(f"#### {treatment}")
+        if advanced_mode:
+            st.write(f"#### {treatment}")
 
     def _port_callback(
         dataframe: pd.DataFrame,
@@ -288,19 +303,18 @@ def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
 
         concatenated_dataframes = pd.concat(dataframes, axis=0)
 
-        st.write(f"##### {port}")
-        st.write(concatenated_dataframes[["gantry", "collimator"]])
+        if advanced_mode:
+            st.write(f"##### {port}")
+            st.write(concatenated_dataframes[["gantry", "collimator"]])
 
         collated_dataframes.append(concatenated_dataframes)
 
-    st.write(
-        """
-        ### Gantry and collimator angles selected per treatment and port
-
-        Select between -180 degrees and +180 degrees. Write the angles
-        you wish to select below separated by a comma (,).
-        """
-    )
+    if advanced_mode:
+        st.write(
+            """
+            ### Gantry and collimator angles selected per treatment and port
+            """
+        )
 
     collated_dataframes: List[pd.DataFrame] = []
 
@@ -324,15 +338,17 @@ def _user_selected_angles(
     name: Literal["gantry", "collimator"],
     default_selection: List[Number],
     default_tolerance: Number,
+    advanced_mode,
 ):
     capitalised_name = name.capitalize()
     text_box_default = ", ".join(np.array(default_selection).astype(str))
 
-    st.write(f"### {capitalised_name} filtering")
+    st.write(f"#### {capitalised_name} filtering")
 
     angles = st.text_input(f"{capitalised_name} angles", text_box_default)
     angles = np.array(angles.split(",")).astype(float).tolist()
-    st.write(f"`{angles}`")
+    if advanced_mode:
+        st.write(f"`{angles}`")
 
     tolerance = st.number_input(
         f"{capitalised_name} angle tolerance", 0, None, default_tolerance
