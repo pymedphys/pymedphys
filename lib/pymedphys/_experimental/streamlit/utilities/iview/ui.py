@@ -49,9 +49,14 @@ def iview_and_icom_filter_and_align(
     icom_patients_directory = icom_directory.joinpath("patients")
 
     database_table = _get_user_image_set_selection(database_table, advanced_mode)
+    # if advanced_mode:
+    #     st.write(database_table)
+
     database_table = _load_image_frame_database(
         database_directory, database_table, refresh_cache, advanced_mode
     )
+    # if advanced_mode:
+    #     st.write(database_table)
 
     filepaths_to_load, offset_to_apply = _sync.icom_iview_timestamp_alignment(
         database_table,

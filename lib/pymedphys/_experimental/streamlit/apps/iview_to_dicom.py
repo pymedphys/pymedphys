@@ -34,6 +34,7 @@ TITLE = "iView to DICOM"
 
 def main():
     config = st_config.get_config()
+    advanced_mode = st.sidebar.checkbox("Advanced Mode")
 
     (
         database_table,
@@ -41,8 +42,10 @@ def main():
         _,  # qa_directory,
         _,  # selected_date,
     ) = iview_ui.iview_and_icom_filter_and_align(
-        config, advanced_mode=False, filter_angles_by_default=True
+        config, advanced_mode=advanced_mode, filter_angles_by_default=True
     )
+
+    st.write(database_table)
 
     if not st.button("Create DICOM files"):
         st.stop()
@@ -55,11 +58,6 @@ def main():
 
     dicom_datasets = []
     for i, (_, row) in enumerate(database_table.iterrows()):
-        full_image_path = database_directory.joinpath(row["filepath"])
-        gantry = bipolar_to_IEC(row["gantry"])
-        collimator = bipolar_to_IEC(row["collimator"])
-        table = bipolar_to_IEC(row["turn_table"])
-
         file_name = (
             f"{row['treatment']}_{row['port']}_"
             f"{row['datetime'].strftime('%Y%m%d%H%M%S')}_"
@@ -67,8 +65,20 @@ def main():
         )
         status_text.write(f"`{file_name}`")
 
+        full_image_path = database_directory.joinpath(row["filepath"])
+        gantry = bipolar_to_IEC(row["gantry"])
+        collimator = bipolar_to_IEC(row["collimator"])
+        table = bipolar_to_IEC(row["turn_table"])
+        patient_name = f"{row['LAST_NAME']}^{row['FIRST_NAME']}"
+
         dicom_iview_image_dataset = _create_portal_image_dicom_dataset(
-            gantry, collimator, table, full_image_path
+            patient_name,
+            row["patient_id"],
+            row["datetime"],
+            gantry,
+            collimator,
+            table,
+            full_image_path,
         )
 
         dicom_datasets.append((file_name, dicom_iview_image_dataset))
@@ -97,7 +107,13 @@ def bipolar_to_IEC(bipolar_angle):
 
 
 def _create_portal_image_dicom_dataset(
-    gantry_angle, collimator_angle, table_angle, image_path
+    patient_name,
+    patient_id,
+    datetime,
+    gantry_angle,
+    collimator_angle,
+    table_angle,
+    image_path,
 ):
     """Don't intend this DICOM file to be compliant to the spec.
 
@@ -128,20 +144,45 @@ def _create_portal_image_dicom_dataset(
 
     pixel_spacing = 1 / pixels_per_mm * sid / sad
 
+    date = datetime.strftime("%Y%m%d")
+    time = datetime.strftime("%H%M%S.%f")
+
     ds = _pp_dcm_create.dicom_dataset_from_dict(
         {
             "Modality": "RTIMAGE",
+            "InstanceCreatorUID": PYMEDPHYS_ROOT_UID,
             "SOPClassUID": "1.2.840.10008.5.1.4.1.1.481.1",
             "SOPInstanceUID": pydicom.uid.generate_uid(prefix=PYMEDPHYS_ROOT_UID),
             "ImageType": ["DERIVED", "SECONDARY", "PORTAL"],
+            "PatientID": patient_id,
+            "PatientName": patient_name,
+            "AcquisitionDate": date,
+            "ContentDate": date,
+            "AcquisitionTime": time,
+            "ContentTime": time,
             "Rows": pixel_array.shape[0],
             "Columns": pixel_array.shape[1],
             "GantryAngle": gantry_angle,
+            # Not correct, there may have been many images in this acquisition
+            "ImagesInAcquisition": 1,
+            "PatientOrientation": "",
+            "SamplesPerPixel": 1,
+            "PhotometricInterpretation": "MONOCHROME2",
             "BeamLimitingDeviceAngle": collimator_angle,
+            # Can be implemented in general
+            "BitsAllocated": 16,
+            "BitsStored": 16,
+            "HighBit": 15,
+            "RTImageLabel": "",
+            "RTImagePlane": "NORMAL",
+            "PixelRepresentation": 0,
+            "XRayImageReceptorAngle": 0.0,
+            "RTImagePosition": None,
             "PatientSupportAngle": table_angle,
             "PixelData": pixel_array.tobytes(),
             "RadiationMachineSAD": sad,
             "RTImageSID": sid,
+            "PrimaryDosimeterUnit": "",
             "ImagePlanePixelSpacing": [pixel_spacing, pixel_spacing],
         }
     )
