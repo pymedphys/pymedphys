@@ -33,7 +33,6 @@ TITLE = "iView to DICOM"
 
 
 def main():
-    st.write("Hello World!")
     config = st_config.get_config()
 
     (
