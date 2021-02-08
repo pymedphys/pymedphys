@@ -162,6 +162,10 @@ def _create_portal_image_dicom_dataset(
             # * is the image a SECONDARY Image; an image created after
             #   the initial patient examination
             "ImageType": ["ORIGINAL", "SECONDARY", "PORTAL"],
+            # Purposefully avoided all concepts of 'Study' if possible
+            # as this would require appropriately grouping the images
+            # from each field. Certainly doable, and arguably it should
+            # be done, but out of scope for the current task.
             "PatientID": patient_id,
             "PatientName": patient_name,
             "AcquisitionDate": date,
