@@ -19,7 +19,7 @@
 import functools
 import logging
 import struct
-from pprint import pprint
+from pprint import pformat
 
 from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
@@ -261,24 +261,23 @@ def delivery_data_sql(connection, field_id, include_rowvers=False):
     """
     txfield_results = api.execute(
         connection,
-        """
+        f"""
         SELECT
             TxField.Meterset
-            %(rowvers_clause)s
+            {',TxField.RowVers' if include_rowvers else ''}
         FROM TxField
         WHERE
             TxField.FLD_ID = %(field_id)s
         """,
         {
             "field_id": field_id,
-            "rowvers_clause": ",TxField.RowVers" if include_rowvers else "",
         },
     )
 
     txfieldpoint_results = np.array(
         api.execute(
             connection,
-            """
+            f"""
         SELECT
             TxFieldPoint.[Index],
             TxFieldPoint.A_Leaf_Set,
@@ -287,17 +286,14 @@ def delivery_data_sql(connection, field_id, include_rowvers=False):
             TxFieldPoint.Coll_Ang,
             TxFieldPoint.Coll_Y1,
             TxFieldPoint.Coll_Y2
-            %(rowvers_clause)s
+            {',TxFieldPoint.RowVers' if include_rowvers else ''}
         FROM TxFieldPoint
         WHERE
             TxFieldPoint.FLD_ID = %(field_id)s
         ORDER BY
             TxFieldPoint.Point
         """,
-            {
-                "field_id": field_id,
-                "rowvers_clause": ",TxFieldPoint.RowVers" if include_rowvers else "",
-            },
+            {"field_id": field_id},
         )
     )
 
@@ -331,10 +327,10 @@ def fetch_and_verify_mosaiq_sql(connection, field_id):
             logger = logging.getLogger("mosaiq_delivery_data_sql")
             logger.error("Mismatch of delivery_data_sql results:")
 
-            logger.error(pprint.pformat(reference_txfield_results))
-            logger.error(pprint.pformat(test_txfield_results))
-            logger.error(pprint.pformat(reference_txfieldpoint_results))
-            logger.error(pprint.pformat(test_txfieldpoint_results))
+            logger.error(pformat(reference_txfield_results))
+            logger.error(pformat(test_txfield_results))
+            logger.error(pformat(reference_txfieldpoint_results))
+            logger.error(pformat(test_txfieldpoint_results))
 
             print("Trying again...")
             reference_txfield_results = test_txfield_results
