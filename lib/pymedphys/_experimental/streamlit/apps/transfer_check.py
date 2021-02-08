@@ -36,6 +36,188 @@ CATEGORY = categories.PRE_ALPHA
 TITLE = "Pre-Treatment Data Transfer Check"
 
 
+def get_patient_files():
+    dicomFiles = st.file_uploader(
+        "Please select a RP file.", accept_multiple_files=True
+    )
+
+    files = {}
+    for dicomFile in dicomFiles:
+        name = dicomFile.name
+        if "RP" in name:
+            files["rp"] = dicomFile
+        elif "RD" in name:
+            files["rd"] = dicomFile
+        elif "RS" in name:
+            files["rs"] = dicomFile
+        elif "CT" in name:
+            files["ct"] = dicomFile
+        else:
+            continue
+    return files
+
+
+def limit_mosaiq_info_to_current_versions(mosaiq_treatment_info):
+    mosaiq_treatment_info = mosaiq_treatment_info[
+        (mosaiq_treatment_info["site_version"] == 0)
+        & (mosaiq_treatment_info["site_setup_version"] == 0)
+        & (mosaiq_treatment_info["field_version"] == 0)
+    ]
+
+    mosaiq_treatment_info = mosaiq_treatment_info.reset_index(drop=True)
+    return mosaiq_treatment_info
+
+
+def verify_basic_patient_info(dicom_table, mosaiq_table, mrn):
+    st.subheader("Patient:")
+    dicom_name = (
+        dicom_table.loc[0, "first_name"] + " " + dicom_table.loc[0, "last_name"]
+    )
+    mosaiq_name = (
+        mosaiq_table.loc[0, "first_name"] + " " + mosaiq_table.loc[0, "last_name"]
+    )
+
+    if dicom_name == mosaiq_name:
+        st.success("Name: " + dicom_name)
+    else:
+        st.error("Name: " + dicom_name)
+
+    if mrn == mosaiq_table.loc[0, "mrn"]:
+        st.success("MRN: " + mrn)
+    else:
+        st.error("MRN: " + mrn)
+
+    DOB = str(mosaiq_table.loc[0, "dob"])[0:10]
+    dicom_DOB = dicom_table.loc[0, "dob"]
+    if DOB == dicom_DOB[0:4] + "-" + dicom_DOB[4:6] + "-" + dicom_DOB[6:8]:
+        st.success("DOB: " + DOB)
+    else:
+        st.error("DOB: " + DOB)
+
+    return
+
+
+def check_site_approval(mosaiq_table, connection):
+    st.subheader("Approval Status:")
+
+    if mosaiq_table.loc[0, "create_id"] is not None:
+        try:
+            site_initials = get_staff_initials(
+                connection, str(int(mosaiq_table.loc[0, "create_id"]))
+            )
+        except (TypeError, ValueError, AttributeError):
+            site_initials = ""
+
+    # Check site setup approval
+    if all(i == 5 for i in mosaiq_table.loc[:, "site_setup_status"]):
+        st.success("Site Setup Approved")
+    else:
+        for i in mosaiq_table.loc[:, "site_setup_status"]:
+            if i != 5:
+                st.error("Site Setup " + SITE_CONSTANTS[i])
+                break
+
+    # Check site approval
+    if all(i == 5 for i in mosaiq_table.loc[:, "site_status"]):
+        st.success("RX Approved by " + str(site_initials[0][0]))
+    else:
+        st.error("RX Approval Pending")
+
+    return
+
+
+def drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table):
+    index = []
+    for j in dicom_table.loc[:, "field_label"]:
+        for i in range(len(mosaiq_table)):
+            if mosaiq_table.loc[i, "field_label"] == j:
+                index.append(i)
+
+    # Create a list of indices which contain fields not within the RP file
+    remove = []
+    for i in mosaiq_table.iloc[:].index:
+        if i not in index:
+            remove.append(i)
+
+    # Drop all indices in the remove list to get rid of fields irrelevant for this comparison
+    mosaiq_table = mosaiq_table.drop(remove)
+    mosaiq_table = mosaiq_table.sort_index(axis=1)
+    mosaiq_table = mosaiq_table.sort_values(by=["field_label"])
+
+    return mosaiq_table
+
+
+def select_field_for_comparison(dicom_table, mosaiq_table):
+    rx_selection = st.radio("Select RX: ", mosaiq_table.site.unique())
+    rx_fields = mosaiq_table[mosaiq_table["site"] == rx_selection]["field_name"].values
+
+    # create a radio selection of fields to compare, only fields within selected rx appear as choices
+    field_selection = st.radio("Select field to compare:", rx_fields)
+    selected_label = mosaiq_table[mosaiq_table["field_name"] == field_selection][
+        "field_label"
+    ]
+    dicom_field_selection = dicom_table[
+        dicom_table["field_label"] == selected_label.values[0]
+    ]["field_name"].values[0]
+
+    return field_selection, selected_label, dicom_field_selection
+
+
+def check_for_field_approval(mosaiq_table, field_selection, connection):
+    try:
+        field_approval_id = mosaiq_table[mosaiq_table["field_name"] == field_selection][
+            "field_approval"
+        ]
+
+        field_approval_initials = get_staff_initials(
+            connection, str(int(field_approval_id.iloc[0]))
+        )
+        st.write("**Field Approved by: **", field_approval_initials[0][0])
+    except (TypeError, ValueError, AttributeError):
+        st.write("This field is not approved.")
+
+    return
+
+
+def show_fx_pattern_and_comments(mosaiq_table, field_selection):
+    fx_pattern = mosaiq_table[mosaiq_table["field_name"] == field_selection][
+        "fraction_pattern"
+    ]
+    st.write("**FX Pattern**: ", fx_pattern.iloc[0])
+
+    # Extract and write comments from MOSAIQ for the specific field
+    comments = mosaiq_table[mosaiq_table["field_name"] == field_selection]["notes"]
+    st.write("**Comments**: ", comments.iloc[0])
+
+    return
+
+
+def show_field_rx(dicom_table, selected_label):
+    st.write(
+        "**RX**: ",
+        dicom_table[dicom_table["field_label"] == selected_label.values[0]][
+            "rx"
+        ].values[0],
+    )
+
+    return
+
+
+def show_comparison_of_selected_fields(dicom_field_selection, results):
+    dicom_field = str(dicom_field_selection) + "_DICOM"
+    mosaiq_field = str(dicom_field_selection) + "_MOSAIQ"
+    display_results = results[[dicom_field, mosaiq_field]]
+
+    display_results = display_results.drop(
+        ["dob", "first_name", "last_name", "mrn"], axis=0
+    )
+
+    display_results = display_results.style.apply(colour_results, axis=1)
+    st.dataframe(display_results.set_precision(2), height=1000)
+
+    return
+
+
 def main():
     server = "PRDMOSAIQIWVV01.utmsa.local"
     connection = get_cached_mosaiq_connection(server)
@@ -51,30 +233,10 @@ def main():
     """
     )
 
-    # Select patient DICOM files for pre-treatment check. Multiple files can be selected.
-    dicomFiles = st.file_uploader(
-        "Please select a RP file.", accept_multiple_files=True
-    )
+    files = get_patient_files()
 
-    # Create a structure to identify different types of DICOM files.
-    files = {}
-    for dicomFile in dicomFiles:
-        name = dicomFile.name
-        if "RP" in name:
-            files["rp"] = dicomFile
-        elif "RD" in name:
-            files["rd"] = dicomFile
-        elif "RS" in name:
-            files["rs"] = dicomFile
-        elif "CT" in name:
-            files["ct"] = dicomFile
-        else:
-            continue
-
-    # If an RP was selected, get plan information from both systems
     if "rp" in files:
 
-        # Create a dataframe of plan information from DICOM RP file
         try:
             dicom_table = get_all_dicom_treatment_info(files["rp"])
             dicom_table = dicom_table.sort_values(["field_label"])
@@ -82,171 +244,32 @@ def main():
             st.write("Please select a new RP file.")
             st.stop()
 
-        # Using MRN from RP file, find patient in MOSAIQ and perform query
         mrn = dicom_table.loc[0, "mrn"]
-
         mosaiq_table = get_all_treatment_data(connection, mrn)
+        mosaiq_table = drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table)
+        mosaiq_table = limit_mosaiq_info_to_current_versions(mosaiq_table)
 
-        if mosaiq_table.loc[0, "create_id"] is not None:
-            try:
-                site_initials = get_staff_initials(
-                    connection, str(int(mosaiq_table.loc[0, "create_id"]))
-                )
-            except (TypeError, ValueError, AttributeError):
-                site_initials = ""
-
-        # Limit MOSAIQ results to only the most current site and field versions for comparison
-        mosaiq_table = mosaiq_table[
-            (mosaiq_table["site_version"] == 0)
-            & (mosaiq_table["site_setup_version"] == 0)
-            & (mosaiq_table["field_version"] == 0)
-        ]
-
-        # Reset index and assign tolerance labels
-        mosaiq_table = mosaiq_table.reset_index(drop=True)
         mosaiq_table["tolerance"] = [
             TOLERANCE_TYPES[item] for item in mosaiq_table["tolerance"]
         ]
 
-        ####################################################################################################################
-        # Verify general patient information between the two systems (name, MRN, DOB)
-        st.subheader("Patient:")
-        name = dicom_table.loc[0, "first_name"] + " " + dicom_table.loc[0, "last_name"]
+        verify_basic_patient_info(dicom_table, mosaiq_table, mrn)
+        check_site_approval(mosaiq_table, connection)
 
-        # Compare name between DICOM and MOSAIQ and write results
-        if (
-            name
-            == mosaiq_table.loc[0, "first_name"]
-            + " "
-            + mosaiq_table.loc[0, "last_name"]
-        ):
-            st.success("Name: " + name)
-        else:
-            st.error("Name: " + name)
-
-        # Compare MRN between DICOM and MOSAIQ and write results
-        if mrn == mosaiq_table.loc[0, "mrn"]:
-            st.success("MRN: " + mrn)
-        else:
-            st.error("MRN: " + mrn)
-
-        # Format DOB and compare between DICOM and MOSAIQ and write results
-        DOB = str(mosaiq_table.loc[0, "dob"])[0:10]
-        dicom_DOB = dicom_table.loc[0, "dob"]
-        if DOB == dicom_DOB[0:4] + "-" + dicom_DOB[4:6] + "-" + dicom_DOB[6:8]:
-            st.success("DOB: " + DOB)
-        else:
-            st.error("DOB: " + DOB)
-
-        ####################################################################################################################
-        # Section for checking approval statuses
-        st.subheader("Approval Status:")
-
-        # Check site setup approval
-        if all(i == 5 for i in mosaiq_table.loc[:, "site_setup_status"]):
-            st.success("Site Setup Approved")
-        else:
-            for i in mosaiq_table.loc[:, "site_setup_status"]:
-                if i != 5:
-                    st.error("Site Setup " + SITE_CONSTANTS[i])
-                    break
-
-        # Check site approval
-        if all(i == 5 for i in mosaiq_table.loc[:, "site_status"]):
-            st.success("RX Approved by " + str(site_initials[0][0]))
-        else:
-            st.error("RX Approval Pending")
-
-        ####################################################################################################################
-        # Compare between DICOM and MOSAIQ
-
-        # Create a list of all the fields within the DICOM RP file
-        index = []
-        for j in dicom_table.loc[:, "field_label"]:
-            for i in range(len(mosaiq_table)):
-                if mosaiq_table.loc[i, "field_label"] == j:
-                    index.append(i)
-
-        # Create a list of indices which contain fields not within the RP file
-        remove = []
-        for i in mosaiq_table.iloc[:].index:
-            if i not in index:
-                remove.append(i)
-
-        # Drop all indices in the remove list to get rid of fields irrelevant for this comparison
-        mosaiq_table = mosaiq_table.drop(remove)
-        mosaiq_table = mosaiq_table.sort_index(axis=1)
-        mosaiq_table = mosaiq_table.sort_values(by=["field_label"])
-
-        # Compare values between the two systems and create a new dataframe with the results
         results = compare_to_mosaiq(dicom_table, mosaiq_table)
         results = results.transpose()
 
-        # Create a radio selection of prescriptions in mosaiq to choose from for displaying results
-        rx_selection = st.radio("Select RX: ", mosaiq_table.site.unique())
-        rx_fields = mosaiq_table[mosaiq_table["site"] == rx_selection][
-            "field_name"
-        ].values
-
-        # create a radio selection of fields to compare, only fields within selected rx appear as choices
-        field_selection = st.radio("Select field to compare:", rx_fields)
-        selected_label = mosaiq_table[mosaiq_table["field_name"] == field_selection][
-            "field_label"
-        ]
-        dicom_field_selection = dicom_table[
-            dicom_table["field_label"] == selected_label.values[0]
-        ]["field_name"].values[0]
+        (
+            field_selection,
+            selected_label,
+            dicom_field_selection,
+        ) = select_field_for_comparison(dicom_table, mosaiq_table)
         st.subheader("Comparison")
-
-        # If a field is selected, write a side by side comparison of the DICOM and MOSAIQ plan information
-        if len(field_selection) != 0:
-
-            # Write prescription listed in the RP file
-            st.write(
-                "**RX**: ",
-                dicom_table[dicom_table["field_label"] == selected_label.values[0]][
-                    "rx"
-                ].values[0],
-            )
-
-            # Check if field has been approved, print initials of whoever approved
-            try:
-                field_approval_id = mosaiq_table[
-                    mosaiq_table["field_name"] == field_selection
-                ]["field_approval"]
-
-                field_approval_initials = get_staff_initials(
-                    connection, str(int(field_approval_id.iloc[0]))
-                )
-                st.write("**Field Approved by: **", field_approval_initials[0][0])
-            except (TypeError, ValueError, AttributeError):
-                st.write("This field is not approved.")
-
-            # Use radio field selection to format which fields to write from results dataframe
-            dicom_field = str(dicom_field_selection) + "_DICOM"
-            mosaiq_field = str(dicom_field_selection) + "_MOSAIQ"
-            display_results = results[[dicom_field, mosaiq_field]]
-
-            # Drop general patient info as it's already displayed above
-            display_results = display_results.drop(
-                ["dob", "first_name", "last_name", "mrn"], axis=0
-            )
-
-            # Format dataframe to color code results and then write the dataframe
-            display_results = display_results.style.apply(colour_results, axis=1)
-            st.dataframe(display_results.set_precision(2), height=1000)
-
-            # Extract and write fractionation pattern from MOSAIQ for the specific field
-            fx_pattern = mosaiq_table[mosaiq_table["field_name"] == field_selection][
-                "fraction_pattern"
-            ]
-            st.write("**FX Pattern**: ", fx_pattern.iloc[0])
-
-            # Extract and write comments from MOSAIQ for the specific field
-            comments = mosaiq_table[mosaiq_table["field_name"] == field_selection][
-                "notes"
-            ]
-            st.write("**Comments**: ", comments.iloc[0])
+        if len(selected_label) != 0:
+            show_field_rx(dicom_table, selected_label)
+            check_for_field_approval(mosaiq_table, field_selection, connection)
+            show_comparison_of_selected_fields(dicom_field_selection, results)
+            show_fx_pattern_and_comments(mosaiq_table, field_selection)
 
         # Create a checkbox to allow users to view all DICOM plan information
         show_dicom = st.checkbox("View complete DICOM table.")
