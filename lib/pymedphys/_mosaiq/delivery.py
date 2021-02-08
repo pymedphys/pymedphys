@@ -248,7 +248,7 @@ def collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2):
     return mlc, jaw
 
 
-def delivery_data_sql(connection, field_id, include_rowvers=False):
+def delivery_data_sql(connection, field_id):
     """Get the treatment delivery data from Mosaiq given the SQL field_id
 
     Args:
@@ -263,8 +263,8 @@ def delivery_data_sql(connection, field_id, include_rowvers=False):
         connection,
         f"""
         SELECT
-            TxField.Meterset
-            {',TxField.RowVers' if include_rowvers else ''}
+            TxField.Meterset,
+            TxField.RowVers
         FROM TxField
         WHERE
             TxField.FLD_ID = %(field_id)s
@@ -285,8 +285,8 @@ def delivery_data_sql(connection, field_id, include_rowvers=False):
             TxFieldPoint.Gantry_Ang,
             TxFieldPoint.Coll_Ang,
             TxFieldPoint.Coll_Y1,
-            TxFieldPoint.Coll_Y2
-            {',TxFieldPoint.RowVers' if include_rowvers else ''}
+            TxFieldPoint.Coll_Y2,
+            TxFieldPoint.RowVers
         FROM TxFieldPoint
         WHERE
             TxFieldPoint.FLD_ID = %(field_id)s
@@ -297,19 +297,18 @@ def delivery_data_sql(connection, field_id, include_rowvers=False):
         )
     )
 
-    if include_rowvers:
-        txfield_results[-1] = struct.unpack("Q", txfield_results[-1])
-        txfieldpoint_results[-1] = struct.unpack("Q", txfieldpoint_results[-1])
+    txfield_results[-1] = struct.unpack("Q", txfield_results[-1])
+    txfieldpoint_results[-1] = struct.unpack("Q", txfieldpoint_results[-1])
 
     return txfield_results, txfieldpoint_results
 
 
 def fetch_and_verify_mosaiq_sql(connection, field_id):
     reference_txfield_results, reference_txfieldpoint_results = delivery_data_sql(
-        connection, field_id, include_rowvers=True
+        connection, field_id
     )
     test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
-        connection, field_id, include_rowvers=True
+        connection, field_id
     )
 
     agreement = False
@@ -336,10 +335,10 @@ def fetch_and_verify_mosaiq_sql(connection, field_id):
             reference_txfield_results = test_txfield_results
             reference_txfieldpoint_results = test_txfieldpoint_results
             test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
-                connection, field_id, include_rowvers=True
+                connection, field_id
             )
 
-    # TODO: remove rowverse from test_results
+    # return the txfield and point results, including rowversions
     return test_txfield_results, test_txfieldpoint_results
 
 
