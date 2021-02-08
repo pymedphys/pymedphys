@@ -15,12 +15,15 @@
 import io
 import zipfile
 
+from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 import pymedphys._dicom.create as _pp_dcm_create
 from pymedphys import _losslessjpeg as lljpeg
+from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import download
 
 import pymedphys._experimental.wlutz.iview as _pp_wlutz_iview
 from pymedphys._experimental.streamlit.utilities.iview import ui as iview_ui
@@ -48,10 +51,10 @@ def main():
         st.stop()
 
     progress_bar = st.progress(0)
-
     total_rows = len(database_table)
 
     st.write("Converting iView images to DICOM...")
+    status_text = st.empty()
 
     dicom_datasets = []
     for i, (_, row) in enumerate(database_table.iterrows()):
@@ -60,27 +63,34 @@ def main():
         collimator = bipolar_to_IEC(row["collimator"])
         table = bipolar_to_IEC(row["turn_table"])
 
+        file_name = (
+            f"{row['treatment']}_{row['port']}_"
+            f"{row['datetime'].strftime('%Y%m%d%H%M%S')}_"
+            f"G{row['gantry']:+.1f}_C{row['collimator']:+.1f}_TT{row['turn_table']:+.1f}.dcm"
+        )
+        status_text.write(f"`{file_name}`")
+
         dicom_iview_image_dataset = _create_portal_image_dicom_dataset(
             gantry, collimator, table, full_image_path
         )
 
-        filename = f"{row['gantry']}_{row['gantry']}_"  # TODO: add time stamp, grantry, col, and TT
-        st.write(filename)
-
-        dicom_datasets.append(dicom_iview_image_dataset)  # TODO: add timestamp here
+        dicom_datasets.append((file_name, dicom_iview_image_dataset))
 
         progress_bar.progress(((i + 1) / total_rows))
 
-    st.write("Compressing DICOM files to zip...")
+    st.write("Adding DICOM files to zip...")
 
     # TODO: Replace below
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-        for file_name, data in [
-            ("1.txt", io.BytesIO(b"111")),
-            ("2.txt", io.BytesIO(b"222")),
-        ]:
-            zip_file.writestr(file_name, data.getvalue())
+        for file_name, dataset in dicom_datasets:
+            dataset_buffer = io.BytesIO()
+            pydicom.dcmwrite(dataset_buffer, dataset, write_like_original=False)
+            zip_file.writestr(file_name, dataset_buffer.getvalue())
+
+    st.write("Done.")
+
+    download("iView_DICOM_files.zip", zip_buffer.getvalue())
 
 
 def bipolar_to_IEC(bipolar_angle):
@@ -124,17 +134,22 @@ def _create_portal_image_dicom_dataset(
 
     ds = _pp_dcm_create.dicom_dataset_from_dict(
         {
-            "ImageType": ["ORIGINAL", "PRIMARY", "PORTAL"],
+            "Modality": "RTIMAGE",
+            "SOPClassUID": "1.2.840.10008.5.1.4.1.1.481.1",
+            "SOPInstanceUID": pydicom.uid.generate_uid(prefix=PYMEDPHYS_ROOT_UID),
+            "ImageType": ["DERIVED", "SECONDARY", "PORTAL"],
             "Rows": pixel_array.shape[0],
             "Columns": pixel_array.shape[1],
             "GantryAngle": gantry_angle,
             "BeamLimitingDeviceAngle": collimator_angle,
             "PatientSupportAngle": table_angle,
-            "PixelData": pixel_array,
+            "PixelData": pixel_array.tobytes(),
             "RadiationMachineSAD": sad,
             "RTImageSID": sid,
             "ImagePlanePixelSpacing": [pixel_spacing, pixel_spacing],
         }
     )
+    file_meta = pydicom.dataset.FileMetaDataset()
+    ds.file_meta = file_meta
 
     return ds
