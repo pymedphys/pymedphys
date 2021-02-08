@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
+import zipfile
+
 from pymedphys._imports import streamlit as st
 
 import pymedphys._dicom.create as _pp_dcm_create
@@ -33,11 +36,58 @@ def main():
     (
         database_table,
         database_directory,
-        qa_directory,
-        selected_date,
+        _,  # qa_directory,
+        _,  # selected_date,
     ) = iview_ui.iview_and_icom_filter_and_align(
         config, advanced_mode=False, filter_angles_by_default=True
     )
+
+    # st.write(database_table)
+
+    if not st.button("Create DICOM files"):
+        st.stop()
+
+    progress_bar = st.progress(0)
+
+    total_rows = len(database_table)
+
+    st.write("Converting iView images to DICOM...")
+
+    dicom_datasets = []
+    for i, (_, row) in enumerate(database_table.iterrows()):
+        full_image_path = database_directory.joinpath(row["filepath"])
+        gantry = bipolar_to_IEC(row["gantry"])
+        collimator = bipolar_to_IEC(row["collimator"])
+        table = bipolar_to_IEC(row["turn_table"])
+
+        dicom_iview_image_dataset = _create_portal_image_dicom_dataset(
+            gantry, collimator, table, full_image_path
+        )
+
+        filename = f"{row['gantry']}_{row['gantry']}_"  # TODO: add time stamp, grantry, col, and TT
+        st.write(filename)
+
+        dicom_datasets.append(dicom_iview_image_dataset)  # TODO: add timestamp here
+
+        progress_bar.progress(((i + 1) / total_rows))
+
+    st.write("Compressing DICOM files to zip...")
+
+    # TODO: Replace below
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+        for file_name, data in [
+            ("1.txt", io.BytesIO(b"111")),
+            ("2.txt", io.BytesIO(b"222")),
+        ]:
+            zip_file.writestr(file_name, data.getvalue())
+
+
+def bipolar_to_IEC(bipolar_angle):
+    # TODO: Further thought here needed.
+
+    iec_angle = bipolar_angle % 360
+    return iec_angle
 
 
 def _create_portal_image_dicom_dataset(
@@ -78,8 +128,8 @@ def _create_portal_image_dicom_dataset(
             "Rows": pixel_array.shape[0],
             "Columns": pixel_array.shape[1],
             "GantryAngle": gantry_angle,
-            "BeamLimitingDeviceAngle ": collimator_angle,
-            "PatientSupportAngle ": table_angle,
+            "BeamLimitingDeviceAngle": collimator_angle,
+            "PatientSupportAngle": table_angle,
             "PixelData": pixel_array,
             "RadiationMachineSAD": sad,
             "RTImageSID": sid,
