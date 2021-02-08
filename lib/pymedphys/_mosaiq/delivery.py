@@ -274,6 +274,9 @@ def delivery_data_sql(connection, field_id):
         },
     )
     assert len(txfield_results) == 1
+    txfield_results[0] = txfield_results[0][0], struct.unpack(
+        "Q", txfield_results[0][1]
+    )
 
     txfieldpoint_results = np.array(
         api.execute(
@@ -298,10 +301,11 @@ def delivery_data_sql(connection, field_id):
         )
     )
     assert len(txfieldpoint_results) >= 1
-
-    txfield_results[-1] = struct.unpack("Q", txfield_results[-1])
     for one_point in txfieldpoint_results:
+        # convert to list, so we can change last element
+        one_point = list(one_point)
         one_point[-1] = struct.unpack("Q", one_point[-1])
+        one_point = tuple(one_point)
 
     return txfield_results, txfieldpoint_results
 
