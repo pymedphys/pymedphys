@@ -31,10 +31,10 @@ def main():
     config = st_config.get_config()
 
     (
-        _,  # database_table,
-        _,  # database_directory,
-        _,  # qa_directory,
-        _,  # selected_date,
+        database_table,
+        database_directory,
+        qa_directory,
+        selected_date,
     ) = iview_ui.iview_and_icom_filter_and_align(
         config, advanced_mode=False, filter_angles_by_default=True
     )
