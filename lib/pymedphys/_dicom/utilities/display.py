@@ -16,7 +16,7 @@ limitations under the License.
 from pymedphys._imports import pydicom  # pylint: disable=unused-import
 
 
-def get_pretty_patient_name_from_dicom_dataset(
+def pretty_patient_name(
     ds: "pydicom.dataset.Dataset",
     surname_first: bool = False,
     capitalise_surname: bool = True,
@@ -54,6 +54,12 @@ def get_pretty_patient_name_from_dicom_dataset(
 
     names_as_str = str(ds.PatientName)
 
+    if include_honorific and "^^" not in names_as_str:
+        raise ValueError(
+            "The PatientName for this DICOM dataset does not contain "
+            "an honorific. Please set `include_honorific=False`"
+        )
+
     names, honorific = (
         names_as_str.split("^^") if "^^" in names_as_str else (names_as_str, "")
     )
@@ -68,13 +74,13 @@ def get_pretty_patient_name_from_dicom_dataset(
         name_list_in_pretty_case[-1] = name_list_in_pretty_case[-1].upper()
 
     if surname_first:
-        pretty_patient_name = (
+        pretty_name = (
             f"{name_list_in_pretty_case[-1]}, {' '.join(name_list_in_pretty_case[:-1])}"
         )
     else:
-        pretty_patient_name = f"{' '.join(name_list_in_pretty_case)}"
+        pretty_name = f"{' '.join(name_list_in_pretty_case)}"
 
     if include_honorific:
-        pretty_patient_name = f"{honorific}. {pretty_patient_name}"
+        pretty_name = f"{honorific}. {pretty_name}"
 
-    return pretty_patient_name
+    return pretty_name

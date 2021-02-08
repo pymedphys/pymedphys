@@ -168,7 +168,4 @@ def patient_ids_in_datasets_are_equal(
         True if Patient IDs match for all datasets, False otherwise.
     """
 
-    if not len(datasets) >= 2:
-        raise ValueError("At least two datasets must be provided for comparison")
-
     return all(ds.PatientID == datasets[0].PatientID for ds in datasets)

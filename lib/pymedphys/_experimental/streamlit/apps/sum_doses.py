@@ -1,28 +1,26 @@
-"""Copyright (C) 2021 Matthew Jennings
+# Copyright (C) 2021 Matthew Jennings
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import copy
+
 import pathlib
 from typing import BinaryIO, List, Sequence
 
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._dicom.dose import sum_doses_in_datasets
-from pymedphys._dicom.utilities import get_pretty_patient_name_from_dicom_dataset
+from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
 
 CATEGORY = categories.PRE_ALPHA
@@ -60,7 +58,7 @@ def main():
                 ## Details
 
                 * Patient ID: `{datasets[0].PatientID}`
-                * Patient Name: `{get_pretty_patient_name_from_dicom_dataset(datasets[0])}`
+                * Patient Name: `{pretty_patient_name(datasets[0])}`
                 """
             )
 
