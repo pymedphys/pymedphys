@@ -45,7 +45,7 @@ def main():
         config, advanced_mode=advanced_mode, filter_angles_by_default=True
     )
 
-    st.write(database_table)
+    # st.write(database_table)
 
     if not st.button("Create DICOM files"):
         st.stop()
