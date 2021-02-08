@@ -273,6 +273,7 @@ def delivery_data_sql(connection, field_id):
             "field_id": field_id,
         },
     )
+    assert len(txfield_results) == 1
 
     txfieldpoint_results = np.array(
         api.execute(
@@ -296,9 +297,11 @@ def delivery_data_sql(connection, field_id):
             {"field_id": field_id},
         )
     )
+    assert len(txfieldpoint_results) >= 1
 
     txfield_results[-1] = struct.unpack("Q", txfield_results[-1])
-    txfieldpoint_results[-1] = struct.unpack("Q", txfieldpoint_results[-1])
+    for one_point in txfieldpoint_results:
+        one_point[-1] = struct.unpack("Q", one_point[-1])
 
     return txfield_results, txfieldpoint_results
 
