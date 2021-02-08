@@ -13,12 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Union
-
-from typing_extensions import Literal
-
-Number = Union[float, int]
-
 from pymedphys._imports import altair as alt
 from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
@@ -26,13 +20,10 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import streamlit_ace, tomlkit
 
-import pymedphys._dicom.create as _pp_dcm_create
-from pymedphys import _losslessjpeg as lljpeg
-
+from pymedphys._experimental.streamlit.utilities import iteration as _iteration
 from pymedphys._experimental.streamlit.utilities.iview import ui as iview_ui
-from pymedphys._experimental.wlutz import iview as _pp_wlutz_iview
 
-from . import _calculation, _config, _corrections, _excel, _iteration
+from . import _calculation, _config, _corrections, _excel
 
 
 def main():
@@ -79,77 +70,6 @@ def main():
     st.write("---")
 
     _presentation_of_results(wlutz_directory_by_date, advanced_mode)
-
-
-def _user_selected_angles(
-    name: Literal["gantry", "collimator"],
-    default_selection: List[Number],
-    default_tolerance: Number,
-):
-    capitalised_name = name.capitalize()
-    text_box_default = ", ".join(np.array(default_selection).astype(str))
-
-    st.write(f"### {capitalised_name} filtering")
-
-    angles = st.text_input(f"{capitalised_name} angles", text_box_default)
-    angles = np.array(angles.split(",")).astype(float).tolist()
-    st.write(f"`{angles}`")
-
-    tolerance = st.number_input(
-        f"{capitalised_name} angle tolerance", 0, None, default_tolerance
-    )
-
-    return angles, tolerance
-
-
-def _create_portal_image_dicom_dataset(
-    gantry_angle, collimator_angle, table_angle, image_path
-):
-    """Don't intend this DICOM file to be compliant to the spec.
-
-    Instead, for now, just enough that software such as PIPs will
-    happily accept the created file.
-    """
-
-    # TODO: Refactor this so that for all pylinac calls a full DICOM
-    # file is passed to it in the way that it expects. The image wrapper
-    # around pylinac could instead call this first.
-
-    # Image plane pixel spacing.
-    # Exported DICOM files have an image plane pixel spacing of 0.405,
-    # with SID of 1600 and SAD of 1000. This corresponds to an iso
-    # centre pixel spacing of 0.2531 mm.
-    #
-    # Within the database, those same images have an isocentre pixel
-    # spacing of either 0.2510 mm or 0.2488 mm. I suspect potentially
-    # there might be some interesting datastore rounding going on here.
-    # I was under the impression that the isocentre pixel spacing was
-    # for these images was 0.25 mm.
-
-    pixel_array = lljpeg.imread(image_path)
-    pixels_per_mm = _pp_wlutz_iview.infer_pixels_per_mm_from_shape(pixel_array)
-
-    sid = 1600.0
-    sad = 1000.0
-
-    pixel_spacing = 1 / pixels_per_mm * sid / sad
-
-    ds = _pp_dcm_create.dicom_dataset_from_dict(
-        {
-            "ImageType": ["ORIGINAL", "PRIMARY", "PORTAL"],
-            "Rows": pixel_array.shape[0],
-            "Columns": pixel_array.shape[1],
-            "GantryAngle": gantry_angle,
-            "BeamLimitingDeviceAngle ": collimator_angle,
-            "PatientSupportAngle ": table_angle,
-            "PixelData": pixel_array,
-            "RadiationMachineSAD": sad,
-            "RTImageSID": sid,
-            "ImagePlanePixelSpacing": [pixel_spacing, pixel_spacing],
-        }
-    )
-
-    return ds
 
 
 def _presentation_of_results(wlutz_directory_by_date, advanced_mode):

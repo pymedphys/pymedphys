@@ -22,13 +22,6 @@ from pymedphys._streamlit.utilities import misc
 from . import _dbf
 
 
-def filepath_to_filename(path):
-    path = pathlib.Path(path)
-    filename = path.name
-
-    return filename
-
-
 def expand_border_events(mask):
     shifted_right = np.concatenate([[False], mask])
     shifted_left = np.concatenate([mask, [False]])

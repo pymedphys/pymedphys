@@ -28,6 +28,7 @@ from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
+from pymedphys._experimental.streamlit.utilities import iteration as _iteration
 
 from . import _angles, _filtering, _frames, _sync, _utilities
 
@@ -312,3 +313,24 @@ def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
     database_table = pd.concat(collated_dataframes, axis=0)
 
     return database_table
+
+
+def _user_selected_angles(
+    name: Literal["gantry", "collimator"],
+    default_selection: List[Number],
+    default_tolerance: Number,
+):
+    capitalised_name = name.capitalize()
+    text_box_default = ", ".join(np.array(default_selection).astype(str))
+
+    st.write(f"### {capitalised_name} filtering")
+
+    angles = st.text_input(f"{capitalised_name} angles", text_box_default)
+    angles = np.array(angles.split(",")).astype(float).tolist()
+    st.write(f"`{angles}`")
+
+    tolerance = st.number_input(
+        f"{capitalised_name} angle tolerance", 0, None, default_tolerance
+    )
+
+    return angles, tolerance
