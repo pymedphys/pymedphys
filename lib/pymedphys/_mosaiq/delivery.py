@@ -261,7 +261,7 @@ def delivery_data_sql(connection, field_id):
     """
     txfield_results = api.execute(
         connection,
-        f"""
+        """
         SELECT
             TxField.Meterset,
             TxField.RowVers
@@ -281,7 +281,7 @@ def delivery_data_sql(connection, field_id):
     txfieldpoint_results = np.array(
         api.execute(
             connection,
-            f"""
+            """
         SELECT
             TxFieldPoint.[Index],
             TxFieldPoint.A_Leaf_Set,
