@@ -19,7 +19,8 @@ from pymedphys import _losslessjpeg as lljpeg
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 
-# from .wlutz import _config, _utilities
+import pymedphys._experimental.wlutz.iview as _pp_wlutz_iview
+from pymedphys._experimental.streamlit.utilities.iview import ui as iview_ui
 
 CATEGORY = categories.PLANNING
 TITLE = "iView to DICOM"
@@ -28,15 +29,14 @@ TITLE = "iView to DICOM"
 def main():
     config = st_config.get_config()
 
-    refresh_cache = st.button("Re-query databases")
     (
-        database_directory,
-        icom_directory,
-        wlutz_directory_by_date,
         database_table,
+        database_directory,
+        qa_directory,
         selected_date,
-        selected_machine_id,
-    ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
+    ) = iview_ui.iview_and_icom_filter_and_align(
+        config, advanced_mode=False, filter_angles_by_default=True
+    )
 
 
 def _create_portal_image_dicom_dataset(

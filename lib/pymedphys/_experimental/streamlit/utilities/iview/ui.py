@@ -33,7 +33,9 @@ from pymedphys._experimental.streamlit.utilities import iteration as _iteration
 from . import _angles, _filtering, _frames, _sync, _utilities
 
 
-def iview_and_icom_filter_and_align(config, advanced_mode):
+def iview_and_icom_filter_and_align(
+    config, advanced_mode, filter_angles_by_default=False
+):
     refresh_cache = st.button("Re-query databases")
     (
         database_directory,
@@ -177,8 +179,11 @@ def iview_and_icom_filter_and_align(config, advanced_mode):
     if advanced_mode:
         st.write(database_table)
 
-    st.write("## Gantry and collimator angle filtering")
-    if st.checkbox("Only calculate at specific gantry angles"):
+    st.write("## Filtering by gantry and collimator")
+    if st.checkbox(
+        "Filter to specific gantry and collimator angles",
+        value=filter_angles_by_default,
+    ):
         database_table = _angle_filtering(database_table)
 
     return database_table, database_directory, qa_directory, selected_date
