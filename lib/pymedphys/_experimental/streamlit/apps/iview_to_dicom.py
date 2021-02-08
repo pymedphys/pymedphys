@@ -44,8 +44,6 @@ def main():
         config, advanced_mode=False, filter_angles_by_default=True
     )
 
-    # st.write(database_table)
-
     if not st.button("Create DICOM files"):
         st.stop()
 
@@ -79,7 +77,6 @@ def main():
 
     st.write("Adding DICOM files to zip...")
 
-    # TODO: Replace below
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         for file_name, dataset in dicom_datasets:
@@ -108,9 +105,9 @@ def _create_portal_image_dicom_dataset(
     happily accept the created file.
     """
 
-    # TODO: Refactor this so that for all pylinac calls a full DICOM
-    # file is passed to it in the way that it expects. The image wrapper
-    # around pylinac could instead call this first.
+    # Consider refactoring this so that for all pylinac calls a full
+    # DICOM file is passed to it in the way that it expects. The image
+    # wrapper around pylinac could instead call this first.
 
     # Image plane pixel spacing.
     # Exported DICOM files have an image plane pixel spacing of 0.405,
