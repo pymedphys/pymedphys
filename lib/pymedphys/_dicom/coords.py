@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Matthew Jennings
+# Copyright (C) 2019, 2021 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,10 @@
 
 """A suite of functions for handling DICOM coordinates"""
 
+from typing import Sequence
+
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom  # pylint: disable=unused-import
 
 
 def coords_from_xyz_axes(xyz_axes):
@@ -180,3 +183,33 @@ def xyz_axes_from_dataset(ds, coord_system="DICOM"):
             z = -np.flip(y_d)
 
     return (x, y, z)
+
+
+def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) -> bool:
+    """True if all DICOM datasets have perfectly matching coordinates
+
+    Parameters
+    ----------
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM datasets whose coordinates are to be
+        compared.
+
+    Returns
+    -------
+    bool
+        True if coordinates match for all datasets, False otherwise.
+    """
+
+    if not len(datasets) >= 2:
+        raise ValueError("At least two datasets must be provided for comparison")
+
+    # Quick shape (sanity) check
+    if not all(
+        ds.pixel_array.shape == datasets[0].pixel_array.shape for ds in datasets
+    ):
+        return False
+
+    # Full coord check:
+    all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
+
+    return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
