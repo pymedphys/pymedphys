@@ -17,6 +17,7 @@ from pymedphys._imports import streamlit as st
 import pymedphys._dicom.create as _pp_dcm_create
 from pymedphys import _losslessjpeg as lljpeg
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities import config as st_config
 
 # from .wlutz import _config, _utilities
 
@@ -25,7 +26,7 @@ TITLE = "iView to DICOM"
 
 
 def main():
-    config = _config.get_config(demo_mode=False)
+    config = st_config.get_config()
 
     refresh_cache = st.button("Re-query databases")
     (

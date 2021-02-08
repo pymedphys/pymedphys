@@ -38,7 +38,7 @@ def iview_and_icom_filter_and_align(config, advanced_mode):
     (
         database_directory,
         icom_directory,
-        wlutz_directory_by_date,
+        qa_directory,
         database_table,
         selected_date,
         selected_machine_id,
@@ -181,7 +181,7 @@ def iview_and_icom_filter_and_align(config, advanced_mode):
     if st.checkbox("Only calculate at specific gantry angles"):
         database_table = _angle_filtering(database_table)
 
-    return database_table, database_directory, wlutz_directory_by_date
+    return database_table, database_directory, qa_directory, selected_date
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):

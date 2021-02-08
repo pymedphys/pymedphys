@@ -75,15 +75,11 @@ def get_directories_and_initial_database(config, refresh_cache):
     }
 
     qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
-    wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
-    wlutz_directory_by_date = wlutz_directory.joinpath(
-        selected_date.strftime("%Y-%m-%d")
-    )
 
     return (
         database_directory,
         icom_directory,
-        wlutz_directory_by_date,
+        qa_directory,
         database_table,
         selected_date,
         selected_machine_id,

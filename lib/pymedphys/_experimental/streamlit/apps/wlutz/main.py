@@ -46,8 +46,14 @@ def main():
     (
         database_table,
         database_directory,
-        wlutz_directory_by_date,
+        qa_directory,
+        selected_date,
     ) = iview_ui.iview_and_icom_filter_and_align(config, advanced_mode)
+
+    wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
+    wlutz_directory_by_date = wlutz_directory.joinpath(
+        selected_date.strftime("%Y-%m-%d")
+    )
 
     if advanced_mode:
         st.write(
