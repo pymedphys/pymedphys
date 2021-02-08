@@ -152,7 +152,7 @@ def _create_portal_image_dicom_dataset(
             "Modality": "RTIMAGE",
             "InstanceCreatorUID": PYMEDPHYS_ROOT_UID,
             "SOPClassUID": "1.2.840.10008.5.1.4.1.1.481.1",
-            "SOPInstanceUID": pydicom.uid.generate_uid(prefix=PYMEDPHYS_ROOT_UID),
+            "SOPInstanceUID": pydicom.uid.generate_uid(prefix=f"{PYMEDPHYS_ROOT_UID}."),
             # From <https://dicom.innolitics.com/ciods/cr-image/general-image/00080008>
             #
             # * is the image an ORIGINAL Image; an image whose pixel
