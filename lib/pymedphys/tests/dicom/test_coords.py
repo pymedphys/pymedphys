@@ -23,7 +23,7 @@ import pymedphys
 from pymedphys._data import download
 from pymedphys._dicom import coords, create
 
-ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
+ORIENTATIONS_SUPPORTED = ("FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS")
 
 
 def get_file_within_data_zip(zip_name, file_name):
@@ -42,54 +42,62 @@ def get_data_file(orientation_key):
     )
 
 
-def run_xyz_function_tests(coord_system):
+def test_axis_extraction_all_orients_and_coord_systems():
     r"""Run the xyz extraction test sequence for a given
     xyz extraction function"""
-
-    expected_xyz_path = download.get_file_within_data_zip(
-        "dicom_dose_test_data.zip", "expected_{}_xyz.json".format(coord_system.lower())
-    )
-
-    with open(expected_xyz_path) as fp:
-        expected_xyz = json.load(fp)
-
-    assert set(expected_xyz.keys()) == set(ORIENTATIONS_SUPPORTED)
 
     test_ds_dict = {
         key: pydicom.dcmread(get_data_file(key)) for key in ORIENTATIONS_SUPPORTED
     }
 
     for orient, dicom in test_ds_dict.items():
-        test_xyz = coords.xyz_axes_from_dataset(dicom, coord_system)
+        axes_dicom = coords.xyz_axes_from_dataset(dicom, "DICOM")
+        axes_patient = coords.xyz_axes_from_dataset(dicom, "PATIENT")
+        axes_fixed = coords.xyz_axes_from_dataset(dicom, "FIXED")
 
-        expected_xyz[orient] = np.array(expected_xyz[orient], dtype=object)
+        assert np.array_equal(axes_dicom[0], axes_patient[0])
+        assert np.array_equal(axes_dicom[1], -axes_patient[2])
+        assert np.array_equal(axes_dicom[2], axes_patient[1])
 
-        # These tests were being skipped in the previous code
-        assert np.array_equal(test_xyz[0], expected_xyz[orient][0])
-        assert np.array_equal(test_xyz[1], expected_xyz[orient][1])
-        assert np.array_equal(test_xyz[2], expected_xyz[orient][2])
+        if orient == "HFS":  # iex fixed should match iec patient for HFS
+            assert np.array_equal(axes_patient[0], axes_fixed[0])
+            assert np.array_equal(axes_patient[1], axes_fixed[1])
+            assert np.array_equal(axes_patient[2], axes_fixed[2])
 
+        elif orient == "HFP":
+            assert np.array_equal(axes_patient[0], -axes_fixed[0])
+            assert np.array_equal(axes_patient[1], axes_fixed[1])
+            assert np.array_equal(axes_patient[2], -axes_fixed[2])
 
-@pytest.mark.pydicom
-@pytest.mark.skip(
-    reason=(
-        "Test previously had a short circuit and did not run final "
-        "assertions. Once the short circuit was removed the tests were "
-        "failing."
-    )
-)
-def test_extract_iec_patient_xyz():
-    run_xyz_function_tests("PATIENT")
+        elif orient == "FFS":
+            assert np.array_equal(axes_patient[0], -axes_fixed[0])
+            assert np.array_equal(axes_patient[1], -axes_fixed[1])
+            assert np.array_equal(axes_patient[2], axes_fixed[2])
 
+        elif orient == "FFP":
+            assert np.array_equal(axes_patient[0], axes_fixed[0])
+            assert np.array_equal(axes_patient[1], -axes_fixed[1])
+            assert np.array_equal(axes_patient[2], -axes_fixed[2])
 
-@pytest.mark.pydicom
-def test_extract_iec_fixed_xyz():
-    run_xyz_function_tests("FIXED")
+        elif orient == "HFDL":
+            assert np.array_equal(axes_patient[0], -axes_fixed[2])
+            assert np.array_equal(axes_patient[1], axes_fixed[1])
+            assert np.array_equal(axes_patient[2], axes_fixed[0])
 
+        elif orient == "HFDR":
+            assert np.array_equal(axes_patient[0], axes_fixed[2])
+            assert np.array_equal(axes_patient[1], axes_fixed[1])
+            assert np.array_equal(axes_patient[2], -axes_fixed[0])
 
-@pytest.mark.pydicom
-def test_extract_dicom_patient_xyz():
-    run_xyz_function_tests("DICOM")
+        elif orient == "FFDL":
+            assert np.array_equal(axes_patient[0], -axes_fixed[2])
+            assert np.array_equal(axes_patient[1], -axes_fixed[1])
+            assert np.array_equal(axes_patient[2], -axes_fixed[0])
+
+        elif orient == "FFDR":
+            assert np.array_equal(axes_patient[0], axes_fixed[2])
+            assert np.array_equal(axes_patient[1], -axes_fixed[1])
+            assert np.array_equal(axes_patient[2], axes_fixed[0])
 
 
 @pytest.mark.pydicom
