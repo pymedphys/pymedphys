@@ -1,10 +1,26 @@
-# session and session offset calculator
+# Copyright (C) 2021 Derek Lane, Cancer Care Associates
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+"""Uses Mosaiq SQL to extract patient sessions and offsets.
+"""
 
 from datetime import datetime, timedelta
 
 from pymedphys._imports import sklearn
 
-from pymedphys import mosaiq
+from . import api
 
 
 def cluster_sessions(tx_datetimes, interval=timedelta(hours=3)):
@@ -102,7 +118,7 @@ def sessions_for_site(connection, sit_set_id):
     generated sequence of session tuples
         same format as returned by cluster_sessions
     """
-    result = mosaiq.execute(
+    result = api.execute(
         connection,
         """
         SELECT
@@ -154,7 +170,7 @@ def session_offsets_for_site(connection, sit_set_id, interval=timedelta(hours=1)
         window_start, window_end = (start_session - interval, end_session)
 
         # query for offsets within the time window
-        result = mosaiq.execute(
+        result = api.execute(
             connection,
             """
             SELECT
