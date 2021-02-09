@@ -139,10 +139,10 @@ def _create_portal_image_dicom_dataset(
     pixel_array = lljpeg.imread(image_path)
     pixels_per_mm = _pp_wlutz_iview.infer_pixels_per_mm_from_shape(pixel_array)
 
-    sid = 1600.0
-    sad = 1000.0
+    SID = 1600.0
+    SAD = 1000.0
 
-    pixel_spacing = (1 / pixels_per_mm) * (sid / sad)
+    pixel_spacing = (1 / pixels_per_mm) * (SID / SAD)
 
     date = datetime.strftime("%Y%m%d")
     time = datetime.strftime("%H%M%S.%f")
@@ -192,8 +192,8 @@ def _create_portal_image_dicom_dataset(
             "RTImagePosition": None,
             "PatientSupportAngle": table_angle,
             "PixelData": pixel_array.tobytes(),
-            "RadiationMachineSAD": sad,
-            "RTImageSID": sid,
+            "RadiationMachineSAD": SAD,
+            "RTImageSID": SID,
             "PrimaryDosimeterUnit": "",
             "ImagePlanePixelSpacing": [pixel_spacing, pixel_spacing],
         }
