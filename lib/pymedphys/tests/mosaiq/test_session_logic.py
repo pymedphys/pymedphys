@@ -1,11 +1,10 @@
 from pymedphys._imports import pytest
 
-from pymedphys._mosaiq.delivery import delivery_data_sql
 from pymedphys._mosaiq.sessions import (
     session_offsets_for_site,
     sessions_for_site,
 )
-from pymedphys.mosaiq import connect, execute
+from pymedphys.mosaiq import connect
 
 from .create_mock_data import (
     check_create_test_db,

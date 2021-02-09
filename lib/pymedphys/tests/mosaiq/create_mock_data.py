@@ -18,11 +18,11 @@ sa_password = "sqlServerPassw0rd"
 NUMBER_OF_FRACTIONS = (20, 25, 30)
 
 # dict that represents the number of fields for a few named techniques
-field_count_by_technique_names = {"4-fld": 4, "5-fld": 5, "7-fld": 7}
+FIELD_COUNT_BY_TECHNIQUE_NAME = {"4-fld": 4, "5-fld": 5, "7-fld": 7}
 
 # dict of functions that return the percent of sessions
 # with an offset, as a function of session number
-prob_offset_by_protocol = {
+PROB_OFFSET_BY_PROTOCOL = {
     "weekly": lambda _: 20,  # always 20% ~ once per week
     "daily": lambda _: 90,  # always 90% ~ daily, with occasional misses
     "nal": lambda session_num: 95 if session_num <= 4 else 20,
@@ -133,15 +133,15 @@ def create_mock_treatment_sites(patient_ident_df=None):
 
     # choose the number of fractions
     site_df["Fractions"] = choices(
-        number_of_fractions, weights=[1, 2, 3], k=len(site_df)
+        NUMBER_OF_FRACTIONS, weights=[1, 2, 3], k=len(site_df)
     )
     # the site notes contain the choice of protocol
     site_df["Notes"] = choices(
-        list(prob_offset_by_protocol.keys()), weights=[1, 1, 1], k=len(site_df)
+        list(PROB_OFFSET_BY_PROTOCOL.keys()), weights=[1, 1, 1], k=len(site_df)
     )
     # the treatment technique is chosen from the list of keys
     site_df["Technique"] = choices(
-        list(field_count_by_technique_names.keys()), weights=[2, 1, 3], k=len(site_df)
+        list(FIELD_COUNT_BY_TECHNIQUE_NAME.keys()), weights=[2, 1, 3], k=len(site_df)
     )
 
     # now use SQLAlchemy to populate the two tables
@@ -328,7 +328,7 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
         sit_set_id = site_rec["SIT_SET_ID"]
         fractions = site_rec["Fractions"]
         protocol = re.match("([a-z]*)", site_rec["Notes"]).groups()[0]
-        fld_count = field_count_by_technique_names[site_rec["Technique"]]
+        fld_count = FIELD_COUNT_BY_TECHNIQUE_NAME[site_rec["Technique"]]
         fld_ids = [randint(1000, 4000) for _ in range(fld_count)]
 
         # pick a date for beginning the treatment, as a workday number in the year
@@ -344,7 +344,7 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             session_time = session_date + appointment_time
 
             # choose whether to generate an offset record
-            if randint(0, 100) < prob_offset_by_protocol[protocol](n):
+            if randint(0, 100) < PROB_OFFSET_BY_PROTOCOL[protocol](n):
                 session_time += timedelta(minutes=randint(2, 5))
                 offset_recs.append(
                     (
