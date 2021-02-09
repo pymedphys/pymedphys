@@ -23,7 +23,12 @@ def iview_image_transform_from_path(image_path):
     return iview_image_transform(img)
 
 
-def iview_image_transform(img):
+def infer_pixels_per_mm_from_shape(img):
+    """This is not ideal. Instead, it would be better to use the MMPIX
+    values stored within the iView database. There is something I need
+    to get to the bottom of before making the swap though.
+
+    """
     if np.shape(img) == (1024, 1024):
         pixels_per_mm = 4
     elif np.shape(img) == (512, 512):
@@ -34,6 +39,11 @@ def iview_image_transform(img):
             f"pixels\nShape = {np.shape(img)}"
         )
 
+    return pixels_per_mm
+
+
+def iview_image_transform(img):
+    pixels_per_mm = infer_pixels_per_mm_from_shape(img)
     img = img[:, 1:-1]
 
     if img.dtype != np.dtype("uint16") and img.dtype != np.dtype("int32"):
