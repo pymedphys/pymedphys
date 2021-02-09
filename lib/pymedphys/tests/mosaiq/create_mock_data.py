@@ -15,7 +15,7 @@ sa_user = "sa"
 sa_password = "sqlServerPassw0rd"
 
 # vary the number of fractions a bit
-number_of_fractions = [20, 25, 30]
+NUMBER_OF_FRACTIONS = (20, 25, 30)
 
 # dict that represents the number of fields for a few named techniques
 field_count_by_technique_names = {"4-fld": 4, "5-fld": 5, "7-fld": 7}
