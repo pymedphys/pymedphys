@@ -70,6 +70,9 @@ def main():
 
     st.sidebar.write("# Progress")
     progress_bar = st.sidebar.progress(0)
+
+    # TODO: Add in an updating Altair plot at the top...
+
     wl_images = []
     for i, dataset in enumerate(dicom_datasets):
         st.write(
