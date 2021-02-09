@@ -7,7 +7,7 @@ from pymedphys._imports import sklearn
 from pymedphys import mosaiq
 
 
-def cluster_sessions(tx_datetimes, interval=timedelta(hours=3)):
+def cluster_sessions(tx_datetimes: List[datetime], interval=timedelta(hours=3)):
     """Clusters a list of datetime objects representing tx beam delivery times
 
     Uses the scikit-learn hierarchical clustering algorithm
