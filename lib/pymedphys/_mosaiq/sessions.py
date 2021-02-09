@@ -22,6 +22,7 @@ from typing import List
 from pymedphys._imports import sklearn
 
 from . import api
+from .connect import Connection
 
 
 def cluster_sessions(tx_datetimes: List[datetime], interval=timedelta(hours=3)):
@@ -101,7 +102,7 @@ def cluster_sessions(tx_datetimes: List[datetime], interval=timedelta(hours=3)):
     yield (current_session_number, start_session, end_session)
 
 
-def sessions_for_site(connection, sit_set_id):
+def sessions_for_site(connection: Connection, sit_set_id: int):
     """Determines the sessions for the given site (by SIT_SET_ID)
 
     uses cluster_sessions after querying for the Dose_Hst.Tx_DtTm
@@ -140,7 +141,9 @@ def sessions_for_site(connection, sit_set_id):
     return cluster_sessions(dose_hst_datetimes)
 
 
-def session_offsets_for_site(connection, sit_set_id, interval=timedelta(hours=1)):
+def session_offsets_for_site(
+    connection: Connection, sit_set_id: int, interval=timedelta(hours=1)
+):
     """extract the session offsets (one offset per session ) for the given site
 
     Parameters

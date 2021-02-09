@@ -1,9 +1,6 @@
 from pymedphys._imports import pytest
 
-from pymedphys._mosaiq.sessions import (
-    session_offsets_for_site,
-    sessions_for_site,
-)
+from pymedphys._mosaiq.sessions import session_offsets_for_site, sessions_for_site
 from pymedphys.mosaiq import connect
 
 from .create_mock_data import (
@@ -47,7 +44,8 @@ def test_sessions_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = mock_site_df[0]["SIT_SET_ID"]
+        sit_set_id = mock_site_df.iloc[0]["SIT_SET_ID"]
+        print(sit_set_id)
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
@@ -96,7 +94,8 @@ def test_session_offsets_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = mock_site_df[0]["SIT_SET_ID"]
+        sit_set_id = mock_site_df.iloc[0]["SIT_SET_ID"]
+        print(sit_set_id)
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
