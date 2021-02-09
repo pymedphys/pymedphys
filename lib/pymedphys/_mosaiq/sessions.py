@@ -1,4 +1,4 @@
-# prototype session and session offset calculator
+# session and session offset calculator
 
 from datetime import datetime, timedelta
 
