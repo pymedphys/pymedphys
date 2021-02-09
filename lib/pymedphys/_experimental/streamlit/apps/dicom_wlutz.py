@@ -54,7 +54,7 @@ def main():
             plot and to bound the x-axis on the flipped BB plots.
 
             The penumbra here is defined as the approximate distance
-            between field's 50%% line and the field's shoulder. It is
+            between field's 50% line and the field's shoulder. It is
             utilised to shrink pylinac's radiation bounding box to
             display the a rectangle on the plot, and also to centre and
             scale the x-axis on the field edge flip displays.
@@ -76,9 +76,9 @@ def main():
     wl_images = []
     for i, dataset in enumerate(dicom_datasets):
         st.write(
-            f"## Gantry: {dataset.GantryAngle} | "
-            f"Collimator: {dataset.BeamLimitingDeviceAngle} | "
-            f"Turn Table: {dataset.PatientSupportAngle}"
+            f"## Gantry: {dataset.GantryAngle:0.1f} | "
+            f"Collimator: {dataset.BeamLimitingDeviceAngle:0.1f} | "
+            f"Turn Table: {dataset.PatientSupportAngle:0.1f}"
         )
         wl_image = _nasty_wrapper_around_pylinac(dataset)
         wl_images.append(wl_image)
