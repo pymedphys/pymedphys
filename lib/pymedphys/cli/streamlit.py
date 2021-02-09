@@ -11,20 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable = protected-access
 
-from pymedphys._imports import streamlit as st
-
-from . import patches
+from pymedphys._streamlit.server.start import main
 
 
-def main(args):
-    start_streamlit_server(args.path, {})
+def streamlit_cli(subparsers):
+    streamlit_parser = subparsers.add_parser(
+        "streamlit", help=("Wrapper for streamlit CLI")
+    )
+    streamlit_subparser = streamlit_parser.add_subparsers()
+    streamlit_run = streamlit_subparser.add_parser("run")
 
+    streamlit_run.add_argument("path")
+    streamlit_run.set_defaults(func=main)
 
-def start_streamlit_server(script_path, config):
-    st.cli._apply_config_options_from_cli(config)
-    patches.apply_streamlit_server_patches()
-
-    st._is_running_with_streamlit = True
-    st.bootstrap.run(script_path, "", [])
+    return streamlit_parser
