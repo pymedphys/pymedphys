@@ -32,6 +32,8 @@ from pymedphys._experimental.streamlit.utilities import iteration as _iteration
 
 from . import _angles, _filtering, _frames, _sync, _utilities
 
+MAXIMUM_ANGLE_AXIS_MAGNITUDE = 200
+
 
 def iview_and_icom_filter_and_align(
     config, advanced_mode, filter_angles_by_default=False
@@ -86,8 +88,8 @@ def iview_and_icom_filter_and_align(
             beam_on_mask = _utilities.expand_border_events(
                 np.diff(icom_datasets["meterset"]) > 0
             )
-            beam_shade_min = -200 * beam_on_mask
-            beam_shade_max = 200 * beam_on_mask
+            beam_shade_min = -MAXIMUM_ANGLE_AXIS_MAGNITUDE * beam_on_mask
+            beam_shade_max = MAXIMUM_ANGLE_AXIS_MAGNITUDE * beam_on_mask
 
             icom_datasets["beam_shade_min"] = beam_shade_min
             icom_datasets["beam_shade_max"] = beam_shade_max
