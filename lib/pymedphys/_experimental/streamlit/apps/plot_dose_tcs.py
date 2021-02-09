@@ -1,15 +1,27 @@
+# Copyright (C) 2021 Matthew Jennings
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import BinaryIO, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plotly, pydicom
 from pymedphys._imports import streamlit as st
+from pymedphys._imports.plotly import graph_objects as go
 
 from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
-
-go = plotly.graph_objects
 
 CATEGORY = categories.PLANNING
 TITLE = "Plot Dose in each Anatomical Plane"
