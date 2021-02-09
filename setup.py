@@ -224,7 +224,7 @@ extras_require = {
         "tabulate",
     ],
     "ml": ["tensorflow>=2.2.0"],
-    "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0"],
+    "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0", "scikit-learn<0.24.0"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
         "pytest",
