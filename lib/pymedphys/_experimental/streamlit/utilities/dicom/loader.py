@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-from typing import BinaryIO, List, Sequence
+from typing import BinaryIO, Sequence
 
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
@@ -51,12 +50,13 @@ def dicom_file_loader(accept_multiple_files, stop_before_pixels):
     datasets = []
     for a_file in files:
         try:
+            a_file.seek(0)
             dataset = pydicom.dcmread(
-                a_file.getvalue(), force=True, stop_before_pixels=stop_before_pixels
+                a_file, force=True, stop_before_pixels=stop_before_pixels
             )
         except Exception as e:
-            st.error(
-                "Failed reading the file `{a_file.name}`. The error was the following:"
+            st.warning(
+                f'Failed reading the file "`{a_file.name}`". The error was the following:'
             )
             st.error(e)
             st.stop()
@@ -84,3 +84,5 @@ def dicom_file_loader(accept_multiple_files, stop_before_pixels):
             )
 
             patient_ids.add(patient_id)
+
+    return datasets
