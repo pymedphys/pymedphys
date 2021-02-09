@@ -14,7 +14,6 @@
 
 import textwrap
 
-from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
