@@ -203,7 +203,7 @@ docs = [
 ]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
 ml = ["tensorflow"]
-mosaiq = ["pandas", "pymssql", "sqlalchemy"]
+mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = [
     "hypothesis",
