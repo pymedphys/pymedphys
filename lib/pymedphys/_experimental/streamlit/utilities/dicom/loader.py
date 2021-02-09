@@ -65,30 +65,36 @@ def dicom_file_loader(accept_multiple_files, stop_before_pixels):
 
         datasets.append(dataset)
 
-    patient_ids = {dataset.PatientID for dataset in datasets}
-    patient_id_filenames_map = collections.defaultdict(list)
+    patient_id_filenames_map = collections.defaultdict(set)
     patient_id_names_map = collections.defaultdict(set)
     for dataset, a_file in zip(datasets, files):
         patient_id = dataset.PatientID
         patient_name = _sum_doses.get_pretty_patient_name_from_dicom_dataset(dataset)
-        patient_id_filenames_map[patient_id].append(a_file.name)
+        patient_id_filenames_map[patient_id].add(a_file.name)
         patient_id_names_map[patient_id].add(patient_name)
 
     with right_column:
         st.write("## Details")
 
         for patient_id, filenames in patient_id_filenames_map.items():
-            filenames_as_markdown = "`, `".join(filenames)
-
             patient_names = patient_id_names_map[patient_id]
-            patient_names_as_markdown = "`, `".join(patient_names)
 
             st.write(
                 f"""
-                * Filename(s): `{filenames_as_markdown}`
+                * {_optionally_write_with_plural("Filename", filenames)}
                 * Patient ID: `{patient_id}`
-                * Patient Name(s): `{patient_names_as_markdown}`
+                * {_optionally_write_with_plural("Patient Name", patient_names)}
                 """
             )
 
     return datasets
+
+
+def _optionally_write_with_plural(label, items):
+    if len(items) > 1:
+        label += "s"
+
+    items_as_markdown = "`, `".join(items)
+    markdown_to_display = f"{label}: `{items_as_markdown}`"
+
+    return markdown_to_display
