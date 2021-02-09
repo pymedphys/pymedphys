@@ -12,7 +12,7 @@ from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
 
 CATEGORY = categories.PRE_ALPHA
-TITLE = "Plot 3D Dose from DICOM"
+TITLE = "Plot 3D Dose from DICOM - Plotly"
 
 
 def main():
@@ -35,17 +35,6 @@ def main():
         st.write(e)
         st.stop()
 
-    with right_column:
-        st.write(
-            f"""
-
-            ## Details
-
-            * Patient ID: `{ds.PatientID}`
-            * Patient Name: `{pretty_patient_name(ds)}`
-            """
-        )
-
     axes_fixed = xyz_axes_from_dataset(ds, coord_system="FIXED")
 
     dose = dose_from_dataset(ds)
@@ -53,17 +42,32 @@ def main():
     fig = _initialise_figure()
 
     max_dose_idx = _get_idx_of_max_dose(dose)
-    yp_of_max_dose = _get_point_at_idx(max_dose_idx, axes_fixed)[1]
+    max_dose_xp, max_dose_yp, max_dose_zp = _get_point_at_idx(max_dose_idx, axes_fixed)
+    max_dose_val = dose[max_dose_idx]
 
-    y_slider_pos = st.slider(
-        label="Longitudinal index (y in the IEC FIXED coordinate system)",
-        min_value=float(axes_fixed[1][0]),
-        max_value=float(axes_fixed[1][-1]),
-        value=float(yp_of_max_dose),
-        step=float(axes_fixed[0][1] - axes_fixed[0][0]),
-        format="%f",
-        key="y_slice",
-    )
+    with right_column:
+        st.write(
+            f"""
+
+            ## Details
+
+            * Patient ID: `{ds.PatientID}`
+            * Patient name: `{pretty_patient_name(ds)}`
+            * Max dose position (mm): `({max_dose_xp:.2f}, {max_dose_yp:.2f}, {max_dose_zp:.2f})`)
+            * Max dose value (Gy): `{max_dose_val:.4f}`)
+            """
+        )
+
+    with left_column:
+        y_slider_pos = st.slider(
+            label="Longitudinal index (y in the IEC FIXED coordinate system)",
+            min_value=float(axes_fixed[1][0]),
+            max_value=float(axes_fixed[1][-1]),
+            value=float(max_dose_yp),
+            step=float(axes_fixed[0][1] - axes_fixed[0][0]),
+            format="%f",
+            key="y_slice",
+        )
 
     _update_fig_doses(fig, axes_fixed, dose, yp=y_slider_pos)
     st.plotly_chart(fig)
@@ -135,10 +139,13 @@ def _generate_heatmap(axes, dose, idx, anatomical_plane, norm_dose="max_all"):
         raise ValueError("Invalid value for `norm_dose`.")
 
     return go.Heatmap(
-        colorbar=dict(title="Dose (Gy)"),
+        colorbar={
+            "title": {"text": "Dose (Gy)", "font_size": 18},
+        },
         colorscale="Jet",
         connectgaps=False,
         hovertemplate=_generate_hover_str(anatomical_plane, (xp, yp, zp)),
+        name="",
         visible=True,
         x=abscissa,
         xaxis="x",
@@ -168,7 +175,10 @@ def _update_fig_doses(fig, axes, dose, yp):
     fig.update_layout(title=f"Dose - Transverse (y = {yp} mm)")
     fig["layout"]["title"] = {
         "text": f"Dose - Transverse (y = {yp})",
-        # "xanchor": "center",
+        "x": 0.5,
+        "yanchor": "top",
+        "font_size": 25,
+        "pad": {"b": 0},
     }
     heatmap_tra = _generate_heatmap(axes, dose, idx, anatomical_plane="transverse")
     fig.add_trace(heatmap_tra)
@@ -182,14 +192,16 @@ def _initialise_figure():
         yaxis=dict(scaleanchor="x", scaleratio=1),
         paper_bgcolor="LightSteelBlue",
         # height=550,
-        width=600,
+        width=800,
     )
 
-    fig["layout"].update(margin=dict(l=5, r=5, b=5, t=35, pad=0))
+    fig["layout"].update(margin=dict(l=5, r=5, b=0, t=100, pad=0))
     fig["layout"]["xaxis"]["title"]["text"] = "x"
     fig["layout"]["xaxis"]["title"]["standoff"] = 5
+    fig["layout"]["xaxis"]["title"]["font_size"] = 18
     fig["layout"]["yaxis"]["title"]["text"] = "z"
     fig["layout"]["yaxis"]["title"]["standoff"] = 0
+    fig["layout"]["yaxis"]["title"]["font_size"] = 18
 
     return fig
 
