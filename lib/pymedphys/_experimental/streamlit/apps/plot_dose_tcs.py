@@ -1,4 +1,4 @@
-from typing import BinaryIO, List, Sequence
+from typing import BinaryIO, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -6,13 +6,13 @@ from pymedphys._imports import streamlit as st
 from pymedphys._imports.plotly import graph_objects as go
 from pymedphys._imports.plotly import subplots
 
-from pymedphys._dicom.coords import coords_from_xyz_axes, xyz_axes_from_dataset
+from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
 
 CATEGORY = categories.PRE_ALPHA
-TITLE = "Plot Dose from DICOM"
+TITLE = "Plot Dose in each Anatomical Plane"
 
 
 def main():
@@ -47,26 +47,6 @@ def main():
         )
 
     axes_fixed = xyz_axes_from_dataset(ds, coord_system="FIXED")
-    axes_pat = xyz_axes_from_dataset(ds, coord_system="IEC PATIENT")
-    axes_dicom = xyz_axes_from_dataset(ds, coord_system="DICOM")
-
-    st.write(f"Fixed X: {axes_fixed[0][0]} to {axes_fixed[0][-1]}")
-    st.write(f"Patient X: {axes_pat[0][0]} to {axes_pat[0][-1]}")
-    st.write(f"DICOM X: {axes_dicom[0][0]} to {axes_dicom[0][-1]}")
-    st.write(f"Fixed Y: {axes_fixed[1][0]} to {axes_fixed[1][-1]}")
-    st.write(f"Patient Y: {axes_pat[1][0]} to {axes_pat[1][-1]}")
-    st.write(f"DICOM Y: {axes_dicom[1][0]} to {axes_dicom[1][-1]}")
-    st.write(f"Fixed Z: {axes_fixed[2][0]} to {axes_fixed[2][-1]}")
-    st.write(f"Patient Z: {axes_pat[2][0]} to {axes_pat[2][-1]}")
-    st.write(f"DICOM Z: {axes_dicom[2][0]} to {axes_dicom[2][-1]}")
-
-    # assert np.array_equal(axes_dicom[0], axes_pat[0])
-    # assert np.array_equal(axes_dicom[1], -axes_pat[2])
-    # assert np.array_equal(axes_dicom[2], axes_pat[1])
-
-    # assert np.array_equal(axes_pat[0], -axes_fixed[2])
-    # assert np.array_equal(axes_pat[1], -axes_fixed[1])
-    # assert np.array_equal(axes_pat[2], -axes_fixed[0])
 
     dose = dose_from_dataset(ds)
 
@@ -88,7 +68,8 @@ def _load_rtdose_file(fh: BinaryIO):
     return ds
 
 
-def _generate_hover_str(anatomical_plane, point):
+def _generate_hover_str(anatomical_plane: str, point: Sequence[float]) -> str:
+    hover_str = None
 
     if anatomical_plane.lower() in ("transverse", "t"):
         hover_str = (
@@ -167,12 +148,6 @@ def _get_point_at_idx(idx, axes):
     )
 
 
-def update_fig(trace, points, selector):
-    st.write(trace)
-    st.write(points)
-    st.write(selector)
-
-
 def _update_fig_doses(fig, axes, dose, idx=None):
     # Assuming fixed coord system. So, for dose[k, i, j], k correspond to y,
     # i corresponds to -z and j corresponds to x
@@ -211,21 +186,30 @@ def _update_fig_doses(fig, axes, dose, idx=None):
     )
     fig.add_hline(y=yp, line_color="Silver", row=2, col=1)
     fig.add_vline(x=xp, line_color="Silver", row=2, col=1)
+    fig.data[0].on_click(update_plots)
+
+
+def update_plots(trace, points, selector):
+    st.write(trace)
 
 
 def _initialise_figure():
 
-    fig = subplots.make_subplots(
-        rows=2,
-        cols=2,
-        vertical_spacing=0.1,
-        subplot_titles=(
-            "Transverse",
-            "Sagittal",
-            "Coronal",
-            "Data",
-        ),
+    fig = go.FigureWidget(
+        subplots.make_subplots(
+            rows=2,
+            cols=2,
+            # horizontal_spacing=0,
+            # vertical_spacing=0,
+            subplot_titles=(
+                "Transverse",
+                "Sagittal",
+                "Coronal",
+                "Details",
+            ),
+        )
     )
+    st.write(type(fig))
     fig.update_layout(
         xaxis=dict(),
         yaxis=dict(scaleanchor="x", scaleratio=1),
@@ -234,10 +218,22 @@ def _initialise_figure():
         xaxis3=dict(scaleanchor="x", scaleratio=1),
         yaxis3=dict(scaleanchor="y", scaleratio=1),
         paper_bgcolor="LightSteelBlue",
-        height=600,
+        # height=550,
         width=800,
     )
 
-    fig["layout"].update(margin=dict(l=5, r=5, b=5, t=30, pad=0))
+    fig["layout"].update(margin=dict(l=5, r=5, b=5, t=25, pad=0))
+    fig["layout"]["xaxis"]["title"]["text"] = "x"
+    fig["layout"]["xaxis"]["title"]["standoff"] = 5
+    fig["layout"]["yaxis"]["title"]["text"] = "z"
+    fig["layout"]["yaxis"]["title"]["standoff"] = 0
+    fig["layout"]["xaxis2"]["title"]["text"] = "y"
+    fig["layout"]["xaxis2"]["title"]["standoff"] = 5
+    fig["layout"]["yaxis2"]["title"]["text"] = "z"
+    fig["layout"]["yaxis2"]["title"]["standoff"] = 0
+    fig["layout"]["xaxis3"]["title"]["text"] = "x"
+    fig["layout"]["xaxis3"]["title"]["standoff"] = 5
+    fig["layout"]["yaxis3"]["title"]["text"] = "y"
+    fig["layout"]["yaxis3"]["title"]["standoff"] = 0
 
     return fig
