@@ -32,30 +32,35 @@ TITLE = "DICOM WLutz"
 
 
 def main():
+    bb_diameter = st.sidebar.number_input(
+        "Ball bearing diameter (mm): ", min_value=0.0, max_value=None, value=8.0
+    )
+    penumbra = st.sidebar.number_input(
+        "Field penumbra size (mm): ", min_value=0.0, max_value=None, value=2.0
+    )
+
     dicom_datasets = _loader.dicom_file_loader(
         accept_multiple_files=True, stop_before_pixels=False
     )
 
-    progress_bar = st.progress(0)
+    progress_bar = st.sidebar.progress(0)
     wl_images = []
     for i, dataset in enumerate(dicom_datasets):
+        st.write(
+            f"## Gantry: {dataset.GantryAngle} | "
+            f"Collimator: {dataset.BeamLimitingDeviceAngle} | "
+            f"Turn Table: {dataset.PatientSupportAngle}"
+        )
         wl_image = _nasty_wrapper_around_pylinac(dataset)
         wl_images.append(wl_image)
 
         progress_bar.progress((i + 1) / len(dicom_datasets))
+        _display_wl_image(wl_image, bb_diameter, penumbra)
 
-        st.write(wl_image.array.shape)
-        st.write(wl_image.center)
-        st.write(wl_image.field_cax)
-        st.write(wl_image.bb)
-        st.write(wl_image.rad_field_bounding_box[0])
 
-    bb_diameter = st.number_input(
-        "Ball bearing diameter (mm): ", min_value=0.0, max_value=None, value=8.0
-    )
-    penumbra = st.number_input(
-        "Field penumbra size (mm): ", min_value=0.0, max_value=None, value=3.0
-    )
+def _display_wl_image(wl_image, bb_diameter, penumbra):
+    left, right = st.beta_columns(2)
+
     (
         x,
         y,
@@ -63,8 +68,21 @@ def main():
         bb_centre,
         field_centre,
         edge_lengths,
-    ) = _display_parameters_from_wl_image(wl_images[0], penumbra)
-    st.write(dir(wl_images[0]))
+    ) = _display_parameters_from_wl_image(wl_image, penumbra)
+
+    field_centre = np.array(field_centre)
+    bb_centre = np.array(bb_centre)
+
+    with left:
+        st.write(
+            f"""
+            ### Details
+
+            * Field centre: `{np.round(field_centre, 2)}`
+            * BB centre: `{np.round(bb_centre, 2)}`
+            * Field - BB: `{np.round(field_centre - bb_centre, 2)}`
+            """
+        )
 
     field_rotation = 0
 
@@ -80,7 +98,8 @@ def main():
         penumbra,
     )
 
-    st.pyplot(fig)
+    with right:
+        st.pyplot(fig)
 
 
 def _display_parameters_from_wl_image(wl_image, penumbra):
@@ -98,10 +117,10 @@ def _display_parameters_from_wl_image(wl_image, penumbra):
 
     y_length = (
         wl_image.rad_field_bounding_box[1] - wl_image.rad_field_bounding_box[0]
-    ) / dpmm - penumbra
+    ) / dpmm - 2 * penumbra
     x_length = (
         wl_image.rad_field_bounding_box[3] - wl_image.rad_field_bounding_box[2]
-    ) / dpmm - penumbra
+    ) / dpmm - 2 * penumbra
 
     edge_lengths = (x_length, y_length)
 
