@@ -32,17 +32,43 @@ TITLE = "DICOM WLutz"
 
 
 def main():
+    st.write(
+        f"""
+        This tool is utilising PyLinac version `{_pylinac_installed.__version__}`
+        for it's field and ball bearing position determination.
+        """
+    )
+
+    st.sidebar.write("# Display options")
     bb_diameter = st.sidebar.number_input(
         "Ball bearing diameter (mm): ", min_value=0.0, max_value=None, value=8.0
     )
     penumbra = st.sidebar.number_input(
         "Field penumbra size (mm): ", min_value=0.0, max_value=None, value=2.0
     )
+    expander = st.sidebar.beta_expander("Details")
+    with expander:
+        st.write(
+            """
+            Ball bearing diameter is utilised to draw a circle on the
+            plot and to bound the x-axis on the flipped BB plots.
+
+            The penumbra here is defined as the approximate distance
+            between field's 50%% line and the field's shoulder. It is
+            utilised to shrink pylinac's radiation bounding box to
+            display the a rectangle on the plot, and also to centre and
+            scale the x-axis on the field edge flip displays.
+            """
+        )
 
     dicom_datasets = _loader.dicom_file_loader(
         accept_multiple_files=True, stop_before_pixels=False
     )
 
+    if not st.button("Run Calculations"):
+        st.stop()
+
+    st.sidebar.write("# Progress")
     progress_bar = st.sidebar.progress(0)
     wl_images = []
     for i, dataset in enumerate(dicom_datasets):
