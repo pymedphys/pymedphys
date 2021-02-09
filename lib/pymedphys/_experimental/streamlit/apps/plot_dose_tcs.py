@@ -1,17 +1,17 @@
 from typing import BinaryIO, Sequence
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom
+from pymedphys._imports import plotly, pydicom
 from pymedphys._imports import streamlit as st
-from pymedphys._imports.plotly import graph_objects as go
-from pymedphys._imports.plotly import subplots
 
 from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
 
-CATEGORY = categories.PRE_ALPHA
+go = plotly.graph_objects
+
+CATEGORY = categories.PLANNING
 TITLE = "Plot Dose in each Anatomical Plane"
 
 
@@ -34,6 +34,7 @@ def main():
     except ValueError as e:
         st.write(e)
         st.stop()
+        raise
 
     with right_column:
         st.write(
@@ -69,7 +70,7 @@ def _load_rtdose_file(fh: BinaryIO):
 
 
 def _generate_hover_str(anatomical_plane: str, point: Sequence[float]) -> str:
-    hover_str = None
+    hover_str = ""
 
     if anatomical_plane.lower() in ("transverse", "t"):
         hover_str = (
@@ -186,17 +187,12 @@ def _update_fig_doses(fig, axes, dose, idx=None):
     )
     fig.add_hline(y=yp, line_color="Silver", row=2, col=1)
     fig.add_vline(x=xp, line_color="Silver", row=2, col=1)
-    fig.data[0].on_click(update_plots)
-
-
-def update_plots(trace, points, selector):
-    st.write(trace)
 
 
 def _initialise_figure():
 
     fig = go.FigureWidget(
-        subplots.make_subplots(
+        plotly.subplots.make_subplots(
             rows=2,
             cols=2,
             # horizontal_spacing=0,
@@ -209,7 +205,6 @@ def _initialise_figure():
             ),
         )
     )
-    st.write(type(fig))
     fig.update_layout(
         xaxis=dict(),
         yaxis=dict(scaleanchor="x", scaleratio=1),
