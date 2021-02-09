@@ -142,7 +142,7 @@ def _create_portal_image_dicom_dataset(
     sid = 1600.0
     sad = 1000.0
 
-    pixel_spacing = 1 / pixels_per_mm * sid / sad
+    pixel_spacing = (1 / pixels_per_mm) * (sid / sad)
 
     date = datetime.strftime("%Y%m%d")
     time = datetime.strftime("%H%M%S.%f")
