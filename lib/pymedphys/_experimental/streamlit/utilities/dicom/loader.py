@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 from typing import BinaryIO, Sequence
 
 from pymedphys._imports import pydicom
@@ -64,25 +65,30 @@ def dicom_file_loader(accept_multiple_files, stop_before_pixels):
 
         datasets.append(dataset)
 
+    patient_ids = {dataset.PatientID for dataset in datasets}
+    patient_id_filenames_map = collections.defaultdict(list)
+    patient_id_names_map = collections.defaultdict(set)
+    for dataset, a_file in zip(datasets, files):
+        patient_id = dataset.PatientID
+        patient_name = _sum_doses.get_pretty_patient_name_from_dicom_dataset(dataset)
+        patient_id_filenames_map[patient_id].append(a_file.name)
+        patient_id_names_map[patient_id].add(patient_name)
+
     with right_column:
         st.write("## Details")
-        patient_ids = set()
-        for dataset in datasets:
-            patient_id = dataset.PatientID
-            if patient_id in patient_ids:
-                continue
 
-            patient_name = _sum_doses.get_pretty_patient_name_from_dicom_dataset(
-                dataset
-            )
+        for patient_id, filenames in patient_id_filenames_map.items():
+            filenames_as_markdown = "`, `".join(filenames)
+
+            patient_names = patient_id_names_map[patient_id]
+            patient_names_as_markdown = "`, `".join(patient_names)
 
             st.write(
                 f"""
+                * Filename(s): `{filenames_as_markdown}`
                 * Patient ID: `{patient_id}`
-                * Patient Name: `{patient_name}`
+                * Patient Name(s): `{patient_names_as_markdown}`
                 """
             )
-
-            patient_ids.add(patient_id)
 
     return datasets
