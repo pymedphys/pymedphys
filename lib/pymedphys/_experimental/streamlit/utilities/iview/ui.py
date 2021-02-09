@@ -152,10 +152,16 @@ def iview_and_icom_filter_and_align(
         database_table["datetime"] - midnight
     ).dt.total_seconds()
 
-    icom_datasets["x_lower"] = icom_datasets["centre_x"] - icom_datasets["width"] / 2
-    icom_datasets["x_upper"] = icom_datasets["centre_x"] + icom_datasets["width"] / 2
-    icom_datasets["y_lower"] = icom_datasets["centre_y"] - icom_datasets["length"] / 2
-    icom_datasets["y_upper"] = icom_datasets["centre_y"] + icom_datasets["length"] / 2
+    for lower, upper, centre, diameter in (
+        ("x_lower", "x_upper", "centre_x", "width"),
+        ("y_lower", "y_upper", "centre_y", "length"),
+    ):
+        (
+            icom_datasets[lower],
+            icom_datasets[upper],
+        ) = _get_bounds_from_centre_and_diameter(
+            icom_datasets[centre], icom_datasets[diameter]
+        )
 
     for column in [
         "gantry",
@@ -192,6 +198,13 @@ def iview_and_icom_filter_and_align(
         database_table = _angle_filtering(database_table, advanced_mode)
 
     return database_table, database_directory, qa_directory, selected_date
+
+
+def _get_bounds_from_centre_and_diameter(centre, diameter):
+    lower = centre - diameter / 2
+    upper = centre + diameter / 2
+
+    return lower, upper
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):
