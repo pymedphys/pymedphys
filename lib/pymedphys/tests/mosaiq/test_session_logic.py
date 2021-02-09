@@ -44,11 +44,11 @@ def test_sessions_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = mock_site_df.iloc[0]["SIT_SET_ID"]
-        print(sit_set_id)
+        sit_set_id = 1
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
+        sessions_for_one_site = list(sessions_for_one_site)
         print(sessions_for_one_site)
 
         # make sure the correct number of rows were returned
@@ -94,11 +94,11 @@ def test_session_offsets_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = mock_site_df.iloc[0]["SIT_SET_ID"]
-        print(sit_set_id)
+        sit_set_id = 1
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
+        sessions_for_one_site = list(sessions_for_one_site)
         print(sessions_for_one_site)
 
         # make sure the correct number of rows were returned
@@ -116,8 +116,11 @@ def test_session_offsets_for_site(
                 assert session_number > previous_session_number
 
             if session_offset is not None:
-                assert session_offset[0] > previous_session_offset_when
+                if previous_session_offset_when is not None:
+                    assert session_offset[0] > previous_session_offset_when
                 assert abs(session_offset[1]) <= 10.0
+                assert abs(session_offset[2]) <= 10.0
+                assert abs(session_offset[3]) <= 10.0
 
                 previous_session_offset_when = session_offset[0]
 

@@ -138,6 +138,7 @@ def sessions_for_site(connection: Connection, sit_set_id: int):
     # cluster_sessions expects a sorted list, so extract
     #   the Tx_DtTm value from each row
     dose_hst_datetimes = [row[0] for row in result]
+    assert isinstance(dose_hst_datetimes[0], datetime)
     return cluster_sessions(dose_hst_datetimes)
 
 

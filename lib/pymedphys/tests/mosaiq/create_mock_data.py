@@ -367,7 +367,9 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             session_workday += 1 if randint(0, 5) else 2
 
     # now populate tables
-    dose_hst_df = pd.DataFrame(dose_hst_recs)
+    dose_hst_df = pd.DataFrame(
+        dose_hst_recs, columns=["Pat_ID1", "SIT_ID", "FLD_ID", "Tx_DtTm"]
+    )
     dataframe_to_sql(
         dose_hst_df,
         "Dose_Hst",
@@ -380,7 +382,20 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
         },
     )
 
-    offset_df = pd.DataFrame(offset_recs)
+    offset_df = pd.DataFrame(
+        offset_recs,
+        columns=[
+            "SIT_SET_ID",
+            "Study_DtTm",
+            "Offset_State",
+            "Offset_Type",
+            "Superior_Offset",
+            "Anterior_Offset",
+            "Lateral_Offset",
+        ],
+    )
+    offset_df["Version"] = 0
+
     dataframe_to_sql(
         offset_df,
         "Offset",
@@ -393,5 +408,6 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             "Superior_Offset": sqlalchemy.types.Numeric(precision=6, scale=1),
             "Anterior_Offset": sqlalchemy.types.Numeric(precision=6, scale=1),
             "Lateral_Offset": sqlalchemy.types.Numeric(precision=6, scale=1),
+            "Version": sqlalchemy.types.Integer(),
         },
     )
