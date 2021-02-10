@@ -293,7 +293,9 @@ def xyz_axes_from_dataset(
     return Axes(x, y, z, coord_system, orient_str)
 
 
-def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) -> bool:
+def coords_in_datasets_are_equal(
+    datasets: Sequence["pydicom.dataset.Dataset"], ignore_orient=False
+) -> bool:
     """True if all DICOM datasets have perfectly matching coordinates
 
     Parameters
@@ -315,12 +317,23 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
         return False
 
     # Full coord check:
-    all_concat_axes = []
-    for ds in datasets:
-        axis_vals_only = xyz_axes_from_dataset(ds)[0:3]
-        all_concat_axes.append([np.concatenate(axis_vals_only) for ds in datasets])
 
-    return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
+    all_concat_axes_vals = []
+
+    if ignore_orient:
+        for ds in datasets:
+            axis_vals_only = xyz_axes_from_dataset(ds, "FIXED")[0:3]
+            all_concat_axes_vals.append(
+                [np.concatenate(axis_vals_only) for ds in datasets]
+            )
+    else:
+        for ds in datasets:
+            axis_vals_only = xyz_axes_from_dataset(ds, "DICOM")[0:3]
+            all_concat_axes_vals.append(
+                [np.concatenate(axis_vals_only) for ds in datasets]
+            )
+
+    return all(np.allclose(a, all_concat_axes_vals[0]) for a in all_concat_axes_vals)
 
 
 def unravelled_argmax(a: "np.ndarray"):

@@ -127,10 +127,11 @@ def test_coords_in_datasets_are_equal():
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
 
     # same coords but rotated using IOP
-    # (so mapping to PixelData would be incorrect)
+    # (so mapping to PixelData would be incorrect for patient-based coord systems)
     ds2.ImagePositionPatient = [-1.0, 1.0, 1.0]
     ds2.ImageOrientationPatient = [1.0, 0, 0, 0, -1, 0]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
+    assert coords.coords_in_datasets_are_equal([ds1, ds2], ignore_orient=True)
 
     # same coords but rotated using GFOV
     # (so mapping to PixelData would be incorrect)
