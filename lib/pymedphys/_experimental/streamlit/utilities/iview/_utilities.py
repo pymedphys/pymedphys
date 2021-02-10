@@ -14,47 +14,12 @@
 
 import pathlib
 
-from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
 from . import _dbf
-
-
-def iterate_over_columns(dataframe, data, columns, callbacks, previous=tuple()):
-    column = columns[0]
-    callback = callbacks[0]
-
-    sorted_items = natsort.natsorted(dataframe[column].unique())
-    for item in sorted_items:
-        filtered_dataframe = filter_by(dataframe, column, item)
-        if len(filtered_dataframe) == 0:
-            continue
-
-        args = previous + (item,)
-
-        if callback is not None:
-            callback(filtered_dataframe, data, *args)
-
-        if len(columns) > 1:
-            iterate_over_columns(
-                filtered_dataframe, data, columns[1:], callbacks[1:], previous=args
-            )
-
-
-def filter_by(dataframe, column, value):
-    filtered = dataframe.loc[dataframe[column] == value]
-
-    return filtered
-
-
-def filepath_to_filename(path):
-    path = pathlib.Path(path)
-    filename = path.name
-
-    return filename
 
 
 def expand_border_events(mask):
@@ -110,15 +75,11 @@ def get_directories_and_initial_database(config, refresh_cache):
     }
 
     qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
-    wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
-    wlutz_directory_by_date = wlutz_directory.joinpath(
-        selected_date.strftime("%Y-%m-%d")
-    )
 
     return (
         database_directory,
         icom_directory,
-        wlutz_directory_by_date,
+        qa_directory,
         database_table,
         selected_date,
         selected_machine_id,

@@ -1,12 +1,10 @@
-import importlib
 import pathlib
 
 from pymedphys._imports import imageio, libjpeg
+from pymedphys._imports import numpy as np
 
-import pymedphys
 
-
-def imread(input_filepath):
+def imread(input_filepath) -> "np.array":
     with open(input_filepath, "rb") as f:
         im = libjpeg.decode(f.read())
 

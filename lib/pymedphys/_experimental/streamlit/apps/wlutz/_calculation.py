@@ -14,6 +14,7 @@
 
 
 import base64
+import pathlib
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -25,7 +26,7 @@ from pymedphys._utilities import filesystem as _pp_filesystem_utilities
 from pymedphys._experimental.wlutz import main as _wlutz
 from pymedphys._experimental.wlutz import reporting as _reporting
 
-from . import _altair, _utilities
+from . import _altair
 
 RESULTS_DATA_COLUMNS = [
     "filepath",
@@ -70,9 +71,7 @@ def calculations_ui(
     else:
         selected_algorithms = algorithm_options
 
-    database_table["filename"] = database_table["filepath"].apply(
-        _utilities.filepath_to_filename
-    )
+    database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
     if advanced_mode:
@@ -481,3 +480,10 @@ def _calculate_wlutz(
     )
 
     return field_centre, bb_centre
+
+
+def _filepath_to_filename(path):
+    path = pathlib.Path(path)
+    filename = path.name
+
+    return filename

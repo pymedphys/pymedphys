@@ -226,6 +226,8 @@ def _final_frame_column_adjustment(table):
             "port",
             "datetime",
             "PIMG_DBID",
+            "LAST_NAME",
+            "FIRST_NAME",
         ]
     ]
 
