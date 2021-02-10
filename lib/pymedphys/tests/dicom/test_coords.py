@@ -23,8 +23,6 @@ import pymedphys
 from pymedphys._data import download
 from pymedphys._dicom import coords, create
 
-ORIENTATIONS_SUPPORTED = ("FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS")
-
 
 def get_file_within_data_zip(zip_name, file_name):
     dose_data_files = pymedphys.zip_data_paths(zip_name)
@@ -47,7 +45,8 @@ def test_axis_extraction_all_orients_and_coord_systems():
     xyz extraction function"""
 
     test_ds_dict = {
-        key: pydicom.dcmread(get_data_file(key)) for key in ORIENTATIONS_SUPPORTED
+        key: pydicom.dcmread(get_data_file(key))
+        for key in coords.ORIENTATIONS_SUPPORTED
     }
 
     for orient, dicom in test_ds_dict.items():
@@ -140,3 +139,38 @@ def test_coords_in_datasets_are_equal():
     ds2.ImageOrientationPatient = [1.0, 0, 0, 0, 1, 0]
     ds2.GridFrameOffsetVector = [0, -1, -2]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
+
+
+def test_coords_from_dataset():
+
+    pixels = np.ones((4, 2, 3), dtype=np.uint32)
+
+    test_dicom_dict = {
+        "Modality": "RTDOSE",
+        "ImagePositionPatient": [-1.0, -1.0, -1.0],
+        "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
+        "BitsAllocated": 32,
+        "Rows": 2,
+        "Columns": 3,
+        "NumberOfFrames": 4,
+        "PixelRepresentation": 0,
+        "SamplesPerPixel": 1,
+        "PhotometricInterpretation": "MONOCHROME2",
+        "PixelSpacing": [1.0, 1.0],
+        "GridFrameOffsetVector": [0.0, 1.0, 2.0, 3.0],
+        "PixelData": pixels.tobytes(),
+        "DoseGridScaling": 1,
+    }
+
+    ds = create.dicom_dataset_from_dict(test_dicom_dict)
+    ds.fix_meta_info(enforce_standard=False)
+
+    for test_coord_system in ("DICOM", "IEC FIXED", "IEC PATIENT"):
+        for _, im_orient_pat in coords.ORIENTATIONS_SUPPORTED.items():
+
+            ds.ImageOrientationPatient = im_orient_pat
+            ds_coords = coords.coords_from_dataset(ds, coord_system=test_coord_system)
+
+            for i, coord_meshgrid in enumerate(ds_coords.grid):
+                print(i)
+                assert coord_meshgrid.shape == pixels.shape
