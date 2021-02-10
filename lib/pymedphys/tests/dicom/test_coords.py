@@ -14,7 +14,6 @@
 
 
 import copy
-import json
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
@@ -54,49 +53,49 @@ def test_axis_extraction_all_orients_and_coord_systems():
         axes_patient = coords.xyz_axes_from_dataset(dicom, "PATIENT")
         axes_fixed = coords.xyz_axes_from_dataset(dicom, "FIXED")
 
-        assert np.array_equal(axes_dicom[0], axes_patient[0])
-        assert np.array_equal(axes_dicom[1], -axes_patient[2])
-        assert np.array_equal(axes_dicom[2], axes_patient[1])
+        assert np.array_equal(axes_dicom.x, axes_patient.x)
+        assert np.array_equal(axes_dicom.y, -axes_patient.z)
+        assert np.array_equal(axes_dicom.z, axes_patient.y)
 
         if orient == "HFS":  # iex fixed should match iec patient for HFS
-            assert np.array_equal(axes_patient[0], axes_fixed[0])
-            assert np.array_equal(axes_patient[1], axes_fixed[1])
-            assert np.array_equal(axes_patient[2], axes_fixed[2])
+            assert np.array_equal(axes_patient.x, axes_fixed.x)
+            assert np.array_equal(axes_patient.y, axes_fixed.y)
+            assert np.array_equal(axes_patient.z, axes_fixed.z)
 
         elif orient == "HFP":
-            assert np.array_equal(axes_patient[0], -axes_fixed[0])
-            assert np.array_equal(axes_patient[1], axes_fixed[1])
-            assert np.array_equal(axes_patient[2], -axes_fixed[2])
+            assert np.array_equal(axes_patient.x, -axes_fixed.x)
+            assert np.array_equal(axes_patient.y, axes_fixed.y)
+            assert np.array_equal(axes_patient.z, -axes_fixed.z)
 
         elif orient == "FFS":
-            assert np.array_equal(axes_patient[0], -axes_fixed[0])
-            assert np.array_equal(axes_patient[1], -axes_fixed[1])
-            assert np.array_equal(axes_patient[2], axes_fixed[2])
+            assert np.array_equal(axes_patient.x, -axes_fixed.x)
+            assert np.array_equal(axes_patient.y, -axes_fixed.y)
+            assert np.array_equal(axes_patient.z, axes_fixed.z)
 
         elif orient == "FFP":
-            assert np.array_equal(axes_patient[0], axes_fixed[0])
-            assert np.array_equal(axes_patient[1], -axes_fixed[1])
-            assert np.array_equal(axes_patient[2], -axes_fixed[2])
+            assert np.array_equal(axes_patient.x, axes_fixed.x)
+            assert np.array_equal(axes_patient.y, -axes_fixed.y)
+            assert np.array_equal(axes_patient.z, -axes_fixed.z)
 
         elif orient == "HFDL":
-            assert np.array_equal(axes_patient[0], -axes_fixed[2])
-            assert np.array_equal(axes_patient[1], axes_fixed[1])
-            assert np.array_equal(axes_patient[2], axes_fixed[0])
+            assert np.array_equal(axes_patient.x, -axes_fixed.z)
+            assert np.array_equal(axes_patient.y, axes_fixed.y)
+            assert np.array_equal(axes_patient.z, axes_fixed.x)
 
         elif orient == "HFDR":
-            assert np.array_equal(axes_patient[0], axes_fixed[2])
-            assert np.array_equal(axes_patient[1], axes_fixed[1])
-            assert np.array_equal(axes_patient[2], -axes_fixed[0])
+            assert np.array_equal(axes_patient.x, axes_fixed.z)
+            assert np.array_equal(axes_patient.y, axes_fixed.y)
+            assert np.array_equal(axes_patient.z, -axes_fixed.x)
 
         elif orient == "FFDL":
-            assert np.array_equal(axes_patient[0], -axes_fixed[2])
-            assert np.array_equal(axes_patient[1], -axes_fixed[1])
-            assert np.array_equal(axes_patient[2], -axes_fixed[0])
+            assert np.array_equal(axes_patient.x, -axes_fixed.z)
+            assert np.array_equal(axes_patient.y, -axes_fixed.y)
+            assert np.array_equal(axes_patient.z, -axes_fixed.x)
 
         elif orient == "FFDR":
-            assert np.array_equal(axes_patient[0], axes_fixed[2])
-            assert np.array_equal(axes_patient[1], -axes_fixed[1])
-            assert np.array_equal(axes_patient[2], axes_fixed[0])
+            assert np.array_equal(axes_patient.x, axes_fixed.z)
+            assert np.array_equal(axes_patient.y, -axes_fixed.y)
+            assert np.array_equal(axes_patient.z, axes_fixed.x)
 
 
 @pytest.mark.pydicom
@@ -172,5 +171,4 @@ def test_coords_from_dataset():
             ds_coords = coords.coords_from_dataset(ds, coord_system=test_coord_system)
 
             for i, coord_meshgrid in enumerate(ds_coords.grid):
-                print(i)
                 assert coord_meshgrid.shape == pixels.shape
