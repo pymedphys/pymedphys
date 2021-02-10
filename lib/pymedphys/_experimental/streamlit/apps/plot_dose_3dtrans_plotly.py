@@ -22,7 +22,7 @@ from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
 
-go = plotly.graphy_objects
+go = plotly.graph_objects
 
 CATEGORY = categories.PRE_ALPHA
 TITLE = "Plot 3D Dose from DICOM - Plotly"

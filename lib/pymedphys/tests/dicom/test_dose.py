@@ -16,8 +16,9 @@
 
 import copy
 import json
-from os.path import abspath, dirname
-from os.path import join as pjoin
+import os
+import tempfile
+from os import path
 from zipfile import ZipFile
 
 from pymedphys._imports import numpy as np
@@ -29,13 +30,35 @@ from pymedphys._dicom import collection, create, dose
 
 from . import test_coords
 
-HERE = dirname(abspath(__file__))
-DATA_DIRECTORY = pjoin(HERE, "data", "dose")
+HERE = path.dirname(path.abspath(__file__))
+DATA_DIRECTORY = path.join(HERE, "data", "dose")
 ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
 
+def update_file_in_zip(zipname, filename, data):
+    # generate a temp file
+    tmpfd, tmpname = tempfile.mkstemp(dir=os.path.dirname(zipname))
+    os.close(tmpfd)
+
+    # create a temp copy of the archive without filename
+    with ZipFile(zipname, "r") as zin:
+        with ZipFile(tmpname, "w") as zout:
+            zout.comment = zin.comment  # preserve the comment
+            for item in zin.infolist():
+                if item.filename != filename:
+                    zout.writestr(item, zin.read(item.filename))
+
+    # replace with the temp archive
+    os.remove(zipname)
+    os.rename(tmpname, zipname)
+
+    # now add filename with its new data
+    with ZipFile(zipname, mode="a") as zf:
+        zf.writestr(filename, data)
+
+
 @pytest.mark.pydicom
-def test_dicom_dose_constancy():
+def test_dicom_dose_constancy(save_new_baseline=False):
     wedge_basline_filename = "wedge_dose_baseline.json"
 
     baseline_dicom_dose_dict_zippath = download.get_file_within_data_zip(
@@ -47,9 +70,25 @@ def test_dicom_dose_constancy():
 
     test_dicom_dose = collection.DicomDose.from_file(test_dicom_dose_filepath)
 
-    with ZipFile(baseline_dicom_dose_dict_zippath, "r") as zip_ref:
-        with zip_ref.open(wedge_basline_filename) as a_file:
-            expected_dicom_dose_dict = json.load(a_file)
+    if not save_new_baseline:
+        with ZipFile(baseline_dicom_dose_dict_zippath, "r") as zip_ref:
+            with zip_ref.open(wedge_basline_filename) as a_file:
+                expected_dicom_dose_dict = json.load(a_file)
+    else:
+        expected_dicom_dose_dict = {
+            "coords": test_dicom_dose.coords.grid.tolist(),
+            "units": test_dicom_dose.units,
+            "values": test_dicom_dose.values.tolist(),
+            "x": test_dicom_dose.x.tolist(),
+            "y": test_dicom_dose.y.tolist(),
+            "z": test_dicom_dose.z.tolist(),
+        }
+
+        update_file_in_zip(
+            baseline_dicom_dose_dict_zippath,
+            wedge_basline_filename,
+            json.dumps(expected_dicom_dose_dict),
+        )
 
     assert np.allclose(
         test_dicom_dose.values, np.array(expected_dicom_dose_dict["values"])
@@ -59,7 +98,7 @@ def test_dicom_dose_constancy():
     assert np.allclose(test_dicom_dose.y, np.array(expected_dicom_dose_dict["y"]))
     assert np.allclose(test_dicom_dose.z, np.array(expected_dicom_dose_dict["z"]))
     assert np.allclose(
-        test_dicom_dose.coords, np.array(expected_dicom_dose_dict["coords"])
+        test_dicom_dose.coords.grid, np.array(expected_dicom_dose_dict["coords"])
     )
 
 
