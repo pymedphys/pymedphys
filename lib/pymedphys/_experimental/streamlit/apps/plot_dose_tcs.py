@@ -16,12 +16,13 @@ from typing import BinaryIO, Sequence
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plotly, pydicom
 from pymedphys._imports import streamlit as st
-from pymedphys._imports.plotly import graph_objects as go
 
 from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
+
+go = plotly.graph_objects
 
 CATEGORY = categories.PLANNING
 TITLE = "Plot Dose in each Anatomical Plane"
