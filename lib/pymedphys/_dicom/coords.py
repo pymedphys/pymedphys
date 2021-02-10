@@ -14,13 +14,95 @@
 
 """A suite of functions for handling DICOM coordinates"""
 
+from collections import namedtuple
 from typing import Sequence, Tuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom  # pylint: disable=unused-import
 
+Axes = namedtuple("Axes", "x y z coord_system, orient")
+Coords = namedtuple("Coords", "grid coord_system orient")
 
-def coords_from_xyz_axes(xyz_axes: Sequence["np.ndarray"]) -> "np.ndarray":
+# fmt: off
+ORIENTATIONS_SUPPORTED = {
+    "FFDL": [ 0,  1,  0,  1,  0,  0],
+    "FFDR": [ 0, -1,  0, -1,  0,  0],
+    "FFP":  [ 1,  0,  0,  0, -1,  0],
+    "FFS":  [-1,  0,  0,  0,  1,  0],
+    "HFDL": [ 0, -1,  0,  1,  0,  0],
+    "HFDR": [ 0,  1,  0, -1,  0,  0],
+    "HFP":  [-1,  0,  0,  0, -1,  0],
+    "HFS":  [ 1,  0,  0,  0,  1,  0],
+}
+# fmt: on
+
+
+def coords_from_dataset(
+    ds: "pydicom.dataset.Dataset", coord_system: str = "IEC FIXED"
+) -> Coords:
+    r"""Returns the x, y and z coordinates of a DICOM dataset's
+    pixel array in the specified coordinate system.
+
+
+    Parameters
+    ----------
+    ds : pydicom.dataset.Dataset
+        A DICOM dataset that contains pixel data. Supported modalities
+        include 'CT' and 'RTDOSE'.
+
+    coord_system : str, optional
+        The coordinate system in which to return the `x`, `y` and `z`
+        coordinates of the DICOM dataset. The accepted, case-insensitive
+        values of `coord_system` are:
+
+        'DICOM' or 'd':
+            Return axes in the DICOM coordinate system.
+
+        'patient', 'IEC patient' or 'p':
+            Return axes in the IEC patient coordinate system.
+
+        'fixed', 'IEC fixed' or 'f':
+            Return axes in the IEC fixed coordinate system.
+
+
+    Returns
+    -------
+    coords :
+        An array containing three grids consisting of the `x`, 'y` and
+        `z` coordinates of the corresponding grid (e.g. DICOM dataset's
+        pixel array). E.g. coords[0, k, i, j]
+
+
+    Notes
+    -----
+    Supported scan orientations [1]_:
+
+    =========================== ==========================
+    Orientation                 ds.ImageOrientationPatient
+    =========================== ==========================
+    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
+    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
+    Feet First Prone            [1, 0, 0, 0, -1, 0]
+    Feet First Supine           [-1, 0, 0, 0, 1, 0]
+    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
+    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
+    Head First Prone            [-1, 0, 0, 0, -1, 0]
+    Head First Supine           [1, 0, 0, 0, 1, 0]
+    =========================== ==========================
+
+    References
+    ----------
+    .. [1] O. McNoleg, "Generalized coordinate transformations for Monte
+       Carlo (DOSXYZnrc and VMC++) verifications of DICOM compatible
+       radiotherapy treatment plans", arXiv:1406.0014, Table 1,
+       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    """
+
+    axes = xyz_axes_from_dataset(ds=ds, coord_system=coord_system)
+    return coords_from_xyz_axes(xyz_axes=axes)
+
+
+def coords_from_xyz_axes(xyz_axes: Axes) -> Coords:
     """Converts a set of x, y and z axes of a regular grid (e.g. a DICOM
     pixel array) into an array of three grids whose voxels correspond to
     and contain the `x`, `y`, and `z` coordinates of the original grid.
@@ -39,10 +121,34 @@ def coords_from_xyz_axes(xyz_axes: Sequence["np.ndarray"]) -> "np.ndarray":
         `z` coordinates of the corresponding grid (e.g. DICOM dataset's
         pixel array) from which the original axes were extracted.
     """
-    ZZ, YY, XX = np.meshgrid(xyz_axes[2], xyz_axes[1], xyz_axes[0], indexing="ij")
 
-    coords = np.array((XX, YY, ZZ), dtype=np.float64)
-    return coords
+    is_decubitis = "D" in xyz_axes.orient
+
+    if xyz_axes.coord_system == "D":
+        if is_decubitis:
+            ZZ, XX, YY = np.meshgrid(
+                xyz_axes[2], xyz_axes[0], xyz_axes[1], indexing="ij"
+            )
+        else:
+            ZZ, YY, XX = np.meshgrid(
+                xyz_axes[2], xyz_axes[1], xyz_axes[0], indexing="ij"
+            )
+
+    elif xyz_axes.coord_system in ("F", "P"):
+        if xyz_axes.coord_system == "P" and is_decubitis:
+            YY, XX, ZZ = np.meshgrid(
+                xyz_axes[1], xyz_axes[0], xyz_axes[2], indexing="ij"
+            )
+        else:
+            YY, ZZ, XX = np.meshgrid(
+                xyz_axes[1], xyz_axes[2], xyz_axes[0], indexing="ij"
+            )
+    else:
+        raise ValueError("Invalid coordinate system")
+
+    return Coords(
+        np.array((XX, YY, ZZ), dtype=np.float64), xyz_axes.coord_system, xyz_axes.orient
+    )
 
 
 def _orientation_is_head_first(orientation_vector, is_decubitus):
@@ -53,8 +159,8 @@ def _orientation_is_head_first(orientation_vector, is_decubitus):
 
 
 def xyz_axes_from_dataset(
-    ds: "pydicom.dataset.Dataset", coord_system: str = "DICOM"
-) -> Tuple["np.ndarray", "np.ndarray", "np.ndarray"]:
+    ds: "pydicom.dataset.Dataset", coord_system: str = "IEC FIXED"
+) -> Axes:
     r"""Returns the x, y and z axes of a DICOM dataset's
     pixel array in the specified coordinate system.
 
@@ -113,12 +219,24 @@ def xyz_axes_from_dataset(
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
+    if coord_system.upper() in ("FIXED", "IEC FIXED", "F"):
+        coord_system = "F"
+    elif coord_system.upper() in ("PATIENT", "IEC PATIENT", "P"):
+        coord_system = "P"
+    elif coord_system.upper() in ("DICOM", "D"):
+        coord_system = "D"
+
     position = np.array(ds.ImagePositionPatient)
     orientation = np.array(ds.ImageOrientationPatient)
+    orient_str = next(
+        key
+        for key, val in ORIENTATIONS_SUPPORTED.items()
+        if np.allclose(np.array(val), orientation)
+    )
 
     if not (
-        np.array_equal(np.abs(orientation), np.array([1, 0, 0, 0, 1, 0]))
-        or np.array_equal(np.abs(orientation), np.array([0, 1, 0, 1, 0, 0]))
+        np.allclose(np.abs(orientation), np.array([1, 0, 0, 0, 1, 0]))
+        or np.allclose(np.abs(orientation), np.array([0, 1, 0, 1, 0, 0]))
     ):
         raise ValueError(
             "Dose grid orientation is not supported. Dose "
@@ -147,44 +265,32 @@ def xyz_axes_from_dataset(
     else:
         z_dicom_fixed = -position[2] + np.array(ds.GridFrameOffsetVector)
 
-    if coord_system.upper() in ("FIXED", "IEC FIXED", "F"):
+    if coord_system == "F":
         x = x_dicom_fixed
         y = z_dicom_fixed
         z = -y_dicom_fixed
 
-    elif coord_system.upper() in ("DICOM", "D", "PATIENT", "IEC PATIENT", "P"):
-
-        if orientation[0] == 1:
-            x = x_dicom_fixed
-        elif orientation[0] == -1:
-            x = -x_dicom_fixed
-        elif orientation[1] == 1:
-            y_d = x_dicom_fixed
-        elif orientation[1] == -1:
-            y_d = -x_dicom_fixed
-
-        if orientation[4] == 1:
-            y_d = y_dicom_fixed
-        elif orientation[4] == -1:
-            y_d = -y_dicom_fixed
-        elif orientation[3] == 1:
-            x = y_dicom_fixed
-        elif orientation[3] == -1:
-            x = -y_dicom_fixed
-
-        if not is_head_first:
-            z_d = -z_dicom_fixed
+    elif coord_system in ("P", "D"):
+        if is_decubitus:
+            x = orientation[3] * y_dicom_fixed
+            y_dicom = orientation[1] * x_dicom_fixed
         else:
-            z_d = z_dicom_fixed
+            x = orientation[0] * x_dicom_fixed
+            y_dicom = orientation[4] * y_dicom_fixed
 
-        if coord_system.upper() in ("DICOM", "D"):
-            y = y_d
-            z = z_d
-        elif coord_system.upper() in ("PATIENT", "IEC PATIENT", "P"):
-            y = z_d
-            z = -y_d
+        if is_head_first:
+            z_dicom = z_dicom_fixed
+        else:
+            z_dicom = -z_dicom_fixed
 
-    return (x, y, z)
+        if coord_system == "D":
+            y = y_dicom
+            z = z_dicom
+        elif coord_system == "P":
+            y = z_dicom
+            z = -y_dicom
+
+    return Axes(x, y, z, coord_system, orient_str)
 
 
 def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) -> bool:
