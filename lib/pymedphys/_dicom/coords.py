@@ -315,7 +315,10 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
         return False
 
     # Full coord check:
-    all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
+    all_concat_axes = []
+    for ds in datasets:
+        axis_vals_only = xyz_axes_from_dataset(ds)[0:3]
+        all_concat_axes.append([np.concatenate(axis_vals_only) for ds in datasets])
 
     return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
 

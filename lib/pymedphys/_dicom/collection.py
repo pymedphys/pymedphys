@@ -104,23 +104,19 @@ class DicomDose(DicomBase):
     # but not needlessly call the entire function.
     @property
     def x(self):
-        x_value, _, _ = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
-        return x_value
+        return coords.xyz_axes_from_dataset(self.dataset, "DICOM").x
 
     @property
     def y(self):
-        _, y_value, _ = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
-        return y_value
+        return coords.xyz_axes_from_dataset(self.dataset, "DICOM").y
 
     @property
     def z(self):
-        _, _, z_value = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
-        return z_value
+        return coords.xyz_axes_from_dataset(self.dataset, "DICOM").z
 
     @property
     def coords(self):
-        x, y, z = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
-        return coords.coords_from_xyz_axes((x, y, z))
+        return coords.coords_from_dataset(self.dataset)
 
 
 class DicomImage(DicomBase):
