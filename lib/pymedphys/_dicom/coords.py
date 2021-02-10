@@ -318,3 +318,7 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
     all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
 
     return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
+
+
+def unravelled_argmax(a: "np.ndarray"):
+    return np.unravel_index(np.argmax(a), a.shape)

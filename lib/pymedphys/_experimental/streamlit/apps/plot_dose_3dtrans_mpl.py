@@ -18,7 +18,7 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 from pymedphys._imports.matplotlib import pyplot as plt
 
-from pymedphys._dicom.coords import xyz_axes_from_dataset
+from pymedphys._dicom.coords import unravelled_argmax, xyz_axes_from_dataset
 from pymedphys._dicom.dose import dose_from_dataset
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
@@ -49,7 +49,7 @@ def main():
 
     axes_fixed = xyz_axes_from_dataset(ds, coord_system="FIXED")
     dose = dose_from_dataset(ds)
-    max_dose_idx = _get_idx_of_max_dose(dose)
+    max_dose_idx = unravelled_argmax(dose)
     max_dose_xp, max_dose_yp, max_dose_zp = _get_point_at_idx(max_dose_idx, axes_fixed)
     max_dose_val = dose[max_dose_idx]
 
@@ -127,7 +127,3 @@ def _get_point_at_idx(idx, axes):
         axes[1][idx[0]],
         axes[2][idx[1]],
     )
-
-
-def _get_idx_of_max_dose(dose):
-    return np.unravel_index(np.argmax(dose), dose.shape)
