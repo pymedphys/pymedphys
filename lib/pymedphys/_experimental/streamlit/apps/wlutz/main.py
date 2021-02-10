@@ -13,38 +13,17 @@
 # limitations under the License.
 
 
-import datetime
-from typing import List, Union, cast
-
-from typing_extensions import Literal
-
-Number = Union[float, int]
-
 from pymedphys._imports import altair as alt
 from pymedphys._imports import natsort
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import streamlit_ace, tomlkit
 
-import pymedphys._dicom.create as _pp_dcm_create
-from pymedphys import _losslessjpeg as lljpeg
+from pymedphys._experimental.streamlit.utilities import iteration as _iteration
+from pymedphys._experimental.streamlit.utilities.iview import ui as iview_ui
 
-from pymedphys._experimental.streamlit.utilities import icom as _icom
-from pymedphys._experimental.wlutz import iview as _pp_wlutz_iview
-
-from . import (
-    _angles,
-    _calculation,
-    _config,
-    _corrections,
-    _excel,
-    _filtering,
-    _frames,
-    _sync,
-    _utilities,
-)
+from . import _calculation, _config, _corrections, _excel
 
 
 def main():
@@ -64,21 +43,16 @@ def main():
             streamlit_ace.st_ace(value=tomlkit.dumps(config), language="toml")
         )
 
-    refresh_cache = st.button("Re-query databases")
     (
-        database_directory,
-        icom_directory,
-        wlutz_directory_by_date,
         database_table,
+        database_directory,
+        qa_directory,
         selected_date,
-        selected_machine_id,
-    ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
+    ) = iview_ui.iview_and_icom_filter_and_align(config, advanced_mode)
 
-    icom_patients_directory = icom_directory.joinpath("patients")
-
-    database_table = _get_user_image_set_selection(database_table, advanced_mode)
-    database_table = _load_image_frame_database(
-        database_directory, database_table, refresh_cache, advanced_mode
+    wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
+    wlutz_directory_by_date = wlutz_directory.joinpath(
+        selected_date.strftime("%Y-%m-%d")
     )
 
     if advanced_mode:
@@ -89,136 +63,6 @@ def main():
                 `{wlutz_directory_by_date}`
             """
         )
-
-    filepaths_to_load, offset_to_apply = _sync.icom_iview_timestamp_alignment(
-        database_table,
-        icom_patients_directory,
-        selected_date,
-        selected_machine_id,
-        advanced_mode,
-    )
-
-    icom_datasets = []
-    for filepath in filepaths_to_load:
-        icom_dataframe = _icom.get_icom_dataset(filepath)
-        icom_datasets.append(icom_dataframe.copy())
-
-    icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
-    icom_datasets = icom_datasets.sort_values(by="datetime", inplace=False)
-
-    icom_datasets["datetime"] = icom_datasets["datetime"] + datetime.timedelta(
-        seconds=offset_to_apply
-    )
-    icom_datasets["time"] = icom_datasets["datetime"].dt.round("ms").dt.time
-
-    try:
-        icom_datasets = _angles.make_icom_angles_continuous(icom_datasets)
-    finally:
-        if advanced_mode:
-            beam_on_mask = _utilities.expand_border_events(
-                np.diff(icom_datasets["meterset"]) > 0
-            )
-            beam_shade_min = -200 * beam_on_mask
-            beam_shade_max = 200 * beam_on_mask
-
-            icom_datasets["beam_shade_min"] = beam_shade_min
-            icom_datasets["beam_shade_max"] = beam_shade_max
-
-            beam_on_chart = (
-                alt.Chart(icom_datasets)
-                .mark_area(
-                    fillOpacity=0.1, strokeOpacity=0.3, stroke="black", fill="black"
-                )
-                .encode(x="datetime:T", y="beam_shade_min:Q", y2="beam_shade_max:Q")
-            )
-
-            device_angle_chart = (
-                beam_on_chart
-                + (
-                    alt.Chart(icom_datasets)
-                    .transform_fold(
-                        ["gantry", "collimator", "turn_table"], as_=["device", "angle"]
-                    )
-                    .mark_line(point=True)
-                    .encode(
-                        x="datetime:T",
-                        y=alt.Y("angle:Q", axis=alt.Axis(title="Angle (degrees)")),
-                        color="device:N",
-                        tooltip=["time:N", "device:N", "angle:Q"],
-                    )
-                    .properties(title="iCom Angle Parameters")
-                    .interactive(bind_y=False)
-                )
-            ).configure_point(size=10)
-
-            st.altair_chart(device_angle_chart, use_container_width=True)
-
-    if advanced_mode:
-        field_size_chart = (
-            alt.Chart(icom_datasets)
-            .transform_fold(["length", "width"], as_=["side", "size"])
-            .mark_line()
-            .encode(
-                x="datetime:T",
-                y="size:Q",
-                color="side:N",
-                tooltip=["time:N", "side:N", "size:Q"],
-            )
-            .properties(title="iCom Field Size")
-            .interactive(bind_x=False)
-        )
-        st.altair_chart(field_size_chart, use_container_width=True)
-
-        st.write(icom_datasets)
-
-    midnight = (
-        icom_datasets["datetime"]
-        .iloc[0]
-        .replace(hour=0, minute=0, second=0, microsecond=0)
-    )
-
-    icom_datasets["seconds_since_midnight"] = (
-        icom_datasets["datetime"] - midnight
-    ).dt.total_seconds()
-    database_table["seconds_since_midnight"] = (
-        database_table["datetime"] - midnight
-    ).dt.total_seconds()
-
-    icom_datasets["x_lower"] = icom_datasets["centre_x"] - icom_datasets["width"] / 2
-    icom_datasets["x_upper"] = icom_datasets["centre_x"] + icom_datasets["width"] / 2
-    icom_datasets["y_lower"] = icom_datasets["centre_y"] - icom_datasets["length"] / 2
-    icom_datasets["y_upper"] = icom_datasets["centre_y"] + icom_datasets["length"] / 2
-
-    for column in [
-        "gantry",
-        "collimator",
-        "turn_table",
-        "x_lower",
-        "x_upper",
-        "y_lower",
-        "y_upper",
-    ]:
-        _table_transfer_via_interpolation(icom_datasets, database_table, column)
-
-    icom_seconds = icom_datasets["seconds_since_midnight"]
-    iview_seconds = database_table["seconds_since_midnight"]
-
-    alignment_indices = np.argmin(
-        np.abs(icom_seconds.values[None, :] - iview_seconds.values[:, None]), axis=1
-    )
-
-    energies = icom_datasets["energy"].values[alignment_indices]
-    database_table["energy"] = energies
-
-    database_table["width"] = database_table["x_upper"] - database_table["x_lower"]
-    database_table["length"] = database_table["y_upper"] - database_table["y_lower"]
-
-    if advanced_mode:
-        st.write(database_table)
-
-    st.write("## Gantry and collimator angle filtering")
-    if st.checkbox("Only calculate at specific gantry angles"):
-        database_table = _angle_filtering(database_table)
 
     _calculation.calculations_ui(
         database_table,
@@ -232,169 +76,6 @@ def main():
     st.write("---")
 
     _presentation_of_results(wlutz_directory_by_date, advanced_mode)
-
-
-def _user_selected_angles(
-    name: Literal["gantry", "collimator"],
-    default_selection: List[Number],
-    default_tolerance: Number,
-):
-    capitalised_name = name.capitalize()
-    text_box_default = ", ".join(np.array(default_selection).astype(str))
-
-    st.write(f"### {capitalised_name} filtering")
-
-    angles = st.text_input(f"{capitalised_name} angles", text_box_default)
-    angles = np.array(angles.split(",")).astype(float).tolist()
-    st.write(f"`{angles}`")
-
-    tolerance = st.number_input(
-        f"{capitalised_name} angle tolerance", 0, None, default_tolerance
-    )
-
-    return angles, tolerance
-
-
-def _angle_filtering(database_table: "pd.DataFrame") -> "pd.DataFrame":
-    gantry_column, collimator_column = st.beta_columns(2)
-
-    default_gantry_angles: List[Number] = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
-    default_collimator_angles: List[Number] = [-180, -90, 0, 90, 180]
-
-    angles = {}
-    for name, tolerance, column, default_angles in [
-        ("gantry", 10, gantry_column, default_gantry_angles),
-        ("collimator", 5, collimator_column, default_collimator_angles),
-    ]:
-        with column:
-            name = cast(Literal["gantry", "collimator"], name)
-            angles[name] = _user_selected_angles(name, default_angles, tolerance)
-
-    selected_gantry_angles = angles["gantry"][0]
-    gantry_angle_tolerance = angles["gantry"][1]
-
-    selected_collimator_angles = angles["collimator"][0]
-    collimator_angle_tolerance = angles["collimator"][1]
-
-    def _treatment_callback(_dataframe, _data, treatment: str):
-        st.write(f"#### {treatment}")
-
-    def _port_callback(
-        dataframe: pd.DataFrame,
-        collated_dataframes: List[pd.DataFrame],
-        _treatment,
-        port: str,
-    ):
-        dataframes: List[pd.DataFrame] = []
-
-        for gantry_angle in selected_gantry_angles:
-            for collimator_angle in selected_collimator_angles:
-                mask = (
-                    (dataframe["gantry"] >= gantry_angle - gantry_angle_tolerance)
-                    & (dataframe["gantry"] <= gantry_angle + gantry_angle_tolerance)
-                    & (
-                        dataframe["collimator"]
-                        >= collimator_angle - collimator_angle_tolerance
-                    )
-                    & (
-                        dataframe["collimator"]
-                        <= collimator_angle + collimator_angle_tolerance
-                    )
-                )
-                masked = dataframe[mask]
-                if len(masked) == 0:
-                    continue
-
-                closest_gantry_angle_index = np.argmin(
-                    np.abs(masked["gantry"] - gantry_angle)
-                )
-                dataframes.append(masked.iloc[[closest_gantry_angle_index]])
-
-        if len(dataframes) == 0:
-            return
-
-        concatenated_dataframes = pd.concat(dataframes, axis=0)
-
-        st.write(f"##### {port}")
-        st.write(concatenated_dataframes[["gantry", "collimator"]])
-
-        collated_dataframes.append(concatenated_dataframes)
-
-    st.write(
-        """
-        ### Gantry and collimator angles selected per treatment and port
-
-        Select between -180 degrees and +180 degrees. Write the angles
-        you wish to select below separated by a comma (,).
-        """
-    )
-
-    collated_dataframes: List[pd.DataFrame] = []
-
-    _utilities.iterate_over_columns(
-        database_table,
-        data=collated_dataframes,
-        columns=["treatment", "port"],
-        callbacks=[_treatment_callback, _port_callback],
-    )
-
-    if len(collated_dataframes) == 0:
-        st.error("No DataFrames match the provided filters")
-        st.stop()
-
-    database_table = pd.concat(collated_dataframes, axis=0)
-
-    return database_table
-
-
-def _create_portal_image_dicom_dataset(
-    gantry_angle, collimator_angle, table_angle, image_path
-):
-    """Don't intend this DICOM file to be compliant to the spec.
-
-    Instead, for now, just enough that software such as PIPs will
-    happily accept the created file.
-    """
-
-    # TODO: Refactor this so that for all pylinac calls a full DICOM
-    # file is passed to it in the way that it expects. The image wrapper
-    # around pylinac could instead call this first.
-
-    # Image plane pixel spacing.
-    # Exported DICOM files have an image plane pixel spacing of 0.405,
-    # with SID of 1600 and SAD of 1000. This corresponds to an iso
-    # centre pixel spacing of 0.2531 mm.
-    #
-    # Within the database, those same images have an isocentre pixel
-    # spacing of either 0.2510 mm or 0.2488 mm. I suspect potentially
-    # there might be some interesting datastore rounding going on here.
-    # I was under the impression that the isocentre pixel spacing was
-    # for these images was 0.25 mm.
-
-    pixel_array = lljpeg.imread(image_path)
-    pixels_per_mm = _pp_wlutz_iview.infer_pixels_per_mm_from_shape(pixel_array)
-
-    sid = 1600.0
-    sad = 1000.0
-
-    pixel_spacing = 1 / pixels_per_mm * sid / sad
-
-    ds = _pp_dcm_create.dicom_dataset_from_dict(
-        {
-            "ImageType": ["ORIGINAL", "PRIMARY", "PORTAL"],
-            "Rows": pixel_array.shape[0],
-            "Columns": pixel_array.shape[1],
-            "GantryAngle": gantry_angle,
-            "BeamLimitingDeviceAngle ": collimator_angle,
-            "PatientSupportAngle ": table_angle,
-            "PixelData": pixel_array,
-            "RadiationMachineSAD": sad,
-            "RTImageSID": sid,
-            "ImagePlanePixelSpacing": [pixel_spacing, pixel_spacing],
-        }
-    )
-
-    return ds
 
 
 def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
@@ -429,7 +110,7 @@ def _presentation_of_results(wlutz_directory_by_date, advanced_mode):
     )
 
     dataframe = calculated_results.sort_values("seconds_since_midnight")
-    dataframe_by_algorithm = _utilities.filter_by(dataframe, "algorithm", "PyMedPhys")
+    dataframe_by_algorithm = _iteration.filter_by(dataframe, "algorithm", "PyMedPhys")
 
     statistics = _overview_statistics(dataframe_by_algorithm)
     st.write(statistics)
@@ -510,7 +191,7 @@ def _overview_figures(dataframe):
             st.altair_chart(altair_chart, use_container_width=True)
             st.write(_overview_statistics(dataframe, directions=(column,)))
 
-    _utilities.iterate_over_columns(
+    _iteration.iterate_over_columns(
         dataframe,
         data=None,
         columns=["energy", "treatment"],
@@ -525,7 +206,7 @@ def _overview_statistics(dataframe, directions=("diff_y", "diff_x")):
 
     column_direction_map = {"diff_x": "Transverse", "diff_y": "Radial"}
     for energy in energies:
-        dataframe_by_energy = _utilities.filter_by(dataframe, "energy", energy)
+        dataframe_by_energy = _iteration.filter_by(dataframe, "energy", energy)
 
         for column in directions:
             statistics.append(
@@ -560,42 +241,3 @@ def _set_parameters():
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
     return bb_diameter, penumbra, advanced_mode, demo_mode
-
-
-def _get_user_image_set_selection(database_table, advanced_mode):
-    st.write("## Filtering")
-    filtered = _filtering.filter_image_sets(database_table, advanced_mode)
-    filtered.sort_values("datetime", ascending=False, inplace=True)
-
-    if advanced_mode:
-        st.write(filtered)
-
-    if len(filtered) == 0:
-        st.stop()
-
-    return filtered
-
-
-def _load_image_frame_database(
-    database_directory, input_database_table, refresh_cache, advanced_mode
-):
-    if advanced_mode:
-        st.write("## Loading database image frame data")
-
-    try:
-        database_table = _frames.dbf_frame_based_database(
-            database_directory, refresh_cache, input_database_table
-        )
-    except FileNotFoundError:
-        database_table = _frames.xml_frame_based_database(
-            database_directory, input_database_table
-        )
-
-    return database_table
-
-
-def _table_transfer_via_interpolation(source, location, key):
-    interpolation = scipy.interpolate.interp1d(
-        source["seconds_since_midnight"], source[key]
-    )
-    location[key] = interpolation(location["seconds_since_midnight"])

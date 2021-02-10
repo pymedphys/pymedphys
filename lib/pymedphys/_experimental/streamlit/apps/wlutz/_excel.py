@@ -23,7 +23,7 @@ from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
 
-from . import _utilities
+from pymedphys._experimental.streamlit.utilities import iteration as _iteration
 
 FIGURE_CELL_HEIGHT = 15
 FIGURE_CELL_WIDTH = 8
@@ -34,7 +34,7 @@ def write_excel_overview(dataframe, statistics, filepath):
 
     energy_to_treatments_map = defaultdict(lambda: [])
     for treatment in dataframe["treatment"].unique():
-        dataframe_by_treatment = _utilities.filter_by(dataframe, "treatment", treatment)
+        dataframe_by_treatment = _iteration.filter_by(dataframe, "treatment", treatment)
         energies = dataframe_by_treatment["energy"].unique()
         if len(energies) != 1:
             raise ValueError("Expected exactly one energy per Treatment ID")
@@ -89,7 +89,7 @@ def _write_diff_data(
     columns = ["treatment", "port", "algorithm"]
     callbacks = [_treatment_callback, _port_callback, _algorithm_callback]
 
-    _utilities.iterate_over_columns(dataframe, data, columns, callbacks)
+    _iteration.iterate_over_columns(dataframe, data, columns, callbacks)
 
     return data["references"]
 
