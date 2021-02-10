@@ -32,6 +32,8 @@ from pymedphys._experimental.streamlit.utilities import iteration as _iteration
 
 from . import _angles, _filtering, _frames, _sync, _utilities
 
+MAXIMUM_ANGLE_AXIS_MAGNITUDE = 200
+
 
 def iview_and_icom_filter_and_align(
     config, advanced_mode, filter_angles_by_default=False
@@ -86,8 +88,8 @@ def iview_and_icom_filter_and_align(
             beam_on_mask = _utilities.expand_border_events(
                 np.diff(icom_datasets["meterset"]) > 0
             )
-            beam_shade_min = -200 * beam_on_mask
-            beam_shade_max = 200 * beam_on_mask
+            beam_shade_min = -MAXIMUM_ANGLE_AXIS_MAGNITUDE * beam_on_mask
+            beam_shade_max = MAXIMUM_ANGLE_AXIS_MAGNITUDE * beam_on_mask
 
             icom_datasets["beam_shade_min"] = beam_shade_min
             icom_datasets["beam_shade_max"] = beam_shade_max
@@ -152,10 +154,16 @@ def iview_and_icom_filter_and_align(
         database_table["datetime"] - midnight
     ).dt.total_seconds()
 
-    icom_datasets["x_lower"] = icom_datasets["centre_x"] - icom_datasets["width"] / 2
-    icom_datasets["x_upper"] = icom_datasets["centre_x"] + icom_datasets["width"] / 2
-    icom_datasets["y_lower"] = icom_datasets["centre_y"] - icom_datasets["length"] / 2
-    icom_datasets["y_upper"] = icom_datasets["centre_y"] + icom_datasets["length"] / 2
+    for lower, upper, centre, diameter in (
+        ("x_lower", "x_upper", "centre_x", "width"),
+        ("y_lower", "y_upper", "centre_y", "length"),
+    ):
+        (
+            icom_datasets[lower],
+            icom_datasets[upper],
+        ) = _get_bounds_from_centre_and_diameter(
+            icom_datasets[centre], icom_datasets[diameter]
+        )
 
     for column in [
         "gantry",
@@ -192,6 +200,13 @@ def iview_and_icom_filter_and_align(
         database_table = _angle_filtering(database_table, advanced_mode)
 
     return database_table, database_directory, qa_directory, selected_date
+
+
+def _get_bounds_from_centre_and_diameter(centre, diameter):
+    lower = centre - diameter / 2
+    upper = centre + diameter / 2
+
+    return lower, upper
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):
