@@ -205,3 +205,35 @@ def session_offsets_for_site(
         #       an approved image?)
         offsets = list(result)
         yield (session_num, offsets[0] if len(offsets) > 0 else None)
+
+
+def localization_offset_for_site(connection: Connection, sit_set_id: int):
+    """get the localization offset for the given site"""
+    result = api.execute(
+        connection,
+        """
+            SELECT
+                Superior_Offset,
+                Anterior_Offset,
+                Lateral_Offset
+            FROM Offset
+            WHERE
+                SIT_SET_ID = %(sit_set_id)
+                AND %(start_time)s < Offset.Study_DtTm
+                AND Offset.Study_DtTm < %(end_time)s
+            ORDER BY
+                Offset.Study_DtTm
+        """,
+        {
+            "sit_set_id": sit_set_id,
+            "start_time": "start_time_str",
+            "end_time": "end_time_str",
+        },
+    )
+
+    localization_offset = list(result)[0]
+    test_offset = np.array([0.0, 0.0, 0.0])
+    print(test_offset)
+
+    # determine session for localization offset
+    return 0, localization_offset
