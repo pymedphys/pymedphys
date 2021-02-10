@@ -50,7 +50,9 @@ def test_structure_dose_mask():
         x_grid, y_grid, contour_x, contour_y, contour_z, contour_name
     )
 
-    x_dicom, y_dicom, z_dicom = xyz_axes_from_dataset(dose_dataset)[0:3]
+    x_dicom, y_dicom, z_dicom = xyz_axes_from_dataset(
+        dose_dataset, coord_system="DICOM"
+    )[0:3]
 
     assert np.allclose(x_dicom, x_grid)
     assert np.allclose(y_dicom, y_grid)

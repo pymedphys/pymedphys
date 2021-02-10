@@ -31,7 +31,7 @@ from .structure import pull_structure
 
 
 def zyx_and_dose_from_dataset(dataset):
-    x, y, z = xyz_axes_from_dataset(dataset)[0:3]
+    x, y, z = xyz_axes_from_dataset(dataset, coord_system="DICOM")[0:3]
     coords = (z, y, x)
     dose = dose_from_dataset(dataset)
 
@@ -218,7 +218,9 @@ def get_dose_grid_structure_mask(
         align with the structure planes.
 
     """
-    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dose_dataset)[0:3]
+    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dose_dataset, coord_system="DICOM")[
+        0:3
+    ]
 
     xx, yy = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx.ravel(), yy.ravel()]), 0, 1)
