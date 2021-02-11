@@ -2,6 +2,7 @@ from . import (
     anonymise_monaco,
     dashboard,
     dicom_explorer,
+    dicom_wlutz,
     download,
     electrons,
     icom,
