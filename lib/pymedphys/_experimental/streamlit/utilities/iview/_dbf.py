@@ -118,6 +118,8 @@ def load_and_merge_dbfs(
             "datetime",
             "PIMG_DBID",
             "DICOM_UID",
+            "LAST_NAME",
+            "FIRST_NAME",
         ]
     ]
 
@@ -212,7 +214,7 @@ _DBF_DATABASE_LOADING_CONFIG = {
     },
     "patient": {
         "filename": "PATIENT.dbf",
-        "columns_to_keep": ["DBID", "ID"],
+        "columns_to_keep": ["DBID", "ID", "LAST_NAME", "FIRST_NAME"],
         "column_rename_map": {"DBID": "PAT_DBID", "ID": "patient_id"},
     },
 }

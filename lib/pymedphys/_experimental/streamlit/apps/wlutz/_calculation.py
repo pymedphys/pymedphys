@@ -14,6 +14,7 @@
 
 
 import base64
+import pathlib
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -25,7 +26,7 @@ from pymedphys._utilities import filesystem as _pp_filesystem_utilities
 from pymedphys._experimental.wlutz import main as _wlutz
 from pymedphys._experimental.wlutz import reporting as _reporting
 
-from . import _altair, _utilities
+from . import _altair
 
 RESULTS_DATA_COLUMNS = [
     "filepath",
@@ -47,7 +48,12 @@ def calculations_ui(
     penumbra,
     advanced_mode,
 ):
-    st.write("## Run Calculations")
+    st.write("## Calculations")
+
+    st.write("### Calculation options")
+
+    if not advanced_mode:
+        st.write("*Calculation options are available by ticking advanced mode*")
 
     if advanced_mode:
         plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
@@ -65,9 +71,7 @@ def calculations_ui(
     else:
         selected_algorithms = algorithm_options
 
-    database_table["filename"] = database_table["filepath"].apply(
-        _utilities.filepath_to_filename
-    )
+    database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
     if advanced_mode:
@@ -82,6 +86,8 @@ def calculations_ui(
         deviation_plot_threshold = 0.5
         plot_when_data_missing = False
         fill_errors_with_nan = True
+
+    st.write("### Run calculations")
 
     if st.button("Calculate"):
         run_calculation(
@@ -474,3 +480,10 @@ def _calculate_wlutz(
     )
 
     return field_centre, bb_centre
+
+
+def _filepath_to_filename(path):
+    path = pathlib.Path(path)
+    filename = path.name
+
+    return filename

@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Matthew Jennings
+# Copyright (C) 2019, 2021 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,13 @@
 
 """A suite of functions for handling DICOM coordinates"""
 
+from typing import Sequence, Tuple
+
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom  # pylint: disable=unused-import
 
 
-def coords_from_xyz_axes(xyz_axes):
+def coords_from_xyz_axes(xyz_axes: Sequence["np.ndarray"]) -> "np.ndarray":
     """Converts a set of x, y and z axes of a regular grid (e.g. a DICOM
     pixel array) into an array of three grids whose voxels correspond to
     and contain the `x`, `y`, and `z` coordinates of the original grid.
@@ -49,7 +52,9 @@ def _orientation_is_head_first(orientation_vector, is_decubitus):
     return np.abs(np.sum(orientation_vector)) == 2
 
 
-def xyz_axes_from_dataset(ds, coord_system="DICOM"):
+def xyz_axes_from_dataset(
+    ds: "pydicom.dataset.Dataset", coord_system: str = "DICOM"
+) -> Tuple["np.ndarray", "np.ndarray", "np.ndarray"]:
     r"""Returns the x, y and z axes of a DICOM dataset's
     pixel array in the specified coordinate system.
 
@@ -180,3 +185,30 @@ def xyz_axes_from_dataset(ds, coord_system="DICOM"):
             z = -np.flip(y_d)
 
     return (x, y, z)
+
+
+def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) -> bool:
+    """True if all DICOM datasets have perfectly matching coordinates
+
+    Parameters
+    ----------
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM datasets whose coordinates are to be
+        compared.
+
+    Returns
+    -------
+    bool
+        True if coordinates match for all datasets, False otherwise.
+    """
+
+    # Quick shape (sanity) check
+    if not all(
+        ds.pixel_array.shape == datasets[0].pixel_array.shape for ds in datasets
+    ):
+        return False
+
+    # Full coord check:
+    all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
+
+    return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
