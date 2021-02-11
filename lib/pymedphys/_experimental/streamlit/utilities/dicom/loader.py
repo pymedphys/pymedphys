@@ -19,7 +19,7 @@
 # to pick up the batton of doing this while I'm gone :).
 
 import collections
-from typing import BinaryIO, Sequence
+from typing import BinaryIO, Sequence, Union, cast
 
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
@@ -27,6 +27,10 @@ from pymedphys._imports import streamlit as st
 # For using the pretty name printer. Probably worth a moving that
 # function out into a utility. For another PR though :).
 from pymedphys._experimental.streamlit.apps import sum_doses as _sum_doses
+
+File = BinaryIO
+Files = Sequence[File]
+UploadedFiles = Union[Files, File]
 
 
 def dicom_file_loader(
@@ -54,10 +58,8 @@ def dicom_file_loader(
     left_column, right_column = st.beta_columns(2)
 
     if accept_multiple_files:
-        Files = Sequence[BinaryIO]
         file_string = "files"
     else:
-        Files = BinaryIO
         file_string = "file"
 
     with left_column:
@@ -65,18 +67,23 @@ def dicom_file_loader(
 
         # This is specifically not limited to .dcm extensions as
         # sometimes DICOM exports to file don't have any file extension.
-        files: Files = st.file_uploader(
+        files: UploadedFiles = st.file_uploader(
             f"DICOM {file_string}", accept_multiple_files=accept_multiple_files
         )
 
     if not files:
         raise st.stop()
 
+    assumed_sequence = cast(Files, files)
+
     try:
-        files[0]
+        assumed_sequence[0]
     except TypeError:
         # If the return from file uploader is not indexable
-        files = [files]
+        a_single_file = cast(File, files)
+        files = [a_single_file]
+
+    files = cast(Files, files)
 
     datasets = []
     for a_file in files:
