@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: Move this and the patient name pretty printer function into the
+# "stable" library. Alongside a file
+# `pymedphys/_streamlit/utilities/dicom/__init__.py` would be
+# appropriate. I'm leaving this detail here in case someone else wants
+# to pick up the batton of doing this while I'm gone :).
+
 import collections
 from typing import BinaryIO, Sequence
 
@@ -23,7 +29,28 @@ from pymedphys._imports import streamlit as st
 from pymedphys._experimental.streamlit.apps import sum_doses as _sum_doses
 
 
-def dicom_file_loader(accept_multiple_files, stop_before_pixels):
+def dicom_file_loader(
+    accept_multiple_files: bool, stop_before_pixels: bool
+) -> Sequence["pydicom.Dataset"]:
+    """A Streamlit component that provides DICOM upload functionality.
+
+    Parameters
+    ----------
+    accept_multiple_files : ``bool``
+        Whether or not the wrapped
+        `st.file_uploader <https://docs.streamlit.io/en/stable/api.html#streamlit.file_uploader>`_
+        utility will accept multiple uploads. This argument is directly
+        passed through as a keyword parameter to ``st.file_uploader``.
+    stop_before_pixels : ``bool``
+        Whether or not the wrapped
+        `pydicom.dcmread <https://pydicom.github.io/pydicom/dev/reference/generated/pydicom.filereader.dcmread.html#pydicom.filereader.dcmread>`_
+        will read the pixel values of the DICOM file or stop reading the
+        header before loading the pixel values. This argument is
+        directly passed through as a keyword parameter to
+        ``pydicom.dcmread``
+
+
+    """
     left_column, right_column = st.beta_columns(2)
 
     if accept_multiple_files:
@@ -35,6 +62,9 @@ def dicom_file_loader(accept_multiple_files, stop_before_pixels):
 
     with left_column:
         st.write(f"## Upload DICOM {file_string}")
+
+        # This is specifically not limited to .dcm extensions as
+        # sometimes DICOM exports to file don't have any file extension.
         files: Files = st.file_uploader(
             f"DICOM {file_string}", accept_multiple_files=accept_multiple_files
         )
