@@ -21,7 +21,7 @@ TITLE = "Film laser alignment"
 
 
 def main():
-    st.write("Hi Simon!")
+    st.write("Hi Simon! Here I am testing committing.")
 
     left_column, right_column = st.beta_columns(2)
 
