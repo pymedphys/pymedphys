@@ -20,6 +20,8 @@ import psutil
 import pymssql
 import pytest
 import requests
+import sklearn
+import sklearn.cluster
 import sqlalchemy
 import streamlit_ace
 import streamlit_analytics

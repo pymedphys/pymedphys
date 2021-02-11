@@ -17,7 +17,9 @@
 """
 
 import functools
+import logging
 import struct
+from pprint import pformat
 
 from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
@@ -261,12 +263,19 @@ def delivery_data_sql(connection, field_id):
         connection,
         """
         SELECT
-            TxField.Meterset
+            TxField.Meterset,
+            TxField.RowVers
         FROM TxField
         WHERE
             TxField.FLD_ID = %(field_id)s
         """,
-        {"field_id": field_id},
+        {
+            "field_id": field_id,
+        },
+    )
+    assert len(txfield_results) == 1
+    txfield_results[0] = txfield_results[0][0], struct.unpack(
+        "Q", txfield_results[0][1]
     )
 
     txfieldpoint_results = np.array(
@@ -280,37 +289,64 @@ def delivery_data_sql(connection, field_id):
             TxFieldPoint.Gantry_Ang,
             TxFieldPoint.Coll_Ang,
             TxFieldPoint.Coll_Y1,
-            TxFieldPoint.Coll_Y2
+            TxFieldPoint.Coll_Y2,
+            TxFieldPoint.RowVers
         FROM TxFieldPoint
         WHERE
             TxFieldPoint.FLD_ID = %(field_id)s
+        ORDER BY
+            TxFieldPoint.Point
         """,
             {"field_id": field_id},
         )
     )
+    assert len(txfieldpoint_results) >= 1
+    for one_point in txfieldpoint_results:
+        # convert to list, so we can change last element
+        one_point = list(one_point)
+        one_point[-1] = struct.unpack("Q", one_point[-1])
+        one_point = tuple(one_point)
 
     return txfield_results, txfieldpoint_results
 
 
 def fetch_and_verify_mosaiq_sql(connection, field_id):
-    reference_results = delivery_data_sql(connection, field_id)
-    test_results = delivery_data_sql(connection, field_id)
+    reference_txfield_results, reference_txfieldpoint_results = delivery_data_sql(
+        connection, field_id
+    )
+    test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
+        connection, field_id
+    )
 
     agreement = False
 
     while not agreement:
-        agreements = []
-        for ref, test in zip(reference_results, test_results):
+        agreements = [np.all(reference_txfield_results == test_txfield_results)]
+        for ref, test in zip(reference_txfieldpoint_results, test_txfieldpoint_results):
             agreements.append(np.all(ref == test))
 
         agreement = np.all(agreements)
         if not agreement:
             print("Mosaiq sql query gave conflicting data.")
-            print("Trying again...")
-            reference_results = test_results
-            test_results = delivery_data_sql(connection, field_id)
 
-    return test_results
+            # log mismatched values output
+            logger = logging.getLogger("mosaiq_delivery_data_sql")
+            logger.error("Mismatch of delivery_data_sql results:")
+
+            logger.error(pformat(reference_txfield_results))
+            logger.error(pformat(test_txfield_results))
+            logger.error(pformat(reference_txfieldpoint_results))
+            logger.error(pformat(test_txfieldpoint_results))
+
+            print("Trying again...")
+            reference_txfield_results = test_txfield_results
+            reference_txfieldpoint_results = test_txfieldpoint_results
+            test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
+                connection, field_id
+            )
+
+    # return the txfield and point results, including rowversions
+    return test_txfield_results, test_txfieldpoint_results
 
 
 class DeliveryMosaiq(DeliveryBase):

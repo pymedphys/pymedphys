@@ -187,7 +187,7 @@ extras_require = {
         "streamlit-ace==0.0.4",
         "streamlit-analytics==0.1.2",
         "pylinac==2.3.2",
-        "scikit-learn<0.24.0",
+        "scikit-learn",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
         "sphinx-book-theme",
@@ -224,7 +224,7 @@ extras_require = {
         "tabulate",
     ],
     "ml": ["tensorflow>=2.2.0"],
-    "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0"],
+    "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0", "scikit-learn"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
         "pytest",
@@ -269,7 +269,7 @@ extras_require = {
         "streamlit-ace==0.0.4",
         "streamlit-analytics==0.1.2",
         "pylinac==2.3.2",
-        "scikit-learn<0.24.0",
+        "scikit-learn",
     ],
 }
 
