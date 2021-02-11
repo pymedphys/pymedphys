@@ -19,6 +19,7 @@
 from datetime import datetime, timedelta
 from typing import List
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import sklearn
 
 from . import api
