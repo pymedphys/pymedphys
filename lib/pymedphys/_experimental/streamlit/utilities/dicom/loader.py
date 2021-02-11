@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Move this and the patient name pretty printer function into the
-# "stable" library. Alongside a file
+# TODO: Move this into the "stable" library. Alongside a file
 # `pymedphys/_streamlit/utilities/dicom/__init__.py` would be
 # appropriate. I'm leaving this detail here in case someone else wants
 # to pick up the batton of doing this while I'm gone :).
@@ -24,9 +23,7 @@ from typing import BinaryIO, Sequence, Union, cast
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
-# For using the pretty name printer. Probably worth a moving that
-# function out into a utility. For another PR though :).
-from pymedphys._experimental.streamlit.apps import sum_doses as _sum_doses
+from pymedphys._dicom import utilities as _dcm_utilities
 
 File = BinaryIO
 Files = Sequence[File]
@@ -110,7 +107,7 @@ def dicom_file_loader(
     patient_id_names_map = collections.defaultdict(set)
     for dataset, a_file in zip(datasets, files):
         patient_id = dataset.PatientID
-        patient_name = _sum_doses.get_pretty_patient_name_from_dicom_dataset(dataset)
+        patient_name = _dcm_utilities.pretty_patient_name(dataset)
         patient_id_filenames_map[patient_id].add(a_file.name)
         patient_id_names_map[patient_id].add(patient_name)
 
