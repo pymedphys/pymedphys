@@ -53,7 +53,11 @@ def dicom_file_loader(
         directly passed through as a keyword parameter to
         ``pydicom.dcmread``
 
-
+    Returns
+    -------
+    datasets : a list of ``pydicom.Dataset``
+        The PyDICOM datasets corresponding to the files uploaded by the
+        user.
     """
     left_column, right_column = st.beta_columns(2)
 
