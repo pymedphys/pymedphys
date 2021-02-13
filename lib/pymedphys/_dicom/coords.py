@@ -168,9 +168,9 @@ def xyz_axes_from_dataset(
         elif orientation[4] == -1:
             y_d = np.flip(y_dicom_fixed)
         elif orientation[3] == 1:
-            x = y_dicom_fixed
-        elif orientation[3] == -1:
             x = np.flip(y_dicom_fixed)
+        elif orientation[3] == -1:
+            x = -y_dicom_fixed
 
         if not is_head_first:
             z_d = np.flip(z_dicom_fixed)
