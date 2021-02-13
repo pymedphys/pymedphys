@@ -150,7 +150,7 @@ def xyz_axes_from_dataset(
     if coord_system.upper() in ("FIXED", "IEC FIXED", "F"):
         x = x_dicom_fixed
         y = z_dicom_fixed
-        z = -y_dicom_fixed
+        z = -np.flip(y_dicom_fixed)
 
     elif coord_system.upper() in ("DICOM", "D", "PATIENT", "IEC PATIENT", "P"):
 
@@ -161,19 +161,19 @@ def xyz_axes_from_dataset(
         elif orientation[1] == 1:
             y_d = x_dicom_fixed
         elif orientation[1] == -1:
-            y_d = -x_dicom_fixed
+            y_d = np.flip(x_dicom_fixed)
 
         if orientation[4] == 1:
             y_d = y_dicom_fixed
         elif orientation[4] == -1:
-            y_d = -y_dicom_fixed
+            y_d = np.flip(y_dicom_fixed)
         elif orientation[3] == 1:
-            x = y_dicom_fixed
+            x = np.flip(y_dicom_fixed)
         elif orientation[3] == -1:
             x = -y_dicom_fixed
 
         if not is_head_first:
-            z_d = -z_dicom_fixed
+            z_d = np.flip(z_dicom_fixed)
         else:
             z_d = z_dicom_fixed
 
@@ -182,7 +182,7 @@ def xyz_axes_from_dataset(
             z = z_d
         elif coord_system.upper() in ("PATIENT", "IEC PATIENT", "P"):
             y = z_d
-            z = -y_d
+            z = -np.flip(y_d)
 
     return (x, y, z)
 
