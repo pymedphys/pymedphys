@@ -21,7 +21,7 @@ from pymedphys._experimental.chartchecks.compare import (
     colour_results,
     compare_to_mosaiq,
 )
-from pymedphys._experimental.chartchecks.dvh_helpers import plot_dvh
+from pymedphys._experimental.chartchecks.dvh_helpers import calc_dvh, plot_dvh
 from pymedphys._experimental.chartchecks.helpers import (
     get_all_dicom_treatment_info,
     get_all_treatment_data,
@@ -249,10 +249,6 @@ def main():
         mosaiq_table = drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table)
         mosaiq_table = limit_mosaiq_info_to_current_versions(mosaiq_table)
 
-        mosaiq_table["tolerance"] = [
-            TOLERANCE_TYPES[item] for item in mosaiq_table["tolerance"]
-        ]
-
         verify_basic_patient_info(dicom_table, mosaiq_table, mrn)
         check_site_approval(mosaiq_table, connection)
 
@@ -284,6 +280,25 @@ def main():
             st.dataframe(mosaiq_table, height=1000)
 
         if "rs" in files and "rd" in files:
+
+            run_dvh_calc = st.checkbox("Calculate DVH")
+            if run_dvh_calc:
+                dvh_calcs = calc_dvh(files["rs"], files["rd"])
+
             show_dvh = st.checkbox("Create DVH Plot")
             if show_dvh:
-                plot_dvh(files["rs"], files["rd"])
+                plot_dvh(dvh_calcs)
+
+            dvh_lookup = st.checkbox("DVH Lookup Table")
+            if dvh_lookup:
+                default = [
+                    "< Select an ROI >",
+                ]
+                roi_list = list(dvh_calcs.keys())
+                roi_list = default + roi_list
+                roi_select = st.selectbox("Select an ROI: ", roi_list)
+
+                if roi_select != "< Select an ROI >":
+                    selected_structure = dvh_calcs[roi_select]
+                    volume = st.number_input("Input relative volume: ")
+                    st.write(selected_structure.dose_constraint(volume))

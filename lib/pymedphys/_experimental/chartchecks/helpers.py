@@ -23,7 +23,7 @@ from pymedphys._imports import pydicom
 
 import pymedphys._mosaiq.api as pp_mosaiq
 
-from .tolerance_constants import FIELD_TYPES, ORIENTATION
+from .tolerance_constants import FIELD_TYPES, ORIENTATION, TOLERANCE_TYPES
 
 
 def _invert_angle(angle):
@@ -273,6 +273,10 @@ def get_all_treatment_data(connection, mrn):
 
     mosaiq_fields["position"] = [
         ORIENTATION[item] for item in mosaiq_fields["position"]
+    ]
+
+    mosaiq_fields["tolerance"] = [
+        TOLERANCE_TYPES[item] for item in mosaiq_fields["tolerance"]
     ]
 
     # reformat some fields to create the 'rx' field
