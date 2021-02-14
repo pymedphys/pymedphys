@@ -1,4 +1,4 @@
-import pytest
+from pymedphys._imports import pytest
 
 from pymedphys._utilities.patient import convert_patient_name
 

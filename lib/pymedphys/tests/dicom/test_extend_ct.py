@@ -15,7 +15,7 @@
 
 from copy import deepcopy
 
-import pytest
+from pymedphys._imports import pytest
 
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.ct.extend import (

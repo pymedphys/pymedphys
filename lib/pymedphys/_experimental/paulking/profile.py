@@ -21,12 +21,9 @@ import copy
 import os
 from typing import Callable
 
+from pymedphys._imports import PIL, matplotlib
 from pymedphys._imports import numpy as np
-
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-import PIL
-from scipy import interpolate
+from pymedphys._imports import plt, scipy
 
 # from .._level1.coreobjects import _PyMedPhysBase
 
@@ -59,7 +56,7 @@ class Profile:
 
     """
 
-    def __init__(self, x=np.array([]), y=np.array([]), meta={}):
+    def __init__(self, x=tuple(), y=tuple(), meta={}):
         """create profile
 
         Parameters
@@ -80,7 +77,7 @@ class Profile:
         if len(self.x) < 2:
             self.interp = None
         else:
-            self.interp = interpolate.interp1d(
+            self.interp = scipy.interpolate.interp1d(
                 self.x, self.y, bounds_error=False, fill_value=0.0
             )
 
@@ -304,7 +301,7 @@ class Profile:
         assert image_file.mode == "RGB"
         dpi_horiz, dpi_vert = image_file.info["dpi"]
 
-        image_array = mpimg.imread(file_name)
+        image_array = matplotlib.image.imread(file_name)
 
         # DIMENSIONS TO AVG ACROSS DIFFERENT FOR HORIZ VS VERT IMG
         if image_array.shape[0] > 5 * image_array.shape[1]:  # VERT
@@ -428,7 +425,7 @@ class Profile:
         plt.show()
         return
 
-    def slice_segment(self, start=-np.inf, stop=np.inf):
+    def slice_segment(self, start=None, stop=None):
         """slice between given end-points
 
         Resulting profile is comprised of those points in the source
@@ -445,6 +442,13 @@ class Profile:
         Profile
 
         """
+
+        if start is None:
+            start = -np.inf
+
+        if stop is None:
+            stop = np.inf
+
         try:
             start = max(start, min(self.x))  # default & limit to curve ends
             stop = min(stop, max(self.x))

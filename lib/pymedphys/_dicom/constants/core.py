@@ -37,12 +37,6 @@ from os import path
 
 from pymedphys._imports import pydicom
 
-# Many thanks to the Medical Connections for offering free
-# valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)
-# Their service was used to obtain the following root UID for PyMedPhys:
-PYMEDPHYS_ROOT_UID = "1.2.826.0.1.3680043.10.188"
-
-
 # Each dict entry is pydicom.tag.Tag : (VR, VM, Name, Retired, Keyword)
 HERE = path.dirname(path.abspath(__file__))
 BASELINE_DICOM_REPEATERS_DICT_FILEPATH = path.join(

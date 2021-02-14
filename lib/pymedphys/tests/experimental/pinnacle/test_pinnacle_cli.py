@@ -45,7 +45,7 @@ import tempfile
 from pathlib import Path
 from zipfile import ZipFile
 
-import pytest
+from pymedphys._imports import pytest
 
 from pymedphys._data import download
 from pymedphys._utilities import test as pmp_test_utils
