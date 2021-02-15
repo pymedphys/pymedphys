@@ -332,11 +332,8 @@ def test_dicom_sender(test_dataset):
             assert dicom_sender.verify()
             dicom_sender.send([test_dataset])
 
-        dcm_files = [p for p in receive_directory.glob("**/*.dcm")]
-
-        assert len(dcm_files) == 1
-
-        dcm_file = dcm_files[0]
+        dcm_files = receive_directory.glob("**/*.dcm")
+        dcm_file = next(iter(dcm_files))
         ds = pydicom.read_file(dcm_file)
         assert ds.SOPInstanceUID == test_dataset.SOPInstanceUID
         assert ds.SeriesInstanceUID == test_dataset.SeriesInstanceUID
@@ -414,11 +411,8 @@ def test_dicom_sender_cli(test_dataset):
             with process(sender_command):
                 time.sleep(1)
 
-        dcm_files = [p for p in receive_directory.glob("**/*.dcm")]
-
-        assert len(dcm_files) == 1
-
-        dcm_file = dcm_files[0]
+        dcm_files = receive_directory.glob("**/*.dcm")
+        dcm_file = next(iter(dcm_files))
         ds = pydicom.read_file(dcm_file)
         assert ds.SOPInstanceUID == test_dataset.SOPInstanceUID
         assert ds.SeriesInstanceUID == test_dataset.SeriesInstanceUID
