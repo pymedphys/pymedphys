@@ -19,6 +19,7 @@ import pathlib
 import shutil
 import tempfile
 import time
+from io import BytesIO
 from unittest.mock import Mock
 
 from pymedphys._imports import pydicom, pynetdicom, pytest
@@ -28,6 +29,7 @@ from pymedphys._dicom.connect.listen import (
     DicomListener,
     hierarchical_dicom_storage_directory,
 )
+from pymedphys._dicom.connect.send import DicomSender
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._utilities.test import process
 
@@ -121,7 +123,7 @@ def test_dataset():
     file_meta = pydicom.dataset.FileMetaDataset(
         dicom_dataset_from_dict(
             {
-                "FileMetaInformationVersion": "01",
+                "FileMetaInformationVersion": bytes([0, 1]),
                 "MediaStorageSOPClassUID": pynetdicom.sop_class.RTPlanStorage,
                 "MediaStorageSOPInstanceUID": test_uid,
                 "TransferSyntaxUID": pydicom.uid.ImplicitVRLittleEndian,
@@ -295,3 +297,137 @@ def test_dicom_listener_cli(test_dataset):
         file_path = _build_hierarchical_path_to_plan(test_directory, test_dataset)
         read_dataset = pydicom.read_file(file_path)
         assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
+
+
+@pytest.mark.pydicom
+def test_dicom_sender(test_dataset):
+    """Test sending DICOM objects using the DicomSender"""
+
+    scp_ae_title = "PYMEDPHYSTEST"
+
+    with tempfile.TemporaryDirectory() as tmp_directory:
+
+        test_directory = pathlib.Path(tmp_directory)
+        receive_directory = test_directory.joinpath("receive")
+        receive_directory.mkdir()
+
+        listener_command = [
+            pmp_test_utils.get_executable_even_when_embedded(),
+            "-m",
+            "pymedphys",
+            "dicom",
+            "listen",
+            str(TEST_PORT),
+            "-d",
+            str(receive_directory),
+            "-a",
+            str(scp_ae_title),
+        ]
+
+        with process(listener_command):
+            time.sleep(1)
+            dicom_sender = DicomSender(
+                host="127.0.0.1", port=TEST_PORT, ae_title=scp_ae_title
+            )
+            assert dicom_sender.verify()
+            dicom_sender.send([test_dataset])
+
+        dcm_files = [p for p in receive_directory.glob("**/*.dcm")]
+
+        assert len(dcm_files) == 1
+
+        dcm_file = dcm_files[0]
+        ds = pydicom.read_file(dcm_file)
+        assert ds.SOPInstanceUID == test_dataset.SOPInstanceUID
+        assert ds.SeriesInstanceUID == test_dataset.SeriesInstanceUID
+        assert ds.StudyInstanceUID == test_dataset.StudyInstanceUID
+        assert ds.PatientID == test_dataset.PatientID
+        assert ds.Modality == test_dataset.Modality
+        assert ds.Manufacturer == test_dataset.Manufacturer
+
+        assert len(ds.BeamSequence) == 1
+        assert (
+            ds.BeamSequence[0].Manufacturer == test_dataset.BeamSequence[0].Manufacturer
+        )
+
+
+@pytest.mark.pydicom
+def test_dicom_sender_cli(test_dataset):
+    """Test the command line interface to the DicomSender"""
+
+    scp_ae_title = "PYMEDPHYSTEST"
+
+    with tempfile.TemporaryDirectory() as tmp_directory:
+
+        test_directory = pathlib.Path(tmp_directory)
+        send_directory = test_directory.joinpath("send")
+        send_directory.mkdir()
+        send_file = send_directory.joinpath("test.dcm")
+        test_dataset.save_as(send_file)
+
+        # Need to write the preamble or else we pydicom throws an error when reading the
+        # file... This solution is from: https://github.com/pydicom/pydicom/issues/340
+        # TODO: Not entirely sure why this is needed. Is there a cleaner solution to
+        # this?
+        fp = BytesIO()
+        fp.write(b"\x00" * 128)
+        fp.write(b"DICM")
+        f = open(send_file, "rb")
+        fp.write(f.read())
+        f.close()
+        fp.seek(0)
+        ds = pydicom.read_file(fp)
+        ds.save_as(send_file)
+
+        receive_directory = test_directory.joinpath("receive")
+        receive_directory.mkdir()
+
+        listener_command = [
+            pmp_test_utils.get_executable_even_when_embedded(),
+            "-m",
+            "pymedphys",
+            "dicom",
+            "listen",
+            str(TEST_PORT),
+            "-d",
+            str(receive_directory),
+            "-a",
+            str(scp_ae_title),
+        ]
+
+        sender_command = [
+            pmp_test_utils.get_executable_even_when_embedded(),
+            "-m",
+            "pymedphys",
+            "dicom",
+            "send",
+            "-a",
+            str(scp_ae_title),
+            "localhost",
+            str(TEST_PORT),
+            str(send_file),
+        ]
+
+        # TODO: I don't love having to sleep in unit tests, but the CLI seems to need it
+        with process(listener_command):
+            time.sleep(1)
+            with process(sender_command):
+                time.sleep(1)
+
+        dcm_files = [p for p in receive_directory.glob("**/*.dcm")]
+
+        assert len(dcm_files) == 1
+
+        dcm_file = dcm_files[0]
+        ds = pydicom.read_file(dcm_file)
+        assert ds.SOPInstanceUID == test_dataset.SOPInstanceUID
+        assert ds.SeriesInstanceUID == test_dataset.SeriesInstanceUID
+        assert ds.StudyInstanceUID == test_dataset.StudyInstanceUID
+        assert ds.PatientID == test_dataset.PatientID
+        assert ds.Modality == test_dataset.Modality
+        assert ds.Manufacturer == test_dataset.Manufacturer
+
+        assert len(ds.BeamSequence) == 1
+        assert (
+            ds.BeamSequence[0].Manufacturer == test_dataset.BeamSequence[0].Manufacturer
+        )
