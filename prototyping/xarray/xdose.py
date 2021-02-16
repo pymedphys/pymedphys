@@ -22,7 +22,7 @@ def xdose_from_dataset(ds, coord_system="SUPPORT", decimals_to_round_coords=-1):
         dims=xr_dims,
         coords=xr_coords,
         name="dose",
-        attrs={"units": ds.DoseUnits, "coord_system": coord_system},
+        attrs={"units": ds.DoseUnits.title(), "coord_system": coord_system},
     )
 
 
