@@ -7,21 +7,22 @@ import xarray as xr
 from pymedphys._dicom import constants, coords, dose
 
 
-def xdose_from_dataset(ds):
+def xdose_from_dataset(ds, coord_system="SUPPORT", decimals_to_round_coords=-1):
 
     dose_values = dose.dose_from_dataset(ds)
-    xr_coords = xarray_coords_from_dataset(ds, coord_system="SUPPORT")
+    xr_dims = xarray_dims_from_dataset(ds, coord_system=coord_system)
+    xr_coords = xarray_coords_from_dataset(
+        ds,
+        coord_system=coord_system,
+        round_to_decimals=decimals_to_round_coords,
+    )
 
     return xr.DataArray(
         data=dose_values,
-        dims=[
-            "long",
-            "vert",
-            "lat",
-        ],  # order matters here - this matches the indexing covnention of dose_values
+        dims=xr_dims,
         coords=xr_coords,
         name="dose",
-        attrs={"units": ds.DoseUnits, "long_name": ""},
+        attrs={"units": ds.DoseUnits, "coord_system": coord_system},
     )
 
 
@@ -125,12 +126,8 @@ def coords_from_dataset(
 
     elif coord_system.upper() in ("DICOM", "D", "PATIENT", "IEC PATIENT", "P"):
 
-        if is_decubitus:
-            x_patient = orientation[3] * z_support
-            z_patient = orientation[1] * x_support
-        else:
-            x_patient = orientation[0] * x_support
-            z_patient = orientation[4] * z_support
+        x_patient = orientation[0] * x_support + orientation[3] * z_support
+        z_patient = orientation[1] * x_support + orientation[4] * z_support
 
         if not is_head_first:
             y_patient = -y_support
@@ -149,23 +146,39 @@ def coords_from_dataset(
             return (x_dicom, y_dicom, z_dicom)
 
 
-def xarray_coords_from_dataset(ds, coord_system="SUPPORT"):
-    x, y, z = coords_from_dataset(ds, coord_system=coord_system)
+def xarray_dims_from_dataset(ds, coord_system):
+
+    IEC_NON_decubitus_DIMS = ["y", "z", "x"]
 
     if coord_system.upper() in ("SUPPORT", "IEC SUPPORT", "S"):
-        return {"long": y, "vert": z, "lat": x}
+        return IEC_NON_decubitus_DIMS
+
     elif coord_system.upper() in ("PATIENT", "IEC PATIENT", "P"):
-        if ds.ImageOrientationPatient[0] == 0:
-            return {"long": y, "vert": z, "lat": x}
+        if dataset_orient_is_decubitus(ds):
+            return ["y", "x", "z"]
         else:
-            return {"long": y, "vert": x, "lat": z}
+            return IEC_NON_decubitus_DIMS
+
     elif coord_system.upper() in ("DICOM", "D"):
-        if ds.ImageOrientationPatient[0] == 0:
-            return {"long": z, "vert": y, "lat": x}
+        if dataset_orient_is_decubitus(ds):
+            return ["z", "x", "y"]
         else:
-            return {"long": z, "vert": x, "lat": y}
+            return ["z", "y", "x"]
+
+
+def xarray_coords_from_dataset(
+    ds, coord_system: str = "SUPPORT", round_to_decimals: int = -1
+):
+    x, y, z = coords_from_dataset(ds, coord_system=coord_system)
+
+    xcoords = {"x": x, "y": y, "z": z}
+
+    if round_to_decimals >= 0:
+        return {
+            dim: np.round(xc, decimals=round_to_decimals) for dim, xc in xcoords.items()
+        }
     else:
-        raise ValueError("Invalid coord system")
+        return xcoords
 
 
 def _orientation_is_head_first(orientation_vector, is_decubitus):
@@ -173,3 +186,7 @@ def _orientation_is_head_first(orientation_vector, is_decubitus):
         return np.abs(np.sum(orientation_vector)) != 2
 
     return np.abs(np.sum(orientation_vector)) == 2
+
+
+def dataset_orient_is_decubitus(ds):
+    return ds.ImageOrientationPatient[0] == 0
