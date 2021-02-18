@@ -5,7 +5,10 @@ import numpy as np
 import tensorflow as tf
 
 from pymedphys.mosaiq import Connection, connect, execute
-from pymedphys._mosaiq.sessions import sessions_for_site, session_offsets_for_site
+from pymedphys._mosaiq.sessions import (
+    mean_session_offsets_for_site,
+    localization_offset_for_site,
+)
 
 
 def generate_trending_anomaly_dataset(connection: Connection, balance_classes=True):
@@ -34,7 +37,8 @@ def generate_trending_anomaly_dataset(connection: Connection, balance_classes=Tr
     print(balance_classes)
 
     for sit_set_id in result:
-        offsets_by_session = session_offsets_for_site(sit_set_id)
+        offsets_by_session = mean_session_offsets_for_site(sit_set_id)
+
         # does it have a trending session?
         no_offset_sessions = [
             kvp[0] for kvp in offsets_by_session.items() if len(kvp[1]) == 0

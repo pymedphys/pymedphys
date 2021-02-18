@@ -208,8 +208,40 @@ def session_offsets_for_site(
         yield (session_num, offsets[0] if len(offsets) > 0 else None)
 
 
+def mean_session_offset_for_site(connection: Connection, sit_set_id: int):
+    """[summary]
+
+    Parameters
+    ----------
+    connection : [type]
+        [description]
+    sit_set_id : [type]
+        [description]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    offsets = session_offsets_for_site(connection, sit_set_id)
+    return list(offsets)  # np.mean(offsets, 0)
+
+
 def localization_offset_for_site(connection: Connection, sit_set_id: int):
-    """get the localization offset for the given site"""
+    """get the localization offset for the given site
+
+    Parameters
+    ----------
+    connection : [type]
+        [description]
+    sit_set_id : [type]
+        [description]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
     result = api.execute(
         connection,
         """
