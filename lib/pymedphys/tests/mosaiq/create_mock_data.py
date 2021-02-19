@@ -8,11 +8,10 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, sqlalchemy
 
-msq_server = "."
+msq_server = "localhost"
 test_db_name = "MosaiqTest77008"
 
-sa_user = "sa"
-sa_password = "sqlServerPassw0rd"
+sa_user, sa_password = "sa", "sqlServerPassw0rd"
 
 # vary the number of fractions a bit
 NUMBER_OF_FRACTIONS = (20, 25, 30)
@@ -28,6 +27,7 @@ PROB_OFFSET_BY_PROTOCOL = {
     "nal": lambda session_num: 95 if session_num <= 4 else 20,
 }
 
+# parameters for systematic offset
 systematic_mu, systematic_precision = 1.0, 1.0
 
 
