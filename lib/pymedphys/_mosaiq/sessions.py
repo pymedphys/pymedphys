@@ -251,22 +251,19 @@ def localization_offset_for_site(connection: Connection, sit_set_id: int):
                 Lateral_Offset
             FROM Offset
             WHERE
-                SIT_SET_ID = %(sit_set_id)
-                AND %(start_time)s < Offset.Study_DtTm
-                AND Offset.Study_DtTm < %(end_time)s
+                Version = 0
+                AND Offset.Offset_State IN (1,2) -- active/complete offsets
+                AND Offset.Offset_Type IN (2) -- localization offsets
+                AND Offset.SIT_SET_ID = %(sit_set_id)s
+                AND Offset_Type = %(offset_type)s
             ORDER BY
                 Offset.Study_DtTm
         """,
-        {
-            "sit_set_id": sit_set_id,
-            "start_time": "start_time_str",
-            "end_time": "end_time_str",
-        },
+        {"sit_set_id": sit_set_id, "offset_type": 2},  # = Localization
     )
 
     localization_offset = list(result)[0]
-    test_offset = np.array([0.0, 0.0, 0.0])
-    print(test_offset)
+    localization_offset = np.array(localization_offset)
 
     # determine session for localization offset
     return 0, localization_offset
