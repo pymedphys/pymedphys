@@ -66,7 +66,7 @@ def dataframe_to_sql(df, tablename, index_label, dtype=None):
 
 
 def check_create_test_db():
-    """ will create the test database, if it does not already exist on the instance """
+    """will create the test database, if it does not already exist on the instance"""
 
     # sa connection to create the test database
     with pymssql.connect(
@@ -88,7 +88,14 @@ def check_create_test_db():
 
 
 def create_mock_patients():
-    """ create some mock patients and populate the Patient and Ident tables """
+    """create some mock patients and populate the Patient and Ident tables
+
+    Returns
+    -------
+    DataFrame
+        dataframe with combined Patient and Ident columns that was used to populate
+        the tables
+    """
 
     # create a single dataframe combining the Patient and Ident tables
     patient_ident_df = pd.DataFrame(
@@ -121,7 +128,19 @@ def create_mock_patients():
 
 def create_mock_treatment_sites(patient_ident_df=None):
     """create mock treatment sites for the patient dataframe passed in
-    or call create_mock_patients if None is passed"""
+        or call create_mock_patients if None is passed
+
+    Parameters
+    ----------
+    patient_ident_df : DataFrame, optional
+        the patient + ident dataframe returned by create_mock_patients
+        None to call create_mock_patients first
+
+    Returns
+    -------
+    DataFrame
+        the Sites dataframe that was used to populate the table
+    """
 
     if patient_ident_df is None:
         patient_ident_df = create_mock_patients()
@@ -137,16 +156,22 @@ def create_mock_treatment_sites(patient_ident_df=None):
     site_df["Fractions"] = choices(
         NUMBER_OF_FRACTIONS, weights=[1, 2, 3], k=len(site_df)
     )
+
     # the site notes contain the choice of protocol
     protocol = choices(
         list(PROB_OFFSET_BY_PROTOCOL.keys()), weights=[1, 1, 1], k=len(site_df)
     )
-    tau = 2.0  # tau is precision of gaussian
-    mu = np.random.normal(MU_0_PRIOR, 1.0 / (K0_PRIOR * tau))
-    site_df["Notes"] = f"Protocol={protocol};SysOffset={mu};Prec={tau}"
 
-    # save these for later
-    offsets = np.random.normal(mu, 1.0 / tau, size=[100, 3])
+    tau = 2.0  # tau is precision of gaussian
+    mu = np.random.normal(MU_0_PRIOR, 1.0 / (K0_PRIOR * tau), size=(len(site_df), 3))
+
+    site_df["Notes"] = list(
+        map(
+            lambda tpl: f"Protocol={tpl[0]};SysOffset={tpl[1]};Prec={tau}",
+            zip(protocol, mu),
+        )
+    )
+    print(site_df["Notes"])
 
     # the treatment technique is chosen from the list of keys
     site_df["Technique"] = choices(
@@ -161,7 +186,19 @@ def create_mock_treatment_sites(patient_ident_df=None):
 
 def create_mock_treatment_fields(site_df=None):
     """create mock treatment sites for the site dataframe passed in
-    or call create_mock_treatment_sites if None is passed"""
+    or call create_mock_treatment_sites if None is passed
+
+    Parameters
+    ----------
+    site_df : DataFrame, optional
+        the site dataframe that has been used to create the table
+        or None to call create_mock_treatment_sites first
+
+    Returns
+    -------
+    DataFrame
+        the treatment field dataframe that was used to populate the table
+    """
 
     if site_df is None:
         site_df = create_mock_treatment_sites()
@@ -170,9 +207,9 @@ def create_mock_treatment_fields(site_df=None):
 
     # populate a list of tx_fields, 3 for each site
     tx_fields = []
-    technique = site_df["Technique"]
-    field_count = FIELD_COUNT_BY_TECHNIQUE_NAME[technique]
     for sit_set_id, site in site_df.iterrows():
+        technique = site["Technique"]
+        field_count = FIELD_COUNT_BY_TECHNIQUE_NAME[technique]
         tx_fields += [
             (
                 f"B{n}",
@@ -216,7 +253,7 @@ def create_mock_treatment_fields(site_df=None):
     txfield_points = []
     for fld_id, txfield in txfield_df.iterrows():
         gantry_angle_matches = re.search("AtGantry([0-9]*)", txfield["Field_Name"])
-        gantry_angle = int(gantry_angle_matches[0])
+        gantry_angle = int(gantry_angle_matches.group(1))
         point_count = 4
         txfield_points += [
             (
@@ -274,6 +311,13 @@ def create_mock_treatment_fields(site_df=None):
 def create_mock_treatment_sessions(site_df=None, txfield_df=None):
     """for a given site and set of tx fields, generate treatment session data
     (Dose_Hst and Offset) for randomly chosen treatment interval
+
+    Parameters
+    ----------
+    site_df : [type], optional
+        [description], by default None
+    txfield_df : [type], optional
+        [description], by default None
     """
 
     if site_df is None:
@@ -293,18 +337,18 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
         fractions = site_rec["Fractions"]
 
         # regex for a decimal number with one decimal point
-        nr = "([-]?\d*\.\d)"
+        nr = " *([-]?\d*\.\d)"
 
         # find matches for protocol, stored in Notes field
         protocol_match = re.search(
-            f"Protocol=([^;]*);SysOffset=\[{nr}, {nr}, {nr}\];Prec={nr}",
+            f"Protocol=([^;]*);SysOffset=\[{nr}{nr}{nr}\];Prec={nr}",
             site_rec["Notes"],
         )
 
         # now extract the groups
         protocol = protocol_match.group(1)
-        mu = np.array([float(match.group(n)) for n in range(2, 5)])
-        tau = float(match.group(5))
+        mu = np.array([float(protocol_match.group(n)) for n in range(2, 5)])
+        tau = float(protocol_match.group(5))
 
         fld_count = FIELD_COUNT_BY_TECHNIQUE_NAME[site_rec["Technique"]]
         fld_ids = [randint(1000, 4000) for _ in range(fld_count)]
@@ -335,7 +379,6 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
                         session_time,
                         1,  # Offset_State: 1=Active, 2=Complete
                         3,  # Offset_Type: 3=Portal, 4=ThirdParty
-                        # TODO: calculate from systematic_mu / precision
                         round(offset[0], 1),  # Superior_Offset
                         round(offset[1], 1),  # Anterior_Offset
                         round(offset[2], 1),  # Lateral_Offset
