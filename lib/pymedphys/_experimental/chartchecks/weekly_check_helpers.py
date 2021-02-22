@@ -31,7 +31,7 @@ def show_incomplete_weekly_checks():
     connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
     incomplete = get_incomplete_qcls(connection, "Physics Resident")
-    todays_date = date.today() + timedelta(days=3)
+    todays_date = date.today() + timedelta(days=4)
     todays_date = todays_date.strftime("%b %d, %Y")
     # todays_date = "Dec 4, 2020"
     incomplete = incomplete[
@@ -52,7 +52,7 @@ def compare_delivered_to_planned(patient):
     patient_results = pd.DataFrame()
     try:
         # current_fx = max(delivered_values["fx"])
-        todays_date = pd.Timestamp("today").floor("D")
+        todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=1, unit="D")
         week_ago = todays_date + pd.offsets.Day(-7)
         delivered_this_week = delivered.copy()
         delivered_this_week = delivered_this_week[delivered["date"] > week_ago]

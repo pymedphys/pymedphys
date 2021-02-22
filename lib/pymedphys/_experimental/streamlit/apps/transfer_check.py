@@ -21,12 +21,14 @@ from pymedphys._experimental.chartchecks.compare import (
     colour_results,
     compare_to_mosaiq,
 )
+from pymedphys._experimental.chartchecks.dose_constraints import CONSTRAINTS
 from pymedphys._experimental.chartchecks.dvh_helpers import calc_dvh, plot_dvh
 from pymedphys._experimental.chartchecks.helpers import (
     get_all_dicom_treatment_info,
     get_all_treatment_data,
     get_staff_initials,
 )
+from pymedphys._experimental.chartchecks.structure_aliases import ALIASES
 from pymedphys._experimental.chartchecks.tolerance_constants import (
     SITE_CONSTANTS,
     TOLERANCE_TYPES,
@@ -218,6 +220,28 @@ def show_comparison_of_selected_fields(dicom_field_selection, results):
     return
 
 
+def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
+    structure_constraints = constraints[structure]
+    structure_dvh = dvh_calcs[roi]
+    for type, constraint in structure_constraints.items():
+        if type == "Mean" and constraint is not " ":
+            for val in range(0, len(constraint)):
+                st.write(structure, " Mean: ", structure_dvh.mean)
+
+        elif type == "Max" and constraint is not " ":
+            for val in range(0, len(constraint)):
+                st.write(structure, " Max: ", structure_dvh.max)
+
+        elif type == "V%" and constraint is not " ":
+            for val in range(0, len(constraint)):
+                st.write(
+                    structure,
+                    " V%: ",
+                    structure_dvh.dose_constraint(constraint[val][1] * 100),
+                )
+    return
+
+
 def main():
     server = "PRDMOSAIQIWVV01.utmsa.local"
     connection = get_cached_mosaiq_connection(server)
@@ -281,13 +305,18 @@ def main():
 
         if "rs" in files and "rd" in files:
 
-            run_dvh_calc = st.checkbox("Calculate DVH")
-            if run_dvh_calc:
-                dvh_calcs = calc_dvh(files["rs"], files["rd"])
-
             show_dvh = st.checkbox("Create DVH Plot")
             if show_dvh:
+                dvh_calcs = calc_dvh(files["rs"], files["rd"])
                 plot_dvh(dvh_calcs)
+
+                rois = dvh_calcs.keys()
+                for roi in rois:
+                    for structure, aliases in ALIASES.items():
+                        if roi.lower() in aliases:
+                            compare_structure_with_constraints(
+                                roi, structure, dvh_calcs, constraints=CONSTRAINTS
+                            )
 
             dvh_lookup = st.checkbox("DVH Lookup Table")
             if dvh_lookup:

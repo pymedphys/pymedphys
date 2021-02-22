@@ -65,17 +65,20 @@ def main():
         mrn = patient_select.split(",")[0]
         # planned, delivered, patient_results = compare_single_incomplete(mrn)
         todays_date = pd.Timestamp("today").floor("D")
+        st.write(todays_date)
         week_ago = todays_date + pd.offsets.Day(-7)
         delivered = all_delivered[all_delivered["mrn"] == mrn]
+        # delivered_this_week = delivered
         delivered_this_week = delivered[delivered["date"] > week_ago]
+        delivered_this_week = delivered_this_week.reset_index(drop=True)
 
         # plot the couch coordinates for each delivered beam
         # st.write(planned)
         # st.write(delivered_this_week)
         st.header(
-            delivered_this_week.loc[0, "first_name"]
+            delivered_this_week["first_name"].values[0]
             + " "
-            + delivered_this_week.loc[0, "last_name"]
+            + delivered_this_week["last_name"].values[0]
         )
 
         delivered_this_week["rx_change"] = 0
