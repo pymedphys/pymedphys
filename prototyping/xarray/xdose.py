@@ -6,6 +6,14 @@ import xarray as xr
 
 from pymedphys._dicom import constants, coords, dose
 
+XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT = {
+    "S": ["y", "z", "x"],
+    "P": ["y", "z", "x"],
+    "P dec": ["y", "x", "z"],
+    "D": ["z", "y", "x"],
+    "D dec": ["z", "x", "y"],
+}
+
 
 def xdose_from_dataset(ds, coord_system="SUPPORT", decimals_to_round_coords=-1):
 
@@ -100,8 +108,8 @@ def coords_from_dataset(
             "superoinferior axis of patient."
         )
 
-    is_decubitus = orientation[0] == 0
-    is_head_first = _orientation_is_head_first(orientation, is_decubitus)
+    is_decubitus = dataset_orientation_is_decubitus(ds)
+    is_head_first = dataset_orientation_is_head_first(ds)
 
     di = float(ds.PixelSpacing[0])
     dj = float(ds.PixelSpacing[1])
@@ -110,16 +118,16 @@ def coords_from_dataset(
     row_range = np.arange(0, ds.Rows * dj, dj)
 
     if is_decubitus:
-        x_support = orientation[1] * position[1] + col_range
-        z_support = -(orientation[3] * position[0] + row_range)
+        x_support = orientation[1] * position[1] + col_range  # type: ignore
+        z_support = -(orientation[3] * position[0] + row_range)  # type: ignore
     else:
-        x_support = orientation[0] * position[0] + col_range
-        z_support = -(orientation[4] * position[1] + row_range)
+        x_support = orientation[0] * position[0] + col_range  # type: ignore
+        z_support = -(orientation[4] * position[1] + row_range)  # type: ignore
 
     if is_head_first:
         y_support = position[2] + np.array(ds.GridFrameOffsetVector)
     else:
-        y_support = -position[2] + np.array(ds.GridFrameOffsetVector)
+        y_support = -position[2] + np.array(ds.GridFrameOffsetVector)  # type: ignore
 
     if coord_system.upper() in ("SUPPORT", "IEC SUPPORT", "S"):
         return (x_support, y_support, z_support)
@@ -148,22 +156,20 @@ def coords_from_dataset(
 
 def xarray_dims_from_dataset(ds, coord_system):
 
-    IEC_NON_decubitus_DIMS = ["y", "z", "x"]
-
     if coord_system.upper() in ("SUPPORT", "IEC SUPPORT", "S"):
-        return IEC_NON_decubitus_DIMS
+        return XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT["S"]
 
     elif coord_system.upper() in ("PATIENT", "IEC PATIENT", "P"):
-        if dataset_orient_is_decubitus(ds):
-            return ["y", "x", "z"]
+        if dataset_orientation_is_decubitus(ds):
+            return XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT["P dec"]
         else:
-            return IEC_NON_decubitus_DIMS
+            return XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT["P"]
 
     elif coord_system.upper() in ("DICOM", "D"):
-        if dataset_orient_is_decubitus(ds):
-            return ["z", "x", "y"]
+        if dataset_orientation_is_decubitus(ds):
+            return XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT["D dec"]
         else:
-            return ["z", "y", "x"]
+            return XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT["D"]
 
 
 def xarray_coords_from_dataset(
@@ -181,12 +187,12 @@ def xarray_coords_from_dataset(
         return xcoords
 
 
-def _orientation_is_head_first(orientation_vector, is_decubitus):
-    if is_decubitus:
-        return np.abs(np.sum(orientation_vector)) != 2
+def dataset_orientation_is_head_first(ds):
+    if dataset_orientation_is_decubitus(ds):
+        return np.abs(np.sum(ds.ImageOrientationPatient)) != 2
+    else:
+        return np.abs(np.sum(ds.ImageOrientationPatient)) == 2
 
-    return np.abs(np.sum(orientation_vector)) == 2
 
-
-def dataset_orient_is_decubitus(ds):
+def dataset_orientation_is_decubitus(ds):
     return ds.ImageOrientationPatient[0] == 0
