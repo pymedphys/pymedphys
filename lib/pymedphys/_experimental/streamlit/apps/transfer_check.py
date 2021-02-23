@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
@@ -30,7 +32,8 @@ from pymedphys._experimental.chartchecks.helpers import (
     get_all_treatment_data,
     get_staff_initials,
 )
-from pymedphys._experimental.chartchecks.structure_aliases import ALIASES
+
+# from pymedphys._experimental.chartchecks import ALIASES.csv
 from pymedphys._experimental.chartchecks.tolerance_constants import (
     SITE_CONSTANTS,
     TOLERANCE_TYPES,
@@ -222,6 +225,37 @@ def show_comparison_of_selected_fields(dicom_field_selection, results):
     return
 
 
+def get_structure_aliases():
+    cwd = os.getcwd().replace("\\", "/")
+    file_path = cwd + "/lib/pymedphys/_experimental/chartchecks/ALIASES.csv"
+    alias_df = pd.read_csv(file_path)
+    return alias_df
+
+
+def add_new_structure_alias(dvh_calcs, alias_df):
+    cwd = os.getcwd().replace("\\", "/")
+    file_path = cwd + "/lib/pymedphys/_experimental/chartchecks/ALIASES.csv"
+
+    for i in range(len(alias_df.keys())):
+        df_list = alias_df.iloc[0][i][1:-1].replace("'", "").split((","))
+        alias_df.iloc[0][i] = df_list
+
+    default = [
+        "< Select an ROI >",
+    ]
+    alias_list = list(dvh_calcs.keys())
+    alias_list = default + alias_list
+    alias_select = st.selectbox("Select a structure to define: ", alias_list)
+    key_list = list(list(alias_df))
+    key_list = default + key_list
+    key_select = st.selectbox("Select an assignment: ", key_list)
+
+    if alias_select != "< Select an ROI >" and key_select != "< Select an ROI >":
+        alias_df[key_select].iloc[0].append(alias_select.lower())
+        alias_df.to_csv(file_path, index=False)
+    return
+
+
 def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
     structure_constraints = constraints[structure]
     structure_dvh = dvh_calcs[roi]
@@ -233,7 +267,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                 added_constraint["Structure"] = [roi]
                 added_constraint["Type"] = ["Mean"]
                 added_constraint["Dose [Gy]"] = [constraint[val][0]]
-                added_constraint["Volume"] = ["-"]
+                added_constraint["Volume [%]"] = ["-"]
                 added_constraint["Actual"] = structure_dvh.mean
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
@@ -245,7 +279,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                 added_constraint["Structure"] = [roi]
                 added_constraint["Type"] = ["Max"]
                 added_constraint["Dose [Gy]"] = [constraint[val][0]]
-                added_constraint["Volume"] = ["-"]
+                added_constraint["Volume [%]"] = ["-"]
                 added_constraint["Actual"] = structure_dvh.max
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
@@ -257,7 +291,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                 added_constraint["Structure"] = [roi]
                 added_constraint["Type"] = ["V%"]
                 added_constraint["Dose [Gy]"] = [constraint[val][0]]
-                added_constraint["Volume"] = [constraint[val][1] * 100]
+                added_constraint["Volume [%]"] = [constraint[val][1] * 100]
                 added_constraint["Actual"] = structure_dvh.dose_constraint(
                     constraint[val][1] * 100
                 ).value
@@ -336,12 +370,12 @@ def main():
                 dvh_calcs = calc_dvh(files["rs"], files["rd"])
                 plot_dvh(dvh_calcs)
 
-                rois = list(dvh_calcs.keys())
-                rois.sort()
+                rois = dvh_calcs.keys()
                 constraints_df = pd.DataFrame()
+                ALIASES = get_structure_aliases()
                 for roi in rois:
-                    for structure, aliases in ALIASES.items():
-                        if roi.lower() in aliases:
+                    for structure in ALIASES.keys():
+                        if roi.lower() in ALIASES[structure].iloc[0]:
                             structure_df = compare_structure_with_constraints(
                                 roi, structure, dvh_calcs, constraints=CONSTRAINTS
                             )
@@ -351,9 +385,11 @@ def main():
                 constraints_df = constraints_df.style.apply(
                     constraint_check_colour_results, axis=1
                 )
-
+                # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
                 st.subheader("Constraint Check")
                 st.dataframe(constraints_df.set_precision(2), height=1000)
+
+                add_new_structure_alias(dvh_calcs, ALIASES)
 
             dvh_lookup = st.checkbox("DVH Lookup Table")
             if dvh_lookup:

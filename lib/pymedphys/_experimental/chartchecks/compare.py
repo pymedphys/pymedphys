@@ -255,7 +255,11 @@ def specific_patient_weekly_check_colour_results(val):
 
 
 def constraint_check_colour_results(val):
+    diff = val[2] - val[4]
+    limit = val[2] / 10
     if val[4] > val[2]:
         return ["background-color: #EE6363"] * len(val)
+    elif 0 < diff < limit:
+        return ["background-color: #FDFF8A"] * len(val)
     else:
         return ["background-color: #C1FFC1"] * len(val)
