@@ -19,6 +19,7 @@
 from datetime import datetime, timedelta
 from typing import List
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import sklearn
 
 from . import api
@@ -205,3 +206,68 @@ def session_offsets_for_site(
         #       an approved image?)
         offsets = list(result)
         yield (session_num, offsets[0] if len(offsets) > 0 else None)
+
+
+def mean_session_offset_for_site(connection: Connection, sit_set_id: int):
+    """[summary]
+
+    Parameters
+    ----------
+    connection : [type]
+        [description]
+    sit_set_id : [type]
+        [description]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    offsets = session_offsets_for_site(connection, sit_set_id)
+    return list(offsets)[0]  # np.mean(offsets, 0)
+
+
+def localization_offset_for_site(connection: Connection, sit_set_id: int):
+    """get the localization offset for the given site
+
+    Parameters
+    ----------
+    connection : [type]
+        [description]
+    sit_set_id : [type]
+        [description]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    result = api.execute(
+        connection,
+        """
+            SELECT
+                Superior_Offset,
+                Anterior_Offset,
+                Lateral_Offset
+            FROM Offset
+            WHERE
+                Version = 0
+                AND Offset.Offset_State IN (1,2) -- active/complete offsets
+                AND Offset.Offset_Type IN (2) -- localization offsets
+                AND Offset.SIT_SET_ID = %(sit_set_id)s
+                AND Offset_Type = %(offset_type)s
+            ORDER BY
+                Offset.Study_DtTm
+        """,
+        {"sit_set_id": sit_set_id, "offset_type": 2},  # = Localization
+    )
+
+    result = list(result)
+    if len(result) > 0:
+        localization_offset = result[0]
+        localization_offset = np.array(localization_offset)
+    else:
+        localization_offset = None
+
+    # determine session for localization offset
+    return 0, localization_offset

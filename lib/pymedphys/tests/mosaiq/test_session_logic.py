@@ -1,6 +1,11 @@
 from pymedphys._imports import pytest
 
-from pymedphys._mosaiq.sessions import session_offsets_for_site, sessions_for_site
+from pymedphys._mosaiq.sessions import (
+    localization_offset_for_site,
+    mean_session_offset_for_site,
+    session_offsets_for_site,
+    sessions_for_site,
+)
 from pymedphys.mosaiq import connect
 
 from .create_mock_data import (
@@ -123,5 +128,18 @@ def test_session_offsets_for_site(
                 assert abs(session_offset[3]) <= 10.0
 
                 previous_session_offset_when = session_offset[0]
+
+            _, mean_session_offset = mean_session_offset_for_site(
+                connection, sit_set_id
+            )
+            print(mean_session_offset)
+            assert abs(mean_session_offset[1]) <= 10.0
+            assert abs(mean_session_offset[2]) <= 10.0
+            assert abs(mean_session_offset[3]) <= 10.0
+
+            _, localization_offset = localization_offset_for_site(
+                connection, sit_set_id
+            )
+            assert localization_offset is None or abs(localization_offset[1]) <= 10.0
 
             previous_session_number = session_number
