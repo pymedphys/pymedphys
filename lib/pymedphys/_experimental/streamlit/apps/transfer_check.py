@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
@@ -20,6 +21,7 @@ from pymedphys._streamlit.utilities.mosaiq import get_cached_mosaiq_connection
 from pymedphys._experimental.chartchecks.compare import (
     colour_results,
     compare_to_mosaiq,
+    constraint_check_colour_results,
 )
 from pymedphys._experimental.chartchecks.dose_constraints import CONSTRAINTS
 from pymedphys._experimental.chartchecks.dvh_helpers import calc_dvh, plot_dvh
@@ -223,23 +225,47 @@ def show_comparison_of_selected_fields(dicom_field_selection, results):
 def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
     structure_constraints = constraints[structure]
     structure_dvh = dvh_calcs[roi]
+    structure_df = pd.DataFrame()
     for type, constraint in structure_constraints.items():
         if type == "Mean" and constraint is not " ":
             for val in range(0, len(constraint)):
-                st.write(structure, " Mean: ", structure_dvh.mean)
+                added_constraint = pd.DataFrame()
+                added_constraint["Structure"] = [roi]
+                added_constraint["Type"] = ["Mean"]
+                added_constraint["Dose [Gy]"] = [constraint[val][0]]
+                added_constraint["Volume"] = ["-"]
+                added_constraint["Actual"] = structure_dvh.mean
+                structure_df = pd.concat([structure_df, added_constraint]).reset_index(
+                    drop=True
+                )
 
         elif type == "Max" and constraint is not " ":
             for val in range(0, len(constraint)):
-                st.write(structure, " Max: ", structure_dvh.max)
+                added_constraint = pd.DataFrame()
+                added_constraint["Structure"] = [roi]
+                added_constraint["Type"] = ["Max"]
+                added_constraint["Dose [Gy]"] = [constraint[val][0]]
+                added_constraint["Volume"] = ["-"]
+                added_constraint["Actual"] = structure_dvh.max
+                structure_df = pd.concat([structure_df, added_constraint]).reset_index(
+                    drop=True
+                )
 
         elif type == "V%" and constraint is not " ":
             for val in range(0, len(constraint)):
-                st.write(
-                    structure,
-                    " V%: ",
-                    structure_dvh.dose_constraint(constraint[val][1] * 100),
+                added_constraint = pd.DataFrame()
+                added_constraint["Structure"] = [roi]
+                added_constraint["Type"] = ["V%"]
+                added_constraint["Dose [Gy]"] = [constraint[val][0]]
+                added_constraint["Volume"] = [constraint[val][1] * 100]
+                added_constraint["Actual"] = structure_dvh.dose_constraint(
+                    constraint[val][1] * 100
+                ).value
+                structure_df = pd.concat([structure_df, added_constraint]).reset_index(
+                    drop=True
                 )
-    return
+
+    return structure_df
 
 
 def main():
@@ -310,13 +336,24 @@ def main():
                 dvh_calcs = calc_dvh(files["rs"], files["rd"])
                 plot_dvh(dvh_calcs)
 
-                rois = dvh_calcs.keys()
+                rois = list(dvh_calcs.keys())
+                rois.sort()
+                constraints_df = pd.DataFrame()
                 for roi in rois:
                     for structure, aliases in ALIASES.items():
                         if roi.lower() in aliases:
-                            compare_structure_with_constraints(
+                            structure_df = compare_structure_with_constraints(
                                 roi, structure, dvh_calcs, constraints=CONSTRAINTS
                             )
+                            constraints_df = pd.concat(
+                                [constraints_df, structure_df]
+                            ).reset_index(drop=True)
+                constraints_df = constraints_df.style.apply(
+                    constraint_check_colour_results, axis=1
+                )
+
+                st.subheader("Constraint Check")
+                st.dataframe(constraints_df.set_precision(2), height=1000)
 
             dvh_lookup = st.checkbox("DVH Lookup Table")
             if dvh_lookup:

@@ -231,6 +231,10 @@ ALIASES = {
         "spinalcord",
         "cord",
         "spinal cord",
+        "spinal cord plus 5mm",
+        "spinalcord plus 5mm",
+        "spinal cord + 5mm",
+        "spinalcord + 5mm",
     ],
     "Stomach": [
         "Stomach",
