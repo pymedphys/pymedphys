@@ -229,6 +229,13 @@ def get_structure_aliases():
     cwd = os.getcwd().replace("\\", "/")
     file_path = cwd + "/lib/pymedphys/_experimental/chartchecks/ALIASES.csv"
     alias_df = pd.read_csv(file_path)
+    for i in range(len(alias_df.keys())):
+        df_list = alias_df.iloc[0][i][1:-1].split((","))
+        formatted_df_list = []
+        for item in df_list:
+            formatted_df_list.append(item.replace("'", "").strip(" "))
+        alias_df.iloc[0][i] = formatted_df_list
+
     return alias_df
 
 
@@ -236,9 +243,9 @@ def add_new_structure_alias(dvh_calcs, alias_df):
     cwd = os.getcwd().replace("\\", "/")
     file_path = cwd + "/lib/pymedphys/_experimental/chartchecks/ALIASES.csv"
 
-    for i in range(len(alias_df.keys())):
-        df_list = alias_df.iloc[0][i][1:-1].replace("'", "").split((","))
-        alias_df.iloc[0][i] = df_list
+    # for i in range(len(alias_df.keys())):
+    #     df_list = alias_df.iloc[0][i][1:-1].replace("'", "").strip(" ").split((","))
+    #     alias_df.iloc[0][i] = df_list
 
     default = [
         "< Select an ROI >",
@@ -265,10 +272,13 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
             for val in range(0, len(constraint)):
                 added_constraint = pd.DataFrame()
                 added_constraint["Structure"] = [roi]
+                added_constraint["Structure_Key"] = [structure]
                 added_constraint["Type"] = ["Mean"]
                 added_constraint["Dose [Gy]"] = [constraint[val][0]]
                 added_constraint["Volume [%]"] = ["-"]
-                added_constraint["Actual"] = structure_dvh.mean
+                added_constraint["Actual Dose [Gy]"] = structure_dvh.mean
+                added_constraint["Actual Volume [%]"] = ["-"]
+                added_constraint["Score"] = [constraint[val][0]] - structure_dvh.mean
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
                 )
@@ -277,29 +287,104 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
             for val in range(0, len(constraint)):
                 added_constraint = pd.DataFrame()
                 added_constraint["Structure"] = [roi]
+                added_constraint["Structure_Key"] = [structure]
                 added_constraint["Type"] = ["Max"]
                 added_constraint["Dose [Gy]"] = [constraint[val][0]]
                 added_constraint["Volume [%]"] = ["-"]
-                added_constraint["Actual"] = structure_dvh.max
+                added_constraint["Actual Dose [Gy]"] = structure_dvh.max
+                added_constraint["Actual Volume [%]"] = ["-"]
+                added_constraint["Score"] = [constraint[val][0]] - structure_dvh.max
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
                 )
 
         elif type == "V%" and constraint is not " ":
             for val in range(0, len(constraint)):
+                dose_constraint = [constraint[val][0]]
+                volume_constraint = [constraint[val][1] * 100]
+                actual_dose = structure_dvh.dose_constraint(volume_constraint).value
+                actual_volume = (
+                    structure_dvh.volume_constraint(dose_constraint, "Gy").value
+                    / structure_dvh.volume
+                ) * 100
                 added_constraint = pd.DataFrame()
                 added_constraint["Structure"] = [roi]
+                added_constraint["Structure_Key"] = [structure]
                 added_constraint["Type"] = ["V%"]
-                added_constraint["Dose [Gy]"] = [constraint[val][0]]
-                added_constraint["Volume [%]"] = [constraint[val][1] * 100]
-                added_constraint["Actual"] = structure_dvh.dose_constraint(
-                    constraint[val][1] * 100
-                ).value
+                added_constraint["Dose [Gy]"] = dose_constraint
+                added_constraint["Volume [%]"] = volume_constraint
+                added_constraint["Actual Dose [Gy]"] = actual_dose
+                added_constraint["Actual Volume [%]"] = actual_volume
+                added_constraint["Score"] = (dose_constraint - actual_dose) + (
+                    volume_constraint - actual_volume
+                )
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
                 )
 
+        elif type == "D%" and constraint is not " ":
+            for val in range(0, len(constraint)):
+                dose_constraint = [constraint[val][0]]
+                volume_constraint = [constraint[val][1]]
+                actual_dose = structure_dvh.dose_constraint(
+                    volume_constraint, "cm3"
+                ).value
+                actual_volume = (
+                    structure_dvh.volume_constraint(dose_constraint, "Gy").value
+                    / structure_dvh.volume
+                ) * 100
+                added_constraint = pd.DataFrame()
+                added_constraint["Structure"] = [roi]
+                added_constraint["Structure_Key"] = [structure]
+                added_constraint["Type"] = ["D%"]
+                added_constraint["Dose [Gy]"] = dose_constraint
+                added_constraint["Volume [%]"] = volume_constraint
+                added_constraint["Actual Dose [Gy]"] = actual_dose
+                added_constraint["Actual Volume [%]"] = actual_volume
+                added_constraint["Score"] = (dose_constraint - actual_dose) + (
+                    (volume_constraint / structure_dvh.volume) * 100 - actual_volume
+                )
+                structure_df = pd.concat([structure_df, added_constraint]).reset_index(
+                    drop=True
+                )
+    structure_df = calculate_average_OAR_score(structure_df)
+    # structure_df = pd.concat([structure_df, added_constraint]).reset_index(drop=True)
     return structure_df
+
+
+def calculate_average_OAR_score(structure_df):
+    average_oar_scores = pd.DataFrame()
+    average_oar_scores["Structure"] = [structure_df.iloc[0]["Structure"]]
+    average_oar_scores["Structure_Key"] = [structure_df.iloc[0]["Structure_Key"]]
+    average_oar_scores["Type"] = ["Average Score"]
+    average_oar_scores["Dose [Gy]"] = ["-"]
+    average_oar_scores["Volume [%]"] = ["-"]
+    average_oar_scores["Actual Dose [Gy]"] = ["-"]
+    average_oar_scores["Actual Volume [%]"] = ["-"]
+    average_oar_scores["Score"] = structure_df["Score"].mean()
+
+    structure_df = pd.concat([structure_df, average_oar_scores]).reset_index(drop=True)
+    # for structure in constraints_df['Structure'].unique():
+    #     average_oar_scores[structure] = [constraints_df[constraints_df['Structure'] == structure].loc[:]['Score'].mean()]
+    # st.write(average_oar_scores)
+    return structure_df
+
+
+def calculate_total_score(constraints_df):
+    total_score = pd.DataFrame()
+    total_score["Structure"] = ["Total Patient"]
+    total_score["Structure_Key"] = ["Total Patient"]
+    total_score["Type"] = ["Total Score"]
+    total_score["Dose [Gy]"] = ["-"]
+    total_score["Volume [%]"] = ["-"]
+    total_score["Actual Dose [Gy]"] = ["-"]
+    total_score["Actual Volume [%]"] = ["-"]
+    total_score["Score"] = constraints_df[constraints_df["Type"] == "Average Score"][
+        "Score"
+    ].sum()
+
+    constraints_df = pd.concat([constraints_df, total_score]).reset_index(drop=True)
+    return constraints_df
 
 
 def main():
@@ -375,21 +460,29 @@ def main():
                 ALIASES = get_structure_aliases()
                 for roi in rois:
                     for structure in ALIASES.keys():
-                        if roi.lower() in ALIASES[structure].iloc[0]:
+                        if roi.lower().strip(" ") in ALIASES[structure].iloc[0]:
                             structure_df = compare_structure_with_constraints(
                                 roi, structure, dvh_calcs, constraints=CONSTRAINTS
                             )
                             constraints_df = pd.concat(
                                 [constraints_df, structure_df]
                             ).reset_index(drop=True)
+
+                constraints_df = calculate_total_score(constraints_df)
+                constraints_df["mrn"] = int(mrn)
+                constraints_df["site_id"] = int(mosaiq_table.iloc[0]["site_ID"])
+                constraints_df.to_json("test_json")
                 constraints_df = constraints_df.style.apply(
                     constraint_check_colour_results, axis=1
                 )
+
                 # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
                 st.subheader("Constraint Check")
                 st.dataframe(constraints_df.set_precision(2), height=1000)
 
-                add_new_structure_alias(dvh_calcs, ALIASES)
+                define_alias = st.checkbox("Define a new structure alias")
+                if define_alias:
+                    add_new_structure_alias(dvh_calcs, ALIASES)
 
             dvh_lookup = st.checkbox("DVH Lookup Table")
             if dvh_lookup:

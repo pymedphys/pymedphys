@@ -255,11 +255,17 @@ def specific_patient_weekly_check_colour_results(val):
 
 
 def constraint_check_colour_results(val):
-    diff = val[2] - val[4]
-    limit = val[2] / 10
-    if val[4] > val[2]:
-        return ["background-color: #EE6363"] * len(val)
-    elif 0 < diff < limit:
-        return ["background-color: #FDFF8A"] * len(val)
+    if val["Type"] != "Average Score" and val["Type"] != "Total Score":
+        diff = val["Dose [Gy]"] - val["Actual Dose [Gy]"]
+        limit = val["Dose [Gy]"] / 10
+        if val["Actual Dose [Gy]"] > val["Dose [Gy]"]:
+            return ["background-color: #EE6363"] * len(val)
+        elif 0 < diff < limit:
+            return ["background-color: #FDFF8A"] * len(val)
+        else:
+            return ["background-color: #C1FFC1"] * len(val)
     else:
-        return ["background-color: #C1FFC1"] * len(val)
+        if val["Score"] > 0:
+            return ["background-color: #C1FFC1"] * len(val)
+        else:
+            return ["background-color: #EE6363"] * len(val)

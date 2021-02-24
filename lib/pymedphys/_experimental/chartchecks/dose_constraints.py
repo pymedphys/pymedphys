@@ -49,7 +49,15 @@ CONSTRAINTS = {
         ],
         "Mean_95%": " ",
     },
-    "Brachial_plexus": {
+    "Brachial_plexus_L": {
+        "D1-10cc": " ",
+        "Mean": " ",
+        "Max": [(66, 0, 0, "")],
+        "V%": [(60, 0.05, 0, "")],
+        "D%": " ",
+        "Mean_95%": " ",
+    },
+    "Brachial_plexus_R": {
         "D1-10cc": " ",
         "Mean": " ",
         "Max": [(66, 0, 0, "")],
@@ -477,10 +485,16 @@ CONSTRAINTS = {
     "Spinal_cord": {
         "D1-10cc": " ",
         "Mean": " ",
+        "Max": [(45, 0, "")],
+        "V%": " ",
+        "D%": " ",
+        "Mean_95%": " ",
+    },
+    "Spinal_cord_PRV": {
+        "D1-10cc": " ",
+        "Mean": " ",
         "Max": [
-            (50, 0.002, "Myelopathy"),
-            (60, 0.06, "Myelopathy"),
-            (69, 0.50, "NTR", "Myelopathy"),
+            (45, 0, ""),
         ],
         "V%": " ",
         "D%": " ",
