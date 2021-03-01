@@ -1,3 +1,4 @@
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.sessions import (
@@ -49,7 +50,7 @@ def test_sessions_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = 1
+        sit_set_id = 2
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
@@ -99,7 +100,7 @@ def test_session_offsets_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = 1
+        sit_set_id = 2
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
@@ -111,35 +112,23 @@ def test_session_offsets_for_site(
 
         # for each treatment field
         previous_session_number = None
-        previous_session_offset_when = None
 
         for session_number, session_offset in session_offsets_for_site(
             connection, sit_set_id
         ):
-            if previous_session_number is not None:
+            if previous_session_number:
                 # check that the sessions are in order
                 assert session_number > previous_session_number
 
-            if session_offset is not None:
-                if previous_session_offset_when is not None:
-                    assert session_offset[0] > previous_session_offset_when
-                assert abs(session_offset[1]) <= 10.0
-                assert abs(session_offset[2]) <= 10.0
-                assert abs(session_offset[3]) <= 10.0
+            if np.any(session_offset):
+                assert np.max(np.abs(session_offset)) <= 10.0
 
-                previous_session_offset_when = session_offset[0]
+            mean_session_offset = mean_session_offset_for_site(connection, sit_set_id)
+            assert np.any(mean_session_offset)
+            assert np.max(np.abs(mean_session_offset)) <= 10.0
 
-            _, mean_session_offset = mean_session_offset_for_site(
-                connection, sit_set_id
-            )
-            print(mean_session_offset)
-            assert abs(mean_session_offset[1]) <= 10.0
-            assert abs(mean_session_offset[2]) <= 10.0
-            assert abs(mean_session_offset[3]) <= 10.0
-
-            _, localization_offset = localization_offset_for_site(
-                connection, sit_set_id
-            )
-            assert localization_offset is None or abs(localization_offset[1]) <= 10.0
+            localization_offset = localization_offset_for_site(connection, sit_set_id)
+            if np.any(localization_offset):
+                assert np.max(np.abs(localization_offset)) <= 10.0
 
             previous_session_number = session_number

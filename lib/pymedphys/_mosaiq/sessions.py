@@ -17,7 +17,7 @@
 """
 
 from datetime import datetime, timedelta
-from typing import List
+from typing import Iterator, List, Optional, Tuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import sklearn
@@ -26,7 +26,9 @@ from . import api
 from .connect import Connection
 
 
-def cluster_sessions(tx_datetimes: List[datetime], interval=timedelta(hours=3)):
+def cluster_sessions(
+    tx_datetimes: List[datetime], interval=timedelta(hours=3)
+) -> Iterator[Tuple[int, datetime, datetime]]:
     """Clusters a list of datetime objects representing tx beam delivery times
 
     Uses the scikit-learn hierarchical clustering algorithm
@@ -103,7 +105,9 @@ def cluster_sessions(tx_datetimes: List[datetime], interval=timedelta(hours=3)):
     yield (current_session_number, start_session, end_session)
 
 
-def sessions_for_site(connection: Connection, sit_set_id: int):
+def sessions_for_site(
+    connection: Connection, sit_set_id: int
+) -> Iterator[Tuple[int, datetime, datetime]]:
     """Determines the sessions for the given site (by SIT_SET_ID)
 
     uses cluster_sessions after querying for the Dose_Hst.Tx_DtTm
@@ -145,7 +149,7 @@ def sessions_for_site(connection: Connection, sit_set_id: int):
 
 def session_offsets_for_site(
     connection: Connection, sit_set_id: int, interval=timedelta(hours=1)
-):
+) -> Iterator[Tuple[int, Optional[np.ndarray]]]:
     """extract the session offsets (one offset per session ) for the given site
 
     Parameters
@@ -176,7 +180,7 @@ def session_offsets_for_site(
         window_start, window_end = (start_session - interval, end_session)
 
         # query for offsets within the time window
-        result = api.execute(
+        offsets = api.execute(
             connection,
             """
             SELECT
@@ -204,45 +208,62 @@ def session_offsets_for_site(
         # just take the first offset, for now
         # more sophisticated logic is in order (i.e. is it associated with
         #       an approved image?)
-        offsets = list(result)
-        yield (session_num, offsets[0] if len(offsets) > 0 else None)
+        offsets = list(offsets)
+        if offsets:
+            yield (
+                session_num,
+                np.array(offsets[0][1:3]),
+            )
+        else:
+            yield (session_num, None)
 
 
-def mean_session_offset_for_site(connection: Connection, sit_set_id: int):
-    """[summary]
+def mean_session_offset_for_site(
+    connection: Connection, sit_set_id: int
+) -> Optional[np.ndarray]:
+    """computes the mean session offset for the site
 
     Parameters
     ----------
-    connection : [type]
-        [description]
-    sit_set_id : [type]
-        [description]
+    connection : Connection
+        an open connection object to be used for queries
+    sit_set_id : int
+        the sit_sit_id for the site of interest
 
     Returns
     -------
-    [type]
-        [description]
+    numpy array
+        the 3-dimensional session offset (translation-only) for the site
     """
-    offsets = session_offsets_for_site(connection, sit_set_id)
-    return list(offsets)[0]  # np.mean(offsets, 0)
+    offsets = []
+    for _, offset in session_offsets_for_site(connection, sit_set_id):
+        if np.any(offset):
+            offsets.append(offset)
+
+    if offsets:
+        return np.mean(offsets, 0)
+
+    return None
 
 
-def localization_offset_for_site(connection: Connection, sit_set_id: int):
+def localization_offset_for_site(
+    connection: Connection, sit_set_id: int
+) -> Optional[np.ndarray]:
     """get the localization offset for the given site
 
     Parameters
     ----------
-    connection : [type]
-        [description]
-    sit_set_id : [type]
-        [description]
+    connection : Connection
+        an open connection object to be used for queries
+    sit_set_id : int
+        the sit_sit_id for the site of interest
 
     Returns
     -------
-    [type]
-        [description]
+    Optional[np.Array]
+        most recent localization offset, if one is found
     """
-    result = api.execute(
+    offsets = api.execute(
         connection,
         """
             SELECT
@@ -255,19 +276,15 @@ def localization_offset_for_site(connection: Connection, sit_set_id: int):
                 AND Offset.Offset_State IN (1,2) -- active/complete offsets
                 AND Offset.Offset_Type IN (2) -- localization offsets
                 AND Offset.SIT_SET_ID = %(sit_set_id)s
-                AND Offset_Type = %(offset_type)s
             ORDER BY
-                Offset.Study_DtTm
+                Offset.Study_DtTm DESC
         """,
-        {"sit_set_id": sit_set_id, "offset_type": 2},  # = Localization
+        {"sit_set_id": sit_set_id},
     )
 
-    result = list(result)
-    if len(result) > 0:
-        localization_offset = result[0]
-        localization_offset = np.array(localization_offset)
-    else:
-        localization_offset = None
+    offsets = list(offsets)
+    if len(offsets) > 0:
+        return np.array(offsets[0])
 
-    # determine session for localization offset
-    return 0, localization_offset
+    # no localization offsets
+    return None
