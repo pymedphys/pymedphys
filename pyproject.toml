@@ -134,6 +134,7 @@ rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
+xarray = { version = "*", optional = true }  # groups = ["dev", "user"]
 
 
 [tool.poetry.extras]
@@ -190,6 +191,7 @@ dev = [
     "tomlkit",
     "tqdm",
     "watchdog",
+    "xarray",
     "xlsxwriter",
     "xmltodict",
 ]
@@ -247,6 +249,7 @@ user = [
     "tomlkit",
     "tqdm",
     "watchdog",
+    "xarray",
     "xlsxwriter",
     "xmltodict",
 ]
