@@ -26,10 +26,10 @@ def xdose_from_dataset(
     )
 
 
-def round_xdose_coords(xdose, decimals=2):
-    xdose_rounded = xdose.copy()
+def round_xdose_coords(xdose_to_round, decimals=2):
+    xdose_rounded = xdose_to_round.copy()
 
-    for dim, coord_vals in xdose.coords:
+    for dim, coord_vals in xdose_to_round.coords.items():
         xdose_rounded.coords[dim] = coord_vals.round(decimals=decimals)
 
     return xdose_rounded
