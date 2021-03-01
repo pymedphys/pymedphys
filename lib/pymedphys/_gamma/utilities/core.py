@@ -67,7 +67,7 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
                 "(x, y), for three dimensions input is (x, y, z)."
             )
 
-    reference_coords_shape = tuple([len(item) for item in axes_reference])
+    reference_coords_shape = (len(item) for item in axes_reference)
     if reference_coords_shape != np.shape(dose_reference):
         raise ValueError(
             "Length of items in axes_reference ({}) does not match the "
@@ -76,7 +76,7 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
             )
         )
 
-    evaluation_coords_shape = tuple([len(item) for item in axes_evaluation])
+    evaluation_coords_shape = (len(item) for item in axes_evaluation)
     if evaluation_coords_shape != np.shape(dose_evaluation):
         raise ValueError(
             "Length of items in axes_evaluation does not match the "
