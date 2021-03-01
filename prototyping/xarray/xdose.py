@@ -9,7 +9,9 @@ from pymedphys._dicom import dose
 
 
 def xdose_from_dataset(
-    ds: "pydicom.dataset.Dataset", coord_system: Literal["D", "P", "S"] = "S"
+    ds: "pydicom.dataset.Dataset",
+    name="Dose",
+    coord_system: Literal["D", "P", "S"] = "S",
 ) -> "xr.DataArray":
 
     return xr.DataArray(
@@ -19,9 +21,18 @@ def xdose_from_dataset(
             ds,
             coord_system=coord_system,
         ),
-        name="dose",
+        name=name,
         attrs={"units": ds.DoseUnits.title(), "coord_system": coord_system},
     )
+
+
+def round_xdose_coords(xdose, decimals=2):
+    xdose_rounded = xdose.copy()
+
+    for dim, coord_vals in xdose.coords:
+        xdose_rounded.coords[dim] = coord_vals.round(decimals=decimals)
+
+    return xdose_rounded
 
 
 def coords_from_dataset(
@@ -84,6 +95,8 @@ def coords_from_dataset(
        radiotherapy treatment plans", arXiv:1406.0014, Table 1,
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
+
+    _validate_coord_system(coord_system)
 
     if not (
         np.allclose(np.abs(ds.ImageOrientationPatient), np.array([1, 0, 0, 0, 1, 0]))
@@ -158,6 +171,8 @@ def coords_from_dataset(
 def xarray_dims_from_dataset(
     ds: "pydicom.dataset.Dataset", coord_system: Literal["D", "P", "S"] = "S"
 ):
+    _validate_coord_system(coord_system)
+
     # fmt: off
     XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT = {
         "S":     ["y", "z", "x"],
@@ -168,10 +183,10 @@ def xarray_dims_from_dataset(
     }
     # fmt: on
 
-    if dataset_orientation_is_decubitus(ds):
-        dim_key = f"{coord_system} dec"
+    if dataset_orientation_is_decubitus(ds) and coord_system.upper() != "S":
+        dim_key = f"{coord_system.upper()} dec"
     else:
-        dim_key = coord_system
+        dim_key = coord_system.upper()
 
     return XARRAY_DIMS_BY_COORD_SYSTEM_AND_ORIENT[dim_key]
 
@@ -194,3 +209,15 @@ def dataset_orientation_is_head_first(ds: "pydicom.dataset.Dataset"):
 
 def dataset_orientation_is_decubitus(ds: "pydicom.dataset.Dataset"):
     return np.allclose(np.abs(ds.ImageOrientationPatient), np.array([0, 1, 0, 1, 0, 0]))
+
+
+def _validate_coord_system(coord_system):
+
+    VALID_COORD_SYSTEMS = ("D", "P", "S")
+
+    if coord_system.upper() not in VALID_COORD_SYSTEMS:
+        raise ValueError(
+            "The supplied coordinate system is invalid. Valid systems are:\n{}".format(
+                "\n".join(VALID_COORD_SYSTEMS)
+            )
+        )
