@@ -6,7 +6,7 @@ import numpy as np
 import pydicom
 import xarray as xr
 
-from pymedphys._dicom import dose
+from pymedphys._dicom import constants, dose
 
 
 def xdose_from_dataset(
@@ -14,6 +14,14 @@ def xdose_from_dataset(
     name="Dose",
     coord_system: Literal["D", "P", "S"] = "S",
 ) -> "xr.DataArray":
+
+    orientation_str = next(
+        orient
+        for orient in constants.IMAGE_ORIENTATION_MAP.keys()
+        if np.allclose(
+            constants.IMAGE_ORIENTATION_MAP[orient], ds.ImageOrientationPatient
+        )
+    )
 
     return xr.DataArray(
         data=dose.dose_from_dataset(ds),
@@ -23,7 +31,11 @@ def xdose_from_dataset(
             coord_system=coord_system,
         ),
         name=name,
-        attrs={"units": ds.DoseUnits.title(), "coord_system": coord_system},
+        attrs={
+            "units": ds.DoseUnits.title(),
+            "coord_system": coord_system,
+            "orientation": orientation_str,
+        },
     )
 
 
@@ -125,6 +137,10 @@ def coords_from_dataset(
         z_support = -(
             ds.ImageOrientationPatient[3] * ds.ImagePositionPatient[0] + row_range
         )
+
+        x_patient = ds.ImageOrientationPatient[3] * z_support
+        z_patient = ds.ImageOrientationPatient[1] * x_support
+
     else:
         x_support = (
             ds.ImageOrientationPatient[0] * ds.ImagePositionPatient[0] + col_range
@@ -132,41 +148,29 @@ def coords_from_dataset(
         z_support = -(
             ds.ImageOrientationPatient[4] * ds.ImagePositionPatient[1] + row_range
         )
+        x_patient = ds.ImageOrientationPatient[0] * x_support
+        z_patient = ds.ImageOrientationPatient[4] * z_support
 
     if is_head_first:
-        y_support = ds.ImagePositionPatient[2] + np.array(ds.GridFrameOffsetVector)
+        y_patient = np.array(ds.GridFrameOffsetVector) + ds.ImagePositionPatient[2]
+        y_support = y_patient
     else:
-        y_support = -ds.ImagePositionPatient[2] + np.array(ds.GridFrameOffsetVector)
+        y_support = np.array(ds.GridFrameOffsetVector) - ds.ImagePositionPatient[2]
+        y_patient = -y_support
 
     if coord_system.upper() == "S":
         return (x_support, y_support, z_support)
 
-    elif coord_system.upper() in ("D", "P"):
+    elif coord_system.upper() == "P":
+        return (x_patient, y_patient, z_patient)
 
-        x_patient = (
-            ds.ImageOrientationPatient[0] * x_support
-            + ds.ImageOrientationPatient[3] * z_support
-        )
-        z_patient = (
-            ds.ImageOrientationPatient[1] * x_support
-            + ds.ImageOrientationPatient[4] * z_support
-        )
+    elif coord_system.upper() == "D":
 
-        if not is_head_first:
-            y_patient = -y_support
-        else:
-            y_patient = y_support
+        x_dicom = x_patient
+        y_dicom = -z_patient
+        z_dicom = y_patient
 
-        if coord_system.upper() == "P":
-            return (x_patient, y_patient, z_patient)
-
-        elif coord_system.upper() == "D":
-
-            x_dicom = x_patient
-            y_dicom = -z_patient
-            z_dicom = y_patient
-
-            return (x_dicom, y_dicom, z_dicom)
+        return (x_dicom, y_dicom, z_dicom)
 
 
 def xarray_dims_from_dataset(
@@ -224,7 +228,7 @@ def _validate_coord_system(coord_system):
         )
 
 
-def plot_xdose_tcs_at_point(xdose_to_plot, point, coord_system="S"):
+def plot_xdose_tcs_at_point(xdose_to_plot, point):
     LAT_2_LONG_RATIO = xdose_to_plot.x.size / xdose_to_plot.y.size
     VERT_2_LONG_RATIO = xdose_to_plot.z.size / xdose_to_plot.y.size
 
@@ -267,6 +271,10 @@ def plot_xdose_tcs_at_point(xdose_to_plot, point, coord_system="S"):
     axes[1, 0].axvline(x=point[0], color="silver")
     axes[1, 0].set_title("Coronal")
 
+    # if xdose_to_plot.attrs["coord_system"] == "P":
+    #     if "P" in xdose_to_plot.attrs["orientation"]:
+    #         axes[0, 0].invert_yaxis()
+
     fig.tight_layout()
 
 
@@ -294,29 +302,35 @@ def zoom(
         z_end = xdose_to_zoom["z"][-1]
 
     if xdose_to_zoom["x"][0] < xdose_to_zoom["x"][-1] and x_start > x_end:
-        raise ValueError(
-            "`x_start` must be less than `x_end` since the x coords are increasing in `xdose_to_zoom`"
-        )
+        x_start, x_end = x_end, x_start
+        # raise ValueError(
+        #     "`x_start` must be less than `x_end` since the x coords are increasing in `xdose_to_zoom`"
+        # )
     elif xdose_to_zoom["x"][0] > xdose_to_zoom["x"][-1] and x_start < x_end:
-        raise ValueError(
-            "`x_start` must be greater than `x_end` since the x coords are decreasing in `xdose_to_zoom`"
-        )
+        x_start, x_end = x_end, x_start
+        # raise ValueError(
+        #     "`x_start` must be greater than `x_end` since the x coords are decreasing in `xdose_to_zoom`"
+        # )
     if xdose_to_zoom["y"][0] < xdose_to_zoom["y"][-1] and y_start > y_end:
-        raise ValueError(
-            "`y_start` must be less than `y_end` since the y coords are increasing in `xdose_to_zoom`"
-        )
-    elif xdose_to_zoom["y"][0] > xdose_to_zoom["y"][-1] and x_start < x_end:
-        raise ValueError(
-            "`y_start` must be greater than `y_end` since the y coords are decreasing in `xdose_to_zoom`"
-        )
+        y_start, y_end = y_end, y_start
+        # raise ValueError(
+        #     f"`y_start` must be less than `y_end` since the y coords are increasing in `xdose_to_zoom`"
+        # )
+    elif xdose_to_zoom["y"][0] > xdose_to_zoom["y"][-1] and y_start < y_end:
+        y_start, y_end = y_end, y_start
+        # raise ValueError(
+        #     f"`y_start` must be greater than `y_end` since the y coords are decreasing in `xdose_to_zoom`"
+        # )
     if xdose_to_zoom["z"][0] < xdose_to_zoom["z"][-1] and z_start > z_end:
-        raise ValueError(
-            "`z_start` must be less than `z_end` since the z coords are increasing in `xdose_to_zoom`"
-        )
+        z_start, z_end = z_end, z_start
+        # raise ValueError(
+        #     "`z_start` must be less than `z_end` since the z coords are increasing in `xdose_to_zoom`"
+        # )
     elif xdose_to_zoom["z"][0] > xdose_to_zoom["z"][-1] and z_start < z_end:
-        raise ValueError(
-            "`z_start` must be greater than `z_end` since the z coords are decreasing in `xdose_to_zoom`"
-        )
+        z_start, z_end = z_end, z_start
+        # raise ValueError(
+        #     "`z_start` must be greater than `z_end` since the z coords are decreasing in `xdose_to_zoom`"
+        # )
 
     return xdose_to_zoom.sel(
         x=slice(x_start, x_end), y=slice(y_start, y_end), z=slice(z_start, z_end)
