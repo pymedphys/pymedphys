@@ -1,3 +1,4 @@
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.delivery import delivery_data_sql
@@ -71,10 +72,13 @@ def test_get_patient_fields(
 ):  # pylint: disable = unused-argument
     """ creates basic tx field and site metadata for the mock patients """
 
+    # create a random number generator with a known seed
+    rng = np.random.default_rng(seed=94114)
+
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = create_mock_patients()
-    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df)
-    create_mock_treatment_fields(mock_site_df)
+    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df, rng=rng)
+    create_mock_treatment_fields(mock_site_df, rng=rng)
 
     with connect(
         msq_server,
@@ -89,14 +93,18 @@ def test_get_patient_fields(
         print(fields_for_moe_df)
 
         # make sure the correct number of rows were returned
-        assert len(fields_for_moe_df) == 3
+        # with the rng seed, there are 4 fields created for moe
+        field_count = 4
+        assert len(fields_for_moe_df) == field_count
 
         # for each treatment field
+        at_field, at_gantry = 0, 0
         for fld_id, txfield in fields_for_moe_df.iterrows():
             print(fld_id, txfield)
 
             # check that the field label matches the field name
-            assert f"Field{txfield['field_label']}" == txfield["field_name"]
+            assert f"B{at_field}" == txfield["field_label"]
+            assert f"AtGantry{at_gantry}" == txfield["field_name"]
 
             # check for txfield control points
             field_results, point_results = delivery_data_sql(
@@ -111,3 +119,6 @@ def test_get_patient_fields(
             for tx_point in point_results:
                 assert tx_point[0] >= current_index
                 current_index = tx_point[0]
+
+            at_field += 1
+            at_gantry += 360 // field_count

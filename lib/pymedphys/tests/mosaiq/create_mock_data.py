@@ -1,7 +1,7 @@
 # create mock patients
 import re
 from datetime import datetime, timedelta
-from random import choices, randint
+from json import dumps, loads
 from struct import pack
 
 from pymedphys._imports import numpy as np
@@ -126,7 +126,7 @@ def create_mock_patients():
     return patient_ident_df
 
 
-def create_mock_treatment_sites(patient_ident_df=None):
+def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng()):
     """create mock treatment sites for the patient dataframe passed in
         or call create_mock_patients if None is passed
 
@@ -135,6 +135,9 @@ def create_mock_treatment_sites(patient_ident_df=None):
     patient_ident_df : DataFrame, optional
         the patient + ident dataframe returned by create_mock_patients
         None to call create_mock_patients first
+
+    rng: np.random.Generator()
+        random number generator to be used for the mock data
 
     Returns
     -------
@@ -153,29 +156,27 @@ def create_mock_treatment_sites(patient_ident_df=None):
     site_df["SIT_SET_ID"] = site_df.index
 
     # choose the number of fractions
-    site_df["Fractions"] = choices(
-        NUMBER_OF_FRACTIONS, weights=[1, 2, 3], k=len(site_df)
-    )
+    site_df["Fractions"] = rng.choice(NUMBER_OF_FRACTIONS, size=len(site_df))
 
     # the site notes contain the choice of protocol
-    protocol = choices(
-        list(PROB_OFFSET_BY_PROTOCOL.keys()), weights=[1, 1, 1], k=len(site_df)
-    )
+    protocol = rng.choice(list(PROB_OFFSET_BY_PROTOCOL.keys()), size=len(site_df))
 
     tau = 2.0  # tau is precision of gaussian
     mu = np.random.normal(MU_0_PRIOR, 1.0 / (K0_PRIOR * tau), size=(len(site_df), 3))
 
     site_df["Notes"] = list(
         map(
-            lambda tpl: f"Protocol={tpl[0]};SysOffset={tpl[1]};Prec={tau}",
+            lambda tpl: dumps(
+                {"protocol": tpl[0], "sys_offset": tpl[1].tolist(), "precision": tau}
+            ),
             zip(protocol, mu),
         )
     )
     print(site_df["Notes"])
 
     # the treatment technique is chosen from the list of keys
-    site_df["Technique"] = choices(
-        list(FIELD_COUNT_BY_TECHNIQUE_NAME.keys()), weights=[2, 1, 3], k=len(site_df)
+    site_df["Technique"] = rng.choice(
+        list(FIELD_COUNT_BY_TECHNIQUE_NAME.keys()), size=len(site_df)
     )
 
     # now use SQLAlchemy to populate the two tables
@@ -184,7 +185,7 @@ def create_mock_treatment_sites(patient_ident_df=None):
     return site_df
 
 
-def create_mock_treatment_fields(site_df=None):
+def create_mock_treatment_fields(site_df=None, rng=np.random.default_rng()):
     """create mock treatment sites for the site dataframe passed in
     or call create_mock_treatment_sites if None is passed
 
@@ -201,7 +202,7 @@ def create_mock_treatment_fields(site_df=None):
     """
 
     if site_df is None:
-        site_df = create_mock_treatment_sites()
+        site_df = create_mock_treatment_sites(rng)
 
     rowversion = 1000
 
@@ -308,7 +309,9 @@ def create_mock_treatment_fields(site_df=None):
     return txfield_df
 
 
-def create_mock_treatment_sessions(site_df=None, txfield_df=None):
+def create_mock_treatment_sessions(
+    site_df=None, txfield_df=None, rng=np.random.default_rng()
+):
     """for a given site and set of tx fields, generate treatment session data
     (Dose_Hst and Offset) for randomly chosen treatment interval
 
@@ -321,10 +324,10 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
     """
 
     if site_df is None:
-        site_df = create_mock_treatment_sites()
+        site_df = create_mock_treatment_sites(rng)
 
     if txfield_df is None:
-        txfield_df = create_mock_treatment_fields(site_df)
+        txfield_df = create_mock_treatment_fields(site_df, rng)
 
     # lists to store the offsets and dose_hst records
     offset_recs, dose_hst_recs = [], []
@@ -336,27 +339,20 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
         sit_set_id = site_rec["SIT_SET_ID"]
         fractions = site_rec["Fractions"]
 
-        # regex for a decimal number with one decimal point
-        nr = " *([-]?\d*\.\d)"
-
-        # find matches for protocol, stored in Notes field
-        protocol_match = re.search(
-            f"Protocol=([^;]*);SysOffset=\[{nr}{nr}{nr}\];Prec={nr}",
-            site_rec["Notes"],
-        )
+        protocol_details = loads(site_rec["Notes"])
 
         # now extract the groups
-        protocol = protocol_match.group(1)
-        mu = np.array([float(protocol_match.group(n)) for n in range(2, 5)])
-        tau = float(protocol_match.group(5))
+        protocol = protocol_details["protocol"]
+        mu = np.array(protocol_details["sys_offset"])
+        tau = protocol_details["precision"]
 
         fld_count = FIELD_COUNT_BY_TECHNIQUE_NAME[site_rec["Technique"]]
-        fld_ids = [randint(1000, 4000) for _ in range(fld_count)]
+        fld_ids = rng.integers(1000, 4000, size=fld_count)
 
         # pick a date for beginning the treatment, as a workday number in the year
-        session_workday = randint(0, 200)
+        session_workday = rng.integers(0, 200)
         # pick the appointment time between 8AM and 5pm
-        appointment_time = timedelta(hours=randint(8, 17))
+        appointment_time = timedelta(hours=int(rng.integers(8, 17)))
         for n in range(fractions):
             # determine the session date for the current workday
             session_date_str = f"2021-W{session_workday//5+1}-{session_workday%5+1}"
@@ -366,11 +362,11 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             session_time = session_date + appointment_time
 
             # choose whether to generate an offset record
-            if randint(0, 100) < PROB_OFFSET_BY_PROTOCOL[protocol](n):
-                session_time += timedelta(minutes=randint(2, 5))
+            if rng.integers(0, 100) < PROB_OFFSET_BY_PROTOCOL[protocol](n):
+                session_time += timedelta(minutes=int(rng.integers(2, 5)))
 
                 # create a session offset from the systematic offset
-                offset = np.random.normal(mu, 1.0 / tau)
+                offset = rng.normal(mu, 1.0 / tau)
 
                 # sample from mu / gamma
                 offset_recs.append(
@@ -387,11 +383,11 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
 
             # generate dose_hst by field count
             for fld_id in fld_ids:
-                session_time += timedelta(minutes=randint(3, 6))
+                session_time += timedelta(minutes=int(rng.integers(3, 6)))
                 dose_hst_recs.append((pat_id1, sit_id, fld_id, session_time))
 
             # occasionally skip a workday
-            session_workday += 1 if randint(0, 5) else 2
+            session_workday += 1 if rng.integers(0, 5) else 2
 
     # now populate tables
     dose_hst_df = pd.DataFrame(
