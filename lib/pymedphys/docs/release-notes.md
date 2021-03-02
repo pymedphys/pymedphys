@@ -19,6 +19,19 @@ This project adheres to
   * The Winston Lutz module is undergoing a significant re-work and will be
     re-exposed once complete.
 
+### New features and enhancements
+
+* Added CLI argument for setting the hostname to `pymedphys dicom listen`.
+  **TODO** update this item after the API is adjusted. See <https://github.com/pymedphys/pymedphys/commit/1854ba1d3f6f6e6a6a6b02863f64c63eac8c5fde#r47727955>
+
+* **[Contributor facing only]** Added the following contributor CLI tools:
+  * `pymedphys dev doctests`, run doctests/
+  * `pymedphys dev imports`, verify optional import logic by creating a clean
+    Python install and attempting to import all modules.
+  * `pymedphys dev lint`, run pylint.
+  * `pymedphys dev cypress`, load up Cypress for interactively writing and
+     running the end-to-end tests.
+
 ## [0.35.0]
 
 ### News around this release
