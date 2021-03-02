@@ -13,6 +13,31 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0]
+
+### Breaking changes
+
+* The modules `pymedphys.electronfactors` and `pymedphys.wlutz` were removed
+  from the public API.
+  * There did not appear to be any usage of these modules outside of Cancer
+    Care Associates.
+  * The electron factors module can be re-exposed on request.
+  * The Winston Lutz module is undergoing a significant re-work and will be
+    re-exposed once complete.
+
+### New features and enhancements
+
+* Added CLI argument for setting the hostname to `pymedphys dicom listen`.
+  **TODO** update this item after the API is adjusted. See <https://github.com/pymedphys/pymedphys/commit/1854ba1d3f6f6e6a6a6b02863f64c63eac8c5fde#r47727955>
+
+* **[Contributor facing only]** Added the following contributor CLI tools:
+  * `pymedphys dev doctests`, run doctests/
+  * `pymedphys dev imports`, verify optional import logic by creating a clean
+    Python install and attempting to import all modules.
+  * `pymedphys dev lint`, run pylint.
+  * `pymedphys dev cypress`, load up Cypress for interactively writing and
+     running the end-to-end tests.
+
 ## [0.35.0]
 
 ### News around this release
@@ -1159,6 +1184,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
+[0.36.0]: https://github.com/pymedphys/pymedphys/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0
