@@ -72,10 +72,11 @@ def test_get_patient_fields(
 ):  # pylint: disable = unused-argument
     """ creates basic tx field and site metadata for the mock patients """
 
+    # create a random number generator with a known seed
+    rng = np.random.default_rng(seed=94114)
+
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = create_mock_patients()
-
-    rng = np.random.default_rng(seed=93208)
     mock_site_df = create_mock_treatment_sites(mock_patient_ident_df, rng=rng)
     create_mock_treatment_fields(mock_site_df, rng=rng)
 
@@ -92,7 +93,9 @@ def test_get_patient_fields(
         print(fields_for_moe_df)
 
         # make sure the correct number of rows were returned
-        assert len(fields_for_moe_df) == 3
+        # with the rng seed, there are 4 fields created for moe
+        field_count = 3
+        assert len(fields_for_moe_df) == field_count
 
         # for each treatment field
         for fld_id, txfield in fields_for_moe_df.iterrows():

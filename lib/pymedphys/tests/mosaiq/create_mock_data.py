@@ -7,11 +7,10 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, sqlalchemy
 
-msq_server = "."
+msq_server = "localhost"
 test_db_name = "MosaiqTest77008"
 
-sa_user = "sa"
-sa_password = "sqlServerPassw0rd"
+sa_user, sa_password = "sa", "sqlServerPassw0rd"
 
 # vary the number of fractions a bit
 NUMBER_OF_FRACTIONS = (20, 25, 30)
@@ -85,7 +84,14 @@ def check_create_test_db():
 
 
 def create_mock_patients():
-    """ create some mock patients and populate the Patient and Ident tables """
+    """create some mock patients and populate the Patient and Ident tables
+
+    Returns
+    -------
+    DataFrame
+        dataframe with combined Patient and Ident columns that was used to populate
+        the tables
+    """
 
     # create a single dataframe combining the Patient and Ident tables
     patient_ident_df = pd.DataFrame(
@@ -118,7 +124,22 @@ def create_mock_patients():
 
 def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng()):
     """create mock treatment sites for the patient dataframe passed in
-    or call create_mock_patients if None is passed"""
+        or call create_mock_patients if None is passed
+
+    Parameters
+    ----------
+    patient_ident_df : DataFrame, optional
+        the patient + ident dataframe returned by create_mock_patients
+        None to call create_mock_patients first
+
+    rng: np.random.Generator()
+        random number generator to be used for the mock data
+
+    Returns
+    -------
+    DataFrame
+        the Sites dataframe that was used to populate the table
+    """
 
     if patient_ident_df is None:
         patient_ident_df = create_mock_patients()
@@ -151,7 +172,19 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
 
 def create_mock_treatment_fields(site_df=None, rng=np.random.default_rng()):
     """create mock treatment sites for the site dataframe passed in
-    or call create_mock_treatment_sites if None is passed"""
+    or call create_mock_treatment_sites if None is passed
+
+    Parameters
+    ----------
+    site_df : DataFrame, optional
+        the site dataframe that has been used to create the table
+        or None to call create_mock_treatment_sites first
+
+    Returns
+    -------
+    DataFrame
+        the treatment field dataframe that was used to populate the table
+    """
 
     if site_df is None:
         site_df = create_mock_treatment_sites(rng)
@@ -311,6 +344,13 @@ def create_mock_treatment_sessions(
 ):
     """for a given site and set of tx fields, generate treatment session data
     (Dose_Hst and Offset) for randomly chosen treatment interval
+
+    Parameters
+    ----------
+    site_df : [type], optional
+        [description], by default None
+    txfield_df : [type], optional
+        [description], by default None
     """
 
     if site_df is None:
