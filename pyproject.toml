@@ -52,7 +52,6 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 data-science-types = { version = "*", optional = true }  # groups = ["user", "dev"]
-xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
@@ -135,6 +134,7 @@ rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
+xarray = { version = "*", optional = true }  # groups = ["dev", "user"]
 
 
 [tool.poetry.extras]
