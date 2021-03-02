@@ -167,10 +167,9 @@ def session_offsets_for_site(
     Returns
     -------
     generated sequence of tuples:
-    * session_num = session number, as returned by sessions_for_site
-    * Offset record:
-        (Study_DtTm, Superior_Offset, Anterior_Offset, Lateral_Offset)
-        or None if no offset was found for the sessions
+        * session_num = session number, as returned by sessions_for_site
+        * Offset translation as an np.ndarray, or
+                None if no offsets were found for the session
     """
     for session_num, start_session, end_session in sessions_for_site(
         connection, sit_set_id
@@ -232,8 +231,9 @@ def mean_session_offset_for_site(
 
     Returns
     -------
-    numpy array
-        the 3-dimensional session offset (translation-only) for the site
+    Optional[np.ndarray]
+        mean of the session offset translation component for the site,
+        or None if there are no session offsets
     """
     offsets = []
     for _, offset in session_offsets_for_site(connection, sit_set_id):
@@ -260,8 +260,8 @@ def localization_offset_for_site(
 
     Returns
     -------
-    Optional[np.Array]
-        most recent localization offset, if one is found
+    Optional[np.ndarray]
+        most recent localization offset translation, if one is found
     """
     offsets = api.execute(
         connection,
