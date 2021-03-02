@@ -28,8 +28,8 @@ This project adheres to
   `cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
   `pymedphys.mosaiq.connect` and `pymedphys.mosaiq.execute` work much the same
   as before, except the object passed between them is now quite different.
-  * Also, all instances where previously the argument name was `cursor` has
-    been changed to connection.
+  * Also, all instances where previously the argument name was `cursor` have
+    been changed to `connection`.
 
 ### New features and enhancements
 
