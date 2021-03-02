@@ -23,7 +23,11 @@ This project adheres to
 
 * Added CLI argument for setting the hostname to `pymedphys dicom listen`.
   **TODO** update this item after the API is adjusted. See <https://github.com/pymedphys/pymedphys/commit/1854ba1d3f6f6e6a6a6b02863f64c63eac8c5fde#r47727955>
-
+* A range of application changes and improvements. The PyMedPhys app can be
+  accessed by running `pymedphys gui`.
+* **[Streamlit users only]** A CLI command `pymedphys streamlit run` was added
+  to facilitate utilising the custom PyMedPhys patches on the streamlit server
+  for arbitrary streamlit apps. See <https://github.com/pymedphys/pymedphys/issues/1422>.
 * **[Contributor facing only]** Added the following contributor CLI tools:
   * `pymedphys dev doctests`, run doctests/
   * `pymedphys dev imports`, verify optional import logic by creating a clean
