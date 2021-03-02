@@ -131,7 +131,6 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
     site_df["SIT_SET_ID"] = site_df.index
 
     # choose the number of fractions
-    rng = np.random.default_rng()
     site_df["Fractions"] = rng.choice(NUMBER_OF_FRACTIONS, size=len(site_df))
 
     # the site notes contain the choice of protocol
@@ -150,12 +149,12 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
     return site_df
 
 
-def create_mock_treatment_fields(site_df=None):
+def create_mock_treatment_fields(site_df=None, rng=np.random.default_rng()):
     """create mock treatment sites for the site dataframe passed in
     or call create_mock_treatment_sites if None is passed"""
 
     if site_df is None:
-        site_df = create_mock_treatment_sites()
+        site_df = create_mock_treatment_sites(rng)
 
     # populate a list of tx_fields, 3 for each site
     tx_fields = []
@@ -315,10 +314,10 @@ def create_mock_treatment_sessions(
     """
 
     if site_df is None:
-        site_df = create_mock_treatment_sites()
+        site_df = create_mock_treatment_sites(rng)
 
     if txfield_df is None:
-        txfield_df = create_mock_treatment_fields(site_df)
+        txfield_df = create_mock_treatment_fields(site_df, rng)
 
     # lists to store the offsets and dose_hst records
     offset_recs, dose_hst_recs = [], []

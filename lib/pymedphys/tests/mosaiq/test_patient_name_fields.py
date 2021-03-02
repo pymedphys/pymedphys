@@ -1,3 +1,4 @@
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.delivery import delivery_data_sql
@@ -73,8 +74,10 @@ def test_get_patient_fields(
 
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = create_mock_patients()
-    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df)
-    create_mock_treatment_fields(mock_site_df)
+
+    rng = np.random.default_rng(seed=93208)
+    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df, rng=rng)
+    create_mock_treatment_fields(mock_site_df, rng=rng)
 
     with connect(
         msq_server,

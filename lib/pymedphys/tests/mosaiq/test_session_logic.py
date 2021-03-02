@@ -36,11 +36,14 @@ def test_sessions_for_site(
 ):  # pylint: disable = unused-argument
     """ creates basic tx field and site metadata for the mock patients """
 
+    # create a random number generator with a known seed
+    rng = np.random.default_rng(seed=94114)
+
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = create_mock_patients()
-    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df)
-    mock_txfield_df = create_mock_treatment_fields(mock_site_df)
-    create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
+    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df, rng=rng)
+    mock_txfield_df = create_mock_treatment_fields(mock_site_df, rng=rng)
+    create_mock_treatment_sessions(mock_site_df, mock_txfield_df, rng=rng)
 
     with connect(
         msq_server,
@@ -50,7 +53,8 @@ def test_sessions_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = 2
+        # sit_set_id = 1 should be a NAL site
+        sit_set_id = 1
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
@@ -86,11 +90,14 @@ def test_session_offsets_for_site(
 ):  # pylint: disable = unused-argument
     """ creates basic tx field and site metadata for the mock patients """
 
+    # create a random number generator with a known seed
+    rng = np.random.default_rng(seed=94114)
+
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = create_mock_patients()
-    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df)
-    mock_txfield_df = create_mock_treatment_fields(mock_site_df)
-    create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
+    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df, rng=rng)
+    mock_txfield_df = create_mock_treatment_fields(mock_site_df, rng=rng)
+    create_mock_treatment_sessions(mock_site_df, mock_txfield_df, rng=rng)
 
     with connect(
         msq_server,
@@ -100,7 +107,8 @@ def test_session_offsets_for_site(
         password=sa_password,
     ) as connection:
 
-        sit_set_id = 2
+        # should be a NAL site
+        sit_set_id = 1
 
         # test the get_patient_fields helper function
         sessions_for_one_site = sessions_for_site(connection, sit_set_id)
@@ -128,7 +136,7 @@ def test_session_offsets_for_site(
             assert np.max(np.abs(mean_session_offset)) <= 10.0
 
             localization_offset = localization_offset_for_site(connection, sit_set_id)
-            if np.any(localization_offset):
-                assert np.max(np.abs(localization_offset)) <= 10.0
+            assert np.any(localization_offset)
+            assert np.max(np.abs(localization_offset)) <= 10.0
 
             previous_session_number = session_number
