@@ -7,6 +7,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0]
+
+### Breaking changes
+
+* The modules `pymedphys.electronfactors` and `pymedphys.wlutz` were removed
+  from the public API.
+  * There did not appear to be any usage of these modules outside of Cancer
+    Care Associates.
+  * The electron factors module can be re-exposed on request.
+  * The Winston Lutz module is undergoing a significant re-work and will be
+    re-exposed once complete.
+
 ## [0.35.0]
 
 ### News around this release
