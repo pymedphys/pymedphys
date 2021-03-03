@@ -14,7 +14,6 @@
 
 import pathlib
 import re
-from glob import glob
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -24,6 +23,7 @@ from pymedphys._imports import streamlit as st
 import pymedphys._electronfactors as electronfactors
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
+from pymedphys._streamlit.utilities import misc as _misc
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
 
@@ -113,13 +113,15 @@ def plot_model(width_data, length_data, factor_data):
 
 
 def main():
+    config = _config.get_config()
+    clinical_directory = _get_clinical_directory(config)
+
     patient_id = st.text_input("Patient ID")
 
     if patient_id == "":
         st.stop()
 
-    config = _config.get_config()
-    tel_filepaths = _get_tel_filepaths(config, patient_id)
+    tel_filepaths = list(clinical_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
 
     electronmodel_regex = r"RiverinaAgility - (\d+)MeV"
     applicator_regex = r"(\d+)X\d+"
@@ -301,27 +303,17 @@ def main():
             )
 
 
-def _get_tel_filepaths(config, patient_id):
+def _get_clinical_directory(config):
     site_directories = _config.get_site_directories(config)
-    clinical_directories = [
-        pathlib.Path(directories["monaco"])
-        for _, directories in site_directories.items()
-    ]
+    chosen_site = _misc.site_picker(config, "Site")
+    clinical_directory = site_directories[chosen_site]["monaco"]
 
-    # Change from LBYL
-    accessible_directories = set()
-    for directory in clinical_directories:
-        try:
-            if not directory.exists():
-                st.warning(f"Unable to access `{directory}`")
-            else:
-                accessible_directories.add(directory)
-        except OSError as e:
-            st.warning(e)
+    try:
+        if not clinical_directory.exists():
+            st.error(f"Unable to access `{clinical_directory}`")
+            st.stop()
+    except OSError as e:
+        st.error(e)
+        st.stop()
 
-    tel_filepaths = set()
-    for directory in accessible_directories:
-        for filepath in directory.glob(f"*~{patient_id}/plan/*/*tel.1"):
-            tel_filepaths.add(filepath)
-
-    return list(tel_filepaths)
+    return clinical_directory
