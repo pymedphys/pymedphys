@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 import re
+from typing import List
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -42,9 +44,14 @@ def main():
     if patient_id == "":
         st.stop()
 
-    tel_filepaths = list(clinical_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
+    tel_filepaths: List[pathlib.Path] = list(
+        clinical_directory.glob(f"*~{patient_id}/plan/*/*tel.1")
+    )
 
     for filepath in tel_filepaths:
+        st.write("---")
+        st.write(f"## Tel file: `{filepath.relative_to(clinical_directory)}`")
+
         _logic_per_telfile(filepath)
 
 
@@ -65,9 +72,6 @@ def _get_clinical_directory(config):
 
 
 def _logic_per_telfile(filepath):
-    st.write("---")
-    st.write("Filepath: `{}`".format(filepath))
-
     with open(filepath, "r") as file:
         tel_contents = np.array(file.read().splitlines())
 
@@ -75,6 +79,9 @@ def _logic_per_telfile(filepath):
     for i, item in enumerate(tel_contents):
         if re.search(ELECTRON_MODEL_PATTERN, item):
             reference_indices.append(i)
+
+    if len(reference_indices) == 0:
+        st.info("No electron plans found within this tel file")
 
     for reference_index in reference_indices:
         _per_reference_index(tel_contents, reference_index)
@@ -89,7 +96,7 @@ def _per_reference_index(tel_contents, reference_index):
     )
     ssd = 100
 
-    st.write(f"Applicator: `{applicator} cm` | Energy: `{energy} MeV`")
+    st.write(f"### Applicator: `{applicator} cm` | Energy: `{energy} MeV`")
 
     # coords start 51 lines after electron model name
     coords_index_start = reference_index + 51
@@ -105,36 +112,43 @@ def _per_reference_index(tel_contents, reference_index):
 
     width, length, circle_centre = electronfactors.parameterise_insert(x, y)
 
-    st.write(f"Width: `{width}`")
-    st.write(f"Length: `{length}`")
+    left, right = st.beta_columns(2)
 
-    fig = _plot_insert(
-        x,
-        y,
-        width,
-        length,
-        circle_centre,
-    )
-    st.pyplot(fig)
+    with left:
+        st.write("#### Insert parameterisation")
+
+        fig = _plot_insert(
+            x,
+            y,
+            width,
+            length,
+            circle_centre,
+        )
+        st.pyplot(fig)
+
+        st.write(f"Width: `{width:.2f} cm`")
+        st.write(f"Length: `{length:.2f} cm`")
 
     p_on_a = electronfactors.convert2_ratio_perim_area(width, length)
 
-    try:
-        width_data, factor_data, p_on_a_data = _load_reference_model(
-            energy, applicator, ssd
+    with right:
+        st.write("#### Insert factor modelling")
+        try:
+            width_data, factor_data, p_on_a_data = _load_reference_model(
+                energy, applicator, ssd
+            )
+        except ValueError:
+            return
+
+        model_factor = electronfactors.spline_model_with_deformability(
+            width,
+            p_on_a,
+            width_data,
+            p_on_a_data,
+            factor_data,
         )
-    except ValueError:
-        return
 
-    model_factor = electronfactors.spline_model_with_deformability(
-        width,
-        p_on_a,
-        width_data,
-        p_on_a_data,
-        factor_data,
-    )[0]
-
-    st.write(f"Factor: `{model_factor}`")
+    st.write(f"Factor: `{model_factor:.4f}`")
 
 
 def _plot_insert(insert_x, insert_y, width, length, circle_centre):
@@ -142,17 +156,23 @@ def _plot_insert(insert_x, insert_y, width, length, circle_centre):
         insert_x, insert_y, width, length, circle_centre
     )
 
-    plt.figure()
-    plt.plot(insert_x, insert_y)
-    plt.axis("equal")
+    fig, ax = plt.subplots()
 
-    plt.plot(circle["x"], circle["y"])
-    plt.title("Insert shape parameterisation")
-    plt.xlabel("x (cm)")
-    plt.ylabel("y (cm)")
-    plt.grid(True)
+    ax.plot(insert_x, insert_y, label="Clinical insert")
 
-    plt.plot(ellipse["x"], ellipse["y"])
+    ax.plot(circle["x"], circle["y"], label="Largest fully encompassed circle")
+    ax.set_title("Insert shape parameterisation")
+    ax.set_xlabel("x (cm)")
+    ax.set_ylabel("y (cm)")
+    ax.grid(True)
+
+    ax.plot(
+        ellipse["x"], ellipse["y"], label="Ellipse with approximately equivalent factor"
+    )
+    ax.axis("equal")
+    ax.legend()
+
+    return fig
 
 
 def _visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
@@ -204,6 +224,29 @@ def _load_reference_model(energy, applicator, ssd):
 
     p_on_a_data = electronfactors.convert2_ratio_perim_area(width_data, length_data)
 
+    number_of_measurements = np.sum(reference)
+    not_enough_data_points = number_of_measurements < 8
+
+    if not_enough_data_points:
+        fig, ax = plt.subplots()
+        scat = ax.scatter(
+            width_data,
+            length_data,
+            s=100,
+            c=factor_data,
+            cmap="viridis",
+            zorder=2,
+        )
+        fig.colorbar(scat)
+    else:
+        fig = _plot_model(
+            width_data,
+            length_data,
+            factor_data,
+        )
+
+    st.pyplot(fig)
+
     reference_data_table = pd.concat(
         [width_data, length_data, factor_data],
         axis=1,
@@ -215,28 +258,8 @@ def _load_reference_model(energy, applicator, ssd):
     )
     st.write(reference_data_table)
 
-    number_of_measurements = np.sum(reference)
-    if number_of_measurements < 8:
-        fig, ax = plt.subplots()
-        scat = ax.scatter(
-            width_data,
-            length_data,
-            s=100,
-            c=factor_data,
-            cmap="viridis",
-            zorder=2,
-        )
-        fig.colorbar(scat)
-
+    if not_enough_data_points:
         raise ValueError("Not enough data points")
-
-    fig = _plot_model(
-        width_data,
-        length_data,
-        factor_data,
-    )
-
-    st.pyplot(fig)
 
     return width_data, factor_data, p_on_a_data
 
@@ -251,7 +274,6 @@ def _plot_model(width_data, length_data, factor_data):
     vmax = np.nanmax(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
 
     fig, ax = plt.subplots()
-
     scat = ax.scatter(
         width_data,
         length_data,
