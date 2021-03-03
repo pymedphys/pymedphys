@@ -1,4 +1,4 @@
-# Copyright (C) 2015,2020 Cancer Care Associates
+# Copyright (C) 2015,2020-2021 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 import re
 from glob import glob
 
@@ -22,6 +23,7 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys._electronfactors as electronfactors
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities import config as _config
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
 
@@ -116,33 +118,15 @@ def main():
     if patient_id == "":
         st.stop()
 
-    rccc_string_search_pattern = (
-        r"\\monacoda\FocalData\RCCC\1~Clinical\*~{}\plan\*\*tel.1".format(patient_id)
-    )
-    rccc_filepath_list = glob(rccc_string_search_pattern)
-
-    nbccc_string_search_pattern = (
-        r"\\tunnel-nbcc-monaco\FOCALDATA\NBCCC\1~Clinical\*~{}\plan\*\*tel.1".format(
-            patient_id
-        )
-    )
-    nbccc_filepath_list = glob(nbccc_string_search_pattern)
-
-    sash_string_search_pattern = r"\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData\SASH\1~Clinical\*~{}\plan\*\*tel.1".format(
-        patient_id
-    )
-    sash_filepath_list = glob(sash_string_search_pattern)
-
-    filepath_list = np.concatenate(
-        [rccc_filepath_list, nbccc_filepath_list, sash_filepath_list]
-    )
+    config = _config.get_config()
+    tel_filepaths = _get_tel_filepaths(config, patient_id)
 
     electronmodel_regex = r"RiverinaAgility - (\d+)MeV"
     applicator_regex = r"(\d+)X\d+"
 
     insert_data = dict()  # type: ignore
 
-    for telfilepath in filepath_list:
+    for telfilepath in tel_filepaths:
         insert_data[telfilepath] = dict()
 
         with open(telfilepath, "r") as file:
@@ -165,7 +149,7 @@ def main():
             for i in insert_data[telfilepath]["reference_index"]
         ]
 
-    for telfilepath in filepath_list:
+    for telfilepath in tel_filepaths:
         with open(telfilepath, "r") as file:
             telfilecontents = np.array(file.read().splitlines())
 
@@ -185,7 +169,7 @@ def main():
             insert_data[telfilepath]["x"].append(insert_coords[0::2] / 10)
             insert_data[telfilepath]["y"].append(insert_coords[1::2] / 10)
 
-    for telfilepath in filepath_list:
+    for telfilepath in tel_filepaths:
         insert_data[telfilepath]["width"] = []
         insert_data[telfilepath]["length"] = []
         insert_data[telfilepath]["circle_centre"] = []
@@ -214,7 +198,7 @@ def main():
 
     p_on_a_data = electronfactors.convert2_ratio_perim_area(width_data, length_data)
 
-    for telfilepath in filepath_list:
+    for telfilepath in tel_filepaths:
         insert_data[telfilepath]["model_factor"] = []
 
         for i in range(len(insert_data[telfilepath]["reference_index"])):
@@ -243,7 +227,7 @@ def main():
                     )[0]
                 )
 
-    for telfilepath in filepath_list:
+    for telfilepath in tel_filepaths:
         st.write("---")
         st.write("Filepath: `{}`".format(telfilepath))
 
@@ -315,3 +299,29 @@ def main():
                     width, length, factor
                 )
             )
+
+
+def _get_tel_filepaths(config, patient_id):
+    site_directories = _config.get_site_directories(config)
+    clinical_directories = [
+        pathlib.Path(directories["monaco"])
+        for _, directories in site_directories.items()
+    ]
+
+    # Change from LBYL
+    accessible_directories = set()
+    for directory in clinical_directories:
+        try:
+            if not directory.exists():
+                st.warning(f"Unable to access `{directory}`")
+            else:
+                accessible_directories.add(directory)
+        except OSError as e:
+            st.warning(e)
+
+    tel_filepaths = set()
+    for directory in accessible_directories:
+        for filepath in directory.glob(f"*~{patient_id}/plan/*/*tel.1"):
+            tel_filepaths.add(filepath)
+
+    return list(tel_filepaths)
