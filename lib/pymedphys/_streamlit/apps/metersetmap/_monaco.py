@@ -29,7 +29,18 @@ def monaco_input_method(
         selected_monaco_plan,
         tel_paths,
     ) = st_monaco.monaco_tel_files_picker(
-        config, patient_id, key_namespace, advanced_mode, site
+        config,
+        patient_id,
+        key_namespace,
+        advanced_mode,
+        site,
+        plan_selection_text=(
+            """
+            Select the Monaco plan that correspond to a patient's single fraction.
+            If a patient has multiple fraction types (such as a plan with a boost)
+            then these fraction types need to be analysed separately.
+            """
+        ),
     )
 
     if advanced_mode:

@@ -14,7 +14,12 @@ from . import exceptions, misc
 
 
 def monaco_tel_files_picker(
-    config, patient_id="", key_namespace="", advanced_mode=False, site=None
+    config,
+    patient_id="",
+    key_namespace="",
+    advanced_mode=False,
+    site=None,
+    plan_selection_text="",
 ):
     (
         monaco_site,
@@ -46,13 +51,8 @@ def monaco_tel_files_picker(
             )
         return {"patient_id": patient_id}
 
-    st.write(
-        """
-        Select the Monaco plan that correspond to a patient's single fraction.
-        If a patient has multiple fraction types (such as a plan with a boost)
-        then these fraction types need to be analysed separately.
-        """
-    )
+    if plan_selection_text != "":
+        st.write(plan_selection_text)
 
     selected_monaco_plan = st.radio(
         "Select a Monaco plan",
