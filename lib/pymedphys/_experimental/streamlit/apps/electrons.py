@@ -33,91 +33,6 @@ ELECTRON_MODEL_PATTERN = r"RiverinaAgility - (\d+)MeV"
 APPLICATOR_PATTERN = r"(\d+)X\d+"
 
 
-def visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
-    t = np.linspace(0, 2 * np.pi)
-    circle = {
-        "x": width / 2 * np.sin(t) + circle_centre[0],
-        "y": width / 2 * np.cos(t) + circle_centre[1],
-    }
-
-    (
-        x_shift,
-        y_shift,
-        rotation_angle,
-    ) = electronfactors.visual_alignment_of_equivalent_ellipse(
-        insert_x, insert_y, width, length, None
-    )
-
-    rotation_matrix = np.array(
-        [
-            [np.cos(rotation_angle), -np.sin(rotation_angle)],
-            [np.sin(rotation_angle), np.cos(rotation_angle)],
-        ]
-    )
-
-    ellipse = np.array([length / 2 * np.sin(t), width / 2 * np.cos(t)]).T
-
-    rotated_ellipse = ellipse @ rotation_matrix
-
-    translated_ellipse = rotated_ellipse + np.array([y_shift, x_shift])
-    ellipse = {"x": translated_ellipse[:, 1], "y": translated_ellipse[:, 0]}
-
-    return circle, ellipse
-
-
-def plot_insert(insert_x, insert_y, width, length, circle_centre):
-    circle, ellipse = visual_circle_and_ellipse(
-        insert_x, insert_y, width, length, circle_centre
-    )
-
-    plt.figure()
-    plt.plot(insert_x, insert_y)
-    plt.axis("equal")
-
-    plt.plot(circle["x"], circle["y"])
-    plt.title("Insert shape parameterisation")
-    plt.xlabel("x (cm)")
-    plt.ylabel("y (cm)")
-    plt.grid(True)
-
-    plt.plot(ellipse["x"], ellipse["y"])
-
-
-def plot_model(width_data, length_data, factor_data):
-    i, j, k = electronfactors.create_transformed_mesh(
-        width_data, length_data, factor_data
-    )
-    model_width, model_length, model_factor = i, j, k
-
-    vmin = np.nanmin(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
-    vmax = np.nanmax(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
-
-    fig, ax = plt.subplots()
-
-    scat = ax.scatter(
-        width_data,
-        length_data,
-        s=100,
-        c=factor_data,
-        cmap="viridis",
-        vmin=vmin,
-        vmax=vmax,
-        zorder=2,
-    )
-
-    fig.colorbar(scat)
-
-    cs = ax.contour(model_width, model_length, model_factor, 20, vmin=vmin, vmax=vmax)
-
-    ax.clabel(cs, cs.levels[::2], inline=True)
-
-    ax.set_title("Insert model")
-    ax.set_xlabel("width (cm)")
-    ax.set_ylabel("length (cm)")
-
-    return fig
-
-
 def main():
     config = _config.get_config()
     clinical_directory = _get_clinical_directory(config)
@@ -147,60 +62,6 @@ def _get_clinical_directory(config):
         st.stop()
 
     return clinical_directory
-
-
-# TODO: Use config here
-def _load_reference_model(energy, applicator, ssd):
-    data_filename = r"S:\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv"
-    data = pd.read_csv(data_filename)
-
-    reference = (
-        (data["Energy (MeV)"] == energy)
-        & (data["Applicator (cm)"] == applicator)
-        & (data["SSD (cm)"] == ssd)
-    )
-
-    width_data = data["Width (cm @ 100SSD)"][reference]
-    length_data = data["Length (cm @ 100SSD)"][reference]
-    factor_data = data["RCCC Inverse factor (dose open / dose cutout)"][reference]
-
-    p_on_a_data = electronfactors.convert2_ratio_perim_area(width_data, length_data)
-
-    reference_data_table = pd.concat(
-        [width_data, length_data, factor_data],
-        axis=1,
-    )
-    reference_data_table.sort_values(
-        ["RCCC Inverse factor (dose open / dose cutout)"],
-        ascending=False,
-        inplace=True,
-    )
-    st.write(reference_data_table)
-
-    number_of_measurements = np.sum(reference)
-    if number_of_measurements < 8:
-        fig, ax = plt.subplots()
-        scat = ax.scatter(
-            width_data,
-            length_data,
-            s=100,
-            c=factor_data,
-            cmap="viridis",
-            zorder=2,
-        )
-        fig.colorbar(scat)
-
-        raise ValueError("Not enough data points")
-
-    fig = plot_model(
-        width_data,
-        length_data,
-        factor_data,
-    )
-
-    st.pyplot(fig)
-
-    return width_data, factor_data, p_on_a_data
 
 
 def _logic_per_telfile(filepath):
@@ -247,7 +108,7 @@ def _per_reference_index(tel_contents, reference_index):
     st.write(f"Width: `{width}`")
     st.write(f"Length: `{length}`")
 
-    fig = plot_insert(
+    fig = _plot_insert(
         x,
         y,
         width,
@@ -274,3 +135,142 @@ def _per_reference_index(tel_contents, reference_index):
     )[0]
 
     st.write(f"Factor: `{model_factor}`")
+
+
+def _plot_insert(insert_x, insert_y, width, length, circle_centre):
+    circle, ellipse = _visual_circle_and_ellipse(
+        insert_x, insert_y, width, length, circle_centre
+    )
+
+    plt.figure()
+    plt.plot(insert_x, insert_y)
+    plt.axis("equal")
+
+    plt.plot(circle["x"], circle["y"])
+    plt.title("Insert shape parameterisation")
+    plt.xlabel("x (cm)")
+    plt.ylabel("y (cm)")
+    plt.grid(True)
+
+    plt.plot(ellipse["x"], ellipse["y"])
+
+
+def _visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
+    t = np.linspace(0, 2 * np.pi)
+    circle = {
+        "x": width / 2 * np.sin(t) + circle_centre[0],
+        "y": width / 2 * np.cos(t) + circle_centre[1],
+    }
+
+    (
+        x_shift,
+        y_shift,
+        rotation_angle,
+    ) = electronfactors.visual_alignment_of_equivalent_ellipse(
+        insert_x, insert_y, width, length, None
+    )
+
+    rotation_matrix = np.array(
+        [
+            [np.cos(rotation_angle), -np.sin(rotation_angle)],
+            [np.sin(rotation_angle), np.cos(rotation_angle)],
+        ]
+    )
+
+    ellipse = np.array([length / 2 * np.sin(t), width / 2 * np.cos(t)]).T
+
+    rotated_ellipse = ellipse @ rotation_matrix
+
+    translated_ellipse = rotated_ellipse + np.array([y_shift, x_shift])
+    ellipse = {"x": translated_ellipse[:, 1], "y": translated_ellipse[:, 0]}
+
+    return circle, ellipse
+
+
+# TODO: Use config here
+def _load_reference_model(energy, applicator, ssd):
+    data_filename = r"S:\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv"
+    data = pd.read_csv(data_filename)
+
+    reference = (
+        (data["Energy (MeV)"] == energy)
+        & (data["Applicator (cm)"] == applicator)
+        & (data["SSD (cm)"] == ssd)
+    )
+
+    width_data = data["Width (cm @ 100SSD)"][reference]
+    length_data = data["Length (cm @ 100SSD)"][reference]
+    factor_data = data["RCCC Inverse factor (dose open / dose cutout)"][reference]
+
+    p_on_a_data = electronfactors.convert2_ratio_perim_area(width_data, length_data)
+
+    reference_data_table = pd.concat(
+        [width_data, length_data, factor_data],
+        axis=1,
+    )
+    reference_data_table.sort_values(
+        ["RCCC Inverse factor (dose open / dose cutout)"],
+        ascending=False,
+        inplace=True,
+    )
+    st.write(reference_data_table)
+
+    number_of_measurements = np.sum(reference)
+    if number_of_measurements < 8:
+        fig, ax = plt.subplots()
+        scat = ax.scatter(
+            width_data,
+            length_data,
+            s=100,
+            c=factor_data,
+            cmap="viridis",
+            zorder=2,
+        )
+        fig.colorbar(scat)
+
+        raise ValueError("Not enough data points")
+
+    fig = _plot_model(
+        width_data,
+        length_data,
+        factor_data,
+    )
+
+    st.pyplot(fig)
+
+    return width_data, factor_data, p_on_a_data
+
+
+def _plot_model(width_data, length_data, factor_data):
+    i, j, k = electronfactors.create_transformed_mesh(
+        width_data, length_data, factor_data
+    )
+    model_width, model_length, model_factor = i, j, k
+
+    vmin = np.nanmin(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
+    vmax = np.nanmax(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
+
+    fig, ax = plt.subplots()
+
+    scat = ax.scatter(
+        width_data,
+        length_data,
+        s=100,
+        c=factor_data,
+        cmap="viridis",
+        vmin=vmin,
+        vmax=vmax,
+        zorder=2,
+    )
+
+    fig.colorbar(scat)
+
+    cs = ax.contour(model_width, model_length, model_factor, 20, vmin=vmin, vmax=vmax)
+
+    ax.clabel(cs, cs.levels[::2], inline=True)
+
+    ax.set_title("Insert model")
+    ax.set_xlabel("width (cm)")
+    ax.set_ylabel("length (cm)")
+
+    return fig
