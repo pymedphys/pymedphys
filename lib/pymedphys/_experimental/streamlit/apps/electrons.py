@@ -90,7 +90,9 @@ def plot_model(width_data, length_data, factor_data):
     vmin = np.nanmin(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
     vmax = np.nanmax(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
 
-    plt.scatter(
+    fig, ax = plt.subplots()
+
+    scat = ax.scatter(
         width_data,
         length_data,
         s=100,
@@ -101,15 +103,17 @@ def plot_model(width_data, length_data, factor_data):
         zorder=2,
     )
 
-    plt.colorbar()
+    fig.colorbar(scat)
 
-    cs = plt.contour(model_width, model_length, model_factor, 20, vmin=vmin, vmax=vmax)
+    cs = ax.contour(model_width, model_length, model_factor, 20, vmin=vmin, vmax=vmax)
 
-    plt.clabel(cs, cs.levels[::2], inline=True)
+    ax.clabel(cs, cs.levels[::2], inline=True)
 
-    plt.title("Insert model")
-    plt.xlabel("width (cm)")
-    plt.ylabel("length (cm)")
+    ax.set_title("Insert model")
+    ax.set_xlabel("width (cm)")
+    ax.set_ylabel("length (cm)")
+
+    return fig
 
 
 def main():
@@ -262,9 +266,9 @@ def main():
 
             number_of_measurements = np.sum(reference)
 
-            plt.figure()
             if number_of_measurements < 8:
-                plt.scatter(
+                fig, ax = plt.subplots()
+                scat = ax.scatter(
                     width_data[reference],
                     length_data[reference],
                     s=100,
@@ -272,9 +276,9 @@ def main():
                     cmap="viridis",
                     zorder=2,
                 )
-                plt.colorbar()
+                fig.colorbar(scat)
             else:
-                plot_model(
+                fig = plot_model(
                     width_data[reference],
                     length_data[reference],
                     factor_data[reference],
@@ -292,7 +296,7 @@ def main():
 
             st.write(reference_data_table)
 
-            st.pyplot()
+            st.pyplot(fig)
 
             factor = insert_data[telfilepath]["model_factor"][i]
 
