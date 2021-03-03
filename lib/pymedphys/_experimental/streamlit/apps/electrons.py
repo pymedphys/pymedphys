@@ -25,6 +25,7 @@ import pymedphys._electronfactors as electronfactors
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc as _misc
+from pymedphys._streamlit.utilities import monaco as st_monaco
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
 
@@ -37,38 +38,21 @@ APPLICATOR_PATTERN = r"(\d+)X\d+"
 
 def main():
     config = _config.get_config()
-    clinical_directory = _get_clinical_directory(config)
+    (
+        _,
+        monaco_directory,
+        _,
+        _,
+        tel_paths,
+    ) = st_monaco.monaco_tel_files_picker(config)
 
-    patient_id = st.text_input("Patient ID")
+    if st.button("Calculate"):
 
-    if patient_id == "":
-        st.stop()
+        for filepath in tel_paths:
+            st.write("---")
+            st.write(f"## Tel file: `{filepath.relative_to(monaco_directory)}`")
 
-    tel_filepaths: List[pathlib.Path] = list(
-        clinical_directory.glob(f"*~{patient_id}/plan/*/*tel.1")
-    )
-
-    for filepath in tel_filepaths:
-        st.write("---")
-        st.write(f"## Tel file: `{filepath.relative_to(clinical_directory)}`")
-
-        _logic_per_telfile(filepath)
-
-
-def _get_clinical_directory(config):
-    site_directories = _config.get_site_directories(config)
-    chosen_site = _misc.site_picker(config, "Site")
-    clinical_directory = site_directories[chosen_site]["monaco"]
-
-    try:
-        if not clinical_directory.exists():
-            st.error(f"Unable to access `{clinical_directory}`")
-            st.stop()
-    except OSError as e:
-        st.error(e)
-        st.stop()
-
-    return clinical_directory
+            _logic_per_telfile(filepath)
 
 
 def _logic_per_telfile(filepath):
