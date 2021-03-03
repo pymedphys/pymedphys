@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
 import re
 
 from pymedphys._imports import numpy as np
@@ -29,6 +28,9 @@ from pymedphys._streamlit.utilities import misc as _misc
 
 CATEGORY = categories.ALPHA
 TITLE = "Electron Insert Factor Modelling"
+
+ELECTRON_MODEL_PATTERN = r"RiverinaAgility - (\d+)MeV"
+APPLICATOR_PATTERN = r"(\d+)X\d+"
 
 
 def visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
@@ -125,14 +127,10 @@ def main():
     if patient_id == "":
         st.stop()
 
-    data, width_data, length_data, factor_data, p_on_a_data = _load_reference_model()
-
     tel_filepaths = list(clinical_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
 
-    insert_data = dict()  # type: ignore
-
     for filepath in tel_filepaths:
-        _logic_per_telfile(insert_data, filepath)
+        _logic_per_telfile(filepath)
 
 
 def _get_clinical_directory(config):
@@ -152,172 +150,127 @@ def _get_clinical_directory(config):
 
 
 # TODO: Use config here
-def _load_reference_model():
+def _load_reference_model(energy, applicator, ssd):
     data_filename = r"S:\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv"
     data = pd.read_csv(data_filename)
 
-    width_data = data["Width (cm @ 100SSD)"]
-    length_data = data["Length (cm @ 100SSD)"]
-    factor_data = data["RCCC Inverse factor (dose open / dose cutout)"]
+    reference = (
+        (data["Energy (MeV)"] == energy)
+        & (data["Applicator (cm)"] == applicator)
+        & (data["SSD (cm)"] == ssd)
+    )
+
+    width_data = data["Width (cm @ 100SSD)"][reference]
+    length_data = data["Length (cm @ 100SSD)"][reference]
+    factor_data = data["RCCC Inverse factor (dose open / dose cutout)"][reference]
 
     p_on_a_data = electronfactors.convert2_ratio_perim_area(width_data, length_data)
 
-    return data, width_data, length_data, factor_data, p_on_a_data
+    reference_data_table = pd.concat(
+        [width_data, length_data, factor_data],
+        axis=1,
+    )
+    reference_data_table.sort_values(
+        ["RCCC Inverse factor (dose open / dose cutout)"],
+        ascending=False,
+        inplace=True,
+    )
+    st.write(reference_data_table)
 
-
-def _logic_per_telfile(insert_data, filepath):
-    electronmodel_regex = r"RiverinaAgility - (\d+)MeV"
-    applicator_regex = r"(\d+)X\d+"
-
-    insert_data[filepath] = dict()
-
-    with open(filepath, "r") as file:
-        telfilecontents = np.array(file.read().splitlines())
-
-    insert_data[filepath]["reference_index"] = []
-    for i, item in enumerate(telfilecontents):
-        if re.search(electronmodel_regex, item):
-            insert_data[filepath]["reference_index"] += [i]
-
-    insert_data[filepath]["applicators"] = [
-        re.search(applicator_regex, telfilecontents[i + 12]).group(1)  # type: ignore
-        for i in insert_data[filepath]["reference_index"]
-    ]
-
-    insert_data[filepath]["energies"] = [
-        re.search(electronmodel_regex, telfilecontents[i]).group(1)  # type: ignore
-        for i in insert_data[filepath]["reference_index"]
-    ]
-
-    insert_data[filepath]["x"] = []
-    insert_data[filepath]["y"] = []
-
-    for i, index in enumerate(insert_data[filepath]["reference_index"]):
-        insert_initial_range = telfilecontents[
-            index + 51 : :
-        ]  # coords start 51 lines after electron model name
-        insert_stop = np.where(insert_initial_range == "0")[0][
-            0
-        ]  # coords stop right before a line containing 0
-
-        insert_coords_string = insert_initial_range[:insert_stop]
-        insert_coords = np.fromstring(",".join(insert_coords_string), sep=",")
-        insert_data[filepath]["x"].append(insert_coords[0::2] / 10)
-        insert_data[filepath]["y"].append(insert_coords[1::2] / 10)
-
-    insert_data[filepath]["width"] = []
-    insert_data[filepath]["length"] = []
-    insert_data[filepath]["circle_centre"] = []
-    insert_data[filepath]["P/A"] = []
-
-    for i in range(len(insert_data[filepath]["reference_index"])):
-
-        width, length, circle_centre = electronfactors.parameterise_insert(
-            insert_data[filepath]["x"][i], insert_data[filepath]["y"][i]
+    number_of_measurements = np.sum(reference)
+    if number_of_measurements < 8:
+        fig, ax = plt.subplots()
+        scat = ax.scatter(
+            width_data,
+            length_data,
+            s=100,
+            c=factor_data,
+            cmap="viridis",
+            zorder=2,
         )
+        fig.colorbar(scat)
 
-        insert_data[filepath]["width"].append(width)
-        insert_data[filepath]["length"].append(length)
-        insert_data[filepath]["circle_centre"].append(circle_centre)
+        raise ValueError("Not enough data points")
 
-        insert_data[filepath]["P/A"].append(
-            electronfactors.convert2_ratio_perim_area(width, length)
-        )
+    fig = plot_model(
+        width_data,
+        length_data,
+        factor_data,
+    )
 
-    insert_data[filepath]["model_factor"] = []
+    st.pyplot(fig)
 
-    for i in range(len(insert_data[filepath]["reference_index"])):
-        applicator = float(insert_data[filepath]["applicators"][i])
-        energy = float(insert_data[filepath]["energies"][i])
-        ssd = 100
+    return width_data, factor_data, p_on_a_data
 
-        reference = (
-            (data["Energy (MeV)"] == energy)
-            & (data["Applicator (cm)"] == applicator)
-            & (data["SSD (cm)"] == ssd)
-        )
 
-        number_of_measurements = np.sum(reference)
-
-        if number_of_measurements < 8:
-            insert_data[filepath]["model_factor"].append(np.nan)
-        else:
-            insert_data[filepath]["model_factor"].append(
-                electronfactors.spline_model_with_deformability(
-                    insert_data[filepath]["width"],
-                    insert_data[filepath]["P/A"],
-                    width_data[reference],
-                    p_on_a_data[reference],
-                    factor_data[reference],
-                )[0]
-            )
-
+def _logic_per_telfile(filepath):
     st.write("---")
     st.write("Filepath: `{}`".format(filepath))
 
-    for i in range(len(insert_data[filepath]["reference_index"])):
-        applicator = float(insert_data[filepath]["applicators"][i])
-        energy = float(insert_data[filepath]["energies"][i])
-        ssd = 100
+    with open(filepath, "r") as file:
+        tel_contents = np.array(file.read().splitlines())
 
-        st.write("Applicator: `{} cm` | Energy: `{} MeV`".format(applicator, energy))
+    reference_indices = []
+    for i, item in enumerate(tel_contents):
+        if re.search(ELECTRON_MODEL_PATTERN, item):
+            reference_indices.append(i)
 
-        width = insert_data[filepath]["width"][i]
-        length = insert_data[filepath]["length"][i]
+    for reference_index in reference_indices:
+        _per_reference_index(tel_contents, reference_index)
 
-        plt.figure()
-        plot_insert(
-            insert_data[filepath]["x"][i],
-            insert_data[filepath]["y"][i],
-            insert_data[filepath]["width"][i],
-            insert_data[filepath]["length"][i],
-            insert_data[filepath]["circle_centre"][i],
+
+def _per_reference_index(tel_contents, reference_index):
+    applicator = float(
+        re.search(APPLICATOR_PATTERN, tel_contents[reference_index + 12]).group(1)
+    )
+    energy = float(
+        re.search(ELECTRON_MODEL_PATTERN, tel_contents[reference_index]).group(1)
+    )
+    ssd = 100
+
+    st.write(f"Applicator: `{applicator} cm` | Energy: `{energy} MeV`")
+
+    # coords start 51 lines after electron model name
+    coords_index_start = reference_index + 51
+    insert_initial_range = tel_contents[coords_index_start::]
+
+    # coords stop right before a line containing 0
+    insert_stop = np.where(insert_initial_range == "0")[0][0]
+    insert_coords_string = insert_initial_range[:insert_stop]
+
+    insert_coords = np.fromstring(",".join(insert_coords_string), sep=",")
+    x = insert_coords[0::2] / 10
+    y = insert_coords[1::2] / 10
+
+    width, length, circle_centre = electronfactors.parameterise_insert(x, y)
+
+    st.write(f"Width: `{width}`")
+    st.write(f"Length: `{length}`")
+
+    fig = plot_insert(
+        x,
+        y,
+        width,
+        length,
+        circle_centre,
+    )
+    st.pyplot(fig)
+
+    p_on_a = electronfactors.convert2_ratio_perim_area(width, length)
+
+    try:
+        width_data, factor_data, p_on_a_data = _load_reference_model(
+            energy, applicator, ssd
         )
+    except ValueError:
+        return
 
-        reference = (
-            (data["Energy (MeV)"] == energy)
-            & (data["Applicator (cm)"] == applicator)
-            & (data["SSD (cm)"] == ssd)
-        )
+    model_factor = electronfactors.spline_model_with_deformability(
+        width,
+        p_on_a,
+        width_data,
+        p_on_a_data,
+        factor_data,
+    )[0]
 
-        number_of_measurements = np.sum(reference)
-
-        if number_of_measurements < 8:
-            fig, ax = plt.subplots()
-            scat = ax.scatter(
-                width_data[reference],
-                length_data[reference],
-                s=100,
-                c=factor_data[reference],
-                cmap="viridis",
-                zorder=2,
-            )
-            fig.colorbar(scat)
-        else:
-            fig = plot_model(
-                width_data[reference],
-                length_data[reference],
-                factor_data[reference],
-            )
-
-        reference_data_table = pd.concat(
-            [width_data[reference], length_data[reference], factor_data[reference]],
-            axis=1,
-        )
-        reference_data_table.sort_values(
-            ["RCCC Inverse factor (dose open / dose cutout)"],
-            ascending=False,
-            inplace=True,
-        )
-
-        st.write(reference_data_table)
-
-        st.pyplot(fig)
-
-        factor = insert_data[filepath]["model_factor"][i]
-
-        st.write(
-            "Width: `{0:0.2f} cm` | Length: `{1:0.2f} cm` | Factor: `{2:0.3f}`".format(
-                width, length, factor
-            )
-        )
+    st.write(f"Factor: `{model_factor}`")
