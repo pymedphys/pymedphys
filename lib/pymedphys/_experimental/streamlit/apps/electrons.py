@@ -118,7 +118,7 @@ def _per_reference_index(config, tel_contents, reference_index):
         st.write("#### Insert factor modelling")
         try:
             width_data, factor_data, p_on_a_data = _load_reference_model(
-                energy, applicator, ssd
+                config, energy, applicator, ssd
             )
         except ValueError:
             return
