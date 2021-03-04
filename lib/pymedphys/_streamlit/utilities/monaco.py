@@ -72,7 +72,13 @@ def monaco_tel_files_picker(
             raise ValueError("Exactly one plan should have been found")
         tel_paths += current_plans
 
-    return monaco_site, monaco_directory, patient_name, selected_monaco_plan, tel_paths
+    return (
+        monaco_site,
+        monaco_directory.resolve(),
+        patient_name,
+        selected_monaco_plan,
+        tel_paths,
+    )
 
 
 def monaco_patient_directory_picker(

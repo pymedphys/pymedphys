@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 import re
 
 from pymedphys._imports import numpy as np
@@ -19,6 +20,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
+import pymedphys
 import pymedphys._electronfactors as electronfactors
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
@@ -31,7 +33,8 @@ TITLE = "Electron Insert Factor Modelling"
 
 
 def main():
-    config = _config.get_config()
+    demo_mode = _set_parameters()
+    config = _get_config(demo_mode)
     (
         _,
         monaco_directory,
@@ -41,12 +44,41 @@ def main():
     ) = st_monaco.monaco_tel_files_picker(config)
 
     if st.button("Calculate"):
-
         for filepath in tel_paths:
             st.write("---")
             st.write(f"## Tel file: `{filepath.relative_to(monaco_directory)}`")
 
             _logic_per_telfile(config, filepath)
+
+
+def _set_parameters():
+    st.sidebar.write("# Configuration")
+
+    try:
+        _get_config(False)
+    except FileNotFoundError:
+        return True
+
+    demo_mode = st.sidebar.checkbox("Demo Mode", value=False)
+
+    return demo_mode
+
+
+@st.cache
+def _download_demo_data():
+    cwd = pathlib.Path.cwd()
+    pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=cwd)
+
+    return cwd.joinpath("pymedphys-gui-demo")
+
+
+def _get_config(demo_mode):
+    if demo_mode:
+        path = _download_demo_data()
+    else:
+        path = None
+
+    return _config.get_config(path)
 
 
 def _logic_per_telfile(config, filepath):
@@ -190,7 +222,6 @@ def _visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre)
     return circle, ellipse
 
 
-# TODO: Use config here
 def _load_reference_model(config, energy, applicator, ssd):
     data_filename = _get_data_path(config)
     data = pd.read_csv(data_filename)
