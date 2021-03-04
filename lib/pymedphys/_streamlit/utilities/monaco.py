@@ -15,7 +15,7 @@ from pymedphys._streamlit.utilities import exceptions as _exceptions
 from . import exceptions, misc
 
 
-class TelFilePickerResults(TypedDict):
+class TelFilePickerResults(TypedDict, total=False):
     patient_id: str
     patient_name: str
     monaco_site: str
@@ -53,11 +53,7 @@ def monaco_tel_files_picker(
 
     Returns
     -------
-    monaco_site : pathlib.Path
-    monaco_directory : pathlib.Path,
-    patient_name : str,
-    selected_monaco_plan : str,
-    tel_paths : List[pathlib.Path],
+    results : TelFilePickerResults (dict)
 
     """
     (
