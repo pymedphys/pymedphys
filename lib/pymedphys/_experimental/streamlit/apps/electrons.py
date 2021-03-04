@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
 import re
-from typing import List
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -24,16 +22,12 @@ from pymedphys._imports import streamlit as st
 import pymedphys._electronfactors as electronfactors
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
-from pymedphys._streamlit.utilities import misc as _misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
 
 # Old code warning, the below is Simon Biggs from 2015... be nice to him
 
 CATEGORY = categories.ALPHA
 TITLE = "Electron Insert Factor Modelling"
-
-ELECTRON_MODEL_PATTERN = r"RiverinaAgility - (\d+)MeV"
-APPLICATOR_PATTERN = r"(\d+)X\d+"
 
 
 def main():
@@ -52,31 +46,36 @@ def main():
             st.write("---")
             st.write(f"## Tel file: `{filepath.relative_to(monaco_directory)}`")
 
-            _logic_per_telfile(filepath)
+            _logic_per_telfile(config, filepath)
 
 
-def _logic_per_telfile(filepath):
+def _logic_per_telfile(config, filepath):
     with open(filepath, "r") as file:
         tel_contents = np.array(file.read().splitlines())
 
+    model_name_pattern = _get_beam_model_name_pattern(config)
+
     reference_indices = []
     for i, item in enumerate(tel_contents):
-        if re.search(ELECTRON_MODEL_PATTERN, item):
+        if re.search(model_name_pattern, item):
             reference_indices.append(i)
 
     if len(reference_indices) == 0:
         st.info("No electron plans found within this tel file")
 
     for reference_index in reference_indices:
-        _per_reference_index(tel_contents, reference_index)
+        _per_reference_index(config, tel_contents, reference_index)
 
 
-def _per_reference_index(tel_contents, reference_index):
+def _per_reference_index(config, tel_contents, reference_index):
+    model_name_pattern = _get_beam_model_name_pattern(config)
+    applicator_pattern = _get_applicator_pattern(config)
+
     applicator = float(
-        re.search(APPLICATOR_PATTERN, tel_contents[reference_index + 12]).group(1)
+        re.search(applicator_pattern, tel_contents[reference_index + 12]).group(1)
     )
     energy = float(
-        re.search(ELECTRON_MODEL_PATTERN, tel_contents[reference_index]).group(1)
+        re.search(model_name_pattern, tel_contents[reference_index]).group(1)
     )
     ssd = 100
 
@@ -192,8 +191,8 @@ def _visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre)
 
 
 # TODO: Use config here
-def _load_reference_model(energy, applicator, ssd):
-    data_filename = r"S:\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv"
+def _load_reference_model(config, energy, applicator, ssd):
+    data_filename = _get_data_path(config)
     data = pd.read_csv(data_filename)
 
     reference = (
@@ -280,3 +279,15 @@ def _plot_model(width_data, length_data, factor_data):
     ax.set_ylabel("length (cm)")
 
     return fig
+
+
+def _get_data_path(config):
+    return config["electron_insert_modelling"]["data_path"]
+
+
+def _get_beam_model_name_pattern(config):
+    return config["electron_insert_modelling"]["patterns"]["beam_model_name"]
+
+
+def _get_applicator_pattern(config):
+    return config["electron_insert_modelling"]["patterns"]["applicator"]
