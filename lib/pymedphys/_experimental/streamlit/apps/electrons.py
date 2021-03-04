@@ -35,13 +35,15 @@ TITLE = "Electron Insert Factor Modelling"
 def main():
     demo_mode = _set_parameters()
     config = _get_config(demo_mode)
-    (
-        _,
-        monaco_directory,
-        _,
-        _,
-        tel_paths,
-    ) = st_monaco.monaco_tel_files_picker(config)
+
+    telfile_picker_results = st_monaco.monaco_tel_files_picker(config)
+    monaco_directory, tel_paths = [
+        telfile_picker_results[key]
+        for key in (
+            "monaco_directory",
+            "tel_paths",
+        )
+    ]
 
     if st.button("Calculate"):
         for filepath in tel_paths:

@@ -22,13 +22,7 @@ from pymedphys._streamlit.utilities import monaco as st_monaco
 def monaco_input_method(
     config, patient_id="", key_namespace="", advanced_mode=False, site=None, **_
 ):
-    (
-        monaco_site,
-        _,
-        patient_name,
-        selected_monaco_plan,
-        tel_paths,
-    ) = st_monaco.monaco_tel_files_picker(
+    telfile_picker_results = st_monaco.monaco_tel_files_picker(
         config,
         patient_id,
         key_namespace,
@@ -42,6 +36,17 @@ def monaco_input_method(
             """
         ),
     )
+
+    monaco_site, patient_id, patient_name, selected_monaco_plan, tel_paths = [
+        telfile_picker_results[key]
+        for key in (
+            "monaco_site",
+            "patient_id",
+            "patient_name",
+            "selected_monaco_plan",
+            "tel_paths",
+        )
+    ]
 
     if advanced_mode:
         st.write([str(path.resolve()) for path in tel_paths])

@@ -4,14 +4,24 @@
 
 import os
 import pathlib
-from typing import Optional
+from typing import List, Optional
 
 from pymedphys._imports import streamlit as st
+from typing_extensions import TypedDict
 
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 
 from . import exceptions, misc
+
+
+class TelFilePickerResults(TypedDict):
+    patient_id: str
+    patient_name: str
+    monaco_site: str
+    monaco_directory: pathlib.Path
+    selected_monaco_plan: str
+    tel_paths: List[pathlib.Path]
 
 
 def monaco_tel_files_picker(
@@ -21,7 +31,7 @@ def monaco_tel_files_picker(
     advanced_mode: bool = False,
     site: Optional[str] = None,
     plan_selection_text: str = "",
-):
+) -> TelFilePickerResults:
     """A Streamit widget for selecting a Monaco plan tel file.
 
     Parameters
@@ -78,6 +88,7 @@ def monaco_tel_files_picker(
                     f"No Monaco plans found for patient ID {patient_id}"
                 )
             )
+
         return {"patient_id": patient_id}
 
     if plan_selection_text != "":
@@ -101,17 +112,18 @@ def monaco_tel_files_picker(
             raise ValueError("Exactly one plan should have been found")
         tel_paths += current_plans
 
-    return (
-        monaco_site,
-        monaco_directory.resolve(),
-        patient_name,
-        selected_monaco_plan,
-        tel_paths,
-    )
+    return {
+        "monaco_site": monaco_site,
+        "monaco_directory": monaco_directory.resolve(),
+        "patient_id": patient_id,
+        "patient_name": patient_name,
+        "selected_monaco_plan": selected_monaco_plan,
+        "tel_paths": tel_paths,
+    }
 
 
 def monaco_patient_directory_picker(
-    config, patient_id="", key_namespace="", advanced_mode_local=False, site=None
+    config, patient_id="", key_namespace="", advanced_mode=False, site=None
 ):
     monaco_site, monaco_directory = misc.get_site_and_directory(
         config,
@@ -121,13 +133,13 @@ def monaco_patient_directory_picker(
         key=f"{key_namespace}_monaco_site",
     )
 
-    if advanced_mode_local:
+    if advanced_mode:
         st.write(monaco_directory.resolve())
 
     patient_id = st.text_input(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
     )
-    if advanced_mode_local:
+    if advanced_mode:
         patient_id
 
     if patient_id == "":
