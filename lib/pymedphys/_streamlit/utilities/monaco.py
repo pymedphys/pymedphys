@@ -4,6 +4,7 @@
 
 import os
 import pathlib
+from typing import Optional
 
 from pymedphys._imports import streamlit as st
 
@@ -14,13 +15,41 @@ from . import exceptions, misc
 
 
 def monaco_tel_files_picker(
-    config,
-    patient_id="",
-    key_namespace="",
-    advanced_mode=False,
-    site=None,
-    plan_selection_text="",
+    config: dict,
+    patient_id: str = "",
+    key_namespace: str = "",
+    advanced_mode: bool = False,
+    site: Optional[str] = None,
+    plan_selection_text: str = "",
 ):
+    """A Streamit widget for selecting a Monaco plan tel file.
+
+    Parameters
+    ----------
+    config : dict
+        The user's configuration
+    patient_id : str, optional
+        A patient ID to default to, by default ""
+    key_namespace : str, optional
+        A string to prepend to all Streamlit widget keys, by default ""
+    advanced_mode : bool, optional
+        Whether or not to display information and options intended for
+        advanced users, by default False
+    site : str, optional
+        A site to default to, by default None
+    plan_selection_text : str, optional
+        Text to display to the user before the plan selection radio
+        button, by default ""
+
+    Returns
+    -------
+    monaco_site : pathlib.Path
+    monaco_directory : pathlib.Path,
+    patient_name : str,
+    selected_monaco_plan : str,
+    tel_paths : List[pathlib.Path],
+
+    """
     (
         monaco_site,
         monaco_directory,
