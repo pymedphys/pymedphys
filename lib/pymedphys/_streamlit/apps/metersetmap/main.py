@@ -171,10 +171,10 @@ def get_input_data_ui(
     data_method_map,
     default_method,
     key_namespace,
-    advanced_mode_local,
+    advanced_mode,
     **previous_results,
 ):
-    if advanced_mode_local:
+    if advanced_mode:
         data_method_options = list(data_method_map.keys())
         data_method = st.selectbox(
             "Data Input Method",
@@ -187,7 +187,7 @@ def get_input_data_ui(
 
     results = data_method_map[data_method](  # type: ignore
         key_namespace=key_namespace,
-        advanced_mode_local=advanced_mode_local,
+        advanced_mode=advanced_mode,
         **previous_results,
     )
 

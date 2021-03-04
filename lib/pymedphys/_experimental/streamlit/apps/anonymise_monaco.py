@@ -43,7 +43,7 @@ def main():
         patient_id,
         _,
         patient_directory,
-    ) = st_monaco.monaco_patient_directory_picker(config, advanced_mode_local=True)
+    ) = st_monaco.monaco_patient_directory_picker(config, advanced_mode=True)
 
     st.write(f"Directory to anonymise: `{patient_directory}`")
 
