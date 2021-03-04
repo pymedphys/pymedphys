@@ -54,12 +54,16 @@ def main():
 def _set_parameters():
     st.sidebar.write("# Configuration")
 
+    DEMO_MODE_LABEL = "Demo configuration file"
+
     try:
         _get_config(False)
+        config_options = ["Config on disk", DEMO_MODE_LABEL]
     except FileNotFoundError:
-        return True
+        config_options = [DEMO_MODE_LABEL]
 
-    demo_mode = st.sidebar.checkbox("Demo Mode", value=False)
+    config_selection = st.sidebar.radio("Config file to use", options=config_options)
+    demo_mode = config_selection == DEMO_MODE_LABEL
 
     return demo_mode
 
@@ -72,6 +76,7 @@ def _download_demo_data():
     return cwd.joinpath("pymedphys-gui-demo")
 
 
+@st.cache
 def _get_config(demo_mode):
     if demo_mode:
         path = _download_demo_data()
