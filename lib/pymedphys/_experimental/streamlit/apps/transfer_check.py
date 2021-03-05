@@ -34,10 +34,7 @@ from pymedphys._experimental.chartchecks.helpers import (
 )
 
 # from pymedphys._experimental.chartchecks import ALIASES.csv
-from pymedphys._experimental.chartchecks.tolerance_constants import (
-    SITE_CONSTANTS,
-    TOLERANCE_TYPES,
-)
+from pymedphys._experimental.chartchecks.tolerance_constants import SITE_CONSTANTS
 
 CATEGORY = categories.PRE_ALPHA
 TITLE = "Pre-Treatment Data Transfer Check"
@@ -101,8 +98,6 @@ def verify_basic_patient_info(dicom_table, mosaiq_table, mrn):
     else:
         st.error("DOB: " + DOB)
 
-    return
-
 
 def check_site_approval(mosaiq_table, connection):
     st.subheader("Approval Status:")
@@ -129,8 +124,6 @@ def check_site_approval(mosaiq_table, connection):
         st.success("RX Approved by " + str(site_initials[0][0]))
     else:
         st.error("RX Approval Pending")
-
-    return
 
 
 def drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table):
@@ -183,8 +176,6 @@ def check_for_field_approval(mosaiq_table, field_selection, connection):
     except (TypeError, ValueError, AttributeError):
         st.write("This field is not approved.")
 
-    return
-
 
 def show_fx_pattern_and_comments(mosaiq_table, field_selection):
     fx_pattern = mosaiq_table[mosaiq_table["field_name"] == field_selection][
@@ -196,8 +187,6 @@ def show_fx_pattern_and_comments(mosaiq_table, field_selection):
     comments = mosaiq_table[mosaiq_table["field_name"] == field_selection]["notes"]
     st.write("**Comments**: ", comments.iloc[0])
 
-    return
-
 
 def show_field_rx(dicom_table, selected_label):
     st.write(
@@ -206,8 +195,6 @@ def show_field_rx(dicom_table, selected_label):
             "rx"
         ].values[0],
     )
-
-    return
 
 
 def show_comparison_of_selected_fields(dicom_field_selection, results):
@@ -221,8 +208,6 @@ def show_comparison_of_selected_fields(dicom_field_selection, results):
 
     display_results = display_results.style.apply(colour_results, axis=1)
     st.dataframe(display_results.set_precision(2), height=1000)
-
-    return
 
 
 def get_structure_aliases():
@@ -260,7 +245,6 @@ def add_new_structure_alias(dvh_calcs, alias_df):
     if alias_select != "< Select an ROI >" and key_select != "< Select an ROI >":
         alias_df[key_select].iloc[0].append(alias_select.lower())
         alias_df.to_csv(file_path, index=False)
-    return
 
 
 def select_plan_targets(roi):
@@ -272,8 +256,8 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
     structure_constraints = constraints[structure]
     structure_dvh = dvh_calcs[roi]
     structure_df = pd.DataFrame()
-    for type, constraint in structure_constraints.items():
-        if type == "Mean" and constraint is not " ":
+    for constraint_type, constraint in structure_constraints.items():
+        if constraint_type == "Mean" and constraint != " ":
             for val in range(0, len(constraint)):
                 added_constraint = pd.DataFrame()
                 added_constraint["Structure"] = [roi]
@@ -288,7 +272,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                     drop=True
                 )
 
-        elif type == "Max" and constraint is not " ":
+        elif constraint_type == "Max" and constraint != " ":
             for val in range(0, len(constraint)):
                 added_constraint = pd.DataFrame()
                 added_constraint["Structure"] = [roi]
@@ -303,7 +287,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                     drop=True
                 )
 
-        elif type == "V%" and constraint is not " ":
+        elif constraint_type == "V%" and constraint != " ":
             for val in range(0, len(constraint)):
                 dose_constraint = [constraint[val][0]]
                 volume_constraint = [constraint[val][1] * 100]
@@ -327,7 +311,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                     drop=True
                 )
 
-        elif type == "D%" and constraint is not " ":
+        elif constraint_type == "D%" and constraint != " ":
             for val in range(0, len(constraint)):
                 dose_constraint = [constraint[val][0]]
                 volume_constraint = [constraint[val][1]]
@@ -375,7 +359,7 @@ def calculate_average_OAR_score(structure_df):
     return structure_df
 
 
-def calculate_total_score(constraints_df, institutional_history):
+def calculate_total_score(constraints_df):
     total_score = pd.DataFrame()
     total_score["Structure"] = ["Total Patient"]
     total_score["Structure_Key"] = ["Total Patient"]
@@ -403,8 +387,6 @@ def add_constraint_results_to_database(constraints_df, institutional_history):
         institutional_history.to_json(
             "C:/users/rembishj/patient_archive", orient="index"
         )
-
-    return
 
 
 def compare_to_historical_scores(constraints_df, institutional_history):
@@ -512,9 +494,7 @@ def main():
                             ).reset_index(drop=True)
 
                 if constraints_df.empty is False:
-                    constraints_df = calculate_total_score(
-                        constraints_df, institutional_history
-                    )
+                    constraints_df = calculate_total_score(constraints_df)
                     constraints_df["mrn"] = int(mrn)
                     constraints_df["site_id"] = int(mosaiq_table.iloc[0]["site_ID"])
                     display_df = compare_to_historical_scores(

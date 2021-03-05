@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import multiprocessing
-import os
-
-from joblib import Parallel, delayed
-from pymedphys._imports import dicomparser, dvh, dvhcalc
+from pymedphys._imports import dicomparser, dvhcalc
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plotly, plt, pydicom
+from pymedphys._imports import plotly, pydicom
 from pymedphys._imports import streamlit as st
-
-from pymedphys._dicom.dose import create_dvh
 
 
 @st.cache(ttl=3600, suppress_st_warning=True)
