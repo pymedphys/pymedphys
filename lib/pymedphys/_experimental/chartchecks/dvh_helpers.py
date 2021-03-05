@@ -24,7 +24,7 @@ from pymedphys._imports import streamlit as st
 from pymedphys._dicom.dose import create_dvh
 
 
-@st.cache(ttl=3600)
+@st.cache(ttl=3600, suppress_st_warning=True)
 def calc_dvh(rs_file, rd_file):
     ds_input: pydicom.FileDataset = pydicom.dcmread(rs_file, force=True)
 

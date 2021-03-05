@@ -133,7 +133,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "couch_vrt [cm]": first_cp.TableTopVerticalPosition,
                 "couch_lat [cm]": first_cp.TableTopLateralPosition,
                 "couch_lng [cm]": first_cp.TableTopLongitudinalPosition,
-                "couch_angle": first_cp.TableTopEccentricAngle,
+                "couch_angle": first_cp.PatientSupportAngle,
                 "technique": "",
                 "control_points": field.NumberOfControlPoints,
             }
@@ -278,6 +278,9 @@ def get_all_treatment_data(connection, mrn):
     mosaiq_fields["tolerance"] = [
         TOLERANCE_TYPES[item] for item in mosaiq_fields["tolerance"]
     ]
+
+    # mosaiq_fields["fraction_dose [cGy]"] = mosaiq_fields["fraction_dose [cGy]"] / (mosaiq_fields['rx_depth']/100)
+    # mosaiq_fields["total_dose [cGy]"] = mosaiq_fields["total_dose [cGy]"] / (mosaiq_fields['rx_depth'] / 100)
 
     # reformat some fields to create the 'rx' field
     rx = []

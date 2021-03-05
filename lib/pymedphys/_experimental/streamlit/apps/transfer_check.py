@@ -263,6 +263,11 @@ def add_new_structure_alias(dvh_calcs, alias_df):
     return
 
 
+def select_plan_targets(roi):
+    targets = st.multiselect("Select targets for plan: ", roi)
+    return targets
+
+
 def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
     structure_constraints = constraints[structure]
     structure_dvh = dvh_calcs[roi]
@@ -278,7 +283,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                 added_constraint["Volume [%]"] = ["-"]
                 added_constraint["Actual Dose [Gy]"] = structure_dvh.mean
                 added_constraint["Actual Volume [%]"] = ["-"]
-                added_constraint["Score"] = [constraint[val][0]] - structure_dvh.mean
+                added_constraint["Score"] = [constraint[val][0] - structure_dvh.mean]
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
                 )
@@ -293,7 +298,7 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                 added_constraint["Volume [%]"] = ["-"]
                 added_constraint["Actual Dose [Gy]"] = structure_dvh.max
                 added_constraint["Actual Volume [%]"] = ["-"]
-                added_constraint["Score"] = [constraint[val][0]] - structure_dvh.max
+                added_constraint["Score"] = [constraint[val][0] - structure_dvh.max]
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
                 )
@@ -370,7 +375,7 @@ def calculate_average_OAR_score(structure_df):
     return structure_df
 
 
-def calculate_total_score(constraints_df):
+def calculate_total_score(constraints_df, institutional_history):
     total_score = pd.DataFrame()
     total_score["Structure"] = ["Total Patient"]
     total_score["Structure_Key"] = ["Total Patient"]
@@ -385,6 +390,41 @@ def calculate_total_score(constraints_df):
 
     constraints_df = pd.concat([constraints_df, total_score]).reset_index(drop=True)
     return constraints_df
+
+
+def add_constraint_results_to_database(constraints_df, institutional_history):
+    if (
+        constraints_df["site_id"].unique()[0]
+        not in institutional_history["site_id"].values
+    ):
+        institutional_history = pd.concat(
+            [institutional_history, constraints_df]
+        ).reset_index(drop=True)
+        institutional_history.to_json(
+            "C:/users/rembishj/patient_archive", orient="index"
+        )
+
+    return
+
+
+def compare_to_historical_scores(constraints_df, institutional_history):
+    df = constraints_df.copy()
+    df["Institutional Average"] = "-"
+    for index in df.index:
+        row_key = df["Structure_Key"][index]
+        row_type = df["Type"][index]
+        row_dose = df["Dose [Gy]"][index]
+        row_volume = df["Volume [%]"][index]
+        df["Institutional Average"][index] = float(
+            institutional_history[
+                (institutional_history["Structure_Key"] == row_key)
+                & (institutional_history["Type"] == row_type)
+                & (institutional_history["Dose [Gy]"] == row_dose)
+                & (institutional_history["Volume [%]"] == row_volume)
+            ]["Score"].mean()
+        )
+
+    return df
 
 
 def main():
@@ -455,6 +495,9 @@ def main():
                 dvh_calcs = calc_dvh(files["rs"], files["rd"])
                 plot_dvh(dvh_calcs)
 
+                institutional_history = pd.read_json(
+                    "C:/users/rembishj/patient_archive"
+                ).transpose()
                 rois = dvh_calcs.keys()
                 constraints_df = pd.DataFrame()
                 ALIASES = get_structure_aliases()
@@ -468,32 +511,37 @@ def main():
                                 [constraints_df, structure_df]
                             ).reset_index(drop=True)
 
-                constraints_df = calculate_total_score(constraints_df)
-                constraints_df["mrn"] = int(mrn)
-                constraints_df["site_id"] = int(mosaiq_table.iloc[0]["site_ID"])
-                constraints_df.to_json("test_json")
-                constraints_df = constraints_df.style.apply(
-                    constraint_check_colour_results, axis=1
-                )
+                if constraints_df.empty is False:
+                    constraints_df = calculate_total_score(
+                        constraints_df, institutional_history
+                    )
+                    constraints_df["mrn"] = int(mrn)
+                    constraints_df["site_id"] = int(mosaiq_table.iloc[0]["site_ID"])
+                    display_df = compare_to_historical_scores(
+                        constraints_df, institutional_history
+                    )
+                    display_df[display_df["Type"] == "Total Score"].iloc[0][
+                        "Institutional Average"
+                    ] = [
+                        display_df[display_df["Type"] == "Average Score"][
+                            "Institutional Average"
+                        ].sum()
+                    ]
 
-                # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
-                st.subheader("Constraint Check")
-                st.dataframe(constraints_df.set_precision(2), height=1000)
+                    display_df = display_df.style.apply(
+                        constraint_check_colour_results, axis=1
+                    )
+
+                    # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
+                    st.subheader("Constraint Check")
+                    st.dataframe(display_df.set_precision(2), height=1000)
 
                 define_alias = st.checkbox("Define a new structure alias")
                 if define_alias:
                     add_new_structure_alias(dvh_calcs, ALIASES)
 
-            dvh_lookup = st.checkbox("DVH Lookup Table")
-            if dvh_lookup:
-                default = [
-                    "< Select an ROI >",
-                ]
-                roi_list = list(dvh_calcs.keys())
-                roi_list = default + roi_list
-                roi_select = st.selectbox("Select an ROI: ", roi_list)
-
-                if roi_select != "< Select an ROI >":
-                    selected_structure = dvh_calcs[roi_select]
-                    volume = st.number_input("Input relative volume: ")
-                    st.write(selected_structure.dose_constraint(volume))
+                add_to_database = st.checkbox("Add patient to Database")
+                if add_to_database:
+                    add_constraint_results_to_database(
+                        constraints_df, institutional_history
+                    )
