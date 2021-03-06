@@ -75,7 +75,7 @@ name = "nbcc"
     icom = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom'
 
     [site.monaco]
-    focaldata = '\\tunnel-nbcc-monaco\FOCALDATA'
+    focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
 
     [site.mosaiq]
