@@ -221,39 +221,39 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
     structure_df = pd.DataFrame()
     for constraint_type, constraint in structure_constraints.items():
         if constraint_type == "Mean" and constraint != " ":
-            for val in range(0, len(constraint)):
+            for val in constraint:
                 added_constraint = pd.DataFrame()
                 added_constraint["Structure"] = [roi]
                 added_constraint["Structure_Key"] = [structure]
                 added_constraint["Type"] = ["Mean"]
-                added_constraint["Dose [Gy]"] = [constraint[val][0]]
+                added_constraint["Dose [Gy]"] = [val[0]]
                 added_constraint["Volume [%]"] = ["-"]
                 added_constraint["Actual Dose [Gy]"] = structure_dvh.mean
                 added_constraint["Actual Volume [%]"] = ["-"]
-                added_constraint["Score"] = [constraint[val][0] - structure_dvh.mean]
+                added_constraint["Score"] = [val[0] - structure_dvh.mean]
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
                 )
 
         elif constraint_type == "Max" and constraint != " ":
-            for val in range(0, len(constraint)):
+            for val in constraint:
                 added_constraint = pd.DataFrame()
                 added_constraint["Structure"] = [roi]
                 added_constraint["Structure_Key"] = [structure]
                 added_constraint["Type"] = ["Max"]
-                added_constraint["Dose [Gy]"] = [constraint[val][0]]
+                added_constraint["Dose [Gy]"] = [val[0]]
                 added_constraint["Volume [%]"] = ["-"]
                 added_constraint["Actual Dose [Gy]"] = structure_dvh.max
                 added_constraint["Actual Volume [%]"] = ["-"]
-                added_constraint["Score"] = [constraint[val][0] - structure_dvh.max]
+                added_constraint["Score"] = [val[0] - structure_dvh.max]
                 structure_df = pd.concat([structure_df, added_constraint]).reset_index(
                     drop=True
                 )
 
         elif constraint_type == "V%" and constraint != " ":
-            for val in range(0, len(constraint)):
-                dose_constraint = [constraint[val][0]]
-                volume_constraint = [constraint[val][1] * 100]
+            for val in constraint:
+                dose_constraint = [val[0]]
+                volume_constraint = [val[1] * 100]
                 actual_dose = structure_dvh.dose_constraint(volume_constraint).value
                 actual_volume = (
                     structure_dvh.volume_constraint(dose_constraint, "Gy").value
@@ -275,9 +275,9 @@ def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
                 )
 
         elif constraint_type == "D%" and constraint != " ":
-            for val in range(0, len(constraint)):
-                dose_constraint = [constraint[val][0]]
-                volume_constraint = [constraint[val][1]]
+            for val in constraint:
+                dose_constraint = [val[0]]
+                volume_constraint = [val[1]]
                 actual_dose = structure_dvh.dose_constraint(
                     volume_constraint, "cm3"
                 ).value
