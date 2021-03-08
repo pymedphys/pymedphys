@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
@@ -28,6 +29,7 @@ from pymedphys._experimental.chartchecks.compare import (
 from pymedphys._experimental.chartchecks.dose_constraints import CONSTRAINTS
 from pymedphys._experimental.chartchecks.dvh_helpers import calc_dvh, plot_dvh
 from pymedphys._experimental.chartchecks.helpers import (
+    get_alias,
     get_all_dicom_treatment_info,
     get_all_treatment_data,
     get_staff_initials,
@@ -211,9 +213,7 @@ def show_comparison_of_selected_fields(dicom_field_selection, results):
 
 
 def get_structure_aliases():
-    cwd = os.getcwd().replace("\\", "/")
-    file_path = cwd + "/lib/pymedphys/_experimental/chartchecks/ALIASES.csv"
-    alias_df = pd.read_csv(file_path)
+    alias_df = get_alias()
     for i in range(len(alias_df.keys())):
         df_list = alias_df.iloc[0][i][1:-1].split((","))
         formatted_df_list = []

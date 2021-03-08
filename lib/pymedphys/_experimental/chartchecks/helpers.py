@@ -17,6 +17,7 @@
 """
 
 import collections
+import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
@@ -416,3 +417,8 @@ def get_all_treatment_history_data(connection, mrn):
     treatment_history = treatment_history.reset_index(drop=True)
 
     return treatment_history
+
+
+def get_alias():
+    file_path = pathlib.Path(__file__).parent.joinpath("ALIASES.csv")
+    return pd.read_csv(file_path)
