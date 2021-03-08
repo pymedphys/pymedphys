@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
@@ -372,6 +370,32 @@ def compare_to_historical_scores(constraints_df, institutional_history):
     return df
 
 
+def show_dicom(dicom_table):
+    show_table = st.checkbox("View complete DICOM table.")
+    if show_table:
+        st.subheader("DICOM Table")
+        st.dataframe(dicom_table, height=1000)
+
+
+def show_mosaiq(mosaiq_table):
+    show_table = st.checkbox("View complete Mosaiq table.")
+    if show_table:
+        st.subheader("Mosaiq Table")
+        st.dataframe(mosaiq_table, height=1000)
+
+
+def add_alias(dvh_calcs, ALIASES):
+    define_alias = st.checkbox("Define a new structure alias")
+    if define_alias:
+        add_new_structure_alias(dvh_calcs, ALIASES)
+
+
+def add_to_database(constraints_df, institutional_history):
+    add_to = st.checkbox("Add patient to Database")
+    if add_to:
+        add_constraint_results_to_database(constraints_df, institutional_history)
+
+
 def main():
     server = "PRDMOSAIQIWVV01.utmsa.local"
     connection = get_cached_mosaiq_connection(server)
@@ -382,8 +406,10 @@ def main():
     To use this application, you must have the RP file of the plan you want to check. This can be exported in Pinnacle.
     You will get an error if you select a QA RP file.
 
-    When exporting the DICOM, only the RP is needed. Once you have that, you can select it where prompted and the application
+    When exporting the DICOM, only the RP is needed for the data transfer check. Once you have that, you can select it where prompted and the application
     will run.
+
+    To evaluate the DVH, you will need to import the RD and RS files as well.
     """
     )
 
@@ -421,17 +447,8 @@ def main():
             show_comparison_of_selected_fields(dicom_field_selection, results)
             show_fx_pattern_and_comments(mosaiq_table, field_selection)
 
-        # Create a checkbox to allow users to view all DICOM plan information
-        show_dicom = st.checkbox("View complete DICOM table.")
-        if show_dicom:
-            st.subheader("DICOM Table")
-            st.dataframe(dicom_table, height=1000)
-
-        # Create a checkbox to allow users to view all MOSAIQ information
-        show_mosaiq = st.checkbox("View complete Mosaiq table.")
-        if show_mosaiq:
-            st.subheader("Mosaiq Table")
-            st.dataframe(mosaiq_table, height=1000)
+        show_dicom(dicom_table)
+        show_mosaiq(mosaiq_table)
 
         if "rs" in files and "rd" in files:
 
@@ -479,12 +496,5 @@ def main():
                     st.subheader("Constraint Check")
                     st.dataframe(display_df.set_precision(2), height=1000)
 
-                define_alias = st.checkbox("Define a new structure alias")
-                if define_alias:
-                    add_new_structure_alias(dvh_calcs, ALIASES)
-
-                add_to_database = st.checkbox("Add patient to Database")
-                if add_to_database:
-                    add_constraint_results_to_database(
-                        constraints_df, institutional_history
-                    )
+                add_alias(dvh_calcs, ALIASES)
+                add_to_database(constraints_df, institutional_history)

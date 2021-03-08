@@ -34,8 +34,21 @@ CATEGORY = categories.PRE_ALPHA
 TITLE = "Weekly Chart Review"
 
 
+def select_patient(weekly_check_results):
+    default = pd.DataFrame(["< Select a patient >"])
+    patient_list = (
+        weekly_check_results["patient_id"]
+        + ", "
+        + weekly_check_results["first_name"]
+        + " "
+        + weekly_check_results["last_name"]
+    )
+    patient_list = pd.concat([default, patient_list]).reset_index(drop=True)
+    patient_select = st.selectbox("Select a patient: ", patient_list[0])
+    return patient_select
+
+
 def main():
-    # currdir = os.getcwd()
 
     incomplete_qcls = show_incomplete_weekly_checks()
     incomplete_qcls = incomplete_qcls.copy()
@@ -50,22 +63,13 @@ def main():
         weekly_check_colour_results, axis=1
     )
     st.table(weekly_check_results_stylized)
-    default = pd.DataFrame(["< Select a patient >"])
-    patient_list = (
-        weekly_check_results["patient_id"]
-        + ", "
-        + weekly_check_results["first_name"]
-        + " "
-        + weekly_check_results["last_name"]
-    )
-    patient_list = pd.concat([default, patient_list]).reset_index(drop=True)
-    patient_select = st.selectbox("Select a patient: ", patient_list[0])
+
+    patient_select = select_patient(weekly_check_results)
 
     if patient_select != "< Select a patient >":
         mrn = patient_select.split(",")[0]
         # planned, delivered, patient_results = compare_single_incomplete(mrn)
         todays_date = pd.Timestamp("today").floor("D")
-        st.write(todays_date)
         week_ago = todays_date + pd.offsets.Day(-7)
         delivered = all_delivered[all_delivered["mrn"] == mrn]
         # delivered_this_week = delivered
