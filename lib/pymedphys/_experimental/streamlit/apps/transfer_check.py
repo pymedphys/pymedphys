@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
@@ -29,13 +28,12 @@ from pymedphys._experimental.chartchecks.compare import (
 from pymedphys._experimental.chartchecks.dose_constraints import CONSTRAINTS
 from pymedphys._experimental.chartchecks.dvh_helpers import calc_dvh, plot_dvh
 from pymedphys._experimental.chartchecks.helpers import (
-    get_alias,
+    add_new_structure_alias,
     get_all_dicom_treatment_info,
     get_all_treatment_data,
     get_staff_initials,
+    get_structure_aliases,
 )
-
-# from pymedphys._experimental.chartchecks import ALIASES.csv
 from pymedphys._experimental.chartchecks.tolerance_constants import SITE_CONSTANTS
 
 CATEGORY = categories.PRE_ALPHA
@@ -210,41 +208,6 @@ def show_comparison_of_selected_fields(dicom_field_selection, results):
 
     display_results = display_results.style.apply(colour_results, axis=1)
     st.dataframe(display_results.set_precision(2), height=1000)
-
-
-def get_structure_aliases():
-    alias_df = get_alias()
-    for i in range(len(alias_df.keys())):
-        df_list = alias_df.iloc[0][i][1:-1].split((","))
-        formatted_df_list = []
-        for item in df_list:
-            formatted_df_list.append(item.replace("'", "").strip(" "))
-        alias_df.iloc[0][i] = formatted_df_list
-
-    return alias_df
-
-
-def add_new_structure_alias(dvh_calcs, alias_df):
-    cwd = os.getcwd().replace("\\", "/")
-    file_path = cwd + "/lib/pymedphys/_experimental/chartchecks/ALIASES.csv"
-
-    # for i in range(len(alias_df.keys())):
-    #     df_list = alias_df.iloc[0][i][1:-1].replace("'", "").strip(" ").split((","))
-    #     alias_df.iloc[0][i] = df_list
-
-    default = [
-        "< Select an ROI >",
-    ]
-    alias_list = list(dvh_calcs.keys())
-    alias_list = default + alias_list
-    alias_select = st.selectbox("Select a structure to define: ", alias_list)
-    key_list = list(list(alias_df))
-    key_list = default + key_list
-    key_select = st.selectbox("Select an assignment: ", key_list)
-
-    if alias_select != "< Select an ROI >" and key_select != "< Select an ROI >":
-        alias_df[key_select].iloc[0].append(alias_select.lower())
-        alias_df.to_csv(file_path, index=False)
 
 
 def select_plan_targets(roi):

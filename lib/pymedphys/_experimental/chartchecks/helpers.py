@@ -21,6 +21,7 @@ import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
+from pymedphys._imports import streamlit as st
 
 import pymedphys._mosaiq.api as pp_mosaiq
 
@@ -419,6 +420,24 @@ def get_all_treatment_history_data(connection, mrn):
     return treatment_history
 
 
-def get_alias():
-    file_path = pathlib.Path(__file__).parent.joinpath("ALIASES.csv")
-    return pd.read_csv(file_path)
+def get_structure_aliases():
+    file_path = pathlib.Path(__file__).parent.joinpath("ALIASES.json")
+    return pd.read_json(file_path)
+
+
+def add_new_structure_alias(dvh_calcs, alias_df):
+    file_path = pathlib.Path(__file__).parent.joinpath("ALIASES.json")
+
+    default = [
+        "< Select an ROI >",
+    ]
+    alias_list = list(dvh_calcs.keys())
+    alias_list = default + alias_list
+    alias_select = st.selectbox("Select a structure to define: ", alias_list)
+    key_list = list(list(alias_df))
+    key_list = default + key_list
+    key_select = st.selectbox("Select an assignment: ", key_list)
+
+    if alias_select != "< Select an ROI >" and key_select != "< Select an ROI >":
+        alias_df[key_select].iloc[0].append(alias_select.lower())
+        alias_df.to_json(file_path)
