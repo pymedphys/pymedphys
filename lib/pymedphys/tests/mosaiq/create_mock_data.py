@@ -1,7 +1,6 @@
 # create mock patients
 import re
 from datetime import datetime, timedelta
-from json import dumps, loads
 from struct import pack
 
 from pymedphys._imports import numpy as np
@@ -136,9 +135,6 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
         the patient + ident dataframe returned by create_mock_patients
         None to call create_mock_patients first
 
-    rng: np.random.Generator()
-        random number generator to be used for the mock data
-
     Returns
     -------
     DataFrame
@@ -156,28 +152,13 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
     site_df["SIT_SET_ID"] = site_df.index
 
     # choose the number of fractions
-    site_df["Fractions"] = rng.choice(NUMBER_OF_FRACTIONS, size=len(site_df))
+    site_df["Fractions"] = 10
 
     # the site notes contain the choice of protocol
-    protocol = rng.choice(list(PROB_OFFSET_BY_PROTOCOL.keys()), size=len(site_df))
-
-    tau = 2.0  # tau is precision of gaussian
-    mu = np.random.normal(MU_0_PRIOR, 1.0 / (K0_PRIOR * tau), size=(len(site_df), 3))
-
-    site_df["Notes"] = list(
-        map(
-            lambda tpl: dumps(
-                {"protocol": tpl[0], "sys_offset": tpl[1].tolist(), "precision": tau}
-            ),
-            zip(protocol, mu),
-        )
-    )
-    print(site_df["Notes"])
+    site_df["Notes"] = "nal"
 
     # the treatment technique is chosen from the list of keys
-    site_df["Technique"] = rng.choice(
-        list(FIELD_COUNT_BY_TECHNIQUE_NAME.keys()), size=len(site_df)
-    )
+    site_df["Technique"] = "3-fld"
 
     # now use SQLAlchemy to populate the two tables
     dataframe_to_sql(site_df, "Site", index_label="SIT_ID")
@@ -317,10 +298,10 @@ def create_mock_treatment_sessions(
 
     Parameters
     ----------
-    site_df : [type], optional
-        [description], by default None
-    txfield_df : [type], optional
-        [description], by default None
+    site_df : Pandas.DataFrame, optional
+        the dataframe containing the Sites to be populated, by default None
+    txfield_df : Pandas.DataFrame, optional
+        the dataframe with the tx fields for the treatment sessions, by default None
     """
 
     if site_df is None:
@@ -338,21 +319,16 @@ def create_mock_treatment_sessions(
         pat_id1 = site_rec["Pat_ID1"]
         sit_set_id = site_rec["SIT_SET_ID"]
         fractions = site_rec["Fractions"]
-
-        protocol_details = loads(site_rec["Notes"])
-
-        # now extract the groups
-        protocol = protocol_details["protocol"]
-        mu = np.array(protocol_details["sys_offset"])
-        tau = protocol_details["precision"]
-
-        fld_count = FIELD_COUNT_BY_TECHNIQUE_NAME[site_rec["Technique"]]
-        fld_ids = rng.integers(1000, 4000, size=fld_count)
+        protocol = re.match("([a-z]*)", site_rec["Notes"]).groups()[0]
 
         # pick a date for beginning the treatment, as a workday number in the year
-        session_workday = rng.integers(0, 200)
-        # pick the appointment time between 8AM and 5pm
-        appointment_time = timedelta(hours=int(rng.integers(8, 17)))
+        session_workday = 51
+
+        # pick the appointment time at 10am
+        appointment_time = timedelta(hours=10)
+        created_localization_yet = False
+        systematic_offset = np.array([0.0, 0.0, 0.0])
+        offset_count = 0
         for n in range(fractions):
             # determine the session date for the current workday
             session_date_str = f"2021-W{session_workday//5+1}-{session_workday%5+1}"
@@ -362,32 +338,49 @@ def create_mock_treatment_sessions(
             session_time = session_date + appointment_time
 
             # choose whether to generate an offset record
-            if rng.integers(0, 100) < PROB_OFFSET_BY_PROTOCOL[protocol](n):
-                session_time += timedelta(minutes=int(rng.integers(2, 5)))
-
-                # create a session offset from the systematic offset
-                offset = rng.normal(mu, 1.0 / tau)
-
-                # sample from mu / gamma
-                offset_recs.append(
-                    (
-                        sit_set_id,
-                        session_time,
-                        1,  # Offset_State: 1=Active, 2=Complete
-                        3,  # Offset_Type: 3=Portal, 4=ThirdParty
-                        round(offset[0], 1),  # Superior_Offset
-                        round(offset[1], 1),  # Anterior_Offset
-                        round(offset[2], 1),  # Lateral_Offset
-                    )
+            session_time += timedelta(minutes=2)
+            offset_recs.append(
+                (
+                    sit_set_id,
+                    session_time,
+                    1,  # Offset_State: 1=Active, 2=Complete
+                    3,  # Offset_Type: 2=Localization, 3=Portal, 4=ThirdParty
+                    -1.0,  # Superior_Offset
+                    0.0,  # Anterior_Offset
+                    1.0,  # Lateral_Offset
                 )
+            )
+            systematic_offset[0] += -1.0
+            systematic_offset[1] += 0.0
+            systematic_offset[2] += 1.0
+            offset_count += 1
 
             # generate dose_hst by field count
-            for fld_id in fld_ids:
-                session_time += timedelta(minutes=int(rng.integers(3, 6)))
-                dose_hst_recs.append((pat_id1, sit_id, fld_id, session_time))
+            for fld_id, txfield_rec in txfield_df.iterrows():
+                if txfield_rec["SIT_SET_ID"] == sit_set_id:
+                    session_time += timedelta(minutes=1)
+                    dose_hst_recs.append((pat_id1, sit_id, fld_id, session_time))
 
-            # occasionally skip a workday
-            session_workday += 1 if rng.integers(0, 5) else 2
+            # choose whether to create a localization offset
+            if protocol == "nal" and not created_localization_yet:
+                if n > 4:
+                    review_time = session_time + timedelta(hours=1)
+                    offset_recs.append(
+                        (
+                            sit_set_id,
+                            review_time,
+                            1,  # Offset_State: 1=Active, 2=Complete
+                            2,  # Offset_Type: 2=Localization, 3=Portal, 4=ThirdParty
+                            systematic_offset[0] / offset_count,  # Superior_Offset
+                            systematic_offset[1] / offset_count,  # Anterior_Offset
+                            systematic_offset[2] / offset_count,  # Lateral_Offset
+                        )
+                    )
+
+                    # now flag so we don't create another one
+                    created_localization_yet = True
+
+            session_workday += 1
 
     # now populate tables
     dose_hst_df = pd.DataFrame(
