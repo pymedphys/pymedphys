@@ -149,7 +149,7 @@ def sessions_for_site(
 
 def session_offsets_for_site(
     connection: Connection, sit_set_id: int, interval=timedelta(hours=1)
-) -> Iterator[Tuple[int, Optional[np.ndarray]]]:
+) -> Iterator[Tuple[int, Optional["np.ndarray"]]]:
     """extract the session offsets (one offset per session ) for the given site
 
     Parameters
