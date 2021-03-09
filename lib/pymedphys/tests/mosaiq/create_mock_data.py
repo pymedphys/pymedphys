@@ -122,7 +122,7 @@ def create_mock_patients():
     return patient_ident_df
 
 
-def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng()):
+def create_mock_treatment_sites(patient_ident_df=None):
     """create mock treatment sites for the patient dataframe passed in
         or call create_mock_patients if None is passed
 
@@ -131,9 +131,6 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
     patient_ident_df : DataFrame, optional
         the patient + ident dataframe returned by create_mock_patients
         None to call create_mock_patients first
-
-    rng: np.random.Generator()
-        random number generator to be used for the mock data
 
     Returns
     -------
@@ -152,17 +149,13 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
     site_df["SIT_SET_ID"] = site_df.index
 
     # choose the number of fractions
-    site_df["Fractions"] = rng.choice(NUMBER_OF_FRACTIONS, size=len(site_df))
+    site_df["Fractions"] = 10
 
     # the site notes contain the choice of protocol
-    site_df["Notes"] = rng.choice(
-        list(PROB_OFFSET_BY_PROTOCOL.keys()), size=len(site_df)
-    )
+    site_df["Notes"] = "nal"
 
     # the treatment technique is chosen from the list of keys
-    site_df["Technique"] = rng.choice(
-        list(FIELD_COUNT_BY_TECHNIQUE_NAME.keys()), size=len(site_df)
-    )
+    site_df["Technique"] = "3-fld"
 
     # now use SQLAlchemy to populate the two tables
     dataframe_to_sql(site_df, "Site", index_label="SIT_ID")
@@ -170,7 +163,7 @@ def create_mock_treatment_sites(patient_ident_df=None, rng=np.random.default_rng
     return site_df
 
 
-def create_mock_treatment_fields(site_df=None, rng=np.random.default_rng()):
+def create_mock_treatment_fields(site_df=None):
     """create mock treatment sites for the site dataframe passed in
     or call create_mock_treatment_sites if None is passed
 
@@ -187,7 +180,7 @@ def create_mock_treatment_fields(site_df=None, rng=np.random.default_rng()):
     """
 
     if site_df is None:
-        site_df = create_mock_treatment_sites(rng)
+        site_df = create_mock_treatment_sites()
 
     # populate a list of tx_fields, 3 for each site
     tx_fields = []
@@ -339,25 +332,23 @@ def create_mock_treatment_fields(site_df=None, rng=np.random.default_rng()):
     return txfield_df
 
 
-def create_mock_treatment_sessions(
-    site_df=None, txfield_df=None, rng=np.random.default_rng()
-):
+def create_mock_treatment_sessions(site_df=None, txfield_df=None):
     """for a given site and set of tx fields, generate treatment session data
     (Dose_Hst and Offset) for randomly chosen treatment interval
 
     Parameters
     ----------
-    site_df : [type], optional
-        [description], by default None
-    txfield_df : [type], optional
-        [description], by default None
+    site_df : Pandas.DataFrame, optional
+        the dataframe containing the Sites to be populated, by default None
+    txfield_df : Pandas.DataFrame, optional
+        the dataframe with the tx fields for the treatment sessions, by default None
     """
 
     if site_df is None:
-        site_df = create_mock_treatment_sites(rng)
+        site_df = create_mock_treatment_sites()
 
     if txfield_df is None:
-        txfield_df = create_mock_treatment_fields(site_df, rng)
+        txfield_df = create_mock_treatment_fields(site_df)
 
     # lists to store the offsets and dose_hst records
     offset_recs, dose_hst_recs = [], []
@@ -369,14 +360,14 @@ def create_mock_treatment_sessions(
         sit_set_id = site_rec["SIT_SET_ID"]
         fractions = site_rec["Fractions"]
         protocol = re.match("([a-z]*)", site_rec["Notes"]).groups()[0]
-        fld_count = FIELD_COUNT_BY_TECHNIQUE_NAME[site_rec["Technique"]]
-        fld_ids = rng.integers(1000, 4000, size=fld_count)
 
         # pick a date for beginning the treatment, as a workday number in the year
-        session_workday = rng.integers(0, 200)
-        # pick the appointment time between 8AM and 5pm
-        appointment_time = timedelta(hours=int(rng.integers(8, 17)))
+        session_workday = 51
+
+        # pick the appointment time at 10am
+        appointment_time = timedelta(hours=10)
         created_localization_yet = False
+        systematic_offset = np.array([0.0, 0.0, 0.0])
         for n in range(fractions):
             # determine the session date for the current workday
             session_date_str = f"2021-W{session_workday//5+1}-{session_workday%5+1}"
@@ -386,48 +377,48 @@ def create_mock_treatment_sessions(
             session_time = session_date + appointment_time
 
             # choose whether to generate an offset record
-            if rng.integers(0, 100) < PROB_OFFSET_BY_PROTOCOL[protocol](n):
-                session_time += timedelta(minutes=int(rng.integers(2, 5)))
-                offset_recs.append(
-                    (
-                        sit_set_id,
-                        session_time,
-                        1,  # Offset_State: 1=Active, 2=Complete
-                        3,  # Offset_Type: 2=Localization, 3=Portal, 4=ThirdParty
-                        rng.integers(-50, 50) / 10,  # Superior_Offset
-                        rng.integers(-50, 50) / 10,  # Anterior_Offset
-                        rng.integers(-50, 50) / 10,  # Lateral_Offset
-                    )
+            session_time += timedelta(minutes=2)
+            offset_recs.append(
+                (
+                    sit_set_id,
+                    session_time,
+                    1,  # Offset_State: 1=Active, 2=Complete
+                    3,  # Offset_Type: 2=Localization, 3=Portal, 4=ThirdParty
+                    -1.0,  # Superior_Offset
+                    0.0,  # Anterior_Offset
+                    1.0,  # Lateral_Offset
                 )
+            )
+            systematic_offset[0] += -1.0
+            systematic_offset[1] += 0.0
+            systematic_offset[2] += 1.0
 
             # generate dose_hst by field count
-            for fld_id in fld_ids:
-                session_time += timedelta(minutes=int(rng.integers(3, 6)))
-                dose_hst_recs.append((pat_id1, sit_id, fld_id, session_time))
+            for fld_id, txfield_rec in txfield_df.iterrows():
+                if txfield_rec["SIT_SET_ID"] == sit_set_id:
+                    session_time += timedelta(minutes=1)
+                    dose_hst_recs.append((pat_id1, sit_id, fld_id, session_time))
 
             # choose whether to create a localization offset
             if protocol == "nal" and not created_localization_yet:
-                if n > 4 and rng.integers(0, 100) < 50:
-                    review_time = session_time + timedelta(
-                        hours=int(rng.integers(2, 5))
-                    )
+                if n > 4:
+                    review_time = session_time + timedelta(hours=1)
                     offset_recs.append(
                         (
                             sit_set_id,
                             review_time,
                             1,  # Offset_State: 1=Active, 2=Complete
                             2,  # Offset_Type: 2=Localization, 3=Portal, 4=ThirdParty
-                            rng.integers(-50, 50) / 10,  # Superior_Offset
-                            rng.integers(-50, 50) / 10,  # Anterior_Offset
-                            rng.integers(-50, 50) / 10,  # Lateral_Offset
+                            -systematic_offset[0],  # Superior_Offset
+                            -systematic_offset[1],  # Anterior_Offset
+                            -systematic_offset[2],  # Lateral_Offset
                         )
                     )
 
                     # now flag so we don't create another one
                     created_localization_yet = True
 
-            # occasionally skip a workday
-            session_workday += 1 if rng.integers(0, 5) else 2
+            session_workday += 1
 
     # now populate tables
     dose_hst_df = pd.DataFrame(
