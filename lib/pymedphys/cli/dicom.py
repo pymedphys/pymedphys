@@ -241,6 +241,9 @@ def listen(dicom_subparsers):
     )
 
     parser.add_argument("port", type=int, help="The port on which to listen")
+    parser.add_argument(
+        "-b", "--bind", default="0.0.0.0", type=str, help="The IP address to bind to"
+    )
     parser.add_argument("-d", "--storage_directory", default=".", type=str, help="")
     parser.add_argument(
         "-a",

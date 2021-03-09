@@ -27,7 +27,7 @@
 # pylint: disable = pointless-statement, attribute-defined-outside-init
 # pylint: disable = redefined-builtin, redefined-outer-name, no-else-return
 # pylint: disable = import-outside-toplevel, redefined-argument-from-local
-# pylint: disable = consider-using-ternary
+# pylint: disable = consider-using-ternary, inconsistent-return-statements
 
 
 """

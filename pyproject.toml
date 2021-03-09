@@ -52,6 +52,7 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 data-science-types = { version = "*", optional = true }  # groups = ["user", "dev"]
+xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
@@ -190,6 +191,7 @@ dev = [
     "tomlkit",
     "tqdm",
     "watchdog",
+    "xarray",
     "xlsxwriter",
     "xmltodict",
 ]
@@ -247,6 +249,7 @@ user = [
     "tomlkit",
     "tqdm",
     "watchdog",
+    "xarray",
     "xlsxwriter",
     "xmltodict",
 ]
