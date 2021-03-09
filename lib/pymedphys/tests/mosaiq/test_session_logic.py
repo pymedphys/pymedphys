@@ -1,4 +1,3 @@
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.sessions import (
@@ -86,9 +85,6 @@ def test_session_offsets_for_site(
     do_check_create_test_db,
 ):  # pylint: disable = unused-argument
     """ creates basic tx field and site metadata for the mock patients """
-
-    # create a random number generator with a known seed
-    rng = np.random.default_rng(seed=94114)
 
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = create_mock_patients()

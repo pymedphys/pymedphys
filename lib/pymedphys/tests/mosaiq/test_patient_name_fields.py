@@ -1,4 +1,3 @@
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.delivery import delivery_data_sql
