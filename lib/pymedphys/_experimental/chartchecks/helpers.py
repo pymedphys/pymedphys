@@ -19,6 +19,7 @@
 import collections
 import pathlib
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
@@ -121,22 +122,23 @@ def get_all_dicom_treatment_info(dicomFile):
                 "gantry_angle": first_cp.GantryAngle,
                 "collimator_angle": first_cp.BeamLimitingDeviceAngle,
                 "field_type": field.BeamType,
-                "ssd [cm]": round(first_cp.SourceToSurfaceDistance / 10, 1),
-                "sad [cm]": round(field.SourceAxisDistance / 10, 1),
-                "iso_x [cm]": iso[0] / 10,
-                "iso_y [cm]": iso[1] / 10,
-                "iso_z [cm]": iso[2] / 10,
-                "field_x [cm]": round(colls["coll_x2"] - colls["coll_x1"], 1),
-                "coll_x1 [cm]": round(colls["coll_x1"], 1),
-                "coll_x2 [cm]": round(colls["coll_x2"], 1),
-                "field_y [cm]": round(colls["coll_y2"] - colls["coll_y1"], 1),
-                "coll_y1 [cm]": round(colls["coll_y1"], 1),
-                "coll_y2 [cm]": round(colls["coll_y2"], 1),
+                "ssd [cm]": np.round(first_cp.SourceToSurfaceDistance / 10, 1),
+                "sad [cm]": np.round(field.SourceAxisDistance / 10, 1),
+                "iso_x [cm]": np.round(iso[0] / 10, 2),
+                "iso_y [cm]": np.round(iso[1] / 10, 2),
+                "iso_z [cm]": np.round(iso[2] / 10, 2),
+                "field_x [cm]": np.round(colls["coll_x2"] - colls["coll_x1"], 1),
+                "coll_x1 [cm]": np.round(colls["coll_x1"], 1),
+                "coll_x2 [cm]": np.round(colls["coll_x2"], 1),
+                "field_y [cm]": np.round(colls["coll_y2"] - colls["coll_y1"], 1),
+                "coll_y1 [cm]": np.round(colls["coll_y1"], 1),
+                "coll_y2 [cm]": np.round(colls["coll_y2"], 1),
                 "couch_vrt [cm]": first_cp.TableTopVerticalPosition,
                 "couch_lat [cm]": first_cp.TableTopLateralPosition,
                 "couch_lng [cm]": first_cp.TableTopLongitudinalPosition,
                 "couch_angle": first_cp.PatientSupportAngle,
                 "technique": "",
+                "tolerance": "",
                 "control_points": field.NumberOfControlPoints,
             }
 
@@ -144,13 +146,6 @@ def get_all_dicom_treatment_info(dicomFile):
                 dicom_beam.update(
                     get_dicom_wedge_info(beam, dicom.BeamSequence[bn - 1])
                 )
-
-            try:
-                dicom_beam["tolerance"] = dicom.BeamSequence[
-                    bn - 1
-                ].ReferencedToleranceTableNumber
-            except (TypeError, ValueError, AttributeError):
-                dicom_beam["tolerance"] = 0
 
             if dicom_beam["machine"] in ["Vault 1-IMRT", "Dual-120"]:
 
@@ -162,10 +157,6 @@ def get_all_dicom_treatment_info(dicomFile):
                 dicom_beam["coll_y1 [cm]"] = dicom_beam["coll_y1 [cm]"] * (-1)
 
             table = table.append(dicom_beam, ignore_index=True, sort=False)
-
-    # table["tolerance"] = [
-    #     tolerance_constants.TOLERANCE_TYPES[item] for item in table["tolerance"]
-    # ]
 
     return table
 
@@ -281,8 +272,10 @@ def get_all_treatment_data(connection, mrn):
         TOLERANCE_TYPES[item] for item in mosaiq_fields["tolerance"]
     ]
 
-    # mosaiq_fields["fraction_dose [cGy]"] = mosaiq_fields["fraction_dose [cGy]"] / (mosaiq_fields['rx_depth']/100)
-    # mosaiq_fields["total_dose [cGy]"] = mosaiq_fields["total_dose [cGy]"] / (mosaiq_fields['rx_depth'] / 100)
+    # for row in mosaiq_fields.index:
+    #     if mosaiq_fields.loc[row, 'rx_depth'] != 0:
+    #         mosaiq_fields.loc[row, "fraction_dose [cGy]"] = round(mosaiq_fields.loc[row, "fraction_dose [cGy]"] / (mosaiq_fields.loc[row, 'rx_depth']/100), 2)
+    #         mosaiq_fields.loc[row, "total_dose [cGy]"] = round(mosaiq_fields.loc[row, "total_dose [cGy]"] / (mosaiq_fields.loc[row, 'rx_depth'] / 100), 2)
 
     # reformat some fields to create the 'rx' field
     rx = []

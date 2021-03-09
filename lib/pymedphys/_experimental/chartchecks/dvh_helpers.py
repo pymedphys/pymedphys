@@ -19,23 +19,40 @@ from pymedphys._imports import streamlit as st
 
 
 @st.cache(ttl=3600, suppress_st_warning=True)
-def calc_dvh(rs_file, rd_file):
-    ds_input: pydicom.FileDataset = pydicom.dcmread(rs_file, force=True)
-
-    dd_input: pydicom.FileDataset = pydicom.dcmread(rd_file, force=True)
-
+def calc_dvh(ds_input, dd_input):
     rs = dicomparser.DicomParser(ds_input)
 
     structures = rs.GetStructures()
     progress_bar = st.progress(0)
     dvh_dict = {}
+    dose = st.number_input("Input RX dose in Gy: ")
 
     for i in range(1, len(structures) + 1):
         calcdvh = dvhcalc.get_dvh(ds_input, dd_input, i)
+        calcdvh.rx_dose = dose
         dvh_dict[calcdvh.name] = calcdvh
         progress_bar.progress(i / len(structures))
 
     return dvh_dict
+
+
+def calc_reference_isodose_volume(dd_input, reference_dose):
+
+    points_at_reference = 0
+    for i in range(0, dd_input.NumberOfFrames):
+        points_at_reference += (
+            dd_input.pixel_array[i] * dd_input.DoseGridScaling > reference_dose
+        ).sum()
+
+    volume_per_voxel = (
+        dd_input.SliceThickness
+        * dd_input.PixelSpacing[0]
+        * dd_input.PixelSpacing[1]
+        / 1000
+    )
+    isodose_volume = points_at_reference * volume_per_voxel
+
+    return isodose_volume
 
 
 def plot_dvh(dvh_dict):

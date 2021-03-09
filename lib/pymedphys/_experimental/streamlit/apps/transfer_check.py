@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from pymedphys._imports import pandas as pd
+from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
@@ -24,7 +25,11 @@ from pymedphys._experimental.chartchecks.compare import (
     constraint_check_colour_results,
 )
 from pymedphys._experimental.chartchecks.dose_constraints import CONSTRAINTS
-from pymedphys._experimental.chartchecks.dvh_helpers import calc_dvh, plot_dvh
+from pymedphys._experimental.chartchecks.dvh_helpers import (
+    calc_dvh,
+    calc_reference_isodose_volume,
+    plot_dvh,
+)
 from pymedphys._experimental.chartchecks.helpers import (
     add_new_structure_alias,
     get_all_dicom_treatment_info,
@@ -208,11 +213,6 @@ def show_comparison_of_selected_fields(dicom_field_selection, results):
     st.dataframe(display_results.set_precision(2), height=1000)
 
 
-def select_plan_targets(roi):
-    targets = st.multiselect("Select targets for plan: ", roi)
-    return targets
-
-
 def compare_structure_with_constraints(roi, structure, dvh_calcs, constraints):
     structure_constraints = constraints[structure]
     structure_dvh = dvh_calcs[roi]
@@ -350,6 +350,23 @@ def add_constraint_results_to_database(constraints_df, institutional_history):
         )
 
 
+def calc_conformity_index(dd_input, dvh_calcs, target, rx_dose):
+
+    if rx_dose != 0:
+        iso_100 = calc_reference_isodose_volume(dd_input, rx_dose)
+        target_volume = dvh_calcs[target].volume
+        conformity_index = iso_100 / target_volume
+        return conformity_index
+
+
+def perform_target_evaluation(dd_input, dvh_calcs):
+    rois = list(dvh_calcs.keys())
+    target = st.selectbox("Select the target structure: ", rois)
+    rx_dose = st.number_input("Input Rx dose in Gy: ")
+    conformity_index = calc_conformity_index(dd_input, dvh_calcs, target, rx_dose)
+    return st.write(conformity_index)
+
+
 def compare_to_historical_scores(constraints_df, institutional_history):
     df = constraints_df.copy()
     df["Institutional Average"] = "-"
@@ -431,7 +448,6 @@ def main():
 
         verify_basic_patient_info(dicom_table, mosaiq_table, mrn)
         check_site_approval(mosaiq_table, connection)
-
         results = compare_to_mosaiq(dicom_table, mosaiq_table)
         results = results.transpose()
 
@@ -451,10 +467,17 @@ def main():
         show_mosaiq(mosaiq_table)
 
         if "rs" in files and "rd" in files:
+            dd_input: pydicom.FileDataset = pydicom.dcmread(files["rd"], force=True)
+            ds_input: pydicom.FileDataset = pydicom.dcmread(files["rs"], force=True)
+
+            iso_100 = calc_reference_isodose_volume(dd_input, 50)
+            iso_50 = calc_reference_isodose_volume(dd_input, 25)
+            st.write(iso_100)
+            st.write(iso_50)
 
             show_dvh = st.checkbox("Create DVH Plot")
             if show_dvh:
-                dvh_calcs = calc_dvh(files["rs"], files["rd"])
+                dvh_calcs = calc_dvh(ds_input, dd_input)
                 plot_dvh(dvh_calcs)
 
                 institutional_history = pd.read_json(
@@ -495,6 +518,8 @@ def main():
                     # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
                     st.subheader("Constraint Check")
                     st.dataframe(display_df.set_precision(2), height=1000)
+
+                perform_target_evaluation(dd_input, dvh_calcs)
 
                 add_alias(dvh_calcs, ALIASES)
                 add_to_database(constraints_df, institutional_history)
