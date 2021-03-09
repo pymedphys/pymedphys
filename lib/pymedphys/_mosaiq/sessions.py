@@ -219,7 +219,7 @@ def session_offsets_for_site(
 
 def mean_session_offset_for_site(
     connection: Connection, sit_set_id: int
-) -> Optional[np.ndarray]:
+) -> Optional["np.ndarray"]:
     """computes the mean session offset for the site
 
     Parameters
@@ -248,7 +248,7 @@ def mean_session_offset_for_site(
 
 def localization_offset_for_site(
     connection: Connection, sit_set_id: int
-) -> Optional[np.ndarray]:
+) -> Optional["np.ndarray"]:
     """get the localization offset for the given site
 
     Parameters
