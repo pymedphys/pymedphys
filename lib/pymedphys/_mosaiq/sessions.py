@@ -211,7 +211,7 @@ def session_offsets_for_site(
         if offsets:
             yield (
                 session_num,
-                np.array(offsets[0][1:3]),
+                np.array(offsets[0][1:4]),
             )
         else:
             yield (session_num, None)

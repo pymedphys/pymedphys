@@ -125,15 +125,19 @@ def test_session_offsets_for_site(
                 # check that the sessions are in order
                 assert session_number > previous_session_number
 
-            if np.any(session_offset):
-                assert np.max(np.abs(session_offset)) <= 10.0
-
-            mean_session_offset = mean_session_offset_for_site(connection, sit_set_id)
-            assert np.any(mean_session_offset)
-            assert np.max(np.abs(mean_session_offset)) <= 10.0
-
-            localization_offset = localization_offset_for_site(connection, sit_set_id)
-            assert np.any(localization_offset)
-            assert np.max(np.abs(localization_offset)) <= 10.0
+            if session_offset is not None:
+                assert session_offset[0] == -1.0
+                assert session_offset[1] == 0.0
+                assert session_offset[2] == 1.0
 
             previous_session_number = session_number
+
+        mean_session_offset = mean_session_offset_for_site(connection, sit_set_id)
+        assert mean_session_offset[0] == -1.0
+        assert mean_session_offset[1] == 0.0
+        assert mean_session_offset[2] == 1.0
+
+        localization_offset = localization_offset_for_site(connection, sit_set_id)
+        assert localization_offset[0] == -1.0
+        assert localization_offset[1] == 0.0
+        assert localization_offset[2] == 1.0

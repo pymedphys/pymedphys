@@ -368,6 +368,7 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
         appointment_time = timedelta(hours=10)
         created_localization_yet = False
         systematic_offset = np.array([0.0, 0.0, 0.0])
+        offset_count = 0
         for n in range(fractions):
             # determine the session date for the current workday
             session_date_str = f"2021-W{session_workday//5+1}-{session_workday%5+1}"
@@ -392,6 +393,7 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             systematic_offset[0] += -1.0
             systematic_offset[1] += 0.0
             systematic_offset[2] += 1.0
+            offset_count += 1
 
             # generate dose_hst by field count
             for fld_id, txfield_rec in txfield_df.iterrows():
@@ -409,9 +411,9 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
                             review_time,
                             1,  # Offset_State: 1=Active, 2=Complete
                             2,  # Offset_Type: 2=Localization, 3=Portal, 4=ThirdParty
-                            -systematic_offset[0],  # Superior_Offset
-                            -systematic_offset[1],  # Anterior_Offset
-                            -systematic_offset[2],  # Lateral_Offset
+                            systematic_offset[0] / offset_count,  # Superior_Offset
+                            systematic_offset[1] / offset_count,  # Anterior_Offset
+                            systematic_offset[2] / offset_count,  # Lateral_Offset
                         )
                     )
 
