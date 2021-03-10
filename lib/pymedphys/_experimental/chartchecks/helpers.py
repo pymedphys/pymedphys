@@ -367,6 +367,7 @@ def get_all_treatment_history_data(connection, mrn):
             ("secondary_meterset_units", "Dose_Hst.SecondaryMetersetUnit_Enum"),
             ("MU_conversion", "Dose_Hst.cGrayPerMeterset"),
             ("TP_correction", "Dose_Hst.TP_Correction_Factor"),
+            ("fx_pattern", "Site.Frac_Pattern"),
         ]
     )
 

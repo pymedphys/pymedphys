@@ -25,6 +25,7 @@ from pymedphys._experimental.chartchecks.compare import (
 )
 from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     compare_all_incompletes,
+    get_patient_image_info,
     plot_couch_deltas,
     plot_couch_positions,
     show_incomplete_weekly_checks,
@@ -95,6 +96,18 @@ def main():
             if delivered_this_week.loc[field, "site_setup_version"] != 0:
                 delivered_this_week.loc[field, "site_setup_change"] = 1
 
+        fx_pattern = (
+            delivered_this_week.groupby(["fx_pattern", "site"]).size().reset_index()
+        )
+        for i in range(0, len(fx_pattern)):
+            st.write(
+                "**",
+                fx_pattern.iloc[i]["site"],
+                "**",
+                ": ",
+                fx_pattern.iloc[i]["fx_pattern"],
+            )
+
         st.table(
             delivered_this_week[
                 [
@@ -112,7 +125,11 @@ def main():
             ].style.apply(specific_patient_weekly_check_colour_results, axis=1)
         )
 
-        # st.write(patient_results)
+        image_info_df = get_patient_image_info(mrn)
+        image_info_df = image_info_df[
+            image_info_df["image_date"] > week_ago
+        ].sort_values(["image_date"], ascending=False)
+        st.write(image_info_df)
 
         # Create a checkbox to allow users to view treatment couch position history
         show_couch_positions = st.checkbox("Plot couch position history.")

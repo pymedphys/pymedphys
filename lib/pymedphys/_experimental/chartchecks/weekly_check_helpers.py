@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 from datetime import date, timedelta
 
 from pymedphys._imports import pandas as pd
@@ -26,12 +27,14 @@ from pymedphys._experimental.chartchecks.helpers import (
     get_all_treatment_history_data,
 )
 
+from .tolerance_constants import IMAGE_APPROVAL
+
 
 def show_incomplete_weekly_checks():
     connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
     incomplete = get_incomplete_qcls(connection, "Physics Resident")
-    todays_date = date.today() + timedelta(days=3)
+    todays_date = date.today() + timedelta(days=2)
     todays_date = todays_date.strftime("%b %d, %Y")
     # todays_date = "Dec 4, 2020"
     incomplete = incomplete[
@@ -52,7 +55,7 @@ def compare_delivered_to_planned(patient):
     patient_results = pd.DataFrame()
     try:
         # current_fx = max(delivered_values["fx"])
-        todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=1, unit="D")
+        todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=0, unit="D")
         week_ago = todays_date + pd.offsets.Day(-7)
         delivered_this_week = delivered.copy()
         delivered_this_week = delivered_this_week[delivered["date"] > week_ago]
@@ -163,9 +166,46 @@ def plot_couch_deltas(delivered):
 
 def get_patient_image_info(patient):
     connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+    dataframe_column_to_sql_reference = collections.OrderedDict(
+        [
+            ("image_date", "Image.Study_DtTm"),
+            ("modified_date", "Image.Modified_DtTm"),
+            ("type", "Image.Short_Name"),
+            ("name", "Image.Image_Name"),
+            ("num_images", "Image.Num_Images"),
+            ("comments", "Image.Comments"),
+            ("review_status", "Image.Att_App"),
+            ("review_id", "Image.Att_Apper_ID"),
+            ("device", "Image.Imager_Name"),
+            ("machine", "Image.Machine_Name"),
+        ]
+    )
 
-    _pp_mosaiq.execute(
+    columns = list(dataframe_column_to_sql_reference.keys())
+    select_string = "SELECT " + ",\n\t\t    ".join(
+        dataframe_column_to_sql_reference.values()
+    )
+
+    sql_string = (
+        select_string
+        + """
+                    From Image, Ident
+                    WHERE
+                        Ident.IDA = %(mrn)s AND
+                        Ident.Pat_ID1 = Image.Pat_ID1
+            """,
+    )
+    # select_string = "SELECT Image.* FROM Image, Ident WHERE Ident.IDA = %(patient)s AND Image.Pat_ID1 = Ident.Pat_ID1"
+    image_info = _pp_mosaiq.execute(
         connection,
-        """SELECT Image.* FROM Image, Ident WHERE Image.Pat_ID1 = Ident.Pat_ID1 AND Ident.IDA = = %(mrn)s""",
+        sql_string[0],
         parameters={"mrn": patient},
     )
+
+    image_info_df = pd.DataFrame(data=image_info, columns=columns)
+
+    image_info_df["review_status"] = [
+        IMAGE_APPROVAL[item] for item in image_info_df["review_status"]
+    ]
+
+    return image_info_df
