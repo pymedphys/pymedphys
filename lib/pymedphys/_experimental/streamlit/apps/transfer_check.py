@@ -359,12 +359,52 @@ def calc_conformity_index(dd_input, dvh_calcs, target, rx_dose):
         return conformity_index
 
 
+def calc_homogeneity_index(dvh_calcs, target, rx_dose):
+    max_target_dose = dvh_calcs[target].max
+    homogeneity_index = max_target_dose / rx_dose
+    return homogeneity_index
+
+
+def calc_dose_homogeneity_index(dvh_calcs, target):
+    D_95 = dvh_calcs[target].dose_constraint(95).value
+    D_5 = dvh_calcs[target].dose_constraint(5).value
+    DHI = D_95 / D_5
+    return DHI
+
+
 def perform_target_evaluation(dd_input, dvh_calcs):
     rois = list(dvh_calcs.keys())
     target = st.selectbox("Select the target structure: ", rois)
     rx_dose = st.number_input("Input Rx dose in Gy: ")
+
+    min_dose = dvh_calcs[target].min
+    max_dose = dvh_calcs[target].max
+    mean_dose = dvh_calcs[target].mean
+    D_1 = dvh_calcs[target].dose_constraint(1).value
+    D_2 = dvh_calcs[target].dose_constraint(2).value
+    D_98 = dvh_calcs[target].dose_constraint(98).value
+    D_99 = dvh_calcs[target].dose_constraint(99).value
     conformity_index = calc_conformity_index(dd_input, dvh_calcs, target, rx_dose)
-    return st.write(conformity_index)
+    homogeneity_index = calc_homogeneity_index(dvh_calcs, target, rx_dose)
+    dhi = calc_dose_homogeneity_index(dvh_calcs, target)
+
+    data = {
+        "Min [Gy]": min_dose,
+        "Max [Gy]": max_dose,
+        "Mean [Gy]": mean_dose,
+        "D1 [Gy]": D_1,
+        "D2 [Gy]": D_2,
+        "D98 [Gy]": D_98,
+        "D99 [Gy]": D_99,
+        "CI": conformity_index,
+        "HI": homogeneity_index,
+        "DHI": dhi,
+    }
+
+    target_df = pd.DataFrame.from_dict(
+        data, orient="Index", columns=[target]
+    ).style.set_precision(2)
+    return st.write(target_df)
 
 
 def compare_to_historical_scores(constraints_df, institutional_history):
@@ -469,11 +509,6 @@ def main():
         if "rs" in files and "rd" in files:
             dd_input: pydicom.FileDataset = pydicom.dcmread(files["rd"], force=True)
             ds_input: pydicom.FileDataset = pydicom.dcmread(files["rs"], force=True)
-
-            iso_100 = calc_reference_isodose_volume(dd_input, 50)
-            iso_50 = calc_reference_isodose_volume(dd_input, 25)
-            st.write(iso_100)
-            st.write(iso_50)
 
             show_dvh = st.checkbox("Create DVH Plot")
             if show_dvh:

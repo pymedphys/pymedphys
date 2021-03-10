@@ -159,3 +159,13 @@ def plot_couch_deltas(delivered):
         xaxis=dict(tickmode="linear", tick0=0, dtick=1),
     )
     st.plotly_chart(deltas_fig, use_container_width=True)
+
+
+def get_patient_image_info(patient):
+    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+
+    _pp_mosaiq.execute(
+        connection,
+        """SELECT Image.* FROM Image, Ident WHERE Image.Pat_ID1 = Ident.Pat_ID1 AND Ident.IDA = = %(mrn)s""",
+        parameters={"mrn": patient},
+    )
