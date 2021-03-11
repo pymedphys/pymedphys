@@ -44,6 +44,9 @@ def show_incomplete_weekly_checks(connection):
         columns=["instructions", "task", "due", "comment"]
     )
     incomplete_weekly = incomplete_weekly.reset_index(drop=True)
+    if incomplete_weekly.empty:
+        st.write("No weekly chart checks due today.")
+        st.stop()
     return incomplete_weekly
 
 
@@ -113,9 +116,6 @@ def compare_all_incompletes(incomplete_qcls):
             overall_results = overall_results.append(patient_results)
 
         return all_planned, all_delivered, overall_results
-
-    else:
-        return None, None, "No weeklys due today, but thanks for trying."
 
 
 def plot_couch_positions(delivered):
