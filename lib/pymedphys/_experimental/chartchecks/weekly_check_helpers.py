@@ -30,21 +30,21 @@ from pymedphys._experimental.chartchecks.helpers import (
 from .tolerance_constants import IMAGE_APPROVAL
 
 
-def show_incomplete_weekly_checks():
-    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+def show_incomplete_weekly_checks(connection):
 
-    incomplete = get_incomplete_qcls(connection, "Physics Resident")
-    todays_date = date.today() + timedelta(days=2)
-    todays_date = todays_date.strftime("%b %d, %Y")
-    # todays_date = "Dec 4, 2020"
-    incomplete = incomplete[
-        (incomplete["task"] == "Weekly Chart Check")
-        & (incomplete["due"] == todays_date)
+    all_incomplete = get_incomplete_qcls(connection, "Physics Resident")
+    todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=1, unit="D")
+
+    incomplete_weekly = all_incomplete.copy()
+    incomplete_weekly = incomplete_weekly[
+        (incomplete_weekly["task"] == "Weekly Chart Check")
+        & (incomplete_weekly["due"] == todays_date)
     ]
-    incomplete = incomplete.drop(columns=["instructions", "task", "due", "comment"])
-    incomplete = incomplete.reset_index(drop=True)
-
-    return incomplete
+    incomplete_weekly = incomplete_weekly.drop(
+        columns=["instructions", "task", "due", "comment"]
+    )
+    incomplete_weekly = incomplete_weekly.reset_index(drop=True)
+    return incomplete_weekly
 
 
 def compare_delivered_to_planned(patient):
@@ -56,15 +56,17 @@ def compare_delivered_to_planned(patient):
     try:
         # current_fx = max(delivered_values["fx"])
         todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=0, unit="D")
-        week_ago = todays_date + pd.offsets.Day(-7)
+        week_ago = todays_date - pd.Timedelta(value=7, unit="D")
         delivered_this_week = delivered.copy()
-        delivered_this_week = delivered_this_week[delivered["date"] > week_ago]
+        delivered_this_week = delivered_this_week[
+            delivered_this_week["date"] > week_ago
+        ]
     except (TypeError, ValueError, AttributeError):
         print("fraction field empty")
     primary_checks = {
         "patient_id": patient,
-        "first_name": delivered_this_week["first_name"].values[0],
-        "last_name": delivered_this_week["last_name"].values[0],
+        "first_name": delivered["first_name"].values[0],
+        "last_name": delivered["last_name"].values[0],
         "was_overridden": "",
         "new_field": "",
         "rx_change": "",

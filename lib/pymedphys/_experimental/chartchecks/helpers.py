@@ -399,7 +399,6 @@ def get_all_treatment_history_data(connection, mrn):
     table = pp_mosaiq.execute(
         connection=connection, query=sql_string[0], parameters={"mrn": mrn}
     )
-
     treatment_history = pd.DataFrame(data=table, columns=columns)
     treatment_history = treatment_history.sort_values(by=["date"])
     treatment_history["total_dose_delivered"] = (

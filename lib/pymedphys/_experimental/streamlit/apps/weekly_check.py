@@ -18,6 +18,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities.mosaiq import get_cached_mosaiq_connection
 
 from pymedphys._experimental.chartchecks.compare import (
     specific_patient_weekly_check_colour_results,
@@ -50,9 +51,11 @@ def select_patient(weekly_check_results):
 
 
 def main():
+    server = "PRDMOSAIQIWVV01.utmsa.local"
+    connection = get_cached_mosaiq_connection(server)
 
-    incomplete_qcls = show_incomplete_weekly_checks()
-    incomplete_qcls = incomplete_qcls.copy()
+    incomplete = show_incomplete_weekly_checks(connection)
+    incomplete_qcls = incomplete.copy()
     incomplete_qcls = incomplete_qcls.drop_duplicates(subset=["patient_id"])
     # incomplete_qcls = incomplete_qcls.set_index("patient_id")
 
