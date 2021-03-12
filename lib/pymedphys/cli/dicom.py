@@ -240,7 +240,6 @@ def listen(dicom_subparsers):
 
     parser.add_argument("port", type=int, help="The port on which to listen")
     parser.add_argument(
-        "-h",
         "--host",
         default="0.0.0.0",
         type=str,
