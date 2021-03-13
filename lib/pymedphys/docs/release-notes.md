@@ -9,32 +9,43 @@ This project adheres to
 
 ## [0.36.0]
 
+### News around this release
+
+* We have a new team member, [Derek Lane](https://github.com/dg1an3) he has
+  undergone swathes of work around improving the long term maintenance of the
+  Mosaiq SQL code. Thank you Derek! 🎉 🎈 🥳.
+* [Matt Jennings](https://github.com/Matthew-Jennings) has rejoined the team,
+  picking up his previous hat of Maintainer, great to have you back Matt 😊.
+
 ### Breaking changes
 
 * The modules `pymedphys.electronfactors` and `pymedphys.wlutz` were removed
   from the public API.
   * There did not appear to be any usage of these modules outside of Cancer
     Care Associates.
-  * The electron factors module can be re-exposed on request.
+  * The electron factors module can be re-exposed upon request.
   * The Winston Lutz module is undergoing a significant re-work and will be
-    re-exposed once complete.
-* There have been a range of changes to the Mosaiq database connection and
-  execution API.
+    re-exposed in its new form once complete.
+* There have been a range of changes to the previously undocumented Mosaiq
+  database connection and execution API.
   * `pymedphys.mosaiq.connect` now returns a `connection` object instead of a
     `cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
-  * All instances where previously the argument name was `cursor` have
-    been changed to `connection`.
+  * All instances where previously the argument name within a function or
+    method was `cursor` have been changed to `connection`.
   * Previously a server and port could be provided to `pymedphys.mosaiq.connect`
     by passing it as a colon separated string, for example `"localhost:1234"`.
     This is no longer the case. Now, hostname and port need to be provided
-    separately. See either the docs <https://docs.pymedphys.com/lib/ref/mosaiq.html>
+    separately. There are also three extra arguments, `alias`, `username`, and
+    `password`. See either the docs <https://docs.pymedphys.com/lib/ref/mosaiq.html>
     or the docstring for more details <https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79>.
+  * **[Contributor facing only]** replaced `pymedphys dev tests --pylint` with
+    `pymedphys dev lint`.
 
 
 ### New features and enhancements
 
-* Added CLI argument for setting the hostname to `pymedphys dicom listen`.
-  **TODO** update this item after the API is adjusted. See <https://github.com/pymedphys/pymedphys/commit/1854ba1d3f6f6e6a6a6b02863f64c63eac8c5fde#r47727955>
+* Added CLI argument for setting the hostname on the DICOM listen server. For
+  example `pymedphys dicom listen --host 127.0.0.1`.
 * A range of application changes and improvements. The PyMedPhys app can be
   accessed by running `pymedphys gui`.
 * **[Streamlit users only]** A CLI command `pymedphys streamlit run` was added
@@ -46,10 +57,16 @@ This project adheres to
     Python install and attempting to import all modules.
   * `pymedphys dev lint`, run pylint.
   * `pymedphys dev cypress`, load up Cypress for interactively writing and
-     running the end-to-end tests.
+    running the end-to-end tests.
+  * `pymedphys dev tests --mosaiqdb`, to load up the tests that depend on having
+    a Microsoft SQL server running. Thanks to [Derek Lane](https://github.com/dg1an3)
+    for all of his work building the Mosaiq CI workflow and the first set of
+    Mosaiq tests.
 
 ### Misc changes
 
+* Significant work was undergone to improve the documentation layout. Thanks to
+  [Matt Jennings](https://github.com/Matthew-Jennings) for all his work here.
 * How Mosaiq username and passwords are saved has been updated. This will
   result in these credentials being requested once more.
 
