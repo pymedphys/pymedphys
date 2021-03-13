@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-from datetime import date, timedelta
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plotly
@@ -33,7 +32,7 @@ from .tolerance_constants import IMAGE_APPROVAL
 def show_incomplete_weekly_checks(connection):
 
     all_incomplete = get_incomplete_qcls(connection, "Physics Resident")
-    todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=1, unit="D")
+    todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=3, unit="D")
 
     incomplete_weekly = all_incomplete.copy()
     incomplete_weekly = incomplete_weekly[
@@ -117,6 +116,10 @@ def compare_all_incompletes(incomplete_qcls):
 
         return all_planned, all_delivered, overall_results
 
+    else:
+        st.write("There are no incomplete QCLs.")
+        return st.stop()
+
 
 def plot_couch_positions(delivered):
     delivered = delivered.drop_duplicates(subset=["fx"])
@@ -191,11 +194,11 @@ def get_patient_image_info(patient):
     sql_string = (
         select_string
         + """
-                    From Image, Ident
-                    WHERE
-                        Ident.IDA = %(mrn)s AND
-                        Ident.Pat_ID1 = Image.Pat_ID1
-            """,
+        From Image, Ident
+        WHERE
+        Ident.IDA = %(mrn)s AND
+        Ident.Pat_ID1 = Image.Pat_ID1
+        """,
     )
     # select_string = "SELECT Image.* FROM Image, Ident WHERE Ident.IDA = %(patient)s AND Image.Pat_ID1 = Ident.Pat_ID1"
     image_info = _pp_mosaiq.execute(

@@ -418,12 +418,12 @@ def get_all_treatment_history_data(connection, mrn):
 
 
 def get_structure_aliases():
-    file_path = pathlib.Path(__file__).parent.joinpath("ALIASES.json")
+    file_path = pathlib.Path(__file__).parent.joinpath("structure_aliases.json")
     return pd.read_json(file_path)
 
 
 def add_new_structure_alias(dvh_calcs, alias_df):
-    file_path = pathlib.Path(__file__).parent.joinpath("ALIASES.json")
+    file_path = pathlib.Path(__file__).parent.joinpath("structure_aliases.json")
 
     default = [
         "< Select an ROI >",
@@ -437,4 +437,9 @@ def add_new_structure_alias(dvh_calcs, alias_df):
 
     if alias_select != "< Select an ROI >" and key_select != "< Select an ROI >":
         alias_df[key_select].iloc[0].append(alias_select.lower())
-        alias_df.to_json(file_path)
+        alias_df.to_json(file_path, indent=4)
+
+
+def get_dose_constraints():
+    file_path = pathlib.Path(__file__).parent.joinpath("dose_constraints.json")
+    return pd.read_json(file_path)

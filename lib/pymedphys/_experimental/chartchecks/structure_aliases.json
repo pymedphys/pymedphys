@@ -1,0 +1,377 @@
+{
+    "Bladder":{
+        "0":[
+            "bladder",
+            "bladder minus ctv"
+        ]
+    },
+    "Bowel_bag":{
+        "0":[
+            "bowel_bag",
+            "bowel bag",
+            "bowelbag"
+        ]
+    },
+    "Brachial_plexus_L":{
+        "0":[
+            "l brachial plexus",
+            "brachial plexus l",
+            "brachial plexus_l"
+        ]
+    },
+    "Brachial_plexus_R":{
+        "0":[
+            "r brachial plexus",
+            "brachial plexus r",
+            "brachial plexus_r"
+        ]
+    },
+    "Brain":{
+        "0":[
+            "brain"
+        ]
+    },
+    "Brain_stem":{
+        "0":[
+            "brainstem",
+            "brain stem"
+        ]
+    },
+    "Chiasm":{
+        "0":[
+            "chiasm",
+            "optic chiasm",
+            "optic_chiasm",
+            "opticchiasm",
+            "optic chism"
+        ]
+    },
+    "Cochlea":{
+        "0":[
+            "cochlea"
+        ]
+    },
+    "Cochlea_L":{
+        "0":[
+            "cochlea_l",
+            "cochlea lt",
+            "cochlea_lt",
+            "left cochlea",
+            "l cochlea",
+            "lt cochlea",
+            "lt_cochlea",
+            "cochlea left"
+        ]
+    },
+    "Cochlea_R":{
+        "0":[
+            "cochlea_r",
+            "cochlea rt",
+            "cochlea_rt",
+            "right cochlea",
+            "r cochlea",
+            "rt cochlea",
+            "rt_cochlea",
+            "cochlea right"
+        ]
+    },
+    "Duodenum":{
+        "0":[
+            "duodenum"
+        ]
+    },
+    "Esophagus":{
+        "0":[
+            "esophagus",
+            "esophagus partial",
+            "esophagus par"
+        ]
+    },
+    "Femoral_head_L":{
+        "0":[
+            "femoral_head_l",
+            "femur_head_l",
+            "left femoral heads",
+            "femoral head l",
+            "l femur",
+            "femoralhead (left)",
+            "l femoral head",
+            "l fem head",
+            "lt fem head",
+            "left femoral head",
+            "left femur",
+            "lt femur",
+            "l-fem head",
+            "femoralhead_l",
+            "femoral head_l",
+            "femur_l"
+        ]
+    },
+    "Femoral_head_R":{
+        "0":[
+            "femur_head_r",
+            "femur_head_r",
+            "right femoral heads",
+            "femoralhead (right)",
+            "r femur",
+            "r_fem",
+            "r femoral head",
+            "r fem head",
+            "rt fem head",
+            "right femoral head",
+            "r-fem head",
+            "femoralhead_r",
+            "femoral head_r",
+            "femur_r"
+        ]
+    },
+    "Heart":{
+        "0":[
+            "heart"
+        ]
+    },
+    "Heart_pericardium":{
+        "0":[
+            "heart_pericardium",
+            "pericardium",
+            "heart + pericardium"
+        ]
+    },
+    "Kidney_bilateral":{
+        "0":[
+            "kidney_bilateral"
+        ]
+    },
+    "Kidney_L":{
+        "0":[
+            "kidney_l",
+            "partial lt kidney",
+            "lft kidney",
+            "left kidney",
+            "kidney (left)",
+            "l kidney",
+            "lt kidney",
+            "lt_kidney",
+            "kidney_left",
+            "kidney_lt",
+            "kidney_lft"
+        ]
+    },
+    "Kidney_R":{
+        "0":[
+            "kidney_r",
+            "partial rt kidney",
+            "right kidney",
+            "kidney (right)",
+            "r kidney",
+            "rt kidney",
+            "rt_kidney",
+            "kidney_right",
+            "kidney_rt"
+        ]
+    },
+    "Larynx":{
+        "0":[
+            "larynx"
+        ]
+    },
+    "Lens_L":{
+        "0":[
+            "lens_l",
+            "lt lens",
+            "l lens"
+        ]
+    },
+    "Lens_R":{
+        "0":[
+            "lens_r",
+            "rt lens",
+            "r lens"
+        ]
+    },
+    "Liver":{
+        "0":[
+            "liver"
+        ]
+    },
+    "Lung_L":{
+        "0":[
+            "Lung_L",
+            "LEFT LUNG",
+            "Lung (Left)",
+            "L LUNG",
+            "lt lung",
+            "LUNG_LEFT",
+            "l-lung",
+            "Lung_L1",
+            "lung_l"
+        ]
+    },
+    "Lung_R":{
+        "0":[
+            "lung_r",
+            "right lung",
+            "lung (right)",
+            "r lung",
+            "rt lung",
+            "lung_right",
+            "r-lung",
+            "lung_r1"
+        ]
+    },
+    "Mandible":{
+        "0":[
+            "mandible"
+        ]
+    },
+    "Optic_nerve_L":{
+        "0":[
+            "opticnrv_l",
+            "left optic nerve",
+            "optic nerve l",
+            "l optic nerve",
+            "l optic n",
+            "lon",
+            "l on"
+        ]
+    },
+    "Optic_nerve_R":{
+        "0":[
+            "opticnrv_r",
+            "right optic nerve",
+            "r optic nerve",
+            "ron",
+            "r optic n"
+        ]
+    },
+    "Oral_cavity":{
+        "0":[
+            "oral_cavity",
+            "oral cavity"
+        ]
+    },
+    "Orbit_L":{
+        "0":[
+            "orbital_l",
+            "orbital l",
+            "l orbit",
+            "lt orbit",
+            "left_orbit",
+            "left orbit",
+            "orbit_left",
+            "orbit left",
+            "eye_l",
+            "l eye"
+        ]
+    },
+    "Orbit_R":{
+        "0":[
+            "orbital_r",
+            "orbital r",
+            "r orbit",
+            "rt orbit",
+            "right_orbit",
+            "right orbit",
+            "orbit_right",
+            "orbit right",
+            "eye_r",
+            "r eye"
+        ]
+    },
+    "Parotid_L":{
+        "0":[
+            "parotid_l",
+            "left parotid",
+            "l parotid",
+            "l_parotid",
+            "lt parotid"
+        ]
+    },
+    "Parotid_R":{
+        "0":[
+            "parotid r",
+            "parotid_r",
+            "right parotid",
+            "r parotid",
+            "r_parotid",
+            "rt parotid",
+            "rt_parotid"
+        ]
+    },
+    "Parotid_unilateral":{
+        "0":[
+            "parotid_unilateral"
+        ]
+    },
+    "Penile_bulb":{
+        "0":[
+            "penilebulb",
+            "penile bulb",
+            "penile_bulb",
+            "bulb"
+        ]
+    },
+    "Pharyngeal_constrictors":{
+        "0":[
+            "pharyngeal_constrictors"
+        ]
+    },
+    "Rectum":{
+        "0":[
+            "rectum"
+        ]
+    },
+    "Sigmoid":{
+        "0":[
+            "sigmoid"
+        ]
+    },
+    "Small_bowel":{
+        "0":[
+            "small_bowel",
+            "small bowel",
+            "bowel_small",
+            "bowel small"
+        ]
+    },
+    "Spinal_cord":{
+        "0":[
+            "spinalcord",
+            "cord",
+            "spinal cord",
+            "s cord"
+        ]
+    },
+    "Spinal_cord_PRV":{
+        "0":[
+            "spinal cord plus 5mm",
+            "spinalcord plus 5mm",
+            "spinal cord + 5mm",
+            "spinalcord + 5mm"
+        ]
+    },
+    "Stomach":{
+        "0":[
+            "Stomach"
+        ]
+    },
+    "Temporal_lobes":{
+        "0":[
+            "temporal_lobes",
+            "temporal lobe"
+        ]
+    },
+    "Tongue":{
+        "0":[
+            "tongue"
+        ]
+    },
+    "Total_Lung":{
+        "0":[
+            "lungs",
+            "total lung-gtv",
+            "total lung-itv",
+            "total lung"
+        ]
+    }
+}

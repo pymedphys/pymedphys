@@ -24,7 +24,6 @@ from pymedphys._experimental.chartchecks.compare import (
     compare_to_mosaiq,
     constraint_check_colour_results,
 )
-from pymedphys._experimental.chartchecks.dose_constraints import CONSTRAINTS
 from pymedphys._experimental.chartchecks.dvh_helpers import (
     calc_dvh,
     calc_reference_isodose_volume,
@@ -346,25 +345,26 @@ def add_constraint_results_to_database(constraints_df, institutional_history):
             [institutional_history, constraints_df]
         ).reset_index(drop=True)
         institutional_history.to_json(
-            "C:/users/rembishj/patient_archive", orient="index"
+            "P://Share/AutoCheck/patient_archive.json", orient="index", indent=4
         )
 
 
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5672112/
 def calc_conformity_index(dd_input, dvh_calcs, target, rx_dose):
-
-    if rx_dose != 0:
-        iso_100 = calc_reference_isodose_volume(dd_input, rx_dose)
-        target_volume = dvh_calcs[target].volume
-        conformity_index = iso_100 / target_volume
-        return conformity_index
+    iso_100 = calc_reference_isodose_volume(dd_input, rx_dose)
+    target_volume = dvh_calcs[target].volume
+    conformity_index = iso_100 / target_volume
+    return conformity_index
 
 
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5672112/
 def calc_homogeneity_index(dvh_calcs, target, rx_dose):
     max_target_dose = dvh_calcs[target].max
     homogeneity_index = max_target_dose / rx_dose
     return homogeneity_index
 
 
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5672112/
 def calc_dose_homogeneity_index(dvh_calcs, target):
     D_95 = dvh_calcs[target].dose_constraint(95).value
     D_5 = dvh_calcs[target].dose_constraint(5).value
@@ -380,30 +380,36 @@ def perform_target_evaluation(dd_input, dvh_calcs):
     min_dose = dvh_calcs[target].min
     max_dose = dvh_calcs[target].max
     mean_dose = dvh_calcs[target].mean
-    D_1 = dvh_calcs[target].dose_constraint(1).value
-    D_2 = dvh_calcs[target].dose_constraint(2).value
-    D_98 = dvh_calcs[target].dose_constraint(98).value
-    D_99 = dvh_calcs[target].dose_constraint(99).value
-    conformity_index = calc_conformity_index(dd_input, dvh_calcs, target, rx_dose)
-    homogeneity_index = calc_homogeneity_index(dvh_calcs, target, rx_dose)
-    dhi = calc_dose_homogeneity_index(dvh_calcs, target)
 
-    data = {
-        "Min [Gy]": min_dose,
-        "Max [Gy]": max_dose,
-        "Mean [Gy]": mean_dose,
-        "D1 [Gy]": D_1,
-        "D2 [Gy]": D_2,
-        "D98 [Gy]": D_98,
-        "D99 [Gy]": D_99,
-        "CI": conformity_index,
-        "HI": homogeneity_index,
-        "DHI": dhi,
-    }
+    if rx_dose != 0:
+        D_1 = dvh_calcs[target].dose_constraint(1).value
+        D_2 = dvh_calcs[target].dose_constraint(2).value
+        D_98 = dvh_calcs[target].dose_constraint(98).value
+        D_99 = dvh_calcs[target].dose_constraint(99).value
+        conformity_index = calc_conformity_index(dd_input, dvh_calcs, target, rx_dose)
+        homogeneity_index = calc_homogeneity_index(dvh_calcs, target, rx_dose)
+        dhi = calc_dose_homogeneity_index(dvh_calcs, target)
 
-    target_df = pd.DataFrame.from_dict(
-        data, orient="Index", columns=[target]
-    ).style.set_precision(2)
+        data = {
+            "Min [Gy]": min_dose,
+            "Max [Gy]": max_dose,
+            "Mean [Gy]": mean_dose,
+            "D1 [Gy]": D_1,
+            "D2 [Gy]": D_2,
+            "D98 [Gy]": D_98,
+            "D99 [Gy]": D_99,
+            "CI": conformity_index,
+            "HI": homogeneity_index,
+            "DHI": dhi,
+        }
+
+        target_df = pd.DataFrame.from_dict(
+            data, orient="Index", columns=[target]
+        ).style.set_precision(2)
+
+    else:
+        target_df = pd.DataFrame()
+
     return st.write(target_df)
 
 
@@ -441,10 +447,10 @@ def show_mosaiq(mosaiq_table):
         st.dataframe(mosaiq_table, height=1000)
 
 
-def add_alias(dvh_calcs, ALIASES):
+def add_alias(dvh_calcs, aliases):
     define_alias = st.checkbox("Define a new structure alias")
     if define_alias:
-        add_new_structure_alias(dvh_calcs, ALIASES)
+        add_new_structure_alias(dvh_calcs, aliases)
 
 
 def add_to_database(constraints_df, institutional_history):
@@ -472,89 +478,93 @@ def main():
 
     files = get_patient_files()
 
-    if "rp" in files:
+    if "rp" not in files:
+        st.stop()
 
-        try:
-            dicom_table = get_all_dicom_treatment_info(files["rp"])
-            dicom_table = dicom_table.sort_values(["field_label"])
-        except AttributeError:
-            st.write("Please select a new RP file.")
-            st.stop()
+    try:
+        dicom_table = get_all_dicom_treatment_info(files["rp"])
+        dicom_table = dicom_table.sort_values(["field_label"])
+    except AttributeError:
+        st.write("Please select a new RP file.")
+        st.stop()
 
-        mrn = dicom_table.loc[0, "mrn"]
-        mosaiq_table = get_all_treatment_data(connection, mrn)
-        mosaiq_table = drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table)
-        mosaiq_table = limit_mosaiq_info_to_current_versions(mosaiq_table)
+    mrn = dicom_table.loc[0, "mrn"]
+    mosaiq_table = get_all_treatment_data(connection, mrn)
+    mosaiq_table = drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table)
+    mosaiq_table = limit_mosaiq_info_to_current_versions(mosaiq_table)
 
-        verify_basic_patient_info(dicom_table, mosaiq_table, mrn)
-        check_site_approval(mosaiq_table, connection)
-        results = compare_to_mosaiq(dicom_table, mosaiq_table)
-        results = results.transpose()
+    verify_basic_patient_info(dicom_table, mosaiq_table, mrn)
+    check_site_approval(mosaiq_table, connection)
+    results = compare_to_mosaiq(dicom_table, mosaiq_table)
+    results = results.transpose()
 
-        (
-            field_selection,
-            selected_label,
-            dicom_field_selection,
-        ) = select_field_for_comparison(dicom_table, mosaiq_table)
-        st.subheader("Comparison")
-        if len(selected_label) != 0:
-            show_field_rx(dicom_table, selected_label)
-            check_for_field_approval(mosaiq_table, field_selection, connection)
-            show_comparison_of_selected_fields(dicom_field_selection, results)
-            show_fx_pattern_and_comments(mosaiq_table, field_selection)
+    (
+        field_selection,
+        selected_label,
+        dicom_field_selection,
+    ) = select_field_for_comparison(dicom_table, mosaiq_table)
+    st.subheader("Comparison")
+    if len(selected_label) != 0:
+        show_field_rx(dicom_table, selected_label)
+        check_for_field_approval(mosaiq_table, field_selection, connection)
+        show_comparison_of_selected_fields(dicom_field_selection, results)
+        show_fx_pattern_and_comments(mosaiq_table, field_selection)
 
-        show_dicom(dicom_table)
-        show_mosaiq(mosaiq_table)
+    show_dicom(dicom_table)
+    show_mosaiq(mosaiq_table)
 
-        if "rs" in files and "rd" in files:
-            dd_input: pydicom.FileDataset = pydicom.dcmread(files["rd"], force=True)
-            ds_input: pydicom.FileDataset = pydicom.dcmread(files["rs"], force=True)
+    if "rs" not in files or "rd" not in files:
+        st.stop()
 
-            show_dvh = st.checkbox("Create DVH Plot")
-            if show_dvh:
-                dvh_calcs = calc_dvh(ds_input, dd_input)
-                plot_dvh(dvh_calcs)
+    dd_input: pydicom.FileDataset = pydicom.dcmread(files["rd"], force=True)
+    ds_input: pydicom.FileDataset = pydicom.dcmread(files["rs"], force=True)
 
-                institutional_history = pd.read_json(
-                    "C:/users/rembishj/patient_archive"
-                ).transpose()
-                rois = dvh_calcs.keys()
-                constraints_df = pd.DataFrame()
-                ALIASES = get_structure_aliases()
-                for roi in rois:
-                    for structure in ALIASES.keys():
-                        if roi.lower().strip(" ") in ALIASES[structure].iloc[0]:
-                            structure_df = compare_structure_with_constraints(
-                                roi, structure, dvh_calcs, constraints=CONSTRAINTS
-                            )
-                            constraints_df = pd.concat(
-                                [constraints_df, structure_df]
-                            ).reset_index(drop=True)
+    show_dvh = st.checkbox("Create DVH Plot")
+    if show_dvh:
+        dvh_calcs = calc_dvh(ds_input, dd_input)
+        plot_dvh(dvh_calcs)
 
-                if constraints_df.empty is False:
-                    constraints_df = calculate_total_score(constraints_df)
-                    constraints_df["mrn"] = int(mrn)
-                    constraints_df["site_id"] = int(mosaiq_table.iloc[0]["site_ID"])
-                    display_df = compare_to_historical_scores(
-                        constraints_df, institutional_history
+        institutional_history = pd.read_json(
+            "P:/Share/AutoCheck/patient_archive.json"
+        ).transpose()
+        rois = dvh_calcs.keys()
+        constraints = pd.read_json(
+            "C:/Users/rembishj/pymedphys/lib/pymedphys/_experimental/chartchecks/dose_constraints.json"
+        )
+        constraints_df = pd.DataFrame()
+        ALIASES = get_structure_aliases()
+        for roi in rois:
+            for structure in ALIASES.keys():
+                if roi.lower().strip(" ") in ALIASES[structure].iloc[0]:
+                    structure_df = compare_structure_with_constraints(
+                        roi, structure, dvh_calcs, constraints=constraints
                     )
-                    display_df[display_df["Type"] == "Total Score"].iloc[0][
-                        "Institutional Average"
-                    ] = [
-                        display_df[display_df["Type"] == "Average Score"][
-                            "Institutional Average"
-                        ].sum()
-                    ]
+                    constraints_df = pd.concat(
+                        [constraints_df, structure_df]
+                    ).reset_index(drop=True)
 
-                    display_df = display_df.style.apply(
-                        constraint_check_colour_results, axis=1
-                    )
+        if constraints_df.empty is False:
+            constraints_df = calculate_total_score(constraints_df)
+            constraints_df["mrn"] = int(mrn)
+            constraints_df["site_id"] = int(mosaiq_table.iloc[0]["site_ID"])
+            display_df = compare_to_historical_scores(
+                constraints_df, institutional_history
+            )
+            display_df[display_df["Type"] == "Total Score"].iloc[0][
+                "Institutional Average"
+            ] = [
+                display_df[display_df["Type"] == "Average Score"][
+                    "Institutional Average"
+                ].sum()
+            ]
 
-                    # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
-                    st.subheader("Constraint Check")
-                    st.dataframe(display_df.set_precision(2), height=1000)
+            display_df = display_df.style.apply(constraint_check_colour_results, axis=1)
 
-                perform_target_evaluation(dd_input, dvh_calcs)
+            # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
+            st.subheader("Constraint Check")
+            st.dataframe(display_df.set_precision(2), height=1000)
 
-                add_alias(dvh_calcs, ALIASES)
-                add_to_database(constraints_df, institutional_history)
+        perform_target_evaluation(dd_input, dvh_calcs)
+
+        add_alias(dvh_calcs, ALIASES)
+        add_to_database(constraints_df, institutional_history)
