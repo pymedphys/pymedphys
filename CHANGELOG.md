@@ -24,12 +24,18 @@ This project adheres to
   * The electron factors module can be re-exposed on request.
   * The Winston Lutz module is undergoing a significant re-work and will be
     re-exposed once complete.
-* `pymedphys.mosaiq.connect` now returns a `connection` object instead of a
-  `cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
-  `pymedphys.mosaiq.connect` and `pymedphys.mosaiq.execute` work much the same
-  as before, except the object passed between them is now quite different.
-  * Also, all instances where previously the argument name was `cursor` have
+* There have been a range of changes to the Mosaiq database connection and
+  execution API.
+  * `pymedphys.mosaiq.connect` now returns a `connection` object instead of a
+    `cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
+  * All instances where previously the argument name was `cursor` have
     been changed to `connection`.
+  * Previously a server and port could be provided to `pymedphys.mosaiq.connect`
+    by passing it as a colon separated string, for example `"localhost:1234"`.
+    This is no longer the case. Now, hostname and port need to be provided
+    separately. See either the docs <https://docs.pymedphys.com/lib/ref/mosaiq.html>
+    or the docstring for more details <https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79>.
+
 
 ### New features and enhancements
 
@@ -47,6 +53,11 @@ This project adheres to
   * `pymedphys dev lint`, run pylint.
   * `pymedphys dev cypress`, load up Cypress for interactively writing and
      running the end-to-end tests.
+
+### Misc changes
+
+* How Mosaiq username and passwords are saved has been updated. This will
+  result in these credentials being requested once more.
 
 ## [0.35.0]
 
