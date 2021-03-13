@@ -44,6 +44,7 @@ This project adheres to
     separately. There are also three extra arguments, `alias`, `username`, and
     `password`. See either the docs <https://docs.pymedphys.com/lib/ref/mosaiq.html>
     or the docstring for more details <https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79>.
+  * Removed `pymedphys.mosaiq.qcls`.
   * **[Contributor facing only]** replaced `pymedphys dev tests --pylint` with
     `pymedphys dev lint`.
 
@@ -57,17 +58,17 @@ This project adheres to
 * **[Streamlit users only]** A CLI command `pymedphys streamlit run` was added
   to facilitate utilising the custom PyMedPhys patches on the streamlit server
   for arbitrary streamlit apps. See <https://github.com/pymedphys/pymedphys/issues/1422>.
-* **[Contributor facing only]** Added the following contributor CLI tools:
-  * `pymedphys dev doctests`, run doctests/
+* **[Contributor facing only]** Added the following contributor CLI tools/options:
+  * `pymedphys dev tests --mosaiqdb`, to load up the tests that depend on having
+    a Microsoft SQL server running. Thanks to [Derek Lane](https://github.com/dg1an3)
+    for all of his work building the Mosaiq CI workflow and the first set of
+    Mosaiq tests.
+  * `pymedphys dev doctests`, run doctests.
   * `pymedphys dev imports`, verify optional import logic by creating a clean
     Python install and attempting to import all modules.
   * `pymedphys dev lint`, run pylint.
   * `pymedphys dev cypress`, load up Cypress for interactively writing and
     running the end-to-end tests.
-  * `pymedphys dev tests --mosaiqdb`, to load up the tests that depend on having
-    a Microsoft SQL server running. Thanks to [Derek Lane](https://github.com/dg1an3)
-    for all of his work building the Mosaiq CI workflow and the first set of
-    Mosaiq tests.
 
 ### Misc changes
 
