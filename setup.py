@@ -150,7 +150,7 @@ package_data = {
     ],
 }
 
-install_requires = ["fsspec>=0.8.7,<0.9.0", "typing-extensions"]
+install_requires = ["typing-extensions"]
 
 extras_require = {
     ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],
