@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
@@ -345,7 +346,10 @@ def add_constraint_results_to_database(constraints_df, institutional_history):
             [institutional_history, constraints_df]
         ).reset_index(drop=True)
         institutional_history.to_json(
-            "P://Share/AutoCheck/patient_archive.json", orient="index", indent=4
+            "P://Share/AutoCheck/patient_archive.json",
+            orient="index",
+            indent=4,
+            double_precision=3,
         )
 
 
@@ -415,12 +419,20 @@ def perform_target_evaluation(dd_input, dvh_calcs):
 
 def compare_to_historical_scores(constraints_df, institutional_history):
     df = constraints_df.copy()
-    df["Institutional Average"] = "-"
+    df = df.replace(np.nan, "-")
+    df["Institutional Average"] = np.nan
     for index in df.index:
         row_key = df["Structure_Key"][index]
         row_type = df["Type"][index]
         row_dose = df["Dose [Gy]"][index]
         row_volume = df["Volume [%]"][index]
+
+        if type(row_dose) is not str:
+            row_dose = np.round(row_dose)
+
+        if type(row_volume) is not str:
+            row_volume = np.round(row_volume)
+
         df["Institutional Average"][index] = float(
             institutional_history[
                 (institutional_history["Structure_Key"] == row_key)
@@ -430,6 +442,9 @@ def compare_to_historical_scores(constraints_df, institutional_history):
             ]["Score"].mean()
         )
 
+    df.loc[df["Type"] == "Total Score", "Institutional Average"] = df[
+        df["Type"] == "Average Score"
+    ]["Institutional Average"].sum()
     return df
 
 
