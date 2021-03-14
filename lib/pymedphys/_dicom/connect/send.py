@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+import pathlib
 
 from pymedphys._imports import pydicom, pynetdicom
 
@@ -63,8 +64,13 @@ class DicomSender(DicomConnectBase):
         -------
         list
             List containing status objects for each DICOM file sent
-        """
 
+        Raises
+        ------
+        TypeError
+            Raised if any of the dcm_files are not of type str, pathlib.Path or
+            pydicom.Dataset
+        """
         transfer_syntax = [pydicom.uid.ImplicitVRLittleEndian]
 
         ae = pynetdicom.AE()
@@ -79,16 +85,13 @@ class DicomSender(DicomConnectBase):
 
             for dataset in dcm_files:
 
-                if not isinstance(dataset, pydicom.Dataset):
+                if not isinstance(dataset, (pydicom.Dataset, pathlib.Path, str)):
+                    raise TypeError(
+                        "dcm_files must be  str, pathlib.Path or pydicom.Dataset"
+                    )
 
-                    try:
-                        dataset = pydicom.read_file(dataset)
-                    except pydicom.errors.InvalidDicomError as ide:
-                        logging.warning(ide)
-                        logging.warning(
-                            "Unable to read DICOM file, skipping: %s", dataset
-                        )
-                        continue
+                if not isinstance(dataset, pydicom.Dataset):
+                    dataset = pydicom.read_file(dataset)
 
                 logging.debug(
                     "Sending DICOM object with SOPInstanceUID: %s",
@@ -113,5 +116,17 @@ def send_cli(args):
         logging.error("Unable to connect to DICOM host")
         return
 
+    # Prepare the DICOM file (check that all files are valid DICOM)
+    dcm_file_paths = []
+    for dcm_file in args.dcmfiles:
+        dcm_file_path = pathlib.Path(dcm_file)
+        try:
+            dataset = pydicom.read_file(dcm_file_path)
+        except pydicom.errors.InvalidDicomError:
+            logging.error("Invalid DICOM file provided: %s", dcm_file)
+            return
+
+        dcm_file_paths.append(dcm_file_path)
+
     # Send the files
-    dicom_sender.send(args.dcmfiles)
+    dicom_sender.send(dcm_file_paths)

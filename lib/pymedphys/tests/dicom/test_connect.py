@@ -107,7 +107,6 @@ def listener_process(port, receive_directory, ae_title):
         stream_output = b""
         for b in iter(lambda: proc.stdout.read(1), b""):
             stream_output += b
-            print(stream_output)
             if b"Listener Ready" in stream_output:
                 break
 
@@ -358,13 +357,13 @@ def test_dicom_sender(test_dataset):
         test_directory = pathlib.Path(tmp_directory)
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
-        print(1)
+
         with listener_process(TEST_PORT, receive_directory, scp_ae_title):
-            print(2)
+
             dicom_sender = DicomSender(
                 host="127.0.0.1", port=TEST_PORT, ae_title=scp_ae_title
             )
-            print(3)
+
             assert dicom_sender.verify()
             dicom_sender.send([test_dataset])
 
