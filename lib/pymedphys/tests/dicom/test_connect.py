@@ -31,7 +31,6 @@ from pymedphys._dicom.connect.listen import (
 )
 from pymedphys._dicom.connect.send import DicomSender
 from pymedphys._dicom.create import dicom_dataset_from_dict
-from pymedphys._utilities.test import process
 
 # TODO How to determine an appropriate port for testing?
 TEST_PORT = 9988
