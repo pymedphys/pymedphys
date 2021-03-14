@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import date, timedelta
+import collections
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plotly
@@ -26,22 +26,27 @@ from pymedphys._experimental.chartchecks.helpers import (
     get_all_treatment_history_data,
 )
 
+from .tolerance_constants import IMAGE_APPROVAL
 
-def show_incomplete_weekly_checks():
-    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
-    incomplete = get_incomplete_qcls(connection, "Physics Resident")
-    todays_date = date.today() + timedelta(days=3)
-    todays_date = todays_date.strftime("%b %d, %Y")
-    # todays_date = "Dec 4, 2020"
-    incomplete = incomplete[
-        (incomplete["task"] == "Weekly Chart Check")
-        & (incomplete["due"] == todays_date)
+def show_incomplete_weekly_checks(connection):
+
+    all_incomplete = get_incomplete_qcls(connection, "Physics Resident")
+    todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=3, unit="D")
+
+    incomplete_weekly = all_incomplete.copy()
+    incomplete_weekly = incomplete_weekly[
+        (incomplete_weekly["task"] == "Weekly Chart Check")
+        & (incomplete_weekly["due"] == todays_date)
     ]
-    incomplete = incomplete.drop(columns=["instructions", "task", "due", "comment"])
-    incomplete = incomplete.reset_index(drop=True)
-
-    return incomplete
+    incomplete_weekly = incomplete_weekly.drop(
+        columns=["instructions", "task", "due", "comment"]
+    )
+    incomplete_weekly = incomplete_weekly.reset_index(drop=True)
+    if incomplete_weekly.empty:
+        st.write("No weekly chart checks due today.")
+        st.stop()
+    return incomplete_weekly
 
 
 def compare_delivered_to_planned(patient):
@@ -52,16 +57,18 @@ def compare_delivered_to_planned(patient):
     patient_results = pd.DataFrame()
     try:
         # current_fx = max(delivered_values["fx"])
-        todays_date = pd.Timestamp("today").floor("D")
-        week_ago = todays_date + pd.offsets.Day(-7)
+        todays_date = pd.Timestamp("today").floor("D") + pd.Timedelta(value=0, unit="D")
+        week_ago = todays_date - pd.Timedelta(value=7, unit="D")
         delivered_this_week = delivered.copy()
-        delivered_this_week = delivered_this_week[delivered["date"] > week_ago]
+        delivered_this_week = delivered_this_week[
+            delivered_this_week["date"] > week_ago
+        ]
     except (TypeError, ValueError, AttributeError):
         print("fraction field empty")
     primary_checks = {
         "patient_id": patient,
-        "first_name": delivered_this_week.iloc[0]["first_name"],
-        "last_name": delivered_this_week.iloc[0]["last_name"],
+        "first_name": delivered["first_name"].values[0],
+        "last_name": delivered["last_name"].values[0],
         "was_overridden": "",
         "new_field": "",
         "rx_change": "",
@@ -110,7 +117,8 @@ def compare_all_incompletes(incomplete_qcls):
         return all_planned, all_delivered, overall_results
 
     else:
-        return None, None, "No weeklys due today, but thanks for trying."
+        st.write("There are no incomplete QCLs.")
+        return st.stop()
 
 
 def plot_couch_positions(delivered):
@@ -159,3 +167,50 @@ def plot_couch_deltas(delivered):
         xaxis=dict(tickmode="linear", tick0=0, dtick=1),
     )
     st.plotly_chart(deltas_fig, use_container_width=True)
+
+
+def get_patient_image_info(patient):
+    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+    dataframe_column_to_sql_reference = collections.OrderedDict(
+        [
+            ("image_date", "Image.Study_DtTm"),
+            ("modified_date", "Image.Modified_DtTm"),
+            ("type", "Image.Short_Name"),
+            ("name", "Image.Image_Name"),
+            ("num_images", "Image.Num_Images"),
+            ("comments", "Image.Comments"),
+            ("review_status", "Image.Att_App"),
+            ("review_id", "Image.Att_Apper_ID"),
+            ("device", "Image.Imager_Name"),
+            ("machine", "Image.Machine_Name"),
+        ]
+    )
+
+    columns = list(dataframe_column_to_sql_reference.keys())
+    select_string = "SELECT " + ",\n\t\t    ".join(
+        dataframe_column_to_sql_reference.values()
+    )
+
+    sql_string = (
+        select_string
+        + """
+        From Image, Ident
+        WHERE
+        Ident.IDA = %(mrn)s AND
+        Ident.Pat_ID1 = Image.Pat_ID1
+        """,
+    )
+    # select_string = "SELECT Image.* FROM Image, Ident WHERE Ident.IDA = %(patient)s AND Image.Pat_ID1 = Ident.Pat_ID1"
+    image_info = _pp_mosaiq.execute(
+        connection,
+        sql_string[0],
+        parameters={"mrn": patient},
+    )
+
+    image_info_df = pd.DataFrame(data=image_info, columns=columns)
+
+    image_info_df["review_status"] = [
+        IMAGE_APPROVAL[item] for item in image_info_df["review_status"]
+    ]
+
+    return image_info_df

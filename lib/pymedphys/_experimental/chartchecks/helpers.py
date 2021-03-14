@@ -17,13 +17,16 @@
 """
 
 import collections
+import pathlib
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
+from pymedphys._imports import streamlit as st
 
 import pymedphys._mosaiq.api as pp_mosaiq
 
-from .tolerance_constants import FIELD_TYPES, ORIENTATION
+from .tolerance_constants import FIELD_TYPES, ORIENTATION, TOLERANCE_TYPES
 
 
 def _invert_angle(angle):
@@ -119,22 +122,23 @@ def get_all_dicom_treatment_info(dicomFile):
                 "gantry_angle": first_cp.GantryAngle,
                 "collimator_angle": first_cp.BeamLimitingDeviceAngle,
                 "field_type": field.BeamType,
-                "ssd [cm]": round(first_cp.SourceToSurfaceDistance / 10, 1),
-                "sad [cm]": round(field.SourceAxisDistance / 10, 1),
-                "iso_x [cm]": iso[0] / 10,
-                "iso_y [cm]": iso[1] / 10,
-                "iso_z [cm]": iso[2] / 10,
-                "field_x [cm]": round(colls["coll_x2"] - colls["coll_x1"], 1),
-                "coll_x1 [cm]": round(colls["coll_x1"], 1),
-                "coll_x2 [cm]": round(colls["coll_x2"], 1),
-                "field_y [cm]": round(colls["coll_y2"] - colls["coll_y1"], 1),
-                "coll_y1 [cm]": round(colls["coll_y1"], 1),
-                "coll_y2 [cm]": round(colls["coll_y2"], 1),
+                "ssd [cm]": np.round(first_cp.SourceToSurfaceDistance / 10, 1),
+                "sad [cm]": np.round(field.SourceAxisDistance / 10, 1),
+                "iso_x [cm]": np.round(iso[0] / 10, 2),
+                "iso_y [cm]": np.round(iso[1] / 10, 2),
+                "iso_z [cm]": np.round(iso[2] / 10, 2),
+                "field_x [cm]": np.round(colls["coll_x2"] - colls["coll_x1"], 1),
+                "coll_x1 [cm]": np.round(colls["coll_x1"], 1),
+                "coll_x2 [cm]": np.round(colls["coll_x2"], 1),
+                "field_y [cm]": np.round(colls["coll_y2"] - colls["coll_y1"], 1),
+                "coll_y1 [cm]": np.round(colls["coll_y1"], 1),
+                "coll_y2 [cm]": np.round(colls["coll_y2"], 1),
                 "couch_vrt [cm]": first_cp.TableTopVerticalPosition,
                 "couch_lat [cm]": first_cp.TableTopLateralPosition,
                 "couch_lng [cm]": first_cp.TableTopLongitudinalPosition,
-                "couch_angle": first_cp.TableTopEccentricAngle,
+                "couch_angle": first_cp.PatientSupportAngle,
                 "technique": "",
+                "tolerance": "",
                 "control_points": field.NumberOfControlPoints,
             }
 
@@ -142,13 +146,6 @@ def get_all_dicom_treatment_info(dicomFile):
                 dicom_beam.update(
                     get_dicom_wedge_info(beam, dicom.BeamSequence[bn - 1])
                 )
-
-            try:
-                dicom_beam["tolerance"] = dicom.BeamSequence[
-                    bn - 1
-                ].ReferencedToleranceTableNumber
-            except (TypeError, ValueError, AttributeError):
-                dicom_beam["tolerance"] = 0
 
             if dicom_beam["machine"] in ["Vault 1-IMRT", "Dual-120"]:
 
@@ -160,10 +157,6 @@ def get_all_dicom_treatment_info(dicomFile):
                 dicom_beam["coll_y1 [cm]"] = dicom_beam["coll_y1 [cm]"] * (-1)
 
             table = table.append(dicom_beam, ignore_index=True, sort=False)
-
-    # table["tolerance"] = [
-    #     tolerance_constants.TOLERANCE_TYPES[item] for item in table["tolerance"]
-    # ]
 
     return table
 
@@ -275,6 +268,15 @@ def get_all_treatment_data(connection, mrn):
         ORIENTATION[item] for item in mosaiq_fields["position"]
     ]
 
+    mosaiq_fields["tolerance"] = [
+        TOLERANCE_TYPES[item] for item in mosaiq_fields["tolerance"]
+    ]
+
+    # for row in mosaiq_fields.index:
+    #     if mosaiq_fields.loc[row, 'rx_depth'] != 0:
+    #         mosaiq_fields.loc[row, "fraction_dose [cGy]"] = round(mosaiq_fields.loc[row, "fraction_dose [cGy]"] / (mosaiq_fields.loc[row, 'rx_depth']/100), 2)
+    #         mosaiq_fields.loc[row, "total_dose [cGy]"] = round(mosaiq_fields.loc[row, "total_dose [cGy]"] / (mosaiq_fields.loc[row, 'rx_depth'] / 100), 2)
+
     # reformat some fields to create the 'rx' field
     rx = []
     for i in mosaiq_fields.index:
@@ -347,6 +349,10 @@ def get_all_treatment_history_data(connection, mrn):
             ("site_setup_version", "SiteSetup.Version"),
             ("was_verified", "Dose_Hst.WasVerified"),
             ("was_overridden", "Dose_Hst.WasOverridden"),
+            ("overrides1", "Dose_Hst.Overrides1"),
+            ("overrides2", "Dose_Hst.Overrides2"),
+            ("overrides3", "Dose_Hst.Overrides3"),
+            ("overrides4", "Dose_Hst.Overrides4"),
             ("partial_tx", "Dose_Hst.PartiallyTreated"),
             ("vmi_error", "Dose_Hst.VMIError"),
             ("new_field", "Dose_Hst.NewFieldDef"),
@@ -361,6 +367,7 @@ def get_all_treatment_history_data(connection, mrn):
             ("secondary_meterset_units", "Dose_Hst.SecondaryMetersetUnit_Enum"),
             ("MU_conversion", "Dose_Hst.cGrayPerMeterset"),
             ("TP_correction", "Dose_Hst.TP_Correction_Factor"),
+            ("fx_pattern", "Site.Frac_Pattern"),
         ]
     )
 
@@ -392,7 +399,6 @@ def get_all_treatment_history_data(connection, mrn):
     table = pp_mosaiq.execute(
         connection=connection, query=sql_string[0], parameters={"mrn": mrn}
     )
-
     treatment_history = pd.DataFrame(data=table, columns=columns)
     treatment_history = treatment_history.sort_values(by=["date"])
     treatment_history["total_dose_delivered"] = (
@@ -409,3 +415,31 @@ def get_all_treatment_history_data(connection, mrn):
     treatment_history = treatment_history.reset_index(drop=True)
 
     return treatment_history
+
+
+def get_structure_aliases():
+    file_path = pathlib.Path(__file__).parent.joinpath("structure_aliases.json")
+    return pd.read_json(file_path)
+
+
+def add_new_structure_alias(dvh_calcs, alias_df):
+    file_path = pathlib.Path(__file__).parent.joinpath("structure_aliases.json")
+
+    default = [
+        "< Select an ROI >",
+    ]
+    alias_list = list(dvh_calcs.keys())
+    alias_list = default + alias_list
+    alias_select = st.selectbox("Select a structure to define: ", alias_list)
+    key_list = list(list(alias_df))
+    key_list = default + key_list
+    key_select = st.selectbox("Select an assignment: ", key_list)
+
+    if alias_select != "< Select an ROI >" and key_select != "< Select an ROI >":
+        alias_df[key_select].iloc[0].append(alias_select.lower())
+        alias_df.to_json(file_path, indent=4)
+
+
+def get_dose_constraints():
+    file_path = pathlib.Path(__file__).parent.joinpath("dose_constraints.json")
+    return pd.read_json(file_path)
