@@ -43,6 +43,8 @@ packages = [
     "pymedphys._experimental.streamlit.apps",
     "pymedphys._experimental.streamlit.apps.wlutz",
     "pymedphys._experimental.streamlit.utilities",
+    "pymedphys._experimental.streamlit.utilities.dicom",
+    "pymedphys._experimental.streamlit.utilities.iview",
     "pymedphys._experimental.vendor.pylinac_vendored",
     "pymedphys._experimental.vendor.pylinac_vendored.core",
     "pymedphys._experimental.wlutz",
@@ -148,7 +150,7 @@ package_data = {
     ],
 }
 
-install_requires = ["typing-extensions"]
+install_requires = ["fsspec>=0.8.7,<0.9.0", "typing-extensions"]
 
 extras_require = {
     ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],

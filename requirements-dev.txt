@@ -38,6 +38,7 @@ doc8==0.8.1
 docutils==0.16; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 entrypoints==0.3; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 filelock==3.0.12; python_full_version >= "3.6.1"
+fsspec==0.8.7; python_version > "3.6"
 gitdb==4.0.5; python_version >= "3.6"
 gitpython==3.1.13; python_version >= "3.6"
 hypothesis==5.49.0; python_version >= "3.6"
@@ -45,7 +46,7 @@ identify==1.5.13; python_full_version >= "3.6.1"
 idna==2.10; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 imageio==2.9.0; python_version >= "3.5"
 imagesize==1.2.0; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5"
-importlib-metadata==3.4.0; python_version < "3.8" and python_version >= "3.6" and python_full_version >= "3.6.1" and (python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "3.8" or python_full_version >= "3.4.0" and python_version >= "3.6" and python_version < "3.8")
+importlib-metadata==3.4.0; python_version < "3.8" and python_version > "3.6" and python_full_version >= "3.6.1" and (python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "3.8" or python_full_version >= "3.4.0" and python_version >= "3.6" and python_version < "3.8")
 importlib-resources==3.0.0; python_version < "3.7" and python_version >= "3.6" and python_full_version >= "3.6.1" and (python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "3.7" or python_version < "3.7" and python_version >= "3.6" and python_full_version >= "3.5.0")
 iniconfig==1.1.1; python_version >= "3.6"
 ipykernel==5.4.3; python_version >= "3.6"
