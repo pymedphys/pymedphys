@@ -134,7 +134,6 @@ rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
-fsspec = "^0.8.7"
 
 
 [tool.poetry.extras]
