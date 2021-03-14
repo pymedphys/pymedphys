@@ -14,6 +14,7 @@
 
 import datetime
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 
 #######################################################################################################################
@@ -91,9 +92,9 @@ def colour_results(val):  # pylint: disable = too-many-return-statements
             return ["background-color: #EE6363", "background-color: #EE6363"]
 
     else:
-        if round(float(val[0]), 2) == round(float(val[1]), 2):
-            val[0] = round(float(val[0]), 2)
-            val[1] = round(float(val[1]), 2)
+        if np.round(float(val[0]), 2) == np.round(float(val[1]), 2):
+            val[0] = np.round(float(val[0]), 2)
+            val[1] = np.round(float(val[1]), 2)
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
             return ["background-color: #EE6363", "background-color: #EE6363"]
@@ -207,7 +208,7 @@ def compare_to_mosaiq(dicom_table, mos_table):
 
     values_table["beam_index"] = pd.Series(values_index).values
     values_table = values_table.set_index("beam_index", drop=True)
-    values_table = values_table.round(2)
+    # values_table = values_table.round(2)
 
     return values_table
 
@@ -252,3 +253,20 @@ def specific_patient_weekly_check_colour_results(val):
         return ["background-color: #C1FFC1"] * len(val)
     else:
         return ["background-color: #EE6363"] * len(val)
+
+
+def constraint_check_colour_results(val):
+    if val["Type"] != "Average Score" and val["Type"] != "Total Score":
+        diff = val["Dose [Gy]"] - val["Actual Dose [Gy]"]
+        limit = val["Dose [Gy]"] / 10
+        if val["Actual Dose [Gy]"] > val["Dose [Gy]"]:
+            return ["background-color: #EE6363"] * len(val)
+        elif 0 < diff < limit:
+            return ["background-color: #FDFF8A"] * len(val)
+        else:
+            return ["background-color: #C1FFC1"] * len(val)
+    else:
+        if val["Score"] > 0:
+            return ["background-color: #C1FFC1"] * len(val)
+        else:
+            return ["background-color: #EE6363"] * len(val)
