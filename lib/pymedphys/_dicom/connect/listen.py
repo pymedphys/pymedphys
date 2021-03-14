@@ -195,7 +195,7 @@ def listen_cli(args):
 
     # Start the listener
     dicom_listener = DicomListener(
-        host=args.bind,
+        host=args.host,
         port=args.port,
         ae_title=args.aetitle,
         storage_directory=args.storage_directory,
