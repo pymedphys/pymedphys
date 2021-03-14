@@ -121,7 +121,7 @@ def send_cli(args):
     for dcm_file in args.dcmfiles:
         dcm_file_path = pathlib.Path(dcm_file)
         try:
-            dataset = pydicom.read_file(dcm_file_path)
+            pydicom.read_file(dcm_file_path)
         except pydicom.errors.InvalidDicomError:
             logging.error("Invalid DICOM file provided: %s", dcm_file)
             return
