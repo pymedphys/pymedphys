@@ -19,9 +19,10 @@ import pathlib
 import shutil
 import subprocess
 import tempfile
+from contextlib import contextmanager
 from unittest.mock import Mock
 
-from pymedphys._imports import pydicom, pynetdicom, pytest
+from pymedphys._imports import psutil, pydicom, pynetdicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.connect.listen import (
@@ -93,6 +94,30 @@ def prepare_send_command(port, ae_title, send_file):
         str(port),
         str(send_file),
     ]
+
+
+@contextmanager
+def listener_process(port, receive_directory, ae_title):
+
+    listener_command = prepare_listen_command(port, receive_directory, ae_title)
+    proc = subprocess.Popen(
+        listener_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+
+    try:
+        stream_output = b""
+        for b in iter(lambda: proc.stdout.read(1), b""):
+            stream_output += b
+            print(stream_output)
+            if b"Listener Ready" in stream_output:
+                break
+
+        yield proc
+
+    finally:
+        for child in psutil.Process(proc.pid).children(recursive=True):
+            child.kill()
+        proc.kill()
 
 
 @pytest.fixture()
@@ -307,19 +332,7 @@ def test_dicom_listener_cli(test_dataset):
 
         test_directory = pathlib.Path(tmp_directory)
 
-        listener_command = prepare_listen_command(
-            TEST_PORT, test_directory, scp_ae_title
-        )
-
-        with process(
-            listener_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        ) as listener_process:
-
-            stream_output = b""
-            for b in iter(lambda: listener_process.stdout.read(1), b""):
-                stream_output += b
-                if b"Listener Ready" in stream_output:
-                    break
+        with listener_process(TEST_PORT, test_directory, scp_ae_title):
 
             # Send the data to the listener
             ae = pynetdicom.AE()
@@ -346,24 +359,13 @@ def test_dicom_sender(test_dataset):
         test_directory = pathlib.Path(tmp_directory)
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
-
-        listener_command = prepare_listen_command(
-            TEST_PORT, receive_directory, scp_ae_title
-        )
-
-        with process(
-            listener_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        ) as listener_process:
-
-            stream_output = b""
-            for b in iter(lambda: listener_process.stdout.read(1), b""):
-                stream_output += b
-                if b"Listener Ready" in stream_output:
-                    break
-
+        print(1)
+        with listener_process(TEST_PORT, receive_directory, scp_ae_title):
+            print(2)
             dicom_sender = DicomSender(
                 host="127.0.0.1", port=TEST_PORT, ae_title=scp_ae_title
             )
+            print(3)
             assert dicom_sender.verify()
             dicom_sender.send([test_dataset])
 
@@ -390,24 +392,14 @@ def test_dicom_sender_cli(test_dataset):
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
 
-        listener_command = prepare_listen_command(
-            TEST_PORT, receive_directory, scp_ae_title
-        )
         sender_command = prepare_send_command(TEST_PORT, scp_ae_title, send_file)
 
-        with process(
-            listener_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        ) as listener_process:
-            stream_output = b""
-            for b in iter(lambda: listener_process.stdout.read(1), b""):
-                stream_output += b
-                if b"Listener Ready" in stream_output:
-                    break
+        with listener_process(TEST_PORT, receive_directory, scp_ae_title) as lp:
 
             subprocess.call(sender_command)
 
             stream_output = b""
-            for b in iter(lambda: listener_process.stdout.read(1), b""):
+            for b in iter(lambda: lp.stdout.read(1), b""):
                 stream_output += b
                 if b"DICOM object received" in stream_output:
                     break

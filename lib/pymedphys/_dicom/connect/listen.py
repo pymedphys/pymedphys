@@ -202,7 +202,7 @@ def listen_cli(args):
     )
 
     logging.info("Starting DICOM listener")
-    logging.info("IP: %s", args.bind)
+    logging.info("IP: %s", args.host)
     logging.info("Port: %s", args.port)
     logging.info("AE Title: %s", args.aetitle)
     dicom_listener.start()
