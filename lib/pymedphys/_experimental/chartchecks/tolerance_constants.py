@@ -117,3 +117,10 @@ ORIENTATION = {
     8: "FFDR",
     9: "SITTING",
 }
+
+IMAGE_APPROVAL = {
+    0: "Rejected",
+    1: "Approved",
+    2: "Incomplete",
+    3: "Not Required",
+}

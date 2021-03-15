@@ -91,6 +91,8 @@ pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "do
 # between pylinac and scikit-learn version 0.24.0
 scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 
+fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
+
 # ----------- #
 # Comparables #
 # ----------- #
@@ -148,6 +150,7 @@ dev = [
     "dbfread",
     "dicompyler-core",
     "doc8",
+    "fsspec",
     "hypothesis",
     "imageio",
     "jupyter-book",
@@ -223,6 +226,7 @@ user = [
     "data-science-types",
     "dbfread",
     "dicompyler-core",
+    "fsspec",
     "imageio",
     "keyring",
     "matplotlib",
