@@ -95,7 +95,7 @@ def main():
     def _get_weeks(patient_directory):
         return weeks_sinces_touched[clinic.joinpath(patient_directory)]
 
-    if len(weeks_sinces_touched.keys()) == 0:
+    if set(weeks_sinces_touched.keys()) != set(patient_directories):
         st.stop()
 
     weeks_since_touched_expander = st.beta_expander(
