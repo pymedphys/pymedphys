@@ -41,6 +41,9 @@ name = "rccc"
     # TODO: One day support all clinics within the focal data directory
     clinic = 'RCCC\1~Clinical'
 
+    hostname = 'rccc-monacoda'
+    dicom_port = '104'
+
     [site.mosaiq]
     # TODO: One day make it so that timezone is extracted from the Mosaiq
     # server
@@ -77,6 +80,8 @@ name = "nbcc"
     [site.monaco]
     focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
+    hostname = 'rccc-physicssvr'
+    dicom_port = '35104'
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
