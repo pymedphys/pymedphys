@@ -230,6 +230,35 @@ def main():
         ):
             st.success("All planned moves appeared to have been successful.")
 
+    dirlock_files = list(holding.glob("**/.dirlock"))
+    if dirlock_files:
+        if st.button("Remove dirlock within the holding directory"):
+            for dirlock_file in dirlock_files:
+                dirlock_file.unlink()
+                _recursively_remove_directory_if_empty(dirlock_file.parent, holding)
+
+            remaining_dirlock_files = list(holding.glob("**/.dirlock"))
+            if len(remaining_dirlock_files) == 0:
+                st.success("`.dirlock` files removed")
+            else:
+                st.error("`.dirlock` files still exist")
+
+
+def _recursively_remove_directory_if_empty(directory: pathlib.Path, safe_root):
+    if not directory.is_dir():
+        raise ValueError("Not a directory")
+
+    files = list(directory.glob("*"))
+
+    if len(files) != 0:
+        return
+
+    directory.rmdir()
+    parent = directory.parent
+
+    if parent != safe_root:
+        _recursively_remove_directory_if_empty(parent, safe_root)
+
 
 def _patient_directory_sort_key(patient_directory_name):
     prepended_number, patient_id = patient_directory_name.split("~")
