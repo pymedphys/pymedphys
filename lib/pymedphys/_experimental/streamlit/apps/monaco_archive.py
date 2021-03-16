@@ -184,13 +184,13 @@ def main():
         st.warning(
             f"The holding directory, `{holding}`, is not empty. Unable "
             "to place more files within this directory until those files "
-            f"been moved to `{destination}`"
+            f"have been moved to `{destination}`"
         )
 
         allow_move_button = False
 
     if allow_move_button:
-        if st.button("Undergo move"):
+        if st.button("Undergo move into holding directory"):
             for from_dir, to_dir in moving_plan:
                 shutil.move(from_dir, to_dir)
 
@@ -200,6 +200,11 @@ def main():
                 f"into `{destination}`. Once that is complete, press the "
                 "`Test moves` button below."
             )
+    else:
+        st.info(
+            "The ability to undergo a move into the holding directory is "
+            " currently disabled. See the warning messages detailed above."
+        )
 
     if st.button("Test moves"):
         directories_left_behind = []
