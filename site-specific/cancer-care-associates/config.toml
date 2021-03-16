@@ -28,7 +28,9 @@ lower_percent_dose_cutoff = 20
 [[site]]
 name = "rccc"
 
-    # TODO [v2]: Change 'export-directories' to just 'directories'
+    # TODO [v2]: Change 'export-directories' to just 'export', move out all
+    # locations that aren't actually an export location to their own config
+    # area.
     [site.export-directories]
     escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
     anonymised_monaco = '\\pdc\PExIT\DataExchange\anonymised-monaco'
@@ -43,6 +45,13 @@ name = "rccc"
 
     hostname = 'rccc-monacoda'
     dicom_port = '104'
+
+    # A directory within FocalData where files can be moved immediately so that
+    # no files can be opened during the archiving process.
+    archive_holding = "ToBeArchived"
+
+    # The final location for Monaco archives to be stored.
+    archive_destination = '\\UTILSVR\PhysBack\MONACO_ARCHIVE_1'
 
     [site.mosaiq]
     # TODO: One day make it so that timezone is extracted from the Mosaiq
@@ -148,3 +157,6 @@ data_path = '\\pdc\OneDrive$\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron
     [electron_insert_modelling.patterns]
     beam_model_name = 'RiverinaAgility - (\d+)MeV'
     applicator = '(\d+)X\d+'
+
+[monaco_archiving]
+default_weeks_to_keep = 26

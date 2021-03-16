@@ -8,6 +8,7 @@ from . import (
     icom,
     iview_to_dicom,
     iviewdb,
+    monaco_archive,
     sum_doses,
     transfer_check,
     weekly_check,
