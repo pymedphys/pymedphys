@@ -105,11 +105,13 @@ def main():
         )
 
         item_markdown = [
-            f"* Patient Directory: `{directory}` | Weeks since modified: `{_get_weeks(directory)}`"
+            f"* Patient Directory: `{directory}` | Weeks since modified: `{_get_weeks(directory):.2f}`"
             for directory in directory_names_by_weeks_since_touched
         ]
 
         st.write("\n".join(item_markdown))
+
+    st.write("---")
 
 
 def _patient_directory_sort_key(patient_directory_name):
@@ -126,17 +128,19 @@ def _weeks_since_touched(patient_directories):
     status_indicator = st.empty()
     progress_bar = st.progress(0)
 
+    now = time.time()
+
     weeks_sinces_touched = {}
 
     for i, current_patient_directory in enumerate(patient_directories):
         status_indicator.write(f"Patient Directory: `{current_patient_directory.name}`")
 
-        files_and_folders_one_level = current_patient_directory.glob("*")
-        all_date_modified = np.array(
-            [os.path.getmtime(item) for item in files_and_folders_one_level]
+        paths_to_check = list(current_patient_directory.glob("*")) + list(
+            current_patient_directory.joinpath("plan").glob("*")
         )
+        modified_times = np.array([os.path.getmtime(item) for item in paths_to_check])
 
-        number_of_weeks_ago = (time.time() - all_date_modified) / (60 * 60 * 24 * 7)
+        number_of_weeks_ago = (now - modified_times) / (60 * 60 * 24 * 7)
         minimum_number_of_weeks_ago = np.min(number_of_weeks_ago)
 
         weeks_sinces_touched[current_patient_directory] = minimum_number_of_weeks_ago
