@@ -24,7 +24,7 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit import utilities as _utilities
 from pymedphys._streamlit.utilities import config as st_config
 
-CATEGORY = categories.PLANNING
+CATEGORY = categories.ALPHA
 TITLE = "Monaco Archive Tool"
 
 
@@ -125,7 +125,7 @@ def main():
         default_weeks_to_keep = 52
 
     weeks_to_keep = st.number_input(
-        "Number of weeks to keep", min_value=0, value=default_weeks_to_keep
+        "Number of weeks to keep", min_value=0.0, value=float(default_weeks_to_keep)
     )
     directories_to_archive = _determine_directories_to_archive(
         weeks_sinces_touched, weeks_to_keep
@@ -218,7 +218,7 @@ def main():
                 directories_not_in_archive.append(to_dir)
                 st.error(f"`{to_dir}` was not found in archive.")
 
-        holding_is_empty = list(holding.glob("*")) == 0
+        holding_is_empty = len(list(holding.glob("*"))) == 0
 
         if not holding_is_empty:
             st.error("Holding directory is not empty.")
@@ -248,6 +248,7 @@ def _weeks_since_touched(patient_directories):
     now = time.time()
 
     weeks_sinces_touched = {}
+    total_patient_directories = len(patient_directories)
 
     for i, current_patient_directory in enumerate(patient_directories):
         status_indicator.write(f"Patient Directory: `{current_patient_directory.name}`")
@@ -261,7 +262,7 @@ def _weeks_since_touched(patient_directories):
         minimum_number_of_weeks_ago = np.min(number_of_weeks_ago)
 
         weeks_sinces_touched[current_patient_directory] = minimum_number_of_weeks_ago
-        progress = (i + 1) / len(patient_directories)
+        progress = (i + 1) / total_patient_directories
         progress_bar.progress(progress)
 
     return weeks_sinces_touched
