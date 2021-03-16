@@ -125,14 +125,19 @@ Active contributors
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
-* `Matthew Cooper`_
+* `Derek Lane`_
+    * `ELEKTA AB`_, Houston TX
 
-.. _`Matthew Cooper`: https://github.com/matthewdeancooper
+.. _`Derek Lane`: https://github.com/dg1an3
 
 * `Jake Rembish`_
     * `UT Health San Antonio`_, USA
 
 .. _`Jake Rembish`: https://github.com/rembishj
+
+* `Matthew Cooper`_
+
+.. _`Matthew Cooper`: https://github.com/matthewdeancooper
 
 * `Pedro Martinez`_
     * `University of Calgary`_, Canada
@@ -178,6 +183,8 @@ Past contributors
 .. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
 
 .. _`ELEKTA Pty Ltd`: https://www.elekta.com/
+
+.. _`ELEKTA AB`: https://www.elekta.com/
 
 .. _`Royal Adelaide Hospital`: https://www.rah.sa.gov.au/
 
