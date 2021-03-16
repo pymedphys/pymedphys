@@ -19,6 +19,8 @@ import time
 from pymedphys._imports import numpy as np
 from pymedphys._imports import streamlit as st
 
+from numpy import number
+
 from pymedphys._streamlit import categories
 from pymedphys._streamlit import utilities as _utilities
 from pymedphys._streamlit.utilities import config as st_config
@@ -91,15 +93,17 @@ def main():
 
     weeks_sinces_touched = session_state.weeks_since_touched
 
+    def _get_weeks(patient_directory):
+        return weeks_sinces_touched[clinic.joinpath(patient_directory)]
+
+    if len(weeks_sinces_touched.keys()) == 0:
+        st.stop()
+
     weeks_since_touched_expander = st.beta_expander(
         "Weeks since touched", expanded=determine_weeks_since_touched
     )
 
-    with weeks_since_touched_expander:
-
-        def _get_weeks(patient_directory):
-            return weeks_sinces_touched[clinic.joinpath(patient_directory)]
-
+    def _display_directory_names(directory_names):
         directory_names_by_weeks_since_touched = sorted(
             directory_names, key=_get_weeks, reverse=True
         )
@@ -111,7 +115,27 @@ def main():
 
         st.write("\n".join(item_markdown))
 
+    with weeks_since_touched_expander:
+        _display_directory_names(directory_names)
+
     st.write("---")
+
+    try:
+        default_weeks_to_keep = config["monaco_archiving"]["default_weeks_to_keep"]
+    except KeyError:
+        default_weeks_to_keep = 52
+
+    weeks_to_keep = st.number_input(
+        "Number of weeks to keep", min_value=0, value=default_weeks_to_keep
+    )
+    directories_to_archive = _determine_directories_to_archive(
+        weeks_sinces_touched, weeks_to_keep
+    )
+    directory_names_to_archive = [
+        directory.name for directory in directories_to_archive
+    ]
+
+    _display_directory_names(directory_names_to_archive)
 
 
 def _patient_directory_sort_key(patient_directory_name):
@@ -148,3 +172,13 @@ def _weeks_since_touched(patient_directories):
         progress_bar.progress(progress)
 
     return weeks_sinces_touched
+
+
+@st.cache
+def _determine_directories_to_archive(weeks_sinces_touched, weeks_to_keep):
+    directories_to_archive = []
+    for directory, weeks in weeks_sinces_touched.items():
+        if weeks > weeks_to_keep:
+            directories_to_archive.append(directory)
+
+    return directories_to_archive
