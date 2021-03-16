@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import pathlib
-import shutil
-import time
+import re
 
-from pymedphys._imports import numpy as np
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit import utilities as _utilities
 from pymedphys._streamlit.utilities import config as st_config
 
 CATEGORY = categories.PLANNING
@@ -47,3 +43,14 @@ def main():
     directories = site_directory_map[chosen_site]
 
     focal_data = pathlib.Path(directories["focal_data"])
+    dicom_export = focal_data.joinpath("DCMXprtFile")
+
+    dicom_files = dicom_export.glob("*.dcm")
+    patient_id_pattern = re.compile(r"(\d+)_.*\d\d\d\d\d.DCM")
+    patient_ids = {
+        patient_id_pattern.match(path.name).group(1)
+        for path in dicom_files
+        if patient_id_pattern.match(path.name)
+    }
+
+    st.write(patient_ids)
