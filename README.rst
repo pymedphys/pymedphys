@@ -145,6 +145,10 @@ Active contributors
 
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
+* `Derek Lane`_
+    * `ELEKTA AB`_, Houston TX
+
+.. _`Derek Lane`: https://github.com/dg1an3
 
 |uth| |uoc| |hgugm|
 
@@ -178,6 +182,8 @@ Past contributors
 .. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
 
 .. _`ELEKTA Pty Ltd`: https://www.elekta.com/
+
+.. _`ELEKTA AB`: https://www.elekta.com/
 
 .. _`Royal Adelaide Hospital`: https://www.rah.sa.gov.au/
 
