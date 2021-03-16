@@ -45,7 +45,10 @@ def main():
     focal_data = pathlib.Path(directories["focal_data"])
     dicom_export = focal_data.joinpath("DCMXprtFile")
 
-    dicom_files = dicom_export.glob("*.dcm")
+    # Caps or not within glob doesn't matter on Windows, but it does
+    # matter on *nix systems.
+    dicom_files = dicom_export.glob("*.DCM")
+
     patient_id_pattern = re.compile(r"(\d+)_.*\d\d\d\d\d.DCM")
     patient_ids = {
         patient_id_pattern.match(path.name).group(1)
