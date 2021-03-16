@@ -125,14 +125,19 @@ Active contributors
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
-* `Matthew Cooper`_
+* `Derek Lane`_
+    * `ELEKTA AB`_, Houston TX
 
-.. _`Matthew Cooper`: https://github.com/matthewdeancooper
+.. _`Derek Lane`: https://github.com/dg1an3
 
 * `Jake Rembish`_
     * `UT Health San Antonio`_, USA
 
 .. _`Jake Rembish`: https://github.com/rembishj
+
+* `Matthew Cooper`_
+
+.. _`Matthew Cooper`: https://github.com/matthewdeancooper
 
 * `Pedro Martinez`_
     * `University of Calgary`_, Canada
@@ -145,10 +150,6 @@ Active contributors
 
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
-* `Derek Lane`_
-    * `ELEKTA AB`_, Houston TX
-
-.. _`Derek Lane`: https://github.com/dg1an3
 
 |uth| |uoc| |hgugm|
 
