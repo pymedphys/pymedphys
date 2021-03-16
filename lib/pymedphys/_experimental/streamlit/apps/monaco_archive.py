@@ -145,16 +145,14 @@ def main():
     for directory in directories_to_archive:
         if not directory.exists():
             st.warning(f"`{directory}` does not exist anymore.")
-
-        allow_move_button = False
+            allow_move_button = False
 
     for directory in testing_final_locations:
         if directory.exists():
             st.warning(
                 f"The final intended destination of `{directory}` already exists."
             )
-
-        allow_move_button = False
+            allow_move_button = False
 
     intermediate_holding_locations = [
         holding.joinpath(name) for name in directory_names_to_archive
@@ -196,6 +194,13 @@ def main():
             for from_dir, to_dir in moving_plan:
                 shutil.move(from_dir, to_dir)
 
+            st.success(
+                f"Patient's have been moved to the `{holding}`. Now "
+                "please use your OS's file manager to move all of these "
+                f"into `{destination}`. Once that is complete, press the "
+                "`Test moves` button below."
+            )
+
     if st.button("Test moves"):
         directories_left_behind = []
         directories_not_in_archive = []
@@ -208,7 +213,16 @@ def main():
                 directories_not_in_archive.append(to_dir)
                 st.error(f"`{to_dir}` was not found in archive.")
 
-        if not directories_left_behind and not directories_not_in_archive:
+        holding_is_empty = list(holding.glob("*")) == 0
+
+        if not holding_is_empty:
+            st.error("Holding directory is not empty.")
+
+        if (
+            not directories_left_behind
+            and not directories_not_in_archive
+            and holding_is_empty
+        ):
             st.success("All planned moves appeared to have been successful.")
 
 
