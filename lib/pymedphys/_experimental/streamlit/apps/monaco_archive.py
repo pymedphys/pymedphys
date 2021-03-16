@@ -14,12 +14,11 @@
 
 import os
 import pathlib
+import shutil
 import time
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import streamlit as st
-
-from numpy import number
 
 from pymedphys._streamlit import categories
 from pymedphys._streamlit import utilities as _utilities
@@ -136,6 +135,81 @@ def main():
     ]
 
     _display_directory_names(directory_names_to_archive)
+
+    testing_final_locations = [
+        destination.joinpath(name) for name in directory_names_to_archive
+    ]
+
+    allow_move_button = True
+
+    for directory in directories_to_archive:
+        if not directory.exists():
+            st.warning(f"`{directory}` does not exist anymore.")
+
+        allow_move_button = False
+
+    for directory in testing_final_locations:
+        if directory.exists():
+            st.warning(
+                f"The final intended destination of `{directory}` already exists."
+            )
+
+        allow_move_button = False
+
+    intermediate_holding_locations = [
+        holding.joinpath(name) for name in directory_names_to_archive
+    ]
+
+    st.write(
+        f"""
+        ## The moving plan
+
+        Once the below button is pressed this application will undergo
+        the moves detailed below. These moves are into the holding
+        directory of `{holding}`. This is not their intended final
+        location. Once the button below has been pressed use your OS's
+        file explorer to move these files to their final location of
+        `{destination}`. Then, once complete, utilise the final test
+        button to confirm that the move was as expected.
+        """
+    )
+
+    moving_plan = list(zip(directories_to_archive, intermediate_holding_locations))
+
+    plan_to_move_details = [
+        f"* `{from_dir}` => `{to_dir}`" for from_dir, to_dir in moving_plan
+    ]
+    st.write("\n".join(plan_to_move_details))
+
+    holding_directory_contents = list(holding.glob("*"))
+    if len(holding_directory_contents) != 0:
+        st.warning(
+            f"The holding directory, `{holding}`, is not empty. Unable "
+            "to place more files within this directory until those files "
+            f"been moved to `{destination}`"
+        )
+
+        allow_move_button = False
+
+    if allow_move_button:
+        if st.button("Undergo move"):
+            for from_dir, to_dir in moving_plan:
+                shutil.move(from_dir, to_dir)
+
+    if st.button("Test moves"):
+        directories_left_behind = []
+        directories_not_in_archive = []
+        for from_dir, to_dir in zip(directories_to_archive, testing_final_locations):
+            if from_dir.exists():
+                directories_left_behind.append(from_dir)
+                st.error(f"`{from_dir}` was left behind.")
+
+            if not to_dir.exists():
+                directories_not_in_archive.append(to_dir)
+                st.error(f"`{to_dir}` was not found in archive.")
+
+        if not directories_left_behind and not directories_not_in_archive:
+            st.success("All planned moves appeared to have been successful.")
 
 
 def _patient_directory_sort_key(patient_directory_name):
