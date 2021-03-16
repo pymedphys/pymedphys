@@ -5,6 +5,7 @@ from . import (
     dicom_wlutz,
     download,
     electrons,
+    extend_ct,
     icom,
     iview_to_dicom,
     iviewdb,
