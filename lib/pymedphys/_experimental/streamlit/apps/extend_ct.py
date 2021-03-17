@@ -160,7 +160,9 @@ def _get_ae():
     ae.dimse_timeout = None
     ae.maximum_pdu_size = 0
 
-    ae.add_requested_context(pynetdicom.sop_class.CTImageStorage)
+    ae.add_requested_context(
+        pynetdicom.sop_class.CTImageStorage  # pylint: disable=no-member
+    )
 
     return ae
 
