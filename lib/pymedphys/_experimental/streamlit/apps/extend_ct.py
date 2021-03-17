@@ -63,26 +63,50 @@ def main():
         }
     )
 
+    st.write(
+        """
+        ## Select patient
+
+        For a patient to show up below, make sure to run a DICOM export
+        to file within Monaco first.
+        """
+    )
     chosen_patient_id = st.radio("Patient ID", patient_ids)
 
     ct_dicom_files = list(dicom_export.glob(f"{chosen_patient_id}_*_image*.DCM"))
     _stop_button_if_cache_miss("Load files", _load_dicom_files, ct_dicom_files)
 
     ct_datasets = _cached_load_dicom_files(ct_dicom_files)
-    patient_name = {header.PatientName for header in ct_datasets}
-    st.write(patient_name)
+    patient_names_found = {header.PatientName for header in ct_datasets}
+    st.write(patient_names_found)
 
-    # slice_locations = [dataset.SliceLocation for dataset in ct_datasets]
-    # st.write(slice_locations)
+    if len(patient_names_found) != 1:
+        raise ValueError("Expected exactly one patient name to be found.")
+
+    st.write(
+        """
+        ## Extension of CT scan
+        """
+    )
 
     chosen_number_of_slices = st.number_input(
-        "Number of slices to extend by", min_value=0, value=20
+        "Number of slices to extend by (both sup and inf)", min_value=0, value=20
     )
+
+    if not st.button("Extend CT and send back to Monaco"):
+        st.stop()
 
     extended_ct_datasets = _extend_datasets(ct_datasets, chosen_number_of_slices)
 
+    st.success(
+        """
+        The CT expansion and DICOM send to Monaco process was successful.
+        Now use the import new DICOM files functionality within Monaco
+        to retrieve the new extended dataset.
+        """
+    )
 
-@st.cache
+
 def _extend_datasets(datasets, number_of_slices):
     deque_datasets = _extend.convert_datasets_to_deque(datasets)
     _extend.extend_datasets(deque_datasets, 0, number_of_slices)
