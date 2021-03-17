@@ -26,7 +26,7 @@ from pymedphys._dicom.ct import extend as _extend
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 
-CATEGORY = categories.PLANNING
+CATEGORY = categories.ALPHA
 TITLE = "Monaco Extend CT"
 
 
