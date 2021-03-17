@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import functools
 import hashlib
 import pathlib
 import re
 from typing import List
 
-from pymedphys._imports import pydicom
+from pymedphys._imports import pydicom, pynetdicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._dicom.ct import extend as _extend
@@ -32,11 +33,11 @@ TITLE = "Monaco Extend CT"
 def main():
     config = st_config.get_config()
 
-    site_directory_map = {}
+    site_config_map = {}
     for site_config in config["site"]:
         site = site_config["name"]
         try:
-            site_directory_map[site] = {
+            site_config_map[site] = {
                 "focal_data": site_config["monaco"]["focaldata"],
                 "hostname": site_config["monaco"]["hostname"],
                 "port": site_config["monaco"]["dicom_port"],
@@ -44,11 +45,13 @@ def main():
         except KeyError:
             continue
 
-    chosen_site = st.radio("Site", list(site_directory_map.keys()))
-    directories = site_directory_map[chosen_site]
+    chosen_site = st.radio("Site", list(site_config_map.keys()))
+    site_config = site_config_map[chosen_site]
 
-    focal_data = pathlib.Path(directories["focal_data"])
+    focal_data = pathlib.Path(site_config["focal_data"])
     dicom_export = focal_data.joinpath("DCMXprtFile")
+    hostname = site_config["hostname"]
+    port = site_config["port"]
 
     # Caps or not within glob doesn't matter on Windows, but it does
     # matter on *nix systems.
@@ -97,6 +100,7 @@ def main():
         st.stop()
 
     extended_ct_datasets = _extend_datasets(ct_datasets, chosen_number_of_slices)
+    _send_datasets(hostname, port, extended_ct_datasets)
 
     st.success(
         """
@@ -105,6 +109,60 @@ def main():
         to retrieve the new extended dataset.
         """
     )
+
+
+def _send_datasets(hostname, port, datasets):
+    status = st.empty()
+    progress_bar = st.progress(0)
+
+    total_number_of_datasets = len(datasets)
+
+    with association(hostname, port) as assoc:
+        for i, ds in enumerate(datasets):
+            ds.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+            ds.fix_meta_info(enforce_standard=True)
+
+            returned_status = assoc.send_c_store(ds)
+            readable_status = pynetdicom.status.code_to_category(returned_status.Status)
+            slice_location = ds.SliceLocation
+
+            status.write(
+                f"Slice Location: {slice_location} | Status: {readable_status}"
+            )
+
+            progress_bar.progress((i + 1) / total_number_of_datasets)
+
+
+@contextlib.contextmanager
+def association(hostname, port):
+    try:
+        assoc = _get_association(hostname, port)
+        yield assoc
+    finally:
+        try:
+            assoc.release()
+        except:
+            pass
+
+
+def _get_association(hostname, port):
+    ae = _get_ae()
+    assoc = ae.associate(hostname, int(port))
+
+    return assoc
+
+
+@st.cache(allow_output_mutation=True)
+def _get_ae():
+    ae = pynetdicom.AE()
+    ae.network_timeout = None
+    ae.acse_timeout = None
+    ae.dimse_timeout = None
+    ae.maximum_pdu_size = 0
+
+    ae.add_requested_context(pynetdicom.sop_class.CTImageStorage)
+
+    return ae
 
 
 def _extend_datasets(datasets, number_of_slices):
