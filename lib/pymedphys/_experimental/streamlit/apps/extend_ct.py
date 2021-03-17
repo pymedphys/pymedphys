@@ -65,19 +65,21 @@ def main():
     chosen_patient_id = st.radio("Patient ID", patient_ids)
 
     ct_dicom_files = list(dicom_export.glob(f"{chosen_patient_id}_*_image*.DCM"))
-
-    cache_key, mem_cache = _get_function_cache(_load_dicom_files)
-
-    value_key = _get_args_kwargs_hash(cache_key, _load_dicom_files, ct_dicom_files)
-
-    if not value_key in mem_cache:
-        if not st.button("Load files"):
-            st.stop()
+    _stop_button_if_cache_miss("Load files", _load_dicom_files, ct_dicom_files)
 
     ct_datasets = _cached_load_dicom_files(ct_dicom_files)
 
     patient_name = {header.PatientName for _, header in ct_datasets.items()}
     st.write(patient_name)
+
+
+def _stop_button_if_cache_miss(button_text, func, *args, **kwargs):
+    cache_key, mem_cache = _get_function_cache(func)
+    value_key = _get_args_kwargs_hash(cache_key, func, *args, **kwargs)
+
+    if not value_key in mem_cache:
+        if not st.button(button_text):
+            st.stop()
 
 
 def _load_dicom_files(files):
