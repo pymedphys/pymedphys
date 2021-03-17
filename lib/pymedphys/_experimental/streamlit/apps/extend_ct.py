@@ -16,11 +16,12 @@ import functools
 import hashlib
 import pathlib
 import re
-from typing import Dict
+from typing import List
 
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
+from pymedphys._dicom.ct import extend as _extend
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 
@@ -68,9 +69,26 @@ def main():
     _stop_button_if_cache_miss("Load files", _load_dicom_files, ct_dicom_files)
 
     ct_datasets = _cached_load_dicom_files(ct_dicom_files)
-
-    patient_name = {header.PatientName for _, header in ct_datasets.items()}
+    patient_name = {header.PatientName for header in ct_datasets}
     st.write(patient_name)
+
+    # slice_locations = [dataset.SliceLocation for dataset in ct_datasets]
+    # st.write(slice_locations)
+
+    chosen_number_of_slices = st.number_input(
+        "Number of slices to extend by", min_value=0, value=20
+    )
+
+    extended_ct_datasets = _extend_datasets(ct_datasets, chosen_number_of_slices)
+
+
+@st.cache
+def _extend_datasets(datasets, number_of_slices):
+    deque_datasets = _extend.convert_datasets_to_deque(datasets)
+    _extend.extend_datasets(deque_datasets, 0, number_of_slices)
+    _extend.extend_datasets(deque_datasets, -1, number_of_slices)
+
+    return deque_datasets
 
 
 def _stop_button_if_cache_miss(button_text, func, *args, **kwargs):
@@ -83,10 +101,9 @@ def _stop_button_if_cache_miss(button_text, func, *args, **kwargs):
 
 
 def _load_dicom_files(files):
-    ct_datasets: Dict[str, pydicom.Dataset] = {
-        path.name: pydicom.dcmread(path, force=True, stop_before_pixels=False)
-        for path in files
-    }
+    ct_datasets: List[pydicom.Dataset] = [
+        pydicom.dcmread(path, force=True) for path in files
+    ]
 
     return ct_datasets
 
