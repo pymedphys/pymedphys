@@ -47,11 +47,11 @@ def main():
     directories = site_directory_map[chosen_site]
 
     focal_data = pathlib.Path(directories["focal_data"])
-    dicom_export_directory = focal_data.joinpath("DCMXprtFile")
+    dicom_export = focal_data.joinpath("DCMXprtFile")
 
     # Caps or not within glob doesn't matter on Windows, but it does
     # matter on *nix systems.
-    dicom_files = dicom_export_directory.glob("*.DCM")
+    dicom_files = dicom_export.glob("*.DCM")
 
     patient_id_pattern = re.compile(r"(\d+)_.*_image\d\d\d\d\d.DCM")
     patient_ids = list(
@@ -64,25 +64,26 @@ def main():
 
     chosen_patient_id = st.radio("Patient ID", patient_ids)
 
-    function_cache = _get_function_cache(_load_exported_cts)
+    ct_dicom_files = list(dicom_export.glob(f"{chosen_patient_id}_*_image*.DCM"))
 
-    st.write(function_cache)
+    cache_key, mem_cache = _get_function_cache(_load_dicom_files)
 
-    if len(function_cache) == 0:
+    value_key = _get_args_kwargs_hash(cache_key, _load_dicom_files, ct_dicom_files)
+
+    if not value_key in mem_cache:
         if not st.button("Load files"):
             st.stop()
 
-    ct_datasets = _cached_load_exported_cts(dicom_export_directory, chosen_patient_id)
+    ct_datasets = _cached_load_dicom_files(ct_dicom_files)
 
     patient_name = {header.PatientName for _, header in ct_datasets.items()}
     st.write(patient_name)
 
 
-def _load_exported_cts(dicom_export_directory, patient_id):
-    ct_dicom_files = list(dicom_export_directory.glob(f"{patient_id}_*_image*.DCM"))
+def _load_dicom_files(files):
     ct_datasets: Dict[str, pydicom.Dataset] = {
         path.name: pydicom.dcmread(path, force=True, stop_before_pixels=False)
-        for path in ct_dicom_files
+        for path in files
     }
 
     return ct_datasets
@@ -117,7 +118,34 @@ def _get_function_cache(
     cache_key = func_hasher.hexdigest()
     mem_cache = _mem_caches.get_cache(cache_key, max_entries, ttl)
 
-    return mem_cache
+    return cache_key, mem_cache
 
 
-_cached_load_exported_cts = st.cache(_load_exported_cts, allow_output_mutation=True)
+def _get_args_kwargs_hash(cache_key, func, *args, hash_funcs=None, **kwargs):
+    value_hasher = hashlib.new("md5")
+
+    if args:
+        st.hashing.update_hash(
+            args,
+            hasher=value_hasher,
+            hash_funcs=hash_funcs,
+            hash_reason=st.hashing.HashReason.CACHING_FUNC_ARGS,
+            hash_source=func,
+        )
+
+    if kwargs:
+        st.hashing.update_hash(
+            kwargs,
+            hasher=value_hasher,
+            hash_funcs=hash_funcs,
+            hash_reason=st.hashing.HashReason.CACHING_FUNC_ARGS,
+            hash_source=func,
+        )
+
+    value_key = value_hasher.hexdigest()
+    value_key = "%s-%s" % (value_key, cache_key)
+
+    return value_key
+
+
+_cached_load_dicom_files = st.cache(_load_dicom_files, allow_output_mutation=True)
