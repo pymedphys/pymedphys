@@ -362,6 +362,7 @@
     "pyright",
     "pytest",
     "qcls",
+    "qualname",
     "quickcheck",
     "rccc",
     "rcfile",
