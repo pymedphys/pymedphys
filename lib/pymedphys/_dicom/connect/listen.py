@@ -175,6 +175,8 @@ class DicomListener(DicomConnectBase):
             # File Meta Information Header is written
             file_ds.save_as(filepath, write_like_original=False)
             status_ds.Status = 0x0000  # Success
+
+            logging.info("DICOM object received: %s", filepath)
         except IOError:
             logging.error("Could not write file to specified directory:")
             logging.error("    %s", filepath)
@@ -198,7 +200,13 @@ def listen_cli(args):
         ae_title=args.aetitle,
         storage_directory=args.storage_directory,
     )
+
+    logging.info("Starting DICOM listener")
+    logging.info("IP: %s", args.host)
+    logging.info("Port: %s", args.port)
+    logging.info("AE Title: %s", args.aetitle)
     dicom_listener.start()
+    logging.info("Listener Ready")
 
     # Run until the process is stopped
     def handler_stop_signals(*_):
