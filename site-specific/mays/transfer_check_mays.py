@@ -24,8 +24,8 @@ from pymedphys._experimental.chartchecks.compare import (
     compare_to_mosaiq,
 )
 from pymedphys._experimental.chartchecks.helpers import (
-    get_all_dicom_treatment_info,
-    get_all_treatment_data,
+    get_all_dicom_treatment_data,
+    get_all_mosaiq_treatment_data,
     get_staff_initials,
 )
 from pymedphys._experimental.chartchecks.tolerance_constants import (
@@ -75,7 +75,7 @@ for dicomFile in dicomFiles:
 if "rp" in files:
 
     # Create a dataframe of plan information from DICOM RP file
-    dicom_table = get_all_dicom_treatment_info(files["rp"])
+    dicom_table = get_all_dicom_treatment_data(files["rp"])
     dicom_table["tolerance"] = [
         TOLERANCE_TYPES[item] for item in dicom_table["tolerance"]
     ]
@@ -84,7 +84,7 @@ if "rp" in files:
     # Using MRN from RP file, find patient in MOSAIQ and perform query
     mrn = dicom_table.iloc[0]["mrn"]
     with connect.connect(server) as connection:
-        mosaiq_table = get_all_treatment_data(connection, mrn)
+        mosaiq_table = get_all_mosaiq_treatment_data(connection, mrn)
 
         if mosaiq_table.iloc[0]["create_id"] is not None:
             try:

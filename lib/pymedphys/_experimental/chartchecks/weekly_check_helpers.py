@@ -22,7 +22,7 @@ import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.helpers import get_incomplete_qcls
 
 from pymedphys._experimental.chartchecks.helpers import (
-    get_all_treatment_data,
+    get_all_mosaiq_treatment_data,
     get_all_treatment_history_data,
 )
 
@@ -53,7 +53,7 @@ def compare_delivered_to_planned(patient):
     connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
 
     delivered = get_all_treatment_history_data(connection, patient)
-    planned = get_all_treatment_data(connection, patient)
+    planned = get_all_mosaiq_treatment_data(connection, patient)
     patient_results = pd.DataFrame()
     try:
         # current_fx = max(delivered_values["fx"])
