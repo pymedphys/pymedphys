@@ -75,7 +75,7 @@ name = "nbcc"
     icom = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom'
 
     [site.monaco]
-    focaldata = '\\tunnel-nbcc-monaco\FOCALDATA'
+    focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
 
     [site.mosaiq]
@@ -136,3 +136,10 @@ patient_directories = [
     '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
     '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
 ]
+
+[electron_insert_modelling]
+data_path = '\\pdc\OneDrive$\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
+
+    [electron_insert_modelling.patterns]
+    beam_model_name = 'RiverinaAgility - (\d+)MeV'
+    applicator = '(\d+)X\d+'

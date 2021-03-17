@@ -17,6 +17,7 @@
 
 from pymedphys._dicom.anonymise import anonymise_cli
 from pymedphys._dicom.connect.listen import listen_cli
+from pymedphys._dicom.connect.send import send_cli
 from pymedphys._dicom.header import (
     adjust_machine_name_cli,
     adjust_RED_by_structure_name_cli,
@@ -37,6 +38,7 @@ def set_up_dicom_cli(subparsers):
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
     listen(dicom_subparsers)
+    send(dicom_subparsers)
 
     return dicom_parser, dicom_subparsers
 
@@ -240,7 +242,10 @@ def listen(dicom_subparsers):
 
     parser.add_argument("port", type=int, help="The port on which to listen")
     parser.add_argument(
-        "-b", "--bind", default="0.0.0.0", type=str, help="The IP address to bind to"
+        "--host",
+        default="0.0.0.0",
+        type=str,
+        help="The host/IP to bind to",
     )
     parser.add_argument("-d", "--storage_directory", default=".", type=str, help="")
     parser.add_argument(
@@ -252,3 +257,22 @@ def listen(dicom_subparsers):
     )
 
     parser.set_defaults(func=listen_cli)
+
+
+def send(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        "send", help="Send DICOM objects to a DICOM endpoint"
+    )
+
+    parser.add_argument("host", type=str, help="The host name/IP of the DICOM listener")
+    parser.add_argument("port", type=int, help="The port of the DICOM listener")
+    parser.add_argument("dcmfiles", help="Path to DICOM objects to send", nargs="*")
+
+    parser.add_argument(
+        "-a",
+        "--aetitle",
+        default="PYMEDPHYS",
+        type=str,
+        help="The Called AE Title",
+    )
+    parser.set_defaults(func=send_cli)

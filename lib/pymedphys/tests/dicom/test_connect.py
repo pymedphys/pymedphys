@@ -17,19 +17,20 @@
 
 import pathlib
 import shutil
+import subprocess
 import tempfile
-import time
+from contextlib import contextmanager
 from unittest.mock import Mock
 
-from pymedphys._imports import pydicom, pynetdicom, pytest
+from pymedphys._imports import psutil, pydicom, pynetdicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.connect.listen import (
     DicomListener,
     hierarchical_dicom_storage_directory,
 )
+from pymedphys._dicom.connect.send import DicomSender
 from pymedphys._dicom.create import dicom_dataset_from_dict
-from pymedphys._utilities.test import process
 
 # TODO How to determine an appropriate port for testing?
 TEST_PORT = 9988
@@ -44,6 +45,77 @@ def _build_hierarchical_path_to_plan(
         storage_path, test_dataset
     ).joinpath(f"RP.{test_dataset.SOPInstanceUID}.dcm")
     return file_path
+
+
+def check_dicom_agrees(ds1, ds2):
+    """Asserts that the two DICOM datasets are identical on certain fields."""
+
+    assert ds1.SOPInstanceUID == ds2.SOPInstanceUID
+    assert ds1.SeriesInstanceUID == ds2.SeriesInstanceUID
+    assert ds1.StudyInstanceUID == ds2.StudyInstanceUID
+    assert ds1.PatientID == ds2.PatientID
+    assert ds1.Modality == ds2.Modality
+    assert ds1.Manufacturer == ds2.Manufacturer
+
+    assert len(ds1.BeamSequence) == len(ds2.BeamSequence)
+    assert ds1.BeamSequence[0].Manufacturer == ds2.BeamSequence[0].Manufacturer
+
+
+def prepare_listen_command(port, receive_directory, ae_title):
+
+    return [
+        pmp_test_utils.get_executable_even_when_embedded(),
+        "-m",
+        "pymedphys",
+        "--verbose",
+        "dicom",
+        "listen",
+        str(port),
+        "-d",
+        str(receive_directory),
+        "-a",
+        str(ae_title),
+    ]
+
+
+def prepare_send_command(port, ae_title, send_file):
+
+    return [
+        pmp_test_utils.get_executable_even_when_embedded(),
+        "-m",
+        "pymedphys",
+        "--verbose",
+        "dicom",
+        "send",
+        "-a",
+        str(ae_title),
+        "localhost",
+        str(port),
+        str(send_file),
+    ]
+
+
+@contextmanager
+def listener_process(port, receive_directory, ae_title):
+
+    listener_command = prepare_listen_command(port, receive_directory, ae_title)
+    proc = subprocess.Popen(
+        listener_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+
+    try:
+        stream_output = b""
+        for b in iter(lambda: proc.stdout.read(1), b""):
+            stream_output += b
+            if b"Listener Ready" in stream_output:
+                break
+
+        yield proc
+
+    finally:
+        for child in psutil.Process(proc.pid).children(recursive=True):
+            child.kill()
+        proc.kill()
 
 
 @pytest.fixture()
@@ -121,7 +193,7 @@ def test_dataset():
     file_meta = pydicom.dataset.FileMetaDataset(
         dicom_dataset_from_dict(
             {
-                "FileMetaInformationVersion": "01",
+                "FileMetaInformationVersion": bytes([0, 1]),
                 "MediaStorageSOPClassUID": pynetdicom.sop_class.RTPlanStorage,
                 "MediaStorageSOPInstanceUID": test_uid,
                 "TransferSyntaxUID": pydicom.uid.ImplicitVRLittleEndian,
@@ -258,35 +330,12 @@ def test_dicom_listener_cli(test_dataset):
 
         test_directory = pathlib.Path(tmp_directory)
 
-        command = [
-            pmp_test_utils.get_executable_even_when_embedded(),
-            "-m",
-            "pymedphys",
-            "dicom",
-            "listen",
-            str(TEST_PORT),
-            "-d",
-            str(test_directory),
-            "-a",
-            str(scp_ae_title),
-        ]
-
-        with process(command):
+        with listener_process(TEST_PORT, test_directory, scp_ae_title):
 
             # Send the data to the listener
             ae = pynetdicom.AE()
             ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
             assoc = ae.associate("127.0.0.1", TEST_PORT, ae_title=scp_ae_title)
-
-            # Give the process a few seconds to start up
-            elapsed = 0
-            while not assoc.is_established:
-                time.sleep(0.5)
-                elapsed += 0.5
-                if elapsed >= 3:  # Break if still not connecting after 3 seconds
-                    break
-
-                assoc = ae.associate("127.0.0.1", TEST_PORT, ae_title=scp_ae_title)
             assert assoc.is_established
             status = assoc.send_c_store(test_dataset)
             assert status.Status == 0
@@ -295,3 +344,65 @@ def test_dicom_listener_cli(test_dataset):
         file_path = _build_hierarchical_path_to_plan(test_directory, test_dataset)
         read_dataset = pydicom.read_file(file_path)
         assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
+
+
+@pytest.mark.pydicom
+def test_dicom_sender(test_dataset):
+    """Test sending DICOM objects using the DicomSender"""
+
+    scp_ae_title = "PYMEDPHYSTEST"
+
+    with tempfile.TemporaryDirectory() as tmp_directory:
+
+        test_directory = pathlib.Path(tmp_directory)
+        receive_directory = test_directory.joinpath("receive")
+        receive_directory.mkdir()
+
+        with listener_process(TEST_PORT, receive_directory, scp_ae_title):
+
+            dicom_sender = DicomSender(
+                host="127.0.0.1", port=TEST_PORT, ae_title=scp_ae_title
+            )
+
+            assert dicom_sender.verify()
+            dicom_sender.send([test_dataset])
+
+        dcm_files = receive_directory.glob("**/*.dcm")
+        dcm_file = next(dcm_files)
+        ds = pydicom.read_file(dcm_file)
+        check_dicom_agrees(ds, test_dataset)
+
+
+@pytest.mark.pydicom
+def test_dicom_sender_cli(test_dataset):
+    """Test the command line interface to the DicomSender"""
+
+    scp_ae_title = "PYMEDPHYSTEST"
+
+    with tempfile.TemporaryDirectory() as tmp_directory:
+
+        test_directory = pathlib.Path(tmp_directory)
+        send_directory = test_directory.joinpath("send")
+        send_directory.mkdir()
+        send_file = send_directory.joinpath("test.dcm")
+        test_dataset.save_as(send_file, write_like_original=False)
+
+        receive_directory = test_directory.joinpath("receive")
+        receive_directory.mkdir()
+
+        sender_command = prepare_send_command(TEST_PORT, scp_ae_title, send_file)
+
+        with listener_process(TEST_PORT, receive_directory, scp_ae_title) as lp:
+
+            subprocess.call(sender_command)
+
+            stream_output = b""
+            for b in iter(lambda: lp.stdout.read(1), b""):
+                stream_output += b
+                if b"DICOM object received" in stream_output:
+                    break
+
+        dcm_files = receive_directory.glob("**/*.dcm")
+        dcm_file = next(dcm_files)
+        ds = pydicom.read_file(dcm_file)
+        check_dicom_agrees(ds, test_dataset)

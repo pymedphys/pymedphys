@@ -79,7 +79,7 @@ shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
 
 # Streamlit's pinning is due to its current beta nature and the fact that some
 # private APIs are utilised.
-streamlit = { version = "0.76.0", optional = true }  # groups = ["user", "dev"]
+streamlit = { version = "0.78.0", optional = true }  # groups = ["user", "dev"]
 streamlit-ace = { version = "0.0.4", optional = true }  # groups = ["user", "dev"]
 streamlit-analytics = { version = "0.1.2", optional = true }  # groups = ["user", "dev"]
 
@@ -90,6 +90,8 @@ pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "do
 # Scikit-learn has an upper bound since there appears to be an incompatibility
 # between pylinac and scikit-learn version 0.24.0
 scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
+
+fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # ----------- #
 # Comparables #
@@ -148,6 +150,7 @@ dev = [
     "dbfread",
     "dicompyler-core",
     "doc8",
+    "fsspec",
     "hypothesis",
     "imageio",
     "jupyter-book",
@@ -223,6 +226,7 @@ user = [
     "data-science-types",
     "dbfread",
     "dicompyler-core",
+    "fsspec",
     "imageio",
     "keyring",
     "matplotlib",
