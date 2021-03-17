@@ -139,10 +139,7 @@ def association(hostname, port):
         assoc = _get_association(hostname, port)
         yield assoc
     finally:
-        try:
-            assoc.release()
-        except:
-            pass
+        assoc.release()
 
 
 def _get_association(hostname, port):
