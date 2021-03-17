@@ -46,7 +46,8 @@ This project adheres to
 ### New features and enhancements
 
 * Added CLI argument for setting the hostname on the DICOM listen server. For
-  example `pymedphys dicom listen --host 127.0.0.1`.
+  example `pymedphys dicom listen --host 127.0.0.1 7779`.
+* Added DICOM send functionality to DICOM connect module and made it available on the CLI. For example `pymedphys dicom send 127.0.0.1 7779 path\to\dicom\*.dcm`
 * A range of application changes and improvements. The PyMedPhys app can be
   accessed by running `pymedphys gui`.
 * **[Streamlit users only]** A CLI command `pymedphys streamlit run` was added
