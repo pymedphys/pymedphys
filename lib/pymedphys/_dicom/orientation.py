@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Union
+from typing import Dict, Iterable, List, Union
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 from typing_extensions import Literal
@@ -54,7 +54,7 @@ def require_patient_orientation(
         not match the provided orientation.
     """
 
-    if isinstance(datasets, pydicom.Dataset):
+    if not isinstance(datasets, Iterable):
         datasets = list(datasets)
 
     required_image_orientation_patient = IMAGE_ORIENTATION_MAP[patient_orientation]
