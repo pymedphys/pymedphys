@@ -89,11 +89,12 @@ def main():
 
     try:
         orientation.require_patient_orientation(ct_series, "HFS")
-    except ValueError:
+    except ValueError as e:
         st.error(
             'The provided CT Series is not `"HFS"`. Only patient '
             'orientations of precisely `"HFS"` are supported.'
         )
+        st.write(e)
         st.stop()
 
     st.write(
