@@ -53,10 +53,8 @@ def require_patient_orientation(
         If the patient orientation of any of the provided datasets does
         not match the provided orientation.
     """
-    try:
-        assumed_list = cast(List["pydicom.Dataset"], datasets)
-        assumed_list[0]  # pylint: disable = pointless-statement
-    except TypeError:
+
+    if isinstance(datasets, pydicom.Dataset):
         datasets = list(datasets)
 
     required_image_orientation_patient = IMAGE_ORIENTATION_MAP[patient_orientation]
