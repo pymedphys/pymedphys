@@ -88,7 +88,8 @@ def main():
         raise ValueError("Expected exactly one patient name to be found.")
 
     try:
-        orientation.require_patient_orientation(ct_series, "HFS")
+        for ds in ct_series:
+            orientation.require_patient_orientation(ds, "HFS")
     except ValueError as e:
         st.error(
             'The provided CT Series is not `"HFS"`. Only patient '

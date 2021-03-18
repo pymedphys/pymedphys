@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 from typing_extensions import Literal
@@ -36,37 +36,31 @@ IMAGE_ORIENTATION_MAP: Dict[PatientOrientationString, List[OrientationInt]] = {
 
 
 def require_patient_orientation(
-    datasets: Union["pydicom.Dataset", List["pydicom.Dataset"]],
+    dataset: "pydicom.Dataset",
     patient_orientation: PatientOrientationString,
 ):
     """Require a specific patient orientation.
 
     Parameters
     ----------
-    datasets : pydicom.Dataset or List[pydicom.Dataset]
+    datasets : pydicom.Dataset
     patient_orientation : PatientOrientationString
         The string representation of the patient orientation, eg. "HFS".
 
     Raises
     ------
     ValueError
-        If the patient orientation of any of the provided datasets does
+        If the patient orientation of the provided dataset does
         not match the provided orientation.
     """
-
-    if not isinstance(datasets, list):
-        datasets = list(datasets)
-
     required_image_orientation_patient = IMAGE_ORIENTATION_MAP[patient_orientation]
+    image_orientation_patient = dataset.ImageOrientationPatient
 
-    for dataset in datasets:
-        image_orientation_patient = dataset.ImageOrientationPatient
-
-        if image_orientation_patient != required_image_orientation_patient:
-            raise ValueError(
-                f"Patient orientation is not {patient_orientation}. "
-                "For this to be the case the ImageOrientationPatient tag "
-                f"would need to equal {required_image_orientation_patient}. "
-                "Instead, however, the provided dataset has this set to "
-                f"{image_orientation_patient}."
-            )
+    if image_orientation_patient != required_image_orientation_patient:
+        raise ValueError(
+            f"Patient orientation is not {patient_orientation}. "
+            "For this to be the case the ImageOrientationPatient tag "
+            f"would need to equal {required_image_orientation_patient}. "
+            "Instead, however, the provided dataset has this set to "
+            f"{image_orientation_patient}."
+        )
