@@ -13,53 +13,43 @@
 
 
 import datetime
-import os
 import random
 from collections import deque
 from copy import deepcopy
-from glob import glob
-
-from pymedphys._imports import pydicom
 
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 
-def extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
-    copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices)
-    refresh_instance_numbers(dicom_datasets)
-    generate_new_uids(dicom_datasets, uids=uids)
+def extend(datasets, number_of_slices):
+    deque_datasets = _convert_datasets_to_deque(datasets)
+    _extend_datasets(deque_datasets, 0, number_of_slices)
+    _extend_datasets(deque_datasets, -1, number_of_slices)
+
+    return deque_datasets
 
 
-def load_dicom_into_deque(filepaths):
-    dicom_datasets_initial_read = [
-        pydicom.dcmread(filepath, force=True) for filepath in filepaths
-    ]
-
-    dicom_datasets = convert_datasets_to_deque(dicom_datasets_initial_read)
-
-    return dicom_datasets
+def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
+    _copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices)
+    _refresh_instance_numbers(dicom_datasets)
+    _generate_new_uids(dicom_datasets, uids=uids)
 
 
-def convert_datasets_to_deque(datasets):
+def _convert_datasets_to_deque(datasets):
     dicom_datasets = deque()
 
-    for dicom_dataset in sorted(datasets, key=slice_location):
+    for dicom_dataset in sorted(datasets, key=_slice_location):
         dicom_datasets.append(dicom_dataset)
 
     return dicom_datasets
 
 
-def instance_number(dicom_dataset):
-    return dicom_dataset.InstanceNumber
-
-
-def slice_location(dicom_dataset):
+def _slice_location(dicom_dataset):
     return float(dicom_dataset.SliceLocation)
 
 
-def copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
-    append_method = get_append_method(dicom_datasets, index_to_copy)
-    new_slice_locations = generate_new_slice_locations(
+def _copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
+    append_method = _get_append_method(dicom_datasets, index_to_copy)
+    new_slice_locations = _generate_new_slice_locations(
         dicom_datasets, index_to_copy, number_of_slices
     )
 
@@ -81,20 +71,20 @@ def copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
         append(new_slice)
 
 
-def refresh_instance_numbers(dicom_datasets):
+def _refresh_instance_numbers(dicom_datasets):
     for i, dicom_dataset in enumerate(dicom_datasets):
         dicom_dataset.InstanceNumber = str(i)
 
 
-def generate_new_uids(dicom_datasets, uids=None):
+def _generate_new_uids(dicom_datasets, uids=None):
     if uids is None:
-        uids = generate_uids(len(dicom_datasets))
+        uids = _generate_uids(len(dicom_datasets))
 
     for dicom_dataset, uid in zip(dicom_datasets, uids):
         dicom_dataset.SOPInstanceUID = uid
 
 
-def generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices):
+def _generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices):
     if index_to_copy == 0:
         slice_diff = dicom_datasets[0].SliceLocation - dicom_datasets[1].SliceLocation
     elif index_to_copy == len(dicom_datasets) or index_to_copy == -1:
@@ -109,7 +99,7 @@ def generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices
     return new_slice_locations
 
 
-def get_append_method(dicom_datasets, index_to_copy):
+def _get_append_method(dicom_datasets, index_to_copy):
     if index_to_copy == 0:
         return "appendleft"
 
@@ -119,7 +109,7 @@ def get_append_method(dicom_datasets, index_to_copy):
     raise ValueError("index_to_copy must be first or last slice")
 
 
-def generate_uids(number_of_uids, randomisation_length=10, root=PYMEDPHYS_ROOT_UID):
+def _generate_uids(number_of_uids, randomisation_length=10, root=PYMEDPHYS_ROOT_UID):
     num_of_digits = len(str(number_of_uids))
 
     middle_item = str(random.randint(0, 10 ** randomisation_length)).zfill(

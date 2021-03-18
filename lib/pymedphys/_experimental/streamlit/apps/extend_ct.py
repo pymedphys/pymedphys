@@ -99,7 +99,7 @@ def main():
     if not st.button("Extend CT and send back to Monaco"):
         st.stop()
 
-    extended_ct_datasets = _extend_datasets(ct_datasets, chosen_number_of_slices)
+    extended_ct_datasets = _extend.extend(ct_datasets, chosen_number_of_slices)
     _send_datasets(hostname, port, extended_ct_datasets)
 
     st.success(
@@ -162,14 +162,6 @@ def _get_ae():
     )
 
     return ae
-
-
-def _extend_datasets(datasets, number_of_slices):
-    deque_datasets = _extend.convert_datasets_to_deque(datasets)
-    _extend.extend_datasets(deque_datasets, 0, number_of_slices)
-    _extend.extend_datasets(deque_datasets, -1, number_of_slices)
-
-    return deque_datasets
 
 
 def _stop_button_if_cache_miss(button_text, func, *args, **kwargs):
