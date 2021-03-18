@@ -19,9 +19,9 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.ct.extend import (
-    convert_datasets_to_deque,
-    extend_datasets,
-    generate_uids,
+    _convert_datasets_to_deque,
+    _extend_datasets,
+    _generate_uids,
 )
 
 
@@ -38,13 +38,13 @@ def make_datasets(uuids, slice_locations):
         for i, (uuid, slice_location) in enumerate(zip(uuids, slice_locations))
     ]
 
-    return convert_datasets_to_deque(initial_datasets)
+    return _convert_datasets_to_deque(initial_datasets)
 
 
 @pytest.mark.pydicom
 def test_extend_datasets():
-    initial_uuids = generate_uids(4)
-    final_uuids = generate_uids(7)
+    initial_uuids = _generate_uids(4)
+    final_uuids = _generate_uids(7)
 
     number_of_slices_to_add = 3
     initial_slice_locations = [1, 3, 5, 7]
@@ -58,10 +58,10 @@ def test_extend_datasets():
     resulting_dataset_left = deepcopy(initial_datasets)
     resulting_dataset_right = deepcopy(initial_datasets)
 
-    extend_datasets(
+    _extend_datasets(
         resulting_dataset_left, 0, number_of_slices_to_add, uids=final_uuids
     )
-    extend_datasets(
+    _extend_datasets(
         resulting_dataset_right, -1, number_of_slices_to_add, uids=final_uuids
     )
 
@@ -74,8 +74,8 @@ def test_extend_datasets():
 
 @pytest.mark.pydicom
 def test_out_of_order():
-    initial_uuids = generate_uids(4)
-    final_uuids = generate_uids(7)
+    initial_uuids = _generate_uids(4)
+    final_uuids = _generate_uids(7)
 
     number_of_slices_to_add = 3
     initial_slice_locations = [7, 3, 1, 5]
@@ -86,7 +86,7 @@ def test_out_of_order():
 
     resulting_dataset = deepcopy(initial_datasets)
 
-    extend_datasets(resulting_dataset, 0, number_of_slices_to_add, uids=final_uuids)
+    _extend_datasets(resulting_dataset, 0, number_of_slices_to_add, uids=final_uuids)
 
     assert resulting_dataset != initial_datasets
     assert resulting_dataset == expected_datasets
