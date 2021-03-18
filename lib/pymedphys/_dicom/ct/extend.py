@@ -24,47 +24,6 @@ from pymedphys._imports import pydicom
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 
-def extend_in_both_directions(input_dir, output_dir, number_of_slices=20):
-    filepaths = glob(os.path.join(input_dir, "*"))
-    dicom_datasets = load_dicom_into_deque(filepaths)
-    extend_datasets(dicom_datasets, 0, number_of_slices)
-    extend_datasets(dicom_datasets, -1, number_of_slices)
-
-    common_prefix = get_common_prefix(filepaths)
-    save_files(dicom_datasets, common_prefix, output_dir)
-
-
-def save_files(dicom_datasets, common_prefix, output_dir):
-    number_of_digits = len(str(len(dicom_datasets)))
-    new_filenames = [
-        "{}{}.dcm".format(
-            common_prefix, str(dicom_dataset.InstanceNumber).zfill(number_of_digits)
-        )
-        for dicom_dataset in dicom_datasets
-    ]
-
-    new_filepaths = [os.path.join(output_dir, filename) for filename in new_filenames]
-
-    for dicom_dataset, filepath in zip(dicom_datasets, new_filepaths):
-        dicom_dataset.save_as(filepath)
-
-
-def get_common_prefix(filepaths):
-    filenames = [os.path.basename(filepath) for filepath in filepaths]
-    common_prefix = os.path.commonprefix(filenames)
-
-    return common_prefix
-
-
-def extend(input_dir, output_dir, index_to_copy, number_of_slices):
-    filepaths = glob(os.path.join(input_dir, "*"))
-    dicom_datasets = load_dicom_into_deque(filepaths)
-    extend_datasets(dicom_datasets, index_to_copy, number_of_slices)
-
-    common_prefix = get_common_prefix(filepaths)
-    save_files(dicom_datasets, common_prefix, output_dir)
-
-
 def extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
     copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices)
     refresh_instance_numbers(dicom_datasets)
