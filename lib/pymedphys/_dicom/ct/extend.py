@@ -12,10 +12,10 @@
 # limitations under the License.
 
 
+import collections
+import copy
 import datetime
 import random
-from collections import deque
-from copy import deepcopy
 
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
@@ -35,7 +35,7 @@ def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None)
 
 
 def _convert_datasets_to_deque(datasets):
-    dicom_datasets = deque()
+    dicom_datasets = collections.deque()
 
     for dicom_dataset in sorted(datasets, key=_slice_location):
         dicom_datasets.append(dicom_dataset)
@@ -53,16 +53,16 @@ def _copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
         dicom_datasets, index_to_copy, number_of_slices
     )
 
-    dataset_to_copy = deepcopy(dicom_datasets[index_to_copy])
+    dataset_to_copy = copy.deepcopy(dicom_datasets[index_to_copy])
 
     append = getattr(dicom_datasets, append_method)
 
     for a_slice_location in new_slice_locations:
-        new_slice = deepcopy(dataset_to_copy)
+        new_slice = copy.deepcopy(dataset_to_copy)
 
         new_slice.SliceLocation = str(a_slice_location)
 
-        image_position_patient_to_copy = deepcopy(
+        image_position_patient_to_copy = copy.deepcopy(
             dicom_datasets[index_to_copy].ImagePositionPatient
         )
         image_position_patient_to_copy[-1] = str(a_slice_location)
