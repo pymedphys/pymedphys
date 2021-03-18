@@ -13,15 +13,17 @@
 # limitations under the License.
 
 
-from typing import Dict, List
+from typing import Dict, List, Union, cast
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 from typing_extensions import Literal
 
-PatientOrientation = Literal["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
-OrientionInt = Literal[-1, 0, 1]
+PatientOrientationString = Literal[
+    "FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"
+]
+OrientationInt = Literal[-1, 0, 1]
 
-IMAGE_ORIENTATION_MAP: Dict[PatientOrientation, List[OrientionInt]] = {
+IMAGE_ORIENTATION_MAP: Dict[PatientOrientationString, List[OrientationInt]] = {
     "FFDL": [0, 1, 0, 1, 0, 0],
     "FFDR": [0, -1, 0, -1, 0, 0],
     "FFP": [1, 0, 0, 0, -1, 0],
@@ -33,12 +35,40 @@ IMAGE_ORIENTATION_MAP: Dict[PatientOrientation, List[OrientionInt]] = {
 }
 
 
-def require_patient_orientation(ds: "pydicom.Dataset", patient_orientation):
+def require_patient_orientation(
+    datasets: Union["pydicom.Dataset", List["pydicom.Dataset"]],
+    patient_orientation: PatientOrientationString,
+):
+    """Require a specific patient orientation.
 
-    if not np.array_equal(
-        ds.ImageOrientationPatient, np.array(IMAGE_ORIENTATION_MAP[patient_orientation])
-    ):
-        raise ValueError(
-            "The supplied dataset has a patient "
-            f"orientation other than {patient_orientation}."
-        )
+    Parameters
+    ----------
+    datasets : pydicom.Dataset or List[pydicom.Dataset]
+    patient_orientation : PatientOrientationString
+        The string representation of the patient orientation, eg. "HFS".
+
+    Raises
+    ------
+    ValueError
+        If the patient orientation of any of the provided datasets does
+        not match the provided orientation.
+    """
+    try:
+        assumed_list = cast(List["pydicom.Dataset"], datasets)
+        assumed_list[0]  # pylint: disable = pointless-statement
+    except TypeError:
+        datasets = list(datasets)
+
+    required_image_orientation_patient = IMAGE_ORIENTATION_MAP[patient_orientation]
+
+    for dataset in datasets:
+        image_orientation_patient = dataset.ImageOrientationPatient
+
+        if image_orientation_patient != required_image_orientation_patient:
+            raise ValueError(
+                f"Patient orientation is not {patient_orientation}. "
+                "For this to be the case the ImageOrientationPatient tag "
+                f"would need to equal {required_image_orientation_patient}. "
+                "Instead, however, the provided dataset has this set to "
+                f"{image_orientation_patient}."
+            )
