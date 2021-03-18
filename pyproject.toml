@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.36.0-dev2"
+version = "0.36.0"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -275,13 +275,16 @@ ensure_newline_before_comments = true
 known_third_party = ["pymedphys._imports"]
 known_general_scientific = [
     "numpy", "scipy", "pandas", "imageio", "PIL", "skimage", "matplotlib",
-    "mpl_toolkits", "shapely", "streamlit", "altair"
+    "mpl_toolkits", "shapely", "altair", "sklearn", "plotly"
 ]
 known_machine_learning = [
     "tensorflow", "pytorch"
 ]
+known_streamlit = [
+    "streamlit", "streamlit_ace", "streamlit_analytics"
+]
 known_medphys = [
-    "pydicom", "pylinac", "pynetdicom", "libjpeg"
+    "pydicom", "pylinac", "pynetdicom", "libjpeg", "dicompylercore"
 ]
 known_first_party = ["pymedphys"]
 known_experimental = ["pymedphys._experimental"]
@@ -291,6 +294,7 @@ sections = [
     "THIRDPARTY",
     "GENERAL_SCIENTIFIC",
     "MACHINE_LEARNING",
+    "STREAMLIT",
     "MEDPHYS",
     "FIRSTPARTY",
     "EXPERIMENTAL",

@@ -7,6 +7,71 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0]
+
+### News around this release
+
+* We have a new team member, [Derek Lane](https://github.com/dg1an3) he has
+  undergone swathes of work around improving the long term maintenance of the
+  Mosaiq SQL code. Thank you Derek! 🎉 🎈 🥳.
+* [Matt Jennings](https://github.com/Matthew-Jennings) has rejoined the team,
+  picking up his previous hat of Maintainer, great to have you back Matt 😊.
+
+### Breaking changes
+
+* The modules `pymedphys.electronfactors` and `pymedphys.wlutz` were removed
+  from the public API.
+  * There did not appear to be any usage of these modules outside of Cancer
+    Care Associates.
+  * The electron factors module can be re-exposed upon request.
+  * The Winston Lutz module is undergoing a significant re-work and will be
+    re-exposed in its new form once complete.
+* There have been a range of changes to the previously undocumented Mosaiq
+  database connection and execution API.
+  * `pymedphys.mosaiq.connect` now returns a `connection` object instead of a
+    `cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
+  * All instances where previously the argument name within a function or
+    method was `cursor` have been changed to `connection`.
+  * Previously a server and port could be provided to `pymedphys.mosaiq.connect`
+    by passing it as a colon separated string, for example `"localhost:1234"`.
+    This is no longer the case. Now, hostname and port need to be provided
+    separately. There are also three extra arguments, `alias`, `username`, and
+    `password`. See either the docs <https://docs.pymedphys.com/lib/ref/mosaiq.html>
+    or the docstring for more details <https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79>.
+  * Removed `pymedphys.mosaiq.qcls`.
+  * **[Contributor facing only]** replaced `pymedphys dev tests --pylint` with
+    `pymedphys dev lint`.
+
+
+### New features and enhancements
+
+* Added CLI argument for setting the hostname on the DICOM listen server. For
+  example `pymedphys dicom listen 7779 --host 127.0.0.1 `.
+* Added DICOM send functionality to DICOM connect module and made it available on the CLI. For example `pymedphys dicom send 127.0.0.1 7779 path\to\dicom\*.dcm`
+* A range of application changes and improvements. The PyMedPhys app can be
+  accessed by running `pymedphys gui`.
+* **[Streamlit users only]** A CLI command `pymedphys streamlit run` was added
+  to facilitate utilising the custom PyMedPhys patches on the streamlit server
+  for arbitrary streamlit apps. See <https://github.com/pymedphys/pymedphys/issues/1422>.
+* **[Contributor facing only]** Added the following contributor CLI tools/options:
+  * `pymedphys dev tests --mosaiqdb`, to load up the tests that depend on having
+    a Microsoft SQL server running. Thanks to [Derek Lane](https://github.com/dg1an3)
+    for all of his work building the Mosaiq CI workflow and the first set of
+    Mosaiq tests.
+  * `pymedphys dev doctests`, run doctests.
+  * `pymedphys dev imports`, verify optional import logic by creating a clean
+    Python install and attempting to import all modules.
+  * `pymedphys dev lint`, run pylint.
+  * `pymedphys dev cypress`, load up Cypress for interactively writing and
+    running the end-to-end tests.
+
+### Misc changes
+
+* Significant work was undergone to improve the documentation layout. Thanks to
+  [Matt Jennings](https://github.com/Matthew-Jennings) for all his work here.
+* How Mosaiq username and passwords are saved has been updated. This will
+  result in these credentials being requested once more.
+
 ## [0.35.0]
 
 ### News around this release
@@ -1153,6 +1218,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
+[0.36.0]: https://github.com/pymedphys/pymedphys/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0
