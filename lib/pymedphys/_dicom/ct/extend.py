@@ -16,37 +16,42 @@ import collections
 import copy
 import datetime
 import random
-from typing import Iterable
+from typing import Deque, List
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 
+from pymedphys._dicom import orientation
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 
-def extend(ct_datasets: Iterable["pydicom.Dataset"], number_of_slices: int):
+def extend(
+    ct_datasets: List["pydicom.Dataset"], number_of_slices: int
+) -> Deque["pydicom.Dataset"]:
     """Duplicates the superior and inferior slices of a Series of CT Datasets.
 
-
-
+    Only HFS orientations are currently supported.
 
     Parameters
     ----------
-    ct_datasets : An iterable of ``pydicom.Dataset``s
-        [description]
+    ct_datasets : List[pydicom.Dataset]
+        The CT series to be extended.
     number_of_slices : int
-        [description]
+        The number of slices to append onto both the superior and
+        inferior end of the Series.
 
     Returns
     -------
-    [type]
-        [description]
+    Deque[pydicom.Dataset]
+        The extended CT series.
     """
 
-    ct_datasets = _convert_datasets_to_deque(ct_datasets)
-    _extend_datasets(ct_datasets, 0, number_of_slices)
-    _extend_datasets(ct_datasets, -1, number_of_slices)
+    orientation.require_patient_orientation(ct_datasets, "HFS")
 
-    return ct_datasets
+    sorted_ct_datasets = _convert_datasets_to_deque(ct_datasets)
+    _extend_datasets(sorted_ct_datasets, 0, number_of_slices)
+    _extend_datasets(sorted_ct_datasets, -1, number_of_slices)
+
+    return sorted_ct_datasets
 
 
 def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
@@ -55,8 +60,8 @@ def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None)
     _generate_new_uids(dicom_datasets, uids=uids)
 
 
-def _convert_datasets_to_deque(datasets):
-    dicom_datasets = collections.deque()
+def _convert_datasets_to_deque(datasets) -> Deque["pydicom.Dataset"]:
+    dicom_datasets: Deque[pydicom.Dataset] = collections.deque()
 
     for dicom_dataset in sorted(datasets, key=_slice_location):
         dicom_datasets.append(dicom_dataset)
