@@ -25,7 +25,7 @@ from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 
 def extend(
-    ct_datasets: List["pydicom.Dataset"], number_of_slices: int
+    ct_series: List["pydicom.Dataset"], number_of_slices: int
 ) -> Deque["pydicom.Dataset"]:
     """Duplicates the superior and inferior slices of a Series of CT Datasets.
 
@@ -33,7 +33,7 @@ def extend(
 
     Parameters
     ----------
-    ct_datasets : List[pydicom.Dataset]
+    ct_series : List[pydicom.Dataset]
         The CT series to be extended.
     number_of_slices : int
         The number of slices to append onto both the superior and
@@ -45,13 +45,13 @@ def extend(
         The extended CT series.
     """
 
-    orientation.require_patient_orientation(ct_datasets, "HFS")
+    orientation.require_patient_orientation(ct_series, "HFS")
 
-    sorted_ct_datasets = _convert_datasets_to_deque(ct_datasets)
-    _extend_datasets(sorted_ct_datasets, 0, number_of_slices)
-    _extend_datasets(sorted_ct_datasets, -1, number_of_slices)
+    sorted_ct_series = _convert_datasets_to_deque(ct_series)
+    _extend_datasets(sorted_ct_series, 0, number_of_slices)
+    _extend_datasets(sorted_ct_series, -1, number_of_slices)
 
-    return sorted_ct_datasets
+    return sorted_ct_series
 
 
 def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
