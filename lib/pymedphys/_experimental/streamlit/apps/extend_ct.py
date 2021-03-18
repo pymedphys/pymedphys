@@ -119,7 +119,7 @@ def _send_datasets(hostname, port, datasets):
 
     with association(hostname, port) as assoc:
         for i, ds in enumerate(datasets):
-            ds.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+            ds.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
             ds.fix_meta_info(enforce_standard=True)
 
             returned_status = assoc.send_c_store(ds)
