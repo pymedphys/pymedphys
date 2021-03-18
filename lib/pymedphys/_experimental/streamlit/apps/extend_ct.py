@@ -22,6 +22,7 @@ from typing import List
 from pymedphys._imports import pydicom, pynetdicom
 from pymedphys._imports import streamlit as st
 
+from pymedphys._dicom import orientation
 from pymedphys._dicom.ct import extend as _extend
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
@@ -86,6 +87,15 @@ def main():
     if len(patient_names_found) != 1:
         raise ValueError("Expected exactly one patient name to be found.")
 
+    try:
+        orientation.require_patient_orientation(ct_datasets, "HFS")
+    except ValueError:
+        st.error(
+            'The provided CT Series is not `"HFS"`. Only patient '
+            'orientations of precisely `"HFS"` are supported.'
+        )
+        st.stop()
+
     st.write(
         """
         ## Extension of CT scan
@@ -124,7 +134,7 @@ def _send_datasets(hostname, port, datasets):
 
             returned_status = assoc.send_c_store(ds)
             readable_status = pynetdicom.status.code_to_category(returned_status.Status)
-            slice_location = ds.SliceLocation
+            slice_location = ds.ImagePositionPatient[-1]
 
             status.write(
                 f"Slice Location: {slice_location} | Status: {readable_status}"

@@ -70,7 +70,7 @@ def _convert_datasets_to_deque(datasets) -> Deque["pydicom.Dataset"]:
 
 
 def _slice_location(dicom_dataset):
-    return float(dicom_dataset.SliceLocation)
+    return float(dicom_dataset.ImagePositionPatient[-1])
 
 
 def _copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
@@ -112,13 +112,21 @@ def _generate_new_uids(dicom_datasets, uids=None):
 
 def _generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices):
     if index_to_copy == 0:
-        slice_diff = dicom_datasets[0].SliceLocation - dicom_datasets[1].SliceLocation
+        slice_diff = (
+            dicom_datasets[0].ImagePositionPatient[-1]
+            - dicom_datasets[1].ImagePositionPatient[-1]
+        )
     elif index_to_copy == len(dicom_datasets) or index_to_copy == -1:
-        slice_diff = dicom_datasets[-1].SliceLocation - dicom_datasets[-2].SliceLocation
+        slice_diff = (
+            dicom_datasets[-1].ImagePositionPatient[-1]
+            - dicom_datasets[-2].ImagePositionPatient[-1]
+        )
     else:
         raise ValueError("index_to_copy must be first or last slice")
 
-    new_slice_locations = [dicom_datasets[index_to_copy].SliceLocation + slice_diff]
+    new_slice_locations = [
+        dicom_datasets[index_to_copy].ImagePositionPatient[-1] + slice_diff
+    ]
     for _ in range(number_of_slices - 1):
         new_slice_locations.append(new_slice_locations[-1] + slice_diff)
 
