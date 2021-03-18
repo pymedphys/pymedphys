@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Union, cast
+from typing import Dict, List, Union
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 from typing_extensions import Literal
