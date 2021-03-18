@@ -80,15 +80,15 @@ def main():
     ct_dicom_files = list(dicom_export.glob(f"{chosen_patient_id}_*_image*.DCM"))
     _stop_button_if_cache_miss("Load files", _load_dicom_files, ct_dicom_files)
 
-    ct_datasets = _cached_load_dicom_files(ct_dicom_files)
-    patient_names_found = {header.PatientName for header in ct_datasets}
+    ct_series = _cached_load_dicom_files(ct_dicom_files)
+    patient_names_found = {header.PatientName for header in ct_series}
     st.write(patient_names_found)
 
     if len(patient_names_found) != 1:
         raise ValueError("Expected exactly one patient name to be found.")
 
     try:
-        orientation.require_patient_orientation(ct_datasets, "HFS")
+        orientation.require_patient_orientation(ct_series, "HFS")
     except ValueError:
         st.error(
             'The provided CT Series is not `"HFS"`. Only patient '
@@ -109,8 +109,8 @@ def main():
     if not st.button("Extend CT and send back to Monaco"):
         st.stop()
 
-    extended_ct_datasets = _extend.extend(ct_datasets, chosen_number_of_slices)
-    _send_datasets(hostname, port, extended_ct_datasets)
+    extended_ct_series = _extend.extend(ct_series, chosen_number_of_slices)
+    _send_datasets(hostname, port, extended_ct_series)
 
     st.success(
         """
@@ -184,11 +184,11 @@ def _stop_button_if_cache_miss(button_text, func, *args, **kwargs):
 
 
 def _load_dicom_files(files):
-    ct_datasets: List[pydicom.Dataset] = [
+    ct_series: List[pydicom.Dataset] = [
         pydicom.dcmread(path, force=True) for path in files
     ]
 
-    return ct_datasets
+    return ct_series
 
 
 @functools.lru_cache()
