@@ -27,7 +27,7 @@ from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 def extend(
     ct_series: List["pydicom.Dataset"], number_of_slices: int
 ) -> Deque["pydicom.Dataset"]:
-    """Duplicates the superior and inferior slices of a Series of CT Datasets.
+    """Duplicates the superior and inferior slices of a CT Series.
 
     Only HFS orientations are currently supported.
 
