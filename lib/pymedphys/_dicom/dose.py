@@ -21,7 +21,7 @@ from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt, pydicom, scipy
 
-from .constants import IMAGE_ORIENTATION_MAP
+from . import orientation
 from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
 from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
@@ -105,7 +105,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
         The RT DICOM plan used to extract surface parameters and verify gantry
         angle 0 beams are used.
     """
-    require_patient_orientation(dose_dataset, "HFS")
+    orientation.require_patient_orientation(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
     depths = np.array(depths, copy=False)
 
@@ -159,7 +159,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
         parameters and verify gantry angle 0 beams are used.
     """
 
-    require_patient_orientation(dose_dataset, "HFS")
+    orientation.require_patient_orientation(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
     displacements = np.array(displacements, copy=False)
 
@@ -308,16 +308,6 @@ def create_dvh(structure, structure_dataset, dose_dataset):
     plt.title("DVH")
     plt.xlabel("Dose (Gy)")
     plt.ylabel("Relative Volume (%)")
-
-
-def require_patient_orientation(ds, patient_orientation):
-    if not np.array_equal(
-        ds.ImageOrientationPatient, np.array(IMAGE_ORIENTATION_MAP[patient_orientation])
-    ):
-        raise ValueError(
-            "The supplied dataset has a patient "
-            f"orientation other than {patient_orientation}."
-        )
 
 
 def sum_doses_in_datasets(

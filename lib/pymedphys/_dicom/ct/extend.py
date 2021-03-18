@@ -16,16 +16,37 @@ import collections
 import copy
 import datetime
 import random
+from typing import Iterable
+
+from pymedphys._imports import pydicom  # pylint: disable = unused-import
 
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 
-def extend(datasets, number_of_slices):
-    deque_datasets = _convert_datasets_to_deque(datasets)
-    _extend_datasets(deque_datasets, 0, number_of_slices)
-    _extend_datasets(deque_datasets, -1, number_of_slices)
+def extend(ct_datasets: Iterable["pydicom.Dataset"], number_of_slices: int):
+    """Duplicates the superior and inferior slices of a Series of CT Datasets.
 
-    return deque_datasets
+
+
+
+    Parameters
+    ----------
+    ct_datasets : An iterable of ``pydicom.Dataset``s
+        [description]
+    number_of_slices : int
+        [description]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+
+    ct_datasets = _convert_datasets_to_deque(ct_datasets)
+    _extend_datasets(ct_datasets, 0, number_of_slices)
+    _extend_datasets(ct_datasets, -1, number_of_slices)
+
+    return ct_datasets
 
 
 def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
