@@ -109,7 +109,7 @@ directory where the iCom records are to be stored.
 
 Once this `.bat` file was defined [NSSM](https://nssm.cc/) was downloaded with
 its `.exe` placed at `C:\Users\Public\Documents\physics-server\bin`. Then,
-to create the service the following was `.bat` file was created and run as
+to create the service the following `.bat` file was created and run as
 administrator:
 
 ```bat
