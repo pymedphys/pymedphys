@@ -106,3 +106,30 @@ that server, the `pymedphys` CLI command was not found within the server's
 python distribution is temporarily added to the path. Here `192.168.17.40`
 is the IP of the Linac, and `\\NBCCC-pdc\physics\NBCC-DataExchange\iCom` is the
 directory where the iCom records are to be stored.
+
+Once this `.bat` file was defined [NSSM](https://nssm.cc/) was downloaded with
+its `.exe` placed at `C:\Users\Public\Documents\physics-server\bin`. Then,
+to create the service the following was `.bat` file was created and run as
+administrator:
+
+```bat
+SET GIT_ROOT=C:\Users\Public\Documents\physics-server
+SET PATH=%GIT_ROOT%\bin;%PATH%
+SET HERE=%GIT_ROOT%\NBCC\icom
+
+SET SERIAL=4299
+
+nssm install icom_listening_%SERIAL% %SERIAL%_listening.bat
+
+nssm set icom_listening_%SERIAL% Application %HERE%\%SERIAL%_listening.bat
+nssm set icom_listening_%SERIAL% AppDirectory %HERE%
+
+nssm set icom_listening_%SERIAL% AppStdout %HERE%\%SERIAL%_listening_log.txt
+nssm set icom_listening_%SERIAL% AppStderr %HERE%\%SERIAL%_listening_log.txt
+
+nssm set icom_listening_%SERIAL% AppRestartDelay 300000
+```
+
+Then, within the Windows services manager this service was set up so that its
+`Startup Type` is set to `Automatic` and the `Log On As` setting was then set
+to a user that had the appropriately scoped permissions.
