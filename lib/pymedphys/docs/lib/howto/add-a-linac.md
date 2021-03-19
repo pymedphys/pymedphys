@@ -76,16 +76,35 @@ were followed, we followed these steps by doing the following:
 
 Make sure to adjust the above versions appropriately to match what is current.
 
-### The physics-server git repository
+### The [physics-server](https://github.com/CCA-Physics/physics-server) git repository
 
 At each of our sites, to facilitate SSH tunnelling between the sites there is
-a "physics-server" at each site. The relevant software and configuration on
-these physics servers is stored within a public GitHub repository at
-<https://github.com/CCA-Physics/physics-server>.
-
-All of the code links presented within this section below are adapted from the
-code found within the
+a server with the hostname `physics-server` at each site. The relevant software
+and configuration on these servers is stored within a public GitHub repository
+at <https://github.com/CCA-Physics/physics-server>. All of the code snippets
+presented within this iCom section are adapted from the code found within
+that repository's
 [NBCC/icom](https://github.com/CCA-Physics/physics-server/blob/8f09d1575106c57d1284146f3020ddba4fcbe884/NBCC/icom)
-directory within that repository.
+directory.
 
-### Set up the iCom listener service
+### Setting up the iCom listener as a Windows service
+
+To convert the PyMedPhys CLI tool into a Windows service the
+[NSSM](https://nssm.cc/) tool was utilised. It takes `.bat` files and converts
+them into a Windows service. A file called `4299_listening.bat` was created
+with the following contents:
+
+```bat
+SET PYTHON_DIR="C:\Users\Public\Documents\python"
+cd %PYTHON_DIR%
+SET PATH=%PYTHON_DIR%;%PYTHON_DIR%\Scripts;"%PATH%"
+
+pymedphys icom listen 192.168.17.40 \\NBCCC-pdc\physics\NBCC-DataExchange\iCom
+```
+
+The key being that, given the way that Python and PyMedPhys was installed on
+that server, the `pymedphys` CLI command was not found within the server's
+`%PATH%` variable. As such, before utilising the `pymedphys` CLI the embedded
+python distribution is temporarily added to the path. Here `192.168.17.40`
+is the IP of the Linac, and `\\NBCCC-pdc\physics\NBCC-DataExchange\iCom` is the
+directory where the iCom records are to be stored.
