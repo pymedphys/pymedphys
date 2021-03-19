@@ -18,10 +18,14 @@ instructions here to work for other operating systems.
 
 Before getting started you will need the following:
 
-* The hospital/centre network IP that the NSS of the Linac was assigned
+* The hospital/centre network IP that the NSS of the Linac was assigned.
+  * Throughout this documentation it will be assumed that this is
+    `192.168.17.40`.
 * A name that can uniquely identify the Linac and will not change, eg. its
   serial number.
+  * Throughout this document it will be assumed that this is `4299`.
 * A login username and password to the NSS to be able to access its file shares
+  that it is sharing with the centre's network via SAMBA.
 * A server where you can run the iCom listener
   * This server should be able to have a guarantee that the connection
     between the server and the Linac will have near-zero network interruptions.
@@ -31,10 +35,18 @@ Before getting started you will need the following:
     set that service to be able to boot on server start.
 * A shared network drive at your centre where you will be storing the iCom and
   TRF records.
+  * Throughout this document the iCom network path will be assumed to be
+    `\\NBCCC-pdc\physics\NBCC-DataExchange\iCom`.
 * A shared network drive at your centre which can be mounted by the iView to
   be utilised as a QA iView imaging database.
 
-## Installing PyMedPhys on the iCom listener server
+## The iCom listener
+
+Elekta Linacs have an iCom protocol that can be utilised to determine various
+parameters about the Linac state, eg. Gantry angle. This section details how
+we have set up the PyMedPhys iCom listener
+
+### Installing PyMedPhys on the iCom listener server
 
 In our case, the server where the iCom listener is to be installed has the
 requirement that the installation has minimal impact on the other software that
@@ -59,5 +71,21 @@ were followed, we followed these steps by doing the following:
 * Downloaded [get-pip.py](https://pip.pypa.io/en/stable/installing/#installing-with-get-pip-py)
   and then ran `C:\Users\Public\Documents\python\python.exe get-pip.py`
 * Installed PyMedPhys by running `C:\Users\Public\Documents\python\python.exe -m pip install pymedphys==0.36.0`.
+  * Note that `pip install pymedphys[user]` is not utilised, as the extra
+    dependencies are not needed.
 
 Make sure to adjust the above versions appropriately to match what is current.
+
+### The physics-server git repository
+
+At each of our sites, to facilitate SSH tunnelling between the sites there is
+a "physics-server" at each site. The relevant software and configuration on
+these physics servers is stored within a public GitHub repository at
+<https://github.com/CCA-Physics/physics-server>.
+
+All of the code links presented within this section below are adapted from the
+code found within the
+[NBCC/icom directory](https://github.com/CCA-Physics/physics-server/blob/8f09d1575106c57d1284146f3020ddba4fcbe884/NBCC/icom)
+within that repository.
+
+### Set up the iCom listener service
