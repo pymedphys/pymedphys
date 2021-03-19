@@ -9,7 +9,7 @@ This project adheres to
 
 ## [0.36.1]
 
-### Misc changes
+### New features and enhancements
 
 * Added the `icom` installation option which can be run by calling
   `pip install pymedphys[icom]==0.36.1`. This will install only the
