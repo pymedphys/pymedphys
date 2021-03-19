@@ -133,3 +133,15 @@ nssm set icom_listening_%SERIAL% AppRestartDelay 300000
 Then, within the Windows services manager this service was set up so that its
 `Startup Type` is set to `Automatic` and the `Log On As` setting was then set
 to a user that had the appropriately scoped permissions.
+
+## iView database
+
+Not yet documented.
+
+## TRF indexing
+
+Not yet documented.
+
+## Updating the `config.toml` file
+
+Not yet documented.
