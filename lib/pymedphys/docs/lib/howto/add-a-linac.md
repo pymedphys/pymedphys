@@ -59,7 +59,7 @@ distributions is available at
 <https://www.python.org/ftp/python/3.9.2/python-3.9.2-embed-amd64.zip>.
 
 Also, given this installation of PyMedPhys is only going to be running as an
-iCom listener it doesn't need any extra dependencies.
+iCom listener it only needs a very minimal set of dependencies.
 
 To install PyMedPhys within the embedded distribution
 [these notes](https://www.christhoung.com/2018/07/15/embedded-python-windows/)
@@ -70,9 +70,7 @@ were followed, we followed these steps by doing the following:
   `#import site` to `import site`.
 * Downloaded [get-pip.py](https://pip.pypa.io/en/stable/installing/#installing-with-get-pip-py)
   and then ran `C:\Users\Public\Documents\python\python.exe get-pip.py`
-* Installed PyMedPhys by running `C:\Users\Public\Documents\python\python.exe -m pip install pymedphys==0.36.0`.
-  * Note that `pip install pymedphys[user]` is not utilised, as the extra
-    dependencies are not needed.
+* Installed PyMedPhys by running `C:\Users\Public\Documents\python\python.exe -m pip install pymedphys[icom]==0.36.0`.
 
 Make sure to adjust the above versions appropriately to match what is current.
 
