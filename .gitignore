@@ -281,3 +281,4 @@ v*.tar.gz
 *-demo
 *-demo-files
 downloads/
+*.history
