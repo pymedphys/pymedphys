@@ -70,7 +70,7 @@ were followed, we followed these steps by doing the following:
   `#import site` to `import site`.
 * Downloaded [get-pip.py](https://pip.pypa.io/en/stable/installing/#installing-with-get-pip-py)
   and then ran `C:\Users\Public\Documents\python\python.exe get-pip.py`
-* Installed PyMedPhys by running `C:\Users\Public\Documents\python\python.exe -m pip install pymedphys[icom]==0.36.0`.
+* Installed PyMedPhys by running `C:\Users\Public\Documents\python\python.exe -m pip install pymedphys[icom]==0.36.1`.
 
 Make sure to adjust the above versions appropriately to match what is current.
 
