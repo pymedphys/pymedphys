@@ -28,8 +28,8 @@ This project adheres to
     re-exposed in its new form once complete.
 * There have been a range of changes to the previously undocumented Mosaiq
   database connection and execution API.
-  * `pymedphys.mosaiq.connect` now returns a `connection` object instead of a
-    `cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
+  * `pymedphys.mosaiq.connect` now returns a `Connection` object instead of a
+    `Cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
   * All instances where previously the argument name within a function or
     method was `cursor` have been changed to `connection`.
   * Previously a server and port could be provided to `pymedphys.mosaiq.connect`
