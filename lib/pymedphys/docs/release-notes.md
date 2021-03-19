@@ -39,14 +39,13 @@ This project adheres to
     `password`. See either the docs <https://docs.pymedphys.com/lib/ref/mosaiq.html>
     or the docstring for more details <https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79>.
   * Removed `pymedphys.mosaiq.qcls`.
-  * **[Contributor facing only]** replaced `pymedphys dev tests --pylint` with
-    `pymedphys dev lint`.
-
+* **[Contributor facing only]** replaced `pymedphys dev tests --pylint` with
+  `pymedphys dev lint`.
 
 ### New features and enhancements
 
 * Added CLI argument for setting the hostname on the DICOM listen server. For
-  example `pymedphys dicom listen 7779 --host 127.0.0.1 `.
+  example `pymedphys dicom listen 7779 --host 127.0.0.1`.
 * Added DICOM send functionality to DICOM connect module and made it available on the CLI. For example `pymedphys dicom send 127.0.0.1 7779 path\to\dicom\*.dcm`
 * A range of application changes and improvements. The PyMedPhys app can be
   accessed by running `pymedphys gui`.
