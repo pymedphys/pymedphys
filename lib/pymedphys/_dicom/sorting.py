@@ -22,6 +22,7 @@ from pymedphys._imports import pydicom  # pylint: disable=unused-import
 # https://github.com/didymo/OnkoDICOM/blob/cfab3aefb1427ab251a5de3df1b04d729ecd4b5d/src/Model/ImageLoading.py#L112-L130
 #
 # This was undergone by Simon Biggs.
+# TODO: Get permission to re-license under the Apache-2.0.
 # ==========================================================================
 
 
