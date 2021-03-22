@@ -39,4 +39,4 @@ extension-pkg-whitelist =
     win32api,
     pymssql,
     numpy,
-    scipy.special
+    scipy.special,
