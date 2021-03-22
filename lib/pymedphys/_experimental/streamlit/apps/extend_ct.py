@@ -123,23 +123,30 @@ def main():
     )
 
 
+def _make_status_readable(returned_status):
+    return pynetdicom.status.code_to_category(returned_status.Status)
+
+
 def _send_datasets(hostname, port, datasets):
+    connection_status = st.empty()
     status = st.empty()
     progress_bar = st.progress(0)
 
     total_number_of_datasets = len(datasets)
 
     with association(hostname, port) as assoc:
+        returned_echo_status = _make_status_readable(assoc.send_c_echo())
+        connection_status.write(f"DICOM connection status: {returned_echo_status}")
+
         for i, ds in enumerate(datasets):
             ds.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
             ds.fix_meta_info(enforce_standard=True)
 
-            returned_status = assoc.send_c_store(ds)
-            readable_status = pynetdicom.status.code_to_category(returned_status.Status)
+            returned_status = _make_status_readable(assoc.send_c_store(ds))
             slice_location = ds.ImagePositionPatient[-1]
 
             status.write(
-                f"Slice Location: {slice_location} | Status: {readable_status}"
+                f"Slice Location: {slice_location} | CT send status: {returned_status}"
             )
 
             progress_bar.progress((i + 1) / total_number_of_datasets)
@@ -171,6 +178,9 @@ def _get_ae():
 
     ae.add_requested_context(
         pynetdicom.sop_class.CTImageStorage  # pylint: disable=no-member
+    )
+    ae.add_requested_context(
+        pynetdicom.sop_class.VerificationSOPClass  # pylint: disable=no-member
     )
 
     return ae
