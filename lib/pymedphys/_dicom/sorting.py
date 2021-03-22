@@ -13,7 +13,7 @@
 
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom
+from pymedphys._imports import pydicom  # pylint: disable=unused-import
 
 # ==========================================================================
 # The remainder of this file is under the LGPL 2.1 or later license.
@@ -67,7 +67,7 @@ def stack_displacement(ds: "pydicom.Dataset") -> float:
 
     orient_x = np.array(orientation[0:3], dtype=float)
     orient_y = np.array(orientation[3:6], dtype=float)
-    orient_z = np.cross(orient_x, orient_y)
+    orient_z = np.cross(orient_x, orient_y)  # type: ignore
 
     img_pos_patient = np.array(position, dtype=float)
     displacement: float = np.dot(orient_z, img_pos_patient)
