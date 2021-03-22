@@ -64,7 +64,7 @@ def test_dicom_dose_constancy():
 
 
 @pytest.mark.pydicom
-def test_require_patient_orientation():
+def test_require_dicom_patient_position():
     test_ds_dict = {
         key: pydicom.dcmread(test_coords.get_data_file(key))
         for key in ORIENTATIONS_SUPPORTED
@@ -82,15 +82,15 @@ def test_require_patient_orientation():
 
         for test_orient in test_orientations:
             if orient == test_orient:
-                orientation.require_patient_orientation(ds, test_orient)
+                orientation.require_dicom_patient_position(ds, test_orient)
 
             elif orient == "no orient":
                 with pytest.raises(AttributeError):
-                    orientation.require_patient_orientation(ds, test_orient)
+                    orientation.require_dicom_patient_position(ds, test_orient)
 
             else:
                 with pytest.raises(ValueError):
-                    orientation.require_patient_orientation(ds, test_orient)
+                    orientation.require_dicom_patient_position(ds, test_orient)
 
 
 @pytest.mark.pydicom

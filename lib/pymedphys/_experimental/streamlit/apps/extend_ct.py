@@ -89,7 +89,7 @@ def main():
 
     try:
         for ds in ct_series:
-            orientation.require_patient_orientation(ds, "HFS")
+            orientation.require_dicom_patient_position(ds, "HFS")
     except ValueError as e:
         st.error(
             'The provided CT Series is not `"HFS"`. Only patient '

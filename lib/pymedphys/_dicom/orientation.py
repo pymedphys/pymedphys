@@ -18,12 +18,47 @@ from typing import Dict, List
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 from typing_extensions import Literal
 
-PatientOrientationString = Literal[
-    "FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"
+DicomPatientPosition = Literal[  # DICOM Patient Position Attribute (0x0018,5100)
+    "HFP",
+    "HFS",
+    "HFDR",
+    "HFDL",
+    "FFDR",
+    "FFDL",
+    "FFP",
+    "FFS",
+    "LFP",
+    "LFS",
+    "RFP",
+    "RFS",
+    "AFDR",
+    "AFDL",
+    "PFDR",
+    "PFDL",
 ]
 OrientationInt = Literal[-1, 0, 1]
 
-IMAGE_ORIENTATION_MAP: Dict[PatientOrientationString, List[OrientationInt]] = {
+# https://dicom.innolitics.com/ciods/ct-image/general-series/00185100
+PATIENT_POSITION_DEFINITION: Dict[DicomPatientPosition, str] = {
+    "HFP": "Head First-Prone",
+    "HFS": "Head First-Supine",
+    "HFDR": "Head First-Decubitus Right",
+    "HFDL": "Head First-Decubitus Left",
+    "FFDR": "Feet First-Decubitus Right",
+    "FFDL": "Feet First-Decubitus Left",
+    "FFP": "Feet First-Prone",
+    "FFS": "Feet First-Supine",
+    "LFP": "Left First-Prone",
+    "LFS": "Left First-Supine",
+    "RFP": "Right First-Prone",
+    "RFS": "Right First-Supine",
+    "AFDR": "Anterior First-Decubitus Right",
+    "AFDL": "Anterior First-Decubitus Left",
+    "PFDR": "Posterior First-Decubitus Right",
+    "PFDL": "Posterior First-Decubitus Left",
+}
+
+IMAGE_ORIENTATION_MAP: Dict[DicomPatientPosition, List[OrientationInt]] = {
     "FFDL": [0, 1, 0, 1, 0, 0],
     "FFDR": [0, -1, 0, -1, 0, 0],
     "FFP": [1, 0, 0, 0, -1, 0],
@@ -35,30 +70,31 @@ IMAGE_ORIENTATION_MAP: Dict[PatientOrientationString, List[OrientationInt]] = {
 }
 
 
-def require_patient_orientation(
+def require_dicom_patient_position(
     dataset: "pydicom.Dataset",
-    patient_orientation: PatientOrientationString,
+    patient_position: DicomPatientPosition,
 ):
-    """Require a specific patient orientation.
+    """Require a specific patient position.
 
     Parameters
     ----------
     datasets : pydicom.Dataset
-    patient_orientation : PatientOrientationString
-        The string representation of the patient orientation, eg. "HFS".
+    patient_position : DicomPatientPosition
+        The required DICOM Patient Position Attribute string
+        representation of the patient orientation, eg. "HFS".
 
     Raises
     ------
     ValueError
         If the patient orientation of the provided dataset does
-        not match the provided orientation.
+        not match the provided DICOM Patient Position Attribute.
     """
-    required_image_orientation_patient = IMAGE_ORIENTATION_MAP[patient_orientation]
+    required_image_orientation_patient = IMAGE_ORIENTATION_MAP[patient_position]
     image_orientation_patient = dataset.ImageOrientationPatient
 
     if image_orientation_patient != required_image_orientation_patient:
         raise ValueError(
-            f"Patient orientation is not {patient_orientation}. "
+            f"Patient position is not {patient_position}. "
             "For this to be the case the ImageOrientationPatient tag "
             f"would need to equal {required_image_orientation_patient}. "
             "Instead, however, the provided dataset has this set to "

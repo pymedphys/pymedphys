@@ -45,7 +45,7 @@ def extend(
     """
 
     for ds in ct_series:
-        orientation.require_patient_orientation(ds, "HFS")
+        orientation.require_dicom_patient_position(ds, "HFS")
 
     sorted_ct_series = _convert_datasets_to_deque(ct_series)
     _extend_datasets(sorted_ct_series, 0, number_of_slices)

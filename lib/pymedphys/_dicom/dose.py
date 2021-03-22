@@ -105,7 +105,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
         The RT DICOM plan used to extract surface parameters and verify gantry
         angle 0 beams are used.
     """
-    orientation.require_patient_orientation(dose_dataset, "HFS")
+    orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
     depths = np.array(depths, copy=False)
 
@@ -159,7 +159,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
         parameters and verify gantry angle 0 beams are used.
     """
 
-    orientation.require_patient_orientation(dose_dataset, "HFS")
+    orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
     displacements = np.array(displacements, copy=False)
 
