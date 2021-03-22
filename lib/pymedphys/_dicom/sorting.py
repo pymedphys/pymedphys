@@ -1,4 +1,5 @@
 # Copyright (C) 2021 Cancer Care Associates
+# Copyright (C) 2020 Matthew Archer, Stuart Swerdloff
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,38 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ======================================================================
+# The code within this file was vendored and adjusted from
+# https://github.com/didymo/OnkoDICOM/blob/cfab3aefb1427ab251a5de3df1b04d729ecd4b5d/src/Model/ImageLoading.py#L112-L130
+# The original code was under an LGPL 2.1 or later license. It was
+# relicensed to be under the Apache-2.0 with permission from Stuart
+# Swerdloff, see
+# https://github.com/pymedphys/pymedphys/pull/1458#discussion_r598630630
+# ======================================================================
+
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom  # pylint: disable=unused-import
-
-# ==========================================================================
-# The remainder of this file is under the LGPL 2.1 or later license.
-# This code was vendored and adjusted from the OnkoDICOM library at the
-# following location:
-# https://github.com/didymo/OnkoDICOM/blob/cfab3aefb1427ab251a5de3df1b04d729ecd4b5d/src/Model/ImageLoading.py#L112-L130
-#
-# This was undergone by Simon Biggs.
-# TODO: Get permission to re-license under the Apache-2.0.
-# ==========================================================================
-
-
-# OnkoDICOM
-# Copyright (C) 2020 Matthew Archer, Stuart Swerdloff
-
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
-# USA
 
 
 def stack_displacement(ds: "pydicom.Dataset") -> float:
