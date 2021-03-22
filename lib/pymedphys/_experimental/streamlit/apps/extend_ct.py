@@ -136,7 +136,7 @@ def _send_datasets(hostname, port, datasets):
 
     with association(hostname, port) as assoc:
         returned_echo_status = _make_status_readable(assoc.send_c_echo())
-        connection_status.write(f"DICOM connection status: {returned_echo_status}")
+        connection_status.write(f"DICOM connection status: `{returned_echo_status}`")
 
         for i, ds in enumerate(datasets):
             ds.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
@@ -146,7 +146,8 @@ def _send_datasets(hostname, port, datasets):
             slice_location = ds.ImagePositionPatient[-1]
 
             status.write(
-                f"Slice Location: {slice_location} | CT send status: {returned_status}"
+                f"* Slice Location: `{slice_location:.1f}`\n"
+                f"* CT send status: `{returned_status}`"
             )
 
             progress_bar.progress((i + 1) / total_number_of_datasets)
