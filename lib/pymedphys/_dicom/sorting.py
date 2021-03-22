@@ -1,3 +1,30 @@
+# Copyright (C) 2021 Cancer Care Associates
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
+
+# ==========================================================================
+# The remainder of this file is under the LGPL 2.1 or later license.
+# This code was vendored and adjusted from the OnkoDICOM library at the
+# following location:
+# https://github.com/didymo/OnkoDICOM/blob/cfab3aefb1427ab251a5de3df1b04d729ecd4b5d/src/Model/ImageLoading.py#L112-L130
+#
+# This was undergone by Simon Biggs.
+# ==========================================================================
+
+
 # OnkoDICOM
 # Copyright (C) 2020 Matthew Archer, Stuart Swerdloff
 
@@ -15,15 +42,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
 # USA
-
-# ==========================================================================
-# The following code was vendored and adjusted from the following location by Simon Biggs
-# https://github.com/didymo/OnkoDICOM/blob/cfab3aefb1427ab251a5de3df1b04d729ecd4b5d/src/Model/ImageLoading.py#L112-L130
-# ==========================================================================
-
-
-from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom
 
 
 def stack_displacement(ds: "pydicom.Dataset") -> float:
