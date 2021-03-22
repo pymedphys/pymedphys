@@ -85,10 +85,10 @@ def test_extend_datasets():
         initial_series_uid, initial_sop_instance_uids, initial_slice_locations
     )
     expected_datasets_left = _make_datasets(
-        final_sop_instance_uids, final_series_uid, expected_slice_locations_left
+        final_series_uid, final_sop_instance_uids, expected_slice_locations_left
     )
     expected_datasets_right = _make_datasets(
-        final_sop_instance_uids, final_series_uid, expected_slice_locations_right
+        final_series_uid, final_sop_instance_uids, expected_slice_locations_right
     )
 
     resulting_datasets_left = deepcopy(initial_datasets)
