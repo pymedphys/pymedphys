@@ -35,10 +35,13 @@ DicomPatientPosition = Literal[  # DICOM Patient Position Attribute (0x0018,5100
     "AFDL",
     "PFDR",
     "PFDL",
+    "SITTING",
 ]
 OrientationInt = Literal[-1, 0, 1]
 
 # https://dicom.innolitics.com/ciods/ct-image/general-series/00185100
+# SITTING was added to the standard within the RT Image specification
+# https://dicom.innolitics.com/ciods/rt-image/rt-image/00185100
 PATIENT_POSITION_DEFINITION: Dict[DicomPatientPosition, str] = {
     "HFP": "Head First-Prone",
     "HFS": "Head First-Supine",
@@ -56,6 +59,7 @@ PATIENT_POSITION_DEFINITION: Dict[DicomPatientPosition, str] = {
     "AFDL": "Anterior First-Decubitus Left",
     "PFDR": "Posterior First-Decubitus Right",
     "PFDL": "Posterior First-Decubitus Left",
+    "SITTING": "In the sitting position, the patient's face is towards the front of the chair",
 }
 
 IMAGE_ORIENTATION_MAP: Dict[DicomPatientPosition, List[OrientationInt]] = {
