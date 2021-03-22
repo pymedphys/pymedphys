@@ -54,10 +54,20 @@ def extend(
     return sorted_ct_series
 
 
-def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices):
+def _extend_datasets(
+    dicom_datasets,
+    index_to_copy,
+    number_of_slices,
+    series_instance_uid=None,
+    sop_instance_uids=None,
+):
     _copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices)
     _refresh_instance_numbers(dicom_datasets)
-    _generate_new_uids(dicom_datasets)
+    _replace_uids(
+        dicom_datasets,
+        series_instance_uid=series_instance_uid,
+        sop_instance_uids=sop_instance_uids,
+    )
 
 
 def _convert_datasets_to_deque(datasets) -> Deque["pydicom.Dataset"]:
@@ -98,10 +108,12 @@ def _refresh_instance_numbers(dicom_datasets):
         dicom_dataset.InstanceNumber = str(i)
 
 
-def _generate_new_uids(dicom_datasets):
-    series_instance_uid = _uid.generate_uid()
+def _replace_uids(dicom_datasets, series_instance_uid=None, sop_instance_uids=None):
+    if series_instance_uid is None:
+        series_instance_uid = _uid.generate_uid()
 
-    sop_instance_uids = _generate_uids(len(dicom_datasets))
+    if sop_instance_uids is None:
+        sop_instance_uids = _generate_uids(len(dicom_datasets))
 
     for dicom_dataset, uid in zip(dicom_datasets, sop_instance_uids):
         dicom_dataset.SeriesInstanceUID = series_instance_uid
