@@ -14,14 +14,11 @@
 
 import collections
 import copy
-import datetime
-import random
 from typing import Deque, List
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 
-from pymedphys._dicom import orientation
-from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
+from pymedphys._dicom import orientation, uid
 
 
 def extend(
@@ -144,16 +141,7 @@ def _get_append_method(dicom_datasets, index_to_copy):
     raise ValueError("index_to_copy must be first or last slice")
 
 
-def _generate_uids(number_of_uids, randomisation_length=10, root=PYMEDPHYS_ROOT_UID):
-    num_of_digits = len(str(number_of_uids))
-
-    middle_item = str(random.randint(0, 10 ** randomisation_length)).zfill(
-        randomisation_length
-    )
-    time_stamp_item = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-
-    last_item = [str(i).zfill(num_of_digits) for i in range(number_of_uids)]
-
-    uids = [".".join([root, middle_item, time_stamp_item, item]) for item in last_item]
+def _generate_uids(number_of_uids):
+    uids = [uid.generate_uid() for _ in range(number_of_uids)]
 
     return uids

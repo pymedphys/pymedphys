@@ -22,7 +22,7 @@ from decimal import Decimal
 from pymedphys._imports import pydicom
 
 from pymedphys._dicom.anonymise import get_baseline_keyword_vr_dict
-from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
+from pymedphys._dicom.uid import PYMEDPHYS_ROOT_UID
 
 EPOCH_START = "20000101"
 DEFAULT_EARLIEST_STUDY_DATE = "20040415"
