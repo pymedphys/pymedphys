@@ -18,7 +18,9 @@ from typing import Deque, List
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
 
-from pymedphys._dicom import orientation, uid
+from pymedphys._dicom import orientation
+from pymedphys._dicom import sorting as _sorting
+from pymedphys._dicom import uid as _uid
 
 
 def extend(
@@ -61,14 +63,10 @@ def _extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None)
 def _convert_datasets_to_deque(datasets) -> Deque["pydicom.Dataset"]:
     dicom_datasets: Deque[pydicom.Dataset] = collections.deque()
 
-    for dicom_dataset in sorted(datasets, key=_slice_location):
+    for dicom_dataset in sorted(datasets, key=_sorting.stack_displacement):
         dicom_datasets.append(dicom_dataset)
 
     return dicom_datasets
-
-
-def _slice_location(dicom_dataset):
-    return float(dicom_dataset.ImagePositionPatient[-1])
 
 
 def _copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
@@ -142,6 +140,6 @@ def _get_append_method(dicom_datasets, index_to_copy):
 
 
 def _generate_uids(number_of_uids):
-    uids = [uid.generate_uid() for _ in range(number_of_uids)]
+    uids = [_uid.generate_uid() for _ in range(number_of_uids)]
 
     return uids
