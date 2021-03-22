@@ -146,7 +146,7 @@ def _send_datasets(hostname, port, datasets):
             slice_location = ds.ImagePositionPatient[-1]
 
             status.write(
-                f"* Slice Location: `{slice_location:.1f}`\n"
+                f"* Slice location: `{slice_location:.1f}`\n"
                 f"* CT send status: `{returned_status}`"
             )
 
