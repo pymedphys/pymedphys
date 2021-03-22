@@ -92,6 +92,12 @@ def require_dicom_patient_position(
     required_image_orientation_patient = IMAGE_ORIENTATION_MAP[patient_position]
     image_orientation_patient = dataset.ImageOrientationPatient
 
+    if dataset.PatientPosition != patient_position:
+        raise ValueError(
+            f'The patient position is set to "{dataset.PatientPosition}", '
+            f'however it is required to be "{patient_position}".'
+        )
+
     if image_orientation_patient != required_image_orientation_patient:
         raise ValueError(
             f"Patient position is not {patient_position}. "

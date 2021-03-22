@@ -126,6 +126,7 @@ def _make_datasets(series_instance_uid, sop_instance_uids, slice_locations):
                 "SliceLocation": str(float(slice_location)),
                 "ImagePositionPatient": ["0.0", "0.0", str(float(slice_location))],
                 "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
+                "PatientPosition": "HFS",
             }
         )
         for i, (sop_instance_uid, slice_location) in enumerate(
