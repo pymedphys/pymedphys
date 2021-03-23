@@ -15,6 +15,7 @@
 import collections
 import datetime
 
+from pymedphys._imports import altair as alt
 from pymedphys._imports import dateutil, natsort
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -127,18 +128,29 @@ def main():
         site_config_map, connections, chosen_start, chosen_end
     )
 
+    concatenated_results = pd.concat(all_results.values())
+    concatenated_results["actual_completed_time"] = concatenated_results[
+        "actual_completed_time"
+    ].astype("datetime64[ns]")
+    chart = (
+        alt.Chart(concatenated_results)
+        .mark_bar()
+        .encode(
+            alt.X("yearmonthdate(actual_completed_time):T", bin=alt.Bin(maxbins=20)),
+            alt.Y("count()"),
+            alt.Color("task"),
+        )
+    ).interactive()
+    st.altair_chart(chart, use_container_width=True)
+
     for site, results in all_results.items():
         st.write(f"### {site_config_map[site]['alias']}")
         st.write(results)
 
-    counts = collections.defaultdict(lambda: 0)
-    for results in all_results.values():
-        for task in results["task"].unique():
-            counts[task] += np.sum(results["task"] == task)
-
     markdown_counts = "# Counts\n\n"
-    for task in natsort.natsorted(counts.keys()):
-        markdown_counts += f"* {task}: `{counts[task]}`\n"
+    for task in natsort.natsorted(concatenated_results["task"].unique()):
+        counts = np.sum(concatenated_results["task"] == task)
+        markdown_counts += f"* {task}: `{counts}`\n"
 
     st.sidebar.write(markdown_counts)
 
