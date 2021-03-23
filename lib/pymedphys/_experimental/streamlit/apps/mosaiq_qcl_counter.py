@@ -129,6 +129,11 @@ def main():
     )
 
     concatenated_results = pd.concat(all_results.values())
+
+    altair_bin_key_map = {"Day": "yearmonthdate", "Month": "yearmonth", "Year": "year"}
+    bin_options = list(altair_bin_key_map.keys())
+    bin_size = altair_bin_key_map[st.radio("Bin size", bin_options)]
+
     concatenated_results["actual_completed_time"] = concatenated_results[
         "actual_completed_time"
     ].astype("datetime64[ns]")
@@ -136,10 +141,10 @@ def main():
         alt.Chart(concatenated_results)
         .mark_bar()
         .encode(
-            alt.X("yearmonthdate(actual_completed_time):T", bin=alt.Bin(maxbins=20)),
+            alt.X(f"{bin_size}(actual_completed_time):T", bin=alt.Bin(maxbins=20)),
             alt.Y("count()"),
             alt.Color("task"),
-            alt.Tooltip(["yearmonthdate(actual_completed_time):T", "task"]),
+            alt.Tooltip([f"{bin_size}(actual_completed_time):T", "task", "count()"]),
         )
     ).interactive()
     st.altair_chart(chart, use_container_width=True)
