@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import datetime
-import time
+from re import M
 
+from pymedphys._imports import dateutil
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
@@ -67,7 +69,7 @@ def main():
 
     st.write(
         """
-        ### Date range
+        ### QCL Completion date range
 
         Defaults to between the start of last month and the start of
         the current month.
@@ -76,25 +78,53 @@ def main():
 
     now = datetime.datetime.now()
 
-    start_of_month = _get_start_of_month(now)
     start_of_last_month = _get_start_of_last_month(now)
 
     left, right = st.beta_columns(2)
 
-    chosen_start = left.date_input("Start date", value=start_of_last_month)
-    chosen_end = right.date_input("End date", value=start_of_month)
+    default_delta_month = left.number_input(
+        "Default number of months from start to end", min_value=0, value=1
+    )
+
+    chosen_start = right.date_input("Start date", value=start_of_last_month)
+    next_month = chosen_start + dateutil.relativedelta.relativedelta(
+        months=default_delta_month
+    )
+
+    chosen_end = right.date_input("End date", value=next_month)
 
     results = _get_qcls_by_date(connection, location, chosen_start, chosen_end)
+
+    for column in ("due", "actual_completed_time"):
+        results[column] = _pandas_convert_series_to_date(results[column])
+
+    st.write(
+        """
+        ## Results
+        """
+    )
+
     st.write(results)
+
+    markdown_counts = ""
+    for task in results["task"].unique():
+        count = np.sum(results["task"] == task)
+        markdown_counts += f"* {task}: `{count}`\n"
+
+    st.write(markdown_counts)
+
+
+def _pandas_convert_series_to_date(series: pd.Series):
+    return series.map(lambda item: item.strftime("%Y-%m-%d"))
 
 
 def _get_start_of_month(dt: datetime.datetime):
     return dt.replace(day=1)
 
 
-# def _get_start_of_next_month(dt: datetime.datetime):
-#     definitely_in_next_month = _get_start_of_month(dt) + datetime.timedelta(days=32)
-#     return _get_start_of_month(definitely_in_next_month)
+def _get_start_of_next_month(dt: datetime.datetime):
+    definitely_in_next_month = _get_start_of_month(dt) + datetime.timedelta(days=32)
+    return _get_start_of_month(definitely_in_next_month)
 
 
 def _get_start_of_last_month(dt: datetime.datetime):
@@ -112,8 +142,6 @@ def _get_qcls_by_date(connection, location, start, end):
             Patient.First_Name,
             Chklist.Due_DtTm,
             Chklist.Act_DtTm,
-            Chklist.Instructions,
-            Chklist.Notes,
             QCLTask.Description
         FROM Chklist, Staff, QCLTask, Ident, Patient
         WHERE
@@ -136,12 +164,10 @@ def _get_qcls_by_date(connection, location, start, end):
             "first_name",
             "due",
             "actual_completed_time",
-            "instructions",
-            "comment",
             "task",
         ],
     )
 
-    results = results.sort_values(by=["actual_completed_time"])
+    results = results.sort_values(by=["actual_completed_time"], ascending=False)
 
     return results
