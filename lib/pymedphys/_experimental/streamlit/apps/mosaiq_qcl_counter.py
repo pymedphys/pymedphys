@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-from re import M
 
 from pymedphys._imports import dateutil
 from pymedphys._imports import numpy as np
@@ -120,11 +119,6 @@ def _pandas_convert_series_to_date(series: pd.Series):
 
 def _get_start_of_month(dt: datetime.datetime):
     return dt.replace(day=1)
-
-
-def _get_start_of_next_month(dt: datetime.datetime):
-    definitely_in_next_month = _get_start_of_month(dt) + datetime.timedelta(days=32)
-    return _get_start_of_month(definitely_in_next_month)
 
 
 def _get_start_of_last_month(dt: datetime.datetime):
