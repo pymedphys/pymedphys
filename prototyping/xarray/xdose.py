@@ -6,7 +6,7 @@ import numpy as np
 import pydicom
 import xarray as xr
 
-from pymedphys._dicom import constants, dose
+from pymedphys._dicom import constants, dose, orientation
 
 
 def xdose_from_dataset(
@@ -17,9 +17,9 @@ def xdose_from_dataset(
 
     orientation_str = next(
         orient
-        for orient in constants.IMAGE_ORIENTATION_MAP.keys()
+        for orient in orientation.IMAGE_ORIENTATION_MAP.keys()
         if np.allclose(
-            constants.IMAGE_ORIENTATION_MAP[orient], ds.ImageOrientationPatient
+            orientation.IMAGE_ORIENTATION_MAP[orient], ds.ImageOrientationPatient
         )
     )
 
