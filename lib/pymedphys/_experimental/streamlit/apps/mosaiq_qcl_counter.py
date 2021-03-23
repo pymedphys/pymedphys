@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import datetime
 
 from pymedphys._imports import dateutil, natsort
@@ -57,12 +58,20 @@ def main():
         )
         st.stop()
 
-    chosen_site = st.radio("Site", list(site_config_map.keys()))
-    site_config = site_config_map[chosen_site]
-    connection_config = {k: site_config[k] for k in ("hostname", "port", "alias")}
-    location = site_config["location"]
+    site_options = list(site_config_map.keys())
 
-    connection = st_mosaiq.get_cached_mosaiq_connection(**connection_config)
+    st.write(
+        """
+        ## Site selection
+        """
+    )
+
+    selected_sites = []
+    for site in site_options:
+        if st.checkbox(site, value=True):
+            selected_sites.append(site)
+
+    connections = _get_connections(site_config_map, selected_sites)
 
     st.write("## Filters")
 
@@ -92,25 +101,62 @@ def main():
 
     chosen_end = right.date_input("End date", value=next_month)
 
-    results = _get_qcls_by_date(connection, location, chosen_start, chosen_end)
-
-    for column in ("due", "actual_completed_time"):
-        results[column] = _pandas_convert_series_to_date(results[column])
-
     st.write(
         """
         ## Results
         """
     )
 
-    st.write(results)
+    all_results = _get_all_results(
+        site_config_map, connections, chosen_start, chosen_end
+    )
+
+    for site, results in all_results.items():
+        st.write(f"### {site_config_map[site]['alias']}")
+        st.write(results)
+
+    counts = collections.defaultdict(lambda: 0)
+    for results in all_results.values():
+        for task in results["task"].unique():
+            counts[task] += np.sum(results["task"] == task)
 
     markdown_counts = "# Counts\n\n"
-    for task in natsort.natsorted(results["task"].unique()):
-        count = np.sum(results["task"] == task)
-        markdown_counts += f"* {task}: `{count}`\n"
+    for task in natsort.natsorted(counts.keys()):
+        markdown_counts += f"* {task}: `{counts[task]}`\n"
 
     st.sidebar.write(markdown_counts)
+
+
+def _get_connections(site_config_map, selected_sites):
+    connections = {}
+
+    for site in selected_sites:
+        connection = _get_connection_for_site_config(site_config_map[site])
+        connections[site] = connection
+
+    return connections
+
+
+def _get_connection_for_site_config(site_config):
+    connection_config = {k: site_config[k] for k in ("hostname", "port", "alias")}
+    return st_mosaiq.get_cached_mosaiq_connection(**connection_config)
+
+
+def _get_all_results(site_config_map, connections, chosen_start, chosen_end):
+
+    all_results = {}
+    for site, connection in connections.items():
+        site_config = site_config_map[site]
+        location = site_config["location"]
+
+        results = _get_qcls_by_date(connection, location, chosen_start, chosen_end)
+
+        for column in ("due", "actual_completed_time"):
+            results[column] = _pandas_convert_series_to_date(results[column])
+
+        all_results[site] = results
+
+    return all_results
 
 
 def _pandas_convert_series_to_date(series: pd.Series):
