@@ -61,6 +61,17 @@ name = "rccc"
     port = 1433
     alias = "RCCC Mosaiq SQL Server"
 
+        [[site.mosaiq.qcl]]
+        location = "Physics_Check"
+        count = ["imrt", "conformal", "electron"]
+
+            [site.mosaiq.qcl.tasks]
+            scan = "4DCT Data Review"
+            contours = "Metal / Artefact / Void Outlining Check"
+            imrt = "IMRT Physics Check"
+            conformal = "3D Physics Check"
+            electron = "Electron Factor"
+
     [[site.linac]]
     name = "2619"
     ip = '192.168.100.200'
@@ -98,6 +109,14 @@ name = "nbcc"
     port = 31433
     alias = "NBCC Mosaiq SQL Server"
 
+        [[site.mosaiq.qcl]]
+        location = "Physics"
+        count = ['imrt', 'conformal']
+
+            [site.mosaiq.qcl.tasks]
+            imrt = ["Physics Check IMRT", "Physics Check IMRT Ph2"]
+            conformal = "Physics Check 3DCRT"
+
     [[site.linac]]
     name = "4299"
     ip = '192.168.17.40'
@@ -128,6 +147,20 @@ name = "sash"
     hostname = "rccc-physicssvr"
     port = 1433
     alias = "SASH Mosaiq SQL Server"
+
+        [[site.mosaiq.qcl]]
+        location = "Physics_Check"
+        count = ['all']
+
+            [site.mosaiq.qcl.tasks]
+            all = "Physics QA"
+
+        [[site.mosaiq.qcl]]
+        location = "Physics"
+        count = []
+
+            [site.mosaiq.qcl.tasks]
+            all = "Physics QA"
 
     [[site.linac]]
     name = "9002"
