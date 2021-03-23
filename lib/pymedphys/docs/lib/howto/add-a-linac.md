@@ -104,7 +104,7 @@ The key being that, given the way that Python and PyMedPhys was installed on
 that server, the `pymedphys` CLI command was not found within the server's
 `%PATH%` variable. As such, before utilising the `pymedphys` CLI the embedded
 python distribution is temporarily added to the path. Here `192.168.17.40`
-is the `Hospital DNS IP Address` of the Linac, and 
+is the `Hospital DNS IP Address` of the Linac, and
 `\\NBCCC-pdc\physics\NBCC-DataExchange\iCom` is the directory where the iCom
 records are to be stored.
 
