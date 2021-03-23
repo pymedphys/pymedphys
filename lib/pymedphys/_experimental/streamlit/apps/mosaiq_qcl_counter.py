@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+import pymedphys
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
 CATEGORY = categories.PLANNING
 TITLE = "Mosaiq QCL Counter"
@@ -31,6 +35,9 @@ def main():
         try:
             mosaiq_config = site_config["mosaiq"]
             qcl_location_configurations = mosaiq_config["qcl"]
+            hostname = mosaiq_config["hostname"]
+            port = mosaiq_config["port"]
+            alias = mosaiq_config["alias"]
         except KeyError:
             continue
 
@@ -38,7 +45,12 @@ def main():
         if len(qcl_locations) == 0:
             continue
 
-        site_config_map[site] = qcl_locations
+        site_config_map[site] = {
+            "locations": qcl_locations,
+            "hostname": hostname,
+            "port": port,
+            "alias": alias,
+        }
 
     configuration_keys = site_config_map.keys()
     if len(configuration_keys) == 0:
@@ -51,6 +63,8 @@ def main():
     site_config = site_config_map[chosen_site]
 
     st.write(site_config)
+
+    # connection = st_mosaiq.get_cached_mosaiq_connection()
 
 
 def _extract_location_config(qcl_location_configurations):
@@ -69,3 +83,81 @@ def _extract_location_config(qcl_location_configurations):
             continue
 
     return qcl_locations
+
+
+def _get_staff_name(connection, staff_id):
+    data = pymedphys.mosaiq.execute(
+        connection,
+        """
+        SELECT
+            Staff.Initials,
+            Staff.User_Name,
+            Staff.Type,
+            Staff.Category,
+            Staff.Last_Name,
+            Staff.First_Name
+        FROM Staff
+        WHERE
+            TRIM(Staff.Staff_ID) = TRIM(%(staff_id)s)
+        """,
+        {"staff_id": staff_id},
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=[
+            "initials",
+            "user_name",
+            "type",
+            "category",
+            "last_name",
+            "first_name",
+        ],
+    )
+
+    return results
+
+
+def _get_qcls_by_date(connection, location, start, end):
+    data = pymedphys.mosaiq.execute(
+        connection,
+        """
+        SELECT
+            Ident.IDA,
+            Patient.Last_Name,
+            Patient.First_Name,
+            Chklist.Due_DtTm,
+            Chklist.Act_DtTm,
+            Chklist.Instructions,
+            Chklist.Notes,
+            QCLTask.Description
+        FROM Chklist, Staff, QCLTask, Ident, Patient
+        WHERE
+            Chklist.Pat_ID1 = Ident.Pat_ID1 AND
+            Patient.Pat_ID1 = Ident.Pat_ID1 AND
+            QCLTask.TSK_ID = Chklist.TSK_ID AND
+            Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+            TRIM(Staff.Last_Name) = TRIM(%(location)s) AND
+            Chklist.Act_DtTm >= %(start)s AND
+            Chklist.Act_DtTm < %(end)s
+        """,
+        {"location": location, "start": start, "end": end},
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=[
+            "patient_id",
+            "last_name",
+            "first_name",
+            "due",
+            "actual_completed_time",
+            "instructions",
+            "comment",
+            "task",
+        ],
+    )
+
+    results = results.sort_values(by=["actual_completed_time"])
+
+    return results
