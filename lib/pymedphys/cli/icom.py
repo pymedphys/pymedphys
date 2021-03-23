@@ -16,7 +16,9 @@ import pymedphys._icom.listener
 
 
 def icom_cli(subparsers):
-    icom_parser = subparsers.add_parser("icom")
+    icom_parser = subparsers.add_parser(
+        "icom", help="Utilities for interfacing with Elekta's iCom protocol."
+    )
     icom_subparsers = icom_parser.add_subparsers(dest="icom")
 
     icom_listen(icom_subparsers)
@@ -25,10 +27,23 @@ def icom_cli(subparsers):
 
 
 def icom_listen(icom_subparsers):
-    parser = icom_subparsers.add_parser("listen")
+    parser = icom_subparsers.add_parser(
+        "listen",
+        help=(
+            "Connect to an Elekta iCom stream and store the records to "
+            "a directory. Whenever the Linac delivered MV radiation "
+            "these records will be indexed by Patient ID and name. "
+            "Anytime MV radiation is not delivered, these records are "
+            "discarded. "
+            "WARNING: This listener is susceptible to the bug "
+            "documented at <https://github.com/pymedphys/pymedphys/issues/849>."
+        ),
+    )
 
-    parser.add_argument("ip")
-    parser.add_argument("directory")
+    parser.add_argument("ip", help="The IP address of the Linac.")
+    parser.add_argument(
+        "directory", help="The output directory to store the iCom records."
+    )
     parser.set_defaults(
         func=pymedphys._icom.listener.listen_cli  # pylint: disable = protected-access
     )
