@@ -22,6 +22,7 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.server import session as _session
 from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
@@ -31,6 +32,7 @@ TITLE = "Completed Mosaiq QCL Counter"
 
 def main():
     config = st_config.get_config()
+    session_state = _session.session_state(reset_widget_id=0)
 
     site_config_map = {}
     for site_config in config["site"]:
@@ -68,7 +70,7 @@ def main():
 
     selected_sites = []
     for site in site_options:
-        if st.checkbox(site, value=True):
+        if st.checkbox(site_config_map[site]["alias"], value=True):
             selected_sites.append(site)
 
     connections = _get_connections(site_config_map, selected_sites)
@@ -87,19 +89,33 @@ def main():
     now = datetime.datetime.now()
 
     start_of_last_month = _get_start_of_last_month(now)
+    if st.button("Reset date range filtering"):
+        session_state.reset_widget_id += 1
 
-    left, right = st.beta_columns(2)
+    one, two, three = st.beta_columns(3)
 
-    default_delta_month = left.number_input(
-        "Default number of months from start to end", min_value=0, value=1
+    chosen_start = one.date_input(
+        "Start date",
+        value=start_of_last_month,
+        key=f"chosen_start-date_input-{session_state.reset_widget_id}",
     )
 
-    chosen_start = right.date_input("Start date", value=start_of_last_month)
+    default_delta_month = two.number_input(
+        "Default number of months from start to end",
+        min_value=0,
+        value=1,
+        key=f"default_delta_month-number_input-{session_state.reset_widget_id}",
+    )
+
     next_month = chosen_start + dateutil.relativedelta.relativedelta(
         months=default_delta_month
     )
 
-    chosen_end = right.date_input("End date", value=next_month)
+    chosen_end = three.date_input(
+        "End date",
+        value=next_month,
+        key=f"chosen_end-date_input-{session_state.reset_widget_id}",
+    )
 
     st.write(
         """
