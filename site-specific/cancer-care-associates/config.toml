@@ -8,7 +8,7 @@ default_reference = "monaco"
 default_evaluation = "icom"
 
 [output]
-png_directory = '\\pdc\PExIT\Physics\Patient Specific Logfile Fluence'
+png_directory = '\\rccc-pdc\PExIT\Physics\Patient Specific Logfile Fluence'
 
 [gamma]
 dose_percent_threshold = 2
@@ -32,10 +32,10 @@ name = "rccc"
     # locations that aren't actually an export location to their own config
     # area.
     [site.export-directories]
-    escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
-    anonymised_monaco = '\\pdc\PExIT\DataExchange\anonymised-monaco'
+    escan = '\\rccc-pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+    anonymised_monaco = '\\rccc-pdc\PExIT\DataExchange\anonymised-monaco'
     icom_live = '\\rccc-physicssvr\iComLogFiles\live'
-    iviewdb = '\\pdc\PExIT\DataExchange\iViewDB'
+    iviewdb = '\\rccc-pdc\PExIT\DataExchange\iViewDB'
     icom = '\\rccc-physicssvr\iComLogFiles'
 
     [site.monaco]
@@ -77,14 +77,14 @@ name = "rccc"
     ip = '192.168.100.200'
 
         [site.linac.directories]
-        qa = '\\pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
+        qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
 
     [[site.linac]]
     name = "2694"
     ip = '192.168.100.201'
 
         [site.linac.directories]
-        qa = '\\pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
+        qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
 
 
 [[site]]
@@ -125,7 +125,7 @@ name = "nbcc"
         iview = "4299_iView"
 
         [site.linac.directories]
-        qa = '\\pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
+        qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
 
 
 [[site]]
@@ -170,7 +170,7 @@ name = "sash"
         iview = "Default"
 
         [site.linac.directories]
-        qa = '\\pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
+        qa = '\\rccc-pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
 
 
 [trf_logfiles]
@@ -185,7 +185,7 @@ patient_directories = [
 ]
 
 [electron_insert_modelling]
-data_path = '\\pdc\PExIT\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
+data_path = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
 
     [electron_insert_modelling.patterns]
     beam_model_name = 'RiverinaAgility - (\d+)MeV'
