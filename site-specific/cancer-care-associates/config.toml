@@ -77,14 +77,14 @@ name = "rccc"
     ip = '192.168.100.200'
 
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
+        qa = '\\pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
 
     [[site.linac]]
     name = "2694"
     ip = '192.168.100.201'
 
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
+        qa = '\\pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
 
 
 [[site]]
@@ -125,7 +125,7 @@ name = "nbcc"
         iview = "4299_iView"
 
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
+        qa = '\\pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
 
 
 [[site]]
@@ -170,7 +170,7 @@ name = "sash"
         iview = "Default"
 
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
+        qa = '\\pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
 
 
 [trf_logfiles]
@@ -185,7 +185,7 @@ patient_directories = [
 ]
 
 [electron_insert_modelling]
-data_path = '\\pdc\OneDrive$\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
+data_path = '\\pdc\PExIT\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
 
     [electron_insert_modelling.patterns]
     beam_model_name = 'RiverinaAgility - (\d+)MeV'
