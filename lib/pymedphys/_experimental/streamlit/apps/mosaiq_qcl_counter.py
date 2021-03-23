@@ -14,7 +14,7 @@
 
 import datetime
 
-from pymedphys._imports import dateutil
+from pymedphys._imports import dateutil, natsort
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
@@ -106,7 +106,7 @@ def main():
     st.write(results)
 
     markdown_counts = ""
-    for task in results["task"].unique():
+    for task in natsort.natsorted(results["task"].unique()):
         count = np.sum(results["task"] == task)
         markdown_counts += f"* {task}: `{count}`\n"
 
