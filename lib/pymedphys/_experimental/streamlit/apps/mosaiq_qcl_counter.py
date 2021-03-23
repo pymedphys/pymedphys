@@ -96,7 +96,7 @@ def main():
     chosen_start = one.date_input(
         "Start date",
         value=start_of_last_month,
-        min_value=datetime.datetime(year=1980, month=1, day=1),
+        min_value=datetime.datetime(year=2000, month=1, day=1),
         max_value=now,
         key=f"chosen_start-date_input-{session_state.reset_widget_id}",
     )
