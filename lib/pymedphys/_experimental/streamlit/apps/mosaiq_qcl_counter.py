@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
+import datetime
+import time
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
@@ -34,19 +35,15 @@ def main():
         site = site_config["name"]
         try:
             mosaiq_config = site_config["mosaiq"]
-            qcl_location_configurations = mosaiq_config["qcl"]
+            location = mosaiq_config["physics_qcl_location"]
             hostname = mosaiq_config["hostname"]
             port = mosaiq_config["port"]
             alias = mosaiq_config["alias"]
         except KeyError:
             continue
 
-        qcl_locations = _extract_location_config(qcl_location_configurations)
-        if len(qcl_locations) == 0:
-            continue
-
         site_config_map[site] = {
-            "locations": qcl_locations,
+            "location": location,
             "hostname": hostname,
             "port": port,
             "alias": alias,
@@ -61,61 +58,48 @@ def main():
 
     chosen_site = st.radio("Site", list(site_config_map.keys()))
     site_config = site_config_map[chosen_site]
+    connection_config = {k: site_config[k] for k in ("hostname", "port", "alias")}
+    location = site_config["location"]
 
-    st.write(site_config)
+    connection = st_mosaiq.get_cached_mosaiq_connection(**connection_config)
 
-    # connection = st_mosaiq.get_cached_mosaiq_connection()
+    st.write("## Filters")
 
-
-def _extract_location_config(qcl_location_configurations):
-    qcl_locations = {}
-    for qcl_location_config in qcl_location_configurations:
-        try:
-            location = qcl_location_config["location"]
-            count = qcl_location_config["count"]
-            tasks = qcl_location_config["tasks"]
-
-            qcl_locations[location] = {
-                "count": count,
-                "tasks": tasks,
-            }
-        except KeyError:
-            continue
-
-    return qcl_locations
-
-
-def _get_staff_name(connection, staff_id):
-    data = pymedphys.mosaiq.execute(
-        connection,
+    st.write(
         """
-        SELECT
-            Staff.Initials,
-            Staff.User_Name,
-            Staff.Type,
-            Staff.Category,
-            Staff.Last_Name,
-            Staff.First_Name
-        FROM Staff
-        WHERE
-            TRIM(Staff.Staff_ID) = TRIM(%(staff_id)s)
-        """,
-        {"staff_id": staff_id},
+        ### Date range
+
+        Defaults to between the start of last month and the start of
+        the current month.
+        """
     )
 
-    results = pd.DataFrame(
-        data=data,
-        columns=[
-            "initials",
-            "user_name",
-            "type",
-            "category",
-            "last_name",
-            "first_name",
-        ],
-    )
+    now = datetime.datetime.now()
 
-    return results
+    start_of_month = _get_start_of_month(now)
+    start_of_last_month = _get_start_of_last_month(now)
+
+    left, right = st.beta_columns(2)
+
+    chosen_start = left.date_input("Start date", value=start_of_last_month)
+    chosen_end = right.date_input("End date", value=start_of_month)
+
+    results = _get_qcls_by_date(connection, location, chosen_start, chosen_end)
+    st.write(results)
+
+
+def _get_start_of_month(dt: datetime.datetime):
+    return dt.replace(day=1)
+
+
+# def _get_start_of_next_month(dt: datetime.datetime):
+#     definitely_in_next_month = _get_start_of_month(dt) + datetime.timedelta(days=32)
+#     return _get_start_of_month(definitely_in_next_month)
+
+
+def _get_start_of_last_month(dt: datetime.datetime):
+    definitely_in_last_month = _get_start_of_month(dt) - datetime.timedelta(days=1)
+    return _get_start_of_month(definitely_in_last_month)
 
 
 def _get_qcls_by_date(connection, location, start, end):
@@ -137,7 +121,7 @@ def _get_qcls_by_date(connection, location, start, end):
             Patient.Pat_ID1 = Ident.Pat_ID1 AND
             QCLTask.TSK_ID = Chklist.TSK_ID AND
             Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
-            TRIM(Staff.Last_Name) = TRIM(%(location)s) AND
+            RTRIM(LTRIM(Staff.Last_Name)) = RTRIM(LTRIM(%(location)s)) AND
             Chklist.Act_DtTm >= %(start)s AND
             Chklist.Act_DtTm < %(end)s
         """,
