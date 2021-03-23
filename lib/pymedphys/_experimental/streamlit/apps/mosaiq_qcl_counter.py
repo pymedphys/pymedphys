@@ -105,12 +105,12 @@ def main():
 
     st.write(results)
 
-    markdown_counts = ""
+    markdown_counts = "# Counts\n\n"
     for task in natsort.natsorted(results["task"].unique()):
         count = np.sum(results["task"] == task)
         markdown_counts += f"* {task}: `{count}`\n"
 
-    st.write(markdown_counts)
+    st.sidebar.write(markdown_counts)
 
 
 def _pandas_convert_series_to_date(series: pd.Series):
