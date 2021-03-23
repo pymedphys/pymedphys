@@ -18,7 +18,7 @@ instructions here to work for other operating systems.
 
 Before getting started you will need the following:
 
-* The hospital/centre network IP that the NSS of the Linac was assigned.
+* The `Hospital DNS IP Address` that the NSS of the Linac was assigned.
   * Throughout this documentation it will be assumed that this is
     `192.168.17.40`.
 * A name that can uniquely identify the Linac and will not change, eg. its
@@ -104,8 +104,9 @@ The key being that, given the way that Python and PyMedPhys was installed on
 that server, the `pymedphys` CLI command was not found within the server's
 `%PATH%` variable. As such, before utilising the `pymedphys` CLI the embedded
 python distribution is temporarily added to the path. Here `192.168.17.40`
-is the IP of the Linac, and `\\NBCCC-pdc\physics\NBCC-DataExchange\iCom` is the
-directory where the iCom records are to be stored.
+is the `Hospital DNS IP Address` of the Linac, and 
+`\\NBCCC-pdc\physics\NBCC-DataExchange\iCom` is the directory where the iCom
+records are to be stored.
 
 Once this `.bat` file was defined [NSSM](https://nssm.cc/) was downloaded with
 its `.exe` placed at `C:\Users\Public\Documents\physics-server\bin`. Then,
