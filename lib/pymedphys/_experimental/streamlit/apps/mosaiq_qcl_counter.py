@@ -24,8 +24,8 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
-CATEGORY = categories.PLANNING
-TITLE = "Mosaiq QCL Counter"
+CATEGORY = categories.ALPHA
+TITLE = "Completed Mosaiq QCL Counter"
 
 
 def main():
