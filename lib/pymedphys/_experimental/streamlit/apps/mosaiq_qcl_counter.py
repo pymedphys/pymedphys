@@ -139,6 +139,7 @@ def main():
             alt.X("yearmonthdate(actual_completed_time):T", bin=alt.Bin(maxbins=20)),
             alt.Y("count()"),
             alt.Color("task"),
+            alt.Tooltip(["yearmonthdate(actual_completed_time):T", "task"]),
         )
     ).interactive()
     st.altair_chart(chart, use_container_width=True)
