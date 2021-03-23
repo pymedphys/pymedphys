@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import datetime
 
 from pymedphys._imports import altair as alt
@@ -134,6 +133,8 @@ def main():
     bin_options = list(altair_bin_key_map.keys())
     bin_size = altair_bin_key_map[st.radio("Bin size", bin_options)]
 
+    colour_by = st.radio("Colour by", options=["task", "staff_last_name"])
+
     concatenated_results["actual_completed_time"] = concatenated_results[
         "actual_completed_time"
     ].astype("datetime64[ns]")
@@ -143,8 +144,8 @@ def main():
         .encode(
             alt.X(f"{bin_size}(actual_completed_time):T", bin=alt.Bin(maxbins=20)),
             alt.Y("count()"),
-            alt.Color("task"),
-            alt.Tooltip([f"{bin_size}(actual_completed_time):T", "task", "count()"]),
+            alt.Color(colour_by),
+            alt.Tooltip([f"{bin_size}(actual_completed_time):T", colour_by, "count()"]),
         )
     ).interactive()
     st.altair_chart(chart, use_container_width=True)
@@ -216,14 +217,17 @@ def _get_qcls_by_date(connection, location, start, end):
             Patient.First_Name,
             Chklist.Due_DtTm,
             Chklist.Act_DtTm,
+            Com_Staff.Last_Name,
+            Com_Staff.First_Name,
             QCLTask.Description
-        FROM Chklist, Staff, QCLTask, Ident, Patient
+        FROM Chklist, Staff as Rsp_Staff, Staff as Com_Staff, QCLTask, Ident, Patient
         WHERE
             Chklist.Pat_ID1 = Ident.Pat_ID1 AND
             Patient.Pat_ID1 = Ident.Pat_ID1 AND
             QCLTask.TSK_ID = Chklist.TSK_ID AND
-            Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
-            RTRIM(LTRIM(Staff.Last_Name)) = RTRIM(LTRIM(%(location)s)) AND
+            Rsp_Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+            RTRIM(LTRIM(Rsp_Staff.Last_Name)) = RTRIM(LTRIM(%(location)s)) AND
+            Com_Staff.Staff_ID = Chklist.Com_Staff_ID AND
             Chklist.Act_DtTm >= %(start)s AND
             Chklist.Act_DtTm < %(end)s
         """,
@@ -234,10 +238,12 @@ def _get_qcls_by_date(connection, location, start, end):
         data=data,
         columns=[
             "patient_id",
-            "last_name",
-            "first_name",
+            "patient_last_name",
+            "patient_first_name",
             "due",
             "actual_completed_time",
+            "staff_last_name",
+            "staff_first_name",
             "task",
         ],
     )
