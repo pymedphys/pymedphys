@@ -54,8 +54,8 @@ is also running on that same server. If you don't have that restriction you
 can follow the [](get-started.rst) to install PyMedPhys in the usual fashion.
 
 So that the Python installation itself has minimal impact on the system we
-utilise Python's embedded distribution, an example download of one of those
-distributions is available at
+utilise Python's embedded distribution, an example download of one such
+distribution is available at
 <https://www.python.org/ftp/python/3.9.2/python-3.9.2-embed-amd64.zip>.
 
 Also, given this installation of PyMedPhys is only going to be running as an
@@ -76,7 +76,7 @@ Make sure to adjust the above versions appropriately to match what is current.
 
 ### The [physics-server](https://github.com/CCA-Physics/physics-server) git repository
 
-At each of our sites, to facilitate SSH tunnelling between the sites there is
+To facilitate SSH tunnelling between the sites there is
 a server with the hostname `physics-server` at each site. The relevant software
 and configuration on these servers is stored within a public GitHub repository
 at <https://github.com/CCA-Physics/physics-server>. All of the code snippets
