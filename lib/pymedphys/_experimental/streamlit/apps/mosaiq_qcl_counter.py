@@ -29,7 +29,7 @@ def main():
     for site_config in config["site"]:
         site = site_config["name"]
         try:
-            mosaiq_config = config["mosaiq"]
+            mosaiq_config = site_config["mosaiq"]
             qcl_location_configurations = mosaiq_config["qcl"]
         except KeyError:
             continue
@@ -49,6 +49,8 @@ def main():
 
     chosen_site = st.radio("Site", list(site_config_map.keys()))
     site_config = site_config_map[chosen_site]
+
+    st.write(site_config)
 
 
 def _extract_location_config(qcl_location_configurations):
