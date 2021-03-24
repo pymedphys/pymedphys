@@ -114,8 +114,7 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys._experimental.streamlit.apps": ["data/*"],
+    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/apps/data/*"],
     "pymedphys.docs": [
         "_static/*",
         "app/*",
@@ -136,17 +135,16 @@ package_data = {
         "lib/tutes/*",
         "trees/*",
     ],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/*",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
-    ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/.gitignore",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
     ],
 }
 
@@ -163,6 +161,7 @@ extras_require = {
         "packaging",
         "PyYAML",
         "requests",
+        "python-dateutil",
         "matplotlib",
         "scipy",
         "Pillow",
@@ -203,7 +202,6 @@ extras_require = {
         "psutil",
         "pylint",
         "pytest-rerunfailures",
-        "python_dateutil",
         "pre-commit",
         "black>=20.8b1,<21.0",
         "mypy",
@@ -232,13 +230,13 @@ extras_require = {
     "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0", "scikit-learn"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
+        "python-dateutil",
         "pytest",
         "pytest-sugar",
         "hypothesis<6",
         "psutil",
         "pylint",
         "pytest-rerunfailures",
-        "python_dateutil",
     ],
     "user": [
         "tqdm",
@@ -248,6 +246,7 @@ extras_require = {
         "packaging",
         "PyYAML",
         "requests",
+        "python-dateutil",
         "matplotlib",
         "scipy",
         "Pillow",

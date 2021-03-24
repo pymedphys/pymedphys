@@ -45,6 +45,7 @@ keyring = { version = "*", optional = true }  # groups = ["user", "dev"]
 packaging = { version = "*", optional = true }  # groups = ["user", "dev"]
 PyYAML = { version = "*", optional = true }  # groups = ["user", "dev"]
 requests = { version = "*", optional = true }  # groups = ["user", "dev"]
+python-dateutil = { version = "*", optional = true }  # groups = ["user", "dev", "tests"]
 
 matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
@@ -125,7 +126,6 @@ hypothesis = { version = "<6", optional = true }  # groups = ["dev", "tests"]
 psutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "tests"]
-python_dateutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 
 # ---------------- #
 # Development Only #
@@ -174,7 +174,7 @@ dev = [
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
-    "python_dateutil",
+    "python-dateutil",
     "readme-renderer",
     "requests",
     "rope",
@@ -218,7 +218,7 @@ tests = [
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
-    "python_dateutil",
+    "python-dateutil",
 ]
 user = [
     "Pillow",
@@ -241,6 +241,7 @@ user = [
     "pylinac",
     "pymssql",
     "pynetdicom",
+    "python-dateutil",
     "requests",
     "scikit-image",
     "scikit-learn",
