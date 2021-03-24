@@ -10,6 +10,7 @@ from . import (
     iview_to_dicom,
     iviewdb,
     monaco_archive,
+    mosaiq_qcl_counter,
     sum_doses,
     transfer_check,
     weekly_check,
