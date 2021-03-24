@@ -2979,6 +2979,7 @@ dev = ["Pillow", "PyYAML", "attrs", "black", "data-science-types", "dbfread", "d
 dicom = ["pydicom", "pylibjpeg-libjpeg", "pynetdicom"]
 docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
+icom = ["numpy"]
 ml = ["tensorflow"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
@@ -2988,7 +2989,7 @@ user = ["Pillow", "PyYAML", "attrs", "data-science-types", "dbfread", "dicompyle
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "c670b3d6b4336c1be060be50f46f90888b4f2430e077769201aee9e0514138f4"
+content-hash = "680762ef26afaa49310b9a469fc8e4394a80384a3e03aba65195e11a4db9994e"
 
 [metadata.files]
 absl-py = [

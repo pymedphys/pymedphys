@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.36.0"
+version = "0.36.1"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -71,7 +71,7 @@ plotly = { version = "*", optional = true }  # groups = ["user", "dev"]
 dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounded packages are due to certain APIs utilised
-numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev"]
+numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev", "icom"]
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
@@ -207,6 +207,7 @@ docs = [
     "sphinxcontrib-napoleon",
 ]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
+icom = ["numpy"]
 ml = ["tensorflow"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
