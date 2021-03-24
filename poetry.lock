@@ -2989,7 +2989,7 @@ user = ["Pillow", "PyYAML", "attrs", "data-science-types", "dbfread", "dicompyle
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2"
-content-hash = "680762ef26afaa49310b9a469fc8e4394a80384a3e03aba65195e11a4db9994e"
+content-hash = "bc33566935e3d5904721fefb20cb6bdefe5a349d185aa5fe3ba955a1de7ed6e2"
 
 [metadata.files]
 absl-py = [
