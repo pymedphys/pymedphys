@@ -34,9 +34,9 @@ name = "rccc"
     [site.export-directories]
     escan = '\\rccc-pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
     anonymised_monaco = '\\rccc-pdc\PExIT\DataExchange\anonymised-monaco'
-    icom_live = '\\rccc-physicssvr\iComLogFiles\live'
+    icom_live = '\\rccc-pdc\PExIT\DataExchange\iCom\live'
     iviewdb = '\\rccc-pdc\PExIT\DataExchange\iViewDB'
-    icom = '\\rccc-physicssvr\iComLogFiles'
+    icom = '\\rccc-pdc\PExIT\DataExchange\iCom'
 
     [site.monaco]
     focaldata = '\\rccc-monacoda\FocalData'
@@ -90,12 +90,12 @@ name = "nbcc"
     [site.monaco]
     focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
-    hostname = 'rccc-physicssvr'
+    hostname = 'rccc-ssh'
     dicom_port = '35104'
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
-    hostname = "rccc-physicssvr"
+    hostname = "rccc-ssh"
     port = 31433
     alias = "NBCC Mosaiq SQL Server"
     physics_qcl_location = "Physics"
@@ -127,7 +127,7 @@ name = "sash"
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
-    hostname = "rccc-physicssvr"
+    hostname = "rccc-ssh"
     port = 1433
     alias = "SASH Mosaiq SQL Server"
     physics_qcl_location = "Physics_Check"
@@ -144,12 +144,12 @@ name = "sash"
 
 
 [trf_logfiles]
-root_directory = '\\rccc-physicssvr\LinacLogFiles'
+root_directory = '\\physics-server\LinacLogFiles'
 
 # TODO: Need to deprecate this field and use the site specific config instead.
 [icom]
 patient_directories = [
-    '\\rccc-physicssvr\iComLogFiles\patients',
+    '\\rccc-pdc\PExIT\DataExchange\iCom\patients',
     '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
     '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
 ]
