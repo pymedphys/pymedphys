@@ -99,10 +99,6 @@ edited to include the line `192.168.100.13  rccc-ssh`.
 
 ## Initial set up of the SSH connection
 
-When setting up the SSH connection, this needs to be done utilising the `sudo`
-command. Since the SSH routing command will want to bind to port `445` it
-needs to
-
 Run the command `ssh-keygen -t ed25519` to create an SSH key pair. See the
 [GitHub docs](https://docs.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)
 for more details on this.
