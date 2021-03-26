@@ -197,11 +197,12 @@ def read_points(ds, plan):
 
 # This function reads the plan.roi file line by line. This file is somehow not structured like the others,
 # and isn't tab indented properly, so won't parse onto YAML.
-def read_roi(ds, plan):
+def read_roi(ds, plan, skip_pattern):
 
     image_header = plan.primary_image.image_header
 
     path_roi = os.path.join(plan.path, "plan.roi")
+    plan.logger.debug("Will skip ROIs matching pattern[" + skip_pattern + "]")
 
     points = []
     flag_points = (
@@ -298,6 +299,13 @@ def read_roi(ds, plan):
 
                 points = points + curr_points
             if "Beginning of ROI" in line:  # Start of ROI
+                ROIName = line[22:].rstrip()
+                plan.logger.debug("Start of ROI [" + ROIName + "]")
+
+                if re.match(skip_pattern, ROIName):
+                    plan.logger.info("Skipping ROI [" + ROIName + "]")
+                    continue
+
                 plan.roi_count = (
                     plan.roi_count + 1
                 )  # increment ROI_num because I've found a new ROI
@@ -310,8 +318,6 @@ def read_roi(ds, plan):
                 ds.StructureSetROISequence[
                     plan.roi_count - 1
                 ].ROINumber = plan.roi_count
-                ROIName = line[22:]  # gets a string of ROI name
-                ROIName = ROIName.replace("\n", "")
                 ds.StructureSetROISequence[plan.roi_count - 1].ROIName = ROIName
                 ds.StructureSetROISequence[
                     plan.roi_count - 1
@@ -381,7 +387,7 @@ def read_roi(ds, plan):
     return ds
 
 
-def convert_struct(plan, export_path):
+def convert_struct(plan, export_path, skip_pattern):
 
     # Check that the plan has a primary image, as we can't create a meaningful RTSTRUCT without it:
     if not plan.primary_image:
@@ -520,7 +526,7 @@ def convert_struct(plan, export_path):
     find_iso_center(plan)
 
     ds = read_points(ds, plan)
-    ds = read_roi(ds, plan)
+    ds = read_roi(ds, plan, skip_pattern)
 
     # find out where to get if its been approved or not
     # find out how to insert proper 'CodeString' here

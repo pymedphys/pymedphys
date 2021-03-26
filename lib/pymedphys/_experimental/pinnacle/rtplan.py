@@ -99,7 +99,6 @@ def convert_plan(plan, export_path):
     ds.SOPInstanceUID = planInstanceUID
 
     datetimesplit = plan_info["ObjectVersion"]["WriteTimeStamp"].split()
-    datetimesplit = plan_info["ObjectVersion"]["WriteTimeStamp"].split()
 
     # Read more accurate date from trial file if it is available
     trial_info = plan.trial_info
@@ -134,7 +133,7 @@ def convert_plan(plan, export_path):
     ds.RTPlanTime = ds.StudyTime
 
     # ds.PlanIntent = "" #Not sure where to get this informationd, will likely
-    # be 'CURATIVE' or 'PALIATIVE'
+    # be 'CURATIVE' or 'PALLIATIVE'
     ds.RTPlanGeometry = "PATIENT"
     # Figure out what goes in DoseReferenceSequence... Should be like a target volume and
     # reference point I think...
