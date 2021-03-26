@@ -43,6 +43,8 @@ This approach has been reliable.
   * Set this up with a single `External` type network adapter
   * Disable secure boot
   * Utilise Generation 2 so that UEFI is available
+  * Throughout this document it will be assumed that the non-root username on
+    the Ubuntu machine is `pexit`
 * A set up Windows OpenSSH server. For use within this document it will be
   assumed that the server is running on the hostname `rccc-ssh` and all ssh
   clients will connect as the non-administrator `pexit` user. The config
@@ -152,3 +154,58 @@ present the user with the tunnelled network share drive.
 So that the port forwarding is self-healing in case of network interruptions
 we will be utilising the package `autossh`. These instructions here were
 adapted from <https://www.everythingcli.org/ssh-tunnelling-for-fun-and-profit-autossh/#gfm-8>.
+
+Also, when running this `autossh` service, we want the service to run as the
+`pexit` user so that the SSH key-pair created and authorised above gets
+utilised. And so that we are not unnecessarily running our commands as root.
+The guide for adding a `systemd` service as a custom user was adapted from
+<https://askubuntu.com/a/676022>.
+
+First, verify that the command that is going to be run works as expected. In
+our case this full command was:
+
+```bash
+/usr/bin/authbind --deep \
+  /usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N \
+  -L 192.168.100.230:445:localhost:44445 \
+  -L 192.168.100.231:445:localhost:44446 \
+  -L 192.168.100.232:445:localhost:44447 \
+  -L 192.168.100.233:445:localhost:44448 \
+  -L 192.168.100.234:445:localhost:44449 \
+  -L 192.168.100.235:445:localhost:44450 \
+  pexit@rccc-ssh -p 38471
+```
+
+Then, once it has been verified that the above command worked as expected,
+the following file was created at `/etc/systemd/system/autossh-samba-tunnel.service`:
+
+```service
+[Unit]
+Description=AutoSSH samba port forwarding
+After=network.target
+
+[Service]
+User=pexit
+Group=pexit
+Environment="AUTOSSH_GATETIME=0"
+ExecStart=/usr/bin/authbind --deep \
+  /usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N \
+  -L 192.168.100.230:445:localhost:44445 \
+  -L 192.168.100.231:445:localhost:44446 \
+  -L 192.168.100.232:445:localhost:44447 \
+  -L 192.168.100.233:445:localhost:44448 \
+  -L 192.168.100.234:445:localhost:44449 \
+  -L 192.168.100.235:445:localhost:44450 \
+  pexit@rccc-ssh -p 38471
+
+[Install]
+WantedBy=multi-user.target
+```
+
+To then enable this service the following was run:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start autossh-samba-tunnel.service
+sudo systemctl enable autossh-samba-tunnel.service
+```
