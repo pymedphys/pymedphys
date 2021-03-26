@@ -8,7 +8,7 @@ default_reference = "monaco"
 default_evaluation = "icom"
 
 [output]
-png_directory = '\\rccc-pdc\PExIT\Physics\Patient Specific Logfile Fluence'
+png_directory = 'D:\TEMP'
 
 [gamma]
 dose_percent_threshold = 2
@@ -32,11 +32,11 @@ name = "rccc"
     # locations that aren't actually an export location to their own config
     # area.
     [site.export-directories]
-    escan = '\\rccc-pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
-    anonymised_monaco = '\\rccc-pdc\PExIT\DataExchange\anonymised-monaco'
-    icom_live = '\\rccc-pdc\PExIT\DataExchange\iCom\live'
-    iviewdb = '\\rccc-pdc\PExIT\DataExchange\iViewDB'
-    icom = '\\rccc-pdc\PExIT\DataExchange\iCom'
+    escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+    anonymised_monaco = '\\pdc\PExIT\DataExchange\anonymised-monaco'
+    icom_live = '\\pdc\PExIT\DataExchange\iCom\live'
+    iviewdb = '\\pdc\PExIT\DataExchange\iViewDB'
+    icom = '\\pdc\PExIT\DataExchange\iCom'
 
     [site.monaco]
     focaldata = '\\rccc-monacoda\FocalData'
@@ -67,28 +67,28 @@ name = "rccc"
     ip = '192.168.100.200'
 
         [site.linac.directories]
-        qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
+        qa = '\\pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
 
     [[site.linac]]
     name = "2694"
     ip = '192.168.100.201'
 
         [site.linac.directories]
-        qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
+        qa = '\\pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
 
 
 [[site]]
 name = "nbcc"
 
     [site.export-directories]
-    escan = '\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
-    anonymised_monaco = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\anonymised-monaco'
-    icom_live = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live'
-    iviewdb = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iViewDB'
-    icom = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom'
+    escan = '\\nbccc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
+    anonymised_monaco = '\\nbccc-pdc\Physics\NBCC-DataExchange\anonymised-monaco'
+    icom_live = '\\nbccc-pdc\Physics\NBCC-DataExchange\iCom\live'
+    iviewdb = '\\nbccc-pdc\Physics\NBCC-DataExchange\iViewDB'
+    icom = '\\nbccc-pdc\Physics\NBCC-DataExchange\iCom'
 
     [site.monaco]
-    focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
+    focaldata = '\\nbccc-monaco\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
     hostname = 'rccc-ssh'
     dicom_port = '35104'
@@ -108,39 +108,39 @@ name = "nbcc"
         iview = "4299_iView"
 
         [site.linac.directories]
-        qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
+        qa = '\\pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
 
 
-[[site]]
-name = "sash"
+# [[site]]
+# name = "sash"
 
-    [site.export-directories]
-    escan = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
-    anonymised_monaco = '\\tunnel-sash-physics-server\SASH-DataExchange\anonymised-monaco'
-    icom_live = '\\tunnel-sash-physics-server\SASH-DataExchange\icom\live'
-    iviewdb = '\\tunnel-sash-physics-server\iViewDB'
-    icom = '\\tunnel-sash-physics-server\SASH-DataExchange\icom'
+#     [site.export-directories]
+#     escan = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
+#     anonymised_monaco = '\\tunnel-sash-physics-server\SASH-DataExchange\anonymised-monaco'
+#     icom_live = '\\tunnel-sash-physics-server\SASH-DataExchange\icom\live'
+#     iviewdb = '\\tunnel-sash-physics-server\iViewDB'
+#     icom = '\\tunnel-sash-physics-server\SASH-DataExchange\icom'
 
-    [site.monaco]
-    focaldata = '\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData'
-    clinic = 'SASH\1~Clinical'
+#     [site.monaco]
+#     focaldata = '\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData'
+#     clinic = 'SASH\1~Clinical'
 
-    [site.mosaiq]
-    timezone = "Australia/Sydney"
-    hostname = "rccc-ssh"
-    port = 1433
-    alias = "SASH Mosaiq SQL Server"
-    physics_qcl_location = "Physics_Check"
+#     [site.mosaiq]
+#     timezone = "Australia/Sydney"
+#     hostname = "rccc-ssh"
+#     port = 1433
+#     alias = "SASH Mosaiq SQL Server"
+#     physics_qcl_location = "Physics_Check"
 
-    [[site.linac]]
-    name = "9002"
-    ip = '192.168.40.10'
+#     [[site.linac]]
+#     name = "9002"
+#     ip = '192.168.40.10'
 
-        [site.linac.aliases]
-        iview = "Default"
+#         [site.linac.aliases]
+#         iview = "Default"
 
-        [site.linac.directories]
-        qa = '\\rccc-pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
+#         [site.linac.directories]
+#         qa = '\\pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
 
 
 [trf_logfiles]
@@ -149,13 +149,13 @@ root_directory = '\\physics-server\LinacLogFiles'
 # TODO: Need to deprecate this field and use the site specific config instead.
 [icom]
 patient_directories = [
-    '\\rccc-pdc\PExIT\DataExchange\iCom\patients',
-    '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
-    '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
+    '\\pdc\PExIT\DataExchange\iCom\patients',
+    # '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
+    # '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
 ]
 
 [electron_insert_modelling]
-data_path = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
+data_path = '\\nbccc-pdc\Physics\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
 
     [electron_insert_modelling.patterns]
     beam_model_name = 'RiverinaAgility - (\d+)MeV'
