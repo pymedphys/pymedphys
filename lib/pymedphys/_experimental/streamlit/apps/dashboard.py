@@ -20,6 +20,7 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
 CATEGORY = categories.ALPHA
@@ -27,25 +28,37 @@ TITLE = "Clinical Dashboard"
 
 
 def main():
-    centres = ["rccc", "nbcc", "sash"]
-    # centres = ["nbcc"]
-    servers = {
-        "rccc": {"hostname": "msqsql", "alias": "RCCC Mosaiq SQL Server"},
-        "nbcc": {
-            "hostname": "rccc-physicssvr",
-            "port": 31433,
-            "alias": "NBCC Mosaiq SQL Server",
-        },
-        "sash": {"hostname": "rccc-physicssvr", "alias": "SASH Mosaiq SQL Server"},
-    }
-    physics_locations = {
-        "rccc": "Physics_Check",
-        "nbcc": "Physics",
-        "sash": "Physics_Check",
+    config = st_config.get_config()
+
+    site_config_map = {}
+    for site_config in config["site"]:
+        site = site_config["name"]
+        try:
+            mosaiq_config = site_config["mosaiq"]
+            location = mosaiq_config["physics_qcl_location"]
+            hostname = mosaiq_config["hostname"]
+            port = mosaiq_config["port"]
+            alias = mosaiq_config["alias"]
+        except KeyError:
+            continue
+
+        site_config_map[site] = {
+            "location": location,
+            "hostname": hostname,
+            "port": port,
+            "alias": alias,
+        }
+
+    centres = list(site_config_map.keys())
+    connection_config = {
+        site: {k: site_config[k] for k in ("hostname", "port", "alias")}
+        for site, site_config in site_config_map.items()
     }
 
     connections = {
-        centre: st_mosaiq.get_cached_mosaiq_connection_in_dict(**servers[centre])
+        centre: st_mosaiq.get_cached_mosaiq_connection_in_dict(
+            **connection_config[centre]
+        )
         for centre in centres
     }
 
@@ -56,7 +69,7 @@ def main():
         st.write(f"## {centre.upper()}")
 
         connection_bucket = connections[centre]
-        physics_location = physics_locations[centre]
+        physics_location = site_config_map[centre]["location"]
 
         try:
             table = msq_helpers.get_incomplete_qcls(
@@ -65,7 +78,7 @@ def main():
         except (pymssql.InterfaceError, pymssql.OperationalError) as e:
             st.write(e)
             connection_bucket["connection"] = st_mosaiq.get_uncached_mosaiq_connection(
-                **servers[centre]
+                **site_config_map[centre]
             )
             table = msq_helpers.get_incomplete_qcls(
                 connection_bucket["connection"], physics_location
