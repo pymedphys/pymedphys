@@ -140,7 +140,7 @@ name = "sash"
         iview = "Default"
 
         [site.linac.directories]
-        qa = '\\pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
+        qa = '\\rccc-pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
 
 
 [trf_logfiles]
