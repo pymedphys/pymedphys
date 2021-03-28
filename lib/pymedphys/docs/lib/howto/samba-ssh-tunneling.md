@@ -206,3 +206,11 @@ sudo systemctl daemon-reload
 sudo systemctl start autossh-samba-tunnel.service
 sudo systemctl enable autossh-samba-tunnel.service
 ```
+
+## Viewing the logs
+
+To view the logs for this service the following can be run:
+
+```bash
+journalctl -u autossh-samba-tunnel.service
+```
