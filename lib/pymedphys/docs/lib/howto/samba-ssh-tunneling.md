@@ -132,7 +132,8 @@ follows utilising the tips found at <https://superuser.com/a/892391>:
 ```bash
 sudo apt install authbind
 sudo touch /etc/authbind/byport/445
-sudo chmod 777 /etc/authbind/byport/445
+sudo chmod 500 /etc/authbind/byport/445
+sudo chown pexit /etc/authbind/byport/445
 ```
 
 Then, from there, an initial test of the port forwarding can be undergone:
