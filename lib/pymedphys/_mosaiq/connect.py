@@ -44,12 +44,17 @@ class Connection:
             )
         except pymssql.OperationalError as error:
             error_message = error.args[0][1]
+
             if error_message.startswith(b"Login failed for user"):
                 raise _credentials.WrongUsernameOrPassword(
                     "Wrong credentials"
                 ) from error
 
-            raise
+            raise ValueError(
+                f"When attempting to connect to {database}@{hostname}:{port} "
+                f"with the {username} user a pymssql.OperationalError was "
+                "raised"
+            ) from error
 
     def cursor(self) -> "Cursor":
         return Cursor(self._connection)
