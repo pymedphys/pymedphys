@@ -110,6 +110,16 @@ name = "nbcc"
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
 
+    [[site.linac]]
+    name = "9183"
+    ip = '192.168.17.42'
+
+        [site.linac.aliases]
+        iview = "9183_iView"
+
+        [site.linac.directories]
+        qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 9183'
+
 
 [[site]]
 name = "sash"
