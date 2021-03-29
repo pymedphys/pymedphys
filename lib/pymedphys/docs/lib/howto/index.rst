@@ -7,3 +7,4 @@ How-to Guides
     get-started
     gamma/index
     add-a-linac
+    samba-ssh-tunnelling
