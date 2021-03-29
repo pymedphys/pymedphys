@@ -34,7 +34,7 @@ name = "rccc"
     [site.export-directories]
     escan = '\\rccc-pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
     anonymised_monaco = '\\rccc-pdc\PExIT\DataExchange\anonymised-monaco'
-    icom_live = '\\rccc-physicssvr\iComLogFiles\live'
+    icom_live = '\\rccc-pdc\PExIT\DataExchange\iCom\live'
     iviewdb = '\\rccc-pdc\PExIT\DataExchange\iViewDB'
     icom = '\\rccc-physicssvr\iComLogFiles'
 
