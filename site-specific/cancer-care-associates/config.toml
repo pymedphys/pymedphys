@@ -154,7 +154,7 @@ name = "sash"
 
 
 [trf_logfiles]
-root_directory = '\\physics-server\LinacTRFBackup'
+root_directory = '\\rccc-ssh\LinacTRFBackup'
 
 # TODO: Need to deprecate this field and use the site specific config instead.
 [icom]
