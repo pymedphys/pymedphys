@@ -66,12 +66,16 @@ name = "rccc"
     name = "2619"
     ip = '192.168.100.200'
 
+    # TODO: Combine these, make iCom index by linac name, not linac IP
+    samba_ip = '192.168.100.200'
+
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
 
     [[site.linac]]
     name = "2694"
     ip = '192.168.100.201'
+    samba_ip = '192.168.100.201'
 
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
@@ -103,6 +107,7 @@ name = "nbcc"
     [[site.linac]]
     name = "4299"
     ip = '192.168.17.40'
+    samba_ip = '192.168.100.231'
 
         [site.linac.aliases]
         iview = "4299_iView"
@@ -113,6 +118,7 @@ name = "nbcc"
     [[site.linac]]
     name = "9183"
     ip = '192.168.17.42'
+    samba_ip = '192.168.100.236'
 
         [site.linac.aliases]
         iview = "9183_iView"
@@ -145,6 +151,7 @@ name = "sash"
     [[site.linac]]
     name = "9002"
     ip = '192.168.40.10'
+    samba_ip = '192.168.100.230'
 
         [site.linac.aliases]
         iview = "Default"
