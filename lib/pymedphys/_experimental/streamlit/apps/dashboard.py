@@ -75,10 +75,9 @@ def main():
             table = msq_helpers.get_incomplete_qcls(
                 connection_bucket["connection"], physics_location
             )
-        except (pymssql.InterfaceError, pymssql.OperationalError) as e:
-            st.write(e)
+        except (pymssql.InterfaceError, pymssql.OperationalError):
             connection_bucket["connection"] = st_mosaiq.get_uncached_mosaiq_connection(
-                **site_config_map[centre]
+                **connection_config[centre]
             )
             table = msq_helpers.get_incomplete_qcls(
                 connection_bucket["connection"], physics_location
