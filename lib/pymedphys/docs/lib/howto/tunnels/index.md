@@ -12,10 +12,10 @@ encrypted port forwarding capacity afforded by SSH tunnelling.
 
 These tunnel documents detail various how-to guides on how to achieve
 individual components of this set up. These documents are not strictly
-PyMedPhys PyMedPhys specific, but they do detail how this multi-site deployment
-has been achieved. As such, they are published here in the hope that they may
-be useful to other system administrators who wish to deploy either PyMedPhys or
-similar across their own network of centres.
+PyMedPhys specific, but they do detail how this multi-site deployment has been
+achieved. As such, they are published here in the hope that they may be useful
+to other system administrators who wish to deploy either PyMedPhys or similar
+across their own network of centres.
 
 ## Index
 
