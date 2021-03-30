@@ -121,7 +121,7 @@ name = "nbcc"
     samba_ip = '192.168.100.236'
 
         [site.linac.aliases]
-        iview = "9183_iView"
+        iview = "iView"
 
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 9183'

@@ -15,6 +15,7 @@
 import pathlib
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
@@ -49,6 +50,9 @@ def get_directories_and_initial_database(config, refresh_cache):
             alias_map[linac["aliases"]["iview"]] = linac["name"]
         except KeyError:
             alias_map[linac["name"]] = linac["name"]
+
+    # st.write(database_table)
+    # st.write(alias_map)
 
     database_table["machine_id"] = database_table["machine_id"].apply(
         lambda x: alias_map[x]
