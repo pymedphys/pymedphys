@@ -214,6 +214,7 @@
     "dosimetric",
     "dpcm",
     "dpmm",
+    "dropna",
     "dstack",
     "dtype",
     "dtypes",
