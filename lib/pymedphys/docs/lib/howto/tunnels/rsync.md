@@ -88,8 +88,9 @@ To set up the `crontab` run `crontab -e`, then append the following to the
 bottom of that file:
 
 ```crontab
-0 1 * * * mount /media/rccc-ssh/D ; mount /media/tunnel-nbcc-pdc/Physics ; rsync -av --delete /media/tunnel-nbcc-pdc/Physics/Physics/ /media/rccc-ssh/D/PhysicsDriveBackup/
+0 1 * * * mount /media/rccc-ssh/D ; mount /media/tunnel-nbcc-pdc/Physics ; timeout 4h rsync -av --delete /media/tunnel-nbcc-pdc/Physics/Physics/ /media/rccc-ssh/D/PhysicsDriveBackup/
 ```
 
 This will set up cron to make sure the appropriate directories are mounted and
-then runs `rsync` each night at 1 am.
+then runs `rsync` each night at 1 am. If the task hasn't completed by 5 am it
+is stopped ready for it to continue the task on the following night.
