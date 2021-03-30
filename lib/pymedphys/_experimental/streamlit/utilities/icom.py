@@ -134,9 +134,10 @@ def _get_relevant_times(filepath):
 
     if len(machine_id) == 0:
         machine_id = None
-        st.warning(
+        st.error(
             f"The filepath `{filepath}` has no Machine ID. "
-            "This is unexpected. However, will attempt to continue."
+            "This is unexpected. However, will attempt to continue "
+            "despite this."
         )
     else:
         machine_id = machine_id[0]
