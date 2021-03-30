@@ -67,14 +67,21 @@ def compare_delivered_to_planned(patient):
         print("fraction field empty")
     primary_checks = {
         "patient_id": patient,
-        "first_name": delivered["first_name"].values[0],
-        "last_name": delivered["last_name"].values[0],
+        "first_name": planned["first_name"].values[0],
+        "last_name": planned["last_name"].values[0],
         "was_overridden": "",
         "new_field": "",
         "rx_change": "",
         "site_setup_change": "",
         "partial_tx": "",
+        "notes": "",
     }
+
+    if delivered_this_week.empty:
+        primary_checks["notes"] = "No recorded treatments within last week."
+        for key, item in primary_checks.items():
+            patient_results[key] = [item]
+        return planned, delivered, patient_results
 
     if True in delivered_this_week["was_overridden"].values:
         primary_checks["was_overridden"] = "Treatment Overridden"
@@ -174,9 +181,9 @@ def get_patient_image_info(patient):
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
             ("image_date", "Image.Study_DtTm"),
-            ("modified_date", "Image.Modified_DtTm"),
             ("type", "Image.Short_Name"),
             ("name", "Image.Image_Name"),
+            ("label", "Image.Field_Label"),
             ("num_images", "Image.Num_Images"),
             ("comments", "Image.Comments"),
             ("review_status", "Image.Att_App"),

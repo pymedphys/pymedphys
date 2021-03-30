@@ -79,7 +79,9 @@ def main():
         # delivered_this_week = delivered
         delivered_this_week = delivered[delivered["date"] > week_ago]
         delivered_this_week = delivered_this_week.reset_index(drop=True)
-
+        if delivered_this_week.empty:
+            st.write("No recorded deliveries in the past week for this patient.")
+            st.stop()
         # plot the couch coordinates for each delivered beam
         # st.write(planned)
         # st.write(delivered_this_week)

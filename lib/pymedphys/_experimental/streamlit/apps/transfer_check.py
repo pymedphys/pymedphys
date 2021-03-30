@@ -527,7 +527,6 @@ def main():
     mosaiq_table = get_all_mosaiq_treatment_data(connection, mrn)
     mosaiq_table = drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table)
     mosaiq_table = limit_mosaiq_data_to_current_versions(mosaiq_table)
-
     dicom_table = point_to_isodose_rx(dicom_table, mosaiq_table)
     verify_basic_patient_info(dicom_table, mosaiq_table, mrn)
     check_site_approval(mosaiq_table, connection)
