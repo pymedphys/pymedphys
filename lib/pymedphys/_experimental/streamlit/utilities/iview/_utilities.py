@@ -15,7 +15,6 @@
 import pathlib
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
