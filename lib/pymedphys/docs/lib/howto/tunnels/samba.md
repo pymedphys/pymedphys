@@ -60,10 +60,10 @@ GatewayPorts yes
 * SSH tunnels already set up to forwarding ports through to a PC on the local
   network. This PC throughout this document will be called `rccc-ssh`. The
   ports being forwarded through to `rccc-ssh` from remote SSH clients for this
-  document will be ports `44445` - `44450`.
+  document will be ports `44445` - `44451`.
 * A range of IP addresses that can be utilised for the remapping of port `445`
   onto them. Throughout this document these IP addresses will be
-  `192.168.100.230` - `192.168.100.235`.
+  `192.168.100.230` - `192.168.100.236`.
 * The DNS IP address. Throughout this document this will be assumed to be
   `192.168.100.15`
 
@@ -170,6 +170,7 @@ our case this full command was:
   -L 192.168.100.233:445:localhost:44448 \
   -L 192.168.100.234:445:localhost:44449 \
   -L 192.168.100.235:445:localhost:44450 \
+  -L 192.168.100.236:445:localhost:44451 \
   pexit@rccc-ssh -p 38471
 ```
 
@@ -193,6 +194,7 @@ ExecStart=/usr/bin/authbind --deep \
   -L 192.168.100.233:445:localhost:44448 \
   -L 192.168.100.234:445:localhost:44449 \
   -L 192.168.100.235:445:localhost:44450 \
+  -L 192.168.100.236:445:localhost:44451 \
   pexit@rccc-ssh -p 38471
 
 [Install]
