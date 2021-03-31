@@ -318,17 +318,6 @@ python-versions = "*"
 six = "*"
 
 [[package]]
-name = "data-science-types"
-version = "0.2.23"
-description = "Type stubs for Python machine learning libraries"
-category = "main"
-optional = true
-python-versions = ">=3.6"
-
-[package.extras]
-dev = ["black", "flake8", "flake8-pyi", "matplotlib", "mypy (==0.770)", "numpy", "pandas", "pytest"]
-
-[[package]]
 name = "dbfread"
 version = "2.0.7"
 description = "Read DBF Files with Python"
@@ -2668,7 +2657,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["Pillow", "PyYAML", "attrs", "black", "data-science-types", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "readme-renderer", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "streamlit-analytics", "tabulate", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
+dev = ["Pillow", "PyYAML", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "readme-renderer", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "streamlit-analytics", "tabulate", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 dicom = ["pydicom", "pylibjpeg-libjpeg", "pynetdicom"]
 docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
@@ -2676,12 +2665,12 @@ icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = ["hypothesis", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil"]
-user = ["Pillow", "PyYAML", "attrs", "data-science-types", "dbfread", "dicompyler-core", "fsspec", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pymssql", "pynetdicom", "python-dateutil", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "streamlit-analytics", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
+user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pymssql", "pynetdicom", "python-dateutil", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "streamlit-analytics", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "e363f48da528cb996f4432304c424a24537c0fad7d85deb3366d293aad77d666"
+content-hash = "a29e4e274c6fcaec94125fc38a934d982759ed902fc9c4bf6e833354a3473fbd"
 
 [metadata.files]
 alabaster = [
@@ -2856,10 +2845,6 @@ cssutils = [
 cycler = [
     {file = "cycler-0.10.0-py2.py3-none-any.whl", hash = "sha256:1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d"},
     {file = "cycler-0.10.0.tar.gz", hash = "sha256:cd7b2d1018258d7247a71425e9f26463dfb444d411c39569972f4ce586b0c9d8"},
-]
-data-science-types = [
-    {file = "data-science-types-0.2.23.tar.gz", hash = "sha256:8096b9a35a8a187bf9a122b4707c97de841d810744690ee2a4ac30c6462e0d16"},
-    {file = "data_science_types-0.2.23-py3-none-any.whl", hash = "sha256:bca319abc0e53a0316f9fcb887937e942477cb9e5fc63c8581e0b0438903b977"},
 ]
 dbfread = [
     {file = "dbfread-2.0.7-py2.py3-none-any.whl", hash = "sha256:f604def58c59694fa0160d7be5d0b8d594467278d2bb6a47d46daf7162c84cec"},

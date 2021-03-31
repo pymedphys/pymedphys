@@ -38,8 +38,10 @@ for the collimator and the gantry in order to correct this sign flip.
 
 import warnings
 
+from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
+from pymedphys._imports import streamlit as st
 
 from . import _utilities
 
@@ -125,6 +127,12 @@ def attempt_to_make_angles_continuous(
     range_iter=0.1,
 ):
     if init_range_to_adjust > max_range:
+        st.write(times)
+        st.write(angles)
+        df = pd.concat([times, pd.Series(angles, name="angle")], axis=1)
+
+        # alt.Chart()
+        st.write(df)
         raise ValueError("The adjustment range was larger than the maximum")
 
     within_adjustment_range = np.abs(angles) >= 180 - init_range_to_adjust
