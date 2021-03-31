@@ -215,8 +215,10 @@ def run_calculation(
                 penumbra,
             )
 
-            for fig in figures:
-                st.pyplot(fig)
+            columns = st.beta_columns(len(figures))
+            for fig, col in zip(figures, columns):
+                with col:
+                    st.pyplot(fig)
 
         collated_results = collated_results.append(results)
 
