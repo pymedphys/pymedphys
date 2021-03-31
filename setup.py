@@ -114,8 +114,7 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys._experimental.streamlit.apps": ["data/*"],
+    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/apps/data/*"],
     "pymedphys.docs": [
         "_static/*",
         "app/*",
@@ -131,29 +130,29 @@ package_data = {
         "lib/background/*",
         "lib/howto/*",
         "lib/howto/gamma/*",
+        "lib/howto/tunnels/*",
+        "lib/howto/tunnels/img/*",
         "lib/ref/*",
         "lib/ref/experimental/*",
         "lib/tutes/*",
         "trees/*",
     ],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/*",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
-    ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/.gitignore",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
     ],
 }
 
 install_requires = ["typing-extensions"]
 
 extras_require = {
-    ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],
     "comparables": ["flashgamma"],
     "dev": [
         "tqdm",
@@ -183,7 +182,7 @@ extras_require = {
         "xlsxwriter",
         "plotly",
         "dicompyler-core",
-        "numpy>=1.12",
+        "numpy>=1.20.2",
         "pandas>=1.0.0",
         "pydicom>=2.0.0",
         "shapely>=1.7.0",
@@ -222,13 +221,11 @@ extras_require = {
     ],
     "doctests": [
         "pylinac==2.3.2",
-        "tensorflow>=2.2.0",
         "sphinx-book-theme",
         "black>=20.8b1,<21.0",
         "tabulate",
     ],
-    "icom": ["numpy>=1.12"],
-    "ml": ["tensorflow>=2.2.0"],
+    "icom": ["numpy>=1.20.2"],
     "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0", "scikit-learn"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
@@ -268,7 +265,7 @@ extras_require = {
         "xlsxwriter",
         "plotly",
         "dicompyler-core",
-        "numpy>=1.12",
+        "numpy>=1.20.2",
         "pandas>=1.0.0",
         "pydicom>=2.0.0",
         "shapely>=1.7.0",
@@ -302,7 +299,7 @@ setup_kwargs = {
     "install_requires": install_requires,
     "extras_require": extras_require,
     "entry_points": entry_points,
-    "python_requires": ">=3.6.2,<4.0.0",
+    "python_requires": ">=3.7,<4.0",
 }
 
 
