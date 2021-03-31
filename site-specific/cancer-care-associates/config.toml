@@ -34,7 +34,7 @@ name = "rccc"
     [site.export-directories]
     escan = '\\rccc-pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
     anonymised_monaco = '\\rccc-pdc\PExIT\DataExchange\anonymised-monaco'
-    icom_live = '\\rccc-physicssvr\iComLogFiles\live'
+    icom_live = '\\rccc-pdc\PExIT\DataExchange\iCom\live'
     iviewdb = '\\rccc-pdc\PExIT\DataExchange\iViewDB'
     icom = '\\rccc-physicssvr\iComLogFiles'
 
@@ -66,12 +66,16 @@ name = "rccc"
     name = "2619"
     ip = '192.168.100.200'
 
+    # TODO: Combine these, make iCom index by linac name, not linac IP
+    samba_ip = '192.168.100.200'
+
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
 
     [[site.linac]]
     name = "2694"
     ip = '192.168.100.201'
+    samba_ip = '192.168.100.201'
 
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
@@ -90,12 +94,12 @@ name = "nbcc"
     [site.monaco]
     focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
-    hostname = 'rccc-physicssvr'
+    hostname = 'rccc-ssh'
     dicom_port = '35104'
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
-    hostname = "rccc-physicssvr"
+    hostname = "rccc-ssh"
     port = 31433
     alias = "NBCC Mosaiq SQL Server"
     physics_qcl_location = "Physics"
@@ -103,12 +107,24 @@ name = "nbcc"
     [[site.linac]]
     name = "4299"
     ip = '192.168.17.40'
+    samba_ip = '192.168.100.231'
 
         [site.linac.aliases]
         iview = "4299_iView"
 
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
+
+    [[site.linac]]
+    name = "9183"
+    ip = '192.168.17.42'
+    samba_ip = '192.168.100.236'
+
+        [site.linac.aliases]
+        iview = "iView"
+
+        [site.linac.directories]
+        qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 9183'
 
 
 [[site]]
@@ -127,7 +143,7 @@ name = "sash"
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
-    hostname = "rccc-physicssvr"
+    hostname = "rccc-ssh"
     port = 1433
     alias = "SASH Mosaiq SQL Server"
     physics_qcl_location = "Physics_Check"
@@ -135,6 +151,7 @@ name = "sash"
     [[site.linac]]
     name = "9002"
     ip = '192.168.40.10'
+    samba_ip = '192.168.100.230'
 
         [site.linac.aliases]
         iview = "Default"
@@ -144,12 +161,12 @@ name = "sash"
 
 
 [trf_logfiles]
-root_directory = '\\rccc-physicssvr\LinacLogFiles'
+root_directory = '\\rccc-ssh\LinacTRFBackup'
 
 # TODO: Need to deprecate this field and use the site specific config instead.
 [icom]
 patient_directories = [
-    '\\rccc-physicssvr\iComLogFiles\patients',
+    '\\rccc-pdc\PExIT\DataExchange\iCom\patients',
     '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
     '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
 ]

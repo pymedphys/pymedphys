@@ -70,7 +70,11 @@ def get_most_recent_file_and_print(linac_id, filepaths):
     if not isinstance(filepaths, list):
         raise ValueError("Filepaths needs to be a list")
 
-    latest_filepath = max(filepaths, key=os.path.getmtime)
+    try:
+        latest_filepath = max(filepaths, key=os.path.getmtime)
+    except ValueError:
+        st.sidebar.markdown(f"{linac_id}: `Never`")
+        return
 
     most_recent = datetime.fromtimestamp(os.path.getmtime(latest_filepath))
     now = datetime.now()
