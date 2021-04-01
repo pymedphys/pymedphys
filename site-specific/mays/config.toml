@@ -1,0 +1,7 @@
+[[site]]
+name = "mays"
+
+    [site.mosaiq]
+    hostname = "PRDMOSAIQIWVV01.utmsa.local"
+    port = 1433
+    alias = "MCC Mosaiq SQL Server"

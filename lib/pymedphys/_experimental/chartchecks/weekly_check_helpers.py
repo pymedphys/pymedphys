@@ -50,7 +50,9 @@ def show_incomplete_weekly_checks(connection):
 
 
 def compare_delivered_to_planned(patient):
-    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+    connection = _pp_mosaiq.connect(
+        "PRDMOSAIQIWVV01.utmsa.local", alias="MCC Mosaiq SQL Server"
+    )
 
     delivered = get_all_treatment_history_data(connection, patient)
     planned = get_all_mosaiq_treatment_data(connection, patient)
