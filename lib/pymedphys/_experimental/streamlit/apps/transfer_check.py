@@ -18,7 +18,8 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities.mosaiq import get_cached_mosaiq_connection
+from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import mosaiq as _mosaiq
 
 from pymedphys._experimental.chartchecks.compare import (
     colour_results,
@@ -495,8 +496,9 @@ def point_to_isodose_rx(dicom_table, mosaiq_table):
 
 
 def main():
-    server = "PRDMOSAIQIWVV01.utmsa.local"
-    connection = get_cached_mosaiq_connection(server)
+    config = st_config.get_config()
+
+    connection = _mosaiq.get_single_mosaiq_connection_with_config(config)
 
     st.sidebar.header("Instructions:")
     st.sidebar.markdown(
