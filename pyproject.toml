@@ -50,8 +50,6 @@ matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
 Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
-scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
-# data-science-types = { version = "*", optional = true }  # groups = ["user", "dev"]
 xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
@@ -73,16 +71,17 @@ dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
 numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "icom"]
 
 # The following lower bounded packages are due to certain APIs utilised
-# numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev", "icom"]
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
-# Shapely's lower bound is so that the PyPI version with wheels is used
+# The following lower bounds are so that the versions with wheels are utilised
+# for the installation
 shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
+scikit-image = { version = ">=0.18.1", optional = true }  # groups = ["user", "dev"]
 
 # Streamlit's pinning is due to its current beta nature and the fact that some
 # private APIs are utilised.
-streamlit = { version = "0.78.0", optional = true }  # groups = ["user", "dev"]
+streamlit = { version = "0.79.0", optional = true }  # groups = ["user", "dev"]
 streamlit-ace = { version = "0.0.4", optional = true }  # groups = ["user", "dev"]
 streamlit-analytics = { version = "0.1.2", optional = true }  # groups = ["user", "dev"]
 
@@ -104,6 +103,9 @@ flashgamma = { version = "*", optional = true }  # groups = ["comparables"]
 # ---------------- #
 # Machine Learning #
 # ---------------- #
+# The following dependency was removed due to it coming with a numpy upper
+# bound. I don't want dependencies that have an upper bound on numpy.
+
 # tensorflow = { version = ">=2.4.0", optional = true }  # groups = ["ml", "doctests"]
 
 # ------------- #
