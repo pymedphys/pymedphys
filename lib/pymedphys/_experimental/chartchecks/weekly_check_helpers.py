@@ -18,6 +18,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plotly
 from pymedphys._imports import streamlit as st
 
+import pymedphys
 import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.helpers import get_incomplete_qcls
 
@@ -102,7 +103,7 @@ def compare_delivered_to_planned(connection, patient):
     return planned, delivered, patient_results
 
 
-@st.cache(ttl=86400)
+@st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def compare_all_incompletes(connection, incomplete_qcls):
     all_planned = pd.DataFrame()
     all_delivered = pd.DataFrame()
