@@ -8,3 +8,13 @@ name = "mays"
 
 [[site]]
 name = "hello world"
+
+available = ["dicom", "mosaiq"]
+
+[gamma]
+dose_percent_threshold = 2
+distance_mm_threshold = 0.5
+local_gamma = true
+quiet = true
+max_gamma = 5
+lower_percent_dose_cutoff = 20
