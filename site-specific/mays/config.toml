@@ -9,7 +9,10 @@ name = "mays"
 [[site]]
 name = "hello world"
 
+[data_methods]
 available = ["dicom", "mosaiq"]
+default_reference = "dicom"
+default_evaluation = "mosaiq"
 
 [gamma]
 dose_percent_threshold = 2
