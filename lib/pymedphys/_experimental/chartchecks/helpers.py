@@ -43,9 +43,12 @@ def get_dicom_wedge_info(beam_reference, field):
     wedge_info = {
         "wedge_type": field.WedgeSequence[0].WedgeType,
         "wedge_angle": field.WedgeSequence[0].WedgeAngle,
-        "wedge_orienttation": field.WedgeSequence[0].WedgeOrientation,
+        "wedge_orientation": field.WedgeSequence[0].WedgeOrientation,
         "wedge_MU": wedge_MU * beam_reference.BeamMeterset,
     }
+
+    st.write(field.BeamDescription)
+    st.write(wedge_info)
     return wedge_info
 
 
@@ -70,7 +73,7 @@ def get_dicom_coll_info(field):
     return colls
 
 
-def get_all_dicom_treatment_info(dicomFile):
+def get_all_dicom_treatment_data(dicomFile):
     dicom = pydicom.dcmread(dicomFile)
     table = pd.DataFrame()
 
@@ -100,7 +103,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "last_name": dicom.PatientName.family_name,
                 "dob": dicom.PatientBirthDate,
                 "dose_reference": dose_ref_number,
-                "field_label": field.BeamName,
+                "field_label": str(field.BeamName).upper(),
                 "field_name": field.BeamDescription,
                 "machine": field.TreatmentMachineName,
                 "rx": prescriptionDescription[fn - 1],
@@ -161,7 +164,7 @@ def get_all_dicom_treatment_info(dicomFile):
     return table
 
 
-def get_all_treatment_data(connection, mrn):
+def get_all_mosaiq_treatment_data(connection, mrn):
 
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
@@ -272,6 +275,7 @@ def get_all_treatment_data(connection, mrn):
         TOLERANCE_TYPES[item] for item in mosaiq_fields["tolerance"]
     ]
 
+    mosaiq_fields["field_label"] = mosaiq_fields["field_label"].str.upper()
     # for row in mosaiq_fields.index:
     #     if mosaiq_fields.loc[row, 'rx_depth'] != 0:
     #         mosaiq_fields.loc[row, "fraction_dose [cGy]"] = round(mosaiq_fields.loc[row, "fraction_dose [cGy]"] / (mosaiq_fields.loc[row, 'rx_depth']/100), 2)

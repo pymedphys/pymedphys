@@ -21,6 +21,47 @@ from pymedphys._mosaiq import connect as _connect
 from pymedphys._mosaiq import credentials as _credentials
 
 
+def get_single_mosaiq_connection_with_config(config):
+    valid_site_config = {}
+    for site_config in config["site"]:
+        try:
+            site_name = site_config["name"]
+            mosaiq_config = site_config["mosaiq"]
+            hostname = mosaiq_config["hostname"]
+        except KeyError:
+            continue
+
+        try:
+            port = mosaiq_config["port"]
+        except KeyError:
+            port = 1433
+
+        try:
+            alias = mosaiq_config["alias"]
+        except KeyError:
+            alias = None
+
+        valid_site_config[site_name] = {
+            "hostname": hostname,
+            "port": port,
+            "alias": alias,
+        }
+
+    site_options = list(valid_site_config.keys())
+    if len(site_options) == 0:
+        raise ValueError("No valid site options within your config file.")
+
+    if len(site_options) == 1:
+        chosen_site = site_options[0]
+    else:
+        chosen_site = st.radio("Site", site_options)
+
+    chosen_site_config = valid_site_config[chosen_site]
+    connection = get_cached_mosaiq_connection(chosen_site_config["hostname"])
+
+    return connection
+
+
 def get_uncached_mosaiq_connection(
     hostname: str,
     port: int = 1433,

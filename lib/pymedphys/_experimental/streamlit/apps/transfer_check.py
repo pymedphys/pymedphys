@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities.mosaiq import get_cached_mosaiq_connection
+from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import mosaiq as _mosaiq
 
 from pymedphys._experimental.chartchecks.compare import (
     colour_results,
@@ -31,8 +33,8 @@ from pymedphys._experimental.chartchecks.dvh_helpers import (
 )
 from pymedphys._experimental.chartchecks.helpers import (
     add_new_structure_alias,
-    get_all_dicom_treatment_info,
-    get_all_treatment_data,
+    get_all_dicom_treatment_data,
+    get_all_mosaiq_treatment_data,
     get_staff_initials,
     get_structure_aliases,
 )
@@ -63,15 +65,15 @@ def get_patient_files():
     return files
 
 
-def limit_mosaiq_info_to_current_versions(mosaiq_treatment_info):
-    mosaiq_treatment_info = mosaiq_treatment_info[
-        (mosaiq_treatment_info["site_version"] == 0)
-        & (mosaiq_treatment_info["site_setup_version"] == 0)
-        & (mosaiq_treatment_info["field_version"] == 0)
+def limit_mosaiq_data_to_current_versions(mosaiq_treatment_data):
+    mosaiq_treatment_data = mosaiq_treatment_data[
+        (mosaiq_treatment_data["site_version"] == 0)
+        & (mosaiq_treatment_data["site_setup_version"] == 0)
+        & (mosaiq_treatment_data["field_version"] == 0)
     ]
 
-    mosaiq_treatment_info = mosaiq_treatment_info.reset_index(drop=True)
-    return mosaiq_treatment_info
+    mosaiq_treatment_data = mosaiq_treatment_data.reset_index(drop=True)
+    return mosaiq_treatment_data
 
 
 def verify_basic_patient_info(dicom_table, mosaiq_table, mrn):
@@ -132,7 +134,7 @@ def drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table):
     index = []
     for j in dicom_table.loc[:, "field_label"]:
         for i in range(len(mosaiq_table)):
-            if mosaiq_table.loc[i, "field_label"] == j:
+            if mosaiq_table.loc[i, "field_label"].lower() == j.lower():
                 index.append(i)
 
     # Create a list of indices which contain fields not within the RP file
@@ -345,7 +347,10 @@ def add_constraint_results_to_database(constraints_df, institutional_history):
             [institutional_history, constraints_df]
         ).reset_index(drop=True)
         institutional_history.to_json(
-            "P://Share/AutoCheck/patient_archive.json", orient="index", indent=4
+            "P://Share/AutoCheck/patient_archive.json",
+            orient="index",
+            indent=4,
+            double_precision=3,
         )
 
 
@@ -415,12 +420,20 @@ def perform_target_evaluation(dd_input, dvh_calcs):
 
 def compare_to_historical_scores(constraints_df, institutional_history):
     df = constraints_df.copy()
-    df["Institutional Average"] = "-"
+    df = df.replace(np.nan, "-")
+    df["Institutional Average"] = np.nan
     for index in df.index:
         row_key = df["Structure_Key"][index]
         row_type = df["Type"][index]
         row_dose = df["Dose [Gy]"][index]
         row_volume = df["Volume [%]"][index]
+
+        if not isinstance(row_dose, str):
+            row_dose = np.round(row_dose)
+
+        if not isinstance(row_volume, str):
+            row_volume = np.round(row_volume)
+
         df["Institutional Average"][index] = float(
             institutional_history[
                 (institutional_history["Structure_Key"] == row_key)
@@ -430,6 +443,9 @@ def compare_to_historical_scores(constraints_df, institutional_history):
             ]["Score"].mean()
         )
 
+    df.loc[df["Type"] == "Total Score", "Institutional Average"] = df[
+        df["Type"] == "Average Score"
+    ]["Institutional Average"].sum()
     return df
 
 
@@ -459,9 +475,30 @@ def add_to_database(constraints_df, institutional_history):
         add_constraint_results_to_database(constraints_df, institutional_history)
 
 
+def point_to_isodose_rx(dicom_table, mosaiq_table):
+    for index, field in dicom_table.iterrows():
+        if "point dose" in field.loc["rx"]:
+            normalize_to = float(
+                mosaiq_table.loc[
+                    mosaiq_table["field_label"] == field.loc["field_label"]
+                ]
+                .reset_index()
+                .at[0, "rx_depth"]
+                / 100
+            )
+            dicom_table.at[index, "fraction_dose [cGy]"] = np.round(
+                field.at["fraction_dose [cGy]"] * normalize_to
+            )
+            dicom_table.at[index, "total_dose [cGy]"] = np.round(
+                field.at["total_dose [cGy]"] * normalize_to
+            )
+    return dicom_table
+
+
 def main():
-    server = "PRDMOSAIQIWVV01.utmsa.local"
-    connection = get_cached_mosaiq_connection(server)
+    config = st_config.get_config()
+
+    connection = _mosaiq.get_single_mosaiq_connection_with_config(config)
 
     st.sidebar.header("Instructions:")
     st.sidebar.markdown(
@@ -482,17 +519,17 @@ def main():
         st.stop()
 
     try:
-        dicom_table = get_all_dicom_treatment_info(files["rp"])
+        dicom_table = get_all_dicom_treatment_data(files["rp"])
         dicom_table = dicom_table.sort_values(["field_label"])
     except AttributeError:
         st.write("Please select a new RP file.")
         st.stop()
 
     mrn = dicom_table.loc[0, "mrn"]
-    mosaiq_table = get_all_treatment_data(connection, mrn)
+    mosaiq_table = get_all_mosaiq_treatment_data(connection, mrn)
     mosaiq_table = drop_irrelevant_mosaiq_fields(dicom_table, mosaiq_table)
-    mosaiq_table = limit_mosaiq_info_to_current_versions(mosaiq_table)
-
+    mosaiq_table = limit_mosaiq_data_to_current_versions(mosaiq_table)
+    dicom_table = point_to_isodose_rx(dicom_table, mosaiq_table)
     verify_basic_patient_info(dicom_table, mosaiq_table, mrn)
     check_site_approval(mosaiq_table, connection)
     results = compare_to_mosaiq(dicom_table, mosaiq_table)
