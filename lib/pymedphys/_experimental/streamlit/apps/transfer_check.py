@@ -427,10 +427,10 @@ def compare_to_historical_scores(constraints_df, institutional_history):
         row_dose = df["Dose [Gy]"][index]
         row_volume = df["Volume [%]"][index]
 
-        if type(row_dose) is not str:
+        if not isinstance(row_dose, str):
             row_dose = np.round(row_dose)
 
-        if type(row_volume) is not str:
+        if not isinstance(row_volume, str):
             row_volume = np.round(row_volume)
 
         df["Institutional Average"][index] = float(
