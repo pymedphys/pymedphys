@@ -70,7 +70,11 @@ def get_most_recent_file_and_print(linac_id, filepaths):
     if not isinstance(filepaths, list):
         raise ValueError("Filepaths needs to be a list")
 
-    latest_filepath = max(filepaths, key=os.path.getmtime)
+    try:
+        latest_filepath = max(filepaths, key=os.path.getmtime)
+    except ValueError:
+        st.sidebar.markdown(f"{linac_id}: `Never`")
+        return
 
     most_recent = datetime.fromtimestamp(os.path.getmtime(latest_filepath))
     now = datetime.now()
@@ -171,10 +175,10 @@ def get_input_data_ui(
     data_method_map,
     default_method,
     key_namespace,
-    advanced_mode_local,
+    advanced_mode,
     **previous_results,
 ):
-    if advanced_mode_local:
+    if advanced_mode:
         data_method_options = list(data_method_map.keys())
         data_method = st.selectbox(
             "Data Input Method",
@@ -187,7 +191,7 @@ def get_input_data_ui(
 
     results = data_method_map[data_method](  # type: ignore
         key_namespace=key_namespace,
-        advanced_mode_local=advanced_mode_local,
+        advanced_mode=advanced_mode,
         **previous_results,
     )
 

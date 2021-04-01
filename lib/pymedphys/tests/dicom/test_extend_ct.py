@@ -17,76 +17,121 @@ from copy import deepcopy
 
 from pymedphys._imports import pytest
 
+from pymedphys._dicom import uid as _uid
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.ct.extend import (
-    convert_datasets_to_deque,
-    extend_datasets,
-    generate_uids,
+    _convert_datasets_to_deque,
+    _extend_datasets,
+    _generate_uids,
 )
 
 
-def make_datasets(uuids, slice_locations):
-    initial_datasets = [
-        dicom_dataset_from_dict(
-            {
-                "SOPInstanceUID": uuid,
-                "InstanceNumber": str(i),
-                "SliceLocation": str(float(slice_location)),
-                "ImagePositionPatient": ["0.0", "0.0", str(float(slice_location))],
-            }
-        )
-        for i, (uuid, slice_location) in enumerate(zip(uuids, slice_locations))
-    ]
+@pytest.mark.pydicom
+def test_out_of_order():
+    initial_sop_instance_uids = _generate_uids(4)
+    final_sop_instance_uids = _generate_uids(7)
 
-    return convert_datasets_to_deque(initial_datasets)
+    initial_series_uid = _uid.generate_uid()
+    final_series_uid = _uid.generate_uid()
+
+    number_of_slices_to_add = 3
+    initial_slice_locations = [7, 3, 1, 5]
+    expected_slice_locations = [-5, -3, -1, 1, 3, 5, 7]
+
+    initial_datasets = _make_datasets(
+        initial_series_uid, initial_sop_instance_uids, initial_slice_locations
+    )
+    expected_datasets = _make_datasets(
+        final_series_uid, final_sop_instance_uids, expected_slice_locations
+    )
+
+    resulting_datasets = deepcopy(initial_datasets)
+
+    _extend_datasets(
+        resulting_datasets,
+        0,
+        number_of_slices_to_add,
+        series_instance_uid=final_series_uid,
+        sop_instance_uids=final_sop_instance_uids,
+    )
+
+    assert resulting_datasets != initial_datasets
+
+    sorted_expected_slice_locations = sorted(expected_slice_locations)
+
+    for eval_ds, ref_ds, slice_loc in zip(
+        resulting_datasets, expected_datasets, sorted_expected_slice_locations
+    ):
+        assert eval_ds.ImagePositionPatient == ref_ds.ImagePositionPatient
+        assert eval_ds.ImagePositionPatient[-1] == slice_loc
+
+    assert resulting_datasets == expected_datasets
 
 
 @pytest.mark.pydicom
 def test_extend_datasets():
-    initial_uuids = generate_uids(4)
-    final_uuids = generate_uids(7)
+    initial_sop_instance_uids = _generate_uids(4)
+    final_sop_instance_uids = _generate_uids(7)
+
+    initial_series_uid = _uid.generate_uid()
+    final_series_uid = _uid.generate_uid()
 
     number_of_slices_to_add = 3
     initial_slice_locations = [1, 3, 5, 7]
     expected_slice_locations_left = [-5, -3, -1, 1, 3, 5, 7]
     expected_slice_locations_right = [1, 3, 5, 7, 9, 11, 13]
 
-    initial_datasets = make_datasets(initial_uuids, initial_slice_locations)
-    expected_datasets_left = make_datasets(final_uuids, expected_slice_locations_left)
-    expected_datasets_right = make_datasets(final_uuids, expected_slice_locations_right)
-
-    resulting_dataset_left = deepcopy(initial_datasets)
-    resulting_dataset_right = deepcopy(initial_datasets)
-
-    extend_datasets(
-        resulting_dataset_left, 0, number_of_slices_to_add, uids=final_uuids
+    initial_datasets = _make_datasets(
+        initial_series_uid, initial_sop_instance_uids, initial_slice_locations
     )
-    extend_datasets(
-        resulting_dataset_right, -1, number_of_slices_to_add, uids=final_uuids
+    expected_datasets_left = _make_datasets(
+        final_series_uid, final_sop_instance_uids, expected_slice_locations_left
+    )
+    expected_datasets_right = _make_datasets(
+        final_series_uid, final_sop_instance_uids, expected_slice_locations_right
     )
 
-    assert resulting_dataset_left != initial_datasets
-    assert resulting_dataset_left == expected_datasets_left
+    resulting_datasets_left = deepcopy(initial_datasets)
+    resulting_datasets_right = deepcopy(initial_datasets)
 
-    assert resulting_dataset_right != initial_datasets
-    assert resulting_dataset_right == expected_datasets_right
+    _extend_datasets(
+        resulting_datasets_left,
+        0,
+        number_of_slices_to_add,
+        series_instance_uid=final_series_uid,
+        sop_instance_uids=final_sop_instance_uids,
+    )
+    _extend_datasets(
+        resulting_datasets_right,
+        -1,
+        number_of_slices_to_add,
+        series_instance_uid=final_series_uid,
+        sop_instance_uids=final_sop_instance_uids,
+    )
+
+    assert resulting_datasets_left != initial_datasets
+    assert resulting_datasets_left == expected_datasets_left
+
+    assert resulting_datasets_right != initial_datasets
+    assert resulting_datasets_right == expected_datasets_right
 
 
-@pytest.mark.pydicom
-def test_out_of_order():
-    initial_uuids = generate_uids(4)
-    final_uuids = generate_uids(7)
+def _make_datasets(series_instance_uid, sop_instance_uids, slice_locations):
+    initial_datasets = [
+        dicom_dataset_from_dict(
+            {
+                "SeriesInstanceUID": series_instance_uid,
+                "SOPInstanceUID": sop_instance_uid,
+                "InstanceNumber": str(i),
+                "SliceLocation": str(float(slice_location)),
+                "ImagePositionPatient": ["0.0", "0.0", str(float(slice_location))],
+                "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
+                "PatientPosition": "HFS",
+            }
+        )
+        for i, (sop_instance_uid, slice_location) in enumerate(
+            zip(sop_instance_uids, slice_locations)
+        )
+    ]
 
-    number_of_slices_to_add = 3
-    initial_slice_locations = [7, 3, 1, 5]
-    expected_slice_locations = [-5, -3, -1, 1, 3, 5, 7]
-
-    initial_datasets = make_datasets(initial_uuids, initial_slice_locations)
-    expected_datasets = make_datasets(final_uuids, expected_slice_locations)
-
-    resulting_dataset = deepcopy(initial_datasets)
-
-    extend_datasets(resulting_dataset, 0, number_of_slices_to_add, uids=final_uuids)
-
-    assert resulting_dataset != initial_datasets
-    assert resulting_dataset == expected_datasets
+    return _convert_datasets_to_deque(initial_datasets)

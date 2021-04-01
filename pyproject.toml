@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.36.0-dev2"
+version = "0.36.1"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -45,6 +45,7 @@ keyring = { version = "*", optional = true }  # groups = ["user", "dev"]
 packaging = { version = "*", optional = true }  # groups = ["user", "dev"]
 PyYAML = { version = "*", optional = true }  # groups = ["user", "dev"]
 requests = { version = "*", optional = true }  # groups = ["user", "dev"]
+python-dateutil = { version = "*", optional = true }  # groups = ["user", "dev", "tests"]
 
 matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
@@ -52,6 +53,7 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
 data-science-types = { version = "*", optional = true }  # groups = ["user", "dev"]
+xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
@@ -69,7 +71,7 @@ plotly = { version = "*", optional = true }  # groups = ["user", "dev"]
 dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounded packages are due to certain APIs utilised
-numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev"]
+numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev", "icom"]
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
@@ -78,7 +80,7 @@ shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
 
 # Streamlit's pinning is due to its current beta nature and the fact that some
 # private APIs are utilised.
-streamlit = { version = "0.76.0", optional = true }  # groups = ["user", "dev"]
+streamlit = { version = "0.78.0", optional = true }  # groups = ["user", "dev"]
 streamlit-ace = { version = "0.0.4", optional = true }  # groups = ["user", "dev"]
 streamlit-analytics = { version = "0.1.2", optional = true }  # groups = ["user", "dev"]
 
@@ -89,6 +91,8 @@ pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "do
 # Scikit-learn has an upper bound since there appears to be an incompatibility
 # between pylinac and scikit-learn version 0.24.0
 scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
+
+fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # ----------- #
 # Comparables #
@@ -122,7 +126,6 @@ hypothesis = { version = "<6", optional = true }  # groups = ["dev", "tests"]
 psutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "tests"]
-python_dateutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 
 # ---------------- #
 # Development Only #
@@ -147,6 +150,7 @@ dev = [
     "dbfread",
     "dicompyler-core",
     "doc8",
+    "fsspec",
     "hypothesis",
     "imageio",
     "jupyter-book",
@@ -170,7 +174,7 @@ dev = [
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
-    "python_dateutil",
+    "python-dateutil",
     "readme-renderer",
     "requests",
     "rope",
@@ -190,6 +194,7 @@ dev = [
     "tomlkit",
     "tqdm",
     "watchdog",
+    "xarray",
     "xlsxwriter",
     "xmltodict",
 ]
@@ -202,6 +207,7 @@ docs = [
     "sphinxcontrib-napoleon",
 ]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
+icom = ["numpy"]
 ml = ["tensorflow"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
@@ -212,7 +218,7 @@ tests = [
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
-    "python_dateutil",
+    "python-dateutil",
 ]
 user = [
     "Pillow",
@@ -221,6 +227,7 @@ user = [
     "data-science-types",
     "dbfread",
     "dicompyler-core",
+    "fsspec",
     "imageio",
     "keyring",
     "matplotlib",
@@ -234,6 +241,7 @@ user = [
     "pylinac",
     "pymssql",
     "pynetdicom",
+    "python-dateutil",
     "requests",
     "scikit-image",
     "scikit-learn",
@@ -247,6 +255,7 @@ user = [
     "tomlkit",
     "tqdm",
     "watchdog",
+    "xarray",
     "xlsxwriter",
     "xmltodict",
 ]
@@ -268,13 +277,16 @@ ensure_newline_before_comments = true
 known_third_party = ["pymedphys._imports"]
 known_general_scientific = [
     "numpy", "scipy", "pandas", "imageio", "PIL", "skimage", "matplotlib",
-    "mpl_toolkits", "shapely", "streamlit", "altair"
+    "mpl_toolkits", "shapely", "altair", "sklearn", "plotly"
 ]
 known_machine_learning = [
     "tensorflow", "pytorch"
 ]
+known_streamlit = [
+    "streamlit", "streamlit_ace", "streamlit_analytics"
+]
 known_medphys = [
-    "pydicom", "pylinac", "pynetdicom", "libjpeg"
+    "pydicom", "pylinac", "pynetdicom", "libjpeg", "dicompylercore"
 ]
 known_first_party = ["pymedphys"]
 known_experimental = ["pymedphys._experimental"]
@@ -284,6 +296,7 @@ sections = [
     "THIRDPARTY",
     "GENERAL_SCIENTIFIC",
     "MACHINE_LEARNING",
+    "STREAMLIT",
     "MEDPHYS",
     "FIRSTPARTY",
     "EXPERIMENTAL",

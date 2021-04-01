@@ -16,7 +16,7 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 import pymedphys
-from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
+from pymedphys._dicom.uid import DICOM_PLAN_UID
 from pymedphys._streamlit.apps.metersetmap import _config
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc

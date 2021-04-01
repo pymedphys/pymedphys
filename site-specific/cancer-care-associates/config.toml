@@ -8,7 +8,7 @@ default_reference = "monaco"
 default_evaluation = "icom"
 
 [output]
-png_directory = '\\pdc\PExIT\Physics\Patient Specific Logfile Fluence'
+png_directory = '\\rccc-pdc\PExIT\Physics\Patient Specific Logfile Fluence'
 
 [gamma]
 dose_percent_threshold = 2
@@ -28,18 +28,30 @@ lower_percent_dose_cutoff = 20
 [[site]]
 name = "rccc"
 
-    # TODO [v2]: Change 'export-directories' to just 'directories'
+    # TODO [v2]: Change 'export-directories' to just 'export', move out all
+    # locations that aren't actually an export location to their own config
+    # area.
     [site.export-directories]
-    escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
-    anonymised_monaco = '\\pdc\PExIT\DataExchange\anonymised-monaco'
-    icom_live = '\\rccc-physicssvr\iComLogFiles\live'
-    iviewdb = '\\pdc\PExIT\DataExchange\iViewDB'
+    escan = '\\rccc-pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+    anonymised_monaco = '\\rccc-pdc\PExIT\DataExchange\anonymised-monaco'
+    icom_live = '\\rccc-pdc\PExIT\DataExchange\iCom\live'
+    iviewdb = '\\rccc-pdc\PExIT\DataExchange\iViewDB'
     icom = '\\rccc-physicssvr\iComLogFiles'
 
     [site.monaco]
     focaldata = '\\rccc-monacoda\FocalData'
     # TODO: One day support all clinics within the focal data directory
     clinic = 'RCCC\1~Clinical'
+
+    hostname = 'rccc-monacoda'
+    dicom_port = '104'
+
+    # A directory within FocalData where files can be moved immediately so that
+    # no files can be opened during the archiving process.
+    archive_holding = "ToBeArchived"
+
+    # The final location for Monaco archives to be stored.
+    archive_destination = '\\UTILSVR\PhysBack\MONACO_ARCHIVE_1'
 
     [site.mosaiq]
     # TODO: One day make it so that timezone is extracted from the Mosaiq
@@ -48,20 +60,25 @@ name = "rccc"
     hostname = "msqsql"
     port = 1433
     alias = "RCCC Mosaiq SQL Server"
+    physics_qcl_location = "Physics_Check"
 
     [[site.linac]]
     name = "2619"
     ip = '192.168.100.200'
 
+    # TODO: Combine these, make iCom index by linac name, not linac IP
+    samba_ip = '192.168.100.200'
+
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
+        qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
 
     [[site.linac]]
     name = "2694"
     ip = '192.168.100.201'
+    samba_ip = '192.168.100.201'
 
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
+        qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
 
 
 [[site]]
@@ -75,24 +92,39 @@ name = "nbcc"
     icom = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom'
 
     [site.monaco]
-    focaldata = '\\tunnel-nbcc-monaco\FOCALDATA'
+    focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
+    hostname = 'rccc-ssh'
+    dicom_port = '35104'
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
-    hostname = "rccc-physicssvr"
+    hostname = "rccc-ssh"
     port = 31433
     alias = "NBCC Mosaiq SQL Server"
+    physics_qcl_location = "Physics"
 
     [[site.linac]]
     name = "4299"
     ip = '192.168.17.40'
+    samba_ip = '192.168.100.231'
 
         [site.linac.aliases]
         iview = "4299_iView"
 
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
+        qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
+
+    [[site.linac]]
+    name = "9183"
+    ip = '192.168.17.42'
+    samba_ip = '192.168.100.236'
+
+        [site.linac.aliases]
+        iview = "iView"
+
+        [site.linac.directories]
+        qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 9183'
 
 
 [[site]]
@@ -111,28 +143,40 @@ name = "sash"
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
-    hostname = "rccc-physicssvr"
+    hostname = "rccc-ssh"
     port = 1433
     alias = "SASH Mosaiq SQL Server"
+    physics_qcl_location = "Physics_Check"
 
     [[site.linac]]
     name = "9002"
     ip = '192.168.40.10'
+    samba_ip = '192.168.100.230'
 
         [site.linac.aliases]
         iview = "Default"
 
         [site.linac.directories]
-        qa = '\\pdc\OneDrive$\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
+        qa = '\\rccc-pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
 
 
 [trf_logfiles]
-root_directory = '\\rccc-physicssvr\LinacLogFiles'
+root_directory = '\\rccc-ssh\LinacTRFBackup'
 
 # TODO: Need to deprecate this field and use the site specific config instead.
 [icom]
 patient_directories = [
-    '\\rccc-physicssvr\iComLogFiles\patients',
+    '\\rccc-pdc\PExIT\DataExchange\iCom\patients',
     '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
     '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
 ]
+
+[electron_insert_modelling]
+data_path = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv'
+
+    [electron_insert_modelling.patterns]
+    beam_model_name = 'RiverinaAgility - (\d+)MeV'
+    applicator = '(\d+)X\d+'
+
+[monaco_archiving]
+default_weeks_to_keep = 26

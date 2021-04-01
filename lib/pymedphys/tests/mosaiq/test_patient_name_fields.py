@@ -89,7 +89,9 @@ def test_get_patient_fields(
         print(fields_for_moe_df)
 
         # make sure the correct number of rows were returned
-        assert len(fields_for_moe_df) == 3
+        # with the rng seed, there are 4 fields created for moe
+        field_count = 3
+        assert len(fields_for_moe_df) == field_count
 
         # for each treatment field
         for fld_id, txfield in fields_for_moe_df.iterrows():
