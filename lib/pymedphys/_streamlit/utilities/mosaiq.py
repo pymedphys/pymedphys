@@ -48,10 +48,15 @@ def get_single_mosaiq_connection_with_config(config):
         }
 
     site_options = list(valid_site_config.keys())
+    if len(site_options):
+        raise ValueError("No valid site options within your config file.")
 
-    chosen_site = st.radio("Site", site_options)
+    if len(site_options) == 1:
+        chosen_site = site_options[0]
+    else:
+        chosen_site = st.radio("Site", site_options)
+
     chosen_site_config = valid_site_config[chosen_site]
-
     connection = get_cached_mosaiq_connection(chosen_site_config["hostname"])
 
     return connection
