@@ -48,7 +48,7 @@ def get_single_mosaiq_connection_with_config(config):
         }
 
     site_options = list(valid_site_config.keys())
-    if len(site_options):
+    if len(site_options) == 0:
         raise ValueError("No valid site options within your config file.")
 
     if len(site_options) == 1:
