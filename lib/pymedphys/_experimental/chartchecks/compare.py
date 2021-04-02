@@ -224,6 +224,7 @@ def weekly_check_colour_results(val):
         "New Field Delivered",
         "Prescription Altered",
         "Site Setup Altered",
+        "No recorded treatments within last week.",
     ]
     failure_flag = 0
     for failure in failures:

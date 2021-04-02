@@ -1,0 +1,23 @@
+[[site]]
+name = "mays"
+
+    [site.mosaiq]
+    hostname = "PRDMOSAIQIWVV01.utmsa.local"
+    port = 1433
+    alias = "MCC Mosaiq SQL Server"
+
+[[site]]
+name = "hello world"
+
+[data_methods]
+available = ["dicom", "mosaiq"]
+default_reference = "dicom"
+default_evaluation = "mosaiq"
+
+[gamma]
+dose_percent_threshold = 2
+distance_mm_threshold = 0.5
+local_gamma = true
+quiet = true
+max_gamma = 5
+lower_percent_dose_cutoff = 20

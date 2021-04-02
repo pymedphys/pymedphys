@@ -18,11 +18,12 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import plotly
 from pymedphys._imports import streamlit as st
 
+import pymedphys
 import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.helpers import get_incomplete_qcls
 
 from pymedphys._experimental.chartchecks.helpers import (
-    get_all_treatment_data,
+    get_all_mosaiq_treatment_data,
     get_all_treatment_history_data,
 )
 
@@ -49,11 +50,9 @@ def show_incomplete_weekly_checks(connection):
     return incomplete_weekly
 
 
-def compare_delivered_to_planned(patient):
-    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
-
+def compare_delivered_to_planned(connection, patient):
     delivered = get_all_treatment_history_data(connection, patient)
-    planned = get_all_treatment_data(connection, patient)
+    planned = get_all_mosaiq_treatment_data(connection, patient)
     patient_results = pd.DataFrame()
     try:
         # current_fx = max(delivered_values["fx"])
@@ -67,14 +66,21 @@ def compare_delivered_to_planned(patient):
         print("fraction field empty")
     primary_checks = {
         "patient_id": patient,
-        "first_name": delivered["first_name"].values[0],
-        "last_name": delivered["last_name"].values[0],
+        "first_name": planned["first_name"].values[0],
+        "last_name": planned["last_name"].values[0],
         "was_overridden": "",
         "new_field": "",
         "rx_change": "",
         "site_setup_change": "",
         "partial_tx": "",
+        "notes": "",
     }
+
+    if delivered_this_week.empty:
+        primary_checks["notes"] = "No recorded treatments within last week."
+        for key, item in primary_checks.items():
+            patient_results[key] = [item]
+        return planned, delivered, patient_results
 
     if True in delivered_this_week["was_overridden"].values:
         primary_checks["was_overridden"] = "Treatment Overridden"
@@ -97,8 +103,8 @@ def compare_delivered_to_planned(patient):
     return planned, delivered, patient_results
 
 
-@st.cache(ttl=86400)
-def compare_all_incompletes(incomplete_qcls):
+@st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
+def compare_all_incompletes(connection, incomplete_qcls):
     all_planned = pd.DataFrame()
     all_delivered = pd.DataFrame()
     overall_results = pd.DataFrame()
@@ -108,7 +114,7 @@ def compare_all_incompletes(incomplete_qcls):
                 planned_values,
                 delivered_values,
                 patient_results,
-            ) = compare_delivered_to_planned(patient)
+            ) = compare_delivered_to_planned(connection, patient)
 
             all_planned = all_planned.append(planned_values)
             all_delivered = all_delivered.append(delivered_values)
@@ -169,14 +175,13 @@ def plot_couch_deltas(delivered):
     st.plotly_chart(deltas_fig, use_container_width=True)
 
 
-def get_patient_image_info(patient):
-    connection = _pp_mosaiq.connect("PRDMOSAIQIWVV01.utmsa.local")
+def get_patient_image_info(connection, patient):
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
             ("image_date", "Image.Study_DtTm"),
-            ("modified_date", "Image.Modified_DtTm"),
             ("type", "Image.Short_Name"),
             ("name", "Image.Image_Name"),
+            ("label", "Image.Field_Label"),
             ("num_images", "Image.Num_Images"),
             ("comments", "Image.Comments"),
             ("review_status", "Image.Att_App"),

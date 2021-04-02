@@ -18,7 +18,8 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities.mosaiq import get_cached_mosaiq_connection
+from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import mosaiq as _mosaiq
 
 from pymedphys._experimental.chartchecks.compare import (
     specific_patient_weekly_check_colour_results,
@@ -51,15 +52,17 @@ def select_patient(weekly_check_results):
 
 
 def main():
-    server = "PRDMOSAIQIWVV01.utmsa.local"
-    connection = get_cached_mosaiq_connection(server)
+    config = st_config.get_config()
+    connection = _mosaiq.get_single_mosaiq_connection_with_config(config)
 
     incomplete = show_incomplete_weekly_checks(connection)
     incomplete_qcls = incomplete.copy()
     incomplete_qcls = incomplete_qcls.drop_duplicates(subset=["patient_id"])
     # incomplete_qcls = incomplete_qcls.set_index("patient_id")
 
-    all_delivered, weekly_check_results = compare_all_incompletes(incomplete_qcls)[1:]
+    all_delivered, weekly_check_results = compare_all_incompletes(
+        connection, incomplete_qcls
+    )[1:]
     all_delivered = all_delivered.astype({"pat_ID": "str"})
     weekly_check_results = weekly_check_results.sort_values(["first_name"])
     weekly_check_results = weekly_check_results.reset_index(drop=True)
@@ -79,7 +82,9 @@ def main():
         # delivered_this_week = delivered
         delivered_this_week = delivered[delivered["date"] > week_ago]
         delivered_this_week = delivered_this_week.reset_index(drop=True)
-
+        if delivered_this_week.empty:
+            st.write("No recorded deliveries in the past week for this patient.")
+            st.stop()
         # plot the couch coordinates for each delivered beam
         # st.write(planned)
         # st.write(delivered_this_week)
@@ -128,7 +133,7 @@ def main():
             ].style.apply(specific_patient_weekly_check_colour_results, axis=1)
         )
 
-        image_info_df = get_patient_image_info(mrn)
+        image_info_df = get_patient_image_info(connection, mrn)
         image_info_df = image_info_df[
             image_info_df["image_date"] > week_ago
         ].sort_values(["image_date"], ascending=False)
