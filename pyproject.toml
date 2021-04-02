@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.36.1"
+version = "0.37.0-dev1"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -58,13 +58,13 @@ natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
 
 pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
-pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 
 dbfread = { version = "*", optional = true }  # groups = ["user", "dev"]
 xmltodict = { version = "*", optional = true }  # groups = ["user", "dev"]
 timeago = { version = "*", optional = true }  # groups = ["user", "dev"]
 xlsxwriter = { version = "*", optional = true }  # groups = ["user", "dev"]
 plotly = { version = "*", optional = true }  # groups = ["user", "dev"]
+fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
 dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # NumPy's lower bound here is for typing support
@@ -73,6 +73,11 @@ numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "i
 # The following lower bounded packages are due to certain APIs utilised
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
+
+# The following is not within the "user" or "dev" groupings as it can at times
+# have install failures with recent versions of Python due to not having the
+# wheels. See <https://github.com/pydicom/pylibjpeg-libjpeg/issues/23>.
+pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["iview"]
 
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
@@ -93,7 +98,7 @@ pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "do
 # between pylinac and scikit-learn version 0.24.0
 scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 
-fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
+
 
 # ----------- #
 # Comparables #
@@ -169,7 +174,6 @@ dev = [
     "pre-commit",
     "psutil",
     "pydicom",
-    "pylibjpeg-libjpeg",
     "pylinac",
     "pylint",
     "pymssql",
@@ -201,7 +205,7 @@ dev = [
     "xlsxwriter",
     "xmltodict",
 ]
-dicom = ["pydicom", "pylibjpeg-libjpeg", "pynetdicom"]
+dicom = ["pydicom", "pynetdicom"]
 docs = [
     "jupyter-book",
     "networkx",
@@ -211,6 +215,7 @@ docs = [
 ]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
+iview = ["pylibjpeg-libjpeg"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = [
@@ -238,7 +243,6 @@ user = [
     "pandas",
     "plotly",
     "pydicom",
-    "pylibjpeg-libjpeg",
     "pylinac",
     "pymssql",
     "pynetdicom",
