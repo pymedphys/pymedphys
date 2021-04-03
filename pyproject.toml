@@ -94,7 +94,7 @@ streamlit-analytics = { version = "0.1.2", optional = true }  # groups = ["user"
 # patch version bumps.
 pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "doctests"]
 # CVE-2020-28463 <https://github.com/advisories/GHSA-mpvw-25mg-59vx>
-reportlab = { version = "<=3.5.54||>3.5.66", optional = true }  # groups = ["user", "dev"]
+reportlab = { version = "<=3.5.54", optional = true }  # groups = ["user", "dev"]
 
 # Scikit-learn has an upper bound since there appears to be an incompatibility
 # between pylinac and scikit-learn version 0.24.0

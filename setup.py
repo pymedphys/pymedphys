@@ -192,7 +192,7 @@ extras_require = {
         "streamlit-ace==0.0.4",
         "streamlit-analytics==0.1.2",
         "pylinac==2.3.2",
-        "reportlab<=3.5.54 || >3.5.66",
+        "reportlab<=3.5.54",
         "scikit-learn",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
@@ -275,7 +275,7 @@ extras_require = {
         "streamlit-ace==0.0.4",
         "streamlit-analytics==0.1.2",
         "pylinac==2.3.2",
-        "reportlab<=3.5.54 || >3.5.66",
+        "reportlab<=3.5.54",
         "scikit-learn",
     ],
 }
