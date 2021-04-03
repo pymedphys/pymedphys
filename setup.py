@@ -182,6 +182,7 @@ extras_require = {
         "plotly",
         "fsspec",
         "dicompyler-core",
+        "scikit-learn",
         "numpy>=1.20.2",
         "pandas>=1.0.0",
         "pydicom>=2.0.0",
@@ -193,7 +194,6 @@ extras_require = {
         "streamlit-analytics==0.1.2",
         "pylinac==2.3.2",
         "reportlab<=3.5.54",
-        "scikit-learn",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
         "sphinx-book-theme",
@@ -228,7 +228,7 @@ extras_require = {
         "tabulate",
     ],
     "icom": ["numpy>=1.20.2"],
-    "mosaiq": ["pymssql", "sqlalchemy", "pandas>=1.0.0", "scikit-learn"],
+    "mosaiq": ["pymssql", "sqlalchemy", "scikit-learn", "pandas>=1.0.0"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
         "python-dateutil",
@@ -265,6 +265,7 @@ extras_require = {
         "plotly",
         "fsspec",
         "dicompyler-core",
+        "scikit-learn",
         "numpy>=1.20.2",
         "pandas>=1.0.0",
         "pydicom>=2.0.0",
@@ -276,7 +277,6 @@ extras_require = {
         "streamlit-analytics==0.1.2",
         "pylinac==2.3.2",
         "reportlab<=3.5.54",
-        "scikit-learn",
     ],
 }
 
