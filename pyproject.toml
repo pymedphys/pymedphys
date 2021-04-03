@@ -74,10 +74,10 @@ numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "i
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
-# The following is not within the "user" or "dev" groupings as it can at times
-# have install failures with recent versions of Python due to not having the
-# wheels. See <https://github.com/pydicom/pylibjpeg-libjpeg/issues/23>.
-pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["iview"]
+# Using a custom release of pylibjpeg in order to support Python 3.9.
+# See <https://github.com/pydicom/pylibjpeg-libjpeg/issues/23>.
+# pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
+pymedphys-pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
@@ -93,6 +93,8 @@ streamlit-analytics = { version = "0.1.2", optional = true }  # groups = ["user"
 # PyLinac is pinned due to historical algorithm changes with both minor and
 # patch version bumps.
 pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "doctests"]
+# CVE-2020-28463 <https://github.com/advisories/GHSA-mpvw-25mg-59vx>
+reportlab = { version = "<=3.5.54 || >3.5.66", optional = true }  # groups = ["user", "dev"]
 
 # Scikit-learn has an upper bound since there appears to be an incompatibility
 # between pylinac and scikit-learn version 0.24.0
@@ -176,6 +178,7 @@ dev = [
     "pydicom",
     "pylinac",
     "pylint",
+    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "pytest",
@@ -183,6 +186,7 @@ dev = [
     "pytest-sugar",
     "python-dateutil",
     "readme-renderer",
+    "reportlab",
     "requests",
     "rope",
     "scikit-image",
@@ -215,7 +219,6 @@ docs = [
 ]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
-iview = ["pylibjpeg-libjpeg"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = [
@@ -244,9 +247,11 @@ user = [
     "plotly",
     "pydicom",
     "pylinac",
+    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "python-dateutil",
+    "reportlab",
     "requests",
     "scikit-image",
     "scikit-learn",
