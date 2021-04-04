@@ -25,6 +25,8 @@ from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
 
 from . import findbb, findfield, iview, pylinacwrapper
 
+DEFAULT_LOW_SIGNAL_CUTOFF = 0.1  # Signal range is between 0.0 and 1.0.
+
 
 def calculate(
     image_path,
@@ -34,8 +36,20 @@ def calculate(
     penumbra,
     icom_field_rotation,
     fill_errors_with_nan=True,
+    low_signal_cutoff=DEFAULT_LOW_SIGNAL_CUTOFF,
 ):
     x, y, image = load_iview_image(image_path)
+
+    max_signal = np.max(image)
+    if max_signal < low_signal_cutoff:
+        if fill_errors_with_nan:
+            return [np.nan, np.nan], [np.nan, np.nan]
+
+        raise ValueError(
+            f"The maximum signal within the image was {max_signal}. "
+            "The `low_signal_cutoff` parameter has been set to "
+            f"{low_signal_cutoff}."
+        )
 
     ALGORITHM_FUNCTION_MAP = get_algorithm_function_map()
 

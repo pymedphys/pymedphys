@@ -127,12 +127,20 @@ def _get_relevant_times(filepath):
     icom_datetime, meterset, machine_id = get_icom_datetimes_meterset_machine(filepath)
 
     machine_id = machine_id.dropna().unique()
-    if len(machine_id) != 1:
+    if len(machine_id) > 1:
         st.write(filepath)
         st.write(machine_id)
         raise ValueError("Only one machine id per file expected")
 
-    machine_id = machine_id[0]
+    if len(machine_id) == 0:
+        machine_id = None
+        st.error(
+            f"The filepath `{filepath}` has no Machine ID. "
+            "This is unexpected. However, will attempt to continue "
+            "despite this."
+        )
+    else:
+        machine_id = machine_id[0]
 
     diff_meterset = np.concatenate([[0], np.diff(meterset)])
     relevant_rows = diff_meterset > 0

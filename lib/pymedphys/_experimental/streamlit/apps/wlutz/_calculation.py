@@ -39,6 +39,10 @@ RESULTS_DATA_COLUMNS = [
     "bb_centre_y",
 ]
 
+DEFAULT_DEVIATION_PLOT_THRESHOLD = 0.5
+DEFAULT_PLOT_WHEN_DATA_IS_MISSING = False
+DEFAULT_FILL_ERRORS_WITH_NAN = True
+
 
 def calculations_ui(
     database_table,
@@ -76,16 +80,18 @@ def calculations_ui(
 
     if advanced_mode:
         deviation_plot_threshold = st.number_input(
-            "Display deviations greater than", value=0.2
+            "Display deviations greater than", value=DEFAULT_DEVIATION_PLOT_THRESHOLD
         )
-
-        plot_when_data_missing = st.checkbox("Plot when data missing", value=True)
-
-        fill_errors_with_nan = st.checkbox("Fill errors with nan", value=True)
+        plot_when_data_missing = st.checkbox(
+            "Plot when data missing", value=DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+        )
+        fill_errors_with_nan = st.checkbox(
+            "Fill errors with nan", value=DEFAULT_FILL_ERRORS_WITH_NAN
+        )
     else:
-        deviation_plot_threshold = 0.5
-        plot_when_data_missing = False
-        fill_errors_with_nan = True
+        deviation_plot_threshold = DEFAULT_DEVIATION_PLOT_THRESHOLD
+        plot_when_data_missing = DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+        fill_errors_with_nan = DEFAULT_FILL_ERRORS_WITH_NAN
 
     st.write("### Run calculations")
 
@@ -209,8 +215,10 @@ def run_calculation(
                 penumbra,
             )
 
-            for fig in figures:
-                st.pyplot(fig)
+            columns = st.beta_columns(len(figures))
+            for fig, col in zip(figures, columns):
+                with col:
+                    st.pyplot(fig)
 
         collated_results = collated_results.append(results)
 

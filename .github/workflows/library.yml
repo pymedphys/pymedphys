@@ -101,7 +101,7 @@ jobs:
           - os: 'windows'
             python-version: 3.7
           - os: 'macos'
-            python-version: 3.6
+            python-version: 3.8
 
     runs-on: ${{ matrix.os }}-latest
 
