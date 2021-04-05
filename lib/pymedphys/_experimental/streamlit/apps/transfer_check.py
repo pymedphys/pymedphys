@@ -497,7 +497,7 @@ def point_to_isodose_rx(dicom_table, mosaiq_table):
 
 def main():
     config = st_config.get_config()
-
+    st.write(config["chart_checks"]["archive_path"])
     connection = _mosaiq.get_single_mosaiq_connection_with_config(config)
 
     st.sidebar.header("Instructions:")
