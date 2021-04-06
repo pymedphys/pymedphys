@@ -15,18 +15,29 @@
 
 FROM python:3.9 as build
 
-RUN python -m venv /pymedphys/.venv --copies
-COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
-RUN /pymedphys/.venv/bin/python -m pip install --upgrade wheel pip
-RUN /pymedphys/.venv/bin/python -m pip install -r /pymedphys/requirements-deploy.txt
+RUN useradd -m user
+WORKDIR /home/user
+USER user
+
+RUN curl https://pyenv.run | bash
+ENV HOME  /home/user
+ENV PYENV_ROOT $HOME/.pyenv
+ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
+
+RUN pyenv install 3.9.4
+RUN /home/user/.pyenv/versions/3.9.4/python -m pip install --upgrade wheel pip
 
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 ENV ACCEPT_EULA=Y \
     SA_PASSWORD=insecure-pymedphys-mssql-password
 
-COPY --from=build /pymedphys/.venv /pymedphys/.venv
+COPY --from=build /home/user/.pyenv/versions/3.9.4/ /pymedphys/.venv/
+
+COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
+RUN /pymedphys/.venv/bin/python -m pip install -r /pymedphys/requirements-deploy.txt
+
 COPY . /pymedphys
-RUN /pymedphys/.venv/bin/python -m pip install -e .[user,tests]
+RUN /pymedphys/.venv/python -m pip install -e .[user,tests]
 
 EXPOSE 80
 RUN chmod +x /pymedphys/docker/start.sh
