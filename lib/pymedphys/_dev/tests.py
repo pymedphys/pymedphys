@@ -209,7 +209,7 @@ def run_cypress(args):
     if args.docker:
         commands = [
             "docker build . -t pymedphys",
-            "docker run -p 8501:8501 -e PORT=5000 pymedphys",
+            "docker run -p 8501:8501 -e PORT=8501 pymedphys",
             "yarn",
             "yarn cypress open",
         ]
