@@ -207,15 +207,26 @@ def run_pylint(_, remaining):
 
 def run_cypress(args):
     if args.docker:
+        try:
+            subprocess.check_call("docker rm pymedphys", shell=True)
+        except subprocess.CalledProcessError:
+            pass
+
         commands = [
-            "docker build . -t pymedphys",
-            "docker run -p 8501:8501 -e PORT=8501 pymedphys",
-            "yarn",
-            "yarn cypress open",
+            ("docker build . -t pymedphys", REPO_ROOT),
+            (
+                "docker run -d -p 8501:8501 -e PORT=8501 --name pymedphys pymedphys",
+                REPO_ROOT,
+            ),
+            ("yarn", cypress_test_utilities.HERE),
+            ("yarn cypress open", cypress_test_utilities.HERE),
         ]
 
-        for command in commands:
-            subprocess.check_call(command, cwd=REPO_ROOT, shell=True)
+        try:
+            for command, cwd in commands:
+                subprocess.check_call(command, cwd=cwd, shell=True)
+        finally:
+            subprocess.check_call("docker stop pymedphys", cwd=REPO_ROOT, shell=True)
 
     else:
         cypress_test_utilities.run_test_commands_with_gui_process(
