@@ -17,7 +17,7 @@ FROM python:3.9 as build
 
 RUN python -m venv /pymedphys/.venv --copies
 COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
-RUN /pymedphys/.venv/bin/python -m pip install wheel
+RUN /pymedphys/.venv/bin/python -m pip install --upgrade wheel pip
 RUN /pymedphys/.venv/bin/python -m pip install -r /pymedphys/requirements-deploy.txt
 
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
