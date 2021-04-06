@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+FROM debian:stretch-slim AS build
+WORKDIR /root
+
+RUN apt-get update && apt-get install -y binutils gcc
+
+COPY ./docker/wrapper.c wrapper.c
+RUN gcc -shared  -ldl -fPIC -o wrapper.so wrapper.c
+
+
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 
 RUN \
@@ -37,15 +46,23 @@ RUN pyenv rehash
 COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
 RUN python -m pip install -r /pymedphys/requirements-deploy.txt
 
-COPY . /pymedphys
+COPY lib /pymedphys/lib
+COPY setup.py  /pymedphys/setup.py
 RUN python -m pip install -e /pymedphys/.[user,tests]
-
 RUN pyenv rehash
+
+COPY docker/download.py /pymedphys/docker/download.py
+RUN python /pymedphys/docker/download.py
+
+COPY . /pymedphys
 
 EXPOSE 8501
 RUN chmod +x /pymedphys/docker/start.sh
 
 ENV ACCEPT_EULA=Y \
-    SA_PASSWORD=Insecure-PyMedPhys-MSSQL-Passw0rd
+    SA_PASSWORD=Insecure-PyMedPhys-MSSQL-Passw0rd \
+    MSSQL_MEMORY_LIMIT_MB=128
+
+COPY --from=build /root/wrapper.so /root/wrapper.so
 
 CMD [ "/pymedphys/docker/start.sh" ]
