@@ -15,12 +15,10 @@
 
 FROM python:3.9 as build
 
-WORKDIR /pymedphys
-
 RUN python -m venv /pymedphys-venv
-COPY requirements-deploy.txt requirements-deploy.txt
+COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
 RUN /pymedphys-venv/bin/python -m pip install wheel
-RUN /pymedphys-venv/bin/python -m pip install -r requirements-deploy.txt
+RUN /pymedphys-venv/bin/python -m pip install -r /pymedphys/requirements-deploy.txt
 
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 ENV ACCEPT_EULA=Y \
