@@ -8,6 +8,7 @@ fi
 
 LD_PRELOAD=/root/wrapper.so /opt/mssql/bin/sqlservr &
 P1=$!
-python -m pymedphys gui --port $PORT_TO_USE &
+/pymedphys/docker/wait-for-it.sh localhost:1433 -t 120 && \
+    python -m pymedphys gui --port $PORT_TO_USE &
 P2=$!
 wait $P1 $P2
