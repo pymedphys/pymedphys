@@ -32,6 +32,15 @@ RUN dos2unix /pymedphys/docker/*.sh
 RUN chmod +x /pymedphys/docker/*.sh
 
 
+FROM python:3.9-slim AS downloads
+WORKDIR /root
+
+RUN pip install pymedphys tqdm
+COPY lib/pymedphys/_data /usr/local/lib/python3.9/site-packages/pymedphys/_data
+COPY docker/download.py /pymedphys/docker/download.py
+RUN python /pymedphys/docker/download.py
+
+
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 
 RUN \
@@ -54,11 +63,7 @@ RUN pyenv global $PYTHON_VERSION
 RUN python -m pip install --upgrade wheel pip
 RUN pyenv rehash
 
-RUN pip install pymedphys tqdm
-COPY lib/pymedphys/_data $HOME/.pyenv/versions/$PYTHON_VERSION\lib\site-packages\pymedphys\_data
-COPY docker/download.py /pymedphys/docker/download.py
-RUN python /pymedphys/docker/download.py
-RUN pip uninstall pymedphys -y
+COPY --from=downloads /root/.pymedphys /root/.pymedphys
 
 COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
 RUN python -m pip install -r /pymedphys/requirements-deploy.txt
