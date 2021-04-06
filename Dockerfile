@@ -17,13 +17,13 @@ FROM python:3.9 as build
 
 WORKDIR /pymedphys
 
-RUN python -m venv /venv
+RUN python -m venv /pymedphys/.venv
 COPY requirements-deploy.txt requirements-deploy.txt
-RUN /venv/bin/pip install wheel
-RUN /venv/bin/pip install -r requirements-deploy.txt
+RUN /pymedphys/.venv/bin/python -m pip install wheel
+RUN /pymedphys/.venv/bin/python -m pip install -r requirements-deploy.txt
 
 COPY . .
-RUN /venv/bin/pip install -e .[user,tests]
+RUN /pymedphys/.venv/bin/python -m pip install -e .[user,tests]
 
 
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu as final
@@ -32,7 +32,6 @@ ENV ACCEPT_EULA=Y \
     SA_PASSWORD=insecure-pymedphys-mssql-password
 
 COPY --from=build /pymedphys /pymedphys
-COPY --from=build /venv /venv
 
 EXPOSE 80
 
