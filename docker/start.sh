@@ -6,7 +6,7 @@ else
   PORT_TO_USE=$PORT
 fi
 
-/opt/mssql/bin/sqlservr &
+LD_PRELOAD=/root/wrapper.so /opt/mssql/bin/sqlservr &
 P1=$!
 python -m pymedphys gui --port $PORT_TO_USE &
 P2=$!
