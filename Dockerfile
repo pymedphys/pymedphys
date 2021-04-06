@@ -23,7 +23,6 @@ RUN gcc -shared  -ldl -fPIC -o wrapper.so wrapper.c
 
 
 FROM debian:stretch-slim AS dos2unix
-# Adapted from https://github.com/justin2004/mssql_server_tiny/blob/7ca5bc1eb3a302d43030c45206bf3d64da34b1d1/Dockerfile
 WORKDIR /root
 
 RUN apt-get update && apt-get install -y dos2unix
