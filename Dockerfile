@@ -67,7 +67,6 @@ COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
 RUN python -m pip install -r /pymedphys/requirements-deploy.txt
 
 COPY --from=downloads /root/.pymedphys /root/.pymedphys
-COPY --from=dos2unix /pymedphys/docker /pymedphys/docker
 
 EXPOSE 8501
 
@@ -76,6 +75,7 @@ ENV ACCEPT_EULA=Y \
     MSSQL_MEMORY_LIMIT_MB=128
 
 COPY --from=build /root/wrapper.so /root/wrapper.so
+COPY --from=dos2unix /pymedphys/docker /pymedphys/docker
 
 RUN \
     LD_PRELOAD=/root/wrapper.so /opt/mssql/bin/sqlservr & \
@@ -83,9 +83,10 @@ RUN \
 
 COPY lib /pymedphys/lib
 COPY setup.py  /pymedphys/setup.py
-RUN python -m pip install -e /pymedphys/.[user,tests]
+RUN python -m pip install -e /pymedphys/.
 RUN pyenv rehash
 
 COPY . /pymedphys
+COPY --from=dos2unix /pymedphys/docker /pymedphys/docker
 
 CMD [ "/pymedphys/docker/start.sh" ]
