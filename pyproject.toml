@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.36.1"
+version = "0.37.0-dev1"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -29,8 +29,7 @@ classifiers = [
 packages = [{ include = "pymedphys", from = "lib" }]
 
 [tool.poetry.dependencies]
-python = "^3.6.2"
-dataclasses = { version = "*", python = "~3.6" }
+python = "^3.7"
 typing-extensions = "*"
 
 
@@ -51,8 +50,6 @@ matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
 Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
-scikit-image = { version = "*", optional = true }  # groups = ["user", "dev"]
-data-science-types = { version = "*", optional = true }  # groups = ["user", "dev"]
 xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
@@ -61,22 +58,32 @@ natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
 
 pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
-pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 
 dbfread = { version = "*", optional = true }  # groups = ["user", "dev"]
 xmltodict = { version = "*", optional = true }  # groups = ["user", "dev"]
 timeago = { version = "*", optional = true }  # groups = ["user", "dev"]
 xlsxwriter = { version = "*", optional = true }  # groups = ["user", "dev"]
 plotly = { version = "*", optional = true }  # groups = ["user", "dev"]
+fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
 dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
+scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
+
+# NumPy's lower bound here is for typing support
+numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "icom"]
 
 # The following lower bounded packages are due to certain APIs utilised
-numpy = { version = ">=1.12", optional = true }  # groups = ["user", "dev", "icom"]
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
-# Shapely's lower bound is so that the PyPI version with wheels is used
+# Using a custom release of pylibjpeg in order to support Python 3.9.
+# See <https://github.com/pydicom/pylibjpeg-libjpeg/issues/23>.
+# pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
+pymedphys-pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
+
+# The following lower bounds are so that the versions with wheels are utilised
+# for the installation
 shapely = { version = ">=1.7.0", optional = true }  # groups = ["user", "dev"]
+scikit-image = { version = ">=0.18.1", optional = true }  # groups = ["user", "dev"]
 
 # Streamlit's pinning is due to its current beta nature and the fact that some
 # private APIs are utilised.
@@ -87,12 +94,9 @@ streamlit-analytics = { version = "0.1.2", optional = true }  # groups = ["user"
 # PyLinac is pinned due to historical algorithm changes with both minor and
 # patch version bumps.
 pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "doctests"]
+# CVE-2020-28463 <https://github.com/advisories/GHSA-mpvw-25mg-59vx>
+reportlab = { version = "<=3.5.54", optional = true }  # groups = ["user", "dev"]
 
-# Scikit-learn has an upper bound since there appears to be an incompatibility
-# between pylinac and scikit-learn version 0.24.0
-scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
-
-fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # ----------- #
 # Comparables #
@@ -102,7 +106,10 @@ flashgamma = { version = "*", optional = true }  # groups = ["comparables"]
 # ---------------- #
 # Machine Learning #
 # ---------------- #
-tensorflow = { version = ">=2.2.0", optional = true }  # groups = ["ml", "doctests"]
+# The following dependency was removed due to it coming with a numpy upper
+# bound. I don't want dependencies that have an upper bound on numpy.
+
+# tensorflow = { version = ">=2.4.0", optional = true }  # groups = ["ml", "doctests"]
 
 # ------------- #
 # Documentation #
@@ -146,7 +153,6 @@ dev = [
     "PyYAML",
     "attrs",
     "black",
-    "data-science-types",
     "dbfread",
     "dicompyler-core",
     "doc8",
@@ -166,9 +172,9 @@ dev = [
     "pre-commit",
     "psutil",
     "pydicom",
-    "pylibjpeg-libjpeg",
     "pylinac",
     "pylint",
+    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "pytest",
@@ -176,6 +182,7 @@ dev = [
     "pytest-sugar",
     "python-dateutil",
     "readme-renderer",
+    "reportlab",
     "requests",
     "rope",
     "scikit-image",
@@ -198,7 +205,7 @@ dev = [
     "xlsxwriter",
     "xmltodict",
 ]
-dicom = ["pydicom", "pylibjpeg-libjpeg", "pynetdicom"]
+dicom = ["pydicom", "pynetdicom"]
 docs = [
     "jupyter-book",
     "networkx",
@@ -206,9 +213,8 @@ docs = [
     "sphinx-book-theme",
     "sphinxcontrib-napoleon",
 ]
-doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate", "tensorflow"]
+doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
-ml = ["tensorflow"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = [
@@ -224,7 +230,6 @@ user = [
     "Pillow",
     "PyYAML",
     "attrs",
-    "data-science-types",
     "dbfread",
     "dicompyler-core",
     "fsspec",
@@ -237,11 +242,12 @@ user = [
     "pandas",
     "plotly",
     "pydicom",
-    "pylibjpeg-libjpeg",
     "pylinac",
+    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "python-dateutil",
+    "reportlab",
     "requests",
     "scikit-image",
     "scikit-learn",

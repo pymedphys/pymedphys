@@ -1,0 +1,14 @@
+**
+
+!/docker
+!/requirements-deploy.txt
+!/setup.py
+!/lib
+
+**/__pycache__
+**/.hypothesis
+**/node_modules
+**/pymedphys-gui-demo
+**/wlutz-demo-files
+**/debug.log
+**/_build
