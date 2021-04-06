@@ -63,17 +63,10 @@ RUN pyenv global $PYTHON_VERSION
 RUN python -m pip install --upgrade wheel pip
 RUN pyenv rehash
 
-COPY --from=downloads /root/.pymedphys /root/.pymedphys
-
 COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
 RUN python -m pip install -r /pymedphys/requirements-deploy.txt
 
-COPY lib /pymedphys/lib
-COPY setup.py  /pymedphys/setup.py
-RUN python -m pip install -e /pymedphys/.[user,tests]
-RUN pyenv rehash
-
-COPY . /pymedphys
+COPY --from=downloads /root/.pymedphys /root/.pymedphys
 COPY --from=dos2unix /pymedphys/docker /pymedphys/docker
 
 EXPOSE 8501
@@ -87,5 +80,12 @@ COPY --from=build /root/wrapper.so /root/wrapper.so
 RUN \
     LD_PRELOAD=/root/wrapper.so /opt/mssql/bin/sqlservr & \
     /pymedphys/docker/wait-for-it.sh localhost:1433 -t 120
+
+COPY lib /pymedphys/lib
+COPY setup.py  /pymedphys/setup.py
+RUN python -m pip install -e /pymedphys/.[user,tests]
+RUN pyenv rehash
+
+COPY . /pymedphys
 
 CMD [ "/pymedphys/docker/start.sh" ]

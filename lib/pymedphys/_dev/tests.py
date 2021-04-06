@@ -208,6 +208,11 @@ def run_pylint(_, remaining):
 def run_cypress(args):
     if args.docker:
         try:
+            subprocess.check_call("docker stop pymedphys", shell=True)
+        except subprocess.CalledProcessError:
+            pass
+
+        try:
             subprocess.check_call("docker rm pymedphys", shell=True)
         except subprocess.CalledProcessError:
             pass
