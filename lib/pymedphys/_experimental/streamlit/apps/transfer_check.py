@@ -38,6 +38,7 @@ from pymedphys._experimental.chartchecks.plan_quality_helpers import (
     calculate_total_score,
     compare_structure_with_constraints,
     compare_to_historical_scores,
+    define_treatment_site,
     perform_target_evaluation,
     point_to_isodose_rx,
 )
@@ -66,7 +67,6 @@ def main():
     )
 
     files = get_patient_files()
-
     if "rp" not in files:
         st.stop()
 
@@ -105,14 +105,15 @@ def main():
     if "rs" not in files or "rd" not in files:
         st.stop()
 
-    dd_input: pydicom.FileDataset = pydicom.dcmread(files["rd"], force=True)
-    ds_input: pydicom.FileDataset = pydicom.dcmread(files["rs"], force=True)
+    dd_input = files["rd"]
+    ds_input = files["rs"]
 
     show_dvh = st.checkbox("Create DVH Plot")
     if show_dvh:
         dvh_calcs = calc_dvh(ds_input, dd_input)
         plot_dvh(dvh_calcs)
 
+        treatment_site = define_treatment_site()
         institutional_history = pd.read_json(
             "P:/Share/AutoCheck/patient_archive.json"
         ).transpose()
@@ -136,8 +137,9 @@ def main():
             constraints_df = calculate_total_score(constraints_df)
             constraints_df["mrn"] = int(mrn)
             constraints_df["site_id"] = int(mosaiq_table.iloc[0]["site_ID"])
+            constraints_df["site"] = treatment_site
             display_df = compare_to_historical_scores(
-                constraints_df, institutional_history
+                constraints_df, institutional_history, treatment_site
             )
             display_df[display_df["Type"] == "Total Score"].iloc[0][
                 "Institutional Average"
@@ -149,7 +151,6 @@ def main():
 
             display_df = display_df.style.apply(constraint_check_colour_results, axis=1)
 
-            # constraints_df.set_properties(subset=["Structure"], **{'align': 'center'})
             st.subheader("Constraint Check")
             st.dataframe(display_df.set_precision(2), height=1000)
 
@@ -166,15 +167,16 @@ def get_patient_files():
 
     files = {}
     for dicomFile in dicomFiles:
-        name = dicomFile.name
-        if "RP" in name:
-            files["rp"] = dicomFile
-        elif "RD" in name:
-            files["rd"] = dicomFile
-        elif "RS" in name:
-            files["rs"] = dicomFile
-        elif "CT" in name:
-            files["ct"] = dicomFile
+        read_file = pydicom.dcmread(dicomFile, force=True)
+        dicom_type = read_file.Modality
+        if dicom_type == "RTPLAN":
+            files["rp"] = read_file
+        elif dicom_type == "RTDOSE":
+            files["rd"] = read_file
+        elif dicom_type == "RTSTRUCT":
+            files["rs"] = read_file
+        elif dicom_type == "CT":
+            files["ct"] = read_file
         else:
             continue
     return files

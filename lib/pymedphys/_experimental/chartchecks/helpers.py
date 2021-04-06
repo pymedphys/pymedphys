@@ -73,8 +73,8 @@ def get_dicom_coll_info(field):
     return colls
 
 
-def get_all_dicom_treatment_data(dicomFile):
-    dicom = pydicom.dcmread(dicomFile)
+def get_all_dicom_treatment_data(dicom):
+    # dicom = pydicom.dcmread(dicomFile, force=True)
     table = pd.DataFrame()
 
     try:

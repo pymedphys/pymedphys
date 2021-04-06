@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Jacob Rembish
+# Copyright (C) 2021 Jacob Rembish
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -158,6 +158,20 @@ def add_constraint_results_to_database(constraints_df, institutional_history):
             indent=4,
             double_precision=3,
         )
+    else:
+        institutional_history = institutional_history[
+            (institutional_history["site_id"] != constraints_df["site_id"].unique()[0])
+            & (institutional_history["mrn"] != constraints_df["mrn"].unique()[0])
+        ]
+        institutional_history = pd.concat(
+            [institutional_history, constraints_df]
+        ).reset_index(drop=True)
+        institutional_history.to_json(
+            "P://Share/AutoCheck/patient_archive.json",
+            orient="index",
+            indent=4,
+            double_precision=3,
+        )
 
 
 # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5672112/
@@ -224,7 +238,7 @@ def perform_target_evaluation(dd_input, dvh_calcs):
     return st.write(target_df)
 
 
-def compare_to_historical_scores(constraints_df, institutional_history):
+def compare_to_historical_scores(constraints_df, institutional_history, treatment_site):
     df = constraints_df.copy()
     df = df.replace(np.nan, "-")
     df["Institutional Average"] = np.nan
@@ -246,6 +260,7 @@ def compare_to_historical_scores(constraints_df, institutional_history):
                 & (institutional_history["Type"] == row_type)
                 & (institutional_history["Dose [Gy]"] == row_dose)
                 & (institutional_history["Volume [%]"] == row_volume)
+                & (institutional_history["site"] == treatment_site)
             ]["Score"].mean()
         )
 
@@ -285,3 +300,23 @@ def point_to_isodose_rx(dicom_table, mosaiq_table):
                 field.at["total_dose [cGy]"] * normalize_to
             )
     return dicom_table
+
+
+def define_treatment_site():
+    sites = [
+        "<UNDEFINED>",
+        "ABDOMEN",
+        "BRAIN",
+        "BREAST",
+        "EXTREMITY",
+        "H&N",
+        "PELVIS - MALE",
+        "PELVIS - FEMALE",
+        "SPINE",
+        "THORAX",
+        "OTHER",
+    ]
+
+    selected_site = st.selectbox("Select the treatment site for this patient: ", sites)
+
+    return selected_site
