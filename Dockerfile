@@ -59,11 +59,17 @@ COPY . /pymedphys
 
 EXPOSE 8501
 RUN chmod +x /pymedphys/docker/start.sh
+RUN chmod +x /pymedphys/docker/wait-for-it.sh
 
 ENV ACCEPT_EULA=Y \
     SA_PASSWORD=Insecure-PyMedPhys-MSSQL-Passw0rd \
     MSSQL_MEMORY_LIMIT_MB=128
 
 COPY --from=build /root/wrapper.so /root/wrapper.so
+
+RUN \
+    LD_PRELOAD=/root/wrapper.so /opt/mssql/bin/sqlservr & \
+    /pymedphys/docker/wait-for-it.sh localhost:1433 -t 120 && \
+    /opt/mssql/bin/mssql-conf set memory.memorylimitmb 128
 
 CMD [ "/pymedphys/docker/start.sh" ]
