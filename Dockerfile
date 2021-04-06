@@ -66,4 +66,6 @@ ENV ACCEPT_EULA=Y \
 
 COPY --from=build /root/wrapper.so /root/wrapper.so
 
+RUN /opt/mssql/bin/mssql-conf set memory.memorylimitmb 128
+
 CMD [ "/pymedphys/docker/start.sh" ]
