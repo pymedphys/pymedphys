@@ -18,7 +18,7 @@ WORKDIR /root
 
 RUN apt-get update && apt-get install -y binutils gcc
 
-COPY ./docker/wrapper.c wrapper.c
+COPY docker/wrapper.c wrapper.c
 RUN gcc -shared  -ldl -fPIC -o wrapper.so wrapper.c
 
 
