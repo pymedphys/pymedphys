@@ -36,7 +36,7 @@ name = "rccc"
     anonymised_monaco = '\\rccc-pdc\PExIT\DataExchange\anonymised-monaco'
     icom_live = '\\rccc-pdc\PExIT\DataExchange\iCom\live'
     iviewdb = '\\rccc-pdc\PExIT\DataExchange\iViewDB'
-    icom = '\\rccc-physicssvr\iComLogFiles'
+    icom = '\\rccc-pdc\PExIT\DataExchange\iCom'
 
     [site.monaco]
     focaldata = '\\rccc-monacoda\FocalData'
