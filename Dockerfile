@@ -22,19 +22,15 @@ COPY requirements-deploy.txt requirements-deploy.txt
 RUN /pymedphys/.venv/bin/python -m pip install wheel
 RUN /pymedphys/.venv/bin/python -m pip install -r requirements-deploy.txt
 
-COPY . .
-RUN /pymedphys/.venv/bin/python -m pip install -e .[user,tests]
-
-
-FROM mcr.microsoft.com/mssql/server:latest-ubuntu as final
-
+FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 ENV ACCEPT_EULA=Y \
     SA_PASSWORD=insecure-pymedphys-mssql-password
 
-COPY --from=build /pymedphys /pymedphys
+COPY --from=build /pymedphys/.venv /pymedphys/.venv
+COPY . /pymedphys
+RUN /pymedphys/.venv/bin/python -m pip install -e .[user,tests]
 
 EXPOSE 80
-
 RUN chmod +x /pymedphys/docker/start.sh
 
 CMD [ "/pymedphys/docker/start.sh" ]
