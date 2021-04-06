@@ -21,7 +21,6 @@ import pathlib
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 import pymedphys._mosaiq.api as pp_mosaiq
