@@ -21,7 +21,6 @@ import pathlib
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 import pymedphys._mosaiq.api as pp_mosaiq
@@ -73,8 +72,8 @@ def get_dicom_coll_info(field):
     return colls
 
 
-def get_all_dicom_treatment_data(dicomFile):
-    dicom = pydicom.dcmread(dicomFile)
+def get_all_dicom_treatment_data(dicom):
+    # dicom = pydicom.dcmread(dicomFile, force=True)
     table = pd.DataFrame()
 
     try:
