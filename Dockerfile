@@ -13,8 +13,6 @@
 # limitations under the License.
 
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
-ENV ACCEPT_EULA=Y \
-    SA_PASSWORD=insecure-pymedphys-mssql-password
 
 RUN \
     apt-get update --fix-missing && \
@@ -46,5 +44,8 @@ RUN pyenv rehash
 
 EXPOSE 8501
 RUN chmod +x /pymedphys/docker/start.sh
+
+ENV ACCEPT_EULA=Y \
+    SA_PASSWORD=insecure-pymedphys-mssql-password
 
 CMD [ "/pymedphys/docker/start.sh" ]
