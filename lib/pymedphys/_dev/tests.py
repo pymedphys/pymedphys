@@ -205,7 +205,19 @@ def run_pylint(_, remaining):
         os.chdir(original_cwd)
 
 
-def run_cypress(_):
-    cypress_test_utilities.run_test_commands_with_gui_process(
-        ["yarn", "yarn cypress open"]
-    )
+def run_cypress(args):
+    if args.docker:
+        commands = [
+            "docker build . -t pymedphys",
+            "docker run -p 8501:8501 -e PORT=5000 pymedphys",
+            "yarn",
+            "yarn cypress open",
+        ]
+
+        for command in commands:
+            subprocess.check_call(command, cwd=REPO_ROOT, shell=True)
+
+    else:
+        cypress_test_utilities.run_test_commands_with_gui_process(
+            ["yarn", "yarn cypress open"]
+        )
