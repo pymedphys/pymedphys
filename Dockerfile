@@ -46,6 +46,6 @@ EXPOSE 8501
 RUN chmod +x /pymedphys/docker/start.sh
 
 ENV ACCEPT_EULA=Y \
-    SA_PASSWORD=insecure-pymedphys-mssql-password
+    SA_PASSWORD=Insecure-PyMedPhys-MSSQL-Passw0rd
 
 CMD [ "/pymedphys/docker/start.sh" ]
