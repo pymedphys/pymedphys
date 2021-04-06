@@ -12,34 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-FROM python:3.9 as build
-
-RUN useradd -m user
-WORKDIR /home/user
-USER user
-
-RUN curl https://pyenv.run | bash
-ENV HOME  /home/user
-ENV PYENV_ROOT $HOME/.pyenv
-ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
-
-RUN pyenv install 3.9.4
-RUN /home/user/.pyenv/versions/3.9.4/python -m pip install --upgrade wheel pip
-
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 ENV ACCEPT_EULA=Y \
     SA_PASSWORD=insecure-pymedphys-mssql-password
 
-COPY --from=build /home/user/.pyenv/versions/3.9.4/ /pymedphys/.venv/
+RUN \
+    apt-get update --fix-missing && \
+    apt-get install --fix-missing -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev python-openssl git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV HOME /root
+
+RUN curl https://pyenv.run | bash
+ENV PYENV_ROOT $HOME/.pyenv
+ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
+
+ENV PYTHON_VERSION=3.9.4
+RUN pyenv install $PYTHON_VERSION
+RUN pyenv global $PYTHON_VERSION
+RUN python -m pip install --upgrade wheel pip
+RUN pyenv rehash
 
 COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
-RUN /pymedphys/.venv/bin/python -m pip install -r /pymedphys/requirements-deploy.txt
+RUN python -m pip install -r /pymedphys/requirements-deploy.txt
 
 COPY . /pymedphys
-RUN /pymedphys/.venv/python -m pip install -e .[user,tests]
+RUN python -m pip install -e /pymedphys/.[user,tests]
 
-EXPOSE 80
+RUN pyenv rehash
+
+EXPOSE 8501
 RUN chmod +x /pymedphys/docker/start.sh
 
 CMD [ "/pymedphys/docker/start.sh" ]
