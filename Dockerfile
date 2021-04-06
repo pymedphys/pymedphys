@@ -17,18 +17,18 @@ FROM python:3.9 as build
 
 WORKDIR /pymedphys
 
-RUN python -m venv /pymedphys/.venv
+RUN python -m venv /pymedphys-venv
 COPY requirements-deploy.txt requirements-deploy.txt
-RUN /pymedphys/.venv/bin/python -m pip install wheel
-RUN /pymedphys/.venv/bin/python -m pip install -r requirements-deploy.txt
+RUN /pymedphys-venv/bin/python -m pip install wheel
+RUN /pymedphys-venv/bin/python -m pip install -r requirements-deploy.txt
 
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 ENV ACCEPT_EULA=Y \
     SA_PASSWORD=insecure-pymedphys-mssql-password
 
-COPY --from=build /pymedphys/.venv /pymedphys/.venv
+COPY --from=build /pymedphys-venv /pymedphys-venv
 COPY . /pymedphys
-RUN /pymedphys/.venv/bin/python -m pip install -e .[user,tests]
+RUN /pymedphys-venv/bin/python -m pip install -e .[user,tests]
 
 EXPOSE 80
 RUN chmod +x /pymedphys/docker/start.sh
