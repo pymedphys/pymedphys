@@ -99,8 +99,10 @@ def _get_service_icom_paths(root_directory):
     service_mode_directories = [
         item.name
         for item in root_directory.glob("*")
-        # Hardcoded the Mosaiq ID in for now
-        if item.name.startswith("Deliver") or item.name.startswith("WLutz")
+        # TODO: Fix the hardcoding of patients to search
+        if item.name.startswith("Deliver")
+        or item.name.startswith("WLutz")
+        or "QA" in item.name
     ]
 
     service_icom_paths = []
