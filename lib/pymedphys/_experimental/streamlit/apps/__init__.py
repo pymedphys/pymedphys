@@ -13,6 +13,7 @@ from . import (
     mosaiq_qcl_counter,
     sum_doses,
     transfer_check,
+    trf_explorer,
     weekly_check,
     wlutz,
 )
