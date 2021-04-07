@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymedphys._imports import streamlit as st
-
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.apps.metersetmap import _trf
 from pymedphys._streamlit.utilities import config as st_config
