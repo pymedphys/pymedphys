@@ -158,15 +158,14 @@ def create_dataset(ct_uids, structures_to_learn, expansion=5, threads=24):
         hash_path,
     ) = get_dataset_metadata()
 
-    def predownload_generator(sliced_ct_uids):
-        for ct_uid in sliced_ct_uids:
-            print(ct_uid)
-            download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
+    def predownload_generator(ct_uid):
+        ct_uid = ct_uid.decode()
+        download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
 
-            structure_uid = ct_uid_to_structure_uid[ct_uid]
-            download_uid(data_path_root, structure_uid, uid_to_url, hash_path)
+        structure_uid = ct_uid_to_structure_uid[ct_uid]
+        download_uid(data_path_root, structure_uid, uid_to_url, hash_path)
 
-            yield ct_uid
+        yield ct_uid
 
     dataset = tf.data.Dataset.from_tensor_slices(ct_uids)
 
@@ -178,22 +177,21 @@ def create_dataset(ct_uids, structures_to_learn, expansion=5, threads=24):
 
     dataset = dataset.prefetch(30)
 
-    def generator(downloaded_ct_uids):
-        for ct_uid in downloaded_ct_uids:
-            ct_uid = ct_uid.numpy().decode()
-            x_grid, y_grid, input_array, output_array = numpy_input_output_from_cache(
-                data_path_root,
-                structure_set_paths,
-                ct_image_paths,
-                ct_uid_to_structure_uid,
-                names_map,
-                ct_uid,
-                structures_to_learn,
-                expansion=expansion,
-            )
-            input_array = input_array[:, :, None]
+    def generator(ct_uid):
+        ct_uid = ct_uid.decode()
+        x_grid, y_grid, input_array, output_array = numpy_input_output_from_cache(
+            data_path_root,
+            structure_set_paths,
+            ct_image_paths,
+            ct_uid_to_structure_uid,
+            names_map,
+            ct_uid,
+            structures_to_learn,
+            expansion=expansion,
+        )
+        input_array = input_array[:, :, None]
 
-            yield ct_uid, x_grid, y_grid, input_array, output_array
+        yield ct_uid, x_grid, y_grid, input_array, output_array
 
     output_types = (tf.string, tf.float64, tf.float64, tf.int32, tf.float64)
     output_shapes = (
@@ -212,7 +210,6 @@ def _make_parallel(
     dataset: tf.data.Dataset, generator, output_types, output_shapes, threads
 ):
     def _interleave_function(x):
-        print(x)
         return tf.data.Dataset.from_generator(
             generator,
             output_types=output_types,
