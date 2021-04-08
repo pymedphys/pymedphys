@@ -16,6 +16,7 @@
 import functools
 import json
 import pathlib
+import zipfile
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -346,7 +347,7 @@ def numpy_input_output_from_cache(
 
     try:
         input_data = np.load(npz_input_path)
-    except FileNotFoundError:
+    except (FileNotFoundError, zipfile.BadZipFile):
         dcm_ct = get_dcm_ct_from_uid(ct_uid)
         x_grid, y_grid, input_array = create_input_ct_image(dcm_ct)
 
@@ -362,7 +363,7 @@ def numpy_input_output_from_cache(
 
         try:
             output_data = np.load(npz_path)
-        except FileNotFoundError:
+        except (FileNotFoundError, zipfile.BadZipFile):
             structure_set_uid = ct_uid_to_structure_uid[ct_uid]
             contours_by_ct_uid = get_contours_by_ct_uid_from_structure_uid(
                 structure_set_uid
