@@ -16,18 +16,15 @@
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-import pymedphys
 from pymedphys._mosaiq.delivery import NoMosaiqEntries as _NoMosaiqEntries
 from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+from pymedphys._trf.decode import header as _header
+from pymedphys._trf.decode import partition as _partition
+from pymedphys._trf.decode import table as _table
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
-
-
-@st.cache
-def read_trf(trf):
-    return pymedphys.read_trf(trf)
 
 
 @st.cache
@@ -255,7 +252,7 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
         except AttributeError:
             pass
 
-        header, table = read_trf(path_or_binary)
+        header, table = _read_trf(path_or_binary)
         headers.append(header)
         tables.append(table)
 
@@ -281,3 +278,24 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
         "identifier": identifier,
         "deliveries": deliveries,
     }
+
+
+@st.cache()
+def _read_trf(path_or_binary):
+    try:
+        path_or_binary.seek(0)
+        trf_contents = path_or_binary.read()
+    except AttributeError:
+        with open(path_or_binary, "rb") as f:
+            trf_contents = f.read()
+
+    trf_header_contents, trf_table_contents = _partition.split_into_header_table(
+        trf_contents
+    )
+
+    header = _header.decode_header(trf_header_contents)
+    header_dataframe = pd.DataFrame([header], columns=_header.Header._fields)
+
+    table_dataframe = _table.decode_trf_table(trf_table_contents)
+
+    return header_dataframe, table_dataframe
