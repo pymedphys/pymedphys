@@ -144,7 +144,7 @@ def get_filtered_uids(filters, structure_uids=None):
     return used_structure_uids, filtered_ct_uids
 
 
-def create_dataset(ct_uids, structures_to_learn, expansion=5):
+def create_dataset(ct_uids, structures_to_learn, expansion=5, threads=24):
     (
         data_path_root,
         structure_set_paths,
@@ -158,8 +158,9 @@ def create_dataset(ct_uids, structures_to_learn, expansion=5):
         hash_path,
     ) = get_dataset_metadata()
 
-    def predownload_generator():
-        for ct_uid in ct_uids:
+    def predownload_generator(sliced_ct_uids):
+        for ct_uid in sliced_ct_uids:
+            print(ct_uid)
             download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
 
             structure_uid = ct_uid_to_structure_uid[ct_uid]
@@ -167,13 +168,18 @@ def create_dataset(ct_uids, structures_to_learn, expansion=5):
 
             yield ct_uid
 
-    pre_download_parameters = ((tf.string), (tf.TensorShape(())))
-    pre_download_dataset = tf.data.Dataset.from_generator(
-        predownload_generator, *pre_download_parameters
+    dataset = tf.data.Dataset.from_tensor_slices(ct_uids)
+
+    output_types = tf.string
+    output_shapes = tf.TensorShape(())
+    dataset = _make_parallel(
+        dataset, predownload_generator, output_types, output_shapes, threads
     )
 
-    def generator():
-        for ct_uid in pre_download_dataset.prefetch(30):
+    dataset = dataset.prefetch(30)
+
+    def generator(downloaded_ct_uids):
+        for ct_uid in downloaded_ct_uids:
             ct_uid = ct_uid.numpy().decode()
             x_grid, y_grid, input_array, output_array = numpy_input_output_from_cache(
                 data_path_root,
@@ -189,18 +195,36 @@ def create_dataset(ct_uids, structures_to_learn, expansion=5):
 
             yield ct_uid, x_grid, y_grid, input_array, output_array
 
-    parameters = (
-        (tf.string, tf.float64, tf.float64, tf.int32, tf.float64),
-        (
-            tf.TensorShape(()),
-            tf.TensorShape([512]),
-            tf.TensorShape([512]),
-            tf.TensorShape([512, 512, 1]),
-            tf.TensorShape([512, 512, len(structures_to_learn)]),
-        ),
+    output_types = (tf.string, tf.float64, tf.float64, tf.int32, tf.float64)
+    output_shapes = (
+        tf.TensorShape(()),
+        tf.TensorShape([512]),
+        tf.TensorShape([512]),
+        tf.TensorShape([512, 512, 1]),
+        tf.TensorShape([512, 512, len(structures_to_learn)]),
     )
+    dataset = _make_parallel(dataset, generator, output_types, output_shapes, threads)
 
-    dataset = tf.data.Dataset.from_generator(generator, *parameters)
+    return dataset
+
+
+def _make_parallel(
+    dataset: tf.data.Dataset, generator, output_types, output_shapes, threads
+):
+    def _interleave_function(x):
+        print(x)
+        return tf.data.Dataset.from_generator(
+            generator,
+            output_types=output_types,
+            output_shapes=output_shapes,
+            args=(x,),
+        )
+
+    dataset = dataset.interleave(
+        _interleave_function,
+        cycle_length=threads,
+        block_length=1,
+    )
 
     return dataset
 
