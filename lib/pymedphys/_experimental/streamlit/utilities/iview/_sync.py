@@ -33,6 +33,13 @@ def icom_iview_timestamp_alignment(
 
     st.write(icom_patients_directory)
 
+    if not icom_patients_directory.exists():
+        st.error(
+            f"The iCom patient directory of `{icom_patients_directory}` "
+            "provided within the config file doesn't exist."
+        )
+        st.stop()
+
     selected_paths_by_date = _icom.get_paths_by_date(
         icom_patients_directory, selected_date=selected_date
     )
@@ -41,7 +48,12 @@ def icom_iview_timestamp_alignment(
         selected_paths_by_date["filepath"]
     )
 
-    relevant_times = all_relevant_times[selected_machine_id]
+    try:
+        relevant_times = all_relevant_times[selected_machine_id]
+    except KeyError:
+        st.write(selected_machine_id)
+        st.write(all_relevant_times)
+        raise
 
     min_iview_datetime = (np.min(database_table["datetime"])).floor("min")
     max_iview_datetime = (np.max(database_table["datetime"])).ceil("min")
