@@ -61,6 +61,11 @@ def add_propagate_parser(dev_subparsers):
 
 def add_cypress_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("cypress")
+    parser.add_argument(
+        "--docker",
+        help="Run cypress while pointing to the PyMedPhys docker testing docker image.",
+        action="store_true",
+    )
     parser.set_defaults(func=tests.run_cypress)
 
 

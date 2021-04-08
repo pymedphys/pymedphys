@@ -22,6 +22,25 @@ COPY docker/wrapper.c wrapper.c
 RUN gcc -shared  -ldl -fPIC -o wrapper.so wrapper.c
 
 
+FROM debian:stretch-slim AS dos2unix
+WORKDIR /root
+
+RUN apt-get update && apt-get install -y dos2unix
+
+COPY docker /pymedphys/docker
+RUN dos2unix /pymedphys/docker/*.sh
+RUN chmod +x /pymedphys/docker/*.sh
+
+
+FROM python:3.9-slim AS downloads
+WORKDIR /root
+
+RUN pip install pymedphys tqdm
+COPY lib/pymedphys/_data /usr/local/lib/python3.9/site-packages/pymedphys/_data
+COPY docker/download.py /pymedphys/docker/download.py
+RUN python /pymedphys/docker/download.py
+
+
 FROM mcr.microsoft.com/mssql/server:latest-ubuntu
 
 RUN \
@@ -47,29 +66,27 @@ RUN pyenv rehash
 COPY requirements-deploy.txt /pymedphys/requirements-deploy.txt
 RUN python -m pip install -r /pymedphys/requirements-deploy.txt
 
-COPY lib /pymedphys/lib
-COPY setup.py  /pymedphys/setup.py
-RUN python -m pip install -e /pymedphys/.[user,tests]
-RUN pyenv rehash
-
-COPY docker/download.py /pymedphys/docker/download.py
-RUN python /pymedphys/docker/download.py
-
-COPY . /pymedphys
+COPY --from=downloads /root/.pymedphys /root/.pymedphys
 
 EXPOSE 8501
-RUN chmod +x /pymedphys/docker/start.sh
-RUN chmod +x /pymedphys/docker/wait-for-it.sh
 
 ENV ACCEPT_EULA=Y \
     SA_PASSWORD=Insecure-PyMedPhys-MSSQL-Passw0rd \
     MSSQL_MEMORY_LIMIT_MB=128
 
 COPY --from=build /root/wrapper.so /root/wrapper.so
+COPY --from=dos2unix /pymedphys/docker /pymedphys/docker
 
 RUN \
     LD_PRELOAD=/root/wrapper.so /opt/mssql/bin/sqlservr & \
-    /pymedphys/docker/wait-for-it.sh localhost:1433 -t 120 && \
-    /opt/mssql/bin/mssql-conf set memory.memorylimitmb 128
+    /pymedphys/docker/wait-for-it.sh localhost:1433 -t 120
+
+COPY lib /pymedphys/lib
+COPY setup.py  /pymedphys/setup.py
+RUN python -m pip install -e /pymedphys/.
+RUN pyenv rehash
+
+COPY . /pymedphys
+COPY --from=dos2unix /pymedphys/docker /pymedphys/docker
 
 CMD [ "/pymedphys/docker/start.sh" ]
