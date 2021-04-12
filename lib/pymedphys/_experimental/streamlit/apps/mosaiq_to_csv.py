@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
@@ -22,6 +24,9 @@ from pymedphys._streamlit.utilities import mosaiq as _mosaiq
 
 CATEGORY = categories.PLANNING
 TITLE = "Mosaiq to CSV"
+
+LIB_ROOT = pathlib.Path(__file__).parents[3]
+TEST_DATA_DIR = LIB_ROOT.joinpath("tests", "mosaiq", "data")
 
 
 ALLOWLIST_TABLE_NAMES = [
@@ -53,46 +58,59 @@ def main():
 
     patient_ids = [item.strip() for item in comma_sep_patient_ids.split(",")]
 
-    ident = get_filtered_table(connection, "Ident", "IDA", patient_ids)
+    tables = {}
+
+    tables["Ident"] = get_filtered_table(connection, "Ident", "IDA", patient_ids)
     st.write("## `Ident` Table")
-    st.write(ident)
+    st.write(tables["Ident"])
 
     # Patient.Pat_ID1 = Ident.Pat_ID1
-    pat_id1s = ident["Pat_Id1"].unique()
-    patient = get_filtered_table(connection, "Patient", "Pat_ID1", pat_id1s)
-    tx_field = get_filtered_table(connection, "TxField", "Pat_ID1", pat_id1s)
+    pat_id1s = tables["Ident"]["Pat_Id1"].unique()
+    tables["Patient"] = get_filtered_table(connection, "Patient", "Pat_ID1", pat_id1s)
+    tables["TxField"] = get_filtered_table(connection, "TxField", "Pat_ID1", pat_id1s)
 
     st.write("## `Patient` Table")
-    st.write(patient)
+    st.write(tables["Patient"])
 
     st.write("## `TxField` Table")
-    st.write(tx_field)
+    st.write(tables["TxField"])
 
     # TxField.SIT_Set_ID = Site.SIT_Set_ID
-    sit_set_ids = tx_field["SIT_Set_ID"].unique()
-    site = get_filtered_table(connection, "Site", "SIT_Set_ID", sit_set_ids)
+    sit_set_ids = tables["TxField"]["SIT_Set_ID"].unique()
+    tables["Site"] = get_filtered_table(connection, "Site", "SIT_Set_ID", sit_set_ids)
     st.write("## `Site` Table")
-    st.write(site)
+    st.write(tables["Site"])
 
     # TrackTreatment.FLD_ID = TxField.FLD_ID
-    fld_ids = tx_field["FLD_ID"].unique()
-    track_treatment = get_filtered_table(
+    fld_ids = tables["TxField"]["FLD_ID"].unique()
+    tables["TrackTreatment"] = get_filtered_table(
         connection, "TrackTreatment", "FLD_ID", fld_ids
     )
     st.write("## `TrackTreatment` Table")
-    st.write(track_treatment)
-    machine_staff_ids = track_treatment["Machine_ID_Staff_ID"].unique()
+    st.write(tables["TrackTreatment"])
+    machine_staff_ids = tables["TrackTreatment"]["Machine_ID_Staff_ID"].unique()
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
-    staff = get_filtered_table(connection, "Staff", "Staff_ID", machine_staff_ids)
+    tables["Staff"] = get_filtered_table(
+        connection, "Staff", "Staff_ID", machine_staff_ids
+    )
 
     st.write("## `Staff` Table")
-    st.write(staff)
+    st.write(tables["Staff"])
 
     # TxFieldPoint.FLD_ID = %(field_id)s
-    tx_field_point = get_filtered_table(connection, "TxFieldPoint", "FLD_ID", fld_ids)
+    tables["TxFieldPoint"] = get_filtered_table(
+        connection, "TxFieldPoint", "FLD_ID", fld_ids
+    )
     st.write("## `TxFieldPoint` Table")
-    st.write(tx_field_point)
+    st.write(tables["TxFieldPoint"])
+
+    if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
+        st.stop()
+
+    for table_name, df in tables.items():
+        filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
+        df.to_csv(filepath)
 
 
 def get_filtered_table(connection, table, column_name, column_values):
