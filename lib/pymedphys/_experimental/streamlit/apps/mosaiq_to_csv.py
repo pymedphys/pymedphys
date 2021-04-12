@@ -25,12 +25,12 @@ TITLE = "Mosaiq to CSV"
 
 
 ALLOWLIST_TABLE_NAMES = [
+    "Ident",
+    "Patient",
     "TxField",
     "TxFieldPoint",
-    "Ident",
     "Site",
     "TrackTreatment",
-    "Patient",
     "Staff",
 ]
 
@@ -47,42 +47,47 @@ def main():
     config = st_config.get_config()
     connection = _mosaiq.get_single_mosaiq_connection_with_config(config)
 
-    # relevant_tables = ALLOWLIST_TABLE_NAMES
+    comma_sep_patient_ids: str = st.text_input("Comma Separated Patient IDs")
+    if comma_sep_patient_ids == "":
+        st.stop()
 
-    # columns = {}
-    # for table_name in relevant_tables:
-    #     columns[table_name] = get_all_column_names(connection, table_name)
+    patient_ids = [item.strip() for item in comma_sep_patient_ids.split(",")]
 
-    # st.write(columns)
+    ident = pd.DataFrame()
+    for patient_id in patient_ids:
+        ident = pd.concat(
+            [ident, get_filtered_table(connection, "Ident", "IDA", patient_id)]
+        )
 
-    patient_id = st.text_input("Patient ID")
+    pat_id1s = ident["Pat_Id1"].unique()
 
-    ident = get_filtered_table(connection, "Ident", "IDA", patient_id)
-    pat_id1 = str(ident["Pat_Id1"].iloc[0])
     st.write("## `Ident` Table")
     st.write(ident)
 
-    # Patient.Pat_ID1 = Ident.Pat_ID1 AND
+    patient = pd.DataFrame()
+    tx_field = pd.DataFrame()
+    for pat_id1 in pat_id1s:
+        # Patient.Pat_ID1 = Ident.Pat_ID1
+        patient = pd.concat(
+            [patient, get_filtered_table(connection, "Patient", "Pat_ID1", pat_id1)]
+        )
 
-    patient = get_filtered_table(connection, "Patient", "Pat_ID1", pat_id1)
+        tx_field = pd.concat(
+            [tx_field, get_filtered_table(connection, "TxField", "Pat_ID1", pat_id1)]
+        )
+
     st.write("## `Patient` Table")
     st.write(patient)
 
-    tx_field = get_filtered_table(connection, "TxField", "Pat_ID1", pat_id1)
     st.write("## `TxField` Table")
     st.write(tx_field)
 
-    # TxField.SIT_Set_ID = Site.SIT_Set_ID
-
-    sit_set_ids = set()
-    fld_ids = set()
-
-    for _, tx_field_row in tx_field.iterrows():
-        sit_set_ids.add(tx_field_row["SIT_Set_ID"])
-        fld_ids.add(tx_field_row["FLD_ID"])
+    sit_set_ids = tx_field["SIT_Set_ID"].unique()
+    fld_ids = tx_field["FLD_ID"].unique()
 
     site = pd.DataFrame()
     for sit_set_id in sit_set_ids:
+        # TxField.SIT_Set_ID = Site.SIT_Set_ID
         site = pd.concat(
             [site, get_filtered_table(connection, "Site", "SIT_Set_ID", sit_set_id)]
         )
@@ -91,13 +96,21 @@ def main():
     st.write(site)
 
     track_treatment = pd.DataFrame()
+    tx_field_point = pd.DataFrame()
     for fld_id in fld_ids:
         # TrackTreatment.FLD_ID = TxField.FLD_ID
-
         track_treatment = pd.concat(
             [
                 track_treatment,
                 get_filtered_table(connection, "TrackTreatment", "FLD_ID", fld_id),
+            ]
+        )
+
+        # TxFieldPoint.FLD_ID = %(field_id)s
+        tx_field_point = pd.concat(
+            [
+                tx_field_point,
+                get_filtered_table(connection, "TxFieldPoint", "FLD_ID", fld_id),
             ]
         )
 
@@ -106,7 +119,6 @@ def main():
     machine_staff_ids = track_treatment["Machine_ID_Staff_ID"].unique()
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
-
     staff = pd.DataFrame()
     for machine_staff_id in machine_staff_ids:
 
@@ -120,16 +132,8 @@ def main():
     st.write("## `Staff` Table")
     st.write(staff)
 
-    # fields = helpers.get_patient_fields(connection, patient_id)
-    # st.write(fields)
-
-    # for _, field in fields.iterrows():
-    #     field_id = field["field_id"]
-    #     st.write(field_id)
-
-    #     tx_field, tx_field_point = delivery.raw_delivery_data_sql(connection, field_id)
-    #     st.write(tx_field)
-    #     st.write(tx_field_point)
+    st.write("## `TxFieldPoint` Table")
+    st.write(tx_field_point)
 
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
