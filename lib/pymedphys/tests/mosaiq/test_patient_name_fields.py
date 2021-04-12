@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Derek Lane
+# Copyright (C) 2021 Derek Lane, Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import pymedphys
 from pymedphys._mosaiq import delivery, helpers
 
 from . import _connect
-from .data import mocks
+from .data import mimics, mocks
 
 
 @pytest.fixture(name="do_check_create_test_db")
@@ -59,6 +59,17 @@ def test_get_patient_name(do_check_create_test_db):  # pylint: disable = unused-
 
         # finally spot check Moe
         assert moe_patient_name == "HOWARD, Moe"
+
+
+@pytest.mark.mosaiqdb
+def test_mimiced_db_patient_names(
+    do_check_create_test_db,
+):  # pylint: disable = unused-argument
+    mimics.create_mimic_tables()
+
+    with _connect.connect() as connection:
+        name = helpers.get_patient_name(connection, 989898)
+        assert name == "PHYSICS, Mock"
 
 
 @pytest.mark.mosaiqdb

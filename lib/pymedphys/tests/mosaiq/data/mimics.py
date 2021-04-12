@@ -13,10 +13,49 @@
 # limitations under the License.
 
 
-# import pathlib
 import functools
+import pathlib
 
-from pymedphys._imports import sqlalchemy
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import sqlalchemy, toml
+
+from . import mocks
+
+HERE = pathlib.Path(__file__).parent
+
+
+def create_mimic_tables():
+    tables, types_map = _load_csv_and_toml()
+
+    for table_name, table in tables.items():
+        column_types = types_map[table_name]
+        index_label = table.columns[0]
+
+        mocks.dataframe_to_sql(
+            table,
+            table_name,
+            index_label=index_label,
+            dtype=column_types,
+        )
+
+
+@functools.lru_cache()
+def _load_csv_and_toml():
+    csv_paths = HERE.glob("*.csv")
+    toml_path = HERE.joinpath("types_map.toml")
+
+    tables = {}
+    for path in csv_paths:
+        tables[path.stem] = pd.read_csv(path, index_col=0)
+
+    with open(toml_path) as f:
+        types_map = toml.load(f)
+
+    for table, column_type_map in types_map.items():
+        for column, type_repr in column_type_map.items():
+            types_map[table][column] = _get_sql_type(type_repr)
+
+    return tables, types_map
 
 
 @functools.lru_cache()
