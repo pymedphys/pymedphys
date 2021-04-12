@@ -7,10 +7,12 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, sqlalchemy
 
-msq_server = "localhost"
-test_db_name = "MosaiqTest77008"
+from .. import _connect
 
-sa_user, sa_password = "sa", "sqlServerPassw0rd"
+msq_server = "localhost"
+test_db_name = _connect.MSQ_SERVER
+
+sa_user, sa_password = _connect.SA_USER, _connect.SA_PASSWORD
 
 # vary the number of fractions a bit
 NUMBER_OF_FRACTIONS = (20, 25, 30)
