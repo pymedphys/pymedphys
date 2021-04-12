@@ -53,28 +53,14 @@ def main():
 
     patient_ids = [item.strip() for item in comma_sep_patient_ids.split(",")]
 
-    ident = pd.DataFrame()
-    for patient_id in patient_ids:
-        ident = pd.concat(
-            [ident, get_filtered_table(connection, "Ident", "IDA", patient_id)]
-        )
-
-    pat_id1s = ident["Pat_Id1"].unique()
-
+    ident = get_filtered_table(connection, "Ident", "IDA", patient_ids)
     st.write("## `Ident` Table")
     st.write(ident)
 
-    patient = pd.DataFrame()
-    tx_field = pd.DataFrame()
-    for pat_id1 in pat_id1s:
-        # Patient.Pat_ID1 = Ident.Pat_ID1
-        patient = pd.concat(
-            [patient, get_filtered_table(connection, "Patient", "Pat_ID1", pat_id1)]
-        )
-
-        tx_field = pd.concat(
-            [tx_field, get_filtered_table(connection, "TxField", "Pat_ID1", pat_id1)]
-        )
+    # Patient.Pat_ID1 = Ident.Pat_ID1
+    pat_id1s = ident["Pat_Id1"].unique()
+    patient = get_filtered_table(connection, "Patient", "Pat_ID1", pat_id1s)
+    tx_field = get_filtered_table(connection, "TxField", "Pat_ID1", pat_id1s)
 
     st.write("## `Patient` Table")
     st.write(patient)
@@ -82,62 +68,51 @@ def main():
     st.write("## `TxField` Table")
     st.write(tx_field)
 
+    # TxField.SIT_Set_ID = Site.SIT_Set_ID
     sit_set_ids = tx_field["SIT_Set_ID"].unique()
-    fld_ids = tx_field["FLD_ID"].unique()
-
-    site = pd.DataFrame()
-    for sit_set_id in sit_set_ids:
-        # TxField.SIT_Set_ID = Site.SIT_Set_ID
-        site = pd.concat(
-            [site, get_filtered_table(connection, "Site", "SIT_Set_ID", sit_set_id)]
-        )
-
+    site = get_filtered_table(connection, "Site", "SIT_Set_ID", sit_set_ids)
     st.write("## `Site` Table")
     st.write(site)
 
-    track_treatment = pd.DataFrame()
-    tx_field_point = pd.DataFrame()
-    for fld_id in fld_ids:
-        # TrackTreatment.FLD_ID = TxField.FLD_ID
-        track_treatment = pd.concat(
-            [
-                track_treatment,
-                get_filtered_table(connection, "TrackTreatment", "FLD_ID", fld_id),
-            ]
-        )
-
-        # TxFieldPoint.FLD_ID = %(field_id)s
-        tx_field_point = pd.concat(
-            [
-                tx_field_point,
-                get_filtered_table(connection, "TxFieldPoint", "FLD_ID", fld_id),
-            ]
-        )
-
+    # TrackTreatment.FLD_ID = TxField.FLD_ID
+    fld_ids = tx_field["FLD_ID"].unique()
+    track_treatment = get_filtered_table(
+        connection, "TrackTreatment", "FLD_ID", fld_ids
+    )
     st.write("## `TrackTreatment` Table")
     st.write(track_treatment)
     machine_staff_ids = track_treatment["Machine_ID_Staff_ID"].unique()
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
-    staff = pd.DataFrame()
-    for machine_staff_id in machine_staff_ids:
-
-        staff = pd.concat(
-            [
-                staff,
-                get_filtered_table(connection, "Staff", "Staff_ID", machine_staff_id),
-            ]
-        )
+    staff = get_filtered_table(connection, "Staff", "Staff_ID", machine_staff_ids)
 
     st.write("## `Staff` Table")
     st.write(staff)
 
+    # TxFieldPoint.FLD_ID = %(field_id)s
+    tx_field_point = get_filtered_table(connection, "TxFieldPoint", "FLD_ID", fld_ids)
     st.write("## `TxFieldPoint` Table")
     st.write(tx_field_point)
 
 
+def get_filtered_table(connection, table, column_name, column_values):
+    df = pd.DataFrame()
+    for column_value in column_values:
+        df = _append_filtered_table(connection, df, table, column_name, column_value)
+
+    return df
+
+
+def _append_filtered_table(connection, df, table, column_name, column_value):
+    df = pd.concat(
+        [df, _get_filtered_table(connection, table, column_name, column_value)],
+        ignore_index=True,
+    )
+    return df
+
+
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
-def get_all_column_names(connection, table):
+def _get_all_column_names(connection, table):
     raw_columns = pymedphys.mosaiq.execute(
         connection,
         """
@@ -156,7 +131,7 @@ def get_all_column_names(connection, table):
 
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
-def get_filtered_table(connection, table, column_name, column_value):
+def _get_filtered_table(connection, table, column_name, column_value):
     if not table in ALLOWLIST_TABLE_NAMES:
         raise ValueError(f"{table} must be within the allowlist")
 
@@ -164,7 +139,7 @@ def get_filtered_table(connection, table, column_name, column_value):
         raise ValueError(f"{column_name} must be within the allowlist")
 
     column_value = str(column_value)
-    column_names = get_all_column_names(connection, table)
+    column_names = _get_all_column_names(connection, table)
 
     sql_string = f"""
         SELECT *
