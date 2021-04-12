@@ -11,6 +11,7 @@ def dev_cli(subparsers):
     add_doctests_parser(dev_subparsers)
     add_cypress_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
+    add_mosaiq_mssql_parser(dev_subparsers)
 
     return dev_parser
 
@@ -72,3 +73,8 @@ def add_cypress_parser(dev_subparsers):
 def add_clean_imports_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("imports")
     parser.set_defaults(func=tests.run_clean_imports)
+
+
+def add_mosaiq_mssql_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser("mssql")
+    parser.set_defaults(func=tests.start_mssql_docker)

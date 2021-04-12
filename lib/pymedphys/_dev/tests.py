@@ -232,3 +232,8 @@ def run_cypress(args):
         cypress_test_utilities.run_test_commands_with_gui_process(
             ["yarn", "yarn cypress open"]
         )
+
+
+def start_mssql_docker(_):
+    CWD = REPO_ROOT.joinpath("docker", "mosaiq")
+    subprocess.check_output("docker-compose up -d", cwd=CWD, shell=True)
