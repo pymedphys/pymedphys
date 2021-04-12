@@ -78,3 +78,11 @@ def add_clean_imports_parser(dev_subparsers):
 def add_mosaiq_mssql_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("mssql")
     parser.set_defaults(func=tests.start_mssql_docker)
+    parser.add_argument(
+        "--stop",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+    )

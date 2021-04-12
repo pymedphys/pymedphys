@@ -234,6 +234,16 @@ def run_cypress(args):
         )
 
 
-def start_mssql_docker(_):
+def start_mssql_docker(args):
     CWD = REPO_ROOT.joinpath("docker", "mosaiq")
-    subprocess.check_output("docker-compose up -d", cwd=CWD, shell=True)
+
+    if args.daemon:
+        if args.stop:
+            raise ValueError("Can't call stop and daemon flag together")
+        command = "docker-compose up -d"
+    elif args.stop:
+        command = "docker-compose down"
+    else:
+        command = "docker-compose up"
+
+    subprocess.check_output(command, cwd=CWD, shell=True)
