@@ -1,5 +1,6 @@
 from pymedphys._imports import pytest
 
+import pymedphys
 from pymedphys._mosaiq.delivery import delivery_data_sql
 from pymedphys._mosaiq.helpers import get_patient_fields, get_patient_name
 from pymedphys.mosaiq import connect, execute
@@ -94,16 +95,14 @@ def test_get_patient_fields(
         assert len(fields_for_moe_df) == field_count
 
         # for each treatment field
-        for fld_id, txfield in fields_for_moe_df.iterrows():
-            print(fld_id, txfield)
+        for _, txfield in fields_for_moe_df.iterrows():
+            field_id = txfield["field_id"]
 
             # check that the field label matches the field name
             assert f"Field{txfield['field_label']}" == txfield["field_name"]
 
             # check for txfield control points
-            field_results, point_results = delivery_data_sql(
-                connection, txfield["field_id"]
-            )
+            field_results, point_results = delivery_data_sql(connection, field_id)
 
             assert field_results[0][0] == "MU"
             print(point_results)
@@ -113,3 +112,6 @@ def test_get_patient_fields(
             for tx_point in point_results:
                 assert tx_point[0] >= current_index
                 current_index = tx_point[0]
+
+            # delivery = pymedphys.Delivery.from_mosaiq(connection, field_id)
+            # print(delivery)

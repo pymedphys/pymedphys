@@ -248,17 +248,7 @@ def collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2):
     return mlc, jaw
 
 
-def delivery_data_sql(connection, field_id):
-    """Get the treatment delivery data from Mosaiq given the SQL field_id
-
-    Args:
-        connection: A connection pointing to the Mosaiq SQL server
-        field_id: The Mosaiq SQL field ID
-
-    Returns:
-        txfield_results: The results from the TxField table.
-        txfieldpoint_results: The results from the TxFieldPoint table.
-    """
+def _raw_delivery_data_sql(connection, field_id):
     txfield_results = api.execute(
         connection,
         """
@@ -273,15 +263,10 @@ def delivery_data_sql(connection, field_id):
             "field_id": field_id,
         },
     )
-    assert len(txfield_results) == 1
-    txfield_results[0] = txfield_results[0][0], struct.unpack(
-        "Q", txfield_results[0][1]
-    )
 
-    txfieldpoint_results = np.array(
-        api.execute(
-            connection,
-            """
+    txfieldpoint_results = api.execute(
+        connection,
+        """
         SELECT
             TxFieldPoint.[Index],
             TxFieldPoint.A_Leaf_Set,
@@ -297,9 +282,34 @@ def delivery_data_sql(connection, field_id):
         ORDER BY
             TxFieldPoint.Point
         """,
-            {"field_id": field_id},
-        )
+        {"field_id": field_id},
     )
+
+    return txfield_results, txfieldpoint_results
+
+
+def delivery_data_sql(connection, field_id):
+    """Get the treatment delivery data from Mosaiq given the SQL field_id
+
+    Args:
+        connection: A connection pointing to the Mosaiq SQL server
+        field_id: The Mosaiq SQL field ID
+
+    Returns:
+        txfield_results: The results from the TxField table.
+        txfieldpoint_results: The results from the TxFieldPoint table.
+    """
+    txfield_results, txfieldpoint_results = _raw_delivery_data_sql(connection, field_id)
+
+    if len(txfield_results) != 1:
+        raise ValueError(
+            f"The return results from txfield query gave {txfield_results}. "
+            "Expected exactly one row."
+        )
+    txfield_results[0] = txfield_results[0][0], struct.unpack(
+        "Q", txfield_results[0][1]
+    )
+
     assert len(txfieldpoint_results) >= 1
     for one_point in txfieldpoint_results:
         # convert to list, so we can change last element
