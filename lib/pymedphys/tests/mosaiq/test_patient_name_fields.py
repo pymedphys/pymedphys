@@ -62,7 +62,7 @@ def test_get_patient_name(do_check_create_test_db):  # pylint: disable = unused-
 
 
 @pytest.mark.mosaiqdb
-def test_mimiced_db_patient_names(
+def test_mimicked_db_patient_names(
     do_check_create_test_db,
 ):  # pylint: disable = unused-argument
     mimics.create_mimic_tables()

@@ -25,7 +25,7 @@ from pymedphys._imports import pymssql, sqlalchemy
 from .. import _connect
 
 msq_server = "localhost"
-test_db_name = _connect.MSQ_SERVER
+test_db_name = _connect.TEST_DB_NAME
 
 sa_user, sa_password = _connect.SA_USER, _connect.SA_PASSWORD
 
