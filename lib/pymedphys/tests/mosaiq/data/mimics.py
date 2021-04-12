@@ -60,13 +60,27 @@ def _load_csv_and_toml():
 
 @functools.lru_cache()
 def _get_sqlalchemy_types_map():
-    sqltypes = sqlalchemy.dialects.mssql.pymssql.sqltypes
+    mssql_types = sqlalchemy.dialects.mssql
+    mssql_types_map = _create_types_map(mssql_types)
+
+    pymssql_types = sqlalchemy.dialects.mssql.pymssql.sqltypes
+    pymssql_types_map = _create_types_map(pymssql_types)
+
     sqlalchemy_types_map = {
+        **mssql_types_map,
+        **pymssql_types_map,
+    }
+    return sqlalchemy_types_map
+
+
+def _create_types_map(sqltypes):
+    sql_types_map = {
         item.lower(): getattr(sqltypes, item)
         for item in dir(sqltypes)
         if item[0].isupper()
     }
-    return sqlalchemy_types_map
+
+    return sql_types_map
 
 
 def _get_sql_type(sql_type: str):
