@@ -16,6 +16,7 @@ import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import toml
 
 import pymedphys
 from pymedphys._streamlit import categories
@@ -63,15 +64,22 @@ def main():
     patient_ids = [item.strip() for item in comma_sep_patient_ids.split(",")]
 
     tables = {}
+    types_map = {}
 
-    tables["Ident"] = get_filtered_table(connection, "Ident", "IDA", patient_ids)
+    tables["Ident"] = get_filtered_table(
+        connection, types_map, "Ident", "IDA", patient_ids
+    )
     st.write("## `Ident` Table")
     st.write(tables["Ident"])
 
     # Patient.Pat_ID1 = Ident.Pat_ID1
     pat_id1s = tables["Ident"]["Pat_Id1"].unique()
-    tables["Patient"] = get_filtered_table(connection, "Patient", "Pat_ID1", pat_id1s)
-    tables["TxField"] = get_filtered_table(connection, "TxField", "Pat_ID1", pat_id1s)
+    tables["Patient"] = get_filtered_table(
+        connection, types_map, "Patient", "Pat_ID1", pat_id1s
+    )
+    tables["TxField"] = get_filtered_table(
+        connection, types_map, "TxField", "Pat_ID1", pat_id1s
+    )
 
     st.write("## `Patient` Table")
     st.write(tables["Patient"])
@@ -81,14 +89,16 @@ def main():
 
     # TxField.SIT_Set_ID = Site.SIT_Set_ID
     sit_set_ids = tables["TxField"]["SIT_Set_ID"].unique()
-    tables["Site"] = get_filtered_table(connection, "Site", "SIT_Set_ID", sit_set_ids)
+    tables["Site"] = get_filtered_table(
+        connection, types_map, "Site", "SIT_Set_ID", sit_set_ids
+    )
     st.write("## `Site` Table")
     st.write(tables["Site"])
 
     # TrackTreatment.FLD_ID = TxField.FLD_ID
     fld_ids = tables["TxField"]["FLD_ID"].unique()
     tables["TrackTreatment"] = get_filtered_table(
-        connection, "TrackTreatment", "FLD_ID", fld_ids
+        connection, types_map, "TrackTreatment", "FLD_ID", fld_ids
     )
     st.write("## `TrackTreatment` Table")
     st.write(tables["TrackTreatment"])
@@ -96,7 +106,7 @@ def main():
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
     tables["Staff"] = get_filtered_table(
-        connection, "Staff", "Staff_ID", machine_staff_ids
+        connection, types_map, "Staff", "Staff_ID", machine_staff_ids
     )
 
     st.write("## `Staff` Table")
@@ -104,7 +114,7 @@ def main():
 
     # TxFieldPoint.FLD_ID = %(field_id)s
     tables["TxFieldPoint"] = get_filtered_table(
-        connection, "TxFieldPoint", "FLD_ID", fld_ids
+        connection, types_map, "TxFieldPoint", "FLD_ID", fld_ids
     )
     st.write("## `TxFieldPoint` Table")
     st.write(tables["TxFieldPoint"])
@@ -116,11 +126,21 @@ def main():
         filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
         df.to_csv(filepath)
 
+    toml_filepath = TEST_DATA_DIR.joinpath("types_map.toml")
 
-def get_filtered_table(connection, table, column_name, column_values):
-    df = pd.DataFrame()
+    with open(toml_filepath, "w") as f:
+        toml.dump(types_map, f)
+
+
+def get_filtered_table(connection, types_map, table, column_name, column_values):
+    column_names, column_types = _get_all_columns(connection, table)
+    df = pd.DataFrame(data=[], columns=column_names)
     for column_value in column_values:
         df = _append_filtered_table(connection, df, table, column_name, column_value)
+
+    types_map[table] = {
+        col_name: col_type for col_name, col_type in zip(column_names, column_types)
+    }
 
     return df
 
@@ -134,11 +154,11 @@ def _append_filtered_table(connection, df, table, column_name, column_value):
 
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
-def _get_all_column_names(connection, table):
+def _get_all_columns(connection, table):
     raw_columns = pymedphys.mosaiq.execute(
         connection,
         """
-        SELECT COLUMN_NAME
+        SELECT COLUMN_NAME, DATA_TYPE
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_NAME = %(table)s
         """,
@@ -148,8 +168,9 @@ def _get_all_column_names(connection, table):
     )
 
     columns = [item[0] for item in raw_columns]
+    types = [item[1] for item in raw_columns]
 
-    return columns
+    return columns, types
 
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
@@ -161,7 +182,7 @@ def _get_filtered_table(connection, table, column_name, column_value):
         raise ValueError(f"{column_name} must be within the allowlist")
 
     column_value = str(column_value)
-    column_names = _get_all_column_names(connection, table)
+    column_names, _ = _get_all_columns(connection, table)
 
     sql_string = f"""
         SELECT *
