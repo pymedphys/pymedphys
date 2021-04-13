@@ -36,7 +36,7 @@ typing-extensions = "*"
 # ------- #
 # Library #
 # ------- #
-tqdm = { version = "*", optional = true }  # groups = ["user", "dev"]
+tqdm = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 attrs = { version = "*", optional = true }  # groups = ["user", "dev"]
 watchdog = { version = "*", optional = true }  # groups = ["user", "dev"]
 
@@ -215,7 +215,7 @@ docs = [
 ]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
-mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
+mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "tqdm"]
 propagate = ["black", "tomlkit"]
 tests = [
     "hypothesis",
