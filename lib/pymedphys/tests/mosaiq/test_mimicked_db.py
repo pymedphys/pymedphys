@@ -24,6 +24,7 @@ from .data import mimics
 PATIENT_ID = 989898
 FIELD_ID = 88043
 A_TREATMENT_TIME = "2020-04-27 08:03:28.513"
+MACHINE_ID = "2619"
 
 
 @pytest.fixture(name="create_mimic_db_with_tables")
@@ -61,3 +62,19 @@ def test_get_treatment_times(
     with _connect.connect(database=mimics.DATABASE) as connection:
         treatment_times = helpers.get_treatment_times(connection, FIELD_ID)
         assert np.datetime64(A_TREATMENT_TIME) in treatment_times["start"].tolist()
+
+
+@pytest.mark.mosaiqdb
+def test_get_treatment_times(
+    create_mimic_db_with_tables,
+):  # pylint: disable = unused-argument
+
+    dt = np.timedelta64(4, "h")
+    start = np.datetime64(A_TREATMENT_TIME) - dt
+    end = np.datetime64(A_TREATMENT_TIME) + dt
+
+    with _connect.connect(database=mimics.DATABASE) as connection:
+        treatment_times = helpers.get_treatments(connection, start, end, MACHINE_ID)
+        # assert np.datetime64(A_TREATMENT_TIME) in treatment_times["start"].tolist()
+        print(treatment_times)
+        assert False

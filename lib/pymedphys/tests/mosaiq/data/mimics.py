@@ -34,6 +34,7 @@ COLUMN_TYPES_TO_USE = {
     "decimal",
     "binary",
     "bit",
+    "char",
 }
 
 
@@ -59,6 +60,8 @@ def create_mimic_tables(database):
                     lambda x: bytes(x[2:-1], encoding="raw_unicode_escape")
                 )
                 continue
+            if a_type == sql_types_map["char"]:
+                column_types[column_name] = sql_types_map["varchar"]
 
         mocks.dataframe_to_sql(
             table,

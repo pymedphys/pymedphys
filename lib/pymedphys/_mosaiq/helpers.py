@@ -153,7 +153,7 @@ def get_treatments(connection, start, end, machine):
             TrackTreatment.Edit_DtTm >= %(start)s AND
             TrackTreatment.Create_DtTm <= %(end)s
         """,
-        {"machine": machine, "start": start, "end": end},
+        {"machine": str(machine), "start": str(start), "end": str(end)},
     )
 
     table = pd.DataFrame(
