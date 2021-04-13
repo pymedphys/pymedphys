@@ -17,12 +17,12 @@ import functools
 import pathlib
 
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import sqlalchemy, toml
+from pymedphys._imports import pymssql, sqlalchemy, toml
 
 from . import mocks
 
 HERE = pathlib.Path(__file__).parent
-DATABASE = "MosaiqMimicsTest001"
+DATABASE = "MosaiqMimicsTest002"
 COLUMN_TYPES_TO_USE = {
     "int",
     "smallint",
@@ -32,10 +32,14 @@ COLUMN_TYPES_TO_USE = {
     "bigint",
     "float",
     "decimal",
+    "binary",
 }
 
 
 def create_mimic_tables(database):
+    # https://github.com/pymssql/pymssql/issues/504#issuecomment-449746112
+    pymssql.Binary = bytearray
+
     sql_types_map = _get_sqlalchemy_types_map()
     tables, types_map = _load_csv_and_toml()
     column_types_to_use = [sql_types_map[item] for item in COLUMN_TYPES_TO_USE]

@@ -73,17 +73,6 @@ def test_mimicked_db_patient_names(
 ):  # pylint: disable = unused-argument
 
     with _connect.connect(database=mimics.DATABASE) as connection:
-        # all_results = pymedphys.mosaiq.execute(
-        #     connection,
-        #     """
-        #     SELECT
-        #         Pat_Id1,
-        #         First_Name,
-        #         Last_Name
-        #     FROM Patient
-        #     """,
-        # )
-
         name = helpers.get_patient_name(connection, 989898)
         assert name == "PHYSICS, Mock"
 
