@@ -331,44 +331,6 @@ def delivery_data_sql(connection, field_id):
     return meterset, txfieldpoint_results
 
 
-# def fetch_and_verify_mosaiq_sql(connection, field_id):
-#     reference_txfield_results, reference_txfieldpoint_results = delivery_data_sql(
-#         connection, field_id
-#     )
-#     test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
-#         connection, field_id
-#     )
-
-#     agreement = False
-
-#     while not agreement:
-#         agreements = [np.all(reference_txfield_results == test_txfield_results)]
-#         for ref, test in zip(reference_txfieldpoint_results, test_txfieldpoint_results):
-#             agreements.append(np.all(ref == test))
-
-#         agreement = np.all(agreements)
-#         if not agreement:
-#             print("Mosaiq sql query gave conflicting data.")
-
-#             # log mismatched values output
-#             logger = logging.getLogger("mosaiq_delivery_data_sql")
-#             logger.error("Mismatch of delivery_data_sql results:")
-
-#             logger.error(pformat(reference_txfield_results))
-#             logger.error(pformat(test_txfield_results))
-#             logger.error(pformat(reference_txfieldpoint_results))
-#             logger.error(pformat(test_txfieldpoint_results))
-
-#             print("Trying again...")
-#             reference_txfield_results = test_txfield_results
-#             reference_txfieldpoint_results = test_txfieldpoint_results
-#             test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
-#                 connection, field_id
-#             )
-
-#     return test_txfield_results, test_txfieldpoint_results
-
-
 class DeliveryMosaiq(DeliveryBase):
     @classmethod
     def from_mosaiq(cls, connection, field_id):
