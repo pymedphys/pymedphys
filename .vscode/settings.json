@@ -440,6 +440,7 @@
     "tabmanager",
     "tensorflow",
     "tfrecord",
+    "tinyint",
     "tobytes",
     "toctree",
     "tolist",

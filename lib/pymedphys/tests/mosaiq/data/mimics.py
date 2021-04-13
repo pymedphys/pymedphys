@@ -22,10 +22,17 @@ from pymedphys._imports import sqlalchemy, toml
 from . import mocks
 
 HERE = pathlib.Path(__file__).parent
-
 DATABASE = "MosaiqMimicsTest001"
-
-COLUMN_TYPES_TO_USE = ["int"]
+COLUMN_TYPES_TO_USE = {
+    "int",
+    "smallint",
+    "varchar",
+    "datetime",
+    "tinyint",
+    "bigint",
+    "float",
+    "decimal",
+}
 
 
 def create_mimic_tables(database):
@@ -47,8 +54,6 @@ def create_mimic_tables(database):
                     lambda x: bytes(x[2:-1], encoding="raw_unicode_escape")
                 )
                 continue
-            if a_type == sql_types_map["varchar"]:
-                column_types[column_name] = sqlalchemy.types.VARCHAR(length=200)
 
         mocks.dataframe_to_sql(
             table,
@@ -70,16 +75,22 @@ def _load_csv_and_toml():
     csv_paths = HERE.glob("*.csv")
     toml_path = HERE.joinpath("types_map.toml")
 
-    tables = {}
-    for path in csv_paths:
-        tables[path.stem] = pd.read_csv(path, index_col=0)
-
     with open(toml_path) as f:
         types_map = toml.load(f)
 
     for table, column_type_map in types_map.items():
         for column, type_repr in column_type_map.items():
             types_map[table][column] = _get_sql_type(type_repr)
+
+    tables = {}
+    for path in csv_paths:
+        table_name = path.stem
+        # column_types = types_map[table_name]
+        tables[table_name] = pd.read_csv(
+            path,
+            index_col=0,
+            # dtype=column_types,
+        )
 
     return tables, types_map
 
