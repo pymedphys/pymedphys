@@ -15,6 +15,7 @@
 import base64
 import pathlib
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import toml
@@ -30,7 +31,6 @@ TITLE = "Mosaiq to CSV"
 LIB_ROOT = pathlib.Path(__file__).parents[3]
 TEST_DATA_DIR = LIB_ROOT.joinpath("tests", "mosaiq", "data")
 
-
 ALLOWLIST_TABLE_NAMES = [
     "Ident",
     "Patient",
@@ -39,6 +39,8 @@ ALLOWLIST_TABLE_NAMES = [
     "Site",
     "TrackTreatment",
     "Staff",
+    "Chklist",
+    "QCLTask",
 ]
 
 ALLOWLIST_COLUMN_NAMES = [
@@ -47,7 +49,14 @@ ALLOWLIST_COLUMN_NAMES = [
     "SIT_Set_ID",
     "FLD_ID",
     "Staff_ID",
+    "TSK_ID",
 ]
+
+PASSWORD_REPLACE = b"\x00" * 15
+
+FIRST_NAME_USERNAME_MAP = {
+    "Simon": "dummyusername",
+}
 
 
 def main():
@@ -99,12 +108,48 @@ def main():
     )
     st.write("## `TrackTreatment` Table")
     st.write(tables["TrackTreatment"])
+
+    # Chklist.Pat_ID1 = Ident.Pat_ID1 AND
+    # Patient.Pat_ID1 = Ident.Pat_ID1 AND
+    # QCLTask.TSK_ID = Chklist.TSK_ID AND
+    # Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+    tables["Chklist"] = get_filtered_table(
+        connection, types_map, "Chklist", "Pat_ID1", pat_id1s
+    )
+    st.write("## `Chklist` Table")
+    st.write(tables["Chklist"])
+
+    tsk_ids = tables["Chklist"]["TSK_ID"].unique()
+    tables["QCLTask"] = get_filtered_table(
+        connection, types_map, "QCLTask", "TSK_ID", tsk_ids
+    )
+    st.write("## `QCLTask` Table")
+    st.write(tables["QCLTask"])
+
+    responsible_staff_ids = tables["Chklist"]["Rsp_Staff_ID"].unique()
+    completed_staff_ids = tables["Chklist"]["Com_Staff_ID"].unique()
     machine_staff_ids = tables["TrackTreatment"]["Machine_ID_Staff_ID"].unique()
+    staff_ids = (
+        set(responsible_staff_ids).union(completed_staff_ids).union(machine_staff_ids)
+    )
+    staff_ids = np.array(list(staff_ids))
+    staff_ids = staff_ids[np.logical_not(np.isnan(staff_ids))]
+    staff_ids = staff_ids.astype(int)
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
     tables["Staff"] = get_filtered_table(
-        connection, types_map, "Staff", "Staff_ID", machine_staff_ids
+        connection, types_map, "Staff", "Staff_ID", staff_ids
     )
+    tables["Staff"]["PasswordBytes"] = tables["Staff"]["PasswordBytes"].apply(
+        lambda x: PASSWORD_REPLACE
+    )
+    for index, row in tables["Staff"].iterrows():
+        first_name = row["First_Name"]
+        if first_name.strip() == "":
+            continue
+
+        new_username = FIRST_NAME_USERNAME_MAP[first_name]
+        tables["Staff"].loc[index, "User_Name"] = new_username
 
     st.write("## `Staff` Table")
     st.write(tables["Staff"])
