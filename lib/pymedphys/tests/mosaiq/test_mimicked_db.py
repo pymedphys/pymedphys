@@ -65,7 +65,7 @@ def test_get_treatment_times(
 
 
 @pytest.mark.mosaiqdb
-def test_get_treatment_times(
+def test_get_treatments(
     create_mimic_db_with_tables,
 ):  # pylint: disable = unused-argument
 
@@ -74,7 +74,5 @@ def test_get_treatment_times(
     end = np.datetime64(A_TREATMENT_TIME) + dt
 
     with _connect.connect(database=mimics.DATABASE) as connection:
-        treatment_times = helpers.get_treatments(connection, start, end, MACHINE_ID)
-        # assert np.datetime64(A_TREATMENT_TIME) in treatment_times["start"].tolist()
-        print(treatment_times)
-        assert False
+        treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
+        assert np.datetime64(A_TREATMENT_TIME) in treatments["start"].tolist()
