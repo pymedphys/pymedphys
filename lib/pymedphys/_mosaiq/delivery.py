@@ -23,6 +23,7 @@ from pprint import pformat
 
 from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
 
 from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
@@ -199,12 +200,15 @@ def append_x00_byte_to_all(raw_bytes_list):
 
 
 def check_all_items_equal_length(items, name):
-    all_lengths = [len(item) for item in items]
-    length = list(set(all_lengths))
+    all_lengths = {len(item) for item in items}
 
-    assert len(length) == 1, "All {} should be the same length".format(name)
+    if len(all_lengths) != 1:
+        raise ValueError(
+            f"All {name} should be the same length. The lengths seen were "
+            f"{all_lengths}."
+        )
 
-    return length[0]
+    return list(all_lengths)[0]
 
 
 def decode_msq_mlc(raw_bytes):
@@ -297,55 +301,72 @@ def delivery_data_sql(connection, field_id):
         txfield_results: The results from the TxField table.
         txfieldpoint_results: The results from the TxFieldPoint table.
     """
-    txfield_results, txfieldpoint_results = _raw_delivery_data_sql(connection, field_id)
+    raw_txfield_results, raw_txfieldpoint_results = _raw_delivery_data_sql(
+        connection, field_id
+    )
 
-    if len(txfield_results) != 1:
+    if len(raw_txfield_results) != 1:
         raise ValueError(
-            f"The return results from txfield query gave {txfield_results}. "
+            f"The return results from txfield query gave {raw_txfield_results}. "
             "Expected exactly one row."
         )
-    if len(txfieldpoint_results) == 0:
+    meterset = np.array(raw_txfield_results[0]).astype(float)
+
+    if len(raw_txfieldpoint_results) == 0:
         raise ValueError("No TxFieldPoints were returned.")
 
-    return txfield_results, txfieldpoint_results
-
-
-def fetch_and_verify_mosaiq_sql(connection, field_id):
-    reference_txfield_results, reference_txfieldpoint_results = delivery_data_sql(
-        connection, field_id
+    txfieldpoint_results = pd.DataFrame(
+        data=raw_txfieldpoint_results,
+        columns=[
+            "Index",
+            "A_Leaf_Set",
+            "B_Leaf_Set",
+            "Gantry_Ang",
+            "Coll_Ang",
+            "Coll_Y1",
+            "Coll_Y2",
+        ],
     )
-    test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
-        connection, field_id
-    )
 
-    agreement = False
+    return meterset, txfieldpoint_results
 
-    while not agreement:
-        agreements = [np.all(reference_txfield_results == test_txfield_results)]
-        for ref, test in zip(reference_txfieldpoint_results, test_txfieldpoint_results):
-            agreements.append(np.all(ref == test))
 
-        agreement = np.all(agreements)
-        if not agreement:
-            print("Mosaiq sql query gave conflicting data.")
+# def fetch_and_verify_mosaiq_sql(connection, field_id):
+#     reference_txfield_results, reference_txfieldpoint_results = delivery_data_sql(
+#         connection, field_id
+#     )
+#     test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
+#         connection, field_id
+#     )
 
-            # log mismatched values output
-            logger = logging.getLogger("mosaiq_delivery_data_sql")
-            logger.error("Mismatch of delivery_data_sql results:")
+#     agreement = False
 
-            logger.error(pformat(reference_txfield_results))
-            logger.error(pformat(test_txfield_results))
-            logger.error(pformat(reference_txfieldpoint_results))
-            logger.error(pformat(test_txfieldpoint_results))
+#     while not agreement:
+#         agreements = [np.all(reference_txfield_results == test_txfield_results)]
+#         for ref, test in zip(reference_txfieldpoint_results, test_txfieldpoint_results):
+#             agreements.append(np.all(ref == test))
 
-            print("Trying again...")
-            reference_txfield_results = test_txfield_results
-            reference_txfieldpoint_results = test_txfieldpoint_results
-            test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
-                connection, field_id
-            )
+#         agreement = np.all(agreements)
+#         if not agreement:
+#             print("Mosaiq sql query gave conflicting data.")
 
-    return test_txfield_results, test_txfieldpoint_results
+#             # log mismatched values output
+#             logger = logging.getLogger("mosaiq_delivery_data_sql")
+#             logger.error("Mismatch of delivery_data_sql results:")
+
+#             logger.error(pformat(reference_txfield_results))
+#             logger.error(pformat(test_txfield_results))
+#             logger.error(pformat(reference_txfieldpoint_results))
+#             logger.error(pformat(test_txfieldpoint_results))
+
+#             print("Trying again...")
+#             reference_txfield_results = test_txfield_results
+#             reference_txfieldpoint_results = test_txfieldpoint_results
+#             test_txfield_results, test_txfieldpoint_results = delivery_data_sql(
+#                 connection, field_id
+#             )
+
+#     return test_txfield_results, test_txfieldpoint_results
 
 
 class DeliveryMosaiq(DeliveryBase):
@@ -388,13 +409,9 @@ class DeliveryMosaiq(DeliveryBase):
 
     @classmethod
     def _from_mosaiq_base(cls, connection, field_id):
-        txfield_results, txfieldpoint_results = fetch_and_verify_mosaiq_sql(
-            connection, field_id
-        )
+        total_mu, tx_field_points = delivery_data_sql(connection, field_id)
 
-        total_mu = np.array(txfield_results[0]).astype(float)
-        txfieldpoint_results = np.array(txfieldpoint_results)
-        cumulative_percentage_mu = txfieldpoint_results[:, 0].astype(float)
+        cumulative_percentage_mu = tx_field_points["Index"].to_numpy(dtype=float)
 
         if np.shape(cumulative_percentage_mu) == ():
             mu_per_control_point = [0, total_mu]
@@ -404,14 +421,17 @@ class DeliveryMosaiq(DeliveryBase):
 
         monitor_units = np.cumsum(mu_per_control_point).tolist()
 
-        mlc_a = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 1].astype(bytes))).T
-        mlc_b = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 2].astype(bytes))).T
+        raw_mlc_a = tx_field_points["A_Leaf_Set"].to_numpy(dtype=bytes)
+        mlc_a = np.squeeze(decode_msq_mlc(raw_mlc_a)).T
 
-        msq_gantry_angle = txfieldpoint_results[:, 3].astype(float)
-        msq_collimator_angle = txfieldpoint_results[:, 4].astype(float)
+        raw_mlc_b = tx_field_points["B_Leaf_Set"].to_numpy(dtype=bytes)
+        mlc_b = np.squeeze(decode_msq_mlc(raw_mlc_b)).T
 
-        coll_y1 = txfieldpoint_results[:, 5].astype(float)
-        coll_y2 = txfieldpoint_results[:, 6].astype(float)
+        msq_gantry_angle = tx_field_points["Gantry_Ang"].to_numpy(dtype=float)
+        msq_collimator_angle = tx_field_points["Coll_Ang"].to_numpy(dtype=float)
+
+        coll_y1 = tx_field_points["Coll_Y1"].to_numpy(dtype=float)
+        coll_y2 = tx_field_points["Coll_Y2"].to_numpy(dtype=float)
 
         mlc, jaw = collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2)
         gantry = convert_IEC_angle_to_bipolar(msq_gantry_angle)
