@@ -13,16 +13,17 @@
 # limitations under the License.
 
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
-import pymedphys
-from pymedphys._mosaiq import delivery, helpers
+from pymedphys._mosaiq import helpers
 
 from . import _connect
-from .data import mimics, mocks
+from .data import mimics
 
 PATIENT_ID = 989898
 FIELD_ID = 88043
+A_TREATMENT_TIME = "2020-04-27 08:03:28.513"
 
 
 @pytest.fixture(name="create_mimic_db_with_tables")
@@ -50,3 +51,13 @@ def test_get_patient_fields(
         tx_fields = helpers.get_patient_fields(connection, PATIENT_ID)
         field_id = tx_fields["field_id"].iloc[0]
         assert field_id == FIELD_ID
+
+
+@pytest.mark.mosaiqdb
+def test_get_treatment_times(
+    create_mimic_db_with_tables,
+):  # pylint: disable = unused-argument
+
+    with _connect.connect(database=mimics.DATABASE) as connection:
+        treatment_times = helpers.get_treatment_times(connection, FIELD_ID)
+        assert np.datetime64(A_TREATMENT_TIME) in treatment_times["start"].tolist()

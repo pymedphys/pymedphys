@@ -19,7 +19,7 @@ import pymedphys
 from pymedphys._mosaiq import delivery, helpers
 
 from . import _connect
-from .data import mimics, mocks
+from .data import mocks
 
 
 @pytest.fixture(name="do_check_create_test_db")

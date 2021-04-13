@@ -33,6 +33,7 @@ COLUMN_TYPES_TO_USE = {
     "float",
     "decimal",
     "binary",
+    "bit",
 }
 
 
