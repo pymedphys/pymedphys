@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import pathlib
 
 from pymedphys._imports import pandas as pd
@@ -117,6 +118,14 @@ def main():
 
     if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
         st.stop()
+
+    for table_name, table in tables.items():
+        column_types = types_map[table_name]
+        for column_name, column_type in column_types.items():
+            if column_type == "binary" or column_type == "timestamp":
+                table[column_name] = table[column_name].apply(
+                    lambda x: base64.b64encode(x).decode()
+                )
 
     for table_name, df in tables.items():
         filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
