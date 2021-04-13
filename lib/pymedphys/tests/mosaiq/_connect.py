@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import contextlib
-
 import pymedphys
 
 MSQ_SERVER = "."
@@ -25,7 +23,6 @@ SA_USER = "sa"
 SA_PASSWORD = "sqlServerPassw0rd"
 
 
-@contextlib.contextmanager
 def connect(database=TEST_DB_NAME):
     connection = pymedphys.mosaiq.connect(
         MSQ_SERVER,
@@ -35,7 +32,4 @@ def connect(database=TEST_DB_NAME):
         password=SA_PASSWORD,
     )
 
-    try:
-        yield connection
-    finally:
-        connection.close()
+    return connection

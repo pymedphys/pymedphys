@@ -27,6 +27,10 @@ FIELD_ID = 88043
 A_TREATMENT_TIME = "2020-04-27 08:03:28.513"
 MACHINE_ID = "2619"
 FIELD_NAME = "3ABUT"
+TIMEZONE = "Australia/Sydney"
+FIRST_NAME = "MOCK"
+LAST_NAME = "PHYSICS"
+FULL_NAME = f"{LAST_NAME}, {FIRST_NAME.capitalize()}"
 
 
 @pytest.fixture(name="connection")
@@ -64,7 +68,7 @@ def dicom_filepath_base():
 @pytest.mark.mosaiqdb
 def test_get_patient_name(connection):
     name = helpers.get_patient_name(connection, PATIENT_ID)
-    assert name == "PHYSICS, Mock"
+    assert name == FULL_NAME
 
 
 @pytest.mark.mosaiqdb
@@ -108,3 +112,12 @@ def test_delivery_from_mosaiq(connection, trf_filepath, dicom_filepath):
 
     max_deviation = np.max(np.abs(trf_metersetmap - mosaiq_metersetmap))
     assert max_deviation < 3
+
+
+@pytest.mark.mosaiqdb
+def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepath):
+    delivery_details = pymedphys.trf.identify(connection, trf_filepath, TIMEZONE)
+    assert delivery_details.field_id == FIELD_ID
+    assert delivery_details.first_name == FIRST_NAME
+    assert delivery_details.last_name == LAST_NAME
+    assert delivery_details.patient_id == str(PATIENT_ID)
