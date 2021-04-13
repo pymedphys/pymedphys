@@ -27,6 +27,7 @@ DATABASE = "MosaiqMimicsTest"
 
 
 def create_mimic_tables(database):
+    sql_types_map = _get_sqlalchemy_types_map()
     tables, types_map = _load_csv_and_toml()
 
     for table_name, table in tables.items():
@@ -34,6 +35,11 @@ def create_mimic_tables(database):
         index_label = table.columns[0]
         table = table.set_index(index_label)
         table = table.drop(columns=["RowVers"])
+        for column_name, a_type in column_types.items():
+            if a_type == sql_types_map["binary"]:
+                table[column_name] = table[column_name].apply(
+                    lambda x: bytes(x[2:-1], encoding="raw_unicode_escape")
+                )
 
         mocks.dataframe_to_sql(
             table,
