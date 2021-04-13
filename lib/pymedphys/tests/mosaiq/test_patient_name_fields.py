@@ -90,15 +90,13 @@ def test_get_patient_fields(
             assert f"Field{txfield['field_label']}" == txfield["field_name"]
 
             # check for txfield control points
-            field_results, point_results = delivery.delivery_data_sql(
-                connection, field_id
-            )
+            total_mu, point_results = delivery.delivery_data_sql(connection, field_id)
 
-            assert field_results[0][0] == "MU"
+            assert total_mu == 100
             print(point_results)
 
             # iterate over the txfield results and see if they match
             current_index = 0.0
-            for tx_point in point_results:
+            for _, tx_point in point_results.iterrows():
                 assert tx_point[0] >= current_index
                 current_index = tx_point[0]
