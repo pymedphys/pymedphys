@@ -26,6 +26,7 @@ PATIENT_ID = 989898
 FIELD_ID = 88043
 A_TREATMENT_TIME = "2020-04-27 08:03:28.513"
 MACHINE_ID = "2619"
+FIELD_NAME = "3ABUT"
 
 
 @pytest.fixture(name="create_mimic_db_with_tables")
@@ -35,7 +36,7 @@ def create_mimic_db_with_tables_base():
 
 
 @pytest.fixture(name="trf_filepath")
-def streamlit_e2e_testing_data_base():
+def trf_filepath_base():
     data_paths = pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip")
     date = A_TREATMENT_TIME.split(" ")[0]
 
@@ -43,6 +44,17 @@ def streamlit_e2e_testing_data_base():
         path
         for path in data_paths
         if date in str(path) and str(FIELD_ID) in str(path) and path.suffix == ".trf"
+    ]
+
+    return filtered_paths[0]
+
+
+@pytest.fixture(name="dicom_filepath")
+def dicom_filepath_base():
+    data_paths = pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip")
+
+    filtered_paths = [
+        path for path in data_paths if path.name == f"{PATIENT_ID}_{FIELD_NAME}.dcm"
     ]
 
     return filtered_paths[0]
@@ -95,15 +107,21 @@ def test_get_treatments(
 
 @pytest.mark.mosaiqdb
 def test_delivery_from_mosaiq(
-    create_mimic_db_with_tables, trf_filepath
+    create_mimic_db_with_tables, trf_filepath, dicom_filepath
 ):  # pylint: disable = unused-argument
     trf_delivery = pymedphys.Delivery.from_trf(trf_filepath)
+    dicom_delivery = pymedphys.Delivery.from_dicom(dicom_filepath)
 
     with _connect.connect(database=mimics.DATABASE) as connection:
         mosaiq_delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
 
-    assert np.abs(trf_delivery.mu[-1] - mosaiq_delivery.mu[-1]) < 0.2
+    assert np.allclose(dicom_delivery.mu, mosaiq_delivery.mu, atol=1)
+    assert np.allclose(dicom_delivery.mlc, mosaiq_delivery.mlc, atol=0.1)
+    assert np.allclose(dicom_delivery.jaw, mosaiq_delivery.jaw, atol=0.1)
+    assert np.allclose(dicom_delivery.gantry, mosaiq_delivery.gantry, atol=0.1)
+    assert np.allclose(dicom_delivery.collimator, mosaiq_delivery.collimator, atol=0.1)
 
+    assert np.abs(trf_delivery.mu[-1] - mosaiq_delivery.mu[-1]) < 0.2
     trf_metersetmap = trf_delivery.metersetmap(grid_resolution=5)
     mosaiq_metersetmap = mosaiq_delivery.metersetmap(grid_resolution=5)
 
