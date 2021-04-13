@@ -28,12 +28,6 @@ def fixture_check_create_test_db():
     mocks.check_create_test_db()
 
 
-@pytest.fixture(name="create_mimic_db_with_tables")
-def create_mimic_db_with_tables_base():
-    """ will create the test database, if it does not already exist on the instance """
-    mimics.create_db_with_tables()
-
-
 @pytest.mark.mosaiqdb
 def test_get_patient_name(do_check_create_test_db):  # pylint: disable = unused-argument
     """ tests the get_patient_name helper function"""
@@ -65,16 +59,6 @@ def test_get_patient_name(do_check_create_test_db):  # pylint: disable = unused-
 
         # finally spot check Moe
         assert moe_patient_name == "HOWARD, Moe"
-
-
-@pytest.mark.mosaiqdb
-def test_mimicked_db_patient_names(
-    create_mimic_db_with_tables,
-):  # pylint: disable = unused-argument
-
-    with _connect.connect(database=mimics.DATABASE) as connection:
-        name = helpers.get_patient_name(connection, 989898)
-        assert name == "PHYSICS, Mock"
 
 
 @pytest.mark.mosaiqdb
