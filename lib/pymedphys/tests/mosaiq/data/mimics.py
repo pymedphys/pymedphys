@@ -23,23 +23,32 @@ from . import mocks
 
 HERE = pathlib.Path(__file__).parent
 
-DATABASE = "MosaiqMimicsTest"
+DATABASE = "MosaiqMimicsTest001"
+
+COLUMN_TYPES_TO_USE = ["int"]
 
 
 def create_mimic_tables(database):
     sql_types_map = _get_sqlalchemy_types_map()
     tables, types_map = _load_csv_and_toml()
+    column_types_to_use = [sql_types_map[item] for item in COLUMN_TYPES_TO_USE]
 
     for table_name, table in tables.items():
         column_types = types_map[table_name]
         index_label = table.columns[0]
         table = table.set_index(index_label)
-        table = table.drop(columns=["RowVers"])
+
         for column_name, a_type in column_types.items():
+            if not a_type in column_types_to_use:
+                table = table.drop(columns=[column_name])
+                continue
             if a_type == sql_types_map["binary"]:
                 table[column_name] = table[column_name].apply(
                     lambda x: bytes(x[2:-1], encoding="raw_unicode_escape")
                 )
+                continue
+            if a_type == sql_types_map["varchar"]:
+                column_types[column_name] = sqlalchemy.types.VARCHAR(length=200)
 
         mocks.dataframe_to_sql(
             table,
@@ -47,7 +56,7 @@ def create_mimic_tables(database):
             index_label=index_label,
             dtype=column_types,
             database=database,
-            if_exists="append",
+            if_exists="replace",
         )
 
 
