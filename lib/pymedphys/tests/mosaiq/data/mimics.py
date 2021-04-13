@@ -23,20 +23,31 @@ from . import mocks
 
 HERE = pathlib.Path(__file__).parent
 
+DATABASE = "MosaiqMimicsTest"
 
-def create_mimic_tables():
+
+def create_mimic_tables(database):
     tables, types_map = _load_csv_and_toml()
 
     for table_name, table in tables.items():
         column_types = types_map[table_name]
         index_label = table.columns[0]
+        table = table.set_index(index_label)
+        table = table.drop(columns=["RowVers"])
 
         mocks.dataframe_to_sql(
             table,
             table_name,
             index_label=index_label,
             dtype=column_types,
+            database=database,
+            if_exists="append",
         )
+
+
+def create_db_with_tables():
+    mocks.check_create_test_db(database=DATABASE)
+    create_mimic_tables(DATABASE)
 
 
 @functools.lru_cache()

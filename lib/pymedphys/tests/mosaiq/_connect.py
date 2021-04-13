@@ -19,17 +19,18 @@ import pymedphys
 
 MSQ_SERVER = "."
 TEST_DB_NAME = "MosaiqTest77008"
+MIMIC_DB_NAME = "MosaiqMimicTest"
 
 SA_USER = "sa"
 SA_PASSWORD = "sqlServerPassw0rd"
 
 
 @contextlib.contextmanager
-def connect():
+def connect(database=TEST_DB_NAME):
     connection = pymedphys.mosaiq.connect(
         MSQ_SERVER,
         port=1433,
-        database=TEST_DB_NAME,
+        database=database,
         username=SA_USER,
         password=SA_PASSWORD,
     )
