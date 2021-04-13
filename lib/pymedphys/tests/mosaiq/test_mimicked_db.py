@@ -29,10 +29,11 @@ MACHINE_ID = "2619"
 FIELD_NAME = "3ABUT"
 
 
-@pytest.fixture(name="create_mimic_db_with_tables")
-def create_mimic_db_with_tables_base():
+@pytest.fixture(name="connection")
+def connection_base():
     """ will create the test database, if it does not already exist on the instance """
     mimics.create_db_with_tables()
+    return _connect.connect(database=mimics.DATABASE)
 
 
 @pytest.fixture(name="trf_filepath")
@@ -61,59 +62,39 @@ def dicom_filepath_base():
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_name(
-    create_mimic_db_with_tables,
-):  # pylint: disable = unused-argument
-
-    with _connect.connect(database=mimics.DATABASE) as connection:
-        name = helpers.get_patient_name(connection, PATIENT_ID)
-        assert name == "PHYSICS, Mock"
+def test_get_patient_name(connection):
+    name = helpers.get_patient_name(connection, PATIENT_ID)
+    assert name == "PHYSICS, Mock"
 
 
 @pytest.mark.mosaiqdb
-def test_get_patient_fields(
-    create_mimic_db_with_tables,
-):  # pylint: disable = unused-argument
-
-    with _connect.connect(database=mimics.DATABASE) as connection:
-        tx_fields = helpers.get_patient_fields(connection, PATIENT_ID)
-        field_id = tx_fields["field_id"].iloc[0]
-        assert field_id == FIELD_ID
+def test_get_patient_fields(connection):
+    tx_fields = helpers.get_patient_fields(connection, PATIENT_ID)
+    field_id = tx_fields["field_id"].iloc[0]
+    assert field_id == FIELD_ID
 
 
 @pytest.mark.mosaiqdb
-def test_get_treatment_times(
-    create_mimic_db_with_tables,
-):  # pylint: disable = unused-argument
-
-    with _connect.connect(database=mimics.DATABASE) as connection:
-        treatment_times = helpers.get_treatment_times(connection, FIELD_ID)
-        assert np.datetime64(A_TREATMENT_TIME) in treatment_times["start"].tolist()
+def test_get_treatment_times(connection):
+    treatment_times = helpers.get_treatment_times(connection, FIELD_ID)
+    assert np.datetime64(A_TREATMENT_TIME) in treatment_times["start"].tolist()
 
 
 @pytest.mark.mosaiqdb
-def test_get_treatments(
-    create_mimic_db_with_tables,
-):  # pylint: disable = unused-argument
-
+def test_get_treatments(connection):
     dt = np.timedelta64(4, "h")
     start = np.datetime64(A_TREATMENT_TIME) - dt
     end = np.datetime64(A_TREATMENT_TIME) + dt
 
-    with _connect.connect(database=mimics.DATABASE) as connection:
-        treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
-        assert np.datetime64(A_TREATMENT_TIME) in treatments["start"].tolist()
+    treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
+    assert np.datetime64(A_TREATMENT_TIME) in treatments["start"].tolist()
 
 
 @pytest.mark.mosaiqdb
-def test_delivery_from_mosaiq(
-    create_mimic_db_with_tables, trf_filepath, dicom_filepath
-):  # pylint: disable = unused-argument
+def test_delivery_from_mosaiq(connection, trf_filepath, dicom_filepath):
     trf_delivery = pymedphys.Delivery.from_trf(trf_filepath)
     dicom_delivery = pymedphys.Delivery.from_dicom(dicom_filepath)
-
-    with _connect.connect(database=mimics.DATABASE) as connection:
-        mosaiq_delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
+    mosaiq_delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
 
     assert np.allclose(dicom_delivery.mu, mosaiq_delivery.mu, atol=1)
     assert np.allclose(dicom_delivery.mlc, mosaiq_delivery.mlc, atol=0.1)
