@@ -34,6 +34,20 @@ def create_mimic_db_with_tables_base():
     mimics.create_db_with_tables()
 
 
+@pytest.fixture(name="trf_filepath")
+def streamlit_e2e_testing_data_base():
+    data_paths = pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip")
+    date = A_TREATMENT_TIME.split(" ")[0]
+
+    filtered_paths = [
+        path
+        for path in data_paths
+        if date in str(path) and str(FIELD_ID) in str(path) and path.suffix == ".trf"
+    ]
+
+    return filtered_paths[0]
+
+
 @pytest.mark.mosaiqdb
 def test_get_patient_name(
     create_mimic_db_with_tables,
@@ -81,8 +95,15 @@ def test_get_treatments(
 
 @pytest.mark.mosaiqdb
 def test_delivery_from_mosaiq(
-    create_mimic_db_with_tables,
+    create_mimic_db_with_tables, trf_filepath
 ):  # pylint: disable = unused-argument
+    trf_delivery = pymedphys.Delivery.from_trf(trf_filepath)
+    trf_metersetmap = trf_delivery.metersetmap(grid_resolution=5)
 
     with _connect.connect(database=mimics.DATABASE) as connection:
-        delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
+        mosaiq_delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
+
+    mosaiq_metersetmap = mosaiq_delivery.metersetmap(grid_resolution=5)
+
+    max_deviation = np.max(np.abs(trf_metersetmap - mosaiq_metersetmap))
+    assert max_deviation < 3
