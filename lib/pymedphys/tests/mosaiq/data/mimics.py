@@ -39,7 +39,7 @@ COLUMN_TYPES_TO_USE = {
 
 TYPE_CASTING = {
     "char": "varchar",
-    # "timestamp": "binary",
+    "timestamp": "binary",
 }
 
 
