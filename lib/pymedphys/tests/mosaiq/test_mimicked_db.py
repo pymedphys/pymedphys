@@ -16,6 +16,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
+import pymedphys
 from pymedphys._mosaiq import helpers
 
 from . import _connect
@@ -76,3 +77,12 @@ def test_get_treatments(
     with _connect.connect(database=mimics.DATABASE) as connection:
         treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
         assert np.datetime64(A_TREATMENT_TIME) in treatments["start"].tolist()
+
+
+@pytest.mark.mosaiqdb
+def test_delivery_from_mosaiq(
+    create_mimic_db_with_tables,
+):  # pylint: disable = unused-argument
+
+    with _connect.connect(database=mimics.DATABASE) as connection:
+        delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)

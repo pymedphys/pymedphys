@@ -253,8 +253,7 @@ def _raw_delivery_data_sql(connection, field_id):
         connection,
         """
         SELECT
-            TxField.Meterset,
-            TxField.RowVers
+            TxField.Meterset
         FROM TxField
         WHERE
             TxField.FLD_ID = %(field_id)s
@@ -274,8 +273,7 @@ def _raw_delivery_data_sql(connection, field_id):
             TxFieldPoint.Gantry_Ang,
             TxFieldPoint.Coll_Ang,
             TxFieldPoint.Coll_Y1,
-            TxFieldPoint.Coll_Y2,
-            TxFieldPoint.RowVers
+            TxFieldPoint.Coll_Y2
         FROM TxFieldPoint
         WHERE
             TxFieldPoint.FLD_ID = %(field_id)s
@@ -306,16 +304,8 @@ def delivery_data_sql(connection, field_id):
             f"The return results from txfield query gave {txfield_results}. "
             "Expected exactly one row."
         )
-    txfield_results[0] = txfield_results[0][0], struct.unpack(
-        "Q", txfield_results[0][1]
-    )
-
-    assert len(txfieldpoint_results) >= 1
-    for one_point in txfieldpoint_results:
-        # convert to list, so we can change last element
-        one_point = list(one_point)
-        one_point[-1] = struct.unpack("Q", one_point[-1])
-        one_point = tuple(one_point)
+    if len(txfieldpoint_results) == 0:
+        raise ValueError("No TxFieldPoints were returned.")
 
     return txfield_results, txfieldpoint_results
 
@@ -355,7 +345,6 @@ def fetch_and_verify_mosaiq_sql(connection, field_id):
                 connection, field_id
             )
 
-    # return the txfield and point results, including rowversions
     return test_txfield_results, test_txfieldpoint_results
 
 
@@ -404,6 +393,7 @@ class DeliveryMosaiq(DeliveryBase):
         )
 
         total_mu = np.array(txfield_results[0]).astype(float)
+        txfieldpoint_results = np.array(txfieldpoint_results)
         cumulative_percentage_mu = txfieldpoint_results[:, 0].astype(float)
 
         if np.shape(cumulative_percentage_mu) == ():
