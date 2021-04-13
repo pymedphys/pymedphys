@@ -17,9 +17,7 @@
 """
 
 import functools
-import logging
 import struct
-from pprint import pformat
 
 from pymedphys._imports import attr
 from pymedphys._imports import numpy as np

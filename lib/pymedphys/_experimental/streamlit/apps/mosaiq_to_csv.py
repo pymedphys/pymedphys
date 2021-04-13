@@ -122,7 +122,7 @@ def main():
     for table_name, table in tables.items():
         column_types = types_map[table_name]
         for column_name, column_type in column_types.items():
-            if column_type == "binary" or column_type == "timestamp":
+            if column_type in ["binary", "timestamp"]:
                 table[column_name] = table[column_name].apply(
                     lambda x: base64.b64encode(x).decode()
                 )
