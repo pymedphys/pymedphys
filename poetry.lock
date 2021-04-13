@@ -2660,15 +2660,15 @@ dicom = ["pydicom", "pynetdicom"]
 docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
-mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "tqdm"]
+mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
-tests = ["hypothesis", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil"]
+tests = ["hypothesis", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
 user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylinac", "pymedphys-pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "reportlab", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "streamlit-analytics", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "c886bd494744ff854b8134eed2c4a8dc161b8c9eb51f2a02135c62187f4a0779"
+content-hash = "7906eef74db368485e360fa08d5097b4435b7d81dec7b752d2a56bb443b64d08"
 
 [metadata.files]
 alabaster = [

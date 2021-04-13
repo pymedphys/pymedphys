@@ -227,9 +227,10 @@ extras_require = {
         "tabulate",
     ],
     "icom": ["numpy>=1.20.2"],
-    "mosaiq": ["tqdm", "pymssql", "sqlalchemy", "scikit-learn", "pandas>=1.0.0"],
+    "mosaiq": ["pymssql", "sqlalchemy", "scikit-learn", "pandas>=1.0.0"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
+        "tqdm",
         "python-dateutil",
         "pytest",
         "pytest-sugar",
