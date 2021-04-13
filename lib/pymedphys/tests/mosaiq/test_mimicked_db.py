@@ -98,11 +98,13 @@ def test_delivery_from_mosaiq(
     create_mimic_db_with_tables, trf_filepath
 ):  # pylint: disable = unused-argument
     trf_delivery = pymedphys.Delivery.from_trf(trf_filepath)
-    trf_metersetmap = trf_delivery.metersetmap(grid_resolution=5)
 
     with _connect.connect(database=mimics.DATABASE) as connection:
         mosaiq_delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
 
+    assert np.abs(trf_delivery.mu[-1] - mosaiq_delivery.mu[-1]) < 0.2
+
+    trf_metersetmap = trf_delivery.metersetmap(grid_resolution=5)
     mosaiq_metersetmap = mosaiq_delivery.metersetmap(grid_resolution=5)
 
     max_deviation = np.max(np.abs(trf_metersetmap - mosaiq_metersetmap))
