@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import base64
 import functools
 import pathlib
 
@@ -71,7 +72,7 @@ def create_mimic_tables(database):
 
             if a_type == sql_types_map["binary"]:
                 table[column_name] = table[column_name].apply(
-                    lambda x: bytes(x[2:-1], encoding="raw_unicode_escape")
+                    lambda x: base64.decodebytes(x.encode("utf-8"))
                 )
                 continue
 
