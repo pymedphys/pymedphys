@@ -154,17 +154,21 @@ def main():
         st.write(f"## `{table_name}` Table")
         st.write(table)
 
-    if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
-        st.stop()
+    # Disabled the Button.
+    # If this tool is desired to be used more regularly, a configurable
+    # CSV output path can be created.
 
-    for table_name, df in tables.items():
-        filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
-        df.to_csv(filepath)
+    # if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
+    #     st.stop()
 
-    toml_filepath = TEST_DATA_DIR.joinpath("types_map.toml")
+    # for table_name, df in tables.items():
+    #     filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
+    #     df.to_csv(filepath)
 
-    with open(toml_filepath, "w") as f:
-        toml.dump(types_map, f)
+    # toml_filepath = TEST_DATA_DIR.joinpath("types_map.toml")
+
+    # with open(toml_filepath, "w") as f:
+    #     toml.dump(types_map, f)
 
 
 def _convert_to_datetime(item):
