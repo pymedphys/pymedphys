@@ -24,13 +24,15 @@ from .data import mimics
 
 PATIENT_ID = 989898
 FIELD_ID = 88043
-A_TREATMENT_TIME = "2020-04-27 08:03:28.513"
+A_TREATMENT_DATETIME = "2020-04-27 08:03:28.513"
 MACHINE_ID = "2619"
 FIELD_NAME = "3ABUT"
 TIMEZONE = "Australia/Sydney"
 FIRST_NAME = "MOCK"
 LAST_NAME = "PHYSICS"
 FULL_NAME = f"{LAST_NAME}, {FIRST_NAME.capitalize()}"
+QCL_LOCATION = "Physics_Check"
+A_QCL_DUE_DATETIME = "2021-05-21 23:59:59"
 
 
 @pytest.fixture(name="connection")
@@ -43,7 +45,7 @@ def connection_base():
 @pytest.fixture(name="trf_filepath")
 def trf_filepath_base():
     data_paths = pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip")
-    date = A_TREATMENT_TIME.split(" ")[0]
+    date = A_TREATMENT_DATETIME.split(" ")[0]
 
     filtered_paths = [
         path
@@ -81,17 +83,17 @@ def test_get_patient_fields(connection):
 @pytest.mark.mosaiqdb
 def test_get_treatment_times(connection):
     treatment_times = helpers.get_treatment_times(connection, FIELD_ID)
-    assert np.datetime64(A_TREATMENT_TIME) in treatment_times["start"].tolist()
+    assert np.datetime64(A_TREATMENT_DATETIME) in treatment_times["start"].tolist()
 
 
 @pytest.mark.mosaiqdb
 def test_get_treatments(connection):
     dt = np.timedelta64(4, "h")
-    start = np.datetime64(A_TREATMENT_TIME) - dt
-    end = np.datetime64(A_TREATMENT_TIME) + dt
+    start = np.datetime64(A_TREATMENT_DATETIME) - dt
+    end = np.datetime64(A_TREATMENT_DATETIME) + dt
 
     treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
-    assert np.datetime64(A_TREATMENT_TIME) in treatments["start"].tolist()
+    assert np.datetime64(A_TREATMENT_DATETIME) in treatments["start"].tolist()
 
 
 @pytest.mark.mosaiqdb
@@ -121,3 +123,10 @@ def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepat
     assert delivery_details.first_name == FIRST_NAME
     assert delivery_details.last_name == LAST_NAME
     assert delivery_details.patient_id == str(PATIENT_ID)
+
+
+@pytest.mark.mosaiqdb
+def test_get_incomplete_qcls(connection: pymedphys.mosaiq.Connection):
+    incomplete_qcls = helpers.get_incomplete_qcls(connection, QCL_LOCATION)
+    print(incomplete_qcls)
+    assert np.datetime64(A_QCL_DUE_DATETIME) in incomplete_qcls["due"].tolist()
