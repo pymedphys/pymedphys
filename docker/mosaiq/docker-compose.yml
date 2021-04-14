@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+version: "3.6"
 
-import pymedphys
-
-pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip")
-pymedphys.zip_data_paths("wlutz-demo-files.zip")
+services:
+  mosaiq-mssql:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: sqlServerPassw0rd
+    ports:
+      - 1433:1433

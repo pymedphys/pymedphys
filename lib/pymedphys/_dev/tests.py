@@ -205,30 +205,22 @@ def run_pylint(_, remaining):
         os.chdir(original_cwd)
 
 
-def run_cypress(args):
-    if args.docker:
-        commands = [
-            ("docker build . -t pymedphys", REPO_ROOT, True),
-            (
-                "docker run -p 8501:8501 -e PORT=8501 --name pymedphys-cypress pymedphys",
-                REPO_ROOT,
-                False,
-            ),
-            ("yarn", cypress_test_utilities.HERE, True),
-            ("yarn cypress open", cypress_test_utilities.HERE, True),
-        ]
+def run_cypress(_):
+    cypress_test_utilities.run_test_commands_with_gui_process(
+        ["yarn", "yarn cypress open"]
+    )
 
-        try:
-            for command, cwd, wait in commands:
-                if wait:
-                    subprocess.check_output(command, cwd=cwd, shell=True)
-                else:
-                    subprocess.Popen(command, cwd=cwd, shell=True)
-        finally:
-            subprocess.check_call("docker stop pymedphys-cypress", shell=True)
-            subprocess.check_call("docker rm pymedphys-cypress", shell=True)
 
+def start_mssql_docker(args):
+    CWD = REPO_ROOT.joinpath("docker", "mosaiq")
+
+    if args.daemon:
+        if args.stop:
+            raise ValueError("Can't call stop and daemon flag together")
+        command = "docker-compose up -d"
+    elif args.stop:
+        command = "docker-compose down"
     else:
-        cypress_test_utilities.run_test_commands_with_gui_process(
-            ["yarn", "yarn cypress open"]
-        )
+        command = "docker-compose up"
+
+    subprocess.check_output(command, cwd=CWD, shell=True)
