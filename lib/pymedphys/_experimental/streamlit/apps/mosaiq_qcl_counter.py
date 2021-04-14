@@ -21,6 +21,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 import pymedphys
+from pymedphys._mosaiq import helpers
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.server import session as _session
 from pymedphys._streamlit.utilities import config as st_config
@@ -185,7 +186,9 @@ def _get_all_results(site_config_map, connections, chosen_start, chosen_end):
         site_config = site_config_map[site]
         location = site_config["location"]
 
-        results = _get_qcls_by_date(connection, location, chosen_start, chosen_end)
+        results = helpers.get_qcls_by_date(
+            connection, location, chosen_start, chosen_end
+        )
 
         for column in ("due", "actual_completed_time"):
             results[column] = _pandas_convert_series_to_date(results[column])
@@ -206,49 +209,3 @@ def _get_start_of_month(dt: datetime.datetime):
 def _get_start_of_last_month(dt: datetime.datetime):
     definitely_in_last_month = _get_start_of_month(dt) - datetime.timedelta(days=1)
     return _get_start_of_month(definitely_in_last_month)
-
-
-def _get_qcls_by_date(connection, location, start, end):
-    data = pymedphys.mosaiq.execute(
-        connection,
-        """
-        SELECT
-            Ident.IDA,
-            Patient.Last_Name,
-            Patient.First_Name,
-            Chklist.Due_DtTm,
-            Chklist.Act_DtTm,
-            Com_Staff.Last_Name,
-            Com_Staff.First_Name,
-            QCLTask.Description
-        FROM Chklist, Staff as Rsp_Staff, Staff as Com_Staff, QCLTask, Ident, Patient
-        WHERE
-            Chklist.Pat_ID1 = Ident.Pat_ID1 AND
-            Patient.Pat_ID1 = Ident.Pat_ID1 AND
-            QCLTask.TSK_ID = Chklist.TSK_ID AND
-            Rsp_Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
-            RTRIM(LTRIM(Rsp_Staff.Last_Name)) = RTRIM(LTRIM(%(location)s)) AND
-            Com_Staff.Staff_ID = Chklist.Com_Staff_ID AND
-            Chklist.Act_DtTm >= %(start)s AND
-            Chklist.Act_DtTm < %(end)s
-        """,
-        {"location": location, "start": start, "end": end},
-    )
-
-    results = pd.DataFrame(
-        data=data,
-        columns=[
-            "patient_id",
-            "patient_last_name",
-            "patient_first_name",
-            "due",
-            "actual_completed_time",
-            "staff_last_name",
-            "staff_first_name",
-            "task",
-        ],
-    )
-
-    results = results.sort_values(by=["actual_completed_time"], ascending=False)
-
-    return results
