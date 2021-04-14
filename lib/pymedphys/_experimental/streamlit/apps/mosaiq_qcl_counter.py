@@ -20,7 +20,6 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-import pymedphys
 from pymedphys._mosaiq import helpers
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.server import session as _session
