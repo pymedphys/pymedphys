@@ -89,9 +89,9 @@ def test_get_treatment_times(connection):
 
 @pytest.mark.mosaiqdb
 def test_get_treatments(connection):
-    dt = np.timedelta64(4, "h")
-    start = np.datetime64(A_TREATMENT_DATETIME) - dt
-    end = np.datetime64(A_TREATMENT_DATETIME) + dt
+    time_delta = np.timedelta64(4, "h")
+    start = np.datetime64(A_TREATMENT_DATETIME) - time_delta
+    end = np.datetime64(A_TREATMENT_DATETIME) + time_delta
 
     treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
     assert np.datetime64(A_TREATMENT_DATETIME) in treatments["start"].tolist()
@@ -139,9 +139,9 @@ def test_get_incomplete_qcls(connection: pymedphys.mosaiq.Connection):
 def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
     a_completion_datetime = QCL_COMPLETED_DATETIMES[0]
 
-    large_dt = np.timedelta64(90, "D")
-    start = np.datetime64(a_completion_datetime) - large_dt
-    end = np.datetime64(a_completion_datetime) + large_dt
+    large_time_delta = np.timedelta64(90, "D")
+    start = np.datetime64(a_completion_datetime) - large_time_delta
+    end = np.datetime64(a_completion_datetime) + large_time_delta
     qcls_by_date = helpers.get_qcls_by_date(connection, QCL_LOCATION, start, end)
     assert (
         np.datetime64(AN_UNCOMPLETED_QCL_DUE_DATETIME)
@@ -150,9 +150,9 @@ def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
     for dt in QCL_COMPLETED_DATETIMES:
         assert np.datetime64(dt) in qcls_by_date["actual_completed_time"].tolist()
 
-    small_dt = np.timedelta64(3, "s")
-    start = np.datetime64(a_completion_datetime) - small_dt
-    end = np.datetime64(a_completion_datetime) + small_dt
+    small_time_delta = np.timedelta64(3, "s")
+    start = np.datetime64(a_completion_datetime) - small_time_delta
+    end = np.datetime64(a_completion_datetime) + small_time_delta
     qcls_by_date = helpers.get_qcls_by_date(connection, QCL_LOCATION, start, end)
 
     assert (
