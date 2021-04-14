@@ -332,43 +332,6 @@ def delivery_data_sql(connection, field_id):
 class DeliveryMosaiq(DeliveryBase):
     @classmethod
     def from_mosaiq(cls, connection, field_id):
-        mosaiq_delivery_data = cls._from_mosaiq_base(connection, field_id)
-        reference_data = (
-            mosaiq_delivery_data.monitor_units,
-            mosaiq_delivery_data.mlc,
-            mosaiq_delivery_data.jaw,
-        )
-
-        delivery_data = cls._from_mosaiq_base(connection, field_id)
-        test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
-
-        agreement = False
-
-        while not agreement:
-            agreements = []
-            for ref, test in zip(reference_data, test_data):
-                agreements.append(np.all(ref == test))
-
-            agreement = np.all(agreements)
-            if not agreement:
-                print("Converted Mosaiq delivery data was conflicting.")
-                print(
-                    "MU agreement: {}\nMLC agreement: {}\n"
-                    "Jaw agreement: {}".format(*agreements)
-                )
-                print("Trying again...")
-                reference_data = test_data
-                delivery_data = cls._from_mosaiq_base(connection, field_id)
-                test_data = (
-                    delivery_data.monitor_units,
-                    delivery_data.mlc,
-                    delivery_data.jaw,
-                )
-
-        return delivery_data
-
-    @classmethod
-    def _from_mosaiq_base(cls, connection, field_id):
         total_mu, tx_field_points = delivery_data_sql(connection, field_id)
 
         cumulative_percentage_mu = tx_field_points["Index"].to_numpy(dtype=float)
