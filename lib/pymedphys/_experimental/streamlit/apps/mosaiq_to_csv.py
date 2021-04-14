@@ -75,8 +75,6 @@ def main():
     tables["Ident"] = get_filtered_table(
         connection, types_map, "Ident", "IDA", patient_ids
     )
-    st.write("## `Ident` Table")
-    st.write(tables["Ident"])
 
     # Patient.Pat_ID1 = Ident.Pat_ID1
     pat_id1s = tables["Ident"]["Pat_Id1"].unique()
@@ -87,27 +85,17 @@ def main():
         connection, types_map, "TxField", "Pat_ID1", pat_id1s
     )
 
-    st.write("## `Patient` Table")
-    st.write(tables["Patient"])
-
-    st.write("## `TxField` Table")
-    st.write(tables["TxField"])
-
     # TxField.SIT_Set_ID = Site.SIT_Set_ID
     sit_set_ids = tables["TxField"]["SIT_Set_ID"].unique()
     tables["Site"] = get_filtered_table(
         connection, types_map, "Site", "SIT_Set_ID", sit_set_ids
     )
-    st.write("## `Site` Table")
-    st.write(tables["Site"])
 
     # TrackTreatment.FLD_ID = TxField.FLD_ID
     fld_ids = tables["TxField"]["FLD_ID"].unique()
     tables["TrackTreatment"] = get_filtered_table(
         connection, types_map, "TrackTreatment", "FLD_ID", fld_ids
     )
-    st.write("## `TrackTreatment` Table")
-    st.write(tables["TrackTreatment"])
 
     # Chklist.Pat_ID1 = Ident.Pat_ID1 AND
     # Patient.Pat_ID1 = Ident.Pat_ID1 AND
@@ -116,15 +104,11 @@ def main():
     tables["Chklist"] = get_filtered_table(
         connection, types_map, "Chklist", "Pat_ID1", pat_id1s
     )
-    st.write("## `Chklist` Table")
-    st.write(tables["Chklist"])
 
     tsk_ids = tables["Chklist"]["TSK_ID"].unique()
     tables["QCLTask"] = get_filtered_table(
         connection, types_map, "QCLTask", "TSK_ID", tsk_ids
     )
-    st.write("## `QCLTask` Table")
-    st.write(tables["QCLTask"])
 
     responsible_staff_ids = tables["Chklist"]["Rsp_Staff_ID"].unique()
     completed_staff_ids = tables["Chklist"]["Com_Staff_ID"].unique()
@@ -151,18 +135,10 @@ def main():
         new_username = FIRST_NAME_USERNAME_MAP[first_name]
         tables["Staff"].loc[index, "User_Name"] = new_username
 
-    st.write("## `Staff` Table")
-    st.write(tables["Staff"])
-
     # TxFieldPoint.FLD_ID = %(field_id)s
     tables["TxFieldPoint"] = get_filtered_table(
         connection, types_map, "TxFieldPoint", "FLD_ID", fld_ids
     )
-    st.write("## `TxFieldPoint` Table")
-    st.write(tables["TxFieldPoint"])
-
-    if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
-        st.stop()
 
     for table_name, table in tables.items():
         column_types = types_map[table_name]
@@ -171,6 +147,15 @@ def main():
                 table[column_name] = table[column_name].apply(
                     lambda x: base64.b64encode(x).decode()
                 )
+                continue
+            if column_type == "datetime":
+                table[column_name] = table[column_name].apply(_convert_to_datetime)
+
+        st.write(f"## `{table_name}` Table")
+        st.write(table)
+
+    if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
+        st.stop()
 
     for table_name, df in tables.items():
         filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
@@ -180,6 +165,13 @@ def main():
 
     with open(toml_filepath, "w") as f:
         toml.dump(types_map, f)
+
+
+def _convert_to_datetime(item):
+    if item is not None:
+        return pd.to_datetime(item)
+
+    return item
 
 
 def get_filtered_table(connection, types_map, table, column_name, column_values):
