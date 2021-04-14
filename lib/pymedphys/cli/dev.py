@@ -11,6 +11,7 @@ def dev_cli(subparsers):
     add_doctests_parser(dev_subparsers)
     add_cypress_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
+    add_mosaiq_mssql_parser(dev_subparsers)
 
     return dev_parser
 
@@ -61,14 +62,22 @@ def add_propagate_parser(dev_subparsers):
 
 def add_cypress_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("cypress")
-    parser.add_argument(
-        "--docker",
-        help="Run cypress while pointing to the PyMedPhys docker testing docker image.",
-        action="store_true",
-    )
     parser.set_defaults(func=tests.run_cypress)
 
 
 def add_clean_imports_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("imports")
     parser.set_defaults(func=tests.run_clean_imports)
+
+
+def add_mosaiq_mssql_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser("mssql")
+    parser.set_defaults(func=tests.start_mssql_docker)
+    parser.add_argument(
+        "--stop",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+    )
