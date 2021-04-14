@@ -10,6 +10,6 @@ read = _deprecated(
 )(_read)
 
 _identify.__name__ = "pymedphys.beta.trf.identify"
-read = _deprecated(
+identify = _deprecated(
     reason="This API has left beta. It is now found at `pymedphys.trf.identify`."
 )(_identify)
