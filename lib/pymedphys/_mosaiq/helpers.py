@@ -239,7 +239,7 @@ def get_qcls_by_date(connection, location, start, end):
             Chklist.Act_DtTm >= %(start)s AND
             Chklist.Act_DtTm < %(end)s
         """,
-        {"location": location, "start": start, "end": end},
+        {"location": str(location), "start": str(start), "end": str(end)},
     )
 
     results = pd.DataFrame(

@@ -32,7 +32,8 @@ FIRST_NAME = "MOCK"
 LAST_NAME = "PHYSICS"
 FULL_NAME = f"{LAST_NAME}, {FIRST_NAME.capitalize()}"
 QCL_LOCATION = "Physics_Check"
-A_QCL_DUE_DATETIME = "2021-05-21 23:59:59"
+AN_UNCOMPLETED_QCL_DUE_DATETIME = "2021-05-21 23:59:59"
+QCL_COMPLETED_DATETIMES = ["2021-04-14 09:11:30.387", "2021-04-14 09:11:35.383"]
 
 
 @pytest.fixture(name="connection")
@@ -128,5 +129,35 @@ def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepat
 @pytest.mark.mosaiqdb
 def test_get_incomplete_qcls(connection: pymedphys.mosaiq.Connection):
     incomplete_qcls = helpers.get_incomplete_qcls(connection, QCL_LOCATION)
-    print(incomplete_qcls)
-    assert np.datetime64(A_QCL_DUE_DATETIME) in incomplete_qcls["due"].tolist()
+    assert (
+        np.datetime64(AN_UNCOMPLETED_QCL_DUE_DATETIME)
+        in incomplete_qcls["due"].tolist()
+    )
+
+
+@pytest.mark.mosaiqdb
+def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
+    a_completion_datetime = QCL_COMPLETED_DATETIMES[0]
+
+    large_dt = np.timedelta64(90, "D")
+    start = np.datetime64(a_completion_datetime) - large_dt
+    end = np.datetime64(a_completion_datetime) + large_dt
+    qcls_by_date = helpers.get_qcls_by_date(connection, QCL_LOCATION, start, end)
+    assert (
+        np.datetime64(AN_UNCOMPLETED_QCL_DUE_DATETIME)
+        not in qcls_by_date["due"].tolist()
+    )
+    for dt in QCL_COMPLETED_DATETIMES:
+        assert np.datetime64(dt) in qcls_by_date["actual_completed_time"].tolist()
+
+    small_dt = np.timedelta64(3, "s")
+    start = np.datetime64(a_completion_datetime) - small_dt
+    end = np.datetime64(a_completion_datetime) + small_dt
+    qcls_by_date = helpers.get_qcls_by_date(connection, QCL_LOCATION, start, end)
+
+    assert (
+        np.datetime64(a_completion_datetime)
+        in qcls_by_date["actual_completed_time"].tolist()
+    )
+    for dt in list(set(QCL_COMPLETED_DATETIMES).difference({a_completion_datetime})):
+        assert np.datetime64(dt) not in qcls_by_date["actual_completed_time"].tolist()
