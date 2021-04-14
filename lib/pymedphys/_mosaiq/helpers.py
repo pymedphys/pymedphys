@@ -216,7 +216,7 @@ def get_staff_name(connection, staff_id):
 
 
 def get_qcls_by_date(connection, location, start, end):
-    data = pymedphys.mosaiq.execute(
+    data = api.execute(
         connection,
         """
         SELECT
