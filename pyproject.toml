@@ -36,7 +36,7 @@ typing-extensions = "*"
 # ------- #
 # Library #
 # ------- #
-tqdm = { version = "*", optional = true }  # groups = ["user", "dev"]
+tqdm = { version = "*", optional = true }  # groups = ["user", "dev", "tests"]
 attrs = { version = "*", optional = true }  # groups = ["user", "dev"]
 watchdog = { version = "*", optional = true }  # groups = ["user", "dev"]
 
@@ -225,6 +225,7 @@ tests = [
     "pytest-rerunfailures",
     "pytest-sugar",
     "python-dateutil",
+    "tqdm",
 ]
 user = [
     "Pillow",
