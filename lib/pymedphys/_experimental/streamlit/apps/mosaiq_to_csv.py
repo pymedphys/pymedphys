@@ -14,7 +14,7 @@
 
 import base64
 import pathlib
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -74,11 +74,7 @@ def main():
     tables, types_map = _get_all_tables(connection, patient_ids)
     _apply_table_type_conversions_inplace(tables, types_map)
 
-    # Disabled the Button.
-    # If this tool is desired to be used more regularly, a configurable
-    # CSV output path can be created.
-
-    # _save_tables_to_tests_directory(tables, types_map)
+    _save_tables_to_tests_directory(tables, types_map)
 
 
 def _get_all_tables(
@@ -163,7 +159,7 @@ def _get_all_tables(
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
     tables["Staff"] = get_filtered_table(
-        connection, types_map, "Staff", "Staff_ID", staff_ids
+        connection, types_map, "Staff", "Staff_ID", staff_ids.tolist()
     )
     tables["Staff"]["PasswordBytes"] = tables["Staff"]["PasswordBytes"].apply(
         lambda x: PASSWORD_REPLACE
@@ -185,6 +181,11 @@ def _get_all_tables(
 
 
 def _apply_table_type_conversions_inplace(tables, types_map):
+    """Convert binary types to b64 and make sure pandas defines datetime
+    types even if a column has a None entry.
+
+    Utilised for reliable saving and loading to and from a csv file.
+    """
     for table_name, table in tables.items():
         column_types = types_map[table_name]
         for column_name, column_type in column_types.items():
@@ -201,6 +202,7 @@ def _apply_table_type_conversions_inplace(tables, types_map):
 
 
 def _save_tables_to_tests_directory(tables, types_map):
+    """Save the tables within the PyMedPhys testing directory."""
     if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
         st.stop()
 
@@ -214,14 +216,32 @@ def _save_tables_to_tests_directory(tables, types_map):
         toml.dump(types_map, f)
 
 
-def _convert_to_datetime(item):
-    if item is not None:
-        return pd.to_datetime(item)
+def get_filtered_table(
+    connection: pymedphys.mosaiq.Connection,
+    types_map: Dict[str, Dict[str, str]],
+    table: str,
+    column_name: str,
+    column_values: List[Any],
+) -> "pd.DataFrame":
+    """Step through a set of provided column values extracting these
+    from the MSSQL database.
 
-    return item
+    Parameters
+    ----------
+    connection : pymedphys.mosaiq.Connection
+    types_map : Dict[str, Dict[str, str]]
+        The types_map to append to the new column schema to
+    table : str
+        The table name to pull data from
+    column_name : str
+        The column name to pull data from
+    column_values : List[Any]
+        The values to match against within the columns
 
-
-def get_filtered_table(connection, types_map, table, column_name, column_values):
+    Returns
+    -------
+    df : pd.DataFrame
+    """
     column_names, column_types = _get_all_columns(connection, table)
     df = pd.DataFrame(data=[], columns=column_names)
     for column_value in column_values:
@@ -233,6 +253,9 @@ def get_filtered_table(connection, types_map, table, column_name, column_values)
 
 
 def _append_filtered_table(connection, df, table, column_name, column_value):
+    """Append the rows from an MSSQL table where the column_value
+    matches within the given column_name.
+    """
     df = pd.concat(
         [df, _get_filtered_table(connection, table, column_name, column_value)],
         ignore_index=True,
@@ -242,6 +265,7 @@ def _append_filtered_table(connection, df, table, column_name, column_value):
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def _get_all_columns(connection, table):
+    """Get the column schema from an MSSQL table."""
     raw_columns = pymedphys.mosaiq.execute(
         connection,
         """
@@ -262,6 +286,8 @@ def _get_all_columns(connection, table):
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def _get_filtered_table(connection, table, column_name, column_value):
+    """Get the rows from an MSSQL table where the column_value matches
+    within the given column_name."""
     if not table in ALLOWLIST_TABLE_NAMES:
         raise ValueError(f"{table} must be within the allowlist")
 
@@ -290,3 +316,10 @@ def _get_filtered_table(connection, table, column_name, column_value):
     df = pd.DataFrame(raw_results, columns=column_names)
 
     return df
+
+
+def _convert_to_datetime(item):
+    if item is not None:
+        return pd.to_datetime(item)
+
+    return item
