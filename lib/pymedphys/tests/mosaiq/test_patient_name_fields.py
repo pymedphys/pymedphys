@@ -81,20 +81,22 @@ def test_get_patient_fields(connection: pymedphys.mosaiq.Connection):
     assert len(fields_for_moe_df) == field_count
 
     # for each treatment field
-    for _, txfield in fields_for_moe_df.iterrows():
-        field_id = txfield["field_id"]
+    for fld_id, txfield in fields_for_moe_df.iterrows():
+        print(fld_id, txfield)
 
         # check that the field label matches the field name
         assert f"Field{txfield['field_label']}" == txfield["field_name"]
 
         # check for txfield control points
-        total_mu, point_results = delivery.delivery_data_sql(connection, field_id)
+        field_results, point_results = delivery.delivery_data_sql(
+            connection, txfield["field_id"]
+        )
 
-        assert total_mu == 100
+        assert field_results[0][0] == "MU"
         print(point_results)
 
         # iterate over the txfield results and see if they match
         current_index = 0.0
-        for _, tx_point in point_results.iterrows():
+        for tx_point in point_results:
             assert tx_point[0] >= current_index
             current_index = tx_point[0]
