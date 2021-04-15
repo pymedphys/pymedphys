@@ -92,7 +92,7 @@ def test_get_patient_fields(connection: pymedphys.mosaiq.Connection):
             connection, txfield["field_id"]
         )
 
-        assert field_results[0][0] == "MU"
+        assert field_results[0][0] == 100
         print(point_results)
 
         # iterate over the txfield results and see if they match
