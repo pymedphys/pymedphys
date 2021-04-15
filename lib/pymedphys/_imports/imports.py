@@ -16,6 +16,8 @@ import pymssql
 import pytest
 import requests
 import sqlalchemy
+import sqlalchemy.dialects
+import sqlalchemy.dialects.mssql
 import tabulate
 import timeago
 import toml
