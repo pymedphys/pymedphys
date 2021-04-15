@@ -282,6 +282,7 @@
     "isroutine",
     "issubset",
     "issuperset",
+    "isupper",
     "iterrows",
     "itertools",
     "iview",
