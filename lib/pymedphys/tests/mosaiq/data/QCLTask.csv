@@ -1,0 +1,4 @@
+,TSK_ID,Create_DtTm,Create_ID,Edit_DtTm,Edit_ID,Description,Inactive,Due_DtTm,Responsible_Staff_ID,Est_Dur,Priority_PRO_ID,Billable,Code_Group,ProcCode_PRS_ID,Elpsd_Action,RowVers
+0,15123,2017-07-17 14:53:19.567,18,2017-07-17 14:53:19.567,18,IMRT Physics Check,False,2017-07-17 23:59:59,100,0,,0,,,,AAAAABDH2tU=
+1,15173,2020-01-23 08:58:50.780,18,2020-01-23 08:58:50.780,18,4DCT Data Review,False,2020-01-23 23:59:59,100,0,,0,,,,AAAAABquy44=
+2,14299,,,2017-08-01 09:16:10.003,18,3D Physics Check,False,2012-01-01 23:59:59,100,0,,0,,,,AAAAABDuzUA=
