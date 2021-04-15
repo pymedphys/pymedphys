@@ -23,7 +23,7 @@ SA_USER = "sa"
 SA_PASSWORD = "sqlServerPassw0rd"
 
 
-def connect(database=TEST_DB_NAME):
+def connect(database=TEST_DB_NAME) -> pymedphys.mosaiq.Connection:
     connection = pymedphys.mosaiq.connect(
         MSQ_SERVER,
         port=1433,
