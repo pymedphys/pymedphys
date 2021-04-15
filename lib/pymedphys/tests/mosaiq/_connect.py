@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Derek Lane
+# Copyright (C) 2021 Derek Lane, Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,22 +13,23 @@
 # limitations under the License.
 
 
-from pymedphys._imports import pymssql, pytest
+import pymedphys
 
-from . import _connect
+MSQ_SERVER = "."
+TEST_DB_NAME = "MosaiqTest77008"
+MIMIC_DB_NAME = "MosaiqMimicTest"
+
+SA_USER = "sa"
+SA_PASSWORD = "sqlServerPassw0rd"
 
 
-@pytest.mark.mosaiqdb
-def test_can_we_db():
-    conn = pymssql.connect(
-        _connect.MSQ_SERVER, user=_connect.SA_USER, password=_connect.SA_PASSWORD
+def connect(database=TEST_DB_NAME):
+    connection = pymedphys.mosaiq.connect(
+        MSQ_SERVER,
+        port=1433,
+        database=database,
+        username=SA_USER,
+        password=SA_PASSWORD,
     )
-    cursor = conn.cursor()
-    cursor.execute("select * from sys.databases")
 
-    # should print the four system databases
-    databases = list(cursor)
-    print(databases)
-
-    # and check that the correct number are present
-    assert len(databases) >= 4
+    return connection

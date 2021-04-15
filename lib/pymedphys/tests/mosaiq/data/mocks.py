@@ -1,3 +1,18 @@
+# Copyright (C) 2021 Derek Lane
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 # create mock patients
 import re
 from datetime import datetime, timedelta
@@ -7,10 +22,9 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, sqlalchemy
 
-msq_server = "localhost"
-test_db_name = "MosaiqTest77008"
+from .. import _connect
 
-sa_user, sa_password = "sa", "sqlServerPassw0rd"
+MSQ_SERVER = "localhost"
 
 # vary the number of fractions a bit
 NUMBER_OF_FRACTIONS = (20, 25, 30)
@@ -27,7 +41,14 @@ PROB_OFFSET_BY_PROTOCOL = {
 }
 
 
-def dataframe_to_sql(df, tablename, index_label, dtype=None):
+def dataframe_to_sql(
+    df: "pd.DataFrame",
+    tablename,
+    index_label,
+    dtype=None,
+    database=_connect.TEST_DB_NAME,
+    if_exists="replace",
+):
     """using a pd.DataFrame, populate a table in the configured database
 
     Parameters:
@@ -42,16 +63,14 @@ def dataframe_to_sql(df, tablename, index_label, dtype=None):
 
     """
 
-    connection_str = (
-        f"mssql+pymssql://{sa_user}:{sa_password}@{msq_server}/{test_db_name}"
-    )
+    connection_str = f"mssql+pymssql://{_connect.SA_USER}:{_connect.SA_PASSWORD}@{MSQ_SERVER}/{database}"
     engine = sqlalchemy.create_engine(connection_str, echo=False)
 
     # now SQLAlchemy to populate table
     df.to_sql(
         tablename,
         engine,
-        if_exists="replace",
+        if_exists=if_exists,
         index=True,
         index_label=index_label,
         dtype=dtype,
@@ -61,12 +80,12 @@ def dataframe_to_sql(df, tablename, index_label, dtype=None):
     engine.dispose()
 
 
-def check_create_test_db():
-    """ will create the test database, if it does not already exist on the instance """
+def check_create_test_db(database=_connect.TEST_DB_NAME):
+    """Will create the test database, if it does not already exist on the instance """
 
     # sa connection to create the test database
     with pymssql.connect(
-        msq_server, user=sa_user, password=sa_password
+        MSQ_SERVER, user=_connect.SA_USER, password=_connect.SA_PASSWORD
     ) as sql_sa_connection:
 
         sql_sa_connection.autocommit(True)
@@ -75,9 +94,9 @@ def check_create_test_db():
         with sql_sa_connection.cursor() as cursor:
             cursor.execute(
                 f"""
-                IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '{test_db_name}')
+                IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '{database}')
                 BEGIN
-                    CREATE DATABASE {test_db_name};
+                    CREATE DATABASE {database};
                 END
                 """
             )
@@ -190,7 +209,7 @@ def create_mock_treatment_fields(site_df=None):
                 "A",
                 "FieldA",
                 1,
-                "MU",
+                100,
                 1,
                 site["Pat_ID1"],
                 sit_set_id,
@@ -200,7 +219,7 @@ def create_mock_treatment_fields(site_df=None):
                 "B",
                 "FieldB",
                 1,
-                "MU",
+                100,
                 1,
                 site["Pat_ID1"],
                 sit_set_id,
@@ -210,7 +229,7 @@ def create_mock_treatment_fields(site_df=None):
                 "C",
                 "FieldC",
                 1,
-                "MU",
+                100,
                 1,
                 site["Pat_ID1"],
                 sit_set_id,

@@ -1,45 +1,41 @@
+# Copyright (C) 2021 Derek Lane, Cancer Care Associates
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from pymedphys._imports import pytest
 
-from pymedphys._mosaiq.delivery import delivery_data_sql
-from pymedphys._mosaiq.helpers import get_patient_fields, get_patient_name
-from pymedphys.mosaiq import connect, execute
+import pymedphys
+from pymedphys._mosaiq import delivery, helpers
 
-from .create_mock_data import (
-    check_create_test_db,
-    create_mock_patients,
-    create_mock_treatment_fields,
-    create_mock_treatment_sites,
-)
-
-msq_server = "."
-test_db_name = "MosaiqTest77008"
-
-sa_user = "sa"
-sa_password = "sqlServerPassw0rd"
+from . import _connect
+from .data import mocks
 
 
 @pytest.fixture(name="do_check_create_test_db")
 def fixture_check_create_test_db():
     """ will create the test database, if it does not already exist on the instance """
-    check_create_test_db()
+    mocks.check_create_test_db()
 
 
 @pytest.mark.mosaiqdb
 def test_get_patient_name(do_check_create_test_db):  # pylint: disable = unused-argument
     """ tests the get_patient_name helper function"""
+    mocks.create_mock_patients()
 
-    create_mock_patients()
-
-    with connect(
-        msq_server,
-        port=1433,
-        database=test_db_name,
-        username=sa_user,
-        password=sa_password,
-    ) as connection:
-
+    with _connect.connect() as connection:
         # test a generic query for patient info
-        result_all = execute(
+        result_all = pymedphys.mosaiq.execute(
             connection,
             """
             SELECT
@@ -59,7 +55,7 @@ def test_get_patient_name(do_check_create_test_db):  # pylint: disable = unused-
         assert len(result_all) == 3
 
         # test the get_patient_name helper function
-        moe_patient_name = get_patient_name(connection, "MR8002")
+        moe_patient_name = helpers.get_patient_name(connection, "MR8002")
 
         # finally spot check Moe
         assert moe_patient_name == "HOWARD, Moe"
@@ -72,20 +68,13 @@ def test_get_patient_fields(
     """ creates basic tx field and site metadata for the mock patients """
 
     # the create_mock_patients output is the patient_ident dataframe
-    mock_patient_ident_df = create_mock_patients()
-    mock_site_df = create_mock_treatment_sites(mock_patient_ident_df)
-    create_mock_treatment_fields(mock_site_df)
+    mock_patient_ident_df = mocks.create_mock_patients()
+    mock_site_df = mocks.create_mock_treatment_sites(mock_patient_ident_df)
+    mocks.create_mock_treatment_fields(mock_site_df)
 
-    with connect(
-        msq_server,
-        port=1433,
-        database=test_db_name,
-        username=sa_user,
-        password=sa_password,
-    ) as connection:
-
+    with _connect.connect() as connection:
         # test the get_patient_fields helper function
-        fields_for_moe_df = get_patient_fields(connection, "MR8002")
+        fields_for_moe_df = helpers.get_patient_fields(connection, "MR8002")
         print(fields_for_moe_df)
 
         # make sure the correct number of rows were returned
@@ -94,22 +83,20 @@ def test_get_patient_fields(
         assert len(fields_for_moe_df) == field_count
 
         # for each treatment field
-        for fld_id, txfield in fields_for_moe_df.iterrows():
-            print(fld_id, txfield)
+        for _, txfield in fields_for_moe_df.iterrows():
+            field_id = txfield["field_id"]
 
             # check that the field label matches the field name
             assert f"Field{txfield['field_label']}" == txfield["field_name"]
 
             # check for txfield control points
-            field_results, point_results = delivery_data_sql(
-                connection, txfield["field_id"]
-            )
+            total_mu, point_results = delivery.delivery_data_sql(connection, field_id)
 
-            assert field_results[0][0] == "MU"
+            assert total_mu == 100
             print(point_results)
 
             # iterate over the txfield results and see if they match
             current_index = 0.0
-            for tx_point in point_results:
+            for _, tx_point in point_results.iterrows():
                 assert tx_point[0] >= current_index
                 current_index = tx_point[0]
