@@ -16,6 +16,7 @@
 import base64
 import functools
 import pathlib
+from typing import Dict, Tuple, cast
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, sqlalchemy, toml
@@ -24,6 +25,12 @@ from . import mocks
 
 HERE = pathlib.Path(__file__).parent
 DATABASE = "MosaiqMimicsTest002"
+
+# The following set is so that table types can be added and removed. In
+# the case where the CSV format can't be input into the MSSQL database
+# the column types can be selectively added and removed here with the
+# aim to troubleshoot what conversions may be needed.
+# eg 'binary' has been stored as b64 strings so that it is reproducible.
 COLUMN_TYPES_TO_USE = {
     "int",
     "smallint",
@@ -37,6 +44,9 @@ COLUMN_TYPES_TO_USE = {
     "bit",
 }
 
+# Not knowing particularly why, I was unable to load values in as "char"
+# or "timestamp". This is a work-a-round to just map those types to
+# something else for now.
 TYPE_CASTING = {
     "char": "varchar",
     "timestamp": "binary",
@@ -44,6 +54,11 @@ TYPE_CASTING = {
 
 
 def create_mimic_tables(database):
+    """Creates MSSQL tables for testing that mimic a Mosaiq DB.
+
+    Pulls data from the *.csv files and types_map.toml file within this
+    same directory and loads them into an MSSQL database.
+    """
     # https://github.com/pymssql/pymssql/issues/504#issuecomment-449746112
     pymssql.Binary = bytearray
 
@@ -87,12 +102,18 @@ def create_mimic_tables(database):
 
 
 def create_db_with_tables():
+    """Creates testing database if it doesn't exist, and then loads in
+    the Mosaiq mimic tables.
+    """
     mocks.check_create_test_db(database=DATABASE)
     create_mimic_tables(DATABASE)
 
 
 @functools.lru_cache()
-def _load_csv_and_toml():
+def _load_csv_and_toml() -> Tuple[Dict[str, "pd.DataFrame"], Dict[str, Dict[str, str]]]:
+    """Loads the *.csv files and types_map.toml file that are within
+    this directory.
+    """
     csv_paths = HERE.glob("*.csv")
     toml_path = HERE.joinpath("types_map.toml")
 
@@ -103,7 +124,9 @@ def _load_csv_and_toml():
         for column, type_repr in column_type_map.items():
             types_map[table][column] = _get_sql_type(type_repr)
 
-    tables = {}
+    types_map = cast(Dict[str, Dict[str, str]], types_map)
+
+    tables: Dict[str, "pd.DataFrame"] = {}
     for path in csv_paths:
         table_name = path.stem
         # column_types = types_map[table_name]
@@ -118,6 +141,9 @@ def _load_csv_and_toml():
 
 @functools.lru_cache()
 def _get_sqlalchemy_types_map():
+    """Load up a map that converts string representations of SQLAlchemy
+    types and maps them to their SQLAlchemy instance.
+    """
     mssql_types = sqlalchemy.dialects.mssql
     mssql_types_map = _create_types_map(mssql_types)
 
@@ -132,6 +158,10 @@ def _get_sqlalchemy_types_map():
 
 
 def _create_types_map(sqltypes):
+    """Take a types module and utilising the `dir` function create a
+    mapping from the string value of that attribute to the SQLAlchemy
+    type instance.
+    """
     sql_types_map = {
         item.lower(): getattr(sqltypes, item)
         for item in dir(sqltypes)
@@ -142,6 +172,8 @@ def _create_types_map(sqltypes):
 
 
 def _get_sql_type(sql_type: str):
+    """Convert an SQL type labelled as a string to an SQLAlchemy type
+    instance."""
     sql_type = str(sql_type).lower()
     sqlalchemy_types_map = _get_sqlalchemy_types_map()
 
