@@ -19,14 +19,12 @@ from typing import Dict, List, Tuple
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import toml
 
 import pymedphys
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as _mosaiq
-
-# from pymedphys._imports import toml
-
 
 CATEGORY = categories.PLANNING
 TITLE = "Mosaiq to CSV"
@@ -80,17 +78,7 @@ def main():
     # If this tool is desired to be used more regularly, a configurable
     # CSV output path can be created.
 
-    # if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
-    #     st.stop()
-
-    # for table_name, df in tables.items():
-    #     filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
-    #     df.to_csv(filepath)
-
-    # toml_filepath = TEST_DATA_DIR.joinpath("types_map.toml")
-
-    # with open(toml_filepath, "w") as f:
-    #     toml.dump(types_map, f)
+    # _save_tables_to_tests_directory(tables, types_map)
 
 
 def _get_all_tables(
@@ -210,6 +198,20 @@ def _apply_table_type_conversions_inplace(tables, types_map):
 
         st.write(f"## `{table_name}` Table")
         st.write(table)
+
+
+def _save_tables_to_tests_directory(tables, types_map):
+    if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
+        st.stop()
+
+    for table_name, df in tables.items():
+        filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
+        df.to_csv(filepath)
+
+    toml_filepath = TEST_DATA_DIR.joinpath("types_map.toml")
+
+    with open(toml_filepath, "w") as f:
+        toml.dump(types_map, f)
 
 
 def _convert_to_datetime(item):
