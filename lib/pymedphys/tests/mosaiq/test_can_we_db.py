@@ -21,7 +21,10 @@ from . import _connect
 @pytest.mark.mosaiqdb
 def test_can_we_db():
     conn = pymssql.connect(
-        _connect.MSQ_SERVER, user=_connect.SA_USER, password=_connect.SA_PASSWORD
+        _connect.MSQ_SERVER,
+        port=_connect.MSQ_PORT,
+        user=_connect.SA_USER,
+        password=_connect.SA_PASSWORD,
     )
     cursor = conn.cursor()
     cursor.execute("select * from sys.databases")

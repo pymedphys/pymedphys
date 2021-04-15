@@ -26,16 +26,16 @@ from . import _connect
 from .data import mocks
 
 
-@pytest.fixture(name="do_check_create_test_db")
+@pytest.fixture(name="connection")
 def fixture_check_create_test_db():
     """ will create the test database, if it does not already exist on the instance """
     mocks.check_create_test_db()
 
+    return _connect.connect()
+
 
 @pytest.mark.mosaiqdb
-def test_sessions_for_site(
-    do_check_create_test_db,
-):  # pylint: disable = unused-argument
+def test_sessions_for_site(connection):
     """ creates basic tx field and site metadata for the mock patients """
 
     # the create_mock_patients output is the patient_ident dataframe
@@ -44,42 +44,39 @@ def test_sessions_for_site(
     mock_txfield_df = mocks.create_mock_treatment_fields(mock_site_df)
     mocks.create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
 
-    with _connect.connect() as connection:
-        # sit_set_id = 1 should be a NAL site
-        sit_set_id = 1
+    # sit_set_id = 1 should be a NAL site
+    sit_set_id = 1
 
-        # test the get_patient_fields helper function
-        sessions_for_one_site = sessions_for_site(connection, sit_set_id)
-        sessions_for_one_site = list(sessions_for_one_site)
-        print(sessions_for_one_site)
+    # test the get_patient_fields helper function
+    sessions_for_one_site = sessions_for_site(connection, sit_set_id)
+    sessions_for_one_site = list(sessions_for_one_site)
+    print(sessions_for_one_site)
 
-        # make sure the correct number of rows were returned
-        assert len(sessions_for_one_site) >= 3
+    # make sure the correct number of rows were returned
+    assert len(sessions_for_one_site) >= 3
 
-        # for each treatment field
-        previous_session_number = None
-        previous_session_end = None
+    # for each treatment field
+    previous_session_number = None
+    previous_session_end = None
 
-        for session_number, session_start, session_end in sessions_for_one_site:
-            print(session_number, session_start, session_end)
+    for session_number, session_start, session_end in sessions_for_one_site:
+        print(session_number, session_start, session_end)
 
-            if previous_session_number is not None:
-                # check that the sessions are in order
-                assert session_number > previous_session_number
+        if previous_session_number is not None:
+            # check that the sessions are in order
+            assert session_number > previous_session_number
 
-            if previous_session_end is not None:
-                assert session_start > previous_session_end
+        if previous_session_end is not None:
+            assert session_start > previous_session_end
 
-            assert session_end > session_start
+        assert session_end > session_start
 
-            previous_session_end = session_number
-            previous_session_end = session_end
+        previous_session_end = session_number
+        previous_session_end = session_end
 
 
 @pytest.mark.mosaiqdb
-def test_session_offsets_for_site(
-    do_check_create_test_db,
-):  # pylint: disable = unused-argument
+def test_session_offsets_for_site(connection):  # pylint: disable = unused-argument
     """ creates basic tx field and site metadata for the mock patients """
 
     # the create_mock_patients output is the patient_ident dataframe
@@ -88,41 +85,40 @@ def test_session_offsets_for_site(
     mock_txfield_df = mocks.create_mock_treatment_fields(mock_site_df)
     mocks.create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
 
-    with _connect.connect() as connection:
-        # should be a NAL site
-        sit_set_id = 1
+    # should be a NAL site
+    sit_set_id = 1
 
-        # test the get_patient_fields helper function
-        sessions_for_one_site = sessions_for_site(connection, sit_set_id)
-        sessions_for_one_site = list(sessions_for_one_site)
-        print(sessions_for_one_site)
+    # test the get_patient_fields helper function
+    sessions_for_one_site = sessions_for_site(connection, sit_set_id)
+    sessions_for_one_site = list(sessions_for_one_site)
+    print(sessions_for_one_site)
 
-        # make sure the correct number of rows were returned
-        assert len(sessions_for_one_site) >= 3
+    # make sure the correct number of rows were returned
+    assert len(sessions_for_one_site) >= 3
 
-        # for each treatment field
-        previous_session_number = None
+    # for each treatment field
+    previous_session_number = None
 
-        for session_number, session_offset in session_offsets_for_site(
-            connection, sit_set_id
-        ):
-            if previous_session_number:
-                # check that the sessions are in order
-                assert session_number > previous_session_number
+    for session_number, session_offset in session_offsets_for_site(
+        connection, sit_set_id
+    ):
+        if previous_session_number:
+            # check that the sessions are in order
+            assert session_number > previous_session_number
 
-            if session_offset is not None:
-                assert session_offset[0] == -1.0
-                assert session_offset[1] == 0.0
-                assert session_offset[2] == 1.0
+        if session_offset is not None:
+            assert session_offset[0] == -1.0
+            assert session_offset[1] == 0.0
+            assert session_offset[2] == 1.0
 
-            previous_session_number = session_number
+        previous_session_number = session_number
 
-        mean_session_offset = mean_session_offset_for_site(connection, sit_set_id)
-        assert mean_session_offset[0] == -1.0
-        assert mean_session_offset[1] == 0.0
-        assert mean_session_offset[2] == 1.0
+    mean_session_offset = mean_session_offset_for_site(connection, sit_set_id)
+    assert mean_session_offset[0] == -1.0
+    assert mean_session_offset[1] == 0.0
+    assert mean_session_offset[2] == 1.0
 
-        localization_offset = localization_offset_for_site(connection, sit_set_id)
-        assert localization_offset[0] == -1.0
-        assert localization_offset[1] == 0.0
-        assert localization_offset[2] == 1.0
+    localization_offset = localization_offset_for_site(connection, sit_set_id)
+    assert localization_offset[0] == -1.0
+    assert localization_offset[1] == 0.0
+    assert localization_offset[2] == 1.0

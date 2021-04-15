@@ -14,18 +14,17 @@
 
 import base64
 import pathlib
+from typing import Any, Dict, List, Tuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import toml
 
 import pymedphys
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as _mosaiq
-
-# from pymedphys._imports import toml
-
 
 CATEGORY = categories.PLANNING
 TITLE = "Mosaiq to CSV"
@@ -33,6 +32,14 @@ TITLE = "Mosaiq to CSV"
 LIB_ROOT = pathlib.Path(__file__).parents[3]
 TEST_DATA_DIR = LIB_ROOT.joinpath("tests", "mosaiq", "data")
 
+PASSWORD_REPLACE = b"\x00" * 15
+FIRST_NAME_USERNAME_MAP = {
+    "Simon": "dummyusername",
+}
+
+# Given dynamic SQL queries are created in the functions below the SQL
+# query is sanitised by only allowing table names and column names to
+# pull from the below.
 ALLOWLIST_TABLE_NAMES = [
     "Ident",
     "Patient",
@@ -54,12 +61,6 @@ ALLOWLIST_COLUMN_NAMES = [
     "TSK_ID",
 ]
 
-PASSWORD_REPLACE = b"\x00" * 15
-
-FIRST_NAME_USERNAME_MAP = {
-    "Simon": "dummyusername",
-}
-
 
 def main():
     config = st_config.get_config()
@@ -70,9 +71,43 @@ def main():
         st.stop()
 
     patient_ids = [item.strip() for item in comma_sep_patient_ids.split(",")]
+    tables, types_map = _get_all_tables(connection, patient_ids)
+    _apply_table_type_conversions_inplace(tables, types_map)
 
-    tables = {}
-    types_map = {}
+    _save_tables_to_tests_directory(tables, types_map)
+
+
+def _get_all_tables(
+    connection: pymedphys.mosaiq.Connection, patient_ids: List[str]
+) -> Tuple[Dict[str, pd.DataFrame], Dict[str, Dict[str, str]]]:
+    """Get Mosaiq tables that are relevant for PyMedPhys regression testing.
+
+    Take a list of patient_ids and steps through the MSSQL Mosaiq
+    database with the intent to extract the relevant rows from the
+    relevant tables for PyMedPhys regression testing.
+
+
+    Parameters
+    ----------
+    connection : pymedphys.mosaiq.Connection
+        A connection object to the Mosaiq SQL server.
+    patient_ids : List[str]
+        The list of Patient IDs (MRNs) to use for extracting data from
+        Mosaiq.
+
+    Returns
+    -------
+    tables
+        A dictionary of Pandas DataFrames with dictionary keys defined
+        by the Mosaiq table name and the table contents being the Mosaiq
+        rows that are relevant to the Patient IDs provided.
+
+    types_map
+        A dictionary of dictionaries that present the MSSQL column types
+        of the tables.
+    """
+    tables: Dict[str, pd.DataFrame] = {}
+    types_map: Dict[str, Dict[str, str]] = {}
 
     tables["Ident"] = get_filtered_table(
         connection, types_map, "Ident", "IDA", patient_ids
@@ -115,16 +150,16 @@ def main():
     responsible_staff_ids = tables["Chklist"]["Rsp_Staff_ID"].unique()
     completed_staff_ids = tables["Chklist"]["Com_Staff_ID"].unique()
     machine_staff_ids = tables["TrackTreatment"]["Machine_ID_Staff_ID"].unique()
-    staff_ids = (
+    staff_ids_with_nans = (
         set(responsible_staff_ids).union(completed_staff_ids).union(machine_staff_ids)
     )
-    staff_ids = np.array(list(staff_ids))
+    staff_ids = np.array(list(staff_ids_with_nans))
     staff_ids = staff_ids[np.logical_not(np.isnan(staff_ids))]
     staff_ids = staff_ids.astype(int)
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
     tables["Staff"] = get_filtered_table(
-        connection, types_map, "Staff", "Staff_ID", staff_ids
+        connection, types_map, "Staff", "Staff_ID", staff_ids.tolist()
     )
     tables["Staff"]["PasswordBytes"] = tables["Staff"]["PasswordBytes"].apply(
         lambda x: PASSWORD_REPLACE
@@ -142,6 +177,15 @@ def main():
         connection, types_map, "TxFieldPoint", "FLD_ID", fld_ids
     )
 
+    return tables, types_map
+
+
+def _apply_table_type_conversions_inplace(tables, types_map):
+    """Convert binary types to b64 and make sure pandas defines datetime
+    types even if a column has a None entry.
+
+    Utilised for reliable saving and loading to and from a csv file.
+    """
     for table_name, table in tables.items():
         column_types = types_map[table_name]
         for column_name, column_type in column_types.items():
@@ -156,31 +200,48 @@ def main():
         st.write(f"## `{table_name}` Table")
         st.write(table)
 
-    # Disabled the Button.
-    # If this tool is desired to be used more regularly, a configurable
-    # CSV output path can be created.
 
-    # if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
-    #     st.stop()
+def _save_tables_to_tests_directory(tables, types_map):
+    """Save the tables within the PyMedPhys testing directory."""
+    if not st.button("Save tables within PyMedPhys mosaiq testing dir"):
+        st.stop()
 
-    # for table_name, df in tables.items():
-    #     filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
-    #     df.to_csv(filepath)
+    for table_name, df in tables.items():
+        filepath = TEST_DATA_DIR.joinpath(table_name).with_suffix(".csv")
+        df.to_csv(filepath)
 
-    # toml_filepath = TEST_DATA_DIR.joinpath("types_map.toml")
+    toml_filepath = TEST_DATA_DIR.joinpath("types_map.toml")
 
-    # with open(toml_filepath, "w") as f:
-    #     toml.dump(types_map, f)
-
-
-def _convert_to_datetime(item):
-    if item is not None:
-        return pd.to_datetime(item)
-
-    return item
+    with open(toml_filepath, "w") as f:
+        toml.dump(types_map, f)
 
 
-def get_filtered_table(connection, types_map, table, column_name, column_values):
+def get_filtered_table(
+    connection: pymedphys.mosaiq.Connection,
+    types_map: Dict[str, Dict[str, str]],
+    table: str,
+    column_name: str,
+    column_values: List[Any],
+) -> "pd.DataFrame":
+    """Step through a set of provided column values extracting these
+    from the MSSQL database.
+
+    Parameters
+    ----------
+    connection : pymedphys.mosaiq.Connection
+    types_map : Dict[str, Dict[str, str]]
+        The types_map to append to the new column schema to
+    table : str
+        The table name to pull data from
+    column_name : str
+        The column name to pull data from
+    column_values : List[Any]
+        The values to match against within the columns
+
+    Returns
+    -------
+    df : pd.DataFrame
+    """
     column_names, column_types = _get_all_columns(connection, table)
     df = pd.DataFrame(data=[], columns=column_names)
     for column_value in column_values:
@@ -192,6 +253,9 @@ def get_filtered_table(connection, types_map, table, column_name, column_values)
 
 
 def _append_filtered_table(connection, df, table, column_name, column_value):
+    """Append the rows from an MSSQL table where the column_value
+    matches within the given column_name.
+    """
     df = pd.concat(
         [df, _get_filtered_table(connection, table, column_name, column_value)],
         ignore_index=True,
@@ -201,6 +265,7 @@ def _append_filtered_table(connection, df, table, column_name, column_value):
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def _get_all_columns(connection, table):
+    """Get the column schema from an MSSQL table."""
     raw_columns = pymedphys.mosaiq.execute(
         connection,
         """
@@ -221,6 +286,8 @@ def _get_all_columns(connection, table):
 
 @st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def _get_filtered_table(connection, table, column_name, column_value):
+    """Get the rows from an MSSQL table where the column_value matches
+    within the given column_name."""
     if not table in ALLOWLIST_TABLE_NAMES:
         raise ValueError(f"{table} must be within the allowlist")
 
@@ -249,3 +316,10 @@ def _get_filtered_table(connection, table, column_name, column_value):
     df = pd.DataFrame(raw_results, columns=column_names)
 
     return df
+
+
+def _convert_to_datetime(item):
+    if item is not None:
+        return pd.to_datetime(item)
+
+    return item

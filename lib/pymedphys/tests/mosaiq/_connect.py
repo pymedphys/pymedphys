@@ -15,7 +15,9 @@
 
 import pymedphys
 
-MSQ_SERVER = "."
+MSQ_SERVER = "localhost"
+MSQ_PORT = 1433
+
 TEST_DB_NAME = "MosaiqTest77008"
 MIMIC_DB_NAME = "MosaiqMimicTest"
 
@@ -23,10 +25,10 @@ SA_USER = "sa"
 SA_PASSWORD = "sqlServerPassw0rd"
 
 
-def connect(database=TEST_DB_NAME):
+def connect(database=TEST_DB_NAME) -> pymedphys.mosaiq.Connection:
     connection = pymedphys.mosaiq.connect(
         MSQ_SERVER,
-        port=1433,
+        port=MSQ_PORT,
         database=database,
         username=SA_USER,
         password=SA_PASSWORD,
