@@ -1,0 +1,3 @@
+,Pat_ID1,Create_DtTm,Create_ID,Birth_DtTm,Edit_DtTm,Edit_ID,Sanct_DtTm,Sanct_ID,Sanct_DtTm2,Sanct_Id2,Note_ID,Salutation,SS_Number,Last_Name,First_Name,MIddle_Name,Suffix,Alias_Name,Stmt_Cycle,Use_Alternate_Stmt,Clin_Status,Inactive,Restricted,Status_Private,Maiden_Name,Last_Name_Secondary,First_Name_Secondary,Middle_Name_Secondary,Last_Name_SingleByte,First_Name_SingleByte,Middle_Name_SingleByte,MultipleBirth_PRO_ID,MultipleBirthOrder,MotherMaidenName,RowVers
+0,30121,2020-04-27 07:52:41.257,805,2020-04-27 00:00:00.000,2020-04-27 07:52:41.270,805,,,,,,,,PHYSICS,MOCK,,,,0,0,1,False,0,False,,,,,,,,,,,AAAAABvPLWY=
+1,30136,2020-04-29 07:27:25.313,805,2020-04-29 00:00:00.000,2020-04-29 07:27:25.343,805,,,,,,,,PHYSICS,TEST,,,,0,0,1,False,0,False,,,,,,,,,,,AAAAABvWWGI=
