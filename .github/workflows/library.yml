@@ -420,9 +420,9 @@ jobs:
 ## Docs
 
       - name: Download docs files
-        if: matrix.task == 'docs'
+        if: matrix.task == 'docs' && matrix.os == 'ubuntu'
         run: |
-          poetry run python -c 'import pymedphys; pymedphys.data_path("original_dose_beam_4.dcm"); pymedphys.data_path("logfile_dose_beam_4.dcm");'
+          poetry run python -c "import pymedphys; pymedphys.data_path('original_dose_beam_4.dcm'); pymedphys.data_path('logfile_dose_beam_4.dcm');"
 
       - name: Build docs
         if: matrix.task == 'docs' || matrix.task == 'updates'
