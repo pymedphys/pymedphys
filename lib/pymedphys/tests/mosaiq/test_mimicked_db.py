@@ -98,8 +98,8 @@ def test_get_treatments(connection):
 def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepath):
     delivery_details = pymedphys.beta.trf.identify(connection, trf_filepath, TIMEZONE)
     assert delivery_details.field_id == FIELD_ID
-    assert delivery_details.first_name == FIRST_NAME
-    assert delivery_details.last_name == LAST_NAME
+    assert str(delivery_details.first_name).lower() == FIRST_NAME.lower()
+    assert str(delivery_details.last_name).lower() == LAST_NAME.lower()
     assert delivery_details.patient_id == str(PATIENT_ID)
 
 
