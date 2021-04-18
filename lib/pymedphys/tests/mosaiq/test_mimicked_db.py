@@ -25,6 +25,7 @@ from .data import mimics
 PATIENT_ID = 989898
 FIELD_ID = 88043
 A_TREATMENT_DATETIME = "2020-04-27 08:03:28.513"
+A_TRF_FILENAME = "20_04_26 22_03_30 Z 1-1_3ABUT.trf"
 MACHINE_ID = "2619"
 FIELD_NAME = "3ABUT"
 TIMEZONE = "Australia/Sydney"
@@ -46,13 +47,8 @@ def connection_base():
 @pytest.fixture(name="trf_filepath")
 def trf_filepath_base():
     data_paths = pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip")
-    date = A_TREATMENT_DATETIME.split(" ")[0]
-
-    filtered_paths = [
-        path
-        for path in data_paths
-        if date in str(path) and str(FIELD_ID) in str(path) and path.suffix == ".trf"
-    ]
+    filtered_paths = [path for path in data_paths if path.name == A_TRF_FILENAME]
+    assert len(filtered_paths) == 1
 
     return filtered_paths[0]
 
@@ -60,10 +56,10 @@ def trf_filepath_base():
 @pytest.fixture(name="dicom_filepath")
 def dicom_filepath_base():
     data_paths = pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip")
-
     filtered_paths = [
         path for path in data_paths if path.name == f"{PATIENT_ID}_{FIELD_NAME}.dcm"
     ]
+    assert len(filtered_paths) == 1
 
     return filtered_paths[0]
 
@@ -121,8 +117,8 @@ def test_delivery_from_mosaiq(connection, trf_filepath, dicom_filepath):
 def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepath):
     delivery_details = pymedphys.trf.identify(connection, trf_filepath, TIMEZONE)
     assert delivery_details.field_id == FIELD_ID
-    assert delivery_details.first_name == FIRST_NAME
-    assert delivery_details.last_name == LAST_NAME
+    assert str(delivery_details.first_name).lower() == FIRST_NAME.lower()
+    assert str(delivery_details.last_name).lower() == LAST_NAME.lower()
     assert delivery_details.patient_id == str(PATIENT_ID)
 
 
