@@ -95,6 +95,26 @@ def test_get_treatments(connection):
 
 
 @pytest.mark.mosaiqdb
+def test_delivery_from_mosaiq(connection, trf_filepath, dicom_filepath):
+    trf_delivery = pymedphys.Delivery.from_trf(trf_filepath)
+    dicom_delivery = pymedphys.Delivery.from_dicom(dicom_filepath)
+    mosaiq_delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
+
+    assert np.allclose(dicom_delivery.mu, mosaiq_delivery.mu, atol=1)
+    assert np.allclose(dicom_delivery.mlc, mosaiq_delivery.mlc, atol=0.1)
+    assert np.allclose(dicom_delivery.jaw, mosaiq_delivery.jaw, atol=0.1)
+    assert np.allclose(dicom_delivery.gantry, mosaiq_delivery.gantry, atol=0.1)
+    assert np.allclose(dicom_delivery.collimator, mosaiq_delivery.collimator, atol=0.1)
+
+    assert np.abs(trf_delivery.mu[-1] - mosaiq_delivery.mu[-1]) < 0.2
+    trf_metersetmap = trf_delivery.metersetmap(grid_resolution=5)
+    mosaiq_metersetmap = mosaiq_delivery.metersetmap(grid_resolution=5)
+
+    max_deviation = np.max(np.abs(trf_metersetmap - mosaiq_metersetmap))
+    assert max_deviation < 3
+
+
+@pytest.mark.mosaiqdb
 def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepath):
     delivery_details = pymedphys.beta.trf.identify(connection, trf_filepath, TIMEZONE)
     assert delivery_details.field_id == FIELD_ID
