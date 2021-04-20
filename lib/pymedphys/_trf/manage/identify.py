@@ -71,6 +71,36 @@ def date_convert(date, timezone):
 def identify_logfile(
     connection: _msq_api.Connection, filepath: pathlib.Path, timezone: str
 ):
+    """Query a Mosaiq database to associate a TRF with its corresponding
+    delivery and therefore its patient information.
+
+    Parameters
+    ----------
+    connection : pymedphys.mosaiq.Connection
+    filepath : pathlib.Path
+        Path to the TRF
+    timezone : str
+        The timezone that matches the Mosaiq MSSQL instance being queried.
+        This is utilised internally to convert the TRF's UTC timestamp
+        to a timestamp that matches the time of delivery in Mosaiq.
+        The conversion happens utilising
+        `tz_convert <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.tz_convert.html#pandas.DatetimeIndex.tz_convert>`_
+        within the Pandas library. So anything that it's `tz` parameter
+        accepts can be provided here.
+
+    Returns
+    -------
+    OISDeliveryDetails
+        An attrs class that has the following attributes:
+
+        - ``patient_id``
+        - ``field_id``
+        - ``last_name``
+        - ``first_name``
+        - ``qa_mode``
+        - ``field_type``
+        - ``beam_completed``
+    """
     header = _header.decode_header_from_file(filepath)
 
     if header.field_label == "":
