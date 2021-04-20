@@ -29,6 +29,15 @@ path_or_binary_file = Union[BinaryIO, "os.PathLike[Any]"]
 
 
 def trf2pandas(trf: path_or_binary_file) -> Tuple["pd.DataFrame", "pd.DataFrame"]:
+    """Read an Elekta Linac Agility Head TRF into a Pandas DataFrame.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        Two DataFrames, the first being the TRF header information, the
+        second being the TRF table content.
+
+    """
     binary_file_trf = cast(BinaryIO, trf)
     path_like_trf = cast("os.PathLike[Any]", trf)
 
