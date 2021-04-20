@@ -17,7 +17,6 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 import pymedphys
-import pymedphys.beta
 from pymedphys._mosaiq import helpers
 
 from . import _connect
@@ -116,7 +115,7 @@ def test_delivery_from_mosaiq(connection, trf_filepath, dicom_filepath):
 
 @pytest.mark.mosaiqdb
 def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepath):
-    delivery_details = pymedphys.beta.trf.identify(connection, trf_filepath, TIMEZONE)
+    delivery_details = pymedphys.trf.identify(connection, trf_filepath, TIMEZONE)
     assert delivery_details.field_id == FIELD_ID
     assert str(delivery_details.first_name).lower() == FIRST_NAME.lower()
     assert str(delivery_details.last_name).lower() == LAST_NAME.lower()
