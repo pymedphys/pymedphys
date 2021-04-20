@@ -13,13 +13,15 @@
 # limitations under the License.
 
 
+import pathlib
 from datetime import datetime
 
 from pymedphys._imports import dateutil
 from pymedphys._imports import pandas as pd
 
-from pymedphys._mosaiq.delivery import get_mosaiq_delivery_details
-from pymedphys._trf.decode.header import decode_header_from_file
+from pymedphys._mosaiq import api as _msq_api
+from pymedphys._mosaiq import delivery as _delivery
+from pymedphys._trf.decode import header as _header
 
 # TODO Make the field identification run one whole day at a time, searching
 # for all logfiles on that day and then attempting to align the logfiles
@@ -66,15 +68,50 @@ def date_convert(date, timezone):
     return mosaiq_string_time, path_string_time
 
 
-def identify_logfile(connection, filepath, timezone):
-    header = decode_header_from_file(filepath)
+def identify_logfile(
+    connection: _msq_api.Connection, filepath: pathlib.Path, timezone: str
+):
+    """Query a Mosaiq database to associate a TRF with its corresponding
+    delivery and therefore its patient information.
+
+    Parameters
+    ----------
+    connection : pymedphys.mosaiq.Connection
+        A connection instance to the Mosaiq MSSQL database. Only
+        requirement is that it is a `PEP-0249 <https://www.python.org/dev/peps/pep-0249/#connection-objects>`_
+        compliant ``connection`` object.
+    filepath : pathlib.Path
+        Path to the TRF
+    timezone : str
+        The timezone that matches the Mosaiq MSSQL instance being queried.
+        This is utilised internally to convert the TRF's UTC timestamp
+        to a timestamp that matches the time of delivery in Mosaiq.
+        The conversion happens utilising
+        `tz_convert <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.tz_convert.html#pandas.DatetimeIndex.tz_convert>`_
+        within the Pandas library. So anything that its `tz` parameter
+        accepts can be provided here.
+
+    Returns
+    -------
+    OISDeliveryDetails
+        An ``attrs`` class that has the following attributes:
+
+        - ``patient_id``
+        - ``field_id``
+        - ``last_name``
+        - ``first_name``
+        - ``qa_mode``
+        - ``field_type``
+        - ``beam_completed``
+    """
+    header = _header.decode_header_from_file(filepath)
 
     if header.field_label == "":
         raise ValueError("No field label in logfile")
 
     mosaiq_string_time, _ = date_convert(header.date, timezone)
 
-    delivery_details = get_mosaiq_delivery_details(
+    delivery_details = _delivery.get_mosaiq_delivery_details(
         connection,
         header.machine,
         mosaiq_string_time,
