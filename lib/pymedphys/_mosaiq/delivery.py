@@ -333,13 +333,12 @@ class DeliveryMosaiq(DeliveryBase):
     @classmethod
     def from_mosaiq(cls, connection, field_id):
         total_mu, tx_field_points = delivery_data_sql(connection, field_id)
+        tx_field_points_index = tx_field_points["Index"].to_numpy(dtype=float)
 
-        cumulative_percentage_mu = tx_field_points["Index"].to_numpy(dtype=float)
-
-        if np.shape(cumulative_percentage_mu) == ():
+        if np.shape(tx_field_points_index) == ():
             mu_per_control_point = [0, total_mu]
         else:
-            cumulative_mu = cumulative_percentage_mu * total_mu / 100
+            cumulative_mu = tx_field_points_index / tx_field_points_index[-1] * total_mu
             mu_per_control_point = np.concatenate([[0], np.diff(cumulative_mu)])
 
         monitor_units = np.cumsum(mu_per_control_point).tolist()
