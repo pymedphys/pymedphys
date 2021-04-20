@@ -77,6 +77,9 @@ def identify_logfile(
     Parameters
     ----------
     connection : pymedphys.mosaiq.Connection
+        A connection instance to the Mosaiq MSSQL database. Only
+        requirement is that it is a `PEP-0249 <https://www.python.org/dev/peps/pep-0249/#connection-objects>`_
+        compliant ``connection`` object.
     filepath : pathlib.Path
         Path to the TRF
     timezone : str
@@ -91,7 +94,7 @@ def identify_logfile(
     Returns
     -------
     OISDeliveryDetails
-        An attrs class that has the following attributes:
+        An ``attrs`` class that has the following attributes:
 
         - ``patient_id``
         - ``field_id``
