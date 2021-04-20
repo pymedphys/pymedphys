@@ -108,6 +108,7 @@ packages = [
     "pymedphys.tests.mocks",
     "pymedphys.tests.monaco",
     "pymedphys.tests.mosaiq",
+    "pymedphys.tests.mosaiq.data",
     "pymedphys.tests.trf",
     "pymedphys.tests.utilities",
 ]
