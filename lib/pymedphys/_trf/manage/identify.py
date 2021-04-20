@@ -88,7 +88,7 @@ def identify_logfile(
         to a timestamp that matches the time of delivery in Mosaiq.
         The conversion happens utilising
         `tz_convert <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.tz_convert.html#pandas.DatetimeIndex.tz_convert>`_
-        within the Pandas library. So anything that it's `tz` parameter
+        within the Pandas library. So anything that its `tz` parameter
         accepts can be provided here.
 
     Returns
