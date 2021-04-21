@@ -15,6 +15,7 @@
 import functools
 import pathlib
 import re
+import textwrap
 import time
 
 from pymedphys._imports import streamlit as st
@@ -134,6 +135,12 @@ def main():
 
     if session_state.app != "index":
         st.title(application_options[session_state.app].TITLE)
+
+        docstring = application_options[session_state.app].main.__doc__
+        if docstring is not None:
+            docstring = textwrap.dedent(f"    {docstring}")
+            st.write(docstring)
+
         if st.sidebar.button("Return to Index"):
             swap_app("index")
 

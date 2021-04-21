@@ -28,6 +28,16 @@ TITLE = "iView Image WLutz"
 
 
 def main():
+    """A tool for uploading individual iView backend image files and
+    undergoing ball-bearing and field edge detection.
+
+    Provides a facilities to tweak the back-end WLutz algorithm
+    to investigate the impact of these adjustments. This application
+    was originally written for the purpose of investigating the
+    plausibility of detecting an air-cavity instead of a ball-bearing
+    for utilising the WLutz algorithm for daily QA with the already
+    utilised during the morning kV image and couch movement tests.
+    """
     a_file = st.file_uploader("iView images 'jpg' file")
 
     ignore_errors = st.checkbox("Ignore errors", False)
