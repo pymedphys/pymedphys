@@ -42,7 +42,7 @@ def main():
     image = 1 - image
 
     options = {
-        "bb_diameter": 12,
+        "bb_diameter": 14,
         "edge_lengths": (100, 100),
         "penumbra": 2,
     }

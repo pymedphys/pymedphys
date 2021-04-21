@@ -14,14 +14,14 @@
 # limitations under the License.
 
 import warnings
+from typing import cast
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
 from . import bounds, imginterp, interppoints, pylinacwrapper
 
-BB_MIN_SEARCH_DIST = 2  # mm
-BB_REPEAT_TOL = 0.2  # mm
+DEFAULT_BB_REPEAT_TOL = 0.2  # mm
 
 BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     0.5,
@@ -65,6 +65,7 @@ def optimise_bb_centre(
     field_centre,
     initial_bb_centre=None,
     repeats=DEFAULT_BB_REPEATS,
+    bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
 ):
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
@@ -80,7 +81,7 @@ def optimise_bb_centre(
     diff = np.abs(all_centre_predictions - median_of_predictions)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        within_tolerance = np.all(diff < BB_REPEAT_TOL, axis=1)
+        within_tolerance = cast(np.ndarray, np.all(diff < bb_repeat_tol, axis=1))
 
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
