@@ -15,6 +15,7 @@
 import pathlib
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
@@ -65,27 +66,18 @@ def get_directories_and_initial_database(config, refresh_cache):
 
     selected_date = selected_date[0]
 
-    selected_machine_id = database_table["machine_id"].unique()
-    if len(selected_machine_id) != 1:
-        raise ValueError("Expected only one machine id")
-
-    selected_machine_id = selected_machine_id[0]
-
     # --
 
     linac_to_directories_map = {
         item["name"]: item["directories"] for item in linac_map[chosen_site]
     }
 
-    qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
-
     return (
         database_directory,
         icom_directory,
-        qa_directory,
         database_table,
         selected_date,
-        selected_machine_id,
+        linac_to_directories_map,
     )
 
 
