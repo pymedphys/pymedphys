@@ -73,6 +73,18 @@ def main():
         **options,
     )
 
+    diff = field_centre - bb_centre
+    st.write(
+        f"""
+        ## Results
+
+        Field - BB (or air-gap) centre
+
+        * x deviation: `{diff[0]:.2f} mm`
+        * y deviation: `{diff[1]:.2f} mm`
+        """
+    )
+
     fig, axs = _reporting.image_analysis_figure(
         x,
         y,

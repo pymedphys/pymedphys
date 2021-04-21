@@ -84,12 +84,17 @@ def optimise_bb_centre(
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
+    # Add an offset so that an unchanged centre can be detected
+    initial_bb_centre = initial_bb_centre + 0.001
+
     search_square_edge_length = bb_diameter / np.sqrt(2) / (DEFAULT_BB_REPEATS + 1)
     all_centre_predictions = np.array(
         _bb_finding_repetitions(
             field, bb_diameter, search_square_edge_length, initial_bb_centre
         )
     )
+
+    all_centre_predictions[all_centre_predictions == initial_bb_centre] = np.nan
     median_of_predictions = np.nanmedian(all_centre_predictions, axis=0)
 
     diff = np.abs(all_centre_predictions - median_of_predictions)

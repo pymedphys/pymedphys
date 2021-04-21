@@ -104,14 +104,16 @@ def _pymedphys_wlutz_calculate(
     **_,
 ):
 
+    nan_result = np.array([np.nan, np.nan])
+
     try:
         field_centre = findfield.find_field_centre(
             x, y, image, edge_lengths, penumbra, field_rotation=icom_field_rotation
         )
     except ValueError:
         if fill_errors_with_nan:
-            field_centre = [np.nan, np.nan]
-            bb_centre = [np.nan, np.nan]
+            field_centre = nan_result
+            bb_centre = nan_result
 
             return field_centre, bb_centre
         else:
@@ -132,7 +134,7 @@ def _pymedphys_wlutz_calculate(
         )
     except ValueError:
         if fill_errors_with_nan:
-            bb_centre = [np.nan, np.nan]
+            bb_centre = nan_result
         else:
             raise
 
