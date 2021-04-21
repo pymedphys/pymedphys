@@ -39,6 +39,13 @@ def main():
         "BB consistency tolerance (mm)", min_value=0.0, max_value=4.0, value=1.0
     )
 
+    field_edge_x = st.number_input(
+        "Field edge x size (mm)", min_value=5.0, max_value=400.0, value=30.0
+    )
+    field_edge_y = st.number_input(
+        "Field edge y size (mm)", min_value=5.0, max_value=400.0, value=30.0
+    )
+
     if a_file is None:
         st.stop()
 
@@ -58,7 +65,7 @@ def main():
 
     options = {
         "bb_diameter": 12,
-        "edge_lengths": (100, 100),
+        "edge_lengths": (field_edge_x, field_edge_y),
         "penumbra": 2,
     }
 
