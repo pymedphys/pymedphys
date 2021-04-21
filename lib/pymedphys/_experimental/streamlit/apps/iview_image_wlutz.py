@@ -18,8 +18,12 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
 
+from pymedphys._experimental.wlutz import iview as _iview
+from pymedphys._experimental.wlutz import main as _main
+from pymedphys._experimental.wlutz import reporting as _reporting
+
 CATEGORY = categories.PLANNING
-TITLE = "iView Image Viewer"
+TITLE = "iView Image WLutz"
 
 
 def main():
@@ -29,24 +33,32 @@ def main():
         st.stop()
 
     a_file.seek(0)
-    img = libjpeg.decode(a_file.read())
+    img_raw = libjpeg.decode(a_file.read())
+    x, y, image = _iview.iview_image_transform(img_raw)
 
-    fig, ax = plt.subplots()
-    ax.pcolormesh(img)
-    ax.axis("equal")
-    st.pyplot(fig)
+    options = {
+        "bb_diameter": 8,
+        "edge_lengths": (100, 100),
+        "penumbra": 2,
+    }
 
-    half_dimension = img.shape[0] // 2
-
-    zoom_selection = st.slider(
-        "Zoom in on central region",
-        min_value=1,
-        max_value=half_dimension,
-        value=half_dimension // 4,
+    field_centre, bb_centre = _main._pymedphys_wlutz_calculate(
+        x,
+        y,
+        image,
+        fill_errors_with_nan=True,
+        icom_field_rotation=0,
+        **options,
     )
-    zoom_slice = slice(half_dimension - zoom_selection, half_dimension + zoom_selection)
 
-    fig, ax = plt.subplots()
-    ax.pcolormesh(img[zoom_slice, zoom_slice])
-    ax.axis("equal")
+    fig, axs = _reporting.image_analysis_figure(
+        x,
+        y,
+        image,
+        bb_centre,
+        field_centre,
+        field_rotation=0,
+        **options,
+    )
+
     st.pyplot(fig)
