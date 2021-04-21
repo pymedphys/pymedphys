@@ -41,7 +41,16 @@ DEFAULT_BB_REPEATS = 2
 
 
 def find_bb_centre(
-    x, y, image, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
+    x,
+    y,
+    image,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+    field_centre,
+    field_rotation,
+    bb_repeats=DEFAULT_BB_REPEATS,
+    bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
 ):
     field = imginterp.create_interpolated_field(x, y, image)
 
@@ -53,7 +62,12 @@ def find_bb_centre(
         initial_bb_centre = field_centre
 
     bb_centre = optimise_bb_centre(
-        field, bb_diameter, field_centre, initial_bb_centre=initial_bb_centre
+        field,
+        bb_diameter,
+        field_centre,
+        initial_bb_centre=initial_bb_centre,
+        bb_repeats=bb_repeats,
+        bb_repeat_tol=bb_repeat_tol,
     )
 
     return bb_centre
@@ -64,7 +78,7 @@ def optimise_bb_centre(
     bb_diameter,
     field_centre,
     initial_bb_centre=None,
-    repeats=DEFAULT_BB_REPEATS,
+    bb_repeats=DEFAULT_BB_REPEATS,
     bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
 ):
     if initial_bb_centre is None:
@@ -88,7 +102,7 @@ def optimise_bb_centre(
     if np.sum(within_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) - 1:
         return median_of_predictions
 
-    if repeats == 0:
+    if bb_repeats == 0:
         raise ValueError("Unable to determine BB position within designated repeats")
 
     out_of_tolerance = np.invert(within_tolerance)
@@ -106,7 +120,8 @@ def optimise_bb_centre(
         bb_diameter,
         field_centre,
         initial_bb_centre=median_of_predictions,
-        repeats=repeats - 1,
+        bb_repeats=bb_repeats - 1,
+        bb_repeat_tol=bb_repeat_tol,
     )
 
 

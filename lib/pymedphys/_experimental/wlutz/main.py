@@ -99,6 +99,8 @@ def _pymedphys_wlutz_calculate(
     penumbra,
     icom_field_rotation,
     fill_errors_with_nan=True,
+    bb_repeats=findbb.DEFAULT_BB_REPEATS,
+    bb_repeat_tol=findbb.DEFAULT_BB_REPEAT_TOL,
     **_,
 ):
 
@@ -125,6 +127,8 @@ def _pymedphys_wlutz_calculate(
             penumbra,
             field_centre,
             field_rotation=icom_field_rotation,
+            bb_repeats=bb_repeats,
+            bb_repeat_tol=bb_repeat_tol,
         )
     except ValueError:
         if fill_errors_with_nan:

@@ -30,8 +30,17 @@ TITLE = "iView Image WLutz"
 def main():
     a_file = st.file_uploader("iView images 'jpg' file")
 
-    zoom_factor = st.slider("Zoom factor", 1, 32, value=4)
+    invert_image = st.checkbox(
+        "Invert image (for detecting air-gap instead of BB)", True
+    )
     ignore_errors = st.checkbox("Ignore errors", False)
+    zoom_factor = st.slider("Zoom factor", 1, 32, value=4)
+    bb_repeats = st.number_input(
+        "Number of repeat BB finding attempts", min_value=0, max_value=20, value=6
+    )
+    bb_consistency_tolerance = st.number_input(
+        "BB consistency tolerance (mm)", min_value=0.0, max_value=4.0, value=1.0
+    )
 
     if a_file is None:
         st.stop()
@@ -39,10 +48,11 @@ def main():
     a_file.seek(0)
     img_raw = libjpeg.decode(a_file.read())
     x, y, image = _iview.iview_image_transform(img_raw)
-    image = 1 - image
+    if invert_image:
+        image = 1 - image
 
     options = {
-        "bb_diameter": 14,
+        "bb_diameter": 12,
         "edge_lengths": (100, 100),
         "penumbra": 2,
     }
@@ -53,6 +63,8 @@ def main():
         image,
         fill_errors_with_nan=ignore_errors,
         icom_field_rotation=0,
+        bb_repeats=bb_repeats,
+        bb_repeat_tol=bb_consistency_tolerance,
         **options,
     )
 
