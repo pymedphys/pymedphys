@@ -18,6 +18,8 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
 
+from pymedphys._experimental.wlutz import iview as _iview
+
 CATEGORY = categories.PLANNING
 TITLE = "iView Image Viewer"
 
@@ -29,14 +31,15 @@ def main():
         st.stop()
 
     a_file.seek(0)
-    img = libjpeg.decode(a_file.read())
+    img_raw = libjpeg.decode(a_file.read())
+    x, y, image = _iview.iview_image_transform(img_raw)
 
     fig, ax = plt.subplots()
-    ax.pcolormesh(img)
+    ax.pcolormesh(x, y, image)
     ax.axis("equal")
     st.pyplot(fig)
 
-    half_dimension = img.shape[0] // 2
+    half_dimension = image.shape[0] // 2
 
     zoom_selection = st.slider(
         "Zoom in on central region",
@@ -47,6 +50,6 @@ def main():
     zoom_slice = slice(half_dimension - zoom_selection, half_dimension + zoom_selection)
 
     fig, ax = plt.subplots()
-    ax.pcolormesh(img[zoom_slice, zoom_slice])
+    ax.pcolormesh(x[zoom_slice], y[zoom_slice], image[zoom_slice, zoom_slice])
     ax.axis("equal")
     st.pyplot(fig)

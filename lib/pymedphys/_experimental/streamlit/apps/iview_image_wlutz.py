@@ -13,7 +13,8 @@
 # limitations under the License.
 
 
-from pymedphys._imports import libjpeg, plt
+from pymedphys._imports import libjpeg
+from pymedphys._imports import numpy as np
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
@@ -29,15 +30,19 @@ TITLE = "iView Image WLutz"
 def main():
     a_file = st.file_uploader("iView images 'jpg' file")
 
+    zoom_factor = st.slider("Zoom factor", 1, 32, value=4)
+    ignore_errors = st.checkbox("Ignore errors", False)
+
     if a_file is None:
         st.stop()
 
     a_file.seek(0)
     img_raw = libjpeg.decode(a_file.read())
     x, y, image = _iview.iview_image_transform(img_raw)
+    image = 1 - image
 
     options = {
-        "bb_diameter": 8,
+        "bb_diameter": 12,
         "edge_lengths": (100, 100),
         "penumbra": 2,
     }
@@ -46,7 +51,7 @@ def main():
         x,
         y,
         image,
-        fill_errors_with_nan=True,
+        fill_errors_with_nan=ignore_errors,
         icom_field_rotation=0,
         **options,
     )
@@ -60,5 +65,11 @@ def main():
         field_rotation=0,
         **options,
     )
+
+    ylim = np.array(axs[0, 0].get_ylim())
+    xlim = np.array(axs[0, 0].get_xlim())
+
+    axs[0, 0].set_ylim(ylim / zoom_factor)
+    axs[0, 0].set_xlim(xlim / zoom_factor)
 
     st.pyplot(fig)
