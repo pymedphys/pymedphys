@@ -85,7 +85,7 @@ def optimise_bb_centre(
         initial_bb_centre = field_centre
 
     # Add an offset so that an unchanged centre can be detected
-    initial_bb_centre = initial_bb_centre + 0.001
+    initial_bb_centre = np.array(initial_bb_centre) + 0.001
 
     search_square_edge_length = bb_diameter / np.sqrt(2) / (DEFAULT_BB_REPEATS + 1)
     all_centre_predictions = np.array(
