@@ -79,7 +79,7 @@ def main():
         "penumbra": 2,
     }
 
-    field_centre, bb_centre = _main._pymedphys_wlutz_calculate(
+    field_centre, bb_centre = _main.pymedphys_wlutz_calculate(
         x,
         y,
         image,

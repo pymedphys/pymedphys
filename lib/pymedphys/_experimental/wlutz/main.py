@@ -72,7 +72,7 @@ def calculate(
 @functools.lru_cache()
 def get_algorithm_function_map():
     ALGORITHM_FUNCTION_MAP = {
-        "PyMedPhys": _pymedphys_wlutz_calculate,
+        "PyMedPhys": pymedphys_wlutz_calculate,
         f"PyLinac v{_pylinac_installed.__version__}": functools.partial(
             _pylinac_wlutz_calculate, pylinac_version=_pylinac_installed.__version__
         ),
@@ -91,7 +91,7 @@ def load_iview_image(image_path):
     return x, y, image
 
 
-def _pymedphys_wlutz_calculate(
+def pymedphys_wlutz_calculate(
     x: "np.ndarray",
     y: "np.ndarray",
     image: "np.ndarray",
