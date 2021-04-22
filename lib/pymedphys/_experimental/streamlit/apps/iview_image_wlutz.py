@@ -23,7 +23,7 @@ from pymedphys._experimental.wlutz import iview as _iview
 from pymedphys._experimental.wlutz import main as _main
 from pymedphys._experimental.wlutz import reporting as _reporting
 
-CATEGORY = categories.PLANNING
+CATEGORY = categories.ALPHA
 TITLE = "iView Image WLutz"
 
 

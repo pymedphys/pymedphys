@@ -20,7 +20,7 @@ from pymedphys._streamlit import categories
 
 from pymedphys._experimental.wlutz import iview as _iview
 
-CATEGORY = categories.PLANNING
+CATEGORY = categories.ALPHA
 TITLE = "iView Image Viewer"
 
 
