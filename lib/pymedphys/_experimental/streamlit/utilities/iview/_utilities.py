@@ -45,8 +45,8 @@ def get_directories_and_initial_database(
     """Load up paths from configuration, and pull in the primary
     database structure before further filtering.
 
-    Requests the user to select a site, a date, and a machine id before
-    and then provides an initial database table for these selections
+    Requests the user to select a site, a date, and a machine id
+    and then returns an initial database table for these selections
     as well as the relevant directories.
 
     Parameters
