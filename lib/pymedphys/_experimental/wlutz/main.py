@@ -130,8 +130,8 @@ def _pymedphys_wlutz_calculate(
         system that is utilised by the Elekta iCom system.
     fill_errors_with_nan : bool, optional
         Whether or not to stop code execution when an internal error
-        occurs. The default option is to march on but return ``np.nan``
-        for the failing coordinates.
+        occurs. The default option is to march on but return
+        ``[np.nan, np.nan]`` for the failing coordinates.
     bb_repeats : int, optional
         The number of times to attempt the ball bearing optimiser
         search, by default 2.
