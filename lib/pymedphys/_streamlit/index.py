@@ -127,7 +127,7 @@ def main():
 
     try:
         simple = application_options[session_state.app].SIMPLE
-    except AttributeError:
+    except (AttributeError, KeyError):
         simple = False
 
     if simple:
