@@ -209,6 +209,10 @@ def run_calculation(
             "bb_centre_x",
             "bb_centre_y",
         ]
+
+        for column in columns_to_check_for_deviation:
+            results[column] = pd.to_numeric(results[column])
+
         min_result = results[columns_to_check_for_deviation].min(axis=0)
         max_result = results[columns_to_check_for_deviation].max(axis=0)
 
