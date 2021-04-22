@@ -53,6 +53,8 @@ def find_bb_centre(
     bb_repeats: int = DEFAULT_BB_REPEATS,
     bb_repeat_tol: float = DEFAULT_BB_REPEAT_TOL,
 ) -> Tuple[float, float]:
+    """Search for a rotationally symmetric object within the image."""
+
     field = imginterp.create_interpolated_field(x, y, image)
 
     try:
@@ -82,6 +84,8 @@ def optimise_bb_centre(
     bb_repeats=DEFAULT_BB_REPEATS,
     bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
 ) -> Tuple[float, float]:
+    """A recursive loop that searches for a rotationally symmetric object."""
+
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
