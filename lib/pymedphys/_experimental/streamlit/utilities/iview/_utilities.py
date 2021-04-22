@@ -16,7 +16,7 @@ import pathlib
 from typing import Dict, Tuple
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pandas as pd
+from pymedphys._imports import pandas as pd  # pylint: disable = unused-imports
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
