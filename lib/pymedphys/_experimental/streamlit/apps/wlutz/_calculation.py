@@ -118,8 +118,9 @@ def calculations_ui(
 
     if not quiet:
         st.write("### Run calculations")
+        calculate = st.button("Calculate")
 
-    if st.button("Calculate"):
+    if quiet or calculate:
         return run_calculation(
             database_table,
             database_directory,

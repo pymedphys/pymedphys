@@ -21,7 +21,9 @@ from pymedphys._imports import streamlit as st
 
 
 def filter_image_sets(
-    to_be_filtered: "pd.DataFrame", advanced_mode: bool
+    to_be_filtered: "pd.DataFrame",
+    advanced_mode: bool,
+    quiet=False,
 ) -> "pd.DataFrame":
     """Filter an iView image set pandas DataFrame via streamlit user input.
 
@@ -32,9 +34,10 @@ def filter_image_sets(
     """
     filtered = to_be_filtered
 
-    # Machine ID
-    machine_id = st.radio("Machine", filtered["machine_id"].unique())
-    filtered = filtered.loc[filtered["machine_id"] == machine_id]
+    if not quiet:
+        # Machine ID
+        machine_id = st.radio("Machine", filtered["machine_id"].unique())
+        filtered = filtered.loc[filtered["machine_id"] == machine_id]
 
     # Patient ID
     patient_id = st.radio("Patient", filtered["patient_id"].unique())
