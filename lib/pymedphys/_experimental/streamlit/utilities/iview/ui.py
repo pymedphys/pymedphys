@@ -36,9 +36,12 @@ MAXIMUM_ANGLE_AXIS_MAGNITUDE = 200
 
 
 def iview_and_icom_filter_and_align(
-    config, advanced_mode, filter_angles_by_default=False
+    config, advanced_mode, filter_angles_by_default=False, quiet=False
 ):
-    refresh_cache = st.button("Re-query databases")
+    if quiet:
+        refresh_cache = True
+    else:
+        refresh_cache = st.button("Re-query databases")
     (
         database_directory,
         icom_directory,
@@ -48,6 +51,9 @@ def iview_and_icom_filter_and_align(
     ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
 
     icom_patients_directory = icom_directory.joinpath("patients")
+
+    if not quiet:
+        st.write("## Filtering")
 
     database_table = _get_user_image_set_selection(database_table, advanced_mode)
     database_table = _load_image_frame_database(
@@ -67,6 +73,7 @@ def iview_and_icom_filter_and_align(
         selected_date,
         selected_machine_id,
         advanced_mode,
+        quiet=quiet,
     )
 
     icom_datasets = []
@@ -193,12 +200,13 @@ def iview_and_icom_filter_and_align(
     if advanced_mode:
         st.write(database_table)
 
-    st.write("## Filtering by gantry and collimator")
-    if st.checkbox(
-        "Filter to specific gantry and collimator angles",
-        value=filter_angles_by_default,
-    ):
-        database_table = _angle_filtering(database_table, advanced_mode)
+    if not quiet:
+        st.write("## Filtering by gantry and collimator")
+        if st.checkbox(
+            "Filter to specific gantry and collimator angles",
+            value=filter_angles_by_default,
+        ):
+            database_table = _angle_filtering(database_table, advanced_mode)
 
     return database_table, database_directory, qa_directory, selected_date
 
@@ -211,7 +219,6 @@ def _get_bounds_from_centre_and_diameter(centre, diameter):
 
 
 def _get_user_image_set_selection(database_table, advanced_mode):
-    st.write("## Filtering")
     filtered = _filtering.filter_image_sets(database_table, advanced_mode)
     filtered.sort_values("datetime", ascending=False, inplace=True)
 

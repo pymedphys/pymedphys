@@ -73,6 +73,8 @@ def calculate(
 def get_algorithm_function_map():
     ALGORITHM_FUNCTION_MAP = {
         "PyMedPhys": pymedphys_wlutz_calculate,
+        "PyMedPhys-LoosenedTolerance": _pymedphys_loosened_tolerance,
+        "PyMedPhys-NoTolerance": _pymedphys_no_tolerance,
         f"PyLinac v{_pylinac_installed.__version__}": functools.partial(
             _pylinac_wlutz_calculate, pylinac_version=_pylinac_installed.__version__
         ),
@@ -89,6 +91,62 @@ def load_iview_image(image_path):
     x, y, image = iview.iview_image_transform(raw_image)
 
     return x, y, image
+
+
+def _pymedphys_loosened_tolerance(
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: TwoNumbers,
+    penumbra: float,
+    icom_field_rotation: float,
+    fill_errors_with_nan: bool = True,
+    **_,
+) -> Tuple[TwoNumbers, TwoNumbers]:
+    bb_repeats = 6
+    bb_consistency_tol = 1.0
+
+    return pymedphys_wlutz_calculate(
+        x,
+        y,
+        image,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+        icom_field_rotation,
+        fill_errors_with_nan,
+        bb_repeats,
+        bb_consistency_tol,
+    )
+
+
+def _pymedphys_no_tolerance(
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: TwoNumbers,
+    penumbra: float,
+    icom_field_rotation: float,
+    fill_errors_with_nan: bool = True,
+    **_,
+) -> Tuple[TwoNumbers, TwoNumbers]:
+    bb_repeats = 1
+    bb_consistency_tol = np.inf
+
+    return pymedphys_wlutz_calculate(
+        x,
+        y,
+        image,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+        icom_field_rotation,
+        fill_errors_with_nan,
+        bb_repeats,
+        bb_consistency_tol,
+    )
 
 
 def pymedphys_wlutz_calculate(

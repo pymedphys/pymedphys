@@ -51,12 +51,15 @@ def calculations_ui(
     bb_diameter,
     penumbra,
     advanced_mode,
+    loosened_internal_tolerances,
+    quiet=False,
 ):
-    st.write("## Calculations")
+    if not quiet:
+        st.write("## Calculations")
 
-    st.write("### Calculation options")
+        st.write("### Calculation options")
 
-    if not advanced_mode:
+    if not advanced_mode and not quiet:
         st.write("*Calculation options are available by ticking advanced mode*")
 
     if advanced_mode:
@@ -66,7 +69,14 @@ def calculations_ui(
 
     ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 
-    algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
+    loosened_tolerance_names = ["PyMedPhys-LoosenedTolerance", "PyMedPhys-NoTolerance"]
+
+    if loosened_internal_tolerances:
+        algorithm_options = loosened_tolerance_names
+    else:
+        algorithm_options = list(
+            set(ALGORITHM_FUNCTION_MAP.keys()).difference(loosened_tolerance_names)
+        )
 
     if advanced_mode:
         selected_algorithms = st.multiselect(
@@ -78,25 +88,39 @@ def calculations_ui(
     database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
+    if quiet:
+        default_data_missing_plot = False
+    elif loosened_internal_tolerances:
+        default_data_missing_plot = True
+    else:
+        default_data_missing_plot = DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+
+    if quiet:
+        default_deviation_plot_threshold = np.inf
+    else:
+        default_deviation_plot_threshold = DEFAULT_DEVIATION_PLOT_THRESHOLD
+
     if advanced_mode:
         deviation_plot_threshold = st.number_input(
-            "Display deviations greater than", value=DEFAULT_DEVIATION_PLOT_THRESHOLD
+            "Display deviations greater than", value=default_deviation_plot_threshold
         )
+
         plot_when_data_missing = st.checkbox(
-            "Plot when data missing", value=DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+            "Plot when data missing", value=default_data_missing_plot
         )
         fill_errors_with_nan = st.checkbox(
             "Fill errors with nan", value=DEFAULT_FILL_ERRORS_WITH_NAN
         )
     else:
-        deviation_plot_threshold = DEFAULT_DEVIATION_PLOT_THRESHOLD
-        plot_when_data_missing = DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+        deviation_plot_threshold = default_deviation_plot_threshold
+        plot_when_data_missing = default_data_missing_plot
         fill_errors_with_nan = DEFAULT_FILL_ERRORS_WITH_NAN
 
-    st.write("### Run calculations")
+    if not quiet:
+        st.write("### Run calculations")
 
     if st.button("Calculate"):
-        run_calculation(
+        return run_calculation(
             database_table,
             database_directory,
             wlutz_directory_by_date,
@@ -108,6 +132,7 @@ def calculations_ui(
             advanced_mode,
             plot_x_axis,
             fill_errors_with_nan,
+            quiet=quiet,
         )
 
 
@@ -123,6 +148,7 @@ def run_calculation(
     advanced_mode,
     plot_x_axis,
     fill_errors_with_nan,
+    quiet=False,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -367,6 +393,8 @@ def run_calculation(
             </a>
         """
         st.markdown(href, unsafe_allow_html=True)
+
+    return statistics_collection
 
 
 def _collapse_column_to_single_value(dataframe, column):

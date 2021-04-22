@@ -90,9 +90,6 @@ def optimise_bb_centre(
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
-    # Add an offset so that an unchanged centre can be detected
-    initial_bb_centre = np.array(initial_bb_centre) + 0.001
-
     search_square_edge_length = bb_diameter / np.sqrt(2) / (DEFAULT_BB_REPEATS + 1)
     all_centre_predictions = np.array(
         _bb_finding_repetitions(
@@ -100,7 +97,6 @@ def optimise_bb_centre(
         )
     )
 
-    all_centre_predictions[all_centre_predictions == initial_bb_centre] = np.nan
     median_of_predictions: TwoNumbers = np.nanmedian(all_centre_predictions, axis=0)
 
     diff = np.abs(all_centre_predictions - median_of_predictions)
@@ -146,7 +142,7 @@ def _bb_finding_repetitions(
             field,
             bb_diameter * bb_size_factor,
             search_square_edge_length,
-            initial_bb_centre,
+            np.array(initial_bb_centre) + np.random.normal(loc=0, scale=0.5, size=2),
             set_nan_if_at_bounds=True,
         )
 
@@ -161,6 +157,7 @@ def _minimise_bb(
     search_square_edge_length,
     initial_bb_centre,
     set_nan_if_at_bounds=False,
+    retries=3,
 ):
     to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
     bb_bounds = define_bb_bounds(search_square_edge_length, initial_bb_centre)
@@ -171,11 +168,50 @@ def _minimise_bb(
 
     if bounds.check_if_at_bounds(bb_centre, bb_bounds):
         if set_nan_if_at_bounds:
-            return [np.nan, np.nan]
+            return _single_minimise_retry(
+                field,
+                bb_diameter,
+                search_square_edge_length,
+                initial_bb_centre,
+                set_nan_if_at_bounds,
+                retries,
+            )
         else:
             raise ValueError("BB found at bounds, likely incorrect")
 
+    if np.all(np.array(bb_centre) == np.all(initial_bb_centre)):
+        return _single_minimise_retry(
+            field,
+            bb_diameter,
+            search_square_edge_length,
+            initial_bb_centre,
+            set_nan_if_at_bounds,
+            retries,
+        )
+
     return bb_centre
+
+
+def _single_minimise_retry(
+    field,
+    bb_diameter,
+    search_square_edge_length,
+    initial_bb_centre,
+    set_nan_if_at_bounds,
+    retries,
+):
+
+    if retries == 0:
+        return [np.nan, np.nan]
+
+    return _minimise_bb(
+        field,
+        bb_diameter,
+        search_square_edge_length,
+        np.array(initial_bb_centre) + np.random.normal(loc=0, scale=2, size=2),
+        set_nan_if_at_bounds=set_nan_if_at_bounds,
+        retries=retries - 1,
+    )
 
 
 def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):

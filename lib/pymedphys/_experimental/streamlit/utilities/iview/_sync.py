@@ -28,10 +28,12 @@ def icom_iview_timestamp_alignment(
     selected_date,
     selected_machine_id,
     advanced_mode,
+    quiet=False,
 ):
-    st.write("## iView to iCom timestamp alignment")
+    if not quiet:
+        st.write("## iView to iCom timestamp alignment")
 
-    st.write(icom_patients_directory)
+        st.write(icom_patients_directory)
 
     if not icom_patients_directory.exists():
         st.error(
@@ -112,20 +114,21 @@ def icom_iview_timestamp_alignment(
         offset_to_apply = loop_offset
         offset_used = "loop"
 
-    st.write(
-        f"""
-            Offset estimation undergone with two approaches. The offset
-            from the `{offset_used}` approach was utilised. The offset
-            required to align the iCom timestamps to the iView
-            timestamps was determined to be
-            `{round(offset_to_apply, 1)}` s.
+    if not quiet:
+        st.write(
+            f"""
+                Offset estimation undergone with two approaches. The offset
+                from the `{offset_used}` approach was utilised. The offset
+                required to align the iCom timestamps to the iView
+                timestamps was determined to be
+                `{round(offset_to_apply, 1)}` s.
 
-            * Basinhopping offset: `{round(basinhopping_offset, 2)}`
-              * Minimiser `{round(basinhopping_minimise_f, 4)}`
-            * Loop offset: `{round(loop_offset, 2)}`
-              * Minimiser `{round(loop_minimise_f, 4)}`
-        """
-    )
+                * Basinhopping offset: `{round(basinhopping_offset, 2)}`
+                * Minimiser `{round(basinhopping_minimise_f, 4)}`
+                * Loop offset: `{round(loop_offset, 2)}`
+                * Minimiser `{round(loop_minimise_f, 4)}`
+            """
+        )
 
     if np.abs(basinhopping_offset - loop_offset) > 1:
         st.error(
@@ -177,11 +180,12 @@ def icom_iview_timestamp_alignment(
 
     max_diff = np.max(np.abs(time_diffs["time_diff"]))
 
-    st.write(
-        "The maximum deviation between an iView frame and the closest "
-        f"adjusted iCom timestep was found to be "
-        f"`{round(max_diff, 1)}` s."
-    )
+    if not quiet:
+        st.write(
+            "The maximum deviation between an iView frame and the closest "
+            f"adjusted iCom timestep was found to be "
+            f"`{round(max_diff, 1)}` s."
+        )
 
     filepaths_to_load = usable_icom_times["filepath"].unique()
 

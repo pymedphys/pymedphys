@@ -1,5 +1,6 @@
 from . import (
     anonymise_monaco,
+    daily_wlutz,
     dashboard,
     dicom_explorer,
     dicom_wlutz,
