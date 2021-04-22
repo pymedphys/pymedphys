@@ -19,6 +19,8 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+from altair.vegalite.v4.schema.channels import Key
+
 from pymedphys._streamlit import categories
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
@@ -66,7 +68,7 @@ def main():
     machine_ids = list(tables_per_machine.keys())
     expected_linacs = set(site_to_linac_names_map[chosen_site])
     if not expected_linacs.issubset(machine_ids):
-        st.error(
+        st.warning(
             "Not all machines have had their pictures taken. "
             f"Expected {expected_linacs}, but only saw {machine_ids}."
         )
@@ -75,9 +77,6 @@ def main():
         st.stop()
 
     passing_thus_far = {}
-    for machine_id in expected_linacs.difference(machine_ids):
-        passing_thus_far[machine_id] = False
-
     for machine_id in machine_ids:
         st.write(f"## {machine_id}")
         passing_thus_far[machine_id] = True
@@ -121,7 +120,13 @@ def main():
         st.sidebar.write("---")
         st.sidebar.write(f"# `{machine_id}`")
 
-        if passing_thus_far:
+        try:
+            did_it_pass = passing_thus_far[machine_id]
+        except KeyError:
+            st.sidebar.warning(f"`{machine_id}` daily WLutz QA hasn't been done.")
+            continue
+
+        if did_it_pass:
             st.sidebar.success(f"`{machine_id}` daily WLutz QA was a success! 🥳🎉")
         else:
             st.sidebar.error(f"`{machine_id}` daily WLutz QA didn't pass. 😞")
