@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Cancer Care Associates
 # Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 # Copyright (C) 2019 Cancer Care Associates
 
@@ -14,7 +15,7 @@
 # limitations under the License.
 
 import warnings
-from typing import cast
+from typing import Tuple, cast
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -41,17 +42,17 @@ DEFAULT_BB_REPEATS = 2
 
 
 def find_bb_centre(
-    x,
-    y,
-    image,
-    bb_diameter,
-    edge_lengths,
-    penumbra,
-    field_centre,
-    field_rotation,
-    bb_repeats=DEFAULT_BB_REPEATS,
-    bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
-):
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: Tuple[float, float],
+    penumbra: float,
+    field_centre: Tuple[float, float],
+    field_rotation: float,
+    bb_repeats: int = DEFAULT_BB_REPEATS,
+    bb_repeat_tol: float = DEFAULT_BB_REPEAT_TOL,
+) -> Tuple[float, float]:
     field = imginterp.create_interpolated_field(x, y, image)
 
     try:
@@ -75,12 +76,12 @@ def find_bb_centre(
 
 def optimise_bb_centre(
     field: imginterp.Field,
-    bb_diameter,
-    field_centre,
-    initial_bb_centre=None,
+    bb_diameter: float,
+    field_centre: Tuple[float, float],
+    initial_bb_centre: Tuple[float, float] = None,
     bb_repeats=DEFAULT_BB_REPEATS,
     bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
-):
+) -> Tuple[float, float]:
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
@@ -95,9 +96,14 @@ def optimise_bb_centre(
     )
 
     all_centre_predictions[all_centre_predictions == initial_bb_centre] = np.nan
-    median_of_predictions = np.nanmedian(all_centre_predictions, axis=0)
+    median_of_predictions_as_array: np.ndarray = np.nanmedian(
+        all_centre_predictions, axis=0
+    )
+    median_of_predictions = cast(
+        Tuple[float, float], tuple(median_of_predictions_as_array.tolist())
+    )
 
-    diff = np.abs(all_centre_predictions - median_of_predictions)
+    diff = np.abs(all_centre_predictions - median_of_predictions_as_array)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         within_tolerance = cast(np.ndarray, np.all(diff < bb_repeat_tol, axis=1))
@@ -105,6 +111,7 @@ def optimise_bb_centre(
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
     if np.sum(within_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) - 1:
+
         return median_of_predictions
 
     if bb_repeats == 0:
