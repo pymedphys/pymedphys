@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pathlib
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
@@ -34,7 +34,7 @@ def expand_border_events(mask):
 
 
 def get_directories_and_initial_database(
-    config, refresh_cache
+    config: Dict[str, Any], refresh_cache: bool
 ) -> Tuple[
     pathlib.Path,
     pathlib.Path,
@@ -51,7 +51,7 @@ def get_directories_and_initial_database(
 
     Parameters
     ----------
-    config : Dict
+    config : Dict[str, Any]
     refresh_cache : bool
         Whether or not to utilise the streamlit cache, or to pull
         directly from the database.
