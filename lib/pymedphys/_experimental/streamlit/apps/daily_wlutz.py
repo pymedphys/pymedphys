@@ -71,7 +71,7 @@ def main():
             f"Expected {expected_linacs}, but only saw {machine_ids}."
         )
 
-    if not st.button("Look for any new iView images and calculate"):
+    if not st.button("Calculate (as well as look for any new iView images)"):
         st.stop()
 
     passing_thus_far = {}
