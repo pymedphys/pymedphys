@@ -40,7 +40,12 @@ def filter_image_sets(
         filtered = filtered.loc[filtered["machine_id"] == machine_id]
 
     # Patient ID
-    patient_id = st.radio("Patient", filtered["patient_id"].unique())
+    patient_ids = filtered["patient_id"].unique()
+    if len(patient_ids) == 1:
+        patient_id = patient_ids[0]
+    else:
+        patient_id = st.radio("Patient", filtered["patient_id"].unique())
+
     filtered = filtered.loc[filtered["patient_id"] == patient_id]
 
     if advanced_mode:

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import collections
 import datetime
 import pathlib
 
@@ -39,6 +37,8 @@ TITLE = "Daily WLutz"
 
 PROJECTION_TOLERANCE = 2.0  # mm
 MEAN_TOLERANCE = 1.0  # mm
+
+SIMPLE = True
 
 
 def main():
@@ -67,11 +67,11 @@ def main():
     expected_linacs = set(site_to_linac_names_map[chosen_site])
     if not expected_linacs.issubset(machine_ids):
         st.error(
-            "Not all machines have had their picture taken. "
+            "Not all machines have had their pictures taken. "
             f"Expected {expected_linacs}, but only saw {machine_ids}."
         )
 
-    if not st.button("Calculate"):
+    if not st.button("Look for any new iView images and calculate"):
         st.stop()
 
     passing_thus_far = {}

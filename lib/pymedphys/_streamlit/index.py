@@ -119,11 +119,21 @@ def _get_apps_from_module(module):
 
 
 def main():
-    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="wide")
     session_state = utilities.session_state(app=get_url_app())
 
     stable_apps = _get_apps_from_module(_stable_apps)
     experimental_apps = _get_apps_from_module(_experimental_apps)
+    application_options = {**stable_apps, **experimental_apps}
+
+    try:
+        simple = application_options[session_state.app].SIMPLE
+    except AttributeError:
+        simple = False
+
+    if simple:
+        st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="centered")
+    else:
+        st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="wide")
 
     application_options = {**stable_apps, **experimental_apps}
 
@@ -141,10 +151,11 @@ def main():
             docstring = textwrap.dedent(f"    {docstring}")
             st.write(docstring)
 
-        if st.sidebar.button("Return to Index"):
-            swap_app("index")
+        if not simple:
+            if st.sidebar.button("Return to Index"):
+                swap_app("index")
 
-        st.sidebar.write("---")
+            st.sidebar.write("---")
 
     if session_state.app == "index":
         application_function = functools.partial(
