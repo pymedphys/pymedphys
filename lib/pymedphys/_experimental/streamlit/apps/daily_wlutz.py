@@ -214,7 +214,7 @@ def _icom_per_machine_id(
     )
     icom_datasets["time"] = icom_datasets["datetime"].dt.round("ms").dt.time
 
-    icom_datasets = iview_angles.make_icom_angles_continuous(icom_datasets)
+    icom_datasets = iview_angles.make_icom_angles_continuous(icom_datasets, quiet=quiet)
 
     midnight = (
         icom_datasets["datetime"]

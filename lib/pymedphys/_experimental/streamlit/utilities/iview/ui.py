@@ -92,7 +92,7 @@ def iview_and_icom_filter_and_align(
     icom_datasets["time"] = icom_datasets["datetime"].dt.round("ms").dt.time
 
     try:
-        icom_datasets = _angles.make_icom_angles_continuous(icom_datasets)
+        icom_datasets = _angles.make_icom_angles_continuous(icom_datasets, quiet=quiet)
     finally:
         if advanced_mode:
             beam_on_mask = _utilities.expand_border_events(
