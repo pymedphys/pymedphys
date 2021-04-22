@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import functools
+from typing import Tuple
 
 from pymedphys._imports import numpy as np
 
@@ -24,6 +24,7 @@ from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
 )
 
 from . import findbb, findfield, iview, pylinacwrapper
+from .types import TwoNumbers
 
 DEFAULT_LOW_SIGNAL_CUTOFF = 0.1  # Signal range is between 0.0 and 1.0.
 
@@ -91,20 +92,21 @@ def load_iview_image(image_path):
 
 
 def _pymedphys_wlutz_calculate(
-    x,
-    y,
-    image,
-    bb_diameter,
-    edge_lengths,
-    penumbra,
-    icom_field_rotation,
-    fill_errors_with_nan=True,
-    bb_repeats=findbb.DEFAULT_BB_REPEATS,
-    bb_repeat_tol=findbb.DEFAULT_BB_REPEAT_TOL,
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: TwoNumbers,
+    penumbra: float,
+    icom_field_rotation: float,
+    fill_errors_with_nan: bool = True,
+    bb_repeats: int = findbb.DEFAULT_BB_REPEATS,
+    bb_repeat_tol: float = findbb.DEFAULT_BB_REPEAT_TOL,
     **_,
-):
+) -> Tuple[TwoNumbers, TwoNumbers]:
+    """"""
 
-    nan_result = np.array([np.nan, np.nan])
+    nan_result: TwoNumbers = np.array([np.nan, np.nan])
 
     try:
         field_centre = findfield.find_field_centre(

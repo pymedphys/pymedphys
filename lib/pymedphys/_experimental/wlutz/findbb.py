@@ -15,12 +15,13 @@
 # limitations under the License.
 
 import warnings
-from typing import Tuple, cast
+from typing import cast
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
 from . import bounds, imginterp, interppoints, pylinacwrapper
+from .types import TwoNumbers
 
 DEFAULT_BB_REPEAT_TOL = 0.2  # mm
 
@@ -46,13 +47,13 @@ def find_bb_centre(
     y: "np.ndarray",
     image: "np.ndarray",
     bb_diameter: float,
-    edge_lengths: Tuple[float, float],
+    edge_lengths: TwoNumbers,
     penumbra: float,
-    field_centre: Tuple[float, float],
+    field_centre: TwoNumbers,
     field_rotation: float,
     bb_repeats: int = DEFAULT_BB_REPEATS,
     bb_repeat_tol: float = DEFAULT_BB_REPEAT_TOL,
-) -> Tuple[float, float]:
+) -> TwoNumbers:
     """Search for a rotationally symmetric object within the image."""
 
     field = imginterp.create_interpolated_field(x, y, image)
@@ -79,11 +80,11 @@ def find_bb_centre(
 def optimise_bb_centre(
     field: imginterp.Field,
     bb_diameter: float,
-    field_centre: Tuple[float, float],
-    initial_bb_centre: Tuple[float, float] = None,
+    field_centre: TwoNumbers,
+    initial_bb_centre: TwoNumbers = None,
     bb_repeats=DEFAULT_BB_REPEATS,
     bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
-) -> Tuple[float, float]:
+) -> TwoNumbers:
     """A recursive loop that searches for a rotationally symmetric object."""
 
     if initial_bb_centre is None:
@@ -100,14 +101,9 @@ def optimise_bb_centre(
     )
 
     all_centre_predictions[all_centre_predictions == initial_bb_centre] = np.nan
-    median_of_predictions_as_array: np.ndarray = np.nanmedian(
-        all_centre_predictions, axis=0
-    )
-    median_of_predictions = cast(
-        Tuple[float, float], tuple(median_of_predictions_as_array.tolist())
-    )
+    median_of_predictions: TwoNumbers = np.nanmedian(all_centre_predictions, axis=0)
 
-    diff = np.abs(all_centre_predictions - median_of_predictions_as_array)
+    diff = np.abs(all_centre_predictions - median_of_predictions)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         within_tolerance = cast(np.ndarray, np.all(diff < bb_repeat_tol, axis=1))
