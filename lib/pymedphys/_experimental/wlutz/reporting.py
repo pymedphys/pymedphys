@@ -21,9 +21,9 @@ from . import createaxis, imginterp, transformation
 
 
 def image_analysis_figure(
-    x: "np.array",
-    y: "np.array",
-    img: "np.array",
+    x: "np.ndarray",
+    y: "np.ndarray",
+    img: "np.ndarray",
     bb_centre: Tuple[float, float],
     field_centre: Tuple[float, float],
     field_rotation: float,
@@ -61,6 +61,12 @@ def image_analysis_figure(
         edge penumbra.
     units : str, optional
         The units string to display on the figure, by default "(mm)".
+    vmin : float, optional
+        A value to bound the colourmap on the lower end. Defaults to
+        None which is internally adjusted to be the minimum of ``img``.
+    vmax : float, optional
+        A value to bound the colourmap on the upper end. Defaults to
+        None which is internally adjusted to be the maximum of ``img``.
 
     Returns
     -------
