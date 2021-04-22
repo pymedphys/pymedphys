@@ -101,10 +101,59 @@ def _pymedphys_wlutz_calculate(
     icom_field_rotation: float,
     fill_errors_with_nan: bool = True,
     bb_repeats: int = findbb.DEFAULT_BB_REPEATS,
-    bb_repeat_tol: float = findbb.DEFAULT_BB_REPEAT_TOL,
+    bb_consistency_tol: float = findbb.DEFAULT_BB_CONSISTENCY_TOL,
     **_,
 ) -> Tuple[TwoNumbers, TwoNumbers]:
-    """"""
+    """Utilise the PyMedPhys WLutz algorithm to determine the field
+    centre and BB centre.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        The x axis position definitions (mm) for the provided image
+        pixels.
+    y : np.ndarray
+        The y axis position definitions (mm) for the provided image
+        pixels.
+    image : np.ndarray
+        The image to be searched over.
+    bb_diameter : float
+        An estimate of the diameter of the ball-bearing (mm).
+    edge_lengths : TwoNumbers
+        The edge lengths of the radiation field (mm).
+    penumbra : float
+        An estimate of the distance between the nominal field edge and
+        the nominal field shoulder (mm).
+    icom_field_rotation : float
+        The rotation of the collimator at the time the radiation image
+        was captured. In degrees, in the same rotational coordinate
+        system that is utilised by the Elekta iCom system.
+    fill_errors_with_nan : bool, optional
+        Whether or not to stop code execution when an internal error
+        occurs. The default option is to march on but return ``np.nan``
+        for the failing coordinates.
+    bb_repeats : int, optional
+        The number of times to attempt the ball bearing optimiser
+        search, by default 2.
+    bb_consistency_tol : float, optional
+        The tolerance on the required internal consistency of the
+        ball-bearing finding algorithm. The internal algorithm searches
+        for multiple ball-bearings with a range of different sizes
+        smaller than that provided by the user. If any predicted
+        ``bb_centre`` deviates by more than this tolerance from the
+        median ``bb_centre`` then if there are ``bb_repeats``
+        available the initial conditions of the search are adjusted to
+        begin at the new median and it is re-attempted. If
+        ``bb_repeats`` have "run out" then depending on the
+        ``fill_errors_with_nan`` parameter either an error is raised or
+        ``[np.nan, np.nan]`` is returned. By default 0.2 mm.
+
+
+    Returns
+    -------
+    field_centre : TwoNumbers
+    bb_centre : TwoNumbers
+    """
 
     nan_result: TwoNumbers = np.array([np.nan, np.nan])
 
@@ -132,7 +181,7 @@ def _pymedphys_wlutz_calculate(
             field_centre,
             field_rotation=icom_field_rotation,
             bb_repeats=bb_repeats,
-            bb_repeat_tol=bb_repeat_tol,
+            bb_consistency_tol=bb_consistency_tol,
         )
     except ValueError:
         if fill_errors_with_nan:

@@ -86,7 +86,7 @@ def main():
         fill_errors_with_nan=ignore_errors,
         icom_field_rotation=0,
         bb_repeats=bb_repeats,
-        bb_repeat_tol=bb_consistency_tolerance,
+        bb_consistency_tol=bb_consistency_tolerance,
         **options,
     )
 

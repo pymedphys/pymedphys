@@ -23,7 +23,7 @@ from pymedphys._imports import scipy
 from . import bounds, imginterp, interppoints, pylinacwrapper
 from .types import TwoNumbers
 
-DEFAULT_BB_REPEAT_TOL = 0.2  # mm
+DEFAULT_BB_CONSISTENCY_TOL = 0.2  # mm
 
 BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     0.5,
@@ -52,7 +52,7 @@ def find_bb_centre(
     field_centre: TwoNumbers,
     field_rotation: float,
     bb_repeats: int = DEFAULT_BB_REPEATS,
-    bb_repeat_tol: float = DEFAULT_BB_REPEAT_TOL,
+    bb_consistency_tol: float = DEFAULT_BB_CONSISTENCY_TOL,
 ) -> TwoNumbers:
     """Search for a rotationally symmetric object within the image."""
 
@@ -71,7 +71,7 @@ def find_bb_centre(
         field_centre,
         initial_bb_centre=initial_bb_centre,
         bb_repeats=bb_repeats,
-        bb_repeat_tol=bb_repeat_tol,
+        bb_consistency_tol=bb_consistency_tol,
     )
 
     return bb_centre
@@ -83,7 +83,7 @@ def optimise_bb_centre(
     field_centre: TwoNumbers,
     initial_bb_centre: TwoNumbers = None,
     bb_repeats=DEFAULT_BB_REPEATS,
-    bb_repeat_tol=DEFAULT_BB_REPEAT_TOL,
+    bb_consistency_tol=DEFAULT_BB_CONSISTENCY_TOL,
 ) -> TwoNumbers:
     """A recursive loop that searches for a rotationally symmetric object."""
 
@@ -106,7 +106,7 @@ def optimise_bb_centre(
     diff = np.abs(all_centre_predictions - median_of_predictions)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        within_tolerance = cast(np.ndarray, np.all(diff < bb_repeat_tol, axis=1))
+        within_tolerance = cast(np.ndarray, np.all(diff < bb_consistency_tol, axis=1))
 
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
@@ -133,7 +133,7 @@ def optimise_bb_centre(
         field_centre,
         initial_bb_centre=median_of_predictions,
         bb_repeats=bb_repeats - 1,
-        bb_repeat_tol=bb_repeat_tol,
+        bb_consistency_tol=bb_consistency_tol,
     )
 
 
