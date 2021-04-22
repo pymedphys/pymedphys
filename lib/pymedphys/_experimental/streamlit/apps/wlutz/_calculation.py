@@ -72,7 +72,10 @@ def calculations_ui(
     loosened_tolerance_names = ["PyMedPhys-LoosenedTolerance", "PyMedPhys-NoTolerance"]
 
     if loosened_internal_tolerances:
-        algorithm_options = loosened_tolerance_names
+        if quiet:
+            algorithm_options = loosened_tolerance_names[0:1]
+        else:
+            algorithm_options = loosened_tolerance_names
     else:
         algorithm_options = list(
             set(ALGORITHM_FUNCTION_MAP.keys()).difference(loosened_tolerance_names)
@@ -159,7 +162,7 @@ def run_calculation(
     except FileNotFoundError:
         previously_calculated_results = None
 
-    st.sidebar.write("---\n## Progress")
+    st.sidebar.write("## Progress")
     progress_bar = st.sidebar.progress(0)
     status_text = st.sidebar.empty()
 

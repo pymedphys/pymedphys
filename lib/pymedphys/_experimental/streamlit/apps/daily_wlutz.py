@@ -78,7 +78,8 @@ def main():
 
     passing_thus_far = {}
     for machine_id in machine_ids:
-        st.write(f"## {machine_id}")
+        st.write(f"## Calculations for `{machine_id}`")
+        st.sidebar.write(f"# `{machine_id}`")
         passing_thus_far[machine_id] = True
 
         database_table = tables_per_machine[machine_id]
@@ -117,7 +118,6 @@ def main():
         st.write(statistics_collection)
 
     for machine_id in expected_linacs:
-        st.sidebar.write("---")
         st.sidebar.write(f"# `{machine_id}`")
 
         try:
