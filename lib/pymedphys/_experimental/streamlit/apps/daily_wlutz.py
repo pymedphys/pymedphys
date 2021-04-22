@@ -123,7 +123,7 @@ def main():
         try:
             did_it_pass = passing_thus_far[machine_id]
         except KeyError:
-            st.sidebar.warning(f"`{machine_id}` daily WLutz QA hasn't been done.")
+            st.sidebar.warning(f"`{machine_id}` daily WLutz QA hasn't been done. 🤔")
             continue
 
         if did_it_pass:
