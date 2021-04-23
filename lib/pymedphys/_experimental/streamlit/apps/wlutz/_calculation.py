@@ -238,11 +238,12 @@ def run_calculation(
 
         result_range = max_result - min_result
 
-        a_deviation_is_larger_than_threshold = (
-            np.any(result_range > deviation_plot_threshold)
-            or np.any(np.abs(max_result) > total_deviation_plot_threshold)
-            or np.any(np.abs(min_result) > total_deviation_plot_threshold)
-        )
+        diff_columns = ["diff_x", "diff_y"]
+        max_diff = np.max(np.abs(results[diff_columns]))
+
+        a_deviation_is_larger_than_threshold = np.any(
+            result_range > deviation_plot_threshold
+        ) or np.any(max_diff > total_deviation_plot_threshold)
         at_least_one_diff_is_missing = (
             results[["diff_x", "diff_y"]].isnull().values.any()
         )
