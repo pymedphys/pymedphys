@@ -41,7 +41,7 @@ def filter_image_sets(
 
     # Patient ID
     patient_ids = filtered["patient_id"].unique()
-    if len(patient_ids) == 1:
+    if quiet and len(patient_ids) == 1:
         patient_id = patient_ids[0]
     else:
         patient_id = st.radio("Patient", filtered["patient_id"].unique())

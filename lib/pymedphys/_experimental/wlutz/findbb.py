@@ -40,6 +40,8 @@ BB_SIZE_FACTORS_TO_SEARCH_OVER = [
 ]
 
 DEFAULT_BB_REPEATS = 2
+MAX_INITIAL_DISTANCE_FROM_FIELD_CENTRE = 5  # mm
+JITTER_SIGMA = 1  # mm
 
 
 def find_bb_centre(
@@ -53,22 +55,27 @@ def find_bb_centre(
     field_rotation: float,
     bb_repeats: int = DEFAULT_BB_REPEATS,
     bb_consistency_tol: float = DEFAULT_BB_CONSISTENCY_TOL,
+    skip_pylinac=False,
 ) -> TwoNumbers:
     """Search for a rotationally symmetric object within the image."""
 
     field = imginterp.create_interpolated_field(x, y, image)
 
-    try:
-        initial_bb_centre = pylinacwrapper.find_bb_only(
-            x, y, image, edge_lengths, penumbra, field_centre, field_rotation
-        )
-    except ValueError:
+    if skip_pylinac:
         initial_bb_centre = field_centre
+    else:
+        try:
+            initial_bb_centre = pylinacwrapper.find_bb_only(
+                x, y, image, edge_lengths, penumbra, field_centre, field_rotation
+            )
+        except ValueError:
+            initial_bb_centre = field_centre
 
     bb_centre = optimise_bb_centre(
         field,
         bb_diameter,
         field_centre,
+        edge_lengths,
         initial_bb_centre=initial_bb_centre,
         bb_repeats=bb_repeats,
         bb_consistency_tol=bb_consistency_tol,
@@ -81,6 +88,7 @@ def optimise_bb_centre(
     field: imginterp.Field,
     bb_diameter: float,
     field_centre: TwoNumbers,
+    edge_lengths,
     initial_bb_centre: TwoNumbers = None,
     bb_repeats=DEFAULT_BB_REPEATS,
     bb_consistency_tol=DEFAULT_BB_CONSISTENCY_TOL,
@@ -90,10 +98,14 @@ def optimise_bb_centre(
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
-    search_square_edge_length = bb_diameter / np.sqrt(2) / (DEFAULT_BB_REPEATS + 1)
+    search_square_edge_length = np.min(edge_lengths) - bb_diameter / 2
     all_centre_predictions = np.array(
         _bb_finding_repetitions(
-            field, bb_diameter, search_square_edge_length, initial_bb_centre
+            field,
+            bb_diameter,
+            search_square_edge_length,
+            initial_bb_centre,
+            field_centre,
         )
     )
 
@@ -103,18 +115,18 @@ def optimise_bb_centre(
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         within_tolerance = cast(np.ndarray, np.all(diff < bb_consistency_tol, axis=1))
+        within_tolerance[np.isnan(within_tolerance)] = False
 
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
     if np.sum(within_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) - 1:
-
         return median_of_predictions
 
     if bb_repeats == 0:
         raise ValueError("Unable to determine BB position within designated repeats")
 
     out_of_tolerance = np.invert(within_tolerance)
-    if np.sum(out_of_tolerance) > len(BB_SIZE_FACTORS_TO_SEARCH_OVER) / 3:
+    if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 1 / 4:
         raise ValueError(
             "BB centre not able to be consistently determined. "
             "Predictions thus far were the following:\n"
@@ -127,6 +139,7 @@ def optimise_bb_centre(
         field,
         bb_diameter,
         field_centre,
+        edge_lengths,
         initial_bb_centre=median_of_predictions,
         bb_repeats=bb_repeats - 1,
         bb_consistency_tol=bb_consistency_tol,
@@ -134,12 +147,13 @@ def optimise_bb_centre(
 
 
 def _bb_finding_repetitions(
-    field, bb_diameter, search_square_edge_length, initial_bb_centre
+    field, bb_diameter, search_square_edge_length, initial_bb_centre, field_centre
 ):
     all_centre_predictions = []
     for bb_size_factor in BB_SIZE_FACTORS_TO_SEARCH_OVER:
         prediction_with_adjusted_bb_size = _minimise_bb(
             field,
+            field_centre,
             bb_diameter * bb_size_factor,
             search_square_edge_length,
             np.array(initial_bb_centre) + np.random.normal(loc=0, scale=0.5, size=2),
@@ -153,6 +167,7 @@ def _bb_finding_repetitions(
 
 def _minimise_bb(
     field,
+    field_centre,
     bb_diameter,
     search_square_edge_length,
     initial_bb_centre,
@@ -160,7 +175,15 @@ def _minimise_bb(
     retries=3,
 ):
     to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
-    bb_bounds = define_bb_bounds(search_square_edge_length, initial_bb_centre)
+    bb_bounds = define_bb_bounds(search_square_edge_length, field_centre)
+
+    if (
+        np.linalg.norm(np.array(initial_bb_centre) - np.array(field_centre))
+        > MAX_INITIAL_DISTANCE_FROM_FIELD_CENTRE
+    ):
+        initial_bb_centre = field_centre + np.random.normal(
+            loc=0, scale=JITTER_SIGMA, size=2
+        )
 
     bb_centre = bb_basinhopping(
         to_minimise_edge_agreement, bb_bounds, initial_bb_centre
@@ -170,6 +193,7 @@ def _minimise_bb(
         if set_nan_if_at_bounds:
             return _single_minimise_retry(
                 field,
+                field_centre,
                 bb_diameter,
                 search_square_edge_length,
                 initial_bb_centre,
@@ -182,6 +206,7 @@ def _minimise_bb(
     if np.all(np.array(bb_centre) == np.all(initial_bb_centre)):
         return _single_minimise_retry(
             field,
+            field_centre,
             bb_diameter,
             search_square_edge_length,
             initial_bb_centre,
@@ -194,6 +219,7 @@ def _minimise_bb(
 
 def _single_minimise_retry(
     field,
+    field_centre,
     bb_diameter,
     search_square_edge_length,
     initial_bb_centre,
@@ -206,9 +232,11 @@ def _single_minimise_retry(
 
     return _minimise_bb(
         field,
+        field_centre,
         bb_diameter,
         search_square_edge_length,
-        np.array(initial_bb_centre) + np.random.normal(loc=0, scale=2, size=2),
+        np.array(initial_bb_centre)
+        + np.random.normal(loc=0, scale=JITTER_SIGMA, size=2),
         set_nan_if_at_bounds=set_nan_if_at_bounds,
         retries=retries - 1,
     )
