@@ -39,7 +39,8 @@ RESULTS_DATA_COLUMNS = [
     "bb_centre_y",
 ]
 
-DEFAULT_DEVIATION_PLOT_THRESHOLD = 0.5
+DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD = 0.5
+DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD = 1.5
 DEFAULT_PLOT_WHEN_DATA_IS_MISSING = False
 DEFAULT_FILL_ERRORS_WITH_NAN = True
 
@@ -100,12 +101,28 @@ def calculations_ui(
 
     if quiet:
         default_deviation_plot_threshold = np.inf
+        default_total_deviation_plot_threshold = np.inf
+
     else:
-        default_deviation_plot_threshold = DEFAULT_DEVIATION_PLOT_THRESHOLD
+        default_deviation_plot_threshold = (
+            DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD
+        )
+
+        if loosened_internal_tolerances:
+            default_total_deviation_plot_threshold = 3.0
+        else:
+            default_total_deviation_plot_threshold = (
+                DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD
+            )
 
     if advanced_mode:
         deviation_plot_threshold = st.number_input(
-            "Display deviations greater than", value=default_deviation_plot_threshold
+            "Display inter-algorithm deviations greater than",
+            value=default_deviation_plot_threshold,
+        )
+        total_deviation_plot_threshold = st.number_input(
+            "Display total deviations greater than",
+            value=default_total_deviation_plot_threshold,
         )
 
         plot_when_data_missing = st.checkbox(
@@ -116,6 +133,7 @@ def calculations_ui(
         )
     else:
         deviation_plot_threshold = default_deviation_plot_threshold
+        total_deviation_plot_threshold = default_total_deviation_plot_threshold
         plot_when_data_missing = default_data_missing_plot
         fill_errors_with_nan = DEFAULT_FILL_ERRORS_WITH_NAN
 
@@ -132,6 +150,7 @@ def calculations_ui(
             bb_diameter,
             penumbra,
             deviation_plot_threshold,
+            total_deviation_plot_threshold,
             plot_when_data_missing,
             advanced_mode,
             plot_x_axis,
@@ -148,6 +167,7 @@ def run_calculation(
     bb_diameter,
     penumbra,
     deviation_plot_threshold,
+    total_deviation_plot_threshold,
     plot_when_data_missing,
     advanced_mode,
     plot_x_axis,
@@ -218,8 +238,10 @@ def run_calculation(
 
         result_range = max_result - min_result
 
-        a_deviation_is_larger_than_threshold = np.any(
-            result_range > deviation_plot_threshold
+        a_deviation_is_larger_than_threshold = (
+            np.any(result_range > deviation_plot_threshold)
+            or np.any(np.abs(max_result) > total_deviation_plot_threshold)
+            or np.any(np.abs(min_result) > total_deviation_plot_threshold)
         )
         at_least_one_diff_is_missing = (
             results[["diff_x", "diff_y"]].isnull().values.any()
