@@ -227,7 +227,9 @@ def export_cli(args):
 
     if "RTSTRUCT" in modality:
         if roiskip:
-            p.export_struct(plan=plan, export_path=output_directory, skip_pattern=roiskip)
+            p.export_struct(
+                plan=plan, export_path=output_directory, skip_pattern=roiskip
+            )
         else:
             p.export_struct(plan=plan, export_path=output_directory)
 

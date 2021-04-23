@@ -214,9 +214,9 @@ def read_roi(ds, plan, skip_pattern):
     first_points = []
     with open(path_roi, "rt") as f:
         for _, line in enumerate(f, 1):
-            if (flag_skip_roi):
+            if flag_skip_roi:
                 # read til we hit end of ROI
-                if("}; // End of ROI" in line):
+                if "}; // End of ROI" in line:
                     flag_skip_roi = False
 
                 continue
