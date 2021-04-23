@@ -204,6 +204,8 @@ def read_roi(ds, plan, skip_pattern):
     path_roi = os.path.join(plan.path, "plan.roi")
     plan.logger.debug("Will skip ROIs matching pattern[" + skip_pattern + "]")
 
+    flag_skip_roi = False
+
     points = []
     flag_points = (
         False  # bool value to tell me if I want to read the line in as point values
@@ -212,6 +214,13 @@ def read_roi(ds, plan, skip_pattern):
     first_points = []
     with open(path_roi, "rt") as f:
         for _, line in enumerate(f, 1):
+            if (flag_skip_roi):
+                # read til we hit end of ROI
+                if("}; // End of ROI" in line):
+                    flag_skip_roi = False
+
+                continue
+
             if (
                 "};  // End of points for curve" in line
             ):  # this will tell me not to read in point values
@@ -304,6 +313,7 @@ def read_roi(ds, plan, skip_pattern):
 
                 if re.match(skip_pattern, ROIName):
                     plan.logger.info("Skipping ROI [" + ROIName + "]")
+                    flag_skip_roi = True
                     continue
 
                 plan.roi_count = (

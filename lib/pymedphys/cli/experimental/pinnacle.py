@@ -102,4 +102,14 @@ def export_pinnacle(pinnacle_subparsers):
         "-u", "--uid-prefix", help=("Prefix to use for generated UIDs.")
     )
 
+    parser.add_argument(
+        "-r",
+        "--roiskip",
+        help=(
+            "Regular expression defining which ROIs to skip. "
+            "Note that you will probably need to enclose your regular expression in single-quotes. "
+            "For example 'Skin|.*_obj|RadCalc' ."
+        ),
+    )
+
     parser.set_defaults(func=export_cli)
