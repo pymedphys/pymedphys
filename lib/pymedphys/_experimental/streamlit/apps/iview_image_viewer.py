@@ -28,7 +28,7 @@ def main():
     """A viewer for the back-end iView `.jpg` files.
 
     The backend iView `.jpg` files are encoded in a format that is
-    rarely supported within modern software (1993 Lossless JPEG). 
+    rarely supported within modern software (1993 Lossless JPEG).
     As such, opening these
     files using standard image software can be troublesome. This tool
     was written to be able to readily view these files.
