@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import functools
+from typing import Tuple
 
 from pymedphys._imports import numpy as np
 
@@ -24,6 +24,7 @@ from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
 )
 
 from . import findbb, findfield, iview, pylinacwrapper
+from .types import TwoNumbers
 
 DEFAULT_LOW_SIGNAL_CUTOFF = 0.1  # Signal range is between 0.0 and 1.0.
 
@@ -71,7 +72,7 @@ def calculate(
 @functools.lru_cache()
 def get_algorithm_function_map():
     ALGORITHM_FUNCTION_MAP = {
-        "PyMedPhys": _pymedphys_wlutz_calculate,
+        "PyMedPhys": pymedphys_wlutz_calculate,
         f"PyLinac v{_pylinac_installed.__version__}": functools.partial(
             _pylinac_wlutz_calculate, pylinac_version=_pylinac_installed.__version__
         ),
@@ -90,17 +91,71 @@ def load_iview_image(image_path):
     return x, y, image
 
 
-def _pymedphys_wlutz_calculate(
-    x,
-    y,
-    image,
-    bb_diameter,
-    edge_lengths,
-    penumbra,
-    icom_field_rotation,
-    fill_errors_with_nan=True,
+def pymedphys_wlutz_calculate(
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: TwoNumbers,
+    penumbra: float,
+    icom_field_rotation: float,
+    fill_errors_with_nan: bool = True,
+    bb_repeats: int = findbb.DEFAULT_BB_REPEATS,
+    bb_consistency_tol: float = findbb.DEFAULT_BB_CONSISTENCY_TOL,
     **_,
-):
+) -> Tuple[TwoNumbers, TwoNumbers]:
+    """Utilise the PyMedPhys WLutz algorithm to determine the field
+    centre and BB centre.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        The x axis position definitions (mm) for the provided image
+        pixels.
+    y : np.ndarray
+        The y axis position definitions (mm) for the provided image
+        pixels.
+    image : np.ndarray
+        The image to be searched over.
+    bb_diameter : float
+        An estimate of the diameter of the ball-bearing (mm).
+    edge_lengths : TwoNumbers
+        The edge lengths of the radiation field (mm).
+    penumbra : float
+        An estimate of the distance between the nominal field edge and
+        the nominal field shoulder (mm).
+    icom_field_rotation : float
+        The rotation of the collimator at the time the radiation image
+        was captured. In degrees, in the same rotational coordinate
+        system that is utilised by the Elekta iCom system.
+    fill_errors_with_nan : bool, optional
+        Whether or not to stop code execution when an internal error
+        occurs. The default option is to march on but return
+        ``[np.nan, np.nan]`` for the failing coordinates.
+    bb_repeats : int, optional
+        The number of times to attempt the ball bearing optimiser
+        search, by default 2.
+    bb_consistency_tol : float, optional
+        The tolerance on the required internal consistency of the
+        ball-bearing finding algorithm. The internal algorithm searches
+        for multiple ball-bearings with a range of different sizes
+        smaller than that provided by the user. If any predicted
+        ``bb_centre`` deviates by more than this tolerance from the
+        median ``bb_centre`` then if there are ``bb_repeats``
+        available the initial conditions of the search are adjusted to
+        begin at the new median and it is re-attempted. If
+        ``bb_repeats`` have "run out" then depending on the
+        ``fill_errors_with_nan`` parameter either an error is raised or
+        ``[np.nan, np.nan]`` is returned. By default 0.2 mm.
+
+
+    Returns
+    -------
+    field_centre : TwoNumbers
+    bb_centre : TwoNumbers
+    """
+
+    nan_result: TwoNumbers = np.array([np.nan, np.nan])
 
     try:
         field_centre = findfield.find_field_centre(
@@ -108,8 +163,8 @@ def _pymedphys_wlutz_calculate(
         )
     except ValueError:
         if fill_errors_with_nan:
-            field_centre = [np.nan, np.nan]
-            bb_centre = [np.nan, np.nan]
+            field_centre = nan_result
+            bb_centre = nan_result
 
             return field_centre, bb_centre
         else:
@@ -125,10 +180,12 @@ def _pymedphys_wlutz_calculate(
             penumbra,
             field_centre,
             field_rotation=icom_field_rotation,
+            bb_repeats=bb_repeats,
+            bb_consistency_tol=bb_consistency_tol,
         )
     except ValueError:
         if fill_errors_with_nan:
-            bb_centre = [np.nan, np.nan]
+            bb_centre = nan_result
         else:
             raise
 

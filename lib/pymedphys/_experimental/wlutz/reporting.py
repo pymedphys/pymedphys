@@ -21,9 +21,9 @@ from . import createaxis, imginterp, transformation
 
 
 def image_analysis_figure(
-    x: "np.array",
-    y: "np.array",
-    img: "np.array",
+    x: "np.ndarray",
+    y: "np.ndarray",
+    img: "np.ndarray",
     bb_centre: Tuple[float, float],
     field_centre: Tuple[float, float],
     field_rotation: float,
@@ -31,6 +31,8 @@ def image_analysis_figure(
     edge_lengths: Tuple[float, float],
     penumbra: float,
     units="(mm)",
+    vmin=None,
+    vmax=None,
 ):
     """Create a figure which displays diagnostic information for the WLutz result.
 
@@ -59,6 +61,12 @@ def image_analysis_figure(
         edge penumbra.
     units : str, optional
         The units string to display on the figure, by default "(mm)".
+    vmin : float, optional
+        A value to bound the colourmap on the lower end. Defaults to
+        None which is internally adjusted to be the minimum of ``img``.
+    vmax : float, optional
+        A value to bound the colourmap on the upper end. Defaults to
+        None which is internally adjusted to be the maximum of ``img``.
 
     Returns
     -------
@@ -118,6 +126,8 @@ def image_analysis_figure(
         y_bb_interp,
         pixel_value_label,
         units=units,
+        vmin=vmin,
+        vmax=vmax,
     )
 
     profile_flip_plot(axs[2, 0], x_axis, field(*x_field_interp))
@@ -188,6 +198,8 @@ def image_with_overlays(
     y_bb_interp,
     pixel_value_label,
     units="(mm)",
+    vmin=None,
+    vmax=None,
 ):
     rect_crosshair_dx = [
         -edge_lengths[0] / 2,
@@ -200,7 +212,7 @@ def image_with_overlays(
     rect_dx = [-edge_lengths[0] / 2, 0, edge_lengths[0], 0, -edge_lengths[0]]
     rect_dy = [-edge_lengths[1] / 2, edge_lengths[1], 0, -edge_lengths[1], 0]
 
-    c = ax.pcolormesh(x, y, img, shading="nearest")
+    c = ax.pcolormesh(x, y, img, shading="nearest", vmin=vmin, vmax=vmax)
     fig.colorbar(c, ax=ax, label=pixel_value_label)
 
     ax.plot(*draw_by_diff(rect_dx, rect_dy, field_transform), "k", lw=3)
