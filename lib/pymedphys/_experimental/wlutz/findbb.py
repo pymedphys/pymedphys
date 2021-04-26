@@ -39,9 +39,8 @@ BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     1.0,
 ]
 
-DEFAULT_BB_REPEATS = 2
-MAX_INITIAL_DISTANCE_FROM_FIELD_CENTRE = 5  # mm
-JITTER_SIGMA = 1  # mm
+DEFAULT_BB_REPEATS = 6
+JITTER_SIGMA = 0.2  # mm
 
 
 def find_bb_centre(
@@ -125,15 +124,20 @@ def optimise_bb_centre(
     if bb_repeats == 0:
         raise ValueError("Unable to determine BB position within designated repeats")
 
-    # out_of_tolerance = np.invert(within_tolerance)
-    # if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 1 / 4:
-    #     raise ValueError(
-    #         "BB centre not able to be consistently determined. "
-    #         "Predictions thus far were the following:\n"
-    #         f"    {all_centre_predictions}\n"
-    #         "Initial bb centre for this iteration was:\n"
-    #         f"    {initial_bb_centre}"
-    #     )
+    out_of_tolerance = np.invert(within_tolerance)
+    if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 1 / 4:
+        bb_bounds = np.round(
+            define_bb_bounds(field_centre, edge_lengths, bb_diameter), 2
+        )
+        raise ValueError(
+            "BB centre not able to be consistently determined. "
+            "Predictions thus far were the following:\n"
+            f"    {np.round(all_centre_predictions, 2)}\n"
+            "Initial bb centre for this iteration was:\n"
+            f"    {np.round(initial_bb_centre, 2)}\n"
+            "BB bounds were set to:\n"
+            f"    {bb_bounds}"
+        )
 
     return optimise_bb_centre(
         field,
@@ -180,14 +184,6 @@ def _minimise_bb(
         field_centre=field_centre, edge_lengths=edge_lengths, bb_diameter=bb_diameter
     )
 
-    if (
-        np.linalg.norm(np.array(initial_bb_centre) - np.array(field_centre))
-        > MAX_INITIAL_DISTANCE_FROM_FIELD_CENTRE
-    ):
-        initial_bb_centre = field_centre + np.random.normal(
-            loc=0, scale=JITTER_SIGMA, size=2
-        )
-
     bb_centre = bb_basinhopping(
         to_minimise_edge_agreement, bb_bounds, initial_bb_centre
     )
@@ -195,26 +191,26 @@ def _minimise_bb(
     if bounds.check_if_at_bounds(bb_centre, bb_bounds):
         if set_nan_if_at_bounds:
             return _single_minimise_retry(
-                field,
-                field_centre,
-                bb_diameter,
-                search_square_edge_length,
-                initial_bb_centre,
-                set_nan_if_at_bounds,
-                retries,
+                field=field,
+                field_centre=field_centre,
+                bb_diameter=bb_diameter,
+                edge_lengths=edge_lengths,
+                initial_bb_centre=initial_bb_centre,
+                set_nan_if_at_bounds=set_nan_if_at_bounds,
+                retries=retries,
             )
         else:
             raise ValueError("BB found at bounds, likely incorrect")
 
     if np.all(np.array(bb_centre) == np.all(initial_bb_centre)):
         return _single_minimise_retry(
-            field,
-            field_centre,
-            bb_diameter,
-            search_square_edge_length,
-            initial_bb_centre,
-            set_nan_if_at_bounds,
-            retries,
+            field=field,
+            field_centre=field_centre,
+            bb_diameter=bb_diameter,
+            edge_lengths=edge_lengths,
+            initial_bb_centre=initial_bb_centre,
+            set_nan_if_at_bounds=set_nan_if_at_bounds,
+            retries=retries,
         )
 
     return bb_centre
@@ -224,7 +220,7 @@ def _single_minimise_retry(
     field,
     field_centre,
     bb_diameter,
-    search_square_edge_length,
+    edge_lengths,
     initial_bb_centre,
     set_nan_if_at_bounds,
     retries,
@@ -233,13 +229,16 @@ def _single_minimise_retry(
     if retries == 0:
         return [np.nan, np.nan]
 
+    jittered_initial_bb_centre = np.array(initial_bb_centre) + np.random.normal(
+        loc=0, scale=JITTER_SIGMA, size=2
+    )
+
     return _minimise_bb(
-        field,
-        field_centre,
-        bb_diameter,
-        search_square_edge_length,
-        np.array(initial_bb_centre)
-        + np.random.normal(loc=0, scale=JITTER_SIGMA, size=2),
+        field=field,
+        field_centre=field_centre,
+        bb_diameter=bb_diameter,
+        edge_lengths=edge_lengths,
+        initial_bb_centre=jittered_initial_bb_centre,
         set_nan_if_at_bounds=set_nan_if_at_bounds,
         retries=retries - 1,
     )
@@ -249,10 +248,10 @@ def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
     bb_results = scipy.optimize.basinhopping(
         to_minimise,
         initial_bb_centre,
-        T=1,
-        niter=200,
-        niter_success=5,
-        stepsize=0.25,
+        T=10,
+        niter=600,
+        niter_success=10,
+        stepsize=JITTER_SIGMA * 2,
         minimizer_kwargs={"method": "L-BFGS-B", "bounds": bb_bounds},
     )
 
