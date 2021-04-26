@@ -405,23 +405,30 @@ def run_calculation(
                 masked = contextualised_results.loc[mask]
 
                 fig, ax = plt.subplots()
-                for algorithm in sorted(selected_algorithms):
-                    algorithm_masked = masked.loc[masked["algorithm"] == algorithm]
-                    ax.plot(
-                        algorithm_masked["gantry"],
-                        algorithm_masked[column],
-                        ".-",
-                        label=algorithm,
-                    )
 
-                    description = algorithm_masked[column].describe()
-                    description = description.round(2)
-                    description["algorithm"] = algorithm
-                    description["treatment"] = treatment
-                    description["port"] = port
-                    description["orientation"] = orientation
+                energies = masked["energy"].unique()
+                for energy in energies:
+                    energy_masked = masked.loc[masked["energy"] == energy]
+                    for algorithm in sorted(selected_algorithms):
+                        algorithm_masked = energy_masked.loc[
+                            energy_masked["algorithm"] == algorithm
+                        ]
+                        ax.plot(
+                            algorithm_masked["gantry"],
+                            algorithm_masked[column],
+                            ".-",
+                            label=algorithm,
+                        )
 
-                    statistics_collection.append(description)
+                        description = algorithm_masked[column].describe()
+                        description = description.round(2)
+                        description["algorithm"] = algorithm
+                        description["treatment"] = treatment
+                        description["energy"] = energy
+                        description["port"] = port
+                        description["orientation"] = orientation
+
+                        statistics_collection.append(description)
 
                 ax.set_xlabel("Gantry Angle (degrees)")
                 ax.set_ylabel("Field centre - BB centre (mm)")
@@ -437,7 +444,16 @@ def run_calculation(
     statistics_collection = pd.concat(statistics_collection, axis=1).T
     statistics_collection.reset_index(inplace=True)
     statistics_collection = statistics_collection[
-        ["treatment", "port", "orientation", "algorithm", "min", "max", "mean"]
+        [
+            "energy",
+            "orientation",
+            "min",
+            "max",
+            "mean",
+            "treatment",
+            "port",
+            "algorithm",
+        ]
     ]
 
     if advanced_mode:

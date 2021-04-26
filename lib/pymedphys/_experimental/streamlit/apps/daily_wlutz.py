@@ -113,6 +113,8 @@ def main():
             quiet=True,
         )
 
+        statistics_collection = statistics_collection.drop("algorithm", axis=1)
+
         negative_projection_distance = np.max(np.abs(statistics_collection["min"]))
         positive_projection_distance = np.max(np.abs(statistics_collection["max"]))
 
@@ -128,6 +130,8 @@ def main():
             passing_thus_far[machine_id] = False
 
         st.write(statistics_collection)
+
+    # TODO: Make it not say pass if an expected energy hasn't been completed.
 
     for machine_id in expected_linacs:
         st.sidebar.write(f"# `{machine_id}`")
