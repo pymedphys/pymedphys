@@ -46,6 +46,18 @@ SIMPLE = True
 
 
 def main():
+    """A tool designed for usage within the morning QA workflow.
+
+    It is intended that after the morning kV cone beam and table
+    movement QA has been undergone with an "iso-cube" like phantom the
+    Linac's morning warm-up MV beams can be delivered in Arc mode with
+    the iView panel recording the images.
+
+    Due to a limitation within PyMedPhys' WLutz algorithm the field
+    sizes need to have their dimensions be less than 3x the air cavity
+    diameter.
+
+    """
     bb_diameter = 12
     penumbra = 2
     advanced_mode = False
