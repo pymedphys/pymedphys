@@ -39,9 +39,20 @@ RESULTS_DATA_COLUMNS = [
     "bb_centre_y",
 ]
 
-DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD = 0.5
+# Draw a plot within the app when algorithms deviate from each other
+# by this much
+DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD = 0.5  # mm
+
+# Draw a plot within the app when the total deviation from the origin
+# is more than this much
 DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD = 1.5
+
+# Draw a plot when an algorithm doesn't return a result
 DEFAULT_PLOT_WHEN_DATA_IS_MISSING = False
+
+# Whether or not the app should "march on" in the face of an error or
+# produce a traceback. When it "marches on" it will not produce data
+# points in the locations where an error occurred.
 DEFAULT_FILL_ERRORS_WITH_NAN = True
 
 
