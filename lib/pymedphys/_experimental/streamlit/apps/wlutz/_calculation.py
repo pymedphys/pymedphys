@@ -166,8 +166,9 @@ def calculations_ui(
             advanced_mode,
             plot_x_axis,
             fill_errors_with_nan,
-            quiet=quiet,
         )
+
+    return None
 
 
 def run_calculation(
@@ -183,7 +184,6 @@ def run_calculation(
     advanced_mode,
     plot_x_axis,
     fill_errors_with_nan,
-    quiet=False,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:

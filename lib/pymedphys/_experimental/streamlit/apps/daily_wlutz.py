@@ -238,7 +238,7 @@ def _icom_per_machine_id(
         (
             icom_datasets[lower],
             icom_datasets[upper],
-        ) = iview_ui._get_bounds_from_centre_and_diameter(
+        ) = iview_ui.get_bounds_from_centre_and_diameter(
             icom_datasets[centre], icom_datasets[diameter]
         )
 
@@ -251,9 +251,7 @@ def _icom_per_machine_id(
         "y_lower",
         "y_upper",
     ]:
-        iview_ui._table_transfer_via_interpolation(
-            icom_datasets, database_table, column
-        )
+        iview_ui.table_transfer_via_interpolation(icom_datasets, database_table, column)
 
     icom_seconds = icom_datasets["seconds_since_midnight"]
     iview_seconds = database_table["seconds_since_midnight"]

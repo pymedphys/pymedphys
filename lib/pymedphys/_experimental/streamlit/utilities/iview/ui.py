@@ -171,7 +171,7 @@ def iview_and_icom_filter_and_align(
         (
             icom_datasets[lower],
             icom_datasets[upper],
-        ) = _get_bounds_from_centre_and_diameter(
+        ) = get_bounds_from_centre_and_diameter(
             icom_datasets[centre], icom_datasets[diameter]
         )
 
@@ -184,7 +184,7 @@ def iview_and_icom_filter_and_align(
         "y_lower",
         "y_upper",
     ]:
-        _table_transfer_via_interpolation(icom_datasets, database_table, column)
+        table_transfer_via_interpolation(icom_datasets, database_table, column)
 
     icom_seconds = icom_datasets["seconds_since_midnight"]
     iview_seconds = database_table["seconds_since_midnight"]
@@ -213,7 +213,7 @@ def iview_and_icom_filter_and_align(
     return database_table, database_directory, qa_directory, selected_date
 
 
-def _get_bounds_from_centre_and_diameter(centre, diameter):
+def get_bounds_from_centre_and_diameter(centre, diameter):
     lower = centre - diameter / 2
     upper = centre + diameter / 2
 
@@ -251,7 +251,7 @@ def load_image_frame_database(
     return database_table
 
 
-def _table_transfer_via_interpolation(source, location, key):
+def table_transfer_via_interpolation(source, location, key):
     interpolation = scipy.interpolate.interp1d(
         source["seconds_since_midnight"], source[key]
     )
