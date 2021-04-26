@@ -148,19 +148,17 @@ def optimise_bb_centre(
         return median_of_predictions
 
     if bb_repeats == 0:
-        raise ValueError("Unable to determine BB position within designated repeats")
-
-    # out_of_tolerance = np.invert(within_tolerance)
-    # if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 3 / 4:
-    #     raise ValueError(
-    #         "BB centre not able to be consistently determined. "
-    #         "Predictions thus far were the following:\n"
-    #         f"    {np.round(all_centre_predictions, 2)}\n"
-    #         "Initial bb centre for this iteration was:\n"
-    #         f"    {np.round(initial_bb_centre, 2)}\n"
-    #         "BB bounds were set to:\n"
-    #         f"    {np.round(bb_bounds, 2)}"
-    #     )
+        raise ValueError(
+            "Unable to determine BB position within designated repeats. "
+            "This is likely due to the BB centre not being able to be "
+            "consistently determined. Predictions thus far were the "
+            "following:\n"
+            f"    {np.round(all_centre_predictions, 2)}\n"
+            "Initial bb centre for this iteration was:\n"
+            f"    {np.round(initial_bb_centre, 2)}\n"
+            "BB bounds were set to:\n"
+            f"    {np.round(bb_bounds, 2)}"
+        )
 
     return optimise_bb_centre(
         field=field,
