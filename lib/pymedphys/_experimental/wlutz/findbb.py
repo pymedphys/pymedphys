@@ -178,7 +178,27 @@ def define_bb_bounds(
     initial_bb_centre,
     maximum_deviation_from_initial,
 ):
-    """Define the bounds beyond which a BB cannot be found."""
+    """Define the bounds beyond which a BB is not allowed to be searched for.
+
+    The bounds are defined by two constraints. The first being that the
+    BB is not to be searched for outside of the field itself. These
+    second constraint however stems as a fundamental result of the
+    unique approach being used for this WLutz algorithm.
+
+    This WLutz algorithm was designed to try and be sufficiently
+    different from others in use so that there were non-overlapping
+    failure modes. The BB algorithm is designed to find regions of the
+    field that have the most rotational symmetry about a given axis
+    (the bb_centre). There is a fatal flaw in this approach however.
+    The flat region of a field is also rotationally symmetric. In order
+    to work around this issue the initial position of the ball bearing
+    is chosen to be close (within a bb diameter) to it's true location
+    and the search area is limited to be within that bb shape.
+
+    The second portion of these bounds definition is defining that
+    region which cannot be searched over due to it being too far away
+    from the initial position.
+    """
     distances_from_centre_to_field_edge = np.array(edge_lengths) / 2 - bb_diameter / 2
 
     circle_centre_bounds = [
