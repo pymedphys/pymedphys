@@ -39,7 +39,7 @@ BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     1.0,
 ]
 
-DEFAULT_BB_REPEATS = 6
+DEFAULT_BB_REPEATS = 2
 JITTER_SIGMA = 0.2  # mm
 
 
@@ -125,7 +125,7 @@ def optimise_bb_centre(
         raise ValueError("Unable to determine BB position within designated repeats")
 
     out_of_tolerance = np.invert(within_tolerance)
-    if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 1 / 4:
+    if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) / 3:
         bb_bounds = np.round(
             define_bb_bounds(field_centre, edge_lengths, bb_diameter), 2
         )
@@ -177,7 +177,7 @@ def _minimise_bb(
     edge_lengths,
     initial_bb_centre,
     set_nan_if_at_bounds=False,
-    retries=3,
+    retries=1,
 ):
     to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
     bb_bounds = define_bb_bounds(
@@ -202,16 +202,16 @@ def _minimise_bb(
         else:
             raise ValueError("BB found at bounds, likely incorrect")
 
-    if np.all(np.array(bb_centre) == np.all(initial_bb_centre)):
-        return _single_minimise_retry(
-            field=field,
-            field_centre=field_centre,
-            bb_diameter=bb_diameter,
-            edge_lengths=edge_lengths,
-            initial_bb_centre=initial_bb_centre,
-            set_nan_if_at_bounds=set_nan_if_at_bounds,
-            retries=retries,
-        )
+    # if np.all(np.array(bb_centre) == np.all(initial_bb_centre)):
+    #     return _single_minimise_retry(
+    #         field=field,
+    #         field_centre=field_centre,
+    #         bb_diameter=bb_diameter,
+    #         edge_lengths=edge_lengths,
+    #         initial_bb_centre=initial_bb_centre,
+    #         set_nan_if_at_bounds=set_nan_if_at_bounds,
+    #         retries=retries,
+    #     )
 
     return bb_centre
 
@@ -248,10 +248,10 @@ def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
     bb_results = scipy.optimize.basinhopping(
         to_minimise,
         initial_bb_centre,
-        T=10,
-        niter=600,
-        niter_success=10,
-        stepsize=JITTER_SIGMA * 2,
+        T=1,
+        niter=200,
+        niter_success=5,
+        stepsize=0.25,
         minimizer_kwargs={"method": "L-BFGS-B", "bounds": bb_bounds},
     )
 

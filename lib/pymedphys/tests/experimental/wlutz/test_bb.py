@@ -14,6 +14,7 @@
 
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 import pymedphys._mocks.wlutz as wlutz_mocks
 
@@ -42,6 +43,7 @@ def test_normal_bb():
     )
 
 
+@pytest.mark.skip(reason="Limitation of current PyMedPhys WLutz algorithm")
 def test_small_bb():
     field_centre = [0, 0]
     field_side_lengths = [15, 35]
