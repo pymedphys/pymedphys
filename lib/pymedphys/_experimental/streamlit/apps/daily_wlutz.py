@@ -19,8 +19,6 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-from altair.vegalite.v4.schema.channels import Key
-
 from pymedphys._streamlit import categories
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
@@ -36,8 +34,12 @@ from .wlutz import _calculation, _config
 CATEGORY = categories.PLANNING
 TITLE = "Daily WLutz"
 
-
+# The tolerance for any given images absolute deviation of
+# field_centre - bb_centre.
 PROJECTION_TOLERANCE = 2.0  # mm
+
+# The tolerance for the mean displacement of a given beam across all
+# gantry angles.
 MEAN_TOLERANCE = 1.0  # mm
 
 SIMPLE = True
@@ -149,10 +151,10 @@ def _custom_iview_icom_filter(config, advanced_mode):
 
     icom_patients_directory = icom_directory.joinpath("patients")
 
-    database_table = iview_ui._get_user_image_set_selection(
+    database_table = iview_ui.get_user_image_set_selection(
         database_table, advanced_mode, quiet=quiet
     )
-    database_table = iview_ui._load_image_frame_database(
+    database_table = iview_ui.load_image_frame_database(
         database_directory, database_table, refresh_cache, advanced_mode
     )
 

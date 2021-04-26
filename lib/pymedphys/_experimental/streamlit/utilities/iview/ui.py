@@ -55,10 +55,10 @@ def iview_and_icom_filter_and_align(
     if not quiet:
         st.write("## Filtering")
 
-    database_table = _get_user_image_set_selection(
+    database_table = get_user_image_set_selection(
         database_table, advanced_mode, quiet=quiet
     )
-    database_table = _load_image_frame_database(
+    database_table = load_image_frame_database(
         database_directory, database_table, refresh_cache, advanced_mode
     )
 
@@ -220,7 +220,7 @@ def _get_bounds_from_centre_and_diameter(centre, diameter):
     return lower, upper
 
 
-def _get_user_image_set_selection(database_table, advanced_mode, quiet=False):
+def get_user_image_set_selection(database_table, advanced_mode, quiet=False):
     filtered = _filtering.filter_image_sets(database_table, advanced_mode, quiet=quiet)
     filtered.sort_values("datetime", ascending=False, inplace=True)
 
@@ -233,7 +233,7 @@ def _get_user_image_set_selection(database_table, advanced_mode, quiet=False):
     return filtered
 
 
-def _load_image_frame_database(
+def load_image_frame_database(
     database_directory, input_database_table, refresh_cache, advanced_mode
 ):
     if advanced_mode:

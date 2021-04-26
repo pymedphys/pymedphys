@@ -45,7 +45,7 @@ DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD = 0.5  # mm
 
 # Draw a plot within the app when the total deviation from the origin
 # is more than this much
-DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD = 1.5
+DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD = 1.5  # mm
 
 # Draw a plot when an algorithm doesn't return a result
 DEFAULT_PLOT_WHEN_DATA_IS_MISSING = False
