@@ -66,6 +66,7 @@ def find_bb_centre(
     bb_repeats: int = DEFAULT_BB_REPEATS,
     bb_consistency_tol: float = DEFAULT_BB_CONSISTENCY_TOL,
     skip_pylinac=False,
+    maximum_deviation_from_initial=None,
 ) -> TwoNumbers:
     """Search for a rotationally symmetric object within the image."""
 
@@ -81,12 +82,32 @@ def find_bb_centre(
         except ValueError:
             initial_bb_centre = field_centre
 
-    bb_centre = optimise_bb_centre(
-        field,
-        bb_diameter,
-        field_centre,
-        edge_lengths,
+    if initial_bb_centre is None:
+        initial_bb_centre = field_centre
+
+    if maximum_deviation_from_initial is None:
+        # This is needed to account for the issue that a "flat field" is
+        # perfectly rotationally symmetric. Therefore a limitation
+        # of this approach is, cannot search within the flat field
+        # region at all. Therefore, the initial position needs to be
+        # within the following diameter of a BB away from the actual BB
+        # location.
+        maximum_deviation_from_initial = bb_diameter * np.sqrt(2)
+
+    bb_bounds = define_bb_bounds(
+        field_centre=field_centre,
+        edge_lengths=edge_lengths,
+        bb_diameter=bb_diameter,
         initial_bb_centre=initial_bb_centre,
+        maximum_deviation_from_initial=maximum_deviation_from_initial,
+    )
+
+    bb_centre = optimise_bb_centre(
+        field=field,
+        bb_diameter=bb_diameter,
+        field_centre=field_centre,
+        initial_bb_centre=initial_bb_centre,
+        bb_bounds=bb_bounds,
         bb_repeats=bb_repeats,
         bb_consistency_tol=bb_consistency_tol,
     )
@@ -98,22 +119,19 @@ def optimise_bb_centre(
     field: imginterp.Field,
     bb_diameter: float,
     field_centre: TwoNumbers,
-    edge_lengths,
-    initial_bb_centre: TwoNumbers = None,
+    initial_bb_centre: TwoNumbers,
+    bb_bounds,
     bb_repeats=DEFAULT_BB_REPEATS,
     bb_consistency_tol=DEFAULT_BB_CONSISTENCY_TOL,
 ) -> TwoNumbers:
     """A recursive loop that searches for a rotationally symmetric object."""
 
-    if initial_bb_centre is None:
-        initial_bb_centre = field_centre
-
     all_centre_predictions = np.array(
         _bb_finding_repetitions(
             field=field,
             bb_diameter=bb_diameter,
-            edge_lengths=edge_lengths,
             initial_bb_centre=initial_bb_centre,
+            bb_bounds=bb_bounds,
             field_centre=field_centre,
         )
     )
@@ -136,9 +154,6 @@ def optimise_bb_centre(
 
     out_of_tolerance = np.invert(within_tolerance)
     if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) / 3:
-        bb_bounds = np.round(
-            define_bb_bounds(field_centre, edge_lengths, bb_diameter), 2
-        )
         raise ValueError(
             "BB centre not able to be consistently determined. "
             "Predictions thus far were the following:\n"
@@ -146,24 +161,73 @@ def optimise_bb_centre(
             "Initial bb centre for this iteration was:\n"
             f"    {np.round(initial_bb_centre, 2)}\n"
             "BB bounds were set to:\n"
-            f"    {bb_bounds}"
+            f"    {np.round(bb_bounds, 2)}"
         )
 
     return optimise_bb_centre(
-        field,
-        bb_diameter,
-        field_centre,
-        edge_lengths,
+        field=field,
+        bb_diameter=bb_diameter,
+        field_centre=field_centre,
         initial_bb_centre=median_of_predictions,
+        bb_bounds=bb_bounds,
         bb_repeats=bb_repeats - 1,
         bb_consistency_tol=bb_consistency_tol,
     )
 
 
-def _bb_finding_repetitions(
-    field, bb_diameter, edge_lengths, initial_bb_centre, field_centre
+def define_bb_bounds(
+    field_centre,
+    edge_lengths,
+    bb_diameter,
+    initial_bb_centre,
+    maximum_deviation_from_initial,
 ):
-    """A wrapper around the bb finding repetitions that adds random """
+    """Define the bounds beyond which a BB cannot be found."""
+    distances_from_centre_to_field_edge = np.array(edge_lengths) / 2 - bb_diameter / 2
+
+    circle_centre_bounds = [
+        (
+            np.max(
+                [
+                    field_centre[0] - distances_from_centre_to_field_edge[0],
+                    initial_bb_centre[0] - maximum_deviation_from_initial,
+                ]
+            ),
+            np.min(
+                [
+                    field_centre[0] + distances_from_centre_to_field_edge[0],
+                    initial_bb_centre[0] + maximum_deviation_from_initial,
+                ]
+            ),
+        ),
+        (
+            np.max(
+                [
+                    field_centre[1] - distances_from_centre_to_field_edge[1],
+                    initial_bb_centre[1] - maximum_deviation_from_initial,
+                ]
+            ),
+            np.min(
+                [
+                    field_centre[1] + distances_from_centre_to_field_edge[1],
+                    initial_bb_centre[1] + maximum_deviation_from_initial,
+                ]
+            ),
+        ),
+    ]
+
+    return circle_centre_bounds
+
+
+def _bb_finding_repetitions(
+    field,
+    bb_diameter,
+    initial_bb_centre,
+    bb_bounds,
+    field_centre,
+):
+    """Iterate through each of the BB size factors and get a bb centre
+    prodiction for each."""
     all_centre_predictions = []
     for bb_size_factor in BB_SIZE_FACTORS_TO_SEARCH_OVER:
         jittered_initial_bb_centre = _jitter_initial_bb_centre(initial_bb_centre)
@@ -172,8 +236,8 @@ def _bb_finding_repetitions(
             field=field,
             field_centre=field_centre,
             bb_diameter=bb_diameter * bb_size_factor,
-            edge_lengths=edge_lengths,
             initial_bb_centre=jittered_initial_bb_centre,
+            bb_bounds=bb_bounds,
             set_nan_if_at_bounds=True,
         )
 
@@ -186,14 +250,14 @@ def _minimise_bb(
     field,
     field_centre,
     bb_diameter,
-    edge_lengths,
     initial_bb_centre,
+    bb_bounds,
     set_nan_if_at_bounds=False,
     retries=1,
 ):
-    to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
-    bb_bounds = define_bb_bounds(
-        field_centre=field_centre, edge_lengths=edge_lengths, bb_diameter=bb_diameter
+    """Use scipy's basinhopping to find a rotationally symmetric object."""
+    to_minimise_edge_agreement = create_bb_to_minimise(
+        field=field, bb_diameter=bb_diameter
     )
 
     bb_centre = bb_basinhopping(
@@ -206,8 +270,8 @@ def _minimise_bb(
                 field=field,
                 field_centre=field_centre,
                 bb_diameter=bb_diameter,
-                edge_lengths=edge_lengths,
                 initial_bb_centre=initial_bb_centre,
+                bb_bounds=bb_bounds,
                 set_nan_if_at_bounds=set_nan_if_at_bounds,
                 retries=retries,
             )
@@ -219,8 +283,8 @@ def _minimise_bb(
             field=field,
             field_centre=field_centre,
             bb_diameter=bb_diameter,
-            edge_lengths=edge_lengths,
             initial_bb_centre=initial_bb_centre,
+            bb_bounds=bb_bounds,
             set_nan_if_at_bounds=set_nan_if_at_bounds,
             retries=retries,
         )
@@ -240,11 +304,12 @@ def _single_minimise_retry(
     field,
     field_centre,
     bb_diameter,
-    edge_lengths,
     initial_bb_centre,
+    bb_bounds,
     set_nan_if_at_bounds,
     retries,
 ):
+    """Recursively retry the minimisation with a jittered initial position."""
     if retries == 0:
         return [np.nan, np.nan]
 
@@ -254,8 +319,8 @@ def _single_minimise_retry(
         field=field,
         field_centre=field_centre,
         bb_diameter=bb_diameter,
-        edge_lengths=edge_lengths,
         initial_bb_centre=jittered_initial_bb_centre,
+        bb_bounds=bb_bounds,
         set_nan_if_at_bounds=set_nan_if_at_bounds,
         retries=retries - 1,
     )
@@ -320,20 +385,3 @@ def create_bb_to_minimise_simple(field, bb_diameter):
         return total_minimisation / (len(dist_mask) - 1)
 
     return to_minimise_edge_agreement
-
-
-def define_bb_bounds(field_centre, edge_lengths, bb_diameter):
-    distances_from_centre = np.array(edge_lengths) / 2 - bb_diameter / 2
-
-    circle_centre_bounds = [
-        (
-            field_centre[0] - distances_from_centre[0],
-            field_centre[0] + distances_from_centre[0],
-        ),
-        (
-            field_centre[1] - distances_from_centre[1],
-            field_centre[1] + distances_from_centre[1],
-        ),
-    ]
-
-    return circle_centre_bounds
