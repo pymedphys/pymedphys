@@ -46,7 +46,7 @@ BB_SIZE_FACTORS_TO_SEARCH_OVER = [
 ]
 
 # Retry limit on BB finding in case of an error.
-DEFAULT_BB_REPEATS = 2
+DEFAULT_BB_REPEATS = 6
 
 # The standard deviation of noise that is applied to initial bb
 # positions so that the initial position isn't used in the same way
@@ -92,7 +92,7 @@ def find_bb_centre(
         # region at all. Therefore, the initial position needs to be
         # within the following diameter of a BB away from the actual BB
         # location.
-        maximum_deviation_from_initial = bb_diameter * np.sqrt(2)
+        maximum_deviation_from_initial = bb_diameter / 2
 
     bb_bounds = define_bb_bounds(
         field_centre=field_centre,
@@ -152,17 +152,17 @@ def optimise_bb_centre(
     if bb_repeats == 0:
         raise ValueError("Unable to determine BB position within designated repeats")
 
-    out_of_tolerance = np.invert(within_tolerance)
-    if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) / 3:
-        raise ValueError(
-            "BB centre not able to be consistently determined. "
-            "Predictions thus far were the following:\n"
-            f"    {np.round(all_centre_predictions, 2)}\n"
-            "Initial bb centre for this iteration was:\n"
-            f"    {np.round(initial_bb_centre, 2)}\n"
-            "BB bounds were set to:\n"
-            f"    {np.round(bb_bounds, 2)}"
-        )
+    # out_of_tolerance = np.invert(within_tolerance)
+    # if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 3 / 4:
+    #     raise ValueError(
+    #         "BB centre not able to be consistently determined. "
+    #         "Predictions thus far were the following:\n"
+    #         f"    {np.round(all_centre_predictions, 2)}\n"
+    #         "Initial bb centre for this iteration was:\n"
+    #         f"    {np.round(initial_bb_centre, 2)}\n"
+    #         "BB bounds were set to:\n"
+    #         f"    {np.round(bb_bounds, 2)}"
+    #     )
 
     return optimise_bb_centre(
         field=field,
