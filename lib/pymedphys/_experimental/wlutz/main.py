@@ -105,20 +105,21 @@ def _pymedphys_loosened_tolerance(
     **_,
 ) -> Tuple[TwoNumbers, TwoNumbers]:
     bb_repeats = 10
-    bb_consistency_tol = 1.0
+    bb_consistency_tol = 0.5
+    skip_pylinac = True
 
     return pymedphys_wlutz_calculate(
-        x,
-        y,
-        image,
-        bb_diameter,
-        edge_lengths,
-        penumbra,
-        icom_field_rotation,
-        fill_errors_with_nan,
-        bb_repeats,
-        bb_consistency_tol,
-        skip_pylinac=True,
+        x=x,
+        y=y,
+        image=image,
+        bb_diameter=bb_diameter,
+        edge_lengths=edge_lengths,
+        penumbra=penumbra,
+        icom_field_rotation=icom_field_rotation,
+        fill_errors_with_nan=fill_errors_with_nan,
+        bb_repeats=bb_repeats,
+        bb_consistency_tol=bb_consistency_tol,
+        skip_pylinac=skip_pylinac,
     )
 
 

@@ -191,6 +191,7 @@ def calculations_ui(
             advanced_mode,
             plot_x_axis,
             fill_errors_with_nan,
+            quiet=quiet,
         )
 
     return None
@@ -209,6 +210,7 @@ def run_calculation(
     advanced_mode,
     plot_x_axis,
     fill_errors_with_nan,
+    quiet,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -341,7 +343,7 @@ def run_calculation(
         except KeyError:
             st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
             port_chart_bucket = _altair.build_both_axis_altair_charts(
-                table_filtered_by_port, plot_x_axis
+                table_filtered_by_port, plot_x_axis, quiet
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
