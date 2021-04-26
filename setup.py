@@ -115,7 +115,8 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/apps/data/*"],
+    "pymedphys._experimental.serviceplans": ["templates/*"],
+    "pymedphys._experimental.streamlit.apps": ["data/*"],
     "pymedphys.docs": [
         "_static/*",
         "app/*",
@@ -138,16 +139,17 @@ package_data = {
         "lib/tutes/*",
         "trees/*",
     ],
-    "pymedphys.tests": [
-        "dicom/data/rtplan/*",
-        "dicom/scratch/*",
-        "e2e/cypress/*",
-        "e2e/cypress/fixtures/.gitignore",
-        "e2e/cypress/integration/streamlit/*",
-        "e2e/cypress/plugins/*",
-        "e2e/cypress/support/*",
-        "experimental/mephysto/data/baselines/*",
-        "experimental/mephysto/data/measurements/*",
+    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
+    "pymedphys.tests.e2e": [
+        "cypress/*",
+        "cypress/fixtures/*",
+        "cypress/integration/streamlit/*",
+        "cypress/plugins/*",
+        "cypress/support/*",
+    ],
+    "pymedphys.tests.experimental.mephysto": [
+        "data/baselines/*",
+        "data/measurements/*",
     ],
 }
 
@@ -195,7 +197,7 @@ extras_require = {
         "reportlab<=3.5.54",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
-        "sphinx-book-theme",
+        "sphinx-book-theme==0.0.42",
         "networkx",
         "jupyter-book>=0.8.3",
         "pytest",
@@ -216,13 +218,13 @@ extras_require = {
     "docs": [
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
-        "sphinx-book-theme",
+        "sphinx-book-theme==0.0.42",
         "networkx",
         "jupyter-book>=0.8.3",
     ],
     "doctests": [
         "pylinac==2.3.2",
-        "sphinx-book-theme",
+        "sphinx-book-theme==0.0.42",
         "black>=20.8b1,<21.0",
         "tabulate",
     ],
