@@ -66,6 +66,30 @@ def calculations_ui(
     loosened_internal_tolerances,
     quiet=False,
 ):
+    """The WLutz streamlit calculation UI
+
+    Parameters
+    ----------
+    database_table
+    database_directory
+    wlutz_directory_by_date
+    bb_diameter
+    penumbra
+    advanced_mode
+    loosened_internal_tolerances
+        Whether or not to use a 'less strict' version of PyMedPhys'
+        WLutz algorithm. This is to handle the lower contrast when
+        trying to find an air cavity instead of ball bearing.
+    quiet : bool, optional
+        Run the calculation UI with minimal feedback. This mode is
+        designed for use in Daily QA where all the extra
+        "physics feedback" will get in the way.
+
+    Returns
+    -------
+    statistics_collection
+
+    """
     if not quiet:
         st.write("## Calculations")
 
