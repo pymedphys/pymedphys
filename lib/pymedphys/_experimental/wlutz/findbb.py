@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Cancer Care Associates
 # Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 # Copyright (C) 2019 Cancer Care Associates
 
@@ -14,14 +15,15 @@
 # limitations under the License.
 
 import warnings
+from typing import cast
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
 from . import bounds, imginterp, interppoints, pylinacwrapper
+from .types import TwoNumbers
 
-BB_MIN_SEARCH_DIST = 2  # mm
-BB_REPEAT_TOL = 0.2  # mm
+DEFAULT_BB_CONSISTENCY_TOL = 0.2  # mm
 
 BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     0.5,
@@ -41,8 +43,19 @@ DEFAULT_BB_REPEATS = 2
 
 
 def find_bb_centre(
-    x, y, image, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
-):
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: TwoNumbers,
+    penumbra: float,
+    field_centre: TwoNumbers,
+    field_rotation: float,
+    bb_repeats: int = DEFAULT_BB_REPEATS,
+    bb_consistency_tol: float = DEFAULT_BB_CONSISTENCY_TOL,
+) -> TwoNumbers:
+    """Search for a rotationally symmetric object within the image."""
+
     field = imginterp.create_interpolated_field(x, y, image)
 
     try:
@@ -53,7 +66,12 @@ def find_bb_centre(
         initial_bb_centre = field_centre
 
     bb_centre = optimise_bb_centre(
-        field, bb_diameter, field_centre, initial_bb_centre=initial_bb_centre
+        field,
+        bb_diameter,
+        field_centre,
+        initial_bb_centre=initial_bb_centre,
+        bb_repeats=bb_repeats,
+        bb_consistency_tol=bb_consistency_tol,
     )
 
     return bb_centre
@@ -61,13 +79,19 @@ def find_bb_centre(
 
 def optimise_bb_centre(
     field: imginterp.Field,
-    bb_diameter,
-    field_centre,
-    initial_bb_centre=None,
-    repeats=DEFAULT_BB_REPEATS,
-):
+    bb_diameter: float,
+    field_centre: TwoNumbers,
+    initial_bb_centre: TwoNumbers = None,
+    bb_repeats=DEFAULT_BB_REPEATS,
+    bb_consistency_tol=DEFAULT_BB_CONSISTENCY_TOL,
+) -> TwoNumbers:
+    """A recursive loop that searches for a rotationally symmetric object."""
+
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
+
+    # Add an offset so that an unchanged centre can be detected
+    initial_bb_centre = np.array(initial_bb_centre) + 0.001
 
     search_square_edge_length = bb_diameter / np.sqrt(2) / (DEFAULT_BB_REPEATS + 1)
     all_centre_predictions = np.array(
@@ -75,19 +99,22 @@ def optimise_bb_centre(
             field, bb_diameter, search_square_edge_length, initial_bb_centre
         )
     )
-    median_of_predictions = np.nanmedian(all_centre_predictions, axis=0)
+
+    all_centre_predictions[all_centre_predictions == initial_bb_centre] = np.nan
+    median_of_predictions: TwoNumbers = np.nanmedian(all_centre_predictions, axis=0)
 
     diff = np.abs(all_centre_predictions - median_of_predictions)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        within_tolerance = np.all(diff < BB_REPEAT_TOL, axis=1)
+        within_tolerance = cast(np.ndarray, np.all(diff < bb_consistency_tol, axis=1))
 
     assert len(within_tolerance) == len(BB_SIZE_FACTORS_TO_SEARCH_OVER)
 
     if np.sum(within_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) - 1:
+
         return median_of_predictions
 
-    if repeats == 0:
+    if bb_repeats == 0:
         raise ValueError("Unable to determine BB position within designated repeats")
 
     out_of_tolerance = np.invert(within_tolerance)
@@ -105,7 +132,8 @@ def optimise_bb_centre(
         bb_diameter,
         field_centre,
         initial_bb_centre=median_of_predictions,
-        repeats=repeats - 1,
+        bb_repeats=bb_repeats - 1,
+        bb_consistency_tol=bb_consistency_tol,
     )
 
 

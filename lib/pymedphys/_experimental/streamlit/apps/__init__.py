@@ -7,6 +7,8 @@ from . import (
     electrons,
     extend_ct,
     icom,
+    iview_image_viewer,
+    iview_image_wlutz,
     iview_to_dicom,
     iviewdb,
     monaco_archive,

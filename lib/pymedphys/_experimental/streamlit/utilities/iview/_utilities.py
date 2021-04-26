@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import pathlib
+from typing import Any, Dict, Tuple
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
 
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
@@ -31,14 +33,51 @@ def expand_border_events(mask):
     return combined
 
 
-def get_directories_and_initial_database(config, refresh_cache):
+def get_directories_and_initial_database(
+    config: Dict[str, Any], refresh_cache: bool
+) -> Tuple[
+    pathlib.Path,
+    pathlib.Path,
+    "pd.DataFrame",
+    "pd.Timestamp",
+    Dict[str, Dict[str, str]],
+]:
+    """Load up paths from configuration, and pull in the primary
+    database structure before further filtering.
+
+    Requests the user to select a site, a date, and a machine id
+    and then returns an initial database table for these selections
+    as well as the relevant directories.
+
+    Parameters
+    ----------
+    config : Dict[str, Any]
+    refresh_cache : bool
+        Whether or not to utilise the streamlit cache, or to pull
+        directly from the database.
+
+    Returns
+    -------
+    database_directory : pathlib.Path
+        The directory of the iView database for the chosen site.
+    icom_directory : pathlib.Path
+        The directory of the iCom records for the chosen site.
+    database_table : pandas.DataFrame
+        An initial table for the iView database. The column definitions
+        for this table can be found within
+        ``pymedphys._experimental.streamlit.utilities.iview._dbf.load_and_merge_dbfs``.
+    selected_date : pandas.Timestamp
+        The date selected by the user.
+    linac_to_directories_map : Dict[str, Dict[str, str]]
+        A mapping from Linac name/ids through to the configuration
+        directories for that Linac.
+    """
+
     site_directories = _config.get_site_directories(config)
     chosen_site = misc.site_picker(config, "Site")
 
     database_directory = site_directories[chosen_site]["iviewdb"]
-
     icom_directory = site_directories[chosen_site]["icom"]
-
     database_table = _load_database_with_cache(database_directory, refresh_cache)
 
     linac_map = {site["name"]: site["linac"] for site in config["site"]}
@@ -49,9 +88,6 @@ def get_directories_and_initial_database(config, refresh_cache):
             alias_map[linac["aliases"]["iview"]] = linac["name"]
         except KeyError:
             alias_map[linac["name"]] = linac["name"]
-
-    # st.write(database_table)
-    # st.write(alias_map)
 
     database_table["machine_id"] = database_table["machine_id"].apply(
         lambda x: alias_map[x]
@@ -65,27 +101,18 @@ def get_directories_and_initial_database(config, refresh_cache):
 
     selected_date = selected_date[0]
 
-    selected_machine_id = database_table["machine_id"].unique()
-    if len(selected_machine_id) != 1:
-        raise ValueError("Expected only one machine id")
-
-    selected_machine_id = selected_machine_id[0]
-
     # --
 
     linac_to_directories_map = {
         item["name"]: item["directories"] for item in linac_map[chosen_site]
     }
 
-    qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
-
     return (
         database_directory,
         icom_directory,
-        qa_directory,
         database_table,
         selected_date,
-        selected_machine_id,
+        linac_to_directories_map,
     )
 
 

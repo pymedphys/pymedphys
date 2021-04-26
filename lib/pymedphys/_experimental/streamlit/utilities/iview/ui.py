@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import pathlib
 from typing import List, Union, cast
 
 from typing_extensions import Literal
@@ -42,23 +42,24 @@ def iview_and_icom_filter_and_align(
     (
         database_directory,
         icom_directory,
-        qa_directory,
         database_table,
         selected_date,
-        selected_machine_id,
+        linac_to_directories_map,
     ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
 
     icom_patients_directory = icom_directory.joinpath("patients")
 
     database_table = _get_user_image_set_selection(database_table, advanced_mode)
-    # if advanced_mode:
-    #     st.write(database_table)
-
     database_table = _load_image_frame_database(
         database_directory, database_table, refresh_cache, advanced_mode
     )
-    # if advanced_mode:
-    #     st.write(database_table)
+
+    machine_ids = database_table["machine_id"].unique()
+    if len(machine_ids) != 1:
+        raise ValueError("Expected exactly one machine id")
+
+    selected_machine_id = machine_ids[0]
+    qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
 
     filepaths_to_load, offset_to_apply = _sync.icom_iview_timestamp_alignment(
         database_table,

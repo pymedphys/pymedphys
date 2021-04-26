@@ -87,10 +87,7 @@ def run_test(
         bb_max_attenuation,
     )
 
-    (
-        determined_field_centre,
-        determined_bb_centre,
-    ) = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
+    (determined_field_centre, determined_bb_centre,) = _wlutz.pymedphys_wlutz_calculate(
         x,
         y,
         img,
