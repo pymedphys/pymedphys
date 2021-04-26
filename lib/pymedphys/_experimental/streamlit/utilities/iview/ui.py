@@ -214,6 +214,7 @@ def iview_and_icom_filter_and_align(
 
 
 def get_bounds_from_centre_and_diameter(centre, diameter):
+    """Convert centre and field size into collimation edge positions."""
     lower = centre - diameter / 2
     upper = centre + diameter / 2
 
@@ -221,6 +222,11 @@ def get_bounds_from_centre_and_diameter(centre, diameter):
 
 
 def get_user_image_set_selection(database_table, advanced_mode, quiet=False):
+    """Narrow down the database_table via a range of user inputs
+
+    User inputs are detailed further within the docstring of
+    ``_filtering.filter_image_sets``.
+    """
     filtered = _filtering.filter_image_sets(database_table, advanced_mode, quiet=quiet)
     filtered.sort_values("datetime", ascending=False, inplace=True)
 
@@ -236,6 +242,7 @@ def get_user_image_set_selection(database_table, advanced_mode, quiet=False):
 def load_image_frame_database(
     database_directory, input_database_table, refresh_cache, advanced_mode
 ):
+    """Load an image frame, attempting both known iView database schemas"""
     if advanced_mode:
         st.write("## Loading database image frame data")
 
@@ -252,6 +259,12 @@ def load_image_frame_database(
 
 
 def table_transfer_via_interpolation(source, location, key):
+    """Create a linear interpolation function for a given dataframe
+    column based on the iCom timestamps.
+
+    This is utilised to then interpolate the data points to the iView
+    frames.
+    """
     interpolation = scipy.interpolate.interp1d(
         source["seconds_since_midnight"], source[key]
     )
