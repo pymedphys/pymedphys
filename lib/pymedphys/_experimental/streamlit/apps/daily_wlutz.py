@@ -44,18 +44,11 @@ MEAN_TOLERANCE = 1.0  # mm
 
 SIMPLE = True
 
+WARNING_COLOUR = "#fef4d5"
+ERROR_COLOUR = "#ffd5d5"
+
 
 def main():
-    """A tool designed for usage within the Linac morning QA workflow.
-
-    It is intended that after the morning kV cone beam and table
-    movement QA has been undergone with an "iso-cube" like phantom the
-    Linac's morning warm-up MV beams can be delivered in Arc mode with
-    the iView panel recording the images. Due to a limitation within
-    PyMedPhys' WLutz algorithm the field sizes need to have their
-    dimensions be less than 3x (ideally less than 2x) the air cavity
-    diameter.
-    """
     bb_diameter = 12
     penumbra = 2
     advanced_mode = False
@@ -71,81 +64,102 @@ def main():
         chosen_site,
     ) = _custom_iview_icom_filter(config, advanced_mode)
 
-    site_to_linac_names_map = {
-        site_config["name"]: [
-            linac_config["name"] for linac_config in site_config["linac"]
-        ]
-        for site_config in config["site"]
+    site_to_linac_config_map = {
+        site_config["name"]: site_config["linac"] for site_config in config["site"]
     }
-    machine_ids = list(tables_per_machine.keys())
-    expected_linacs = set(site_to_linac_names_map[chosen_site])
-    if not expected_linacs.issubset(machine_ids):
-        st.warning(
-            "Not all machines have had their pictures taken. "
-            f"Expected {expected_linacs}, but only saw {machine_ids}."
-        )
+    all_linac_config_for_site = site_to_linac_config_map[chosen_site]
+    expected_linacs = [
+        linac_config["name"] for linac_config in all_linac_config_for_site
+    ]
+    expected_linac_energies = {
+        linac_config["name"]: linac_config["energies"]
+        for linac_config in all_linac_config_for_site
+    }
 
-    if not st.button("Calculate (as well as look for any new iView images)"):
+    if not st.button("Calculate"):
         st.stop()
 
-    passing_thus_far = {}
-    for machine_id in machine_ids:
+    # passing_table = {
+
+    # }
+
+    for machine_id in expected_linacs:
         st.write(f"## Calculations for `{machine_id}`")
-        st.sidebar.write(f"# `{machine_id}`")
-        passing_thus_far[machine_id] = True
+        try:
+            database_table = tables_per_machine[machine_id]
+        except KeyError:
+            st.warning(f"No images found for `{machine_id}`")
+            continue
 
-        database_table = tables_per_machine[machine_id]
-        qa_directory = qa_directories_per_machine[machine_id]
+        for energy in expected_linac_energies[machine_id]:
+            st.write(f"### Energy: `{energy}`")
 
-        wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
-        wlutz_directory_by_date = wlutz_directory.joinpath(
-            selected_date.strftime("%Y-%m-%d")
-        )
+            energy_masked = database_table.loc[database_table["energy"] == energy]
+            if len(energy_masked) == 0:
+                st.warning(f"No images found for `{energy}` on `{machine_id}`")
+                continue
 
-        statistics_collection = _calculation.calculations_ui(
-            database_table,
-            database_directory,
-            wlutz_directory_by_date,
-            bb_diameter,
-            penumbra,
-            advanced_mode,
-            loosen_internal_tolerances,
-            quiet=True,
-        )
+            qa_directory = qa_directories_per_machine[machine_id]
 
-        statistics_collection = statistics_collection.drop("algorithm", axis=1)
+            wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
+            wlutz_directory_by_date = wlutz_directory.joinpath(
+                selected_date.strftime("%Y-%m-%d")
+            )
 
-        negative_projection_distance = np.max(np.abs(statistics_collection["min"]))
-        positive_projection_distance = np.max(np.abs(statistics_collection["max"]))
+            statistics_collection = _calculation.calculations_ui(
+                database_table,
+                database_directory,
+                wlutz_directory_by_date,
+                bb_diameter,
+                penumbra,
+                advanced_mode,
+                loosen_internal_tolerances,
+                quiet=True,
+            )
 
-        if (
-            negative_projection_distance > PROJECTION_TOLERANCE
-            or positive_projection_distance > PROJECTION_TOLERANCE
-        ):
-            passing_thus_far[machine_id] = False
+            statistics_collection = statistics_collection.drop(
+                ["algorithm", "treatment", "port"], axis=1
+            )
 
-        mean_distance = np.max(np.abs(statistics_collection["mean"]))
+            negative_projection_distance = np.max(np.abs(statistics_collection["min"]))
+            positive_projection_distance = np.max(np.abs(statistics_collection["max"]))
 
-        if mean_distance > MEAN_TOLERANCE:
-            passing_thus_far[machine_id] = False
+            # if (
+            #     negative_projection_distance > PROJECTION_TOLERANCE
+            #     or positive_projection_distance > PROJECTION_TOLERANCE
+            # ):
+            #     passing_thus_far[machine_id] = False
 
-        st.write(statistics_collection)
+            mean_distance = np.max(np.abs(statistics_collection["mean"]))
+
+            # if mean_distance > MEAN_TOLERANCE:
+            #     passing_thus_far[machine_id] = False
+
+            st.write(statistics_collection)
 
     # TODO: Make it not say pass if an expected energy hasn't been completed.
 
-    for machine_id in expected_linacs:
-        st.sidebar.write(f"# `{machine_id}`")
+    # for machine_id in expected_linacs:
+    #     st.sidebar.write(f"# `{machine_id}`")
 
-        try:
-            did_it_pass = passing_thus_far[machine_id]
-        except KeyError:
-            st.sidebar.warning(f"`{machine_id}` daily WLutz QA hasn't been done. 🤔")
-            continue
+    #     try:
+    #         did_it_pass = passing_thus_far[machine_id]
+    #     except KeyError:
+    #         st.sidebar.warning(f"`{machine_id}` daily WLutz QA hasn't been done. 🤔")
+    #         continue
 
-        if did_it_pass:
-            st.sidebar.success(f"`{machine_id}` daily WLutz QA was a success! 🥳🎉")
-        else:
-            st.sidebar.error(f"`{machine_id}` daily WLutz QA didn't pass. 😞")
+    #     if did_it_pass:
+    #         st.sidebar.success(f"`{machine_id}` daily WLutz QA was a success! 🥳🎉")
+    #     else:
+    #         st.sidebar.error(f"`{machine_id}` daily WLutz QA didn't pass. 😞")
+
+
+def _highlight_projection_tol():
+    pass
+
+
+def _highlight_mean_tol():
+    pass
 
 
 def _custom_iview_icom_filter(config, advanced_mode):

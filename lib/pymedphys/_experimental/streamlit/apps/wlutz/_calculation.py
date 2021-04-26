@@ -220,9 +220,10 @@ def run_calculation(
     except FileNotFoundError:
         previously_calculated_results = None
 
-    st.sidebar.write("## Progress")
-    progress_bar = st.sidebar.progress(0)
-    status_text = st.sidebar.empty()
+    if not quiet:
+        st.sidebar.write("## Progress")
+        progress_bar = st.sidebar.progress(0)
+        status_text = st.sidebar.empty()
 
     collated_results = pd.DataFrame()
     chart_bucket = {}
@@ -341,17 +342,20 @@ def run_calculation(
             for _, item in treatment_chart_bucket[port].items():
                 item.add_rows(table_filtered_by_port)
         except KeyError:
-            st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
+            if not quiet:
+                st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
+
             port_chart_bucket = _altair.build_both_axis_altair_charts(
                 table_filtered_by_port, plot_x_axis, quiet
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
-        ratio_complete = (progress_index + 1) / total_files
-        progress_bar.progress(ratio_complete)
+        if not quiet:
+            ratio_complete = (progress_index + 1) / total_files
+            progress_bar.progress(ratio_complete)
 
-        percent_complete = round(ratio_complete * 100, 2)
-        status_text.text(f"{percent_complete}% Complete")
+            percent_complete = round(ratio_complete * 100, 2)
+            status_text.text(f"{percent_complete}% Complete")
 
     contextualised_results: pd.DataFrame = collated_results.merge(
         database_table, left_on="filepath", right_on="filepath"
