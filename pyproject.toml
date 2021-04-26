@@ -116,7 +116,7 @@ flashgamma = { version = "*", optional = true }  # groups = ["comparables"]
 # ------------- #
 sphinx-argparse = { version = "*", optional = true }  # groups = ["dev", "docs"]
 sphinxcontrib-napoleon = { version = "*", optional = true }  # groups = ["dev", "docs"]
-sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs", "doctests"]
+sphinx-book-theme = { version = "0.0.42", optional = true }  # groups = ["dev", "docs", "doctests"]
 
 networkx = { version = "*", optional = true }  # groups = ["dev", "docs"]
 
