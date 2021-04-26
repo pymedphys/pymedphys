@@ -98,14 +98,14 @@ def optimise_bb_centre(
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
-    search_square_edge_length = np.min(edge_lengths) - bb_diameter / 2
+    # search_square_edge_length = np.min(edge_lengths) - bb_diameter / 2
     all_centre_predictions = np.array(
         _bb_finding_repetitions(
-            field,
-            bb_diameter,
-            search_square_edge_length,
-            initial_bb_centre,
-            field_centre,
+            field=field,
+            bb_diameter=bb_diameter,
+            edge_lengths=edge_lengths,
+            initial_bb_centre=initial_bb_centre,
+            field_centre=field_centre,
         )
     )
 
@@ -125,15 +125,15 @@ def optimise_bb_centre(
     if bb_repeats == 0:
         raise ValueError("Unable to determine BB position within designated repeats")
 
-    out_of_tolerance = np.invert(within_tolerance)
-    if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 1 / 4:
-        raise ValueError(
-            "BB centre not able to be consistently determined. "
-            "Predictions thus far were the following:\n"
-            f"    {all_centre_predictions}\n"
-            "Initial bb centre for this iteration was:\n"
-            f"    {initial_bb_centre}"
-        )
+    # out_of_tolerance = np.invert(within_tolerance)
+    # if np.sum(out_of_tolerance) >= len(BB_SIZE_FACTORS_TO_SEARCH_OVER) * 1 / 4:
+    #     raise ValueError(
+    #         "BB centre not able to be consistently determined. "
+    #         "Predictions thus far were the following:\n"
+    #         f"    {all_centre_predictions}\n"
+    #         "Initial bb centre for this iteration was:\n"
+    #         f"    {initial_bb_centre}"
+    #     )
 
     return optimise_bb_centre(
         field,
@@ -147,16 +147,17 @@ def optimise_bb_centre(
 
 
 def _bb_finding_repetitions(
-    field, bb_diameter, search_square_edge_length, initial_bb_centre, field_centre
+    field, bb_diameter, edge_lengths, initial_bb_centre, field_centre
 ):
     all_centre_predictions = []
     for bb_size_factor in BB_SIZE_FACTORS_TO_SEARCH_OVER:
         prediction_with_adjusted_bb_size = _minimise_bb(
-            field,
-            field_centre,
-            bb_diameter * bb_size_factor,
-            search_square_edge_length,
-            np.array(initial_bb_centre) + np.random.normal(loc=0, scale=0.5, size=2),
+            field=field,
+            field_centre=field_centre,
+            bb_diameter=bb_diameter * bb_size_factor,
+            edge_lengths=edge_lengths,
+            initial_bb_centre=np.array(initial_bb_centre)
+            + np.random.normal(loc=0, scale=0.5, size=2),
             set_nan_if_at_bounds=True,
         )
 
@@ -169,13 +170,15 @@ def _minimise_bb(
     field,
     field_centre,
     bb_diameter,
-    search_square_edge_length,
+    edge_lengths,
     initial_bb_centre,
     set_nan_if_at_bounds=False,
     retries=3,
 ):
     to_minimise_edge_agreement = create_bb_to_minimise(field, bb_diameter)
-    bb_bounds = define_bb_bounds(search_square_edge_length, field_centre)
+    bb_bounds = define_bb_bounds(
+        field_centre=field_centre, edge_lengths=edge_lengths, bb_diameter=bb_diameter
+    )
 
     if (
         np.linalg.norm(np.array(initial_bb_centre) - np.array(field_centre))
@@ -303,16 +306,17 @@ def create_bb_to_minimise_simple(field, bb_diameter):
     return to_minimise_edge_agreement
 
 
-def define_bb_bounds(search_square_edge_length, initial_bb_centre):
-    half_field_bounds = search_square_edge_length / 2
+def define_bb_bounds(field_centre, edge_lengths, bb_diameter):
+    distances_from_centre = np.array(edge_lengths) / 2 - bb_diameter / 2
+
     circle_centre_bounds = [
         (
-            initial_bb_centre[0] - half_field_bounds,
-            initial_bb_centre[0] + half_field_bounds,
+            field_centre[0] - distances_from_centre[0],
+            field_centre[0] + distances_from_centre[0],
         ),
         (
-            initial_bb_centre[1] - half_field_bounds,
-            initial_bb_centre[1] + half_field_bounds,
+            field_centre[1] - distances_from_centre[1],
+            field_centre[1] + distances_from_centre[1],
         ),
     ]
 
