@@ -25,6 +25,12 @@ from .types import TwoNumbers
 
 DEFAULT_BB_CONSISTENCY_TOL = 0.2  # mm
 
+# A scaling factor utilised during the BB finding. The user provides
+# a 'bb_diameter' parameter. The BB finding algorithm is then repeated
+# with that BB size scaled according to the following factors.
+# This is undergone so that should there be panel artefacts/noise
+# that would cause internally inconsistent bb centre detection, this
+# is flagged and an error is raised.
 BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     0.5,
     0.55,
@@ -39,7 +45,12 @@ BB_SIZE_FACTORS_TO_SEARCH_OVER = [
     1.0,
 ]
 
+# Retry limit on BB finding in case of an error.
 DEFAULT_BB_REPEATS = 2
+
+# The standard deviation of noise that is applied to initial bb
+# positions so that the initial position isn't used in the same way
+# exactly everytime.
 JITTER_SIGMA = 0.2  # mm
 
 
@@ -97,7 +108,6 @@ def optimise_bb_centre(
     if initial_bb_centre is None:
         initial_bb_centre = field_centre
 
-    # search_square_edge_length = np.min(edge_lengths) - bb_diameter / 2
     all_centre_predictions = np.array(
         _bb_finding_repetitions(
             field=field,
@@ -153,15 +163,17 @@ def optimise_bb_centre(
 def _bb_finding_repetitions(
     field, bb_diameter, edge_lengths, initial_bb_centre, field_centre
 ):
+    """A wrapper around the bb finding repetitions that adds random """
     all_centre_predictions = []
     for bb_size_factor in BB_SIZE_FACTORS_TO_SEARCH_OVER:
+        jittered_initial_bb_centre = _jitter_initial_bb_centre(initial_bb_centre)
+
         prediction_with_adjusted_bb_size = _minimise_bb(
             field=field,
             field_centre=field_centre,
             bb_diameter=bb_diameter * bb_size_factor,
             edge_lengths=edge_lengths,
-            initial_bb_centre=np.array(initial_bb_centre)
-            + np.random.normal(loc=0, scale=0.5, size=2),
+            initial_bb_centre=jittered_initial_bb_centre,
             set_nan_if_at_bounds=True,
         )
 
@@ -202,18 +214,26 @@ def _minimise_bb(
         else:
             raise ValueError("BB found at bounds, likely incorrect")
 
-    # if np.all(np.array(bb_centre) == np.all(initial_bb_centre)):
-    #     return _single_minimise_retry(
-    #         field=field,
-    #         field_centre=field_centre,
-    #         bb_diameter=bb_diameter,
-    #         edge_lengths=edge_lengths,
-    #         initial_bb_centre=initial_bb_centre,
-    #         set_nan_if_at_bounds=set_nan_if_at_bounds,
-    #         retries=retries,
-    #     )
+    if np.all(np.array(bb_centre) == np.all(initial_bb_centre)):
+        return _single_minimise_retry(
+            field=field,
+            field_centre=field_centre,
+            bb_diameter=bb_diameter,
+            edge_lengths=edge_lengths,
+            initial_bb_centre=initial_bb_centre,
+            set_nan_if_at_bounds=set_nan_if_at_bounds,
+            retries=retries,
+        )
 
     return bb_centre
+
+
+def _jitter_initial_bb_centre(initial_bb_centre):
+    jittered_initial_bb_centre = np.array(initial_bb_centre) + np.random.normal(
+        loc=0, scale=JITTER_SIGMA, size=2
+    )
+
+    return jittered_initial_bb_centre
 
 
 def _single_minimise_retry(
@@ -225,13 +245,10 @@ def _single_minimise_retry(
     set_nan_if_at_bounds,
     retries,
 ):
-
     if retries == 0:
         return [np.nan, np.nan]
 
-    jittered_initial_bb_centre = np.array(initial_bb_centre) + np.random.normal(
-        loc=0, scale=JITTER_SIGMA, size=2
-    )
+    jittered_initial_bb_centre = _jitter_initial_bb_centre(initial_bb_centre)
 
     return _minimise_bb(
         field=field,
