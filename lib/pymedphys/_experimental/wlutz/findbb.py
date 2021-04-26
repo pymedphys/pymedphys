@@ -89,9 +89,7 @@ def find_bb_centre(
         # This is needed to account for the issue that a "flat field" is
         # perfectly rotationally symmetric. Therefore a limitation
         # of this approach is, cannot search within the flat field
-        # region at all. Therefore, the initial position needs to be
-        # within the following diameter of a BB away from the actual BB
-        # location.
+        # region at all. The following limits the search radius.
         maximum_deviation_from_initial = bb_diameter / 2
 
     bb_bounds = define_bb_bounds(
