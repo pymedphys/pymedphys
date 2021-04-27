@@ -121,20 +121,21 @@ def main():
             )
 
             statistics_collection = statistics_collection.drop(
-                ["algorithm", "treatment", "port"], axis=1
+                ["algorithm", "treatment", "port", "energy"], axis=1
             )
 
             statistics_collection = pd.DataFrame(statistics_collection)
 
             statistics_collection = statistics_collection.rename(
                 columns={
-                    "energy": "Energy",
                     "orientation": "Direction",
                     "min": "Min (mm)",
                     "max": "Max (mm)",
                     "mean": "Mean (mm)",
                 }
             )
+
+            statistics_collection = statistics_collection.set_index(["Direction"])
 
             styled_dataframe = statistics_collection.style.apply(
                 _highlight_projection_tol, subset=["Min (mm)", "Max (mm)"]
@@ -150,7 +151,7 @@ def main():
 def _base_tol_colouring(tolerance, val):
     return [
         f"background-color: {ERROR_BACKGROUND_COLOUR}; color: {ERROR_FONT_COLOUR}"
-        if v > tolerance
+        if np.abs(v) > tolerance
         else f"background-color: {SUCCESS_BACKGROUND_COLOUR}; color: {SUCCESS_FONT_COLOUR}"
         for v in val
     ]
