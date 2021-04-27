@@ -74,11 +74,7 @@ numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "i
 # The following lower bounded packages are due to certain APIs utilised
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
-
-# Using a custom release of pylibjpeg in order to support Python 3.9.
-# See <https://github.com/pydicom/pylibjpeg-libjpeg/issues/23>.
-# pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
-pymedphys-pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
+pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
@@ -172,9 +168,9 @@ dev = [
     "pre-commit",
     "psutil",
     "pydicom",
+    "pylibjpeg-libjpeg",
     "pylinac",
     "pylint",
-    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "pytest",
@@ -243,8 +239,8 @@ user = [
     "pandas",
     "plotly",
     "pydicom",
+    "pylibjpeg-libjpeg",
     "pylinac",
-    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "python-dateutil",
