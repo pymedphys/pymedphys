@@ -1687,6 +1687,17 @@ optional = true
 python-versions = ">=3.5"
 
 [[package]]
+name = "pylibjpeg-libjpeg"
+version = "1.2.0"
+description = "A Python wrapper for libjpeg, with a focus on use as a plugin for for pylibjpeg"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.dependencies]
+numpy = ">=1.16.0"
+
+[[package]]
 name = "pylinac"
 version = "2.3.2"
 description = "A toolkit for performing TG-142 QA-related tasks on a linear accelerator"
@@ -1722,17 +1733,6 @@ colorama = {version = "*", markers = "sys_platform == \"win32\""}
 isort = ">=4.2.5,<6"
 mccabe = ">=0.6,<0.7"
 toml = ">=0.7.1"
-
-[[package]]
-name = "pymedphys-pylibjpeg-libjpeg"
-version = "1.2.0"
-description = "A Python wrapper for libjpeg, with a focus on use as a plugin for for pylibjpeg"
-category = "main"
-optional = true
-python-versions = ">=3.6"
-
-[package.dependencies]
-numpy = ">=1.16.0"
 
 [[package]]
 name = "pymssql"
@@ -2759,7 +2759,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["Pillow", "PyYAML", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylinac", "pylint", "pymedphys-pylibjpeg-libjpeg", "pymssql", "pynetdicom", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
+dev = ["Pillow", "PyYAML", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 dicom = ["pydicom", "pynetdicom"]
 docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
@@ -2767,12 +2767,12 @@ icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = ["hypothesis", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
-user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylinac", "pymedphys-pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "reportlab", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
+user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pymssql", "pynetdicom", "python-dateutil", "reportlab", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "239a6c95f4b33b7c1df370ec1d8b02ce0d3e42c53264a1678e4cfe15e932a0ec"
+content-hash = "2cffb5f0bf9669f3dc1a9011d6b1c8f44f7a3c1910d00815a6d4009f1fe26a67"
 
 [metadata.files]
 alabaster = [
@@ -3651,34 +3651,35 @@ pygments = [
     {file = "Pygments-2.8.1-py3-none-any.whl", hash = "sha256:534ef71d539ae97d4c3a4cf7d6f110f214b0e687e92f9cb9d2a3b0d3101289c8"},
     {file = "Pygments-2.8.1.tar.gz", hash = "sha256:2656e1a6edcdabf4275f9a3640db59fd5de107d88e8663c5d4e9a0fa62f77f94"},
 ]
+pylibjpeg-libjpeg = [
+    {file = "pylibjpeg-libjpeg-1.2.0.tar.gz", hash = "sha256:c88f32f8ef75ff0aae254da4ca5e8580f45e40ab1347b5e198ac7b1d66b49383"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:01f427527a17ef75c0ddbe8c87b5d4c34d03d741b8310bf75c421bcddf8c1934"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:91e4109f8ddf7544e2241cee03d984091e3f8311aedfb85e88cad8e3a4a564e8"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:09782aac63c05edf0c906189dfe32b91b8d00fc603e1ca5c734bc5ff55672677"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp36-cp36m-win32.whl", hash = "sha256:eed34aff30b87d9384d7840701d8ebde46825c4a60190d23e38150702624a654"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp36-cp36m-win_amd64.whl", hash = "sha256:da78b3880f3fe448b862d51c7f3f0415fe55ec1bce624b5b854fde69ef7d7573"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:fefac98521569f55b449544d902359fc12948362c6333e4b87a31a7ab50026f7"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:8e9a4ad8b7e2db448e426cac57c0f420bed270b2a73197f12a5dbae4c02ea94d"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:345cd0468ba65a4cc609848a0e2d758d765c75c7b0249d34baa1f900e0f8c683"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp37-cp37m-win32.whl", hash = "sha256:3c386ccabf1d416f059a7c6e41a44789d39b0ebe937b73a636108d078e7ba066"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp37-cp37m-win_amd64.whl", hash = "sha256:2e16532e1a33b6aa19f3c6842e9f27015f16172ab4773ced86dcb60406b22c54"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:87df58e71fd310217e753604a3059494411997eb22ecd608550d52f097ee8985"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:4067d751d0a69e406e61b3262fdbd9387f95d76c65fdc8db9fd63451fd2c0b10"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:04f21e74903d6ead2fff9cc59b8e755e4ad1b88143e4d79ce4afdf7a60d04574"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp38-cp38-win32.whl", hash = "sha256:d66c78a9ca24576d3fcf755c4fecf651fae6daac8c46dc20e0dda2ae68519ecb"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:ae60ca5251d0f740176142182285f597f6c564014cac038c7457b015612bc2d8"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:a188e72025929938a1efb02b2b2d068dc05abd9986209e2a537c04fb3bef9319"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp39-cp39-manylinux2010_i686.whl", hash = "sha256:984be91d4e861c31ad9f0425495c74963e73d7aa1b933edc3a2aadab8a822a05"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:c278ec57788b3751353e1c588da29d4ec52089e331265246297f4762961dd7ae"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp39-cp39-win32.whl", hash = "sha256:e31655aa29e0ea715cecb1bf3b43b5db66bf8d8a12e0117f526193033f635289"},
+    {file = "pylibjpeg_libjpeg-1.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:282208df3ceb344174761a5d19c3bdea98385fac5a76e1a8bb624f165365c67f"},
+]
 pylinac = [
     {file = "pylinac-2.3.2-py3-none-any.whl", hash = "sha256:5366f362eeee2f7a04f37ea79f8bb5def6d70505560376f75c8055c320019475"},
 ]
 pylint = [
     {file = "pylint-2.8.2-py3-none-any.whl", hash = "sha256:f7e2072654a6b6afdf5e2fb38147d3e2d2d43c89f648637baab63e026481279b"},
     {file = "pylint-2.8.2.tar.gz", hash = "sha256:586d8fa9b1891f4b725f587ef267abe2a1bad89d6b184520c7f07a253dd6e217"},
-]
-pymedphys-pylibjpeg-libjpeg = [
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:eac3961b16a923e79be19c71ca728b151e6b001cbcba4a47843d975edc14eada"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:e9bb2a0f60447d165101659aa2b36d65282a8d18367d362dd6d520b7d7f5cacd"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:6d6f6257835954b66edc9caaa2b55c11f9f7693207230c1487c467271e398c74"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp36-cp36m-win32.whl", hash = "sha256:eeff8b7b7dbee522a0e13ea2a4d55524fb7da69d5af395b939b51daf9e1b4ffd"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp36-cp36m-win_amd64.whl", hash = "sha256:aff1c374bd248a15eac4a33a7cf41594f6ebb034c5ae9942bc7abc1376230d62"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:55d189b188d3305940041348e9a4831a2139f27ddbf93261ce87fecc997b5308"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:b1e06101126ffd545539032151808e26b3a73afe7ab2149d9d15e2f4b85cf51a"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:30edd894659f9b2e3e5007859d2729b533c627c6cdc82ced6de8578062df0701"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp37-cp37m-win32.whl", hash = "sha256:9dca3c08a4de86f20ca245ca91da916d3178c155408e626708a9fa1fcbfded08"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp37-cp37m-win_amd64.whl", hash = "sha256:1a03e48d65af868701b2c9d623771c9f69911d337f3567a0db356097757498ee"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:d7d8044c8f09ba550b26c371eb2e01177b1fbcc19686d2d0dce0c83f7ba23e5f"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:cffc74121163a9c26df76e41c5e125713576b11d50132dcbffb20ad388307769"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:3c1fed2fa88ecc101d45409a4cdf973e50e02b923479d2882aa7a85c2710e72c"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp38-cp38-win32.whl", hash = "sha256:52a62c13f57a5689df73563f6b2a659d9623aaab67916f5faf310789bb7f3218"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:e65f81cebf93da4cd0c3f9cffd23daffa17f3abc10e2271bfa730ee86c528f2a"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:243f5629f6c0b5c79d4fc5df53b20a7850394c8bcb61c49d0432521ce2ed9354"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp39-cp39-manylinux2010_i686.whl", hash = "sha256:f0f5b4eb029ce9626b0a6586d98fefcb9fb2ab2d996857498a34cd6bde4af111"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:85b6c0c4562f5531f98b238c609ed560c1f4835f9d4e338a33aef431321e5969"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp39-cp39-win32.whl", hash = "sha256:626aa744e81dca4e264e029bba1b837c51466e2f70579b2e24bd7c6625b7d576"},
-    {file = "pymedphys_pylibjpeg_libjpeg-1.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:216596b26fe7c1a8483ef967b3ec5aea55a286a334e973e05ac22ab1ebdbb9c0"},
 ]
 pymssql = [
     {file = "pymssql-2.2.1-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:6fc382f253365f22286372a32cfeb5d380ad955045ae6f88cf372f758635557a"},
