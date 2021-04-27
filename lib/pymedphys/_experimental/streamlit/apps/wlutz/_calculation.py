@@ -346,7 +346,7 @@ def run_calculation(
                 st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
 
             port_chart_bucket = _altair.build_both_axis_altair_charts(
-                table_filtered_by_port, plot_x_axis, quiet
+                table_filtered_by_port, plot_x_axis, quiet=quiet
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
