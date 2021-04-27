@@ -2389,7 +2389,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "streamlit"
-version = "0.78.0"
+version = "0.80.0"
 description = "The fastest way to build data apps in Python"
 category = "main"
 optional = true
@@ -2428,17 +2428,6 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 streamlit = ">=0.63"
-
-[[package]]
-name = "streamlit-analytics"
-version = "0.1.2"
-description = "Track & visualize user interactions with your streamlit app"
-category = "main"
-optional = true
-python-versions = ">=3.6"
-
-[package.dependencies]
-streamlit = "*"
 
 [[package]]
 name = "tabulate"
@@ -4169,18 +4158,14 @@ stevedore = [
     {file = "stevedore-3.3.0.tar.gz", hash = "sha256:3a5bbd0652bf552748871eaa73a4a8dc2899786bc497a2aa1fcb4dcdb0debeee"},
 ]
 streamlit = [
-    {file = "streamlit-0.78.0-py2.py3-none-any.whl", hash = "sha256:f74b8cfda27a2201a704b54bae39f25cc6c751c442aa5d4700440b1f1e42c71d"},
-    {file = "streamlit-0.78.0.tar.gz", hash = "sha256:bfe5532d28596e6801de7c5a9ccbbafc55121dca30cd37bd08d3348fda084123"},
+    {file = "streamlit-0.80.0-py2.py3-none-any.whl", hash = "sha256:156051dd1b2233d9cfa1d512edec8284567aa44def13cc228034e032bbb47d85"},
+    {file = "streamlit-0.80.0.tar.gz", hash = "sha256:a67951245581bacce377bc33965890afe9170dc782d9ae4fcfc5fc05ace59013"},
 ]
 streamlit-ace = [
     {file = "streamlit_ace-0.0.4-1-py3-none-any.whl", hash = "sha256:471acbeee755aa16d1b1b031eb413e6e2d8ac2208bf69bc9ff748660ffe2fbee"},
     {file = "streamlit_ace-0.0.4-2-py3-none-any.whl", hash = "sha256:a94ee7fb5de58bcda6c0176aa123c3fd3de450a7f022460fed1772099a38f60b"},
     {file = "streamlit_ace-0.0.4-3-py3-none-any.whl", hash = "sha256:c46f066c21441b487b464d58d1abd7cabdaf8757ffb9e97499f99524ac2dcbcd"},
     {file = "streamlit_ace-0.0.4-py3-none-any.whl", hash = "sha256:848d9053a51539b7c7351bbd636c3bcb43e1cfb81de693fa7fd2aa036ebae732"},
-]
-streamlit-analytics = [
-    {file = "streamlit-analytics-0.1.2.tar.gz", hash = "sha256:7576aeda0985e40762295e291b2c9f853f0e33c8e57bc6b54164ac861a1d9347"},
-    {file = "streamlit_analytics-0.1.2-py3-none-any.whl", hash = "sha256:a18dfb6a3f528a9e98fb3d03fefff4f0ce851c4a1a4169ca8c759e4698d969a0"},
 ]
 tabulate = [
     {file = "tabulate-0.8.9-py3-none-any.whl", hash = "sha256:d7c013fe7abbc5e491394e10fa845f8f32fe54f8dc60c6622c6cf482d25d47e4"},
