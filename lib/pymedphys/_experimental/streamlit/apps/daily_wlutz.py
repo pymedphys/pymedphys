@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import datetime
+import functools
 import pathlib
 
 from pymedphys._imports import numpy as np
@@ -44,8 +45,14 @@ MEAN_TOLERANCE = 1.0  # mm
 
 SIMPLE = True
 
-WARNING_COLOUR = "#fef4d5"
-ERROR_COLOUR = "#ffd5d5"
+WARNING_BACKGROUND_COLOUR = "#fef4d5"
+WARNING_FONT_COLOUR = "#947c2d"
+
+ERROR_BACKGROUND_COLOUR = "#ffd5d5"
+ERROR_FONT_COLOUR = "#9d292d"
+
+SUCCESS_BACKGROUND_COLOUR = "#ceeed8"
+SUCCESS_FONT_COLOUR = "#176c36"
 
 
 def main():
@@ -78,10 +85,6 @@ def main():
 
     if not st.button("Calculate"):
         st.stop()
-
-    # passing_table = {
-
-    # }
 
     for machine_id in expected_linacs:
         st.write(f"## Calculations for `{machine_id}`")
@@ -121,45 +124,39 @@ def main():
                 ["algorithm", "treatment", "port"], axis=1
             )
 
-            negative_projection_distance = np.max(np.abs(statistics_collection["min"]))
-            positive_projection_distance = np.max(np.abs(statistics_collection["max"]))
+            statistics_collection = pd.DataFrame(statistics_collection)
 
-            # if (
-            #     negative_projection_distance > PROJECTION_TOLERANCE
-            #     or positive_projection_distance > PROJECTION_TOLERANCE
-            # ):
-            #     passing_thus_far[machine_id] = False
+            statistics_collection = statistics_collection.rename(
+                columns={
+                    "energy": "Energy",
+                    "orientation": "Direction",
+                    "min": "Min (mm)",
+                    "max": "Max (mm)",
+                    "mean": "Mean (mm)",
+                }
+            )
 
-            mean_distance = np.max(np.abs(statistics_collection["mean"]))
+            styled_dataframe = statistics_collection.style.apply(
+                _highlight_projection_tol, subset=["Min (mm)", "Max (mm)"]
+            )
+            styled_dataframe = styled_dataframe.apply(
+                _highlight_mean_tol, subset=["Mean (mm)"]
+            )
 
-            # if mean_distance > MEAN_TOLERANCE:
-            #     passing_thus_far[machine_id] = False
-
-            st.write(statistics_collection)
-
-    # TODO: Make it not say pass if an expected energy hasn't been completed.
-
-    # for machine_id in expected_linacs:
-    #     st.sidebar.write(f"# `{machine_id}`")
-
-    #     try:
-    #         did_it_pass = passing_thus_far[machine_id]
-    #     except KeyError:
-    #         st.sidebar.warning(f"`{machine_id}` daily WLutz QA hasn't been done. 🤔")
-    #         continue
-
-    #     if did_it_pass:
-    #         st.sidebar.success(f"`{machine_id}` daily WLutz QA was a success! 🥳🎉")
-    #     else:
-    #         st.sidebar.error(f"`{machine_id}` daily WLutz QA didn't pass. 😞")
+            st.write(styled_dataframe)
 
 
-def _highlight_projection_tol():
-    pass
+def _base_tol_colouring(tolerance, val):
+    return [
+        f"background-color: {ERROR_BACKGROUND_COLOUR}; color: {ERROR_FONT_COLOUR}"
+        if v > tolerance
+        else f"background-color: {SUCCESS_BACKGROUND_COLOUR}; color: {SUCCESS_FONT_COLOUR}"
+        for v in val
+    ]
 
 
-def _highlight_mean_tol():
-    pass
+_highlight_projection_tol = functools.partial(_base_tol_colouring, PROJECTION_TOLERANCE)
+_highlight_mean_tol = functools.partial(_base_tol_colouring, MEAN_TOLERANCE)
 
 
 def _custom_iview_icom_filter(config, advanced_mode):
