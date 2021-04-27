@@ -136,6 +136,7 @@ def main():
             )
 
             statistics_collection = statistics_collection.set_index(["Direction"])
+            statistics_collection = statistics_collection.sort_index()
 
             styled_dataframe = statistics_collection.style.apply(
                 _highlight_projection_tol, subset=["Min (mm)", "Max (mm)"]
