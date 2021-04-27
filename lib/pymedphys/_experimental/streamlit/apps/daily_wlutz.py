@@ -143,7 +143,8 @@ def main():
                 _highlight_mean_tol, subset=["Mean (mm)"]
             )
 
-            st.write(styled_dataframe)
+            with pd.option_context("precision", 1):
+                st.write(styled_dataframe)
 
 
 def _base_tol_colouring(tolerance, val):
