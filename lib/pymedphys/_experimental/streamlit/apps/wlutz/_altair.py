@@ -74,14 +74,9 @@ def _build_altair_chart(table, axis, plot_x_axis, quiet, xlim, ylim):
     if quiet:
         del encoding_properties["color"]
 
-    raw_chart = (
-        (
-            alt.Chart(table)
-            .mark_line(point=True, clip=True)
-            .encode(**encoding_properties)
-        )
-        .properties(title=parameters["plot-type"])
-        .interactive()
-    )
+    base = alt.Chart(table)
+
+    lines = base.mark_line(point=True, clip=True).encode(**encoding_properties)
+    raw_chart = lines.properties(title=parameters["plot-type"]).interactive()
 
     return raw_chart
