@@ -77,6 +77,8 @@ def _build_altair_chart(table, axis, plot_x_axis, quiet, xlim, ylim):
     base = alt.Chart(table)
 
     lines = base.mark_line(point=True, clip=True).encode(**encoding_properties)
-    raw_chart = lines.properties(title=parameters["plot-type"]).interactive()
+    raw_chart = lines.properties(title=parameters["plot-type"]).interactive(
+        bind_x=False
+    )
 
     return raw_chart
