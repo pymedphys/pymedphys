@@ -23,8 +23,8 @@ def main(args):
 
 
 def start_streamlit_server(script_path, config):
-    st.cli._apply_config_options_from_cli(config)
+    st.bootstrap.load_config_options(flag_options=config)
     patches.apply_streamlit_server_patches()
 
     st._is_running_with_streamlit = True
-    st.bootstrap.run(script_path, "", [])
+    st.bootstrap.run(script_path, "", [], flag_options=config)

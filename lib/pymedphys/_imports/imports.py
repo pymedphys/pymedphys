@@ -81,7 +81,6 @@ import streamlit.server
 import streamlit.server.server
 import streamlit.server.server_util
 import streamlit_ace
-import streamlit_analytics
 
 import dicompylercore
 import dicompylercore.dicomparser as dicomparser
