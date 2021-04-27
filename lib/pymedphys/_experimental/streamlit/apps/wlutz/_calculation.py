@@ -212,6 +212,9 @@ def run_calculation(
     fill_errors_with_nan,
     quiet,
 ):
+    xlim = (-180, 180)
+    ylim = (-2, 2)
+
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
         previously_calculated_results = pd.read_csv(
@@ -346,7 +349,7 @@ def run_calculation(
                 st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
 
             port_chart_bucket = _altair.build_both_axis_altair_charts(
-                table_filtered_by_port, plot_x_axis, quiet=quiet
+                table_filtered_by_port, plot_x_axis, quiet=quiet, xlim=xlim, ylim=ylim
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
