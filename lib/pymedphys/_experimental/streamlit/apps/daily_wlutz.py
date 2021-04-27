@@ -56,6 +56,11 @@ SUCCESS_FONT_COLOUR = "#176c36"
 
 
 def main():
+    with pd.option_context("precision", 1):
+        _ui()
+
+
+def _ui():
     bb_diameter = 12
     penumbra = 2
     advanced_mode = False
@@ -145,8 +150,7 @@ def main():
                 _highlight_mean_tol, subset=["Mean (mm)"]
             )
 
-            with pd.option_context("precision", 1):
-                st.write(styled_dataframe)
+            st.dataframe(styled_dataframe)
 
 
 def _base_tol_colouring(tolerance, val):
