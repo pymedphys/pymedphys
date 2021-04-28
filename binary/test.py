@@ -53,7 +53,7 @@ def main():
         # Given these commands are undergone also within the workflow,
         # should look to refactor these out.
         subprocess.check_call(
-            f"{prepend}cmd.exe /C pymedphys dev tests --reruns 5 -v -s --cypress",
+            f"{prepend}cmd.exe /C pymedphys dev tests --cypress",
             cwd=BUILD_DIST,
             shell=True,
         )
