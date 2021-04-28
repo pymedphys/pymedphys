@@ -68,8 +68,6 @@ jobs:
           - os: 'windows'
             task: 'updates'
           - os: 'windows'
-            task: 'cypress'
-          - os: 'windows'
             task: 'slow'
           - os: 'windows'
             task: 'pyright'
