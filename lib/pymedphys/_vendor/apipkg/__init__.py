@@ -39,6 +39,7 @@ see https://pypi.python.org/pypi/apipkg
 """
 import os
 import sys
+import warnings
 from types import ModuleType
 
 
@@ -236,11 +237,20 @@ def AliasModule(modname, modpath, attrname=None):
             # return getattr(getmod(), name)
             try:
                 return getattr(getmod(), name)
-            except ImportError:
+            except (ImportError, ModuleNotFoundError):
                 # Support inspection rejection
-                if name == "__file__":
+                if name in ["__file__", "__spec__", "__path__"]:
                     return None
-                raise
+
+                raise ModuleNotFoundError(
+                    f"An import was attempted for the optional module `{modname}.{name}`. "
+                    "When you installed PyMedPhys did you run `pip install pymedphys[user]`? "
+                    "The majority of these issues can be rectified by "
+                    "installing PyMedPhys with the `user` extras. "
+                    "If you would like to utilise a specific optional "
+                    f"functionality of PyMedPhys that needs `{modname}.{name}` "
+                    "you may wish to install this module directly with `pip`."
+                )
 
         def __setattr__(self, name, value):
             setattr(getmod(), name, value)
