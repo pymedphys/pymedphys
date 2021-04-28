@@ -39,7 +39,6 @@ see https://pypi.python.org/pypi/apipkg
 """
 import os
 import sys
-import warnings
 from types import ModuleType
 
 
