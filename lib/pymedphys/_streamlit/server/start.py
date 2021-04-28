@@ -27,4 +27,4 @@ def start_streamlit_server(script_path, config):
     patches.apply_streamlit_server_patches()
 
     st._is_running_with_streamlit = True
-    st.bootstrap.run(script_path, "", [], flag_options=config)
+    st.bootstrap.run(script_path, "", [], flag_options={})

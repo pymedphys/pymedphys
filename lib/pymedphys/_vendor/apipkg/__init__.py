@@ -236,11 +236,24 @@ def AliasModule(modname, modpath, attrname=None):
             # return getattr(getmod(), name)
             try:
                 return getattr(getmod(), name)
-            except ImportError:
+            except (ImportError, ModuleNotFoundError):
                 # Support inspection rejection
-                if name == "__file__":
+                if name in ["__file__", "__spec__", "__path__"]:
                     return None
-                raise
+
+                no_scope_modname = modname.replace("pymedphys._imports.", "")
+
+                from pymedphys._version import __version__
+
+                raise ModuleNotFoundError(
+                    f"""
+                    PyMedPhys was unable to import "{no_scope_modname}.{name}".
+                    The easiest way to fix this issue is to use the "[user]"
+                    option when installing PyMedPhys. For example,
+                    with pip this can be done by calling
+                    "pip install pymedphys[user]=={__version__}".
+                    """
+                )
 
         def __setattr__(self, name, value):
             setattr(getmod(), name, value)
