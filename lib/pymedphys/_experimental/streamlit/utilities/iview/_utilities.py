@@ -34,7 +34,9 @@ def expand_border_events(mask):
 
 
 def get_directories_and_initial_database(
-    config: Dict[str, Any], refresh_cache: bool
+    config: Dict[str, Any],
+    refresh_cache: bool,
+    return_site=False,
 ) -> Tuple[
     pathlib.Path,
     pathlib.Path,
@@ -107,13 +109,25 @@ def get_directories_and_initial_database(
         item["name"]: item["directories"] for item in linac_map[chosen_site]
     }
 
-    return (
-        database_directory,
-        icom_directory,
-        database_table,
-        selected_date,
-        linac_to_directories_map,
-    )
+    if return_site:
+        # This is a nasty hack.
+        # TODO: Fix this.
+        return (
+            database_directory,  # type: ignore
+            icom_directory,
+            database_table,
+            selected_date,
+            linac_to_directories_map,
+            chosen_site,
+        )
+    else:
+        return (
+            database_directory,
+            icom_directory,
+            database_table,
+            selected_date,
+            linac_to_directories_map,
+        )
 
 
 def _load_database_with_cache(database_directory, refresh_cache):

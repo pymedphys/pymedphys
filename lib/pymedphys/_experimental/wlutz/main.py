@@ -73,6 +73,8 @@ def calculate(
 def get_algorithm_function_map():
     ALGORITHM_FUNCTION_MAP = {
         "PyMedPhys": pymedphys_wlutz_calculate,
+        "PyMedPhys-LoosenedTolerance": _pymedphys_loosened_tolerance,
+        "PyMedPhys-NoTolerance": _pymedphys_no_tolerance,
         f"PyLinac v{_pylinac_installed.__version__}": functools.partial(
             _pylinac_wlutz_calculate, pylinac_version=_pylinac_installed.__version__
         ),
@@ -91,6 +93,64 @@ def load_iview_image(image_path):
     return x, y, image
 
 
+def _pymedphys_loosened_tolerance(
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: TwoNumbers,
+    penumbra: float,
+    icom_field_rotation: float,
+    fill_errors_with_nan: bool = True,
+    **_,
+) -> Tuple[TwoNumbers, TwoNumbers]:
+    bb_repeats = 10
+    bb_consistency_tol = 0.5
+    skip_pylinac = True
+
+    return pymedphys_wlutz_calculate(
+        x=x,
+        y=y,
+        image=image,
+        bb_diameter=bb_diameter,
+        edge_lengths=edge_lengths,
+        penumbra=penumbra,
+        icom_field_rotation=icom_field_rotation,
+        fill_errors_with_nan=fill_errors_with_nan,
+        bb_repeats=bb_repeats,
+        bb_consistency_tol=bb_consistency_tol,
+        skip_pylinac=skip_pylinac,
+    )
+
+
+def _pymedphys_no_tolerance(
+    x: "np.ndarray",
+    y: "np.ndarray",
+    image: "np.ndarray",
+    bb_diameter: float,
+    edge_lengths: TwoNumbers,
+    penumbra: float,
+    icom_field_rotation: float,
+    fill_errors_with_nan: bool = True,
+    **_,
+) -> Tuple[TwoNumbers, TwoNumbers]:
+    bb_repeats = 1
+    bb_consistency_tol = np.inf
+
+    return pymedphys_wlutz_calculate(
+        x,
+        y,
+        image,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+        icom_field_rotation,
+        fill_errors_with_nan,
+        bb_repeats,
+        bb_consistency_tol,
+    )
+
+
 def pymedphys_wlutz_calculate(
     x: "np.ndarray",
     y: "np.ndarray",
@@ -102,6 +162,7 @@ def pymedphys_wlutz_calculate(
     fill_errors_with_nan: bool = True,
     bb_repeats: int = findbb.DEFAULT_BB_REPEATS,
     bb_consistency_tol: float = findbb.DEFAULT_BB_CONSISTENCY_TOL,
+    skip_pylinac=False,
     **_,
 ) -> Tuple[TwoNumbers, TwoNumbers]:
     """Utilise the PyMedPhys WLutz algorithm to determine the field
@@ -182,6 +243,7 @@ def pymedphys_wlutz_calculate(
             field_rotation=icom_field_rotation,
             bb_repeats=bb_repeats,
             bb_consistency_tol=bb_consistency_tol,
+            skip_pylinac=skip_pylinac,
         )
     except ValueError:
         if fill_errors_with_nan:

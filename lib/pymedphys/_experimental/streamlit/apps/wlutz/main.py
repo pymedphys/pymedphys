@@ -34,7 +34,13 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
-    bb_diameter, penumbra, advanced_mode, demo_mode = _set_parameters()
+    (
+        bb_diameter,
+        penumbra,
+        advanced_mode,
+        demo_mode,
+        loosen_internal_tolerances,
+    ) = _set_parameters()
     config = _config.get_config(demo_mode)
 
     if demo_mode and advanced_mode:
@@ -71,6 +77,7 @@ def main():
         bb_diameter,
         penumbra,
         advanced_mode,
+        loosen_internal_tolerances,
     )
 
     st.write("---")
@@ -235,9 +242,24 @@ def _set_parameters():
 
     advanced_mode = st.sidebar.checkbox("Advanced Mode", value=False)
 
+    st.sidebar.write("---")
+
+    st.sidebar.write("# Daily QA (vs Monthly QA)")
+
+    loosen_internal_tolerances = st.sidebar.checkbox(
+        "Loosen algorithm tolerances for Daily QA air cavity detection", False
+    )
+
+    st.sidebar.write("---")
+
     st.sidebar.write("# Parameters")
 
-    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
+    if loosen_internal_tolerances:
+        default_bb_diameter = 12
+    else:
+        default_bb_diameter = 8
+
+    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", default_bb_diameter)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
-    return bb_diameter, penumbra, advanced_mode, demo_mode
+    return bb_diameter, penumbra, advanced_mode, demo_mode, loosen_internal_tolerances

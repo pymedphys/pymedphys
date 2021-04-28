@@ -15,6 +15,7 @@
 
 from pymedphys._imports import libjpeg
 from pymedphys._imports import numpy as np
+from pymedphys._imports import scipy
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import categories
@@ -41,12 +42,16 @@ def main():
     a_file = st.file_uploader("iView images 'jpg' file")
 
     ignore_errors = st.checkbox("Ignore errors", False)
+    apply_median_filter = st.checkbox("Apply 3x3 median filter", False)
+    apply_gaussian_filter = st.checkbox(
+        "Apply 1 pixel width sigma gaussian filter", False
+    )
     zoom_factor = st.slider("Zoom factor", 1.0, 16.0, value=1.0)
     bb_repeats = st.number_input(
         "Number of repeat BB finding attempts", min_value=0, max_value=20, value=6
     )
     bb_consistency_tolerance = st.number_input(
-        "BB consistency tolerance (mm)", min_value=0.0, max_value=4.0, value=1.0
+        "BB consistency tolerance (mm)", min_value=0.0, max_value=1000.0, value=1.0
     )
 
     field_edge_x = st.number_input(
@@ -62,6 +67,12 @@ def main():
     a_file.seek(0)
     img_raw = libjpeg.decode(a_file.read())
     x, y, image = _iview.iview_image_transform(img_raw)
+
+    if apply_median_filter:
+        image = scipy.ndimage.median_filter(image, size=3)
+
+    if apply_gaussian_filter:
+        image = scipy.ndimage.gaussian_filter(image, sigma=1)
 
     vmin_default = float(np.min(image))
     vmax_default = float(np.max(image))

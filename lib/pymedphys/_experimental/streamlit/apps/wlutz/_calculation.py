@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Cancer Care Associates
 # Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +40,20 @@ RESULTS_DATA_COLUMNS = [
     "bb_centre_y",
 ]
 
-DEFAULT_DEVIATION_PLOT_THRESHOLD = 0.5
+# Draw a plot within the app when algorithms deviate from each other
+# by this much
+DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD = 0.5  # mm
+
+# Draw a plot within the app when the total deviation from the origin
+# is more than this much
+DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD = 1.5  # mm
+
+# Draw a plot when an algorithm doesn't return a result
 DEFAULT_PLOT_WHEN_DATA_IS_MISSING = False
+
+# Whether or not the app should "march on" in the face of an error or
+# produce a traceback. When it "marches on" it will not produce data
+# points in the locations where an error occurred.
 DEFAULT_FILL_ERRORS_WITH_NAN = True
 
 
@@ -51,8 +64,33 @@ def calculations_ui(
     bb_diameter,
     penumbra,
     advanced_mode,
+    loosened_internal_tolerances,
     quiet=False,
 ):
+    """The WLutz streamlit calculation UI
+
+    Parameters
+    ----------
+    database_table
+    database_directory
+    wlutz_directory_by_date
+    bb_diameter
+    penumbra
+    advanced_mode
+    loosened_internal_tolerances
+        Whether or not to use a 'less strict' version of PyMedPhys'
+        WLutz algorithm. This is to handle the lower contrast when
+        trying to find an air cavity instead of ball bearing.
+    quiet : bool, optional
+        Run the calculation UI with minimal feedback. This mode is
+        designed for use in Daily QA where all the extra
+        "physics feedback" will get in the way.
+
+    Returns
+    -------
+    statistics_collection
+
+    """
     if not quiet:
         st.write("## Calculations")
 
@@ -68,7 +106,17 @@ def calculations_ui(
 
     ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 
-    algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
+    loosened_tolerance_names = ["PyMedPhys-LoosenedTolerance", "PyMedPhys-NoTolerance"]
+
+    if loosened_internal_tolerances:
+        if quiet:
+            algorithm_options = loosened_tolerance_names[0:1]
+        else:
+            algorithm_options = loosened_tolerance_names
+    else:
+        algorithm_options = list(
+            set(ALGORITHM_FUNCTION_MAP.keys()).difference(loosened_tolerance_names)
+        )
 
     if advanced_mode:
         selected_algorithms = st.multiselect(
@@ -80,19 +128,49 @@ def calculations_ui(
     database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
+    if quiet:
+        default_data_missing_plot = False
+    elif loosened_internal_tolerances:
+        default_data_missing_plot = True
+    else:
+        default_data_missing_plot = DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+
+    if quiet:
+        default_deviation_plot_threshold = np.inf
+        default_total_deviation_plot_threshold = np.inf
+
+    else:
+        default_deviation_plot_threshold = (
+            DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD
+        )
+
+        if loosened_internal_tolerances:
+            default_total_deviation_plot_threshold = 3.0
+        else:
+            default_total_deviation_plot_threshold = (
+                DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD
+            )
+
     if advanced_mode:
         deviation_plot_threshold = st.number_input(
-            "Display deviations greater than", value=DEFAULT_DEVIATION_PLOT_THRESHOLD
+            "Display inter-algorithm deviations greater than",
+            value=default_deviation_plot_threshold,
         )
+        total_deviation_plot_threshold = st.number_input(
+            "Display total deviations greater than",
+            value=default_total_deviation_plot_threshold,
+        )
+
         plot_when_data_missing = st.checkbox(
-            "Plot when data missing", value=DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+            "Plot when data missing", value=default_data_missing_plot
         )
         fill_errors_with_nan = st.checkbox(
             "Fill errors with nan", value=DEFAULT_FILL_ERRORS_WITH_NAN
         )
     else:
-        deviation_plot_threshold = DEFAULT_DEVIATION_PLOT_THRESHOLD
-        plot_when_data_missing = DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+        deviation_plot_threshold = default_deviation_plot_threshold
+        total_deviation_plot_threshold = default_total_deviation_plot_threshold
+        plot_when_data_missing = default_data_missing_plot
         fill_errors_with_nan = DEFAULT_FILL_ERRORS_WITH_NAN
 
     if not quiet:
@@ -100,7 +178,7 @@ def calculations_ui(
         calculate = st.button("Calculate")
 
     if quiet or calculate:
-        run_calculation(
+        return run_calculation(
             database_table,
             database_directory,
             wlutz_directory_by_date,
@@ -108,12 +186,15 @@ def calculations_ui(
             bb_diameter,
             penumbra,
             deviation_plot_threshold,
+            total_deviation_plot_threshold,
             plot_when_data_missing,
             advanced_mode,
             plot_x_axis,
             fill_errors_with_nan,
             quiet=quiet,
         )
+
+    return None
 
 
 def run_calculation(
@@ -124,12 +205,16 @@ def run_calculation(
     bb_diameter,
     penumbra,
     deviation_plot_threshold,
+    total_deviation_plot_threshold,
     plot_when_data_missing,
     advanced_mode,
     plot_x_axis,
     fill_errors_with_nan,
     quiet,
 ):
+    xlim = (-180, 180)
+    ylim = (-2, 2)
+
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
         previously_calculated_results = pd.read_csv(
@@ -186,14 +271,21 @@ def run_calculation(
             "bb_centre_x",
             "bb_centre_y",
         ]
+
+        for column in columns_to_check_for_deviation:
+            results[column] = pd.to_numeric(results[column])
+
         min_result = results[columns_to_check_for_deviation].min(axis=0)
         max_result = results[columns_to_check_for_deviation].max(axis=0)
 
         result_range = max_result - min_result
 
+        diff_columns = ["diff_x", "diff_y"]
+        max_diff = np.max(np.abs(results[diff_columns]))
+
         a_deviation_is_larger_than_threshold = np.any(
             result_range > deviation_plot_threshold
-        )
+        ) or np.any(max_diff > total_deviation_plot_threshold)
         at_least_one_diff_is_missing = (
             results[["diff_x", "diff_y"]].isnull().values.any()
         )
@@ -257,7 +349,7 @@ def run_calculation(
                 st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
 
             port_chart_bucket = _altair.build_both_axis_altair_charts(
-                table_filtered_by_port, plot_x_axis, quiet=quiet
+                table_filtered_by_port, plot_x_axis, quiet=quiet, xlim=xlim, ylim=ylim
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
@@ -322,23 +414,30 @@ def run_calculation(
                 masked = contextualised_results.loc[mask]
 
                 fig, ax = plt.subplots()
-                for algorithm in sorted(selected_algorithms):
-                    algorithm_masked = masked.loc[masked["algorithm"] == algorithm]
-                    ax.plot(
-                        algorithm_masked["gantry"],
-                        algorithm_masked[column],
-                        ".-",
-                        label=algorithm,
-                    )
 
-                    description = algorithm_masked[column].describe()
-                    description = description.round(2)
-                    description["algorithm"] = algorithm
-                    description["treatment"] = treatment
-                    description["port"] = port
-                    description["orientation"] = orientation
+                energies = masked["energy"].unique()
+                for energy in energies:
+                    energy_masked = masked.loc[masked["energy"] == energy]
+                    for algorithm in sorted(selected_algorithms):
+                        algorithm_masked = energy_masked.loc[
+                            energy_masked["algorithm"] == algorithm
+                        ]
+                        ax.plot(
+                            algorithm_masked["gantry"],
+                            algorithm_masked[column],
+                            ".-",
+                            label=algorithm,
+                        )
 
-                    statistics_collection.append(description)
+                        description = algorithm_masked[column].describe()
+                        description = description.round(2)
+                        description["algorithm"] = algorithm
+                        description["treatment"] = treatment
+                        description["energy"] = energy
+                        description["port"] = port
+                        description["orientation"] = orientation
+
+                        statistics_collection.append(description)
 
                 ax.set_xlabel("Gantry Angle (degrees)")
                 ax.set_ylabel("Field centre - BB centre (mm)")
@@ -354,7 +453,16 @@ def run_calculation(
     statistics_collection = pd.concat(statistics_collection, axis=1).T
     statistics_collection.reset_index(inplace=True)
     statistics_collection = statistics_collection[
-        ["treatment", "port", "orientation", "algorithm", "min", "max", "mean"]
+        [
+            "energy",
+            "orientation",
+            "min",
+            "max",
+            "mean",
+            "treatment",
+            "port",
+            "algorithm",
+        ]
     ]
 
     if advanced_mode:
@@ -377,6 +485,8 @@ def run_calculation(
             </a>
         """
         st.markdown(href, unsafe_allow_html=True)
+
+    return statistics_collection
 
 
 def _collapse_column_to_single_value(dataframe, column):
