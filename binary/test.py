@@ -46,14 +46,12 @@ def main():
     exe = built_executables[0]
 
     with _process(f"{prepend}{exe}", cwd=BUILD_DIST, shell=True):
-        subprocess.check_call("yarn", cwd=CYPRESS, shell=True)
-
         _wait_for_port(8501, timeout=300)
 
         # Given these commands are undergone also within the workflow,
         # should look to refactor these out.
         subprocess.check_call(
-            f"{prepend}cmd.exe /C pymedphys dev tests --reruns 5 -v -s --cypress",
+            f"{prepend}cmd.exe /C pymedphys dev tests --cypress",
             cwd=BUILD_DIST,
             shell=True,
         )

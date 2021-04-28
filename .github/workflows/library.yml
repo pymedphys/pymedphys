@@ -68,8 +68,6 @@ jobs:
           - os: 'windows'
             task: 'updates'
           - os: 'windows'
-            task: 'cypress'
-          - os: 'windows'
             task: 'slow'
           - os: 'windows'
             task: 'pyright'
@@ -456,7 +454,7 @@ jobs:
       - name: Run Cypress tests
         if: matrix.task == 'cypress'
         run: |
-          poetry run pymedphys dev tests --reruns 5 -v -s --cypress
+          poetry run pymedphys dev tests --cypress
 
       - uses: actions/upload-artifact@v2
         if: failure() && matrix.task == 'cypress'

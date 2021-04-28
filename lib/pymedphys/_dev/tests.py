@@ -164,6 +164,9 @@ def _call_pytest(remaining, label):
     os.chdir(LIBRARY_ROOT)
     print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
 
+    if "--cypress" in remaining:
+        remaining += ["--reruns", "5", "-v", "-s"]
+
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
     command = [
         python_executable,
