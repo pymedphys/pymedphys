@@ -58,7 +58,7 @@ assert NOISE_BUFFER_FACTOR * GANTRY_EXPECTED_SPEED_LIMIT < 60
 assert NOISE_BUFFER_FACTOR * COLLIMATOR_EXPECTED_SPEED_LIMIT < 60
 
 
-def make_icom_angles_continuous(icom_datasets):
+def make_icom_angles_continuous(icom_datasets, quiet=False):
     try:
         angle_speed_check(icom_datasets)
     except ValueError:
@@ -66,11 +66,13 @@ def make_icom_angles_continuous(icom_datasets):
             icom_datasets["datetime"],
             icom_datasets["gantry"].to_numpy(),
             GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
+            quiet=quiet,
         )
         icom_datasets["collimator"] = attempt_to_make_angles_continuous(
             icom_datasets["datetime"],
             icom_datasets["collimator"].to_numpy(),
             COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
+            quiet=quiet,
         )
 
     # angle_speed_check(icom_datasets)
@@ -125,55 +127,57 @@ def attempt_to_make_angles_continuous(
     init_range_to_adjust=0,
     max_range=5,
     range_iter=0.1,
+    quiet=False,
 ):
     if init_range_to_adjust > max_range:
-        st.error(
-            "Unable to automatically convert the iCom data to bipolar. "
-            "Below are some diagnostic outputs to help get to the "
-            "root cause of the issue."
-        )
-
-        st.info(
-            f"""
-            iCom data is converted to bipolar by making an assumption
-            that the angle movement is unable to go above a certain
-            RPM. If this error has occurred it is because no sign
-            adjustment combination for the provided data was able to
-            be found that brings the RPM to less than `{speed_limit}`.
-            Below is a plot of the provided data with the data coloured
-            by its RPM.
-            """
-        )
-        rpm = determine_speed(angles, times)
-        df = pd.concat(
-            [
-                times,
-                pd.Series(angles, name="angle"),
-                pd.Series(rpm, name="rpm"),
-            ],
-            axis=1,
-        )
-        st.write(df)
-
-        chart = (
-            alt.Chart(df)
-            .mark_circle()
-            .encode(
-                x="datetime:T",
-                y="angle:Q",
-                color="rpm:Q",
-                tooltip=["datetime", "angle", "rpm"],
+        if not quiet:
+            st.error(
+                "Unable to automatically convert the iCom data to bipolar. "
+                "Below are some diagnostic outputs to help get to the "
+                "root cause of the issue."
             )
-            .interactive(bind_y=False)
-        )
-        st.altair_chart(chart, use_container_width=True)
 
-        st.error(
-            "The WLutz analysis will now continue with this angle 'jump' "
-            "in-place. Be aware that this brings into question the sign "
-            "of the angle determination in the vicinity of the high RPM regions "
-            "presented in the above plot."
-        )
+            st.info(
+                f"""
+                iCom data is converted to bipolar by making an assumption
+                that the angle movement is unable to go above a certain
+                RPM. If this error has occurred it is because no sign
+                adjustment combination for the provided data was able to
+                be found that brings the RPM to less than `{speed_limit}`.
+                Below is a plot of the provided data with the data coloured
+                by its RPM.
+                """
+            )
+            rpm = determine_speed(angles, times)
+            df = pd.concat(
+                [
+                    times,
+                    pd.Series(angles, name="angle"),
+                    pd.Series(rpm, name="rpm"),
+                ],
+                axis=1,
+            )
+            st.write(df)
+
+            chart = (
+                alt.Chart(df)
+                .mark_circle()
+                .encode(
+                    x="datetime:T",
+                    y="angle:Q",
+                    color="rpm:Q",
+                    tooltip=["datetime", "angle", "rpm"],
+                )
+                .interactive(bind_y=False)
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+            st.error(
+                "The WLutz analysis will now continue with this angle 'jump' "
+                "in-place. Be aware that this brings into question the sign "
+                "of the angle determination in the vicinity of the high RPM regions "
+                "presented in the above plot."
+            )
         return angles
 
     within_adjustment_range = np.abs(angles) >= 180 - init_range_to_adjust
@@ -216,6 +220,7 @@ def attempt_to_make_angles_continuous(
             init_range_to_adjust=new_range_adjust,
             max_range=max_range,
             range_iter=range_iter,
+            quiet=quiet,
         )
 
     return angles

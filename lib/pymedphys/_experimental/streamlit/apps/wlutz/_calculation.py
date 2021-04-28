@@ -51,12 +51,14 @@ def calculations_ui(
     bb_diameter,
     penumbra,
     advanced_mode,
+    quiet=False,
 ):
-    st.write("## Calculations")
+    if not quiet:
+        st.write("## Calculations")
 
-    st.write("### Calculation options")
+        st.write("### Calculation options")
 
-    if not advanced_mode:
+    if not advanced_mode and not quiet:
         st.write("*Calculation options are available by ticking advanced mode*")
 
     if advanced_mode:
@@ -93,9 +95,11 @@ def calculations_ui(
         plot_when_data_missing = DEFAULT_PLOT_WHEN_DATA_IS_MISSING
         fill_errors_with_nan = DEFAULT_FILL_ERRORS_WITH_NAN
 
-    st.write("### Run calculations")
+    if not quiet:
+        st.write("### Run calculations")
+        calculate = st.button("Calculate")
 
-    if st.button("Calculate"):
+    if quiet or calculate:
         run_calculation(
             database_table,
             database_directory,
@@ -108,6 +112,7 @@ def calculations_ui(
             advanced_mode,
             plot_x_axis,
             fill_errors_with_nan,
+            quiet=quiet,
         )
 
 
@@ -123,6 +128,7 @@ def run_calculation(
     advanced_mode,
     plot_x_axis,
     fill_errors_with_nan,
+    quiet,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -132,9 +138,10 @@ def run_calculation(
     except FileNotFoundError:
         previously_calculated_results = None
 
-    st.sidebar.write("---\n## Progress")
-    progress_bar = st.sidebar.progress(0)
-    status_text = st.sidebar.empty()
+    if not quiet:
+        st.sidebar.write("## Progress")
+        progress_bar = st.sidebar.progress(0)
+        status_text = st.sidebar.empty()
 
     collated_results = pd.DataFrame()
     chart_bucket = {}
@@ -246,17 +253,20 @@ def run_calculation(
             for _, item in treatment_chart_bucket[port].items():
                 item.add_rows(table_filtered_by_port)
         except KeyError:
-            st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
+            if not quiet:
+                st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
+
             port_chart_bucket = _altair.build_both_axis_altair_charts(
-                table_filtered_by_port, plot_x_axis
+                table_filtered_by_port, plot_x_axis, quiet=quiet
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
-        ratio_complete = (progress_index + 1) / total_files
-        progress_bar.progress(ratio_complete)
+        if not quiet:
+            ratio_complete = (progress_index + 1) / total_files
+            progress_bar.progress(ratio_complete)
 
-        percent_complete = round(ratio_complete * 100, 2)
-        status_text.text(f"{percent_complete}% Complete")
+            percent_complete = round(ratio_complete * 100, 2)
+            status_text.text(f"{percent_complete}% Complete")
 
     contextualised_results: pd.DataFrame = collated_results.merge(
         database_table, left_on="filepath", right_on="filepath"

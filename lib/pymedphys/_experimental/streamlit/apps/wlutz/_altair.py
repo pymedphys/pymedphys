@@ -17,11 +17,11 @@ from pymedphys._imports import altair as alt
 from pymedphys._imports import streamlit as st
 
 
-def build_both_axis_altair_charts(table, plot_x_axis):
+def build_both_axis_altair_charts(table, plot_x_axis, quiet):
     chart_bucket = {}
 
     for axis in ["y", "x"]:
-        raw_chart = _build_altair_chart(table, axis, plot_x_axis)
+        raw_chart = _build_altair_chart(table, axis, plot_x_axis, quiet)
         chart_bucket[axis] = st.altair_chart(
             altair_chart=raw_chart, use_container_width=True
         )
@@ -29,7 +29,7 @@ def build_both_axis_altair_charts(table, plot_x_axis):
     return chart_bucket
 
 
-def _build_altair_chart(table, axis, plot_x_axis):
+def _build_altair_chart(table, axis, plot_x_axis, quiet):
     parameters = {
         "x": {
             "column-name": "diff_x",
@@ -39,31 +39,30 @@ def _build_altair_chart(table, axis, plot_x_axis):
         "y": {"column-name": "diff_y", "axis-name": "Y-axis", "plot-type": "Radial"},
     }[axis]
 
+    encoding_properties = {
+        "x": alt.X(plot_x_axis.lower(), axis=alt.Axis(title=plot_x_axis)),
+        "y": alt.Y(
+            parameters["column-name"],
+            axis=alt.Axis(title=f"iView {parameters['axis-name']} (mm) [Field - BB]"),
+        ),
+        "color": alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
+        "tooltip": [
+            "time",
+            "diff_x",
+            "diff_y",
+            "gantry",
+            "collimator",
+            "turn_table",
+            "filename",
+            "algorithm",
+        ],
+    }
+
+    if quiet:
+        del encoding_properties["color"]
+
     raw_chart = (
-        (
-            alt.Chart(table)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X(plot_x_axis.lower(), axis=alt.Axis(title=plot_x_axis)),
-                y=alt.Y(
-                    parameters["column-name"],
-                    axis=alt.Axis(
-                        title=f"iView {parameters['axis-name']} (mm) [Field - BB]"
-                    ),
-                ),
-                color=alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
-                tooltip=[
-                    "time",
-                    "diff_x",
-                    "diff_y",
-                    "gantry",
-                    "collimator",
-                    "turn_table",
-                    "filename",
-                    "algorithm",
-                ],
-            )
-        )
+        (alt.Chart(table).mark_line(point=True).encode(**encoding_properties))
         .properties(title=parameters["plot-type"])
         .interactive(bind_y=False)
     )
