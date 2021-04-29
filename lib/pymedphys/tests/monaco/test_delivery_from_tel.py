@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import logging
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
