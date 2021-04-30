@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.37.0-dev2"
+version = "0.37.0"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -27,6 +27,7 @@ classifiers = [
 ]
 
 packages = [{ include = "pymedphys", from = "lib" }]
+include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
