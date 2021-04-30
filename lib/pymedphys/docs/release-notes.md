@@ -7,6 +7,58 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0]
+
+### News around this release
+
+* [Jake Rembish](https://github.com/rembishj) has been undergoing his PhD with
+  the output of his work being contributed to PyMedPhys. This release coincides
+  with the culmination of Jake's PhD and this version will be the one
+  referenced within his dissertation. It has been brilliant to see both Jake
+  and his project to grow be what it is today. Thank you Jake 😊.
+
+### Breaking changes
+
+### New features and enhancements
+
+* A range of application have been added to and improved on within the
+  PyMedPhys GUI.
+  * A Daily WLutz application was added which utilises the air cavity within
+    an iso-cube, combined with morning run-up beams (as arcs) to record the
+    beam position at every gantry angle for each photon beam each morning.
+  * A range of configuration improvements, making more applications more widely
+    able to be utilised. Of particular note are Jake's transfer check and
+    weekly check applications which were written as a part of his PhD.
+  * A QCL investigator tool, allowing one to produce plots and break downs
+    of numbers of QCLs broken down either by QCL type, or the user who
+    completed them.
+  * An extend ct application was added providing the means to duplicate slices
+    superiorly and inferiorly.
+  * An application for the viewing of back-end iView jpg images.
+  * An application for tweaking the WLutz algorithm options from iView back-end
+    jpg images.
+  * A range of fixes and improvements within the WLutz Arc and the MetersetMap
+    applications.
+* The docs are now distributed with the PyMedPhys package. These are accessible
+  by opening `http://localhost:8501/docs/index.html` after running
+  `pymedphys gui`. In the future it is intended to make this link more
+  accessible.
+* A range of error messaging has been improved. Of particular benefit to new
+  users is the error message that occurs when a dependency is missing.
+* The ball-bearing finding component of the WLutz algorithm was tweaked to
+  be able to also support the finding of air-cavities within an iso-cube.
+* The testing suite around Mosaiq was built upon and extended across the
+  breadth of PyMedPhys.
+* Fixed a bug which was making `pymedphys.Delivery.from_mosaiq` non functional.
+* Improved the robustness of the internal `extend ct` routines.
+* **[Contributor facing only]** created `pymedphys dev mssql` which boots up
+  a docker image of the Developer edition of Microsoft SQL. This is for
+  utilisation by the Mosaiq testing suite.
+* **[Contributor facing only]** made `pymedphys dev tests --cypress`
+  automatically include the options `-v` and `-s` for displaying the `cypress`
+  printouts during testing as well as `--reruns 5` so that the test
+  automatically reruns on failure in alignment with the CI procedure.
+
 ## [0.36.1]
 
 ### New features and enhancements
@@ -1225,6 +1277,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
+[0.37.0]: https://github.com/pymedphys/pymedphys/compare/v0.36.1...v0.37.0
 [0.36.1]: https://github.com/pymedphys/pymedphys/compare/v0.36.0...v0.36.1
 [0.36.0]: https://github.com/pymedphys/pymedphys/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...v0.35.0
