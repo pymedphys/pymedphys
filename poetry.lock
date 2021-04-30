@@ -2389,7 +2389,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "streamlit"
-version = "0.80.0"
+version = "0.81.0"
 description = "The fastest way to build data apps in Python"
 category = "main"
 optional = true
@@ -2772,7 +2772,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "2cffb5f0bf9669f3dc1a9011d6b1c8f44f7a3c1910d00815a6d4009f1fe26a67"
+content-hash = "29a28f0345b5b7e7202128a6c903866e15fbf166c707eaecc5cf9c7c77d7dfa3"
 
 [metadata.files]
 alabaster = [
@@ -4212,8 +4212,8 @@ stevedore = [
     {file = "stevedore-3.3.0.tar.gz", hash = "sha256:3a5bbd0652bf552748871eaa73a4a8dc2899786bc497a2aa1fcb4dcdb0debeee"},
 ]
 streamlit = [
-    {file = "streamlit-0.80.0-py2.py3-none-any.whl", hash = "sha256:156051dd1b2233d9cfa1d512edec8284567aa44def13cc228034e032bbb47d85"},
-    {file = "streamlit-0.80.0.tar.gz", hash = "sha256:a67951245581bacce377bc33965890afe9170dc782d9ae4fcfc5fc05ace59013"},
+    {file = "streamlit-0.81.0-py2.py3-none-any.whl", hash = "sha256:4e6b18df58a3497124336b70a638c3405ccfaab8ad0e9c0060017269833faa63"},
+    {file = "streamlit-0.81.0.tar.gz", hash = "sha256:c713a99a691fe664f4013aae29c0947407576aa222038b66cff5add422b17257"},
 ]
 streamlit-ace = [
     {file = "streamlit_ace-0.0.4-1-py3-none-any.whl", hash = "sha256:471acbeee755aa16d1b1b031eb413e6e2d8ac2208bf69bc9ff748660ffe2fbee"},
