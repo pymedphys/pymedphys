@@ -88,29 +88,29 @@ name = "rccc"
 name = "nbcc"
 
     [site.export-directories]
-    escan = '\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
-    anonymised_monaco = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\anonymised-monaco'
-    icom_live = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live'
-    iviewdb = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iViewDB'
-    icom = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom'
+    escan = '\\nbccc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
+    anonymised_monaco = '\\nbccc-pdc\Physics\NBCC-DataExchange\anonymised-monaco'
+    icom_live = '\\nbccc-pdc\Physics\NBCC-DataExchange\iCom\live'
+    iviewdb = '\\nbccc-pdc\Physics\NBCC-DataExchange\iViewDB'
+    icom = '\\nbccc-pdc\Physics\NBCC-DataExchange\iCom'
 
     [site.monaco]
-    focaldata = '\\tunnel-nbcc-monaco\CMS\FocalData'
+    focaldata = '\\nbccc-monacoda\CMS\FocalData'
     clinic = 'NBCCC\1~Clinical'
-    hostname = 'rccc-ssh'
-    dicom_port = '35104'
+    hostname = 'nbccc-monacoda'
+    dicom_port = '104'
 
     [site.mosaiq]
     timezone = "Australia/Sydney"
-    hostname = "rccc-ssh"
-    port = 31433
+    hostname = "nbccc-msq"
+    port = 1433
     alias = "NBCC Mosaiq SQL Server"
     physics_qcl_location = "Physics"
 
     [[site.linac]]
     name = "4299"
     ip = '192.168.17.40'
-    samba_ip = '192.168.100.231'
+    samba_ip = '192.168.17.40'
     energies = ["6 MV", "10 MV", "6 MV FFF"]
 
         [site.linac.aliases]
@@ -122,7 +122,7 @@ name = "nbcc"
     [[site.linac]]
     name = "9183"
     ip = '192.168.17.42'
-    samba_ip = '192.168.100.236'
+    samba_ip = '192.168.17.42'
     energies = ["6 MV", "10 MV", "6 MV FFF"]
 
         [site.linac.aliases]
@@ -173,7 +173,7 @@ root_directory = '\\rccc-ssh\LinacTRFBackup'
 [icom]
 patient_directories = [
     '\\rccc-pdc\PExIT\DataExchange\iCom\patients',
-    '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
+    '\\nbccc-pdc\Physics\NBCC-DataExchange\iCom\patients',
     '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
 ]
 
