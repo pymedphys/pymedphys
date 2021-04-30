@@ -25,6 +25,9 @@ This project adheres to
 
 ### Breaking changes
 
+* The configuration for the TRF CLI now utilises the centralised `config.toml`
+  file instead of the prior `CSV` files.
+
 ### New features and enhancements
 
 * A range of application have been added to and improved on within the
@@ -56,6 +59,10 @@ This project adheres to
 * The testing suite around Mosaiq was built upon and extended across the
   breadth of PyMedPhys.
 * Fixed a bug which was making `pymedphys.Delivery.from_mosaiq` non functional.
+* Fixed a bug where some TRF files where not able to be decoded. Thank you
+  LipTeck for [the bug report](https://pymedphys.discourse.group/t/request-to-use-file-name-for-missing-field-id-and-field-name-in-trf/156/6).
+* The `pymedphys.trf.identify` interface was moved out of beta. See the
+  documentation for this newly stable API over at <https://docs.pymedphys.com/lib/ref/trf.html>.
 * Improved the robustness of the internal `extend ct` routines.
 * **[Contributor facing only]** created `pymedphys dev mssql` which boots up
   a docker image of the Developer edition of Microsoft SQL. This is for
