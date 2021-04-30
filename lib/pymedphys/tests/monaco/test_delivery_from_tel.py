@@ -36,7 +36,7 @@ def test_delivery_from_monaco():
             continue
 
         current_paths = [path for path in data_paths if directory in path.parents]
-        tel_paths = [path for path in current_paths if path.name == "tel.1"]
+        tel_paths = [path for path in current_paths if path.name.endswith("tel.1")]
         dcm_paths = [path for path in current_paths if path.suffix == ".dcm"]
 
         for tel_path, dcm_path in itertools.product(tel_paths, dcm_paths):
@@ -46,8 +46,14 @@ def test_delivery_from_monaco():
 def _compare_tel_to_dicom(tel_path, dcm_path):
     print(f"tel_path: {tel_path} | dcm_path: {dcm_path}")
 
+    if tel_path.name.startswith("rxB"):
+        fraction_group_number = 2
+    else:
+        fraction_group_number = 1
+
     delivery_dcm = pymedphys.Delivery.from_dicom(
-        pydicom.read_file(str(dcm_path), force=True), fraction_group_number=1
+        pydicom.read_file(str(dcm_path), force=True),
+        fraction_group_number=fraction_group_number,
     )
     delivery_monaco = pymedphys.Delivery.from_monaco(tel_path)
 
