@@ -113,11 +113,14 @@ def get_control_point_pattern():
     decimal_param = r"-?\d+\.\d+"
     optional_decimal_param = r"-?\d+(?:\.\d+)?"
 
+    monaco_5_51_10_addition = f"(?:,{optional_decimal_param},{optional_decimal_param})?"
+
     parameters = (
         r"(\d,\d)"
         "\n"
         f"{decimal_param},({optional_decimal_param})\n"
-        f"({optional_decimal_param})\n{decimal_param},{decimal_param},{decimal_param},{decimal_param}\n"
+        f"({optional_decimal_param}){monaco_5_51_10_addition}\n"
+        f"{decimal_param},{decimal_param},{decimal_param},{decimal_param}\n"
         f"({decimal_param}),{decimal_param},{decimal_param},{decimal_param}\n"
         f"{optional_decimal_param},({optional_decimal_param}),{optional_decimal_param},({optional_decimal_param})"
     )
