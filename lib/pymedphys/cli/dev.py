@@ -57,6 +57,12 @@ def add_propagate_parser(dev_subparsers):
         action="store_true",
     )
 
+    parser.add_argument(
+        "--update",
+        help="Run poetry update first.",
+        action="store_true",
+    )
+
     parser.set_defaults(func=propagate.propagate_all)
 
 

@@ -69,6 +69,9 @@ def propagate_all(args):
         run_copies = True
         run_pyproject = True
 
+    if args.update:
+        subprocess.check_call("poetry update", shell=True)
+
     if run_copies:
         propagate_file_copies_into_library()
 
