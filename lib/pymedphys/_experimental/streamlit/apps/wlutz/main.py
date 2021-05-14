@@ -255,11 +255,11 @@ def _set_parameters():
     st.sidebar.write("# Parameters")
 
     if loosen_internal_tolerances:
-        default_bb_diameter = 12
+        default_bb_diameter = 12.0
     else:
-        default_bb_diameter = 8
+        default_bb_diameter = 8.0
 
-    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", default_bb_diameter)
+    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", value=default_bb_diameter)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
     return bb_diameter, penumbra, advanced_mode, demo_mode, loosen_internal_tolerances
