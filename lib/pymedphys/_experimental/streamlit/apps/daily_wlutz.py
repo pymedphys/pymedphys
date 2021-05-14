@@ -61,7 +61,6 @@ def main():
 
 
 def _ui():
-    bb_diameter = 12
     penumbra = 2
     advanced_mode = False
     loosen_internal_tolerances = True
@@ -76,8 +75,11 @@ def _ui():
         chosen_site,
     ) = _custom_iview_icom_filter(config, advanced_mode)
 
+    site_configurations = {
+        site_config["name"]: site_config for site_config in config["site"]
+    }
     site_to_linac_config_map = {
-        site_config["name"]: site_config["linac"] for site_config in config["site"]
+        site: site_config["linac"] for site, site_config in site_configurations.items()
     }
     all_linac_config_for_site = site_to_linac_config_map[chosen_site]
     expected_linacs = [
@@ -87,6 +89,11 @@ def _ui():
         linac_config["name"]: linac_config["energies"]
         for linac_config in all_linac_config_for_site
     }
+
+    try:
+        bb_diameter = site_configurations[chosen_site]["daily-wlutz"]["bb_diameter"]
+    except KeyError:
+        bb_diameter = 12
 
     if not st.button("Calculate"):
         st.stop()
