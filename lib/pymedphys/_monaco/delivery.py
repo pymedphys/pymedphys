@@ -27,14 +27,22 @@ class DeliveryMonaco(
     pymedphys._base.delivery.DeliveryBase  # pylint: disable = protected-access
 ):
     @classmethod
-    def from_monaco(cls, tel_path):
+    def from_monaco(
+        cls,
+        tel_path,
+        allow_g180_inconsistency=False,  # Ideally this should be fixed within the tel file parsing
+    ):
         read_tel_contents = utility.create_read_monaco_file()
         tel_contents = read_tel_contents(tel_path)
 
-        return cls(*delivery_from_tel_plan_contents(tel_contents))
+        return cls(
+            *delivery_from_tel_plan_contents(
+                tel_contents, allow_g180_inconsistency=allow_g180_inconsistency
+            )
+        )
 
 
-def delivery_from_tel_plan_contents(tel_contents):
+def delivery_from_tel_plan_contents(tel_contents, allow_g180_inconsistency=False):
     pattern = get_control_point_pattern()
     all_controlpoint_results = re.findall(pattern, tel_contents)
 
@@ -42,12 +50,12 @@ def delivery_from_tel_plan_contents(tel_contents):
 
     iec_gantry_angle = [float(result[2]) for result in all_controlpoint_results]
     bipolar_gantry_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
-        iec_gantry_angle
+        iec_gantry_angle, allow_g180_inconsistency
     ).tolist()
 
     iec_coll_angle = [float(result[3]) for result in all_controlpoint_results]
     bipolar_coll_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
-        iec_coll_angle
+        iec_coll_angle, allow_g180_inconsistency
     ).tolist()
 
     mlcs = [convert_mlc_string(result[0]) for result in all_controlpoint_results]
