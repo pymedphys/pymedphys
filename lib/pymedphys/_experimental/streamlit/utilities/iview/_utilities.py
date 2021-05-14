@@ -18,6 +18,8 @@ from typing import Any, Dict, Tuple
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
 
+from altair.vegalite.v4.schema.channels import Key
+
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
@@ -91,9 +93,18 @@ def get_directories_and_initial_database(
         except KeyError:
             alias_map[linac["name"]] = linac["name"]
 
-    database_table["machine_id"] = database_table["machine_id"].apply(
-        lambda x: alias_map[x]
-    )
+    try:
+        database_table["machine_id"] = database_table["machine_id"].apply(
+            lambda x: alias_map[x]
+        )
+    except KeyError as e:
+        raise ValueError(
+            "Unable to map the iView machine ID to Linac ID. According "
+            "to your config.toml file the following alias map was "
+            f"created {alias_map}. {e} was not found within "
+            "the iView machine names provided of "
+            f"{set(alias_map.keys())}."
+        ) from e
 
     # --
 
