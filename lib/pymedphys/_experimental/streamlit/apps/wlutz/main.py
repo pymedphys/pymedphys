@@ -260,6 +260,6 @@ def _set_parameters():
         default_bb_diameter = 8.0
 
     bb_diameter = st.sidebar.number_input("BB Diameter (mm)", value=default_bb_diameter)
-    penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
+    penumbra = st.sidebar.number_input("Penumbra (mm)", value=2.0)
 
     return bb_diameter, penumbra, advanced_mode, demo_mode, loosen_internal_tolerances
