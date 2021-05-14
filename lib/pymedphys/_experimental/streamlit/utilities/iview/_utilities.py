@@ -18,8 +18,6 @@ from typing import Any, Dict, Tuple
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
 
-from altair.vegalite.v4.schema.channels import Key
-
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
