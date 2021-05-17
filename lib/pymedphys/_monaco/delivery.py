@@ -16,6 +16,7 @@ import functools
 import re
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import streamlit as st
 
 import pymedphys._base.delivery
 import pymedphys._utilities.transforms
@@ -40,12 +41,22 @@ def delivery_from_tel_plan_contents(tel_contents):
 
     mu = np.cumsum([float(result[4]) for result in all_controlpoint_results]).tolist()
 
-    iec_gantry_angle = [float(result[2]) for result in all_controlpoint_results]
+    iec_gantry_angle = np.array(
+        [float(result[2]) for result in all_controlpoint_results]
+    )
+    iec_coll_angle = np.array([float(result[3]) for result in all_controlpoint_results])
+
+    diff_mu = np.diff(mu)
+    no_mu_cps = np.where(diff_mu == 0)[0]
+
+    # bipolar_gantry_angles = []
+    # bipolar_coll_angles = []
+    # for cp_index in no_mu_cps[0:-1]:
+
     bipolar_gantry_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
         iec_gantry_angle
     ).tolist()
 
-    iec_coll_angle = [float(result[3]) for result in all_controlpoint_results]
     bipolar_coll_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
         iec_coll_angle
     ).tolist()
