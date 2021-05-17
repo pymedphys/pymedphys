@@ -83,6 +83,9 @@ name = "rccc"
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
 
+    [site.daily-wlutz]
+    bb_diameter = 12
+
 
 [[site]]
 name = "nbcc"
@@ -126,10 +129,13 @@ name = "nbcc"
     energies = ["6 MV", "10 MV", "6 MV FFF"]
 
         [site.linac.aliases]
-        iview = "iView"
+        iview = "9183"
 
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 9183'
+
+    [site.daily-wlutz]
+    bb_diameter = 6.4
 
 
 [[site]]
