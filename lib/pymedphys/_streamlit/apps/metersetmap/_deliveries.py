@@ -32,7 +32,7 @@ def delivery_from_icom(icom_stream):
 
 @st.cache(allow_output_mutation=True)
 def delivery_from_tel(tel_path):
-    return pymedphys.Delivery.from_monaco(tel_path, allow_g180_inconsistency=True)
+    return pymedphys.Delivery.from_monaco(tel_path)
 
 
 @st.cache(hash_funcs={pymedphys.mosaiq.Connection: id}, allow_output_mutation=True)
