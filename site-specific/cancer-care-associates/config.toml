@@ -135,7 +135,7 @@ name = "nbcc"
         qa = '\\rccc-pdc\PExIT\Physics\NBCCC Specific Files\Linac Beam Data Record\VersaHD 9183'
 
     [site.daily-wlutz]
-    bb_diameter = 6.4
+    bb_diameter = 12
 
 
 [[site]]
@@ -170,6 +170,9 @@ name = "sash"
 
         [site.linac.directories]
         qa = '\\rccc-pdc\PExIT\Physics\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
+
+    [site.daily-wlutz]
+    bb_diameter = 12
 
 
 [trf_logfiles]
