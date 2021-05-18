@@ -1,18 +1,19 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.37.0"
+version = "0.37.1"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
     "PyMedPhys Contributors <developers@pymedphys.com>",
     "Simon Biggs <sbiggs@pymedphys.com>",
-    "Matthew Jennings <mjennings@pymedphys.com>",
     "Stuart Swerdloff",
+    "Matthew Jennings <mjennings@pymedphys.com>",
     "Phillip Chlap",
+    "Derek Lane",
     "Jake Rembish",
     "Matthew Cooper <mcooper@pymedphys.com>",
-    "Jacob McAloney",
     "Pedro Martinez",
+    "Rafael Ayala"
 ]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"
@@ -84,7 +85,7 @@ scikit-image = { version = ">=0.18.1", optional = true }  # groups = ["user", "d
 
 # Streamlit's pinning is due to its current beta nature and the fact that some
 # private APIs are utilised.
-streamlit = { version = "0.81.1", optional = true }  # groups = ["user", "dev"]
+streamlit = { version = "0.82.0", optional = true }  # groups = ["user", "dev"]
 streamlit-ace = { version = "0.0.4", optional = true }  # groups = ["user", "dev"]
 
 # PyLinac is pinned due to historical algorithm changes with both minor and
