@@ -40,15 +40,34 @@ def delivery_from_tel_plan_contents(tel_contents):
 
     mu = np.cumsum([float(result[4]) for result in all_controlpoint_results]).tolist()
 
-    iec_gantry_angle = [float(result[2]) for result in all_controlpoint_results]
-    bipolar_gantry_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
-        iec_gantry_angle
-    ).tolist()
+    iec_gantry_angle = np.array(
+        [float(result[2]) for result in all_controlpoint_results]
+    )
+    iec_coll_angle = np.array([float(result[3]) for result in all_controlpoint_results])
 
-    iec_coll_angle = [float(result[3]) for result in all_controlpoint_results]
-    bipolar_coll_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
-        iec_coll_angle
-    ).tolist()
+    diff_mu = np.diff(mu)
+    new_beam_cps = np.where(diff_mu == 0)[0] + 1
+    new_beam_cps = np.concatenate([[0], new_beam_cps, [None]])
+
+    bipolar_gantry_angles = []
+    bipolar_coll_angles = []
+    for cp_start, cp_end in zip(new_beam_cps[0:-1], new_beam_cps[1::]):
+        slc = slice(cp_start, cp_end)
+
+        bipolar_gantry_angles.append(
+            pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
+                iec_gantry_angle[slc]
+            )
+        )
+
+        bipolar_coll_angles.append(
+            pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
+                iec_coll_angle[slc]
+            )
+        )
+
+    bipolar_gantry_angle = np.concatenate(bipolar_gantry_angles).tolist()
+    bipolar_coll_angle = np.concatenate(bipolar_coll_angles).tolist()
 
     mlcs = [convert_mlc_string(result[0]) for result in all_controlpoint_results]
 
