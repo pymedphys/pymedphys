@@ -36,7 +36,7 @@ This project adheres to
   the output of his work being contributed to PyMedPhys. This release coincides
   with the culmination of Jake's PhD and this version will be the one
   referenced within his dissertation. It has been brilliant to see both Jake
-  and his project to grow be what it is today. Thank you Jake 😊.
+  and his project grow to be what it is today. Thank you Jake 😊.
 
 ### Breaking changes
 
