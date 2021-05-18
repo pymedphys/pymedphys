@@ -7,6 +7,27 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.1]
+
+### Bug fixes
+
+* Make it so that Mephysto files that have non-unicode characters can still
+  be opened.
+* Varying penumbra and ball bearing diameter within the Monthly WLutz
+  application now accepts floating point numbers as well as numbers smaller
+  than the default.
+* Fixed a bug where `Delivery.from_monaco` wouldn't be able to load beams
+  where the stop angle of one beam was +180 and the start angle of the
+  subsequent beam was -180 (or visa-versa). The conversion from IEC to bipolar
+  is now handled on a "per-beam" basis. This bug affected the MetersetMap
+  application.
+
+### Non-API changing enhancements
+
+* The daily WLutz application can now have its bb size configured.
+* Site can now be passed as a URL parameter to the daily WLutz application.
+* Improved error messaging around the configuration of the iView machine alias.
+
 ## [0.37.0]
 
 ### News around this release
@@ -1284,6 +1305,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
+[0.37.1]: https://github.com/pymedphys/pymedphys/compare/v0.37.0...v0.37.1
 [0.37.0]: https://github.com/pymedphys/pymedphys/compare/v0.36.1...v0.37.0
 [0.36.1]: https://github.com/pymedphys/pymedphys/compare/v0.36.0...v0.36.1
 [0.36.0]: https://github.com/pymedphys/pymedphys/compare/v0.35.0...v0.36.0
