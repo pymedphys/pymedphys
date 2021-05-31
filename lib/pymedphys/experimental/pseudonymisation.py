@@ -1,4 +1,4 @@
-def _stub():
+def _stub(*_args, **_kwargs):
     raise NotImplementedError(
         """
         It appears that the pseudonymise function as implemented has some
@@ -14,4 +14,26 @@ def _stub():
 get_default_pseudonymisation_keywords = _stub
 is_valid_strategy_for_keywords = _stub
 pseudonymise = _stub
-pseudonymisation_dispatch = _stub
+
+pseudonymisation_dispatch = dict(
+    {
+        "AE": _stub,
+        "AS": _stub,
+        "CS": _stub,
+        "DA": _stub,
+        "DS": _stub,
+        "DT": _stub,
+        "LO": _stub,
+        "LT": _stub,
+        "OB": _stub,
+        "OB or OW": _stub,
+        "OW": _stub,
+        "PN": _stub,
+        "SH": _stub,
+        "ST": _stub,
+        "SQ": _stub,
+        "TM": _stub,
+        "UI": _stub,
+        "US": _stub,
+    }
+)
