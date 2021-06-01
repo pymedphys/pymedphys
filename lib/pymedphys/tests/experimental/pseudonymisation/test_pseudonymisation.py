@@ -9,6 +9,7 @@ from shutil import copyfile
 
 from pymedphys._imports import pydicom, pytest
 
+import pymedphys
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.anonymise import (
     anonymise_dataset,
@@ -270,6 +271,7 @@ def _test_pseudonymise_file_at_path(
 @pytest.mark.skipif(
     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
 )
+@pytest.mark.skip(reason="Pseudonymise CLI is not currently being exposed.")
 def test_pseudonymise_cli(tmp_path):
     for test_file_path in get_test_filepaths():
         _test_pseudonymise_cli_for_file(tmp_path, test_file_path)
