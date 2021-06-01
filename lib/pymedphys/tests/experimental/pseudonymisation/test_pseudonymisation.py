@@ -9,7 +9,6 @@ from shutil import copyfile
 
 from pymedphys._imports import pydicom, pytest
 
-import pymedphys
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.anonymise import (
     anonymise_dataset,
