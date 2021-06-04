@@ -142,7 +142,7 @@ package_data = {
     "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
     "pymedphys.tests.e2e": [
         "cypress/*",
-        "cypress/fixtures/*",
+        "cypress/fixtures/.gitignore",
         "cypress/integration/streamlit/*",
         "cypress/plugins/*",
         "cypress/support/*",

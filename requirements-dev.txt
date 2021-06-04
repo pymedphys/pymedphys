@@ -197,7 +197,7 @@ typed-ast==1.4.3; implementation_name == "cpython" and python_version < "3.8" an
 typing-extensions==3.10.0.0
 tzlocal==2.1; python_version >= "3.6"
 uc-micro-py==1.0.1; python_version >= "3.6"
-urllib3==1.26.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version < "4" and python_version >= "3.6"
+urllib3==1.26.5; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version < "4" and python_version >= "3.6"
 validators==0.18.2; python_version >= "3.6"
 virtualenv==20.4.6; python_full_version >= "3.6.1"
 watchdog==2.1.1; python_version >= "3.6"
