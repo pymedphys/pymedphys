@@ -8,5 +8,6 @@
     "reportOptionalMemberAccess": false,
     "reportOptionalSubscript": false,
     "reportOptionalOperand": false,
-    "reportOptionalCall": false
+    "reportOptionalCall": false,
+    "reportOptionalIterable": false
 }
