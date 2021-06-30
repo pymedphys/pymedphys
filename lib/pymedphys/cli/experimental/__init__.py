@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-from .dicom import dicom_cli
 from .pinnacle import pinnacle_cli
 from .quickcheck import quickcheck_cli
 
@@ -24,7 +23,6 @@ def experimental_cli(subparsers):
     )
     experimental_subparsers = experimental_parser.add_subparsers(dest="experimental")
 
-    dicom_cli(experimental_subparsers)
     pinnacle_cli(experimental_subparsers)
     quickcheck_cli(experimental_subparsers)
 
