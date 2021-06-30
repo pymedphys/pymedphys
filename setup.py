@@ -115,6 +115,7 @@ packages = [
 
 package_data = {
     "": ["*"],
+    "pymedphys._experimental.pseudonymisation": ["docs/cli/*", "docs/lib/*"],
     "pymedphys._experimental.serviceplans": ["templates/*"],
     "pymedphys._experimental.streamlit.apps": ["data/*"],
     "pymedphys.docs": [
@@ -142,6 +143,7 @@ package_data = {
     "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
     "pymedphys.tests.e2e": [
         "cypress/*",
+        "cypress/archive/*",
         "cypress/fixtures/.gitignore",
         "cypress/integration/streamlit/*",
         "cypress/plugins/*",
@@ -202,6 +204,7 @@ extras_require = {
         "pytest",
         "pytest-sugar",
         "hypothesis<6",
+        "astroid<2.6",
         "psutil",
         "pylint",
         "pytest-rerunfailures",
@@ -236,6 +239,7 @@ extras_require = {
         "pytest",
         "pytest-sugar",
         "hypothesis<6",
+        "astroid<2.6",
         "psutil",
         "pylint",
         "pytest-rerunfailures",

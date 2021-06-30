@@ -127,6 +127,7 @@ jupyter-book = { version = ">=0.8.3", optional = true }  # groups = ["dev", "doc
 pytest = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-sugar = { version = "*", optional = true }  # groups = ["dev", "tests"]
 hypothesis = { version = "<6", optional = true }  # groups = ["dev", "tests"]
+astroid = { version = "<2.6", optional = true }  # groups = ["dev", "tests"]
 psutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "tests"]
@@ -148,6 +149,7 @@ comparables = ["flashgamma"]
 dev = [
     "Pillow",
     "PyYAML",
+    "astroid",
     "attrs",
     "black",
     "dbfread",
@@ -214,6 +216,7 @@ icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = [
+    "astroid",
     "hypothesis",
     "psutil",
     "pylint",
