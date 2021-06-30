@@ -28,6 +28,10 @@ disable =
     consider-using-with,
     consider-using-min-builtin,
     consider-using-max-builtin,
+    use-maxsplit-arg,
+    unused-private-member,
+    consider-using-from-import,
+
 
 [FORMAT]
 max-line-length=88
