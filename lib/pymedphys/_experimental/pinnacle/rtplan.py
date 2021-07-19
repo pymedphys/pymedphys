@@ -163,7 +163,7 @@ def convert_plan(plan, export_path):
         return
     for beam in beam_list:
 
-        beam_count = beam_count + 1
+        beam_count += 1
 
         plan.logger.info("Exporting Plan for beam: %s", beam["Name"])
 
@@ -249,7 +249,8 @@ def convert_plan(plan, export_path):
         x2 = ""
         y1 = ""
         y2 = ""
-        leafpositions = []
+        leafpositions = [numctrlpts]
+        cp_num = 0
         for cp in cp_manager["ControlPointList"]:
 
             metersetweight.append(cp["Weight"])
@@ -278,7 +279,7 @@ def convert_plan(plan, export_path):
                 if p_count == len(points):
                     leafpositions1 = list(reversed(leafpositions1))
                     leafpositions2 = list(reversed(leafpositions2))
-                    leafpositions = leafpositions1 + leafpositions2
+                    leafpositions[cp_num] = leafpositions1 + leafpositions2
 
             gantryangle = cp["Gantry"]
             colangle = cp["Collimator"]
@@ -560,7 +561,9 @@ def convert_plan(plan, export_path):
                         j
                     ].BeamLimitingDevicePositionSequence[
                         2
-                    ].LeafJawPositions = leafpositions
+                    ].LeafJawPositions = leafpositions[
+                        j
+                    ]
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].SourceToSurfaceDistance = (beam["SSD"] * 10)
@@ -594,7 +597,9 @@ def convert_plan(plan, export_path):
                         j
                     ].BeamLimitingDevicePositionSequence[
                         0
-                    ].LeafJawPositions = leafpositions
+                    ].LeafJawPositions = leafpositions[
+                        j
+                    ]
                 ds.BeamSequence[
                     beam_count - 1
                 ].NumberOfWedges = (
@@ -826,7 +831,9 @@ def convert_plan(plan, export_path):
                         j
                     ].BeamLimitingDevicePositionSequence[
                         2
-                    ].LeafJawPositions = leafpositions
+                    ].LeafJawPositions = leafpositions[
+                        j
+                    ]
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].SourceToSurfaceDistance = (beam["SSD"] * 10)
@@ -870,7 +877,9 @@ def convert_plan(plan, export_path):
                         j
                     ].BeamLimitingDevicePositionSequence[
                         0
-                    ].LeafJawPositions = leafpositions
+                    ].LeafJawPositions = leafpositions[
+                        j
+                    ]
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].ReferencedDoseReferenceSequence[
