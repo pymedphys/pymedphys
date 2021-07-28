@@ -99,7 +99,7 @@ Maintainers
 ***********
 
 * `Simon Biggs`_
-    * `Riverina Cancer Care Centre`_, Australia
+    * `Radiotherapy AI`_, Australia
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
@@ -114,7 +114,7 @@ Maintainers
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 
-|rccc| |sjs| |rah|
+|sjs| |rah|
 
 Active contributors
 ****************************
@@ -135,28 +135,15 @@ Active contributors
 
 .. _`Jake Rembish`: https://github.com/rembishj
 
-* `Matthew Cooper`_
 
-.. _`Matthew Cooper`: https://github.com/matthewdeancooper
-
-* `Pedro Martinez`_
-    * `University of Calgary`_, Canada
-    * `Tom Baker Cancer Centre`_, Canada
-
-.. _`Pedro Martinez`: https://github.com/peterg1t
-
-* `Rafael Ayala`_
-    * `Hospital General Universitario Gregorio Marañón`_, Spain
-
-.. _`Rafael Ayala`: https://github.com/ayalalazaro
-
-
-|uth| |uoc| |hgugm|
-
+|uth|
 
 Past contributors
 ****************************
 
+* `Matthew Cooper <https://github.com/matthewdeancooper>`_
+* `Pedro Martinez <https://github.com/peterg1t>`_
+* `Rafael Ayala <https://github.com/ayalalazaro>`_
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
@@ -180,7 +167,7 @@ Past contributors
 .. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
 
-.. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
+.. _`Radiotherapy AI`: https://radiotherapy.ai/
 
 .. _`ELEKTA Pty Ltd`: https://www.elekta.com/
 
