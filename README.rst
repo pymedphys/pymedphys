@@ -149,20 +149,11 @@ Past contributors
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
 
-.. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/rccc_200x200.png
-    :target: `Riverina Cancer Care Centre`_
-
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
 
-.. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/363b544281aab282a56b297dc8fdd521233c6a63/logos/uoc_200x200.png
-    :target: `University of Calgary`_
-
 .. |uth| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/UTHSA_logo.png
     :target: `UT Health San Antonio`_
-
-.. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/HGUGM_200x200.png
-    :target: `Hospital General Universitario Gregorio Marañón`_
 
 .. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
