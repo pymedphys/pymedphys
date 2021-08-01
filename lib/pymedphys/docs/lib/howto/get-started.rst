@@ -15,7 +15,7 @@ version from `here <https://www.anaconda.com/products/individual#Downloads>`__.
     When installing Anaconda make sure to install it for your user only, and
     tick the option "add to path".
 
-.. image:: ../../img/add_anaconda_to_path.png
+.. image:: img/add_anaconda_to_path.png
 
 On Linux or MacOS we recommend not using your system Python and instead
 managing your Python installation using something like `pyenv`_.
@@ -58,6 +58,6 @@ to instead install PyMedPhys from the main branch on GitHub
 <https://github.com/pymedphys/pymedphys>. To achieve this follow the OS
 specific instructions within the contributor tutorials:
 
-* :doc:`../../contrib/setups/setup-win`
-* :doc:`../../contrib/setups/setup-linux`
-* :doc:`../../contrib/setups/setup-mac`
+* :doc:`contrib/setups/setup-win`
+* :doc:`contrib/setups/setup-linux`
+* :doc:`contrib/setups/setup-mac`

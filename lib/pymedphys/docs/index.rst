@@ -6,9 +6,11 @@
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
+
+.. _`Getting Started`: getting-started.html
+
 .. _`Release Notes`: release-notes.html
 
-.. _`App Users Guide`: app/index.html
 .. _`Library Users Guide`: lib/index.html
 .. _`CLI Users Guide`: cli/index.html
 .. _`Contributors Guide`: contrib/index.html
@@ -17,21 +19,32 @@
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: App Users Guide
 
-    app/index
-    app/ref/index
+    lib/index
+    lib/howto/get-started
 
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: Library Users Guide
+    :caption: Reference
 
-    lib/index
-    lib/tutes/index
-    lib/howto/index
-    lib/ref/index
-    lib/background/index
+    genindex
+    lib/ref/dicom
+    lib/ref/gamma
+    lib/ref/mosaiq
+    lib/ref/metersetmap
+    lib/ref/trf
+    lib/ref/experimental/pinnacle
+
+.. toctree::
+    :hidden:
+    :maxdepth: 3
+    :caption: How-to
+
+    lib/howto/get-started
+    lib/howto/gamma/index
+    lib/howto/add-a-linac
+    lib/howto/tunnels/index
 
 .. toctree::
     :hidden:
@@ -39,7 +52,10 @@
     :caption: CLI Users Guide
 
     cli/index
-    cli/ref/index
+    cli/ref/dicom
+    cli/ref/trf
+    cli/ref/icom
+    cli/ref/pinnacle
 
 .. toctree::
     :hidden:
@@ -48,9 +64,10 @@
 
     contrib/index
     contrib/documentation
-    contrib/setups/index
+    contrib/setups/setup-linux
+    contrib/setups/setup-mac
+    contrib/setups/setup-win
     contrib/other/index
-
 
 .. toctree::
     :hidden:
@@ -61,3 +78,5 @@
     release-notes
     general/file-structure
     general/open-source-benefits
+    lib/background/autocontouring
+    lib/background/elekta-logfiles
