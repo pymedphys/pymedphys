@@ -78,10 +78,10 @@ PyMedPhys can be installed with:
 
     pip install pymedphys[user]
 
-If you'd like more details around installing PyMedPhys go to `Getting Started`_
-within the docs.
+If you'd like more details around installing PyMedPhys go to the
+`getting started`_ page within the docs.
 
-The PyMedPhys documentation is split into five categories:
+The PyMedPhys documentation is split into four categories:
 
 1. `Library Users Guide`_: for those building their own Python apps, scripts
    and other tools who wish to incorporate elements of the PyMedPhys library.
@@ -192,7 +192,7 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
-.. _`Getting Started`: https://docs.pymedphys.com/getting-started.html
+.. _`Getting Started`: https://docs.pymedphys.com/lib/howto/get-started.html
 
 .. _`Release Notes`: ./CHANGELOG.md
 
