@@ -41,7 +41,6 @@
     :maxdepth: 3
     :caption: How-to
 
-    lib/howto/get-started
     lib/howto/gamma/index
     lib/howto/add-a-linac
     lib/howto/tunnels/index
