@@ -7,7 +7,7 @@
    :end-before: END_OF_DOCS_IMPORT
 
 
-.. _`Getting Started`: getting-started.html
+.. _`getting started`: getting-started.html
 
 .. _`Release Notes`: release-notes.html
 

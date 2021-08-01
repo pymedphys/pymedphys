@@ -181,7 +181,7 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
-.. _`Getting Started`: https://docs.pymedphys.com/lib/howto/get-started.html
+.. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
 
 .. _`Release Notes`: ./CHANGELOG.md
 
