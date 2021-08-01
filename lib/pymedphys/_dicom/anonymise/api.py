@@ -43,9 +43,8 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     These were drawn from `DICOM Supp 142
     <https://www.dicomstandard.org/supplements/>`__
 
-    **We do not yet claim conformance to any DICOM Application Level
-    Confidentiality Profile**, but plan to be in a position to do so in the
-    not-to-distant future.
+    **We do not claim conformance to any DICOM Application Level
+    Confidentiality Profile**.
 
     Parameters
     ----------
