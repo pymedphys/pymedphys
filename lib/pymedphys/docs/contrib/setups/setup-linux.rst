@@ -5,7 +5,7 @@ Linux Setup
 Overview
 ========
 
-* Install Python 3.7
+* Install Python 3.8
 * `Install Poetry`_
 * Clone the PyMedPhys git repo
 * Run ``poetry install -E dev`` within the root of the repo
