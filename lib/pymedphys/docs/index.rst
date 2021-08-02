@@ -41,9 +41,9 @@
     :maxdepth: 3
     :caption: How-to
 
-    lib/howto/gamma/index
+    lib/howto/gamma/effect-of-noise
+    lib/howto/gamma/from-dicom
     lib/howto/add-a-linac
-    lib/howto/tunnels/index
 
 .. toctree::
     :hidden:
@@ -66,7 +66,8 @@
     contrib/setups/setup-mac
     contrib/setups/setup-win
     contrib/documentation
-    contrib/other/index
+    contrib/other/add-jupyter-kernel
+    contrib/other/win-open-ssh
 
 .. toctree::
     :hidden:
