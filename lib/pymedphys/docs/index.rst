@@ -62,10 +62,10 @@
     :caption: Contributors Guide
 
     contrib/index
-    contrib/documentation
     contrib/setups/setup-linux
     contrib/setups/setup-mac
     contrib/setups/setup-win
+    contrib/documentation
     contrib/other/index
 
 .. toctree::
