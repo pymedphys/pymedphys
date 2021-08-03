@@ -32,8 +32,8 @@ More Advanced Options
 * `Setting up OpenSSH on Windows 10`_
 * `Add Jupyter Kernel to Poetry`_
 
-.. _`Setting up OpenSSH on Windows 10`: ./win-open-ssh.html
-.. _`Add Jupyter Kernel to Poetry`: ./add-jupyter-kernel.html
+.. _`Setting up OpenSSH on Windows 10`: ../other/win-open-ssh.html
+.. _`Add Jupyter Kernel to Poetry`: ../other/add-jupyter-kernel.html
 
 Opinionated Recommendations
 ===========================

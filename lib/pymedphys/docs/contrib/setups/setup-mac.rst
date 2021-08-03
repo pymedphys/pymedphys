@@ -5,7 +5,7 @@ MacOS Setup
 Overview
 ========
 
-* Install Python 3.7
+* Install Python 3.8
 * `Install Poetry`_
 * Install freetds
 

@@ -9,10 +9,7 @@
 in Python. We build high quality, transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|online-app| |build| |pypi| |python| |license|
-
-.. |online-app| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/OnlineApp?event=schedule&label=online-app
-    :target: https://app.pymedphys.com
+|build| |pypi| |python| |license|
 
 .. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/Library
     :target: https://github.com/pymedphys/pymedphys/actions
@@ -64,18 +61,25 @@ know you!
 Documentation
 =============
 
-The PyMedPhys documentation is split into five categories:
+PyMedPhys can be installed with:
 
-1. `App Users Guide`_: for those who only wish to use ready-made PyMedPhys
-   tools.
-2. `Library Users Guide`_: for those building their own Python apps, scripts
+.. code:: bash
+
+    pip install pymedphys[user]
+
+If you'd like more details around installing PyMedPhys go to the
+`getting started`_ page within the docs.
+
+The PyMedPhys documentation is split into four categories:
+
+1. `Library Users Guide`_: for those building their own Python apps, scripts
    and other tools who wish to incorporate elements of the PyMedPhys library.
-3. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
+2. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
    line interface (e.g. to help automate existing workflows with minimal
    programming).
-4. `Contributors Guide`_: for those who wish to make new contributions to
+3. `Contributors Guide`_: for those who wish to make new contributions to
    either the PyMedPhys library or the PyMedPhys app.
-5. `General`_: Material that may apply to any visitor to PyMedPhys.
+4. `General`_: Material that may apply to any visitor to PyMedPhys.
 
 
 Our Team
@@ -177,10 +181,11 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
+.. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
+
 .. _`Release Notes`: ./CHANGELOG.md
 
 .. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.html
 .. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.html
-.. _`App Users Guide`: https://docs.pymedphys.com/app/index.html
 .. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.html
 .. _`General`: https://docs.pymedphys.com/general/index.html
