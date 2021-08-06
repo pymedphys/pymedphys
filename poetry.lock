@@ -1655,18 +1655,11 @@ testing = ["pytest"]
 
 [[package]]
 name = "pydicom"
-version = "2.2.0rc1"
+version = "2.2.0"
 description = "Pure python package for DICOM medical file reading and writing"
 category = "main"
 optional = true
 python-versions = ">=3.6.1"
-develop = false
-
-[package.source]
-type = "git"
-url = "https://github.com/pydicom/pydicom.git"
-reference = "master"
-resolved_reference = "ccb0f26688f1421d4b6e8e53a108332883289411"
 
 [[package]]
 name = "pygments"
@@ -3623,7 +3616,10 @@ pydeck = [
     {file = "pydeck-0.6.2-py2.py3-none-any.whl", hash = "sha256:e0d1f36e5cf0f8181f82d25a5f33381b8296caaac671f355afe4a660964d0dea"},
     {file = "pydeck-0.6.2.tar.gz", hash = "sha256:24ffadfba72cf610a413d49bd9542f2f4fd745f33d6535dd339b121e9e084be8"},
 ]
-pydicom = []
+pydicom = [
+    {file = "pydicom-2.2.0-py3-none-any.whl", hash = "sha256:f55f236069d7f0445b5d0dcca7e8733ef17c39e87d6e06e0fac7b9a91442e8a9"},
+    {file = "pydicom-2.2.0.tar.gz", hash = "sha256:f8f5f5d7d5a6745e963dbeb8d44da1243cdc6910f64d1f36b055bc6e5a9aa25f"},
+]
 pygments = [
     {file = "Pygments-2.9.0-py3-none-any.whl", hash = "sha256:d66e804411278594d764fc69ec36ec13d9ae9147193a1740cd34d272ca383b8e"},
     {file = "Pygments-2.9.0.tar.gz", hash = "sha256:a18f47b506a429f6f4b9df81bb02beab9ca21d0a5fee38ed15aef65f0545519f"},

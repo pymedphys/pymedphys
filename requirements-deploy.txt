@@ -81,7 +81,7 @@ py==1.10.0; python_full_version >= "3.6.1" and python_version >= "3.6" and imple
 pyarrow==4.0.0; python_version < "3.9" and python_version >= "3.6"
 pycparser==2.20; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "linux" or sys_platform == "linux" and python_version >= "3.6" and python_full_version >= "3.4.0"
 pydeck==0.6.2; python_version >= "3.6"
-pydicom @ git+https://github.com/pydicom/pydicom.git@master ; python_full_version >= "3.6.1"
+pydicom==2.2.0; python_full_version >= "3.6.1"
 pygments==2.9.0; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.7"
 pylibjpeg-libjpeg==1.2.0; python_version >= "3.6"
 pylinac==2.3.2
