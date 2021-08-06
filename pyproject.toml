@@ -75,7 +75,7 @@ numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "i
 
 # The following lower bounded packages are due to certain APIs utilised
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
-pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
+pydicom = {git = "https://github.com/pydicom/pydicom.git"}  # groups = ["user", "dev", "dicom"]
 pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounds are so that the versions with wheels are utilised

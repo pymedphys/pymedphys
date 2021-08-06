@@ -156,6 +156,9 @@ package_data = {
 install_requires = ["typing-extensions"]
 
 extras_require = {
+    ':extra == "dev" or extra == "dicom" or extra == "user"': [
+        "pydicom @ " "git+https://github.com/pydicom/pydicom.git@master"
+    ],
     "comparables": ["flashgamma"],
     "dev": [
         "tqdm",
@@ -186,7 +189,6 @@ extras_require = {
         "scikit-learn",
         "numpy>=1.20.2",
         "pandas>=1.0.0",
-        "pydicom>=2.0.0",
         "pylibjpeg-libjpeg",
         "shapely>=1.7.0",
         "scikit-image>=0.18.1",
@@ -214,7 +216,7 @@ extras_require = {
         "readme-renderer",
         "tabulate",
     ],
-    "dicom": ["pynetdicom", "pydicom>=2.0.0"],
+    "dicom": ["pynetdicom"],
     "docs": [
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
@@ -271,7 +273,6 @@ extras_require = {
         "scikit-learn",
         "numpy>=1.20.2",
         "pandas>=1.0.0",
-        "pydicom>=2.0.0",
         "pylibjpeg-libjpeg",
         "shapely>=1.7.0",
         "scikit-image>=0.18.1",

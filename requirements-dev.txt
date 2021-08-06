@@ -121,7 +121,7 @@ pybtex==0.24.0; python_version >= "3.6" and python_full_version < "3.0.0" or pyt
 pycparser==2.20; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "linux" or sys_platform == "linux" and python_version >= "3.6" and python_full_version >= "3.4.0"
 pydata-sphinx-theme==0.4.3; python_version >= "3.6"
 pydeck==0.6.2; python_version >= "3.6"
-pydicom==2.1.2; python_full_version >= "3.6.1"
+pydicom @ git+https://github.com/pydicom/pydicom.git@master ; python_full_version >= "3.6.1"
 pygments==2.9.0; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.7"
 pylibjpeg-libjpeg==1.2.0; python_version >= "3.6"
 pylinac==2.3.2
