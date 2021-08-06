@@ -1655,7 +1655,7 @@ testing = ["pytest"]
 
 [[package]]
 name = "pydicom"
-version = "2.1.2"
+version = "2.2.0"
 description = "Pure python package for DICOM medical file reading and writing"
 category = "main"
 optional = true
@@ -3617,8 +3617,8 @@ pydeck = [
     {file = "pydeck-0.6.2.tar.gz", hash = "sha256:24ffadfba72cf610a413d49bd9542f2f4fd745f33d6535dd339b121e9e084be8"},
 ]
 pydicom = [
-    {file = "pydicom-2.1.2-py3-none-any.whl", hash = "sha256:d97f53a7b269dbd7414d18342f1b70f80d7d35dc4e479316bab146daac0e0c15"},
-    {file = "pydicom-2.1.2.tar.gz", hash = "sha256:65f36820c5fec24b4e7ca45b7dae93e054ed269d55f92681863d39d30459e2fd"},
+    {file = "pydicom-2.2.0-py3-none-any.whl", hash = "sha256:f55f236069d7f0445b5d0dcca7e8733ef17c39e87d6e06e0fac7b9a91442e8a9"},
+    {file = "pydicom-2.2.0.tar.gz", hash = "sha256:f8f5f5d7d5a6745e963dbeb8d44da1243cdc6910f64d1f36b055bc6e5a9aa25f"},
 ]
 pygments = [
     {file = "Pygments-2.9.0-py3-none-any.whl", hash = "sha256:d66e804411278594d764fc69ec36ec13d9ae9147193a1740cd34d272ca383b8e"},
