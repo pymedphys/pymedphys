@@ -124,12 +124,15 @@ def test_sum_doses_in_datasets():
 
     expected_sum = np.ones((4, 2, 3))
 
+    bits_allocated = 32
+
     test_dicom_dict = {
         "PatientID": "PMP",
         "Modality": "RTDOSE",
         "ImagePositionPatient": [-1.0, -1.0, -1.0],
         "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
-        "BitsAllocated": 32,
+        "BitsAllocated": bits_allocated,
+        "BitsStored": bits_allocated,
         "Rows": 2,
         "Columns": 3,
         "PixelRepresentation": 0,

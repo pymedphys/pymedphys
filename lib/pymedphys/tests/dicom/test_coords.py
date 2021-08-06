@@ -94,10 +94,13 @@ def test_extract_dicom_patient_xyz():
 
 @pytest.mark.pydicom
 def test_coords_in_datasets_are_equal():
+    bits_allocated = 32
+
     test_dicom_dict = {
         "ImagePositionPatient": [-1.0, -1.0, -1.0],
         "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
-        "BitsAllocated": 32,
+        "BitsAllocated": bits_allocated,
+        "BitsStored": bits_allocated,
         "Rows": 3,
         "Columns": 3,
         "PixelRepresentation": 0,
