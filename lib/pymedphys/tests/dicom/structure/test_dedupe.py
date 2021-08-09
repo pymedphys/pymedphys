@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import pathlib
 import subprocess
 import tempfile
@@ -34,6 +35,9 @@ def test_structure_dedupe():
         baseline_path = input_path.parent.parent.joinpath("baseline", input_path.name)
         baseline_dcm = pydicom.read_file(str(baseline_path), force=True)
 
+        input_dcm = _sort_ds(input_dcm)
+        baseline_dcm = _sort_ds(baseline_dcm)
+
         assert str(input_dcm) != str(baseline_dcm)
 
         roi_contour_sequences = input_dcm.ROIContourSequence
@@ -41,7 +45,8 @@ def test_structure_dedupe():
         for item in roi_contour_sequences:
             pymedphys.dicom.merge_contours(item, inplace=True)
 
-        assert input_dcm == baseline_dcm
+        input_dcm = _sort_ds(input_dcm)
+        assert str(input_dcm) == str(baseline_dcm)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             output_filename = str(pathlib.Path(temp_dir).joinpath("temp.dcm"))
@@ -55,4 +60,11 @@ def test_structure_dedupe():
 
             cli_dcm = pydicom.read_file(output_filename, force=True)
 
-        assert cli_dcm == baseline_dcm
+        cli_dcm = _sort_ds(cli_dcm)
+        assert str(cli_dcm) == str(baseline_dcm)
+
+
+def _sort_ds(ds: "pydicom.Dataset"):
+    json_dict = ds.to_json_dict()
+    sorted_json_str = json.dumps(json_dict, sort_keys=True)
+    return pydicom.dataset.Dataset.from_json(sorted_json_str)
