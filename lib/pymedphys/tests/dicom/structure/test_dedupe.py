@@ -41,7 +41,7 @@ def test_structure_dedupe():
         for item in roi_contour_sequences:
             pymedphys.dicom.merge_contours(item, inplace=True)
 
-        assert str(input_dcm) == str(baseline_dcm)
+        assert input_dcm == baseline_dcm
 
         with tempfile.TemporaryDirectory() as temp_dir:
             output_filename = str(pathlib.Path(temp_dir).joinpath("temp.dcm"))
@@ -55,4 +55,4 @@ def test_structure_dedupe():
 
             cli_dcm = pydicom.read_file(output_filename, force=True)
 
-        assert str(cli_dcm) == str(baseline_dcm)
+        assert cli_dcm == baseline_dcm
