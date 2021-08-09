@@ -66,5 +66,32 @@ def test_structure_dedupe():
 
 def _sort_ds(ds: "pydicom.Dataset"):
     json_dict = ds.to_json_dict()
-    sorted_json_str = json.dumps(json_dict, sort_keys=True)
+    _sort_contour_sequences(dicom_json_dataset=json_dict)
+
+    sorted_json_str = json.dumps(json_dict, sort_keys=True, indent=2)
+
     return pydicom.dataset.Dataset.from_json(sorted_json_str)
+
+
+def _sort_contour_sequences(dicom_json_dataset):
+    for key, value in dicom_json_dataset.items():
+        if not isinstance(value, dict):
+            return
+
+        try:
+            for item in value["Value"]:
+                if isinstance(item, dict):
+                    _sort_contour_sequences(dicom_json_dataset=item)
+
+            # Contour Sequence
+            if key == "30060040":
+                value["Value"] = sorted(value["Value"], key=_dict_sorting)
+        except KeyError:
+            return
+
+
+def _dict_sorting(d):
+    referenced_sop_instance = d["30060016"]["Value"][0]["00081155"]["Value"][0]
+    contour_data = d["30060050"]["Value"]
+
+    return f"{referenced_sop_instance}.{str(len(contour_data)).zfill(6)}"
