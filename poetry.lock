@@ -2753,6 +2753,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 
 [extras]
 comparables = ["flashgamma"]
+cve = ["pywin32", "reportlab"]
 dev = ["Pillow", "PyYAML", "astroid", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "readme-renderer", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 dicom = ["pydicom", "pynetdicom"]
 docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
@@ -2766,7 +2767,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "17aa65c4a0799b7dd44a30d7a16fcb8fb18540ca26a637cdaab80b97130d285e"
+content-hash = "1d04eb858e270af1df501291870430e58a5e6e874517c3da13e1a593ed79a608"
 
 [metadata.files]
 alabaster = [

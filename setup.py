@@ -157,6 +157,7 @@ install_requires = ["typing-extensions"]
 
 extras_require = {
     "comparables": ["flashgamma"],
+    "cve": ["reportlab<=3.5.54", "pywin32>=301"],
     "dev": [
         "tqdm",
         "attrs",

@@ -96,9 +96,9 @@ pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "do
 # CVEs
 # ---- #
 # CVE-2020-28463 <https://github.com/advisories/GHSA-mpvw-25mg-59vx>
-reportlab = { version = "<=3.5.54", optional = true }
+reportlab = { version = "<=3.5.54", optional = true }  # groups = ["cve"]
 # CVE-2021-32559 <https://github.com/advisories/GHSA-hwfp-hg2m-9vr2>
-pywin32 = { version = ">=301", optional = true }
+pywin32 = { version = ">=301", optional = true }  # groups = ["cve"]
 
 
 # ----------- #
@@ -152,6 +152,7 @@ tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
 
 [tool.poetry.extras]
 comparables = ["flashgamma"]
+cve = ["pywin32", "reportlab"]
 dev = [
     "Pillow",
     "PyYAML",
