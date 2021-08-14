@@ -193,7 +193,6 @@ extras_require = {
         "streamlit==0.82.0",
         "streamlit-ace==0.0.4",
         "pylinac==2.3.2",
-        "reportlab<=3.5.54",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
         "sphinx-book-theme==0.0.42",
@@ -278,7 +277,6 @@ extras_require = {
         "streamlit==0.82.0",
         "streamlit-ace==0.0.4",
         "pylinac==2.3.2",
-        "reportlab<=3.5.54",
     ],
 }
 
