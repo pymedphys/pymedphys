@@ -142,7 +142,7 @@ package_data = {
     "pymedphys.tests.e2e": [
         "cypress/*",
         "cypress/archive/*",
-        "cypress/fixtures/.gitignore",
+        "cypress/fixtures/*",
         "cypress/integration/streamlit/*",
         "cypress/plugins/*",
         "cypress/support/*",
@@ -171,7 +171,7 @@ extras_require = {
         "Pillow",
         "imageio",
         "xarray",
-        "pymssql",
+        "pymssql<2.2.2",
         "sqlalchemy",
         "natsort",
         "tomlkit",
@@ -214,6 +214,7 @@ extras_require = {
         "readme-renderer",
         "tabulate",
     ],
+    'dev:sys_platform == "win32"': ["pywin32>=301"],
     "dicom": ["pynetdicom", "pydicom>=2.0.0"],
     "docs": [
         "sphinx-argparse",
@@ -229,7 +230,7 @@ extras_require = {
         "tabulate",
     ],
     "icom": ["numpy>=1.20.2"],
-    "mosaiq": ["pymssql", "sqlalchemy", "scikit-learn", "pandas>=1.0.0"],
+    "mosaiq": ["pymssql<2.2.2", "sqlalchemy", "scikit-learn", "pandas>=1.0.0"],
     "propagate": ["tomlkit", "black>=20.8b1,<21.0"],
     "tests": [
         "tqdm",
@@ -256,7 +257,7 @@ extras_require = {
         "Pillow",
         "imageio",
         "xarray",
-        "pymssql",
+        "pymssql<2.2.2",
         "sqlalchemy",
         "natsort",
         "tomlkit",
@@ -280,6 +281,7 @@ extras_require = {
         "pylinac==2.3.2",
         "reportlab<=3.5.54",
     ],
+    'user:sys_platform == "win32"': ["pywin32>=301"],
 }
 
 entry_points = {
