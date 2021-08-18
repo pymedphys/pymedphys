@@ -54,7 +54,7 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
+pymssql = { version = "<2.2.2", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
