@@ -102,7 +102,12 @@ def _sort_contour_sequences(dicom_json_dataset):
 
 def _dict_sorting(d):
     """A dictionary sorting key to be utilised on a DICOM JSON representation
-    of a Contour Sequence Item"""
+    of a Contour Sequence Item
+
+    It sorts first by the SOP Instance UID, and then if that is equal
+    it sorts by the length of the contour data itself. If that's equal
+    then it is random, but that isn't an issue for this current test
+    case."""
     CONTOUR_IMAGE_SEQUENCE_TAG = "30060016"
     REFERENCED_SOP_INSTANCE_UID_TAG = "00081155"
 
