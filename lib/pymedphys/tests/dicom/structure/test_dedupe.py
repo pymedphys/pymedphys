@@ -74,6 +74,9 @@ def _sort_ds(ds: "pydicom.Dataset"):
     json_dict = ds.to_json_dict()
     _sort_contour_sequences(dicom_json_dataset=json_dict)
 
+    # Strictly speaking this step is unlikely to do much as the items
+    # that need sorting are within sequences, which are json lists,
+    # and running "sort_keys" doesn't sort those sequences
     sorted_json_str = json.dumps(json_dict, sort_keys=True, indent=2)
 
     return pydicom.dataset.Dataset.from_json(sorted_json_str)
