@@ -106,17 +106,17 @@ Maintainers
 
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
-
-|sjs| |rah|
-
-Active contributors
-****************************
-
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
     * `Ingham Institute`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
+
+
+|sjs| |rah|
+
+Active contributors
+****************************
 
 * `Derek Lane`_
     * `ELEKTA AB`_, Houston TX

@@ -54,7 +54,7 @@ Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
-pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
+pymssql = { version = "<2.2.2", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
@@ -91,8 +91,15 @@ streamlit-ace = { version = "0.0.4", optional = true }  # groups = ["user", "dev
 # PyLinac is pinned due to historical algorithm changes with both minor and
 # patch version bumps.
 pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "doctests"]
+
+# ---- #
+# CVEs #
+# ---- #
+
 # CVE-2020-28463 <https://github.com/advisories/GHSA-mpvw-25mg-59vx>
 reportlab = { version = "<=3.5.54", optional = true }  # groups = ["user", "dev"]
+# CVE-2021-32559 <https://github.com/advisories/GHSA-hwfp-hg2m-9vr2>
+pywin32 = { version = ">=301", optional = true, platform = "win32" }  # groups = ["user", "dev"]
 
 
 # ----------- #
@@ -180,6 +187,7 @@ dev = [
     "pytest-rerunfailures",
     "pytest-sugar",
     "python-dateutil",
+    "pywin32",
     "readme-renderer",
     "reportlab",
     "requests",
@@ -247,6 +255,7 @@ user = [
     "pymssql",
     "pynetdicom",
     "python-dateutil",
+    "pywin32",
     "reportlab",
     "requests",
     "scikit-image",
