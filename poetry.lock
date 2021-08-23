@@ -1319,7 +1319,7 @@ python-versions = "*"
 
 [[package]]
 name = "notebook"
-version = "6.4.0"
+version = "6.4.1"
 description = "A web-based notebook environment for interactive computing"
 category = "main"
 optional = true
@@ -3362,8 +3362,8 @@ nodeenv = [
     {file = "nodeenv-1.6.0.tar.gz", hash = "sha256:3ef13ff90291ba2a4a7a4ff9a979b63ffdd00a464dbe04acf0ea6471517a4c2b"},
 ]
 notebook = [
-    {file = "notebook-6.4.0-py3-none-any.whl", hash = "sha256:f7f0a71a999c7967d9418272ae4c3378a220bd28330fbfb49860e46cf8a5838a"},
-    {file = "notebook-6.4.0.tar.gz", hash = "sha256:9c4625e2a2aa49d6eae4ce20cbc3d8976db19267e32d2a304880e0c10bf8aef9"},
+    {file = "notebook-6.4.1-py3-none-any.whl", hash = "sha256:5d999285fd449898c4dfa0b7880dd881f317c653eb221e8d51d0b5400751ce35"},
+    {file = "notebook-6.4.1.tar.gz", hash = "sha256:2a67037730e2b2991f5d684ecb07255bbb191f49234888e71e1fabf8e50679a6"},
 ]
 numpy = [
     {file = "numpy-1.20.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:70eb5808127284c4e5c9e836208e09d685a7978b6a216db85960b1a112eeace8"},
