@@ -9,10 +9,8 @@ on:
     types:
       - created
 
-
 jobs:
-
-# =============================================================================
+  # =============================================================================
 
   PreCommit:
     runs-on: ubuntu-latest
@@ -50,55 +48,66 @@ jobs:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
           branch: ${{ github.event.pull_request.head.ref }}
 
-# =============================================================================
+  # =============================================================================
 
   Tests:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary', 'pyright', 'propagate']
+        os: ["ubuntu", "macos", "windows"]
+        task:
+          [
+            "tests",
+            "docs",
+            "stackoverflow",
+            "updates",
+            "cypress",
+            "slow",
+            "binary",
+            "pyright",
+            "propagate",
+          ]
 
         exclude:
-          - os: 'ubuntu'
-            task: 'binary'
+          - os: "ubuntu"
+            task: "binary"
 
-          - os: 'windows'
-            task: 'stackoverflow'
-          - os: 'windows'
-            task: 'updates'
-          - os: 'windows'
-            task: 'slow'
-          - os: 'windows'
-            task: 'pyright'
-          - os: 'windows'
-            task: 'propagate'
+          - os: "windows"
+            task: "stackoverflow"
+          - os: "windows"
+            task: "updates"
+          - os: "windows"
+            task: "slow"
+          - os: "windows"
+            task: "pyright"
+          - os: "windows"
+            task: "propagate"
 
-          - os: 'macos'
-            task: 'stackoverflow'
-          - os: 'macos'
-            task: 'updates'
-          - os: 'macos'
-            task: 'cypress'
-          - os: 'macos'
-            task: 'slow'
-          - os: 'macos'
-            task: 'binary'
-          - os: 'macos'
-            task: 'pyright'
-          - os: 'macos'
-            task: 'propagate'
+          - os: "macos"
+            task: "stackoverflow"
+          - os: "macos"
+            task: "updates"
+          - os: "macos"
+            task: "cypress"
+          - os: "macos"
+            task: "slow"
+          - os: "macos"
+            task: "binary"
+          - os: "macos"
+            task: "pyright"
+          - os: "macos"
+            task: "propagate"
 
         include:
           # Version numbers chosen so that highest and lowest Python version is
           # utilised, 3.7 is chosen on Windows to align with Jupyter Book until
           # https://github.com/executablebooks/jupyter-book/issues/906 is fixed.
           # See https://jupyterbook.org/advanced/advanced.html#working-on-windows
-          - os: 'ubuntu'
+          - os: "ubuntu"
             python-version: 3.9
-          - os: 'windows'
+          - os: "windows"
             python-version: 3.7
-          - os: 'macos'
+          - os: "macos"
             python-version: 3.8
 
     runs-on: ${{ matrix.os }}-latest
@@ -124,9 +133,9 @@ jobs:
         run: |
           echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# Set up pip
+      # Set up pip
 
       - name: Get pip cache dir
         id: pip-cache
@@ -140,9 +149,9 @@ jobs:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# Upgrade pip and setuptools, and install poetry
+      # Upgrade pip and setuptools, and install poetry
 
       - name: Upgrade pip and setuptools
         run: |
@@ -151,7 +160,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1.1.1
         with:
-          version: 1.1.4
+          version: 1.1.8
           virtualenvs-create: true
 
       - name: Update PATH in Windows
@@ -164,9 +173,9 @@ jobs:
         run: |
           poetry config experimental.new-installer false
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# No import and run CLI with no dependencies
+      # No import and run CLI with no dependencies
 
       - name: Build wheel
         if: matrix.task == 'tests'
@@ -197,9 +206,9 @@ jobs:
         run: |
           pip uninstall -y pymedphys
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# Set up Poetry
+      # Set up Poetry
 
       - name: Configure poetry
         run: |
@@ -219,17 +228,16 @@ jobs:
         run: |
           timeout 10s poetry run pip --version || rm -rf .venv
 
-
-# Install Node
+      # Install Node
 
       - uses: actions/setup-node@v1
         if: matrix.task == 'cypress' || matrix.task == 'pyright'
         with:
-          node-version: '14'
+          node-version: "14"
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# System installs
+      # System installs
 
       - name: Install Pandoc on Ubuntu
         if: ( matrix.task == 'docs' || matrix.task == 'updates' ) && matrix.os == 'ubuntu'
@@ -246,44 +254,42 @@ jobs:
         run: |
           choco install pandoc
 
-## Plain install
+      ## Plain install
 
       - name: Install a plain environment
         if: matrix.task == 'stackoverflow'
         run: |
           poetry install -E user
 
-
-## Install with Documentation Environment
+      ## Install with Documentation Environment
 
       - name: Install a docs environment
         if: matrix.task == 'docs'
         run: |
           poetry install -E user -E docs
 
-## Install with Tests Environment
+      ## Install with Tests Environment
 
       - name: Install a tests environment
         if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
         run: |
           poetry install -E user -E tests
 
-## Install with Doctests Environment
+      ## Install with Doctests Environment
 
       - name: Install a doctests environment
         if: matrix.os == 'ubuntu' && matrix.task == 'tests' || matrix.task == 'pyright'
         run: |
           poetry install -E user -E doctests
 
-
-## Install remaining packages for pyright
+      ## Install remaining packages for pyright
 
       - name: Install a propagate environment
         if: matrix.task == 'pyright' || matrix.task == 'propagate'
         run: |
           poetry install -E propagate || poetry lock --no-update && poetry install -E propagate
 
-## Update all packages and then install with tests environment
+      ## Update all packages and then install with tests environment
 
       - name: Update all packages then install with tests and user environment
         if: matrix.task == 'updates'
@@ -292,9 +298,9 @@ jobs:
           poetry update
           poetry install -E user -E tests -E docs
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# PyMedPhys Data Cache
+      # PyMedPhys Data Cache
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
@@ -310,9 +316,9 @@ jobs:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
           key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# Binary building
+      # Binary building
 
       - name: Build Binary
         if: matrix.task == 'binary'
@@ -321,13 +327,11 @@ jobs:
           cd binary
           python build-binary.py
 
-
       - uses: actions/upload-artifact@v2
         if: matrix.task == 'binary'
         with:
           name: PyMedPhysGUI
           path: binary/build/dist/PyMedPhysGUI*.exe
-
 
       - name: Test Binary
         if: matrix.task == 'binary'
@@ -336,11 +340,11 @@ jobs:
           cd binary
           python test.py
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# TESTS
+      # TESTS
 
-## Propagate
+      ## Propagate
       - name: See if propagate is needed
         if: matrix.task == 'propagate'
         id: propagate-test
@@ -379,7 +383,7 @@ jobs:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
           branch: ${{ github.event.pull_request.head.ref }}
 
-## Pyright
+      ## Pyright
 
       - name: Install and run pyright
         if: matrix.task == 'pyright'
@@ -387,35 +391,35 @@ jobs:
           npm install -g pyright
           poetry run pyright
 
-## Pytest
+      ## Pytest
 
       - name: Run basic pytest tests
         if: matrix.task == 'tests' || matrix.task == 'updates'
         run: |
           poetry run pymedphys dev tests -v
 
-## Doctest
+      ## Doctest
 
       - name: Run doctest tests
         if: matrix.os == 'ubuntu' && matrix.task == 'tests'
         run: |
           poetry run pymedphys dev doctests -v
 
-## Pylint
+      ## Pylint
 
       - name: Run pylint tests
         if: matrix.os == 'ubuntu' && ( matrix.task == 'tests' || matrix.task == 'updates' )
         run: |
           poetry run pymedphys dev lint
 
-## Slow
+      ## Slow
 
       - name: Run slow tests
         if: matrix.task == 'slow'
         run: |
           poetry run pymedphys dev tests -v --slow
 
-## Docs
+      ## Docs
 
       - name: Download docs files
         if: matrix.task == 'docs' && matrix.os == 'ubuntu'
@@ -429,7 +433,7 @@ jobs:
 
       - name: Add GitHub Pages Config Files
         if: matrix.task == 'docs' && matrix.os == 'ubuntu' && github.event_name == 'push'
-        run : |
+        run: |
           echo docs.pymedphys.com > lib/pymedphys/docs/_build/html/CNAME
           touch lib/pymedphys/docs/_build/html/.nojekyll
 
@@ -441,15 +445,14 @@ jobs:
           folder: lib/pymedphys/docs/_build/html
           ssh-key: ${{ secrets.DEPLOY_KEY }}
 
-## Stackoverflow
+      ## Stackoverflow
 
       - name: Run stackoverflow example(s)
         if: matrix.task == 'stackoverflow'
         run: |
           poetry run python ./examples/stackoverflow/gamma.py
 
-
-## Cypress
+      ## Cypress
       - name: Run Cypress tests
         if: matrix.task == 'cypress'
         run: |
@@ -461,11 +464,10 @@ jobs:
           name: cypress-videos
           path: pymedphys/tests/e2e/cypress/videos
 
-
   PyPI:
     # needs:
-      # - PreCommit
-      # - Tests
+    # - PreCommit
+    # - Tests
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
     steps:

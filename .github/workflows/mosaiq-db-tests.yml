@@ -7,8 +7,7 @@ on:
   pull_request:
 
 jobs:
-
-# =============================================================================
+  # =============================================================================
 
   TestMosaiqDb:
     runs-on: ubuntu-latest
@@ -36,9 +35,9 @@ jobs:
         run: |
           echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# Set up pip
+      # Set up pip
 
       - name: Get pip cache dir
         id: pip-cache
@@ -52,9 +51,9 @@ jobs:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-tests-ubuntu-${{ steps.full-python-version.outputs.version }}
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# Upgrade pip and setuptools, and install poetry
+      # Upgrade pip and setuptools, and install poetry
 
       - name: Upgrade pip and setuptools
         run: |
@@ -63,16 +62,16 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1.1.1
         with:
-          version: 1.1.4
+          version: 1.1.8
           virtualenvs-create: true
 
       - name: Configure Poetry to not use experimental installer
         run: |
           poetry config experimental.new-installer false
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# Set up Poetry
+      # Set up Poetry
 
       - name: Configure poetry
         run: |
@@ -92,17 +91,17 @@ jobs:
         run: |
           timeout 10s poetry run pip --version || rm -rf .venv
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-## Install with Tests Environment
+      ## Install with Tests Environment
 
       - name: Install a tests environment
         run: |
           poetry install -E mosaiq -E tests -E dicom
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# PyMedPhys Data Cache
+      # PyMedPhys Data Cache
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
@@ -116,11 +115,11 @@ jobs:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
           key: pymedphys-tests-ubuntu-${{ hashFiles('**/hashes.json') }}
 
-# -----------------------------------------------------------------------------
+      # -----------------------------------------------------------------------------
 
-# TESTS
+      # TESTS
 
-## Mosaiq_db tests -- only run on Ubuntu because needs container
+      ## Mosaiq_db tests -- only run on Ubuntu because needs container
 
       - name: Run MSQ database tests
         run: |
