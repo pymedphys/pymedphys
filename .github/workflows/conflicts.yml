@@ -37,7 +37,7 @@ jobs:
         if: steps.conflicts.outputs.status == 'true'
         uses: snok/install-poetry@v1.1.1
         with:
-          version: 1.1.4
+          version: 1.1.8
 
       - name: Install PyMedPhys with propagate environment
         if: steps.conflicts.outputs.status == 'true'
