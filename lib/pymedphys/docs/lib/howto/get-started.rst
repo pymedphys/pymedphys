@@ -35,6 +35,11 @@ type:
 
     exit()
 
+Windows by default also can't utilise paths longer than 260 characters. This
+will likely be an issue for installing Python packages. As such follow the
+`enable Win32 Long Paths guide`_ to enable long paths on your system.
+
+.. _`enable Win32 Long Paths guide`: https://www.microfocus.com/documentation/filr/filr-4/filr-desktop/t47bx2ogpfz7.html
 
 Linux or MacOS
 --------------
@@ -45,7 +50,7 @@ managing your Python installation using `pyenv`_.
 To achieve this first install `the python build environment`_, and then follow
 the `pyenv installation`_ steps. Once pyenv is installed run the following:
 
-.. code:: bash
+.. code:: cmd
 
     pyenv install 3.9.7
     pyenv global 3.9.7
