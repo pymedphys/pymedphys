@@ -80,9 +80,19 @@ SSL Issues
 ----------
 
 Depending on your network set up you may see "SSL" warnings followed by an
-error message when trying to install PyMedPhys with the above command. To fix
-this issue you can instead install PyMedPhys with the following command:
+error message when trying to install PyMedPhys with the above command. This may
+be due to your network administrator filtering all packets through its own
+server. Pip by default protects against this as filtering of this sort can
+intercept the packages to be installed and provide you with something else.
+
+If you trust the network you are on to not be utilising this power maliciously
+then you can run the following to say that you trust your network's version of
+pypi.org and files.pythonhosted.org:
 
 .. code:: bash
 
     pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org pymedphys[user]
+
+
+.. _`pypi.org`: https://pypi.org
+.. _`files.pythonhosted.org`: https://files.pythonhosted.org
