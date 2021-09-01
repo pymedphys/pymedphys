@@ -6,21 +6,56 @@ Install Python
 ==============
 
 In order to make use of the PyMedPhys library, you'll need Python installed on
-your workstation. On Windows we recommend that you install the
-Anaconda Python distribution. Download the latest Anaconda
-version from `here <https://www.anaconda.com/products/individual#Downloads>`__.
+your workstation. Below are some recommended instructions for installing Python
+based upon your OS.
 
-.. note::
+Windows 10 or 11
+----------------
 
-    When installing Anaconda make sure to install it for your user only, and
-    tick the option "add to path".
+Open up a command prompt and type:
 
-.. image:: ../../img/add_anaconda_to_path.png
+.. code:: bash
+
+    python
+
+If python isn't already installed this will open the Windows store. At this
+point you can click the "Get" button. It will ask you to sign in, but you can
+skip the sign in step. It will still install.
+
+Once installed, open a new command prompt and type:
+
+.. code:: bash
+
+    python
+
+You should now see a python prompt within your console. To exit the console
+type:
+
+.. code:: python
+
+    exit()
+
+
+Linux or MacOS
+--------------
 
 On Linux or MacOS we recommend not using your system Python and instead
-managing your Python installation using something like `pyenv`_.
+managing your Python installation using `pyenv`_.
 
-.. _`pyenv`: https://github.com/pyenv/pyenv-installer#install
+To achieve this first install `the python build environment`_, and then follow
+the `pyenv installation`_ steps. Once pyenv is installed run the following:
+
+.. code:: bash
+
+    pyenv install 3.9.7
+    pyenv global 3.9.7
+
+You can choose to adjust the version number provided above to be the latest
+Python version if you wish.
+
+.. _`pyenv`: https://github.com/pyenv/pyenv/blob/master/README.md
+.. _`the python build environment`: https://github.com/pyenv/pyenv/wiki#suggested-build-environment
+.. _`pyenv installation`: https://github.com/pyenv/pyenv-installer#install
 
 
 Installing PyMedPhys
@@ -37,27 +72,3 @@ You may need to open and close your terminal if you have only just installed
 Python. The ``[user]`` option is needed to install pymedphys with its
 "batteries included" so-to-speak. It will go and install a range of
 dependencies which you may need during your use of pymedphys.
-
-
-A minimal installation (Advanced users only)
---------------------------------------------
-
-If you're not interested in installing PyMedPhys' dependencies you can choose
-to skip the ``[user]`` option as so:
-
-.. code:: bash
-
-    pip install pymedphys
-
-
-Installing the Bleeding Edge version of PyMedPhys (Advanced users only)
-=======================================================================
-
-If you wish to be able to contribute to PyMedPhys itself you are going to want
-to instead install PyMedPhys from the main branch on GitHub
-<https://github.com/pymedphys/pymedphys>. To achieve this follow the OS
-specific instructions within the contributor tutorials:
-
-* :doc:`../../contrib/setups/setup-win`
-* :doc:`../../contrib/setups/setup-linux`
-* :doc:`../../contrib/setups/setup-mac`
