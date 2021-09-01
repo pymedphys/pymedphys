@@ -37,9 +37,9 @@ type:
 
 Windows by default also can't utilise paths longer than 260 characters. This
 will likely be an issue for installing Python packages. As such follow the
-`enable Win32 Long Paths guide`_ to enable long paths on your system.
+`enable Windows Long Paths guide`_ to enable long paths on your system.
 
-.. _`enable Win32 Long Paths guide`: https://www.microfocus.com/documentation/filr/filr-4/filr-desktop/t47bx2ogpfz7.html
+.. _`enable Windows Long Paths guide`: https://www.microfocus.com/documentation/filr/filr-4/filr-desktop/t47bx2ogpfz7.html
 
 Linux or MacOS
 --------------
