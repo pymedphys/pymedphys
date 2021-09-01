@@ -95,3 +95,21 @@ pypi.org and files.pythonhosted.org:
 
 .. _`pypi.org`: https://pypi.org
 .. _`files.pythonhosted.org`: https://files.pythonhosted.org
+
+Proxy Issues
+------------
+
+It's common for private networks, especailly those in healthcare, to require
+outgoing traffic to be sent through a proxy server to reach any servers on the
+world wide web. If this is the case on your network, you will need to specify
+a proxy server when using pip.
+
+The following command specifies the proxy server for pip. Ensure you insert
+your username and password used to authenticate on the proxy server, along with
+the host and port of the proxy server. If you are unsure of the host and port
+to use in your environment, reach out to a network administrator to obtain
+these:
+
+.. code:: bash
+
+    pip install --proxy=http://username:password@host:port --trusted-host pypi.org --trusted-host files.pythonhosted.org pymedphys[user]
