@@ -68,7 +68,21 @@ following in a terminal or command prompt:
 
     pip install pymedphys[user]
 
+This command can be copied into a command prompt on Windows with a "Right Click"
+of the mouse.
+
 You may need to open and close your terminal if you have only just installed
 Python. The ``[user]`` option is needed to install pymedphys with its
 "batteries included" so-to-speak. It will go and install a range of
 dependencies which you may need during your use of pymedphys.
+
+SSL Issues
+----------
+
+Depending on your network set up you may see "SSL" warnings followed by an
+error message when trying to install PyMedPhys with the above command. To fix
+this issue you can instead install PyMedPhys with the following command:
+
+.. code:: bash
+
+    pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org pymedphys[user]
