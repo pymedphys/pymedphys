@@ -99,7 +99,7 @@ pypi.org and files.pythonhosted.org:
 Proxy Issues
 ------------
 
-It's common for private networks, especailly those in healthcare, to require
+It's common for private networks, especially those in healthcare, to require
 outgoing traffic to be sent through a proxy server to reach any servers on the
 world wide web. If this is the case on your network, you will need to specify
 a proxy server when using pip.
