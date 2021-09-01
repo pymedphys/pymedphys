@@ -22,18 +22,12 @@ If python isn't already installed this will open the Windows store. At this
 point you can click the "Get" button. It will ask you to sign in, but you can
 skip the sign in step. It will still install.
 
-Once installed, open a new command prompt and type:
+Once installed, open a new command prompt and test that it has installed by
+typing:
 
 .. code:: bash
 
-    python
-
-You should now see a python prompt within your console. To exit the console
-type:
-
-.. code:: python
-
-    exit()
+    python --version
 
 Windows by default also can't utilise paths longer than 260 characters. This
 will likely be an issue for installing Python packages. As such follow the
@@ -73,8 +67,8 @@ following in a terminal or command prompt:
 
     pip install pymedphys[user]
 
-This command can be copied into a command prompt on Windows with a "Right Click"
-of the mouse.
+You can copy this command directly into a Windows command prompt.
+You can ``Right Click`` to paste.
 
 You may need to open and close your terminal if you have only just installed
 Python. The ``[user]`` option is needed to install pymedphys with its
