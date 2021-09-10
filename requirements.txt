@@ -64,7 +64,7 @@ pandocfilters==1.4.3; python_version >= "3.6" and python_full_version < "3.0.0" 
 parso==0.8.2; python_version >= "3.7"
 pexpect==4.8.0; sys_platform != "win32" and python_version >= "3.7"
 pickleshare==0.7.5; python_version >= "3.7"
-pillow==8.3.1; python_version >= "3.6"
+pillow==8.3.2; python_version >= "3.6"
 plotly==5.2.2; python_version >= "3.6"
 premailer==3.10.0
 prometheus-client==0.11.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
