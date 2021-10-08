@@ -39,6 +39,7 @@ SETUP_PY = REPO_ROOT.joinpath("setup.py")
 REQUIREMENTS_TXT = REPO_ROOT.joinpath("requirements.txt")
 REQUIREMENTS_DEV_TXT = REPO_ROOT.joinpath("requirements-dev.txt")
 REQUIREMENTS_USER_TXT = REPO_ROOT.joinpath("requirements-deploy.txt")
+REQUIREMENTS_ICOM_TXT = REPO_ROOT.joinpath("requirements-icom.txt")
 
 ROOT_README = REPO_ROOT.joinpath("README.rst")
 DOCS_README = DOCS_PATH.joinpath("README.rst")
@@ -236,6 +237,7 @@ def _propagate_requirements():
     _make_requirements_txt(
         ["user", "tests"], "requirements-deploy.txt", include_pymedphys=False
     )
+    _make_requirements_txt(["icom"], "requirements-icom.txt", include_pymedphys=False)
 
 
 def _make_requirements_txt(
