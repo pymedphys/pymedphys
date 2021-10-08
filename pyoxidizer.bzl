@@ -17,12 +17,13 @@ def make_exe():
     dist = default_python_distribution(python_version = "3.9")
 
     policy = dist.make_python_packaging_policy()
+    policy.include_distribution_sources = True
+    policy.include_distribution_resources = True
+    policy.include_file_resources = True
+    policy.include_test = True
     policy.resources_location = "filesystem-relative:lib"
 
     python_config = dist.make_python_interpreter_config()
-
-    # python_config.config_profile = "python"
-    # python_config.filesystem_importer = True
     python_config.module_search_paths = ["$ORIGIN/lib"]
     python_config.run_module = "pymedphys"
 
@@ -32,8 +33,8 @@ def make_exe():
         config = python_config,
     )
     exe.windows_runtime_dlls_mode = "always"
-
     exe.windows_subsystem = "console"
+
     exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-deploy.txt"]))
 
     return exe
