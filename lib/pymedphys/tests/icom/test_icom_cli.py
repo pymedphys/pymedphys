@@ -18,18 +18,24 @@ import os
 import pathlib
 import socket
 import subprocess
+import sys
 import tempfile
 
 from pymedphys._data import download
+from pymedphys._root import LIBRARY_ROOT
 
 
 def test_icom_cli():
     icom_server_process = multiprocessing.Process(target=_mock_icom_server)
     icom_server_process.start()
 
+    env = os.environ.copy()
+    if getattr(sys, "frozen", False):
+        env["PATH"] = LIBRARY_ROOT.parents[1] + os.pathsep + env["PATH"]
+
     with tempfile.TemporaryDirectory() as temp_dir:
         icom_listen_cli = subprocess.Popen(
-            ["pymedphys", "icom", "listen", "127.0.0.1", temp_dir], env=os.environ
+            ["pymedphys", "icom", "listen", "127.0.0.1", temp_dir], env=env
         )
         icom_server_process.join()
         icom_listen_cli.terminate()

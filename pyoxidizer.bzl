@@ -25,6 +25,7 @@ def make_exe():
 
     python_config.filesystem_importer = True
     python_config.oxidized_importer = False
+    python_config.sys_frozen = True
 
     exe = dist.to_python_executable(
         name = "pymedphys",
