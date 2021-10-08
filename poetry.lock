@@ -2848,9 +2848,9 @@ docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [extras]
-cli = ["tomlkit"]
+cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["Pillow", "PyYAML", "astroid", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pyoxidizer", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
+dev = ["Pillow", "PyYAML", "astroid", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pyoxidizer", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 dicom = ["pydicom", "pynetdicom"]
 docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
@@ -2858,12 +2858,12 @@ icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
 propagate = ["black", "tomlkit"]
 tests = ["astroid", "hypothesis", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
-user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "reportlab", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "timeago", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
+user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "reportlab", "requests", "scikit-image", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "timeago", "toml", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "90f5c52f1ce5d13dbfe2479ac4f5c3bb20f60cf4ea4c4f43c96fd9d949e676f5"
+content-hash = "274b95104a1b6f57ea88ad6e96c6970efecf1d6756c64cf60a01e07f443ac579"
 
 [metadata.files]
 alabaster = [

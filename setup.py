@@ -205,7 +205,7 @@ package_data = {
 install_requires = ["typing-extensions"]
 
 extras_require = {
-    "cli": ["tomlkit"],
+    "cli": ["toml"],
     "comparables": ["flashgamma"],
     "dev": [
         "tqdm",
@@ -225,6 +225,7 @@ extras_require = {
         "sqlalchemy<1.4",
         "natsort",
         "tomlkit",
+        "toml",
         "pynetdicom",
         "dbfread",
         "xmltodict",
@@ -312,6 +313,7 @@ extras_require = {
         "sqlalchemy<1.4",
         "natsort",
         "tomlkit",
+        "toml",
         "pynetdicom",
         "dbfread",
         "xmltodict",

@@ -154,7 +154,7 @@ pyoxidizer = { version = "*", optional = true }  # groups = ["dev"]
 
 
 [tool.poetry.extras]
-cli = ["tomlkit"]
+cli = ["toml"]
 comparables = ["flashgamma"]
 dev = [
     "Pillow",
@@ -208,6 +208,7 @@ dev = [
     "streamlit-ace",
     "tabulate",
     "timeago",
+    "toml",
     "tomlkit",
     "tqdm",
     "watchdog",
@@ -270,6 +271,7 @@ user = [
     "streamlit",
     "streamlit-ace",
     "timeago",
+    "toml",
     "tomlkit",
     "tqdm",
     "watchdog",
