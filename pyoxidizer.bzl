@@ -38,7 +38,7 @@ def make_exe():
     exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-cli.txt"]))
     exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-icom.txt"]))
     exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-tests.txt"]))
-    exe.add_python_resources(exe.pip_install(["."]))
+    exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "."]))
 
     return exe
 
@@ -66,7 +66,8 @@ def make_msi(exe):
         # The name of your application.
         "PyMedPhys",
         # TODO: Propagate this within `pymedphys dev propagate`
-        "0.38.0-dev4",
+        # NOTE: Semantic versioning not allowed by WIX
+        "0.38.0",
         # The author/manufacturer of your application.
         "PyMedPhys Contributors",
     )
