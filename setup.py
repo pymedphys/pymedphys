@@ -205,6 +205,7 @@ package_data = {
 install_requires = ["typing-extensions"]
 
 extras_require = {
+    "cli": ["tomlkit"],
     "comparables": ["flashgamma"],
     "dev": [
         "tqdm",

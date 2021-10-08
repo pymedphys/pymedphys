@@ -153,6 +153,7 @@ pyoxidizer = { version = "*", optional = true }  # groups = ["dev"]
 
 
 [tool.poetry.extras]
+cli = ["tomlkit"]
 comparables = ["flashgamma"]
 dev = [
     "Pillow",
