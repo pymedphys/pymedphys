@@ -57,7 +57,8 @@ xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
 sqlalchemy = { version = "<1.4", optional = true }  # groups = ["user", "dev", "mosaiq"]
 natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
-tomlkit = { version = "*", optional = true }  # groups = ["user", "cli", "dev", "propagate"]
+tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
+toml = { version = "*", optional = true }  # groups = ["user", "cli", "dev"]
 
 pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 
