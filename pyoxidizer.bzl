@@ -69,7 +69,7 @@ def make_exe_installer(exe):
         files
     )
 
-    installer.install_files_root_directory_id = 'LOCALAPPDATAFOLDER'
+    installer.add_wxs_file('test.wxs')
 
     return installer
 
