@@ -102,6 +102,7 @@ packages = [
     "pymedphys.tests.experimental.pseudonymisation",
     "pymedphys.tests.experimental.wlutz",
     "pymedphys.tests.gamma",
+    "pymedphys.tests.icom",
     "pymedphys.tests.logfiles",
     "pymedphys.tests.logging",
     "pymedphys.tests.losslessjpeg",
