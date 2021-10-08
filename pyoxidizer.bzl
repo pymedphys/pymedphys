@@ -62,6 +62,7 @@ def make_exe_installer(exe):
 
     installer = WiXInstaller("pymedphys", "PyMedPhys-0.38.0-dev4-Setup.msi")
     installer.add_simple_installer(
+        "pymedphys",
         "PyMedPhys",
         "0.38.0",
         "PyMedPhys Contributors",
