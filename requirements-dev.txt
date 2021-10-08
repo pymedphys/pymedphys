@@ -132,6 +132,7 @@ pylinac==2.3.2
 pylint==2.8.3; python_version >= "3.6" and python_version < "4.0"
 pymssql==2.2.2
 pynetdicom==1.5.7
+pyoxidizer==0.17.0
 pyparsing==2.4.7; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.3.0" and python_version >= "3.7"
 pyrsistent==0.18.0; python_version >= "3.6"
 pytest-rerunfailures==10.1; python_version >= "3.6"

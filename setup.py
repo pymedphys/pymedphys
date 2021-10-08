@@ -262,6 +262,7 @@ extras_require = {
         "doc8",
         "readme-renderer",
         "tabulate",
+        "pyoxidizer",
     ],
     'dev:sys_platform == "win32"': ["pywin32>=301"],
     "dicom": ["pynetdicom", "pydicom>=2.0.0"],
