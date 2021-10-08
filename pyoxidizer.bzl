@@ -60,7 +60,7 @@ def make_msi(exe):
     # See the full docs for more. But this will convert your Python executable
     # into a `WiXMSIBuilder` Starlark type, which will be converted to a Windows
     # .msi installer when it is built.
-    return exe.to_wix_msi_builder(
+    return exe.to_wix_bundle_builder(
         # Simple identifier of your app.
         "pymedphys",
         # The name of your application.
