@@ -56,11 +56,12 @@ def make_install(exe):
 
     return files
 
-def make_msi(exe):
+def make_exe_installer(exe):
     # See the full docs for more. But this will convert your Python executable
     # into a `WiXMSIBuilder` Starlark type, which will be converted to a Windows
     # .msi installer when it is built.
-    return exe.to_wix_bundle_builder(
+
+    wix_installer = exe.to_wix_bundle_builder(
         # Simple identifier of your app.
         "pymedphys",
         # The name of your application.
@@ -71,12 +72,15 @@ def make_msi(exe):
         # The author/manufacturer of your application.
         "PyMedPhys Contributors",
     )
+    wix_installer.install_files_root_directory_id = 'LocalAppDataFolder'
+
+    return wix_installer
 
 # Tell PyOxidizer about the build targets defined above.
 register_target("exe", make_exe)
 register_target("resources", make_embedded_resources, depends = ["exe"], default_build_script = True)
 register_target("install", make_install, depends = ["exe"])
-register_target("msi_installer", make_msi, depends = ["exe"], default = True)
+register_target("exe_installer", make_exe_installer, depends = ["exe"], default = True)
 
 # Resolve whatever targets the invoker of this configuration file is requesting
 # be resolved.
