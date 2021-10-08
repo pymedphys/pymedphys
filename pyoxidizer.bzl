@@ -17,10 +17,10 @@ def make_exe():
     dist = default_python_distribution(python_version = "3.9")
 
     policy = dist.make_python_packaging_policy()
-    policy.include_distribution_sources = True
-    policy.include_distribution_resources = True
-    policy.include_file_resources = True
-    policy.include_test = True
+    # policy.include_distribution_sources = True
+    # policy.include_distribution_resources = True
+    # policy.include_file_resources = True
+    # policy.include_test = True
     policy.resources_location = "filesystem-relative:lib"
 
     python_config = dist.make_python_interpreter_config()
