@@ -35,7 +35,7 @@ def make_exe():
     exe.windows_runtime_dlls_mode = "always"
     exe.windows_subsystem = "console"
 
-    exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-deploy.txt"]))
+    # exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-deploy.txt"]))
 
     return exe
 
