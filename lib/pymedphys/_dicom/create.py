@@ -70,6 +70,3 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
     set_default_transfer_syntax(dataset)
 
     return dataset
-
-
-# def structure
