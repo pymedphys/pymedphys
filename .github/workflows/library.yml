@@ -104,7 +104,7 @@ jobs:
           # https://github.com/executablebooks/jupyter-book/issues/906 is fixed.
           # See https://jupyterbook.org/advanced/advanced.html#working-on-windows
           - os: "ubuntu"
-            python-version: 3.9
+            python-version: 3.10
           - os: "windows"
             python-version: 3.7
           - os: "macos"
