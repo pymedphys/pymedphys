@@ -9,5 +9,6 @@
     "reportOptionalSubscript": false,
     "reportOptionalOperand": false,
     "reportOptionalCall": false,
-    "reportOptionalIterable": false
+    "reportOptionalIterable": false,
+    "reportPrivateImportUsage": false,
 }
