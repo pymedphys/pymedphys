@@ -18,7 +18,7 @@ import re
 import subprocess
 import tarfile
 import textwrap
-from typing import List
+from typing import List, Optional
 
 from pymedphys._imports import black, tomlkit
 
@@ -36,9 +36,15 @@ VERSION_PATH = LIBRARY_PATH.joinpath("_version.py")
 DIST_DIR = REPO_ROOT.joinpath("dist")
 SETUP_PY = REPO_ROOT.joinpath("setup.py")
 
-REQUIREMENTS_TXT = REPO_ROOT.joinpath("requirements.txt")
-REQUIREMENTS_DEV_TXT = REPO_ROOT.joinpath("requirements-dev.txt")
-REQUIREMENTS_USER_TXT = REPO_ROOT.joinpath("requirements-deploy.txt")
+REQUIREMENTS_CONFIG = (
+    # Extras | Filename | Include PyMedPhys | Make it an editable dev install
+    (["user"], "requirements.txt", True, False),
+    (["dev"], "requirements-dev.txt", True, True),
+    (["user", "tests"], "requirements-deploy.txt", False, None),
+    (["icom"], "requirements-icom.txt", False, None),
+    (["cli"], "requirements-cli.txt", False, None),
+    (["tests"], "requirements-tests.txt", False, None),
+)
 
 ROOT_README = REPO_ROOT.joinpath("README.rst")
 DOCS_README = DOCS_PATH.joinpath("README.rst")
@@ -230,16 +236,20 @@ def _propagate_setup():
 
 def _propagate_requirements():
     """Propagates requirement files for use without Poetry."""
-    _make_requirements_txt(["user"], "requirements.txt", editable=False)
-    _make_requirements_txt(["dev"], "requirements-dev.txt")
-
-    _make_requirements_txt(
-        ["user", "tests"], "requirements-deploy.txt", include_pymedphys=False
-    )
+    for extras, filename, include_pymedphys, editable in REQUIREMENTS_CONFIG:
+        _make_requirements_txt(
+            extras=extras,
+            filename=filename,
+            include_pymedphys=include_pymedphys,
+            editable=editable,
+        )
 
 
 def _make_requirements_txt(
-    extras: List[str], filename: str, include_pymedphys=True, editable=True
+    extras: List[str],
+    filename: str,
+    include_pymedphys: bool,
+    editable: Optional[bool] = None,
 ):
     """Create a requirements.txt file with poetry pins.
 
@@ -250,13 +260,18 @@ def _make_requirements_txt(
     filename : str
         The filename of the requirements file. Will be created in the
         repo root.
-    include_pymedphys : bool, optional
+    include_pymedphys : bool
         Whether or not the requirements file should include an
-        installation of the git repo, by default True.
-    editable : bool, optional
-        Whether or not the pymedphys install should be 'editable', by
-        default True.
+        installation of the git repo.
+    editable : bool
+        Whether or not the pymedphys install should be 'editable'.
     """
+    if not include_pymedphys and editable is not None:
+        raise ValueError("Setting editable only works if using `include_pymedphys`")
+
+    if include_pymedphys and editable is None:
+        raise ValueError("When using `include_pymedphys` need to also set `editable`")
+
     filepath = REPO_ROOT.joinpath(filename)
 
     poetry_environment_flags = " ".join([f"-E {item}" for item in extras])

@@ -58,6 +58,7 @@ pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq
 sqlalchemy = { version = "<1.4", optional = true }  # groups = ["user", "dev", "mosaiq"]
 natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
+toml = { version = "*", optional = true }  # groups = ["user", "cli", "dev"]
 
 pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 
@@ -149,9 +150,11 @@ rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
 readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 tabulate = { version = "*", optional = true }  # groups = ["dev", "doctests"]
+pyoxidizer = { version = "*", optional = true }  # groups = ["dev"]
 
 
 [tool.poetry.extras]
+cli = ["toml"]
 comparables = ["flashgamma"]
 dev = [
     "Pillow",
@@ -183,6 +186,7 @@ dev = [
     "pylint",
     "pymssql",
     "pynetdicom",
+    "pyoxidizer",
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
@@ -204,6 +208,7 @@ dev = [
     "streamlit-ace",
     "tabulate",
     "timeago",
+    "toml",
     "tomlkit",
     "tqdm",
     "watchdog",
@@ -266,6 +271,7 @@ user = [
     "streamlit",
     "streamlit-ace",
     "timeago",
+    "toml",
     "tomlkit",
     "tqdm",
     "watchdog",

@@ -126,6 +126,10 @@ class PatientIcomData:
 
                 return
 
+            # Every iCOM data item has an index, this check here is
+            # making sure that the currently received data item is
+            # incremented by exactly one compared to the most recently
+            # received data item.
             if (self._data[ip][-1][26] + 1) % 256 != data[26]:
                 raise ValueError("Data stream appears to be arriving out of order")
             self._data[ip].append(data)

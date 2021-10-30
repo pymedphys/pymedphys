@@ -101,6 +101,7 @@ packages = [
     "pymedphys.tests.experimental.pseudonymisation",
     "pymedphys.tests.experimental.wlutz",
     "pymedphys.tests.gamma",
+    "pymedphys.tests.icom",
     "pymedphys.tests.logfiles",
     "pymedphys.tests.logging",
     "pymedphys.tests.losslessjpeg",
@@ -156,6 +157,7 @@ package_data = {
 install_requires = ["typing-extensions"]
 
 extras_require = {
+    "cli": ["toml"],
     "comparables": ["flashgamma"],
     "dev": [
         "tqdm",
@@ -175,6 +177,7 @@ extras_require = {
         "sqlalchemy<1.4",
         "natsort",
         "tomlkit",
+        "toml",
         "pynetdicom",
         "dbfread",
         "xmltodict",
@@ -213,6 +216,7 @@ extras_require = {
         "doc8",
         "readme-renderer",
         "tabulate",
+        "pyoxidizer",
     ],
     'dev:sys_platform == "win32"': ["pywin32>=301"],
     "dicom": ["pynetdicom", "pydicom>=2.0.0"],
@@ -261,6 +265,7 @@ extras_require = {
         "sqlalchemy<1.4",
         "natsort",
         "tomlkit",
+        "toml",
         "pynetdicom",
         "dbfread",
         "xmltodict",
