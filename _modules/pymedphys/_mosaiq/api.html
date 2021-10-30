@@ -1,0 +1,628 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pymedphys._mosaiq.api &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="../../../_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="../../../_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="../../../_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
+    
+  <link rel="preload" as="script" href="../../../_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/togglebutton.js"></script>
+    <script src="../../../_static/clipboard.min.js"></script>
+    <script src="../../../_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/_modules/pymedphys/_mosaiq/api.html" />
+    <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/_modules/pymedphys/_mosaiq/api.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="PyMedPhys" />
+<meta property="og:description" content="" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="../../../index.html">
+  
+  <img src="../../../_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2F_modules/pymedphys/_mosaiq/api.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <h1>Source code for pymedphys._mosaiq.api</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2018, 2021 Cancer Care Associates</span>
+
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">connect</span> <span class="k">as</span> <span class="n">_connect</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">credentials</span> <span class="k">as</span> <span class="n">_credentials</span>
+
+<span class="n">Connection</span> <span class="o">=</span> <span class="n">_connect</span><span class="o">.</span><span class="n">Connection</span>
+<span class="n">Cursor</span> <span class="o">=</span> <span class="n">_connect</span><span class="o">.</span><span class="n">Cursor</span>
+
+
+<div class="viewcode-block" id="connect"><a class="viewcode-back" href="../../../lib/ref/mosaiq.html#pymedphys.mosaiq.connect">[docs]</a><span class="k">def</span> <span class="nf">connect</span><span class="p">(</span>
+    <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1433</span><span class="p">,</span>
+    <span class="n">database</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;MOSAIQ&quot;</span><span class="p">,</span>
+    <span class="n">alias</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">username</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Connection</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Connect to a Mosaiq SQL server.</span>
+
+<span class="sd">    The first time running this function on a system will result in a</span>
+<span class="sd">    prompt to login to the Mosaiq SQL server. The provided credentials</span>
+<span class="sd">    will be stored within the operating system&#39;s password storage</span>
+<span class="sd">    facilities. Subsequent calls to this function will pull from that</span>
+<span class="sd">    password storage in order to connect.</span>
+
+<span class="sd">    Can optionally be called as a context manager. This will close the</span>
+<span class="sd">    database connection once leaving the context manager.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hostname : str</span>
+<span class="sd">        The IP address or hostname of the SQL server.</span>
+<span class="sd">    port : int, optional</span>
+<span class="sd">        The port at which the SQL server is hosted, by default ``1433``</span>
+<span class="sd">    database : str, optional</span>
+<span class="sd">        The MSSQL database name, by default ``&quot;MOSAIQ&quot;``</span>
+<span class="sd">    alias : Optional[str], optional</span>
+<span class="sd">        A human readable representation of the server, this is the name</span>
+<span class="sd">        of the server presented to the user should there not be</span>
+<span class="sd">        credentials already on the machine, by default ``&quot;hostname:port/database&quot;``</span>
+<span class="sd">    username : Optional[str], optional</span>
+<span class="sd">        Provide a username to login to the database with, by default the</span>
+<span class="sd">        username is either pulled from the system&#39;s credential storage,</span>
+<span class="sd">        or an interactive prompt is used.</span>
+<span class="sd">    password : Optional[str], optional</span>
+<span class="sd">        Provide a password to login to the database with, by default the</span>
+<span class="sd">        password is either pulled from the system&#39;s credential storage,</span>
+<span class="sd">        or an interactive prompt is used.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    connection : pymedphys.mosaiq.Connection</span>
+<span class="sd">        A database connection. This connection can be passed to</span>
+<span class="sd">        :func:`pymedphys.mosaiq.execute` to be able to run queries.</span>
+
+<span class="sd">        The method ``close()`` can be called on this object to close the</span>
+<span class="sd">        database connection.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    See :func:`pymedphys.mosaiq.execute` for examples of usage.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">username</span><span class="p">,</span> <span class="n">password</span> <span class="o">=</span> <span class="n">_credentials</span><span class="o">.</span><span class="n">get_username_password_with_prompt_fallback</span><span class="p">(</span>
+            <span class="n">hostname</span><span class="o">=</span><span class="n">hostname</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="n">alias</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Must either provide both username and password, or neither of them.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">connection</span> <span class="o">=</span> <span class="n">_connect</span><span class="o">.</span><span class="n">connect_with_credentials</span><span class="p">(</span>
+        <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">hostname</span><span class="o">=</span><span class="n">hostname</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">connection</span></div>
+
+
+<div class="viewcode-block" id="execute"><a class="viewcode-back" href="../../../lib/ref/mosaiq.html#pymedphys.mosaiq.execute">[docs]</a><span class="k">def</span> <span class="nf">execute</span><span class="p">(</span>
+    <span class="n">connection</span><span class="p">:</span> <span class="n">Connection</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
+    <span class="sd">&quot;&quot;&quot;Execute SQL queries on a Mosaiq database.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    connection : pymedphys.mosaiq.Connection</span>
+<span class="sd">        A database connection. This can be retrieved by calling</span>
+<span class="sd">        ``pymedphys.mosaiq.connect``</span>
+<span class="sd">    query : str</span>
+<span class="sd">        The SQL query to execute. Do not parse Python variables directly</span>
+<span class="sd">        into this string. Instead create this string as if you</span>
+<span class="sd">        are going to call ``format`` on it</span>
+<span class="sd">        (https://docs.python.org/3/library/stdtypes.html#str.format)</span>
+<span class="sd">        and then utilise the parameters optional argument to this</span>
+<span class="sd">        function. That way, the underlying library ``pymssql`` will</span>
+<span class="sd">        sanitise the parameters to protect against malicious inputs.</span>
+<span class="sd">    parameters : Dict, optional</span>
+<span class="sd">        Parameters to be included within the query. These are sanitised</span>
+<span class="sd">        by the underlying ``pymssql`` library before being included</span>
+<span class="sd">        within the query string, by default None</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    results : List[Tuple[str, ...]]</span>
+<span class="sd">        The results from the database query organised so that each row</span>
+<span class="sd">        is an item within the returned list.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Directly calling the connection object and listing all patients that</span>
+<span class="sd">    have the last name of ``&quot;PHANTOM&quot;``.</span>
+
+<span class="sd">    &gt;&gt;&gt; import pymedphys.mosaiq</span>
+<span class="sd">    &gt;&gt;&gt; connection = pymedphys.mosaiq.connect(&#39;msqsql&#39;)  # doctest: +SKIP</span>
+
+<span class="sd">    &gt;&gt;&gt; pymedphys.mosaiq.execute(</span>
+<span class="sd">    ...     connection,</span>
+<span class="sd">    ...     &#39;&#39;&#39;</span>
+<span class="sd">    ...     SELECT</span>
+<span class="sd">    ...         Ident.IDA,</span>
+<span class="sd">    ...         Patient.Last_Name,</span>
+<span class="sd">    ...         Patient.First_Name</span>
+<span class="sd">    ...     FROM Ident, Patient</span>
+<span class="sd">    ...     WHERE</span>
+<span class="sd">    ...         Patient.Pat_ID1 = Ident.Pat_ID1 AND</span>
+<span class="sd">    ...         Patient.Last_Name = %(last_name)s</span>
+<span class="sd">    ...     &#39;&#39;&#39;,</span>
+<span class="sd">    ...     {&quot;last_name&quot;: &quot;PHANTOM&quot;},</span>
+<span class="sd">    ... )  # doctest: +SKIP</span>
+<span class="sd">    [(&#39;654324&#39;, &#39;PHANTOM&#39;, &#39;CATPHAN&#39;),</span>
+<span class="sd">     (&#39;944444&#39;, &#39;PHANTOM&#39;, &#39;DELTA4&#39;),</span>
+<span class="sd">     (&#39;654321&#39;, &#39;PHANTOM&#39;, &#39;PELVIS&#39;),</span>
+<span class="sd">     (&#39;012534&#39;, &#39;PHANTOM&#39;, &#39;QUASAR4D&#39;),</span>
+<span class="sd">     (&#39;987654&#39;, &#39;PHANTOM&#39;, &#39;RESPIRATORY&#39;),</span>
+<span class="sd">     (&#39;654325&#39;, &#39;PHANTOM&#39;, &#39;RW3&#39;)]</span>
+
+<span class="sd">    Connecting via a context manager and using pandas to present the</span>
+<span class="sd">    results as a table.</span>
+
+<span class="sd">    &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">    &gt;&gt;&gt; import pymedphys.mosaiq</span>
+
+<span class="sd">    &gt;&gt;&gt; with pymedphys.mosaiq.connect(&#39;msqsql&#39;) as connection:  # doctest: +SKIP</span>
+<span class="sd">    ...     results = pymedphys.mosaiq.execute(</span>
+<span class="sd">    ...         connection,</span>
+<span class="sd">    ...         &#39;&#39;&#39;</span>
+<span class="sd">    ...         SELECT</span>
+<span class="sd">    ...             Ident.IDA,</span>
+<span class="sd">    ...             Chklist.Due_DtTm</span>
+<span class="sd">    ...         FROM Chklist, Staff, Ident</span>
+<span class="sd">    ...         WHERE</span>
+<span class="sd">    ...             Chklist.Pat_ID1 = Ident.Pat_ID1 AND</span>
+<span class="sd">    ...             Staff.Staff_ID = Chklist.Rsp_Staff_ID AND</span>
+<span class="sd">    ...             Staff.Last_Name = %(qcl_location)s AND</span>
+<span class="sd">    ...             Chklist.Complete = 0</span>
+<span class="sd">    ...         &#39;&#39;&#39;,</span>
+<span class="sd">    ...         {&quot;qcl_location&quot;: &quot;Physics_Check&quot;},</span>
+<span class="sd">    ...     )</span>
+
+<span class="sd">    &gt;&gt;&gt; pd.DataFrame(  # doctest: +SKIP</span>
+<span class="sd">    ...     data=results,</span>
+<span class="sd">    ...     columns=[</span>
+<span class="sd">    ...         &quot;patient_id&quot;,</span>
+<span class="sd">    ...         &quot;due&quot;,</span>
+<span class="sd">    ...     ],</span>
+<span class="sd">    ... )</span>
+<span class="sd">      patient_id                 due</span>
+<span class="sd">    0     000000 2021-02-01 23:59:59</span>
+<span class="sd">    1     000001 2021-02-01 23:59:59</span>
+<span class="sd">    2     000002 2021-02-01 23:59:59</span>
+<span class="sd">    3     000003 2021-03-08 23:59:59</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+</pre></div>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/_modules/pymedphys/_mosaiq/api'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="../../../_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>

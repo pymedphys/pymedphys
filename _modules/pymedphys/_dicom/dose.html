@@ -1,0 +1,811 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pymedphys._dicom.dose &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="../../../_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="../../../_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="../../../_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
+    
+  <link rel="preload" as="script" href="../../../_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/togglebutton.js"></script>
+    <script src="../../../_static/clipboard.min.js"></script>
+    <script src="../../../_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/_modules/pymedphys/_dicom/dose.html" />
+    <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/_modules/pymedphys/_dicom/dose.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="PyMedPhys" />
+<meta property="og:description" content="" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="../../../index.html">
+  
+  <img src="../../../_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2F_modules/pymedphys/_dicom/dose.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <h1>Source code for pymedphys._dicom.dose</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2016-2021 Matthew Jennings and Simon Biggs</span>
+
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot;A DICOM RT Dose toolbox&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span>
+
+<span class="kn">from</span> <span class="nn">pymedphys._imports</span> <span class="kn">import</span> <span class="n">matplotlib</span>
+<span class="kn">from</span> <span class="nn">pymedphys._imports</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="nn">pymedphys._imports</span> <span class="kn">import</span> <span class="n">plt</span><span class="p">,</span> <span class="n">pydicom</span><span class="p">,</span> <span class="n">scipy</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">orientation</span>
+<span class="kn">from</span> <span class="nn">.coords</span> <span class="kn">import</span> <span class="n">coords_in_datasets_are_equal</span><span class="p">,</span> <span class="n">xyz_axes_from_dataset</span>
+<span class="kn">from</span> <span class="nn">.header</span> <span class="kn">import</span> <span class="n">patient_ids_in_datasets_are_equal</span>
+<span class="kn">from</span> <span class="nn">.rtplan</span> <span class="kn">import</span> <span class="n">get_surface_entry_point_with_fallback</span><span class="p">,</span> <span class="n">require_gantries_be_zero</span>
+<span class="kn">from</span> <span class="nn">.structure</span> <span class="kn">import</span> <span class="n">pull_structure</span>
+
+<span class="c1"># pylint: disable=C0103</span>
+
+
+<div class="viewcode-block" id="zyx_and_dose_from_dataset"><a class="viewcode-back" href="../../../lib/ref/dicom.html#pymedphys.dicom.zyx_and_dose_from_dataset">[docs]</a><span class="k">def</span> <span class="nf">zyx_and_dose_from_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">xyz_axes_from_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="n">dose</span> <span class="o">=</span> <span class="n">dose_from_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">coords</span><span class="p">,</span> <span class="n">dose</span></div>
+
+
+<span class="k">def</span> <span class="nf">dose_from_dataset</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">set_transfer_syntax_uid</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Extract the dose grid from a DICOM RT Dose file.&quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">set_transfer_syntax_uid</span><span class="p">:</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">file_meta</span><span class="o">.</span><span class="n">TransferSyntaxUID</span> <span class="o">=</span> <span class="n">pydicom</span><span class="o">.</span><span class="n">uid</span><span class="o">.</span><span class="n">ImplicitVRLittleEndian</span>
+
+    <span class="n">dose</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">pixel_array</span> <span class="o">*</span> <span class="n">ds</span><span class="o">.</span><span class="n">DoseGridScaling</span>
+
+    <span class="k">return</span> <span class="n">dose</span>
+
+
+<div class="viewcode-block" id="dicom_dose_interpolate"><a class="viewcode-back" href="../../../lib/ref/dicom.html#pymedphys.dicom.dicom_dose_interpolate">[docs]</a><span class="k">def</span> <span class="nf">dicom_dose_interpolate</span><span class="p">(</span><span class="n">interp_coords</span><span class="p">,</span> <span class="n">dicom_dose_dataset</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interpolates across a DICOM dose dataset.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    interp_coords : tuple(z, y, x)</span>
+<span class="sd">        A tuple of coordinates in DICOM order, z axis first, then y, then x</span>
+<span class="sd">        where x, y, and z are DICOM axes.</span>
+<span class="sd">    dose : pydicom.Dataset</span>
+<span class="sd">        An RT DICOM Dose object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">interp_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interp_coords</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">interp_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interp_coords</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">interp_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interp_coords</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">coords</span><span class="p">,</span> <span class="n">dicom_dose_dataset</span> <span class="o">=</span> <span class="n">zyx_and_dose_from_dataset</span><span class="p">(</span><span class="n">dicom_dose_dataset</span><span class="p">)</span>
+    <span class="n">interpolation</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">RegularGridInterpolator</span><span class="p">(</span>
+        <span class="n">coords</span><span class="p">,</span> <span class="n">dicom_dose_dataset</span>
+    <span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">interpolation</span><span class="p">((</span><span class="n">interp_z</span><span class="p">,</span> <span class="n">interp_y</span><span class="p">,</span> <span class="n">interp_x</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;coords: </span><span class="si">{</span><span class="n">coords</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="depth_dose"><a class="viewcode-back" href="../../../lib/ref/dicom.html#pymedphys.dicom.depth_dose">[docs]</a><span class="k">def</span> <span class="nf">depth_dose</span><span class="p">(</span><span class="n">depths</span><span class="p">,</span> <span class="n">dose_dataset</span><span class="p">,</span> <span class="n">plan_dataset</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interpolates dose for defined depths within a DICOM dose dataset.</span>
+
+<span class="sd">    Since the DICOM dose dataset is in CT coordinates the corresponding</span>
+<span class="sd">    DICOM plan is also required in order to calculate the conversion</span>
+<span class="sd">    between CT coordinate space and depth.</span>
+
+<span class="sd">    Currently, `depth_dose()` only supports a `dose_dataset` for which</span>
+<span class="sd">    the patient orientation is HFS and that any beams in `plan_dataset`</span>
+<span class="sd">    have gantry angle equal to 0 (head up). Depth is assumed to be</span>
+<span class="sd">    purely in the y axis direction in DICOM coordinates.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    depths : numpy.ndarray</span>
+<span class="sd">        An array of depths to interpolate within the DICOM dose file. 0 is</span>
+<span class="sd">        defined as the surface of the phantom using either the</span>
+<span class="sd">        ``SurfaceEntryPoint`` parameter or a combination of</span>
+<span class="sd">        ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and</span>
+<span class="sd">        ``IsocentrePosition``.</span>
+<span class="sd">    dose_dataset : pydicom.dataset.Dataset</span>
+<span class="sd">        The RT DICOM dose dataset to be interpolated</span>
+<span class="sd">    plan_dataset : pydicom.dataset.Dataset</span>
+<span class="sd">        The RT DICOM plan used to extract surface parameters and verify gantry</span>
+<span class="sd">        angle 0 beams are used.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">orientation</span><span class="o">.</span><span class="n">require_dicom_patient_position</span><span class="p">(</span><span class="n">dose_dataset</span><span class="p">,</span> <span class="s2">&quot;HFS&quot;</span><span class="p">)</span>
+    <span class="n">require_gantries_be_zero</span><span class="p">(</span><span class="n">plan_dataset</span><span class="p">)</span>
+    <span class="n">depths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">depths</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">surface_entry_point</span> <span class="o">=</span> <span class="n">get_surface_entry_point_with_fallback</span><span class="p">(</span><span class="n">plan_dataset</span><span class="p">)</span>
+    <span class="n">depth_adjust</span> <span class="o">=</span> <span class="n">surface_entry_point</span><span class="o">.</span><span class="n">y</span>
+
+    <span class="n">y</span> <span class="o">=</span> <span class="n">depths</span> <span class="o">+</span> <span class="n">depth_adjust</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="p">[</span><span class="n">surface_entry_point</span><span class="o">.</span><span class="n">x</span><span class="p">],</span> <span class="p">[</span><span class="n">surface_entry_point</span><span class="o">.</span><span class="n">z</span><span class="p">]</span>
+
+    <span class="n">coords</span> <span class="o">=</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+
+    <span class="n">extracted_dose</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">dicom_dose_interpolate</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">dose_dataset</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">extracted_dose</span></div>
+
+
+<div class="viewcode-block" id="profile"><a class="viewcode-back" href="../../../lib/ref/dicom.html#pymedphys.dicom.profile">[docs]</a><span class="k">def</span> <span class="nf">profile</span><span class="p">(</span><span class="n">displacements</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">direction</span><span class="p">,</span> <span class="n">dose_dataset</span><span class="p">,</span> <span class="n">plan_dataset</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interpolates dose for cardinal angle horizontal profiles within a</span>
+<span class="sd">    DICOM dose dataset.</span>
+
+<span class="sd">    Since the DICOM dose dataset is in CT coordinates the corresponding</span>
+<span class="sd">    DICOM plan is also required in order to calculate the conversion</span>
+<span class="sd">    between CT coordinate space and depth and horizontal displacement.</span>
+
+<span class="sd">    Currently, `profile()` only supports a `dose_dataset` for which</span>
+<span class="sd">    the patient orientation is HFS and that any beams in `plan_dataset`</span>
+<span class="sd">    have gantry angle equal to 0 (head up). Depth is assumed to be</span>
+<span class="sd">    purely in the y axis direction in DICOM coordinates.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    displacements : numpy.ndarray</span>
+<span class="sd">        An array of displacements to interpolate within the DICOM dose</span>
+<span class="sd">        file. 0 is defined in the DICOM z or x directions based either</span>
+<span class="sd">        upon the ``SurfaceEntryPoint`` or the ``IsocenterPosition``</span>
+<span class="sd">        depending on what is available within the DICOM plan file.</span>
+<span class="sd">    depth : float</span>
+<span class="sd">        The depth at which to interpolate within the DICOM dose file. 0 is</span>
+<span class="sd">        defined as the surface of the phantom using either the</span>
+<span class="sd">        ``SurfaceEntryPoint`` parameter or a combination of</span>
+<span class="sd">        ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and</span>
+<span class="sd">        ``IsocentrePosition``.</span>
+<span class="sd">    direction : str, one of (&#39;inplane&#39;, &#39;inline&#39;, &#39;crossplane&#39;, &#39;crossline&#39;)</span>
+<span class="sd">        Corresponds to the axis upon which to apply the displacements.</span>
+<span class="sd">         - &#39;inplane&#39; or &#39;inline&#39; converts to DICOM z direction</span>
+<span class="sd">         - &#39;crossplane&#39; or &#39;crossline&#39; converts to DICOM x direction</span>
+<span class="sd">    dose_dataset : pydicom.dataset.Dataset</span>
+<span class="sd">        The RT DICOM dose dataset to be interpolated</span>
+<span class="sd">    plan_dataset : pydicom.dataset.Dataset</span>
+<span class="sd">        The RT DICOM plan used to extract surface and isocentre</span>
+<span class="sd">        parameters and verify gantry angle 0 beams are used.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">orientation</span><span class="o">.</span><span class="n">require_dicom_patient_position</span><span class="p">(</span><span class="n">dose_dataset</span><span class="p">,</span> <span class="s2">&quot;HFS&quot;</span><span class="p">)</span>
+    <span class="n">require_gantries_be_zero</span><span class="p">(</span><span class="n">plan_dataset</span><span class="p">)</span>
+    <span class="n">displacements</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">displacements</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">surface_entry_point</span> <span class="o">=</span> <span class="n">get_surface_entry_point_with_fallback</span><span class="p">(</span><span class="n">plan_dataset</span><span class="p">)</span>
+    <span class="n">depth_adjust</span> <span class="o">=</span> <span class="n">surface_entry_point</span><span class="o">.</span><span class="n">y</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">depth</span> <span class="o">+</span> <span class="n">depth_adjust</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">direction</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;inplane&quot;</span><span class="p">,</span> <span class="s2">&quot;inline&quot;</span><span class="p">):</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="p">(</span><span class="n">displacements</span> <span class="o">+</span> <span class="n">surface_entry_point</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="n">surface_entry_point</span><span class="o">.</span><span class="n">x</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">direction</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;crossplane&quot;</span><span class="p">,</span> <span class="s2">&quot;crossline&quot;</span><span class="p">):</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="p">([</span><span class="n">surface_entry_point</span><span class="o">.</span><span class="n">z</span><span class="p">],</span> <span class="n">y</span><span class="p">,</span> <span class="n">displacements</span> <span class="o">+</span> <span class="n">surface_entry_point</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Expected direction to be equal to one of &quot;</span>
+            <span class="s2">&quot;&#39;inplane&#39;, &#39;inline&#39;, &#39;crossplane&#39;, or &#39;crossline&#39;&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">extracted_dose</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">dicom_dose_interpolate</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">dose_dataset</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">extracted_dose</span></div>
+
+
+<span class="k">def</span> <span class="nf">get_dose_grid_structure_mask</span><span class="p">(</span>
+    <span class="n">structure_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">structure_dataset</span><span class="p">:</span> <span class="s2">&quot;pydicom.Dataset&quot;</span><span class="p">,</span>
+    <span class="n">dose_dataset</span><span class="p">:</span> <span class="s2">&quot;pydicom.Dataset&quot;</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Determines the 3D boolean mask defining whether or not a grid</span>
+<span class="sd">    point is inside or outside of a defined structure.</span>
+
+<span class="sd">    In its current implementation the dose grid and the planes upon</span>
+<span class="sd">    which the structures are defined need to be aligned. This is due to</span>
+<span class="sd">    the implementation only stepping through each structure plane and</span>
+<span class="sd">    undergoing a 2D mask on the respective dose grid. In order to</span>
+<span class="sd">    undergo a mask when the contours and dose grids do not align</span>
+<span class="sd">    inter-slice contour interpolation would be required.</span>
+
+<span class="sd">    For now, having two contours for the same structure name on a single</span>
+<span class="sd">    slice is also not supported.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    structure_name</span>
+<span class="sd">        The name of the structure for which the mask is to be created</span>
+<span class="sd">    structure_dataset : pydicom.Dataset</span>
+<span class="sd">        An RT Structure DICOM object containing the respective</span>
+<span class="sd">        structures.</span>
+<span class="sd">    dose_dataset : pydicom.Dataset</span>
+<span class="sd">        An RT Dose DICOM object from which the grid mask coordinates are</span>
+<span class="sd">        determined.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If an unsupported contour is provided or the dose grid does not</span>
+<span class="sd">        align with the structure planes.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x_dose</span><span class="p">,</span> <span class="n">y_dose</span><span class="p">,</span> <span class="n">z_dose</span> <span class="o">=</span> <span class="n">xyz_axes_from_dataset</span><span class="p">(</span><span class="n">dose_dataset</span><span class="p">)</span>
+
+    <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x_dose</span><span class="p">,</span> <span class="n">y_dose</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">xx</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">yy</span><span class="o">.</span><span class="n">ravel</span><span class="p">()]),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">x_structure</span><span class="p">,</span> <span class="n">y_structure</span><span class="p">,</span> <span class="n">z_structure</span> <span class="o">=</span> <span class="n">pull_structure</span><span class="p">(</span>
+        <span class="n">structure_name</span><span class="p">,</span> <span class="n">structure_dataset</span>
+    <span class="p">)</span>
+
+    <span class="n">structure_z_values</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">z_structure</span><span class="p">:</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only one z value per contour supported&quot;</span><span class="p">)</span>
+        <span class="n">structure_z_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">structure_z_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">structure_z_values</span><span class="p">)</span>
+    <span class="n">unique_structure_z_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">structure_z_values</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">structure_z_values</span> <span class="o">!=</span> <span class="n">unique_structure_z_values</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only one contour per slice is currently supported&quot;</span><span class="p">)</span>
+
+    <span class="n">sorted_dose_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">z_dose</span><span class="p">)</span>
+
+    <span class="n">first_dose_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">sorted_dose_z</span> <span class="o">==</span> <span class="n">structure_z_values</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">z_val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">structure_z_values</span><span class="p">):</span>
+        <span class="n">dose_index</span> <span class="o">=</span> <span class="n">first_dose_index</span> <span class="o">+</span> <span class="n">i</span>
+        <span class="k">if</span> <span class="n">structure_z_values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="n">sorted_dose_z</span><span class="p">[</span><span class="n">dose_index</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Only contours where both, there are no gaps in the &quot;</span>
+                <span class="s2">&quot;z-axis of the contours, and the contour axis and dose &quot;</span>
+                <span class="s2">&quot;axis, are aligned are supported.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="n">mask_yxz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">y_dose</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_dose</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_dose</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">structure_index</span><span class="p">,</span> <span class="n">z_val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">structure_z_values</span><span class="p">):</span>
+        <span class="n">dose_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">z_dose</span> <span class="o">==</span> <span class="n">z_val</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">z_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">z_dose</span><span class="p">[</span><span class="n">dose_index</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Structure and dose indices do not align&quot;</span><span class="p">)</span>
+
+        <span class="n">structure_polygon</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="p">(</span><span class="n">x_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">y_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">][</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">]))</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># This logical &quot;or&quot; here is actually in place for the case where</span>
+        <span class="c1"># there may be multiple contours on the one slice. That&#39;s not</span>
+        <span class="c1"># going to be used at the moment however, as that case is not</span>
+        <span class="c1"># yet supported in the logic above.</span>
+        <span class="n">mask_yxz</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">dose_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask_yxz</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">dose_index</span><span class="p">]</span> <span class="o">|</span> <span class="p">(</span>
+            <span class="n">structure_polygon</span><span class="o">.</span><span class="n">contains_points</span><span class="p">(</span><span class="n">points</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y_dose</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_dose</span><span class="p">))</span>
+        <span class="p">)</span>
+
+    <span class="n">mask_xyz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">mask_yxz</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">mask_zyx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">mask_xyz</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mask_zyx</span>
+
+
+<span class="k">def</span> <span class="nf">find_dose_within_structure</span><span class="p">(</span><span class="n">structure_name</span><span class="p">,</span> <span class="n">structure_dataset</span><span class="p">,</span> <span class="n">dose_dataset</span><span class="p">):</span>
+    <span class="n">dose</span> <span class="o">=</span> <span class="n">dose_from_dataset</span><span class="p">(</span><span class="n">dose_dataset</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">get_dose_grid_structure_mask</span><span class="p">(</span><span class="n">structure_name</span><span class="p">,</span> <span class="n">structure_dataset</span><span class="p">,</span> <span class="n">dose_dataset</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dose</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">create_dvh</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">structure_dataset</span><span class="p">,</span> <span class="n">dose_dataset</span><span class="p">):</span>
+    <span class="n">structure_dose_values</span> <span class="o">=</span> <span class="n">find_dose_within_structure</span><span class="p">(</span>
+        <span class="n">structure</span><span class="p">,</span> <span class="n">structure_dataset</span><span class="p">,</span> <span class="n">dose_dataset</span>
+    <span class="p">)</span>
+    <span class="n">hist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">structure_dose_values</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">freq</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">bin_edge</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">bin_mid</span> <span class="o">=</span> <span class="p">(</span><span class="n">bin_edge</span><span class="p">[</span><span class="mi">1</span><span class="p">::]</span> <span class="o">+</span> <span class="n">bin_edge</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">freq</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="n">cumulative</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">bin_mid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">bin_mid</span><span class="p">)</span>
+
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cumulative</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cumulative</span><span class="p">)</span>
+    <span class="n">percent_cumulative</span> <span class="o">=</span> <span class="n">cumulative</span> <span class="o">/</span> <span class="n">cumulative</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">bin_mid</span><span class="p">,</span> <span class="n">percent_cumulative</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">structure</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;DVH&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Dose (Gy)&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Relative Volume (%)&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">sum_doses_in_datasets</span><span class="p">(</span>
+    <span class="n">datasets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="s2">&quot;pydicom.dataset.Dataset&quot;</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pydicom.dataset.Dataset&quot;</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Sum two or more DICOM dose grids and save to new DICOM RT</span>
+<span class="sd">    Dose dataset&quot;</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    datasets : sequence of pydicom.dataset.Dataset</span>
+<span class="sd">        A sequence of DICOM RT Dose datasets whose doses are to be</span>
+<span class="sd">        summed.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pydicom.dataset.Dataset</span>
+<span class="sd">        A new DICOM RT Dose dataset whose dose is the sum of all doses</span>
+<span class="sd">        within `datasets`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Modality</span> <span class="o">==</span> <span class="s2">&quot;RTDOSE&quot;</span> <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`datasets` must only contain DICOM RT Dose datasets.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">patient_ids_in_datasets_are_equal</span><span class="p">(</span><span class="n">datasets</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Patient ID must match for all datasets&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">DoseSummationType</span> <span class="o">==</span> <span class="s2">&quot;PLAN&quot;</span> <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Only DICOM RT Doses whose DoseSummationTypes are &#39;PLAN&#39; are supported&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">DoseUnits</span> <span class="o">==</span> <span class="n">datasets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">DoseUnits</span> <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;All DICOM RT Doses must have the same units (&#39;GY or &#39;RELATIVE&#39;)&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">coords_in_datasets_are_equal</span><span class="p">(</span><span class="n">datasets</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All dose grids must have perfectly coincident coordinates&quot;</span><span class="p">)</span>
+
+    <span class="n">ds_summed</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">ds_summed</span><span class="o">.</span><span class="n">BitsAllocated</span> <span class="o">=</span> <span class="mi">32</span>
+    <span class="n">ds_summed</span><span class="o">.</span><span class="n">BitsStored</span> <span class="o">=</span> <span class="mi">32</span>
+    <span class="n">ds_summed</span><span class="o">.</span><span class="n">HighBit</span> <span class="o">=</span> <span class="mi">31</span>
+    <span class="n">ds_summed</span><span class="o">.</span><span class="n">DoseSummationType</span> <span class="o">=</span> <span class="s2">&quot;MULTI_PLAN&quot;</span>
+    <span class="n">ds_summed</span><span class="o">.</span><span class="n">DoseComment</span> <span class="o">=</span> <span class="s2">&quot;Summed Dose&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">DoseType</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;PHYSICAL&quot;</span><span class="p">,</span> <span class="s2">&quot;EFFECTIVE&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Only DICOM RT Doses whose DoseTypes are &#39;PHYSICAL&#39; or &quot;</span>
+            <span class="s2">&quot;&#39;EFFECTIVE&#39; are supported&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">DoseType</span> <span class="o">==</span> <span class="s2">&quot;EFFECTIVE&quot;</span> <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">):</span>
+        <span class="n">ds_summed</span><span class="o">.</span><span class="n">DoseType</span> <span class="o">=</span> <span class="s2">&quot;EFFECTIVE&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ds_summed</span><span class="o">.</span><span class="n">DoseType</span> <span class="o">=</span> <span class="s2">&quot;PHYSICAL&quot;</span>
+
+    <span class="n">doses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">dose_from_dataset</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span> <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">])</span>
+    <span class="n">doses_summed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">doses</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="n">ds_summed</span><span class="o">.</span><span class="n">DoseGridScaling</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">doses_summed</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="nb">int</span><span class="p">(</span><span class="n">ds_summed</span><span class="o">.</span><span class="n">HighBit</span><span class="p">))</span>
+
+    <span class="n">pixel_array_summed</span> <span class="o">=</span> <span class="p">(</span><span class="n">doses_summed</span> <span class="o">/</span> <span class="n">ds_summed</span><span class="o">.</span><span class="n">DoseGridScaling</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">)</span>
+    <span class="n">ds_summed</span><span class="o">.</span><span class="n">PixelData</span> <span class="o">=</span> <span class="n">pixel_array_summed</span><span class="o">.</span><span class="n">tobytes</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">ds_summed</span>
+</pre></div>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/_modules/pymedphys/_dicom/dose'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="../../../_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>

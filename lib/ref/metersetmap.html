@@ -1,0 +1,709 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MetersetMap &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="../../_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="../../_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="../../_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    
+  <link rel="preload" as="script" href="../../_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/togglebutton.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script >
+        const thebe_selector = ".thebe,.cell"
+        const thebe_selector_input = "pre,.cell_input div.highlight"
+        const thebe_selector_output = ".output,.cell_output"
+    </script>
+    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/lib/ref/metersetmap.html" />
+    <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="TRF" href="trf.html" />
+    <link rel="prev" title="Mosaiq" href="mosaiq.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/lib/ref/metersetmap.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="MetersetMap" />
+<meta property="og:description" content="MetersetMap  Summary    A suite of functions to determine the MetersetMap for a range of formats  Warning  Although this is a useful tool in the toolbox for pat" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="../../index.html">
+  
+  <img src="../../_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="current nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../../_sources/lib/ref/metersetmap.rst"><button type="button"
+                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
+                data-placement="left">.rst</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/ref/metersetmap.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/ref/metersetmap.rst"><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+                
+        <div class="tocsection onthispage pt-5 pb-3">
+            <i class="fas fa-list"></i>
+            Contents
+        </div>
+        <nav id="bd-toc-nav">
+            <ul class="nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-pymedphys.metersetmap">
+   Summary
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#api">
+   API
+  </a>
+ </li>
+
+                <li class="toc-h2 nav-item toc-entry">
+                    <a class="reference internal nav-link" href="#comments">
+                        Comments
+                    </a>
+                    <ul class="nav section-nav flex-column">
+                    </ul>
+                </li>
+            </ul>
+            </ul>
+
+        </nav>
+        
+        
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <div class="section" id="metersetmap">
+<h1>MetersetMap<a class="headerlink" href="#metersetmap" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-pymedphys.metersetmap">
+<span id="summary"></span><h2>Summary<a class="headerlink" href="#module-pymedphys.metersetmap" title="Permalink to this headline">¶</a></h2>
+<p>A suite of functions to determine the MetersetMap for a range of
+formats</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Although this is a useful tool in the toolbox for patient specific
+IMRT QA, in and of itself it is not a sufficient replacement for
+direct dosimetric measurement. This tool does not verify that the
+reported dose within the treatment planning system matches that
+delivered by the Linac.</p>
+<p>Deficiencies in a plan’s agreement between the treatment planning
+system and the Linac due to deviations such as small field
+output factors or the MLC model will not be able to be picked up by
+this tool.</p>
+<p>Furthermore, when the MetersetMap is calculated off of log files
+alone this uses leaf and jaw positions as reported by the Linac which
+may not agree with their position in reality due to issues such as a
+hardware or calibration fault.</p>
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="pymedphys.metersetmap.calculate">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.metersetmap.</span></code><code class="sig-name descname"><span class="pre">calculate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jaw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_leaf_gap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_pair_widths</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_step_per_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys.metersetmap.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the MetersetMap.</p>
+<p>Both jaw and mlc positions are defined in bipolar format for each control
+point. A negative value indicates travel over the isocentre. All positional
+arguments are defined at the isocentre projection with the units of mm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mu</strong> (<em>numpy.ndarray</em>) – 1-D array containing an MU value for each control point.</p></li>
+<li><p><strong>mlc</strong> (<em>numpy.ndarray</em>) – <p>3-D array containing the MLC positions</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">axis 0: control point</div>
+<div class="line">axis 1: mlc pair</div>
+<div class="line">axis 2: leaf bank</div>
+</div>
+</div></blockquote>
+</p></li>
+<li><p><strong>jaw</strong> (<em>numpy.ndarray</em>) – <p>2-D array containing the jaw positions.</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">axis 0: control point</div>
+<div class="line">axis 1: diaphragm</div>
+</div>
+</div></blockquote>
+</p></li>
+<li><p><strong>grid_resolution</strong> (<em>float</em><em>, </em><em>optional</em>) – The calc grid resolution. Defaults to 1 mm.</p></li>
+<li><p><strong>max_leaf_gap</strong> (<em>float</em><em>, </em><em>optional</em>) – The maximum possible distance between opposing leaves. Defaults to
+400 mm.</p></li>
+<li><p><strong>leaf_pair_widths</strong> (<em>tuple</em><em>, </em><em>optional</em>) – The widths of each leaf pair in the
+MLC limiting device. The number of entries in the tuples defines
+the number of leaf pairs. Each entry itself defines that particular
+leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.</p></li>
+<li><p><strong>min_step_per_pixel</strong> (<em>int</em><em>, </em><em>optional</em>) – The minimum number of time steps
+used per pixel for each control point. Defaults to 10.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p><strong>metersetmap</strong> –</p>
+<p>2-D array containing the calculated metersetmap.</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">axis 0: jaw direction</div>
+<div class="line">axis 1: mlc direction</div>
+</div>
+</div></blockquote>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pymedphys</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">max_leaf_gap</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mlc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jaw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">7.5</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">7.5</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">metersetmap</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span>
+<span class="gp">... </span>   <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">max_leaf_gap</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">]</span>
+<span class="go">array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">]</span>
+<span class="go">array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,</span>
+<span class="go">        5.,  6.,  7.,  8.])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">metersetmap</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">metersetmap</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+<span class="gp">... </span>   <span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">max_leaf_gap</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pymedphys</span><span class="o">.</span><span class="n">metersetmap</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">metersetmap</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">metersetmap</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="go">array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.3, 1.9, 2.2, 1.9, 0.4, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.6, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.4, 2.8, 2.5, 0.8, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.5, 3.1, 2.8, 1. , 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.5, 3.4, 3.1, 1.3, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.7, 3.7, 3.5, 1.6, 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4. , 3.8, 1.9, 0.1, 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4.3, 4.1, 2.3, 0.1, 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.9, 5.2, 4.7, 2.6, 0.2, 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.8, 5.4, 6.6, 3.8, 0.5, 0. ],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 5.1, 7.5, 6.7, 3.9, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.7, 6.9, 6.7, 3.9, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 6.3, 6.4, 3.9, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.6, 5.7, 3.8, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.1, 5.1, 3.3, 0.5],</span>
+<span class="go">       [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])</span>
+</pre></div>
+</div>
+<p>MetersetMap from a Mosaiq record</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pymedphys</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">metersetmap_from_mosaiq</span><span class="p">(</span><span class="n">msq_server_name</span><span class="p">,</span> <span class="n">field_id</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">mosaiq</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">msq_server_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">delivery</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">Delivery</span><span class="o">.</span><span class="n">from_mosaiq</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">field_id</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">grid</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">metersetmap</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">metersetmap</span> <span class="o">=</span> <span class="n">delivery</span><span class="o">.</span><span class="n">metersetmap</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">pymedphys</span><span class="o">.</span><span class="n">metersetmap</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">metersetmap</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">metersetmap_from_mosaiq</span><span class="p">(</span><span class="s1">&#39;a_server_name&#39;</span><span class="p">,</span> <span class="mi">11111</span><span class="p">)</span> 
+</pre></div>
+</div>
+<p>MetersetMap from a logfile at a given filepath</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pymedphys</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">metersetmap_from_logfile</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">delivery_data</span> <span class="o">=</span> <span class="n">Delivery</span><span class="o">.</span><span class="n">from_logfile</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">metersetmap</span> <span class="o">=</span> <span class="n">Delivery</span><span class="o">.</span><span class="n">metersetmap</span><span class="p">()</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">grid</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">metersetmap</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">pymedphys</span><span class="o">.</span><span class="n">metersetmap</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">metersetmap</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">metersetmap_from_logfile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;a/path/goes/here&quot;</span><span class="p">)</span>  
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pymedphys.metersetmap.grid">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.metersetmap.</span></code><code class="sig-name descname"><span class="pre">grid</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_leaf_gap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">400</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_pair_widths</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5,</span> <span class="pre">5)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys.metersetmap.grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the MetersetMap grid for plotting purposes.</p>
+<p class="rubric">Examples</p>
+<p>See <a class="reference internal" href="#pymedphys.metersetmap.calculate" title="pymedphys.metersetmap.calculate"><code class="xref py py-func docutils literal notranslate"><span class="pre">pymedphys.metersetmap.calculate()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pymedphys.metersetmap.display">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.metersetmap.</span></code><code class="sig-name descname"><span class="pre">display</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metersetmap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys.metersetmap.display" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints a colour plot of the MetersetMap.</p>
+<p class="rubric">Examples</p>
+<p>See <a class="reference internal" href="#pymedphys.metersetmap.calculate" title="pymedphys.metersetmap.calculate"><code class="xref py py-func docutils literal notranslate"><span class="pre">pymedphys.metersetmap.calculate()</span></code></a>.</p>
+</dd></dl>
+
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./lib/ref"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/lib/ref/metersetmap'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+    <a class='left-prev' id="prev-link" href="mosaiq.html" title="previous page">Mosaiq</a>
+    <a class='right-next' id="next-link" href="trf.html" title="next page">TRF</a>
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="../../_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>

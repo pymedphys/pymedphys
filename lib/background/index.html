@@ -1,0 +1,487 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Background &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="../../_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="../../_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="../../_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    
+  <link rel="preload" as="script" href="../../_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/togglebutton.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script >
+        const thebe_selector = ".thebe,.cell"
+        const thebe_selector_input = "pre,.cell_input div.highlight"
+        const thebe_selector_output = ".output,.cell_output"
+    </script>
+    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/lib/background/index.html" />
+    <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/lib/background/index.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Background" />
+<meta property="og:description" content="Background  Automatic Contouring Project  Elekta Logfile Decoding and Indexing" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="../../index.html">
+  
+  <img src="../../_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../../_sources/lib/background/index.rst"><button type="button"
+                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
+                data-placement="left">.rst</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/background/index.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/background/index.rst"><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <div class="section" id="background">
+<h1>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="autocontouring.html">Automatic Contouring Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./lib/background"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/lib/background/index'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="../../_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>

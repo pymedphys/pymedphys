@@ -1,0 +1,710 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adding a Linac &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="../../_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="../../_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="../../_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    
+  <link rel="preload" as="script" href="../../_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/togglebutton.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script >
+        const thebe_selector = ".thebe,.cell"
+        const thebe_selector_input = "pre,.cell_input div.highlight"
+        const thebe_selector_output = ".output,.cell_output"
+    </script>
+    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/lib/howto/add-a-linac.html" />
+    <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Overview" href="../../cli/index.html" />
+    <link rel="prev" title="Gamma from DICOM" href="gamma/from-dicom.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/lib/howto/add-a-linac.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Adding a Linac" />
+<meta property="og:description" content="Adding a Linac  Background  PyMedPhys has a range of tools that interface with an Elekta Linac. All of these interface points utilise “APIs” that the Elekta Lin" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="../../index.html">
+  
+  <img src="../../_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ref/experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="current nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../../_sources/lib/howto/add-a-linac.md"><button type="button"
+                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
+                data-placement="left">.md</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/howto/add-a-linac.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/howto/add-a-linac.md"><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+                
+        <div class="tocsection onthispage pt-5 pb-3">
+            <i class="fas fa-list"></i>
+            Contents
+        </div>
+        <nav id="bd-toc-nav">
+            <ul class="nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#background">
+   Background
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#prerequisites">
+   Prerequisites
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#the-icom-listener">
+   The iCom listener
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#installing-pymedphys-on-the-icom-listener-server">
+     Installing PyMedPhys on the iCom listener server
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#the-physics-server-git-repository">
+     The physics-server git repository
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#setting-up-the-icom-listener-as-a-windows-service">
+     Setting up the iCom listener as a Windows service
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#iview-database">
+   iView database
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#trf-indexing">
+   TRF indexing
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#updating-the-config-toml-file">
+   Updating the
+   <code class="docutils literal notranslate">
+    <span class="pre">
+     config.toml
+    </span>
+   </code>
+   file
+  </a>
+ </li>
+
+                <li class="toc-h2 nav-item toc-entry">
+                    <a class="reference internal nav-link" href="#comments">
+                        Comments
+                    </a>
+                    <ul class="nav section-nav flex-column">
+                    </ul>
+                </li>
+            </ul>
+            </ul>
+
+        </nav>
+        
+        
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <div class="section" id="adding-a-linac">
+<h1>Adding a Linac<a class="headerlink" href="#adding-a-linac" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="background">
+<h2>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h2>
+<p>PyMedPhys has a range of tools that interface with an Elekta Linac. All of
+these interface points utilise “APIs” that the Elekta Linac exposes in its
+default configuration. This document was written during the process of adding a
+new Linac, at a remote site, to our already existing infrastructure within
+Cancer Care Associates. We host the PyMedPhys application at one of our sites,
+and that application is then able to access each Linac at all of our sites
+by utilising SSH tunnels.</p>
+<p>This document is written assuming that the servers within your centre being
+utilised are Windows machines, however, it should be possible to adapt the
+instructions here to work for other operating systems.</p>
+</div>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<p>Before getting started you will need the following:</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">Hospital</span> <span class="pre">DNS</span> <span class="pre">IP</span> <span class="pre">Address</span></code> that the NSS of the Linac was assigned.</p>
+<ul>
+<li><p>Throughout this documentation it will be assumed that this is
+<code class="docutils literal notranslate"><span class="pre">192.168.17.40</span></code>.</p></li>
+</ul>
+</li>
+<li><p>A name that can uniquely identify the Linac and will not change, eg. its
+serial number.</p>
+<ul>
+<li><p>Throughout this document it will be assumed that this is <code class="docutils literal notranslate"><span class="pre">4299</span></code>.</p></li>
+</ul>
+</li>
+<li><p>A login username and password to the NSS to be able to access its file shares
+that it is sharing with the centre’s network via SAMBA.</p></li>
+<li><p>A server where you can run the iCom listener</p>
+<ul>
+<li><p>This server should be able to have a guarantee that the connection
+between the server and the Linac will have near-zero network interruptions.
+This is due to the following bug at
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/849">https://github.com/pymedphys/pymedphys/issues/849</a> still being unresolved.</p></li>
+<li><p>You will need permission to create a service on this iCom server and to
+set that service to be able to boot on server start.</p></li>
+</ul>
+</li>
+<li><p>A shared network drive at your centre where you will be storing the iCom and
+TRF records.</p>
+<ul>
+<li><p>Throughout this document the iCom network path will be assumed to be
+<code class="docutils literal notranslate"><span class="pre">\\NBCCC-pdc\physics\NBCC-DataExchange\iCom</span></code>.</p></li>
+</ul>
+</li>
+<li><p>A shared network drive at your centre which can be mounted by the iView to
+be utilised as a QA iView imaging database.</p></li>
+</ul>
+</div>
+<div class="section" id="the-icom-listener">
+<h2>The iCom listener<a class="headerlink" href="#the-icom-listener" title="Permalink to this headline">¶</a></h2>
+<p>Elekta Linacs have an iCom protocol that can be utilised to determine various
+parameters about the Linac state, eg. Gantry angle. This section details how
+we have set up the <a class="reference internal" href="../../cli/ref/icom.html"><span class="doc std std-doc">PyMedPhys iCom listener CLI tool</span></a>.</p>
+<div class="section" id="installing-pymedphys-on-the-icom-listener-server">
+<h3>Installing PyMedPhys on the iCom listener server<a class="headerlink" href="#installing-pymedphys-on-the-icom-listener-server" title="Permalink to this headline">¶</a></h3>
+<p>In our case, the server where the iCom listener is to be installed has the
+requirement that the installation has minimal impact on the other software that
+is also running on that same server. If you don’t have that restriction you
+can follow the <a class="reference internal" href="get-started.html"><span class="doc std std-doc">Get Started</span></a> to install PyMedPhys in the usual fashion.</p>
+<p>So that the Python installation itself has minimal impact on the system we
+utilise Python’s embedded distribution, an example download of one such
+distribution is available at
+<a class="reference external" href="https://www.python.org/ftp/python/3.9.2/python-3.9.2-embed-amd64.zip">https://www.python.org/ftp/python/3.9.2/python-3.9.2-embed-amd64.zip</a>.</p>
+<p>Also, given this installation of PyMedPhys is only going to be running as an
+iCom listener it only needs a very minimal set of dependencies.</p>
+<p>To install PyMedPhys within the embedded distribution
+<a class="reference external" href="https://www.christhoung.com/2018/07/15/embedded-python-windows/">these notes</a>
+were followed, we followed these steps by doing the following:</p>
+<ul class="simple">
+<li><p>Extracted the Python embedded zip to <code class="docutils literal notranslate"><span class="pre">C:\Users\Public\Documents\python</span></code></p></li>
+<li><p>Edited the <code class="docutils literal notranslate"><span class="pre">python39._pth</span></code>, uncommenting the last line to change from
+<code class="docutils literal notranslate"><span class="pre">#import</span> <span class="pre">site</span></code> to <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">site</span></code>.</p></li>
+<li><p>Downloaded <a class="reference external" href="https://pip.pypa.io/en/stable/installing/#installing-with-get-pip-py">get-pip.py</a>
+and then ran <code class="docutils literal notranslate"><span class="pre">C:\Users\Public\Documents\python\python.exe</span> <span class="pre">get-pip.py</span></code></p></li>
+<li><p>Installed PyMedPhys by running <code class="docutils literal notranslate"><span class="pre">C:\Users\Public\Documents\python\python.exe</span> <span class="pre">-m</span> <span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[icom]==0.36.1</span></code>.</p></li>
+</ul>
+<p>Make sure to adjust the above versions appropriately to match what is current.</p>
+</div>
+<div class="section" id="the-physics-server-git-repository">
+<h3>The <a class="reference external" href="https://github.com/CCA-Physics/physics-server">physics-server</a> git repository<a class="headerlink" href="#the-physics-server-git-repository" title="Permalink to this headline">¶</a></h3>
+<p>To facilitate SSH tunnelling between the sites there is
+a server with the hostname <code class="docutils literal notranslate"><span class="pre">physics-server</span></code> at each site. The relevant software
+and configuration on these servers is stored within a public GitHub repository
+at <a class="reference external" href="https://github.com/CCA-Physics/physics-server">https://github.com/CCA-Physics/physics-server</a>. All of the code snippets
+presented within this iCom section are adapted from the code found within
+that repository’s
+<a class="reference external" href="https://github.com/CCA-Physics/physics-server/blob/8f09d1575106c57d1284146f3020ddba4fcbe884/NBCC/icom">NBCC/icom</a>
+directory.</p>
+</div>
+<div class="section" id="setting-up-the-icom-listener-as-a-windows-service">
+<h3>Setting up the iCom listener as a Windows service<a class="headerlink" href="#setting-up-the-icom-listener-as-a-windows-service" title="Permalink to this headline">¶</a></h3>
+<p>To convert the PyMedPhys CLI tool into a Windows service the
+<a class="reference external" href="https://nssm.cc/">NSSM</a> tool was utilised. It takes <code class="docutils literal notranslate"><span class="pre">.bat</span></code> files and converts
+them into a Windows service. A file called <code class="docutils literal notranslate"><span class="pre">4299_listening.bat</span></code> was created
+with the following contents:</p>
+<div class="highlight-bat notranslate"><div class="highlight"><pre><span></span><span class="k">SET</span> <span class="nv">PYTHON_DIR</span><span class="p">=</span><span class="s2">&quot;C:\Users\Public\Documents\python&quot;</span>
+<span class="k">cd</span> <span class="nv">%PYTHON_DIR%</span>
+<span class="k">SET</span> <span class="nv">PATH</span><span class="p">=</span><span class="nv">%PYTHON_DIR%</span>;<span class="nv">%PYTHON_DIR%</span>\Scripts;<span class="s2">&quot;</span><span class="nv">%PATH%</span><span class="s2">&quot;</span>
+
+pymedphys icom listen 192.168.17.40 \\NBCCC-pdc\physics\NBCC-DataExchange\iCom
+</pre></div>
+</div>
+<p>The key being that, given the way that Python and PyMedPhys was installed on
+that server, the <code class="docutils literal notranslate"><span class="pre">pymedphys</span></code> CLI command was not found within the server’s
+<code class="docutils literal notranslate"><span class="pre">%PATH%</span></code> variable. As such, before utilising the <code class="docutils literal notranslate"><span class="pre">pymedphys</span></code> CLI the embedded
+python distribution is temporarily added to the path. Here <code class="docutils literal notranslate"><span class="pre">192.168.17.40</span></code>
+is the <code class="docutils literal notranslate"><span class="pre">Hospital</span> <span class="pre">DNS</span> <span class="pre">IP</span> <span class="pre">Address</span></code> of the Linac, and
+<code class="docutils literal notranslate"><span class="pre">\\NBCCC-pdc\physics\NBCC-DataExchange\iCom</span></code> is the directory where the iCom
+records are to be stored.</p>
+<p>Once this <code class="docutils literal notranslate"><span class="pre">.bat</span></code> file was defined <a class="reference external" href="https://nssm.cc/">NSSM</a> was downloaded with
+its <code class="docutils literal notranslate"><span class="pre">.exe</span></code> placed at <code class="docutils literal notranslate"><span class="pre">C:\Users\Public\Documents\physics-server\bin</span></code>. Then,
+to create the service the following <code class="docutils literal notranslate"><span class="pre">.bat</span></code> file was created and run as
+administrator:</p>
+<div class="highlight-bat notranslate"><div class="highlight"><pre><span></span><span class="k">SET</span> <span class="nv">GIT_ROOT</span><span class="p">=</span>C:\Users\Public\Documents\physics-server
+<span class="k">SET</span> <span class="nv">PATH</span><span class="p">=</span><span class="nv">%GIT_ROOT%</span>\bin;<span class="nv">%PATH%</span>
+<span class="k">SET</span> <span class="nv">HERE</span><span class="p">=</span><span class="nv">%GIT_ROOT%</span>\NBCC\icom
+
+<span class="k">SET</span> <span class="nv">SERIAL</span><span class="p">=</span>4299
+
+nssm install icom_listening_<span class="nv">%SERIAL%</span> <span class="nv">%SERIAL%</span>_listening.bat
+
+nssm set icom_listening_<span class="nv">%SERIAL%</span> Application <span class="nv">%HERE%</span>\<span class="nv">%SERIAL%</span>_listening.bat
+nssm set icom_listening_<span class="nv">%SERIAL%</span> AppDirectory <span class="nv">%HERE%</span>
+
+nssm set icom_listening_<span class="nv">%SERIAL%</span> AppStdout <span class="nv">%HERE%</span>\<span class="nv">%SERIAL%</span>_listening_log.txt
+nssm set icom_listening_<span class="nv">%SERIAL%</span> AppStderr <span class="nv">%HERE%</span>\<span class="nv">%SERIAL%</span>_listening_log.txt
+
+nssm set icom_listening_<span class="nv">%SERIAL%</span> AppRestartDelay 300000
+</pre></div>
+</div>
+<p>Then, within the Windows services manager this service was set up so that its
+<code class="docutils literal notranslate"><span class="pre">Startup</span> <span class="pre">Type</span></code> is set to <code class="docutils literal notranslate"><span class="pre">Automatic</span></code> and the <code class="docutils literal notranslate"><span class="pre">Log</span> <span class="pre">On</span> <span class="pre">As</span></code> setting was then set
+to a user that had the appropriately scoped permissions.</p>
+</div>
+</div>
+<div class="section" id="iview-database">
+<h2>iView database<a class="headerlink" href="#iview-database" title="Permalink to this headline">¶</a></h2>
+<p>Not yet documented.</p>
+</div>
+<div class="section" id="trf-indexing">
+<h2>TRF indexing<a class="headerlink" href="#trf-indexing" title="Permalink to this headline">¶</a></h2>
+<p>Not yet documented.</p>
+</div>
+<div class="section" id="updating-the-config-toml-file">
+<h2>Updating the <code class="docutils literal notranslate"><span class="pre">config.toml</span></code> file<a class="headerlink" href="#updating-the-config-toml-file" title="Permalink to this headline">¶</a></h2>
+<p>Not yet documented.</p>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./lib/howto"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/lib/howto/add-a-linac'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+    <a class='left-prev' id="prev-link" href="gamma/from-dicom.html" title="previous page">Gamma from DICOM</a>
+    <a class='right-next' id="next-link" href="../../cli/index.html" title="next page">Overview</a>
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="../../_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>

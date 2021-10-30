@@ -1,0 +1,850 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DICOM Files &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="../../_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="../../_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="../../_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    
+  <link rel="preload" as="script" href="../../_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/togglebutton.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script >
+        const thebe_selector = ".thebe,.cell"
+        const thebe_selector_input = "pre,.cell_input div.highlight"
+        const thebe_selector_output = ".output,.cell_output"
+    </script>
+    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/cli/ref/dicom.html" />
+    <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Elekta Binary Logfiles" href="trf.html" />
+    <link rel="prev" title="Overview" href="../index.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/cli/ref/dicom.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="DICOM Files" />
+<meta property="og:description" content="DICOM Files    Provides a various set of tools for DICOM header manipulation.  usage: pymedphys dicom [-h]                        {anonymise,merge-contours,adju" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="../../index.html">
+  
+  <img src="../../_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/ref/dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/ref/gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/ref/mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/ref/metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/ref/trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/ref/experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="current nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../lib/background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../../_sources/cli/ref/dicom.rst"><button type="button"
+                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
+                data-placement="left">.rst</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fcli/ref/dicom.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/cli/ref/dicom.rst"><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+                
+        <div class="tocsection onthispage pt-5 pb-3">
+            <i class="fas fa-list"></i>
+            Contents
+        </div>
+        <nav id="bd-toc-nav">
+            <ul class="nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#Positional Arguments">
+   Positional Arguments
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#Sub-commands:">
+   Sub-commands:
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#anonymise">
+     anonymise
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Positional Arguments_repeat1">
+       Positional Arguments
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Named Arguments">
+       Named Arguments
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#merge-contours">
+     merge-contours
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Positional Arguments_repeat2">
+       Positional Arguments
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Named Arguments_repeat1">
+       Named Arguments
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#adjust-machine-name">
+     adjust-machine-name
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Positional Arguments_repeat3">
+       Positional Arguments
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#adjust-RED">
+     adjust-RED
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Positional Arguments_repeat4">
+       Positional Arguments
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Named Arguments_repeat2">
+       Named Arguments
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#adjust-RED-by-structure-name">
+     adjust-RED-by-structure-name
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Positional Arguments_repeat5">
+       Positional Arguments
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#listen">
+     listen
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Positional Arguments_repeat6">
+       Positional Arguments
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Named Arguments_repeat3">
+       Named Arguments
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#send">
+     send
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Positional Arguments_repeat7">
+       Positional Arguments
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#Named Arguments_repeat4">
+       Named Arguments
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+
+                <li class="toc-h2 nav-item toc-entry">
+                    <a class="reference internal nav-link" href="#comments">
+                        Comments
+                    </a>
+                    <ul class="nav section-nav flex-column">
+                    </ul>
+                </li>
+            </ul>
+            </ul>
+
+        </nav>
+        
+        
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <div class="section" id="module-pymedphys.cli.dicom">
+<span id="dicom-files"></span><h1>DICOM Files<a class="headerlink" href="#module-pymedphys.cli.dicom" title="Permalink to this headline">¶</a></h1>
+<p>Provides a various set of tools for DICOM header manipulation.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pymedphys</span> <span class="n">dicom</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span>
+                       <span class="p">{</span><span class="n">anonymise</span><span class="p">,</span><span class="n">merge</span><span class="o">-</span><span class="n">contours</span><span class="p">,</span><span class="n">adjust</span><span class="o">-</span><span class="n">machine</span><span class="o">-</span><span class="n">name</span><span class="p">,</span><span class="n">adjust</span><span class="o">-</span><span class="n">RED</span><span class="p">,</span><span class="n">adjust</span><span class="o">-</span><span class="n">RED</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">structure</span><span class="o">-</span><span class="n">name</span><span class="p">,</span><span class="n">listen</span><span class="p">,</span><span class="n">send</span><span class="p">}</span>
+                       <span class="o">...</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments">
+<h2>Positional Arguments<a class="headerlink" href="#Positional Arguments" title="Permalink to this headline">¶</a></h2>
+<dl class="option-list">
+<dt><kbd>dicom</kbd></dt>
+<dd><p>Possible choices: anonymise, merge-contours, adjust-machine-name, adjust-RED, adjust-RED-by-structure-name, listen, send</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="Sub-commands:">
+<h2>Sub-commands:<a class="headerlink" href="#Sub-commands:" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="anonymise">
+<h3>anonymise<a class="headerlink" href="#anonymise" title="Permalink to this headline">¶</a></h3>
+<p>Anonymise DICOM files.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">dicom</span> <span class="n">anonymise</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT_PATH</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">f</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">c</span><span class="p">]</span>
+                          <span class="p">[</span><span class="o">-</span><span class="n">k</span> <span class="p">[</span><span class="n">KEYWORD</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">-</span><span class="n">p</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">u</span> <span class="o">|</span> <span class="o">-</span><span class="n">i</span><span class="p">]</span>
+                          <span class="n">input_path</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments_repeat1">
+<h4>Positional Arguments<a class="headerlink" href="#Positional Arguments_repeat1" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>input_path</kbd></dt>
+<dd><p>Input file or directory path. If a directory is supplied, all DICOM files within the directory and its subdirectories will be anonymised</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="Named Arguments">
+<h4>Named Arguments<a class="headerlink" href="#Named Arguments" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>-o, --output_path</kbd></dt>
+<dd><p>Output file or directory path.</p>
+</dd>
+<dt><kbd>-d, --delete_original_files</kbd></dt>
+<dd><p>Use this flag to delete the original, non-anonymised files in the processed directory. Each original file will only be deleted if anonymisation completed successfully for that file.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-f, --preserve_filenames</kbd></dt>
+<dd><p>Use this flag to preserve the original filenames in the anonymised DICOM filenames. Note that ‘_Anonymised.dcm’ will still be appended. Use with caution, since DICOM filenames may contain identifying information</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-c, --clear_values</kbd></dt>
+<dd><p>Use this flag to simply clear the values of all of the identifying elements in the anonymised DICOM files, as opposed to replacing them with ‘dummy’ values.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-k, --keywords_to_leave_unchanged</kbd></dt>
+<dd><p>A space-separated list of DICOM keywords (e.g. ‘PatientName’) to exclude from anonymisation and error checking.</p>
+</dd>
+<dt><kbd>-p, --keep_private_tags</kbd></dt>
+<dd><p>Use this flag to preserve private tags in the anonymised DICOM files.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-u, --delete_unknown_tags</kbd></dt>
+<dd><p>Use this flag to delete any unrecognised tags from the anonymised DICOM files.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-i, --ignore_unknown_tags</kbd></dt>
+<dd><p>Use this flag to ignore any unrecognised tags in the anonymised DICOM files.</p>
+<p>Default: False</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="merge-contours">
+<h3>merge-contours<a class="headerlink" href="#merge-contours" title="Permalink to this headline">¶</a></h3>
+<p>Merge overlapping contours within a DICOM structure file</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">dicom</span> <span class="n">merge</span><span class="o">-</span><span class="n">contours</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">structures</span> <span class="n">STRUCTURES</span> <span class="p">[</span><span class="n">STRUCTURES</span> <span class="o">...</span><span class="p">]]</span>
+                               <span class="n">input_file</span> <span class="n">output_file</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments_repeat2">
+<h4>Positional Arguments<a class="headerlink" href="#Positional Arguments_repeat2" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>input_file</kbd></dt>
+<dd></dd>
+<dt><kbd>output_file</kbd></dt>
+<dd></dd>
+</dl>
+</div>
+<div class="section" id="Named Arguments_repeat1">
+<h4>Named Arguments<a class="headerlink" href="#Named Arguments_repeat1" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--structures</kbd></dt>
+<dd><p>The structures for which to run the merge on. If not provided, then all structures will be processed.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="adjust-machine-name">
+<h3>adjust-machine-name<a class="headerlink" href="#adjust-machine-name" title="Permalink to this headline">¶</a></h3>
+<p>Change the machine name in an RT plan DICOM file</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">dicom</span> <span class="n">adjust</span><span class="o">-</span><span class="n">machine</span><span class="o">-</span><span class="n">name</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span>
+                                    <span class="n">input_file</span> <span class="n">output_file</span> <span class="n">new_machine_name</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments_repeat3">
+<h4>Positional Arguments<a class="headerlink" href="#Positional Arguments_repeat3" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>input_file</kbd></dt>
+<dd></dd>
+<dt><kbd>output_file</kbd></dt>
+<dd></dd>
+<dt><kbd>new_machine_name</kbd></dt>
+<dd></dd>
+</dl>
+</div>
+</div>
+<div class="section" id="adjust-RED">
+<h3>adjust-RED<a class="headerlink" href="#adjust-RED" title="Permalink to this headline">¶</a></h3>
+<p>Adjust the RED of structures within an RT structure DICOM file</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">dicom</span> <span class="n">adjust</span><span class="o">-</span><span class="n">RED</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">i</span><span class="p">]</span>
+                           <span class="n">input_file</span> <span class="n">output_file</span> <span class="n">adjustment_map</span>
+                           <span class="p">[</span><span class="n">adjustment_map</span> <span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments_repeat4">
+<h4>Positional Arguments<a class="headerlink" href="#Positional Arguments_repeat4" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>input_file</kbd></dt>
+<dd></dd>
+<dt><kbd>output_file</kbd></dt>
+<dd></dd>
+<dt><kbd>adjustment_map</kbd></dt>
+<dd><p>An alternating list of structure name and then its associated RED. For example, <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">adjust-RED</span></code> <code class="docutils literal notranslate"><span class="pre">input.dcm</span> <span class="pre">output.dcm</span></code> <code class="docutils literal notranslate"><span class="pre">struct_name</span> <span class="pre">1.5</span> <span class="pre">another_struct_name</span> <span class="pre">0.2</span></code></p>
+</dd>
+</dl>
+</div>
+<div class="section" id="Named Arguments_repeat2">
+<h4>Named Arguments<a class="headerlink" href="#Named Arguments_repeat2" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>-i, --ignore_missing_structure</kbd></dt>
+<dd><p>Use this flag to no longer raise an error when a defined structure name doesn’t exist within the input DICOM file.</p>
+<p>Default: False</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="adjust-RED-by-structure-name">
+<h3>adjust-RED-by-structure-name<a class="headerlink" href="#adjust-RED-by-structure-name" title="Permalink to this headline">¶</a></h3>
+<p>Use structure naming conventions to automatically adjust the relative electron density of a structure within a DICOM RT Structure set. For example, naming a structure <code class="docutils literal notranslate"><span class="pre">a_structure_name</span> <span class="pre">RED=1.15</span></code> will cause that structure to have an override of 1.15 applied.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">dicom</span> <span class="n">adjust</span><span class="o">-</span><span class="n">RED</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">structure</span><span class="o">-</span><span class="n">name</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">input_file</span> <span class="n">output_file</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments_repeat5">
+<h4>Positional Arguments<a class="headerlink" href="#Positional Arguments_repeat5" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>input_file</kbd></dt>
+<dd><p>input_file</p>
+</dd>
+<dt><kbd>output_file</kbd></dt>
+<dd><p>output_file</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="listen">
+<h3>listen<a class="headerlink" href="#listen" title="Permalink to this headline">¶</a></h3>
+<p>Start a DICOM listener on the specified port</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">dicom</span> <span class="n">listen</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">host</span> <span class="n">HOST</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span> <span class="n">STORAGE_DIRECTORY</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">a</span> <span class="n">AETITLE</span><span class="p">]</span>
+                       <span class="n">port</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments_repeat6">
+<h4>Positional Arguments<a class="headerlink" href="#Positional Arguments_repeat6" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>port</kbd></dt>
+<dd><p>The port on which to listen</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="Named Arguments_repeat3">
+<h4>Named Arguments<a class="headerlink" href="#Named Arguments_repeat3" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--host</kbd></dt>
+<dd><p>The host/IP to bind to</p>
+<p>Default: “0.0.0.0”</p>
+</dd>
+<dt><kbd>-d, --storage_directory</kbd></dt>
+<dd><p>Default: “.”</p>
+</dd>
+<dt><kbd>-a, --aetitle</kbd></dt>
+<dd><p>The AE Title of this listen service</p>
+<p>Default: “PYMEDPHYS”</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="send">
+<h3>send<a class="headerlink" href="#send" title="Permalink to this headline">¶</a></h3>
+<p>Send DICOM objects to a DICOM endpoint</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">dicom</span> <span class="n">send</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">a</span> <span class="n">AETITLE</span><span class="p">]</span> <span class="n">host</span> <span class="n">port</span> <span class="p">[</span><span class="n">dcmfiles</span> <span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="section" id="Positional Arguments_repeat7">
+<h4>Positional Arguments<a class="headerlink" href="#Positional Arguments_repeat7" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>host</kbd></dt>
+<dd><p>The host name/IP of the DICOM listener</p>
+</dd>
+<dt><kbd>port</kbd></dt>
+<dd><p>The port of the DICOM listener</p>
+</dd>
+<dt><kbd>dcmfiles</kbd></dt>
+<dd><p>Path to DICOM objects to send</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="Named Arguments_repeat4">
+<h4>Named Arguments<a class="headerlink" href="#Named Arguments_repeat4" title="Permalink to this headline">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>-a, --aetitle</kbd></dt>
+<dd><p>The Called AE Title</p>
+<p>Default: “PYMEDPHYS”</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./cli/ref"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/cli/ref/dicom'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+    <a class='left-prev' id="prev-link" href="../index.html" title="previous page">Overview</a>
+    <a class='right-next' id="next-link" href="trf.html" title="next page">Elekta Binary Logfiles</a>
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="../../_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>

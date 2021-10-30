@@ -1,0 +1,676 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DICOM &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="../../_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="../../_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="../../_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    
+  <link rel="preload" as="script" href="../../_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/togglebutton.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script >
+        const thebe_selector = ".thebe,.cell"
+        const thebe_selector_input = "pre,.cell_input div.highlight"
+        const thebe_selector_output = ".output,.cell_output"
+    </script>
+    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/lib/ref/dicom.html" />
+    <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Gamma" href="gamma.html" />
+    <link rel="prev" title="Alphabetical Index" href="../../genindex.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/lib/ref/dicom.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="DICOM" />
+<meta property="og:description" content="DICOM  Summary    A DICOM toolbox.  API  Anonymisation    pymedphys.dicom.anonymise(ds, replace_values=True, keywords_to_leave_unchanged=(), delete_private_tags" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="../../index.html">
+  
+  <img src="../../_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="current nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../../_sources/lib/ref/dicom.rst"><button type="button"
+                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
+                data-placement="left">.rst</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/ref/dicom.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/ref/dicom.rst"><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+                
+        <div class="tocsection onthispage pt-5 pb-3">
+            <i class="fas fa-list"></i>
+            Contents
+        </div>
+        <nav id="bd-toc-nav">
+            <ul class="nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-pymedphys.dicom">
+   Summary
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#api">
+   API
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#anonymisation">
+     Anonymisation
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#dose">
+     Dose
+    </a>
+   </li>
+  </ul>
+ </li>
+
+                <li class="toc-h2 nav-item toc-entry">
+                    <a class="reference internal nav-link" href="#comments">
+                        Comments
+                    </a>
+                    <ul class="nav section-nav flex-column">
+                    </ul>
+                </li>
+            </ul>
+            </ul>
+
+        </nav>
+        
+        
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <div class="section" id="dicom">
+<h1>DICOM<a class="headerlink" href="#dicom" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-pymedphys.dicom">
+<span id="summary"></span><h2>Summary<a class="headerlink" href="#module-pymedphys.dicom" title="Permalink to this headline">¶</a></h2>
+<p>A DICOM toolbox.</p>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="anonymisation">
+<h3>Anonymisation<a class="headerlink" href="#anonymisation" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt id="pymedphys.dicom.anonymise">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.dicom.</span></code><code class="sig-name descname"><span class="pre">anonymise</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace_values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keywords_to_leave_unchanged</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_private_tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_unknown_tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy_dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replacement_strategy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">identifying_keywords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys.dicom.anonymise" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple tool to anonymise a DICOM dataset.</p>
+<p>You can find the list of DICOM keywords that are included in default
+anonymisation <a class="reference external" href="./identifying_keywords.json">here</a>.
+These were drawn from <a class="reference external" href="https://www.dicomstandard.org/supplements/">DICOM Supp 142</a></p>
+<p><strong>We do not claim conformance to any DICOM Application Level
+Confidentiality Profile</strong>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ds</strong> (<code class="docutils literal notranslate"><span class="pre">pydicom.dataset.Dataset</span></code>) – The DICOM dataset to be anonymised.</p></li>
+<li><p><strong>replace_values</strong> (<code class="docutils literal notranslate"><span class="pre">bool</span></code>, optional) – If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, DICOM tags will be anonymised using dummy
+“anonymous” values. This is often required for commercial
+software to successfully read anonymised DICOM files. If set to
+<code class="docutils literal notranslate"><span class="pre">False</span></code>, anonymised tags are simply given empty string values.
+Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>keywords_to_leave_unchanged</strong> (<code class="docutils literal notranslate"><span class="pre">sequence</span></code>, optional) – A sequence of DICOM keywords (corresponding to tags) to exclude
+from anonymisation. Private and unknown tags can be supplied.
+Empty by default.</p></li>
+<li><p><strong>delete_private_tags</strong> (<code class="docutils literal notranslate"><span class="pre">bool</span></code>, optional) – A boolean to flag whether or not to remove all private
+(non-standard) DICOM tags from the DICOM file. These may also
+contain identifying information. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>delete_unknown_tags</strong> (<code class="docutils literal notranslate"><span class="pre">bool</span></code>, pseudo-optional) – If left as the default value of <code class="docutils literal notranslate"><span class="pre">None</span></code> and <code class="docutils literal notranslate"><span class="pre">ds</span></code> contains tags
+that are not present in PyMedPhys’ copy of <code class="docutils literal notranslate"><span class="pre">pydicom</span></code>’s DICOM
+dictionary, <code class="docutils literal notranslate"><span class="pre">anonymise_dataset()</span></code> will raise an error. The
+user must then either pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code> to proceed. If set
+to <code class="docutils literal notranslate"><span class="pre">True</span></code>, all unrecognised tags that haven’t been listed in
+<code class="docutils literal notranslate"><span class="pre">keywords_to_leave_unchanged</span></code> will be deleted. If set to
+<code class="docutils literal notranslate"><span class="pre">False</span></code>, these tags are simply ignored. Pass <code class="docutils literal notranslate"><span class="pre">False</span></code> with
+caution, since unrecognised tags may contain identifying
+information.</p></li>
+<li><p><strong>copy_dataset</strong> (<code class="docutils literal notranslate"><span class="pre">bool</span></code>, optional) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, then a copy of <code class="docutils literal notranslate"><span class="pre">ds</span></code> is returned.</p></li>
+<li><p><strong>replacement_strategy</strong> (<code class="docutils literal notranslate"><span class="pre">dict</span></code> (keys are VR, value is dispatch function), optional) – If left as the default value of <code class="docutils literal notranslate"><span class="pre">None</span></code>, the hardcode replacement strategy is used.</p></li>
+<li><p><strong>identifying_keywords</strong> (<code class="docutils literal notranslate"><span class="pre">list</span></code>, optional) – If left as None, the default values for/list of identifying keywords are used</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>ds_anon</strong> – An anonymised version of the input DICOM dataset.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">pydicom.dataset.Dataset</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="dose">
+<h3>Dose<a class="headerlink" href="#dose" title="Permalink to this headline">¶</a></h3>
+<p>A suite of functions for manipulating dose in a DICOM context.</p>
+<dl class="py function">
+<dt id="pymedphys.dicom.zyx_and_dose_from_dataset">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.dicom.</span></code><code class="sig-name descname"><span class="pre">zyx_and_dose_from_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/_dicom/dose.html#zyx_and_dose_from_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.dicom.zyx_and_dose_from_dataset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="pymedphys.dicom.depth_dose">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.dicom.</span></code><code class="sig-name descname"><span class="pre">depth_dose</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plan_dataset</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/_dicom/dose.html#depth_dose"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.dicom.depth_dose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolates dose for defined depths within a DICOM dose dataset.</p>
+<p>Since the DICOM dose dataset is in CT coordinates the corresponding
+DICOM plan is also required in order to calculate the conversion
+between CT coordinate space and depth.</p>
+<p>Currently, <cite>depth_dose()</cite> only supports a <cite>dose_dataset</cite> for which
+the patient orientation is HFS and that any beams in <cite>plan_dataset</cite>
+have gantry angle equal to 0 (head up). Depth is assumed to be
+purely in the y axis direction in DICOM coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>depths</strong> (<em>numpy.ndarray</em>) – An array of depths to interpolate within the DICOM dose file. 0 is
+defined as the surface of the phantom using either the
+<code class="docutils literal notranslate"><span class="pre">SurfaceEntryPoint</span></code> parameter or a combination of
+<code class="docutils literal notranslate"><span class="pre">SourceAxisDistance</span></code>, <code class="docutils literal notranslate"><span class="pre">SourceToSurfaceDistance</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">IsocentrePosition</span></code>.</p></li>
+<li><p><strong>dose_dataset</strong> (<em>pydicom.dataset.Dataset</em>) – The RT DICOM dose dataset to be interpolated</p></li>
+<li><p><strong>plan_dataset</strong> (<em>pydicom.dataset.Dataset</em>) – The RT DICOM plan used to extract surface parameters and verify gantry
+angle 0 beams are used.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pymedphys.dicom.profile">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.dicom.</span></code><code class="sig-name descname"><span class="pre">profile</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">displacements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plan_dataset</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/_dicom/dose.html#profile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.dicom.profile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolates dose for cardinal angle horizontal profiles within a
+DICOM dose dataset.</p>
+<p>Since the DICOM dose dataset is in CT coordinates the corresponding
+DICOM plan is also required in order to calculate the conversion
+between CT coordinate space and depth and horizontal displacement.</p>
+<p>Currently, <cite>profile()</cite> only supports a <cite>dose_dataset</cite> for which
+the patient orientation is HFS and that any beams in <cite>plan_dataset</cite>
+have gantry angle equal to 0 (head up). Depth is assumed to be
+purely in the y axis direction in DICOM coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>displacements</strong> (<em>numpy.ndarray</em>) – An array of displacements to interpolate within the DICOM dose
+file. 0 is defined in the DICOM z or x directions based either
+upon the <code class="docutils literal notranslate"><span class="pre">SurfaceEntryPoint</span></code> or the <code class="docutils literal notranslate"><span class="pre">IsocenterPosition</span></code>
+depending on what is available within the DICOM plan file.</p></li>
+<li><p><strong>depth</strong> (<em>float</em>) – The depth at which to interpolate within the DICOM dose file. 0 is
+defined as the surface of the phantom using either the
+<code class="docutils literal notranslate"><span class="pre">SurfaceEntryPoint</span></code> parameter or a combination of
+<code class="docutils literal notranslate"><span class="pre">SourceAxisDistance</span></code>, <code class="docutils literal notranslate"><span class="pre">SourceToSurfaceDistance</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">IsocentrePosition</span></code>.</p></li>
+<li><p><strong>direction</strong> (<em>str</em><em>, </em><em>one of</em><em> (</em><em>'inplane'</em><em>, </em><em>'inline'</em><em>, </em><em>'crossplane'</em><em>, </em><em>'crossline'</em><em>)</em>) – <dl class="simple">
+<dt>Corresponds to the axis upon which to apply the displacements.</dt><dd><ul>
+<li><p>’inplane’ or ‘inline’ converts to DICOM z direction</p></li>
+<li><p>’crossplane’ or ‘crossline’ converts to DICOM x direction</p></li>
+</ul>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>dose_dataset</strong> (<em>pydicom.dataset.Dataset</em>) – The RT DICOM dose dataset to be interpolated</p></li>
+<li><p><strong>plan_dataset</strong> (<em>pydicom.dataset.Dataset</em>) – The RT DICOM plan used to extract surface and isocentre
+parameters and verify gantry angle 0 beams are used.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pymedphys.dicom.dicom_dose_interpolate">
+<code class="sig-prename descclassname"><span class="pre">pymedphys.dicom.</span></code><code class="sig-name descname"><span class="pre">dicom_dose_interpolate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interp_coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dicom_dose_dataset</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/_dicom/dose.html#dicom_dose_interpolate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.dicom.dicom_dose_interpolate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolates across a DICOM dose dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interp_coords</strong> (<em>tuple</em><em>(</em><em>z</em><em>, </em><em>y</em><em>, </em><em>x</em><em>)</em>) – A tuple of coordinates in DICOM order, z axis first, then y, then x
+where x, y, and z are DICOM axes.</p></li>
+<li><p><strong>dose</strong> (<em>pydicom.Dataset</em>) – An RT DICOM Dose object</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./lib/ref"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/lib/ref/dicom'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+    <a class='left-prev' id="prev-link" href="../../genindex.html" title="previous page">Alphabetical Index</a>
+    <a class='right-next' id="next-link" href="gamma.html" title="next page">Gamma</a>
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="../../_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>

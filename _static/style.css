@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=Roboto:wght@400;600;700&display=swap');
+body {
+    font-family: 'Roboto', sans-serif !important;
+}
+.caption-text, .header-style, h1, h2, h3, h4, h5, h6 {
+    font-family: 'Roboto Slab', 'Roboto', sans-serif !important;
+}
+
+.header-style, h1, .h1 {
+    /* font-size: 240% !important; */
+    margin-top: 1.5em !important;
+}
+.header-style, h2, .h2 {
+    /* font-size: 180% !important; */
+    margin-top: 1.5em !important;
+}
+.header-style, h3, .h3 {
+    /* font-size: 160% !important; */
+    margin-top: 1.5em !important;
+}
+.header-style, h4, .h4 {
+    /* font-size: 135% !important; */
+    margin-top: 1.5em !important;
+}
+
+.title-logo {
+    width: 100%;
+    height: auto;
+}
+@media (min-width: 768px) {
+    div.site-navigation div.navbar-brand-box a.navbar-brand img.logo {
+        max-height: 20vh !important;
+    }
+}
+
+div.site-navigation div.navbar-brand-box a.navbar-brand img {
+    max-height: 15vh !important;
+}

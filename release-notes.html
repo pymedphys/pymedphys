@@ -1,0 +1,3341 @@
+<!-- Vendored from https://github.com/executablebooks/sphinx-book-theme/blob/3736580774c84dcf8a2d84085ba022cc57552704/sphinx_book_theme/layout.html -->
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Release Notes &#8212; PyMedPhys</title>
+    
+  <link rel="stylesheet" href="_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
+
+    
+  <link rel="stylesheet"
+    href="_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+  <link rel="stylesheet"
+    href="_static/vendor/open-sans_all/1.44.1/index.css">
+  <link rel="stylesheet"
+    href="_static/vendor/lato_latin-ext/1.44.1/index.css">
+
+    
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/sphinx-book-theme.e7340bb3dbd8dde6db86f25597f54a1b.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="_static/style.css" />
+    
+  <link rel="preload" as="script" href="_static/js/index.d3f166471bb80abb5163.js">
+
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/togglebutton.js"></script>
+    <script src="_static/clipboard.min.js"></script>
+    <script src="_static/copybutton.js"></script>
+    <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="_static/sphinx-book-theme.7d483ff0a819d6edff12ce0b1ead3928.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script >
+        const thebe_selector = ".thebe,.cell"
+        const thebe_selector_input = "pre,.cell_input div.highlight"
+        const thebe_selector_output = ".output,.cell_output"
+    </script>
+    <script async="async" src="_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/release-notes.html" />
+    <link rel="shortcut icon" href="_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Repository File Structure" href="general/file-structure.html" />
+    <link rel="prev" title="Overview" href="general/index.html" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
+
+<!-- Opengraph tags -->
+<meta property="og:url" content="https://docs.pymedphys.com/release-notes.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Release Notes" />
+<meta property="og:description" content="Release Notes  All notable changes to this project will be documented in this file.  This project adheres to Semantic Versioning.  0.37.1  Bug fixes  Make it so" />
+
+<meta property="og:image" content="https://docs.pymedphys.com/_static/pymedphys.svg" />
+
+<meta name="twitter:card" content="summary" />
+
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show"
+    id="site-navigation">
+    
+    <div class="navbar-brand-box">
+<a class="navbar-brand text-wrap" href="index.html">
+  
+  <img src="_static/pymedphys.svg" class="logo" alt="logo">
+  
+  
+  <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+  
+</a>
+</div><form class="bd-search d-flex align-items-center" action="search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form>
+<nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/ref/dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/ref/gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/ref/mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/ref/metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/ref/trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/ref/experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p class="caption collapsible-parent">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="current nav sidenav_l1">
+ <li class="toctree-l1">
+  <a class="reference internal" href="general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="lib/background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="_sources/release-notes.md"><button type="button"
+                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
+                data-placement="left">.md</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Frelease-notes.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/release-notes.md"><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
+    </div>
+</div>
+
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+            <a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+                    data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+                    title="Fullscreen mode"><i
+                        class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+                
+        <div class="tocsection onthispage pt-5 pb-3">
+            <i class="fas fa-list"></i>
+            Contents
+        </div>
+        <nav id="bd-toc-nav">
+            <ul class="nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id1">
+   0.37.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#bug-fixes">
+     Bug fixes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#non-api-changing-enhancements">
+     Non-API changing enhancements
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id2">
+   0.37.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#news-around-this-release">
+     News around this release
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#breaking-changes">
+     Breaking changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#new-features-and-enhancements">
+     New features and enhancements
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id3">
+   0.36.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id4">
+     New features and enhancements
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id5">
+   0.36.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id6">
+     News around this release
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id7">
+     Breaking changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id8">
+     New features and enhancements
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#misc-changes">
+     Misc changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id9">
+   0.35.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id10">
+     News around this release
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id11">
+     Breaking changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id12">
+     New features and enhancements
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id13">
+     Bug fixes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#library-structure-changes">
+     Library structure changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id14">
+   0.34.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id15">
+     News around this release
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#stable-api-changes">
+     “Stable” API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id16">
+       Breaking changes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#deprecations">
+       Deprecations
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#new-features">
+       New features
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id17">
+       Bug fixes
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#gui-changes">
+     GUI changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#logistics-changes">
+       Logistics changes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#pseudonymise">
+       Pseudonymise
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#metersetmap">
+       MetersetMap
+      </a>
+      <ul class="nav section-nav flex-column">
+       <li class="toc-h5 nav-item toc-entry">
+        <a class="reference internal nav-link" href="#id18">
+         New Features
+        </a>
+       </li>
+       <li class="toc-h5 nav-item toc-entry">
+        <a class="reference internal nav-link" href="#id19">
+         Bug fixes
+        </a>
+       </li>
+      </ul>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#experimental-applications">
+       Experimental applications
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#configuration-changes">
+     Configuration changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#new-keys">
+       New keys
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#beta-api-changes">
+     Beta API changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#experimental-api-changes">
+     Experimental API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id20">
+       Breaking changes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id21">
+       New Features
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#developer-facing-api-changes">
+     Developer facing API changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id22">
+   0.33.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id23">
+     “Stable” API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#installation-changes">
+       Installation changes
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id24">
+     Beta API changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id25">
+     Experimental API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id26">
+       Breaking changes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id27">
+       Bug fixes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id28">
+       New Features
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#internal-changes">
+     Internal Changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id29">
+   0.32.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id30">
+     “Stable” API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id31">
+       Bug fixes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id32">
+       Breaking changes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id33">
+       New Features
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#data-file-changes">
+       Data file changes
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id34">
+     Beta API changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id35">
+     Experimental API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id36">
+       New Features
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id37">
+       Bug Fixes
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id38">
+   0.31.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id39">
+     “Stable” API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#critical-bug-fixes">
+       Critical bug fixes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id40">
+       Breaking changes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id41">
+       New features
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id42">
+       Deprecations
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id43">
+       Bug fixes
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id44">
+     Beta API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id45">
+       New features
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id46">
+     Experimental API changes
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id47">
+       Breaking changes
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id48">
+       Bug fixes
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id49">
+   0.30.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id50">
+     Breaking changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id51">
+     New Features
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#dependency-changes">
+     Dependency changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id52">
+     Bug fixes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#documentation-updates">
+     Documentation updates
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#development-changes">
+     Development changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id53">
+   0.29.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id54">
+     Bug fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id55">
+   0.29.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id56">
+     Breaking changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id57">
+   0.28.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#overview">
+     Overview
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id58">
+     Breaking changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id59">
+     New Features
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id60">
+     Bug fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id61">
+   0.27.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id62">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id63">
+   0.26.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id64">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id65">
+   0.25.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id66">
+     Dependency Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#quality-of-life-improvements">
+     Quality of life improvements
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id67">
+     Development changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id68">
+   0.25.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id69">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id70">
+   0.24.3
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id71">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id72">
+   0.24.2
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id73">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id74">
+   0.24.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id75">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id76">
+   0.24.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id77">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id78">
+     New Features
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#algorithm-adjustments">
+     Algorithm Adjustments
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id79">
+   0.23.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id80">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id81">
+     New Features
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id82">
+     Dependency Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id83">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id84">
+   0.22.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id85">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id86">
+   0.21.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id87">
+     Dependency Changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id88">
+   0.20.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id89">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id90">
+   0.19.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id91">
+     Breaking Changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id92">
+   0.18.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id93">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id94">
+     Quality of life improvements
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id95">
+   0.17.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id96">
+     Quality of life improvements
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id97">
+   0.17.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id98">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id99">
+   0.16.3
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id100">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id101">
+   0.16.2
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id102">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id103">
+   0.16.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#aesthetic-changes">
+     Aesthetic Changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id104">
+   0.16.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#package-changes">
+     Package changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id105">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id106">
+   0.15.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id107">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id108">
+   0.14.3
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id109">
+     Package changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id110">
+   0.14.2
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id111">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id112">
+   0.14.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id113">
+     Bug Fixes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id114">
+   0.14.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id115">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id116">
+     Dependency Changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id117">
+   0.13.2
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#bug-fix">
+     Bug Fix
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id118">
+   0.13.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id119">
+     Bug Fix
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id120">
+   0.13.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#new-feature">
+     New Feature
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id121">
+   0.12.2
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id122">
+     Package changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id123">
+   0.12.1
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id124">
+     Package changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id125">
+   0.12.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id126">
+     Breaking Changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id127">
+   0.11.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id128">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id129">
+     New Features
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#improvements">
+     Improvements
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id130">
+   0.10.0
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id131">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id132">
+   0.9.0 – 2019/06/06
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id133">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id134">
+   0.8.4 – 2019/06/04
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id135">
+     Package changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id136">
+   0.8.3 – 2019/06/04
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id137">
+     Package changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id138">
+   0.8.2 – 2019/06/01
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id139">
+     Package changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id140">
+   0.8.1 – 2019/06/01
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id141">
+     Dependency changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id142">
+   0.8.0 – 2019/06/01
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id143">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id144">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id145">
+   0.7.2 – 2019/04/05
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id146">
+     Dependency changes
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id147">
+   0.7.1 – 2019/04/05
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#performance-improvements">
+     Performance Improvements
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id148">
+   0.7.0 – 2019/04/05
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id149">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id150">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id151">
+   0.6.0 – 2019/03/15
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id152">
+     Breaking Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id153">
+     New Features
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#code-refactoring">
+     Code Refactoring
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id154">
+   0.5.1 – 2019/01/05
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id155">
+     New Features
+    </a>
+   </li>
+  </ul>
+ </li>
+
+                <li class="toc-h2 nav-item toc-entry">
+                    <a class="reference internal nav-link" href="#comments">
+                        Comments
+                    </a>
+                    <ul class="nav section-nav flex-column">
+                    </ul>
+                </li>
+            </ul>
+            </ul>
+
+        </nav>
+        
+        
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+            
+              <div>
+                
+  <!-- markdownlint-disable MD024 MD039 -->
+<div class="section" id="release-notes">
+<h1>Release Notes<a class="headerlink" href="#release-notes" title="Permalink to this headline">¶</a></h1>
+<p>All notable changes to this project will be documented in this file.</p>
+<p>This project adheres to
+<a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<div class="section" id="id1">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.37.0...v0.37.1">0.37.1</a><a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="bug-fixes">
+<h3>Bug fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Make it so that Mephysto files that have non-unicode characters can still
+be opened.</p></li>
+<li><p>Varying penumbra and ball bearing diameter within the Monthly WLutz
+application now accepts floating point numbers as well as numbers smaller
+than the default.</p></li>
+<li><p>Fixed a bug where <code class="docutils literal notranslate"><span class="pre">Delivery.from_monaco</span></code> wouldn’t be able to load beams
+where the stop angle of one beam was +180 and the start angle of the
+subsequent beam was -180 (or visa-versa). The conversion from IEC to bipolar
+is now handled on a “per-beam” basis. This bug affected the MetersetMap
+application.</p></li>
+</ul>
+</div>
+<div class="section" id="non-api-changing-enhancements">
+<h3>Non-API changing enhancements<a class="headerlink" href="#non-api-changing-enhancements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The daily WLutz application can now have its bb size configured.</p></li>
+<li><p>Site can now be passed as a URL parameter to the daily WLutz application.</p></li>
+<li><p>Improved error messaging around the configuration of the iView machine alias.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id2">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.36.1...v0.37.0">0.37.0</a><a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="news-around-this-release">
+<h3>News around this release<a class="headerlink" href="#news-around-this-release" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/rembishj">Jake Rembish</a> has been undergoing his PhD with
+the output of his work being contributed to PyMedPhys. This release coincides
+with the culmination of Jake’s PhD and this version will be the one
+referenced within his dissertation. It has been brilliant to see both Jake
+and his project grow to be what it is today. Thank you Jake 😊.</p></li>
+</ul>
+</div>
+<div class="section" id="breaking-changes">
+<h3>Breaking changes<a class="headerlink" href="#breaking-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The configuration for the TRF CLI now utilises the centralised <code class="docutils literal notranslate"><span class="pre">config.toml</span></code>
+file instead of the prior <code class="docutils literal notranslate"><span class="pre">CSV</span></code> files.</p></li>
+</ul>
+</div>
+<div class="section" id="new-features-and-enhancements">
+<h3>New features and enhancements<a class="headerlink" href="#new-features-and-enhancements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>A range of application have been added to and improved on within the
+PyMedPhys GUI.</p>
+<ul>
+<li><p>A Daily WLutz application was added which utilises the air cavity within
+an iso-cube, combined with morning run-up beams (as arcs) to record the
+beam position at every gantry angle for each photon beam each morning.</p></li>
+<li><p>A range of configuration improvements, making more applications more widely
+able to be utilised. Of particular note are Jake’s transfer check and
+weekly check applications which were written as a part of his PhD.</p></li>
+<li><p>A QCL investigator tool, allowing one to produce plots and break downs
+of numbers of QCLs broken down either by QCL type, or the user who
+completed them.</p></li>
+<li><p>An extend ct application was added providing the means to duplicate slices
+superiorly and inferiorly.</p></li>
+<li><p>An application for the viewing of back-end iView jpg images.</p></li>
+<li><p>An application for tweaking the WLutz algorithm options from iView back-end
+jpg images.</p></li>
+<li><p>A range of fixes and improvements within the WLutz Arc and the MetersetMap
+applications.</p></li>
+</ul>
+</li>
+<li><p>The docs are now distributed with the PyMedPhys package. These are accessible
+by opening <code class="docutils literal notranslate"><span class="pre">http://localhost:8501/docs/index.html</span></code> after running
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code>. In the future it is intended to make this link more
+accessible.</p></li>
+<li><p>A range of error messaging has been improved. Of particular benefit to new
+users is the error message that occurs when a dependency is missing.</p></li>
+<li><p>The ball-bearing finding component of the WLutz algorithm was tweaked to
+be able to also support the finding of air-cavities within an iso-cube.</p></li>
+<li><p>The testing suite around Mosaiq was built upon and extended across the
+breadth of PyMedPhys.</p></li>
+<li><p>Fixed a bug which was making <code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_mosaiq</span></code> non functional.</p></li>
+<li><p>Fixed a bug where some TRF files where not able to be decoded. Thank you
+LipTeck for <a class="reference external" href="https://pymedphys.discourse.group/t/request-to-use-file-name-for-missing-field-id-and-field-name-in-trf/156/6">the bug report</a>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">pymedphys.trf.identify</span></code> interface was moved out of beta. See the
+documentation for this newly stable API over at <a class="reference external" href="https://docs.pymedphys.com/lib/ref/trf.html">https://docs.pymedphys.com/lib/ref/trf.html</a>.</p></li>
+<li><p>Improved the robustness of the internal <code class="docutils literal notranslate"><span class="pre">extend</span> <span class="pre">ct</span></code> routines.</p></li>
+<li><p><strong>[Contributor facing only]</strong> created <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">mssql</span></code> which boots up
+a docker image of the Developer edition of Microsoft SQL. This is for
+utilisation by the Mosaiq testing suite.</p></li>
+<li><p><strong>[Contributor facing only]</strong> made <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">tests</span> <span class="pre">--cypress</span></code>
+automatically include the options <code class="docutils literal notranslate"><span class="pre">-v</span></code> and <code class="docutils literal notranslate"><span class="pre">-s</span></code> for displaying the <code class="docutils literal notranslate"><span class="pre">cypress</span></code>
+printouts during testing as well as <code class="docutils literal notranslate"><span class="pre">--reruns</span> <span class="pre">5</span></code> so that the test
+automatically reruns on failure in alignment with the CI procedure.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id3">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.36.0...v0.36.1">0.36.1</a><a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id4">
+<h3>New features and enhancements<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Added the <code class="docutils literal notranslate"><span class="pre">icom</span></code> installation option which can be run by calling
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[icom]==0.36.1</span></code>. This will install only the
+dependencies needed for the iCom listener.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id5">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.35.0...v0.36.0">0.36.0</a><a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id6">
+<h3>News around this release<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>We have a new team member, <a class="reference external" href="https://github.com/dg1an3">Derek Lane</a> he has
+undergone swathes of work around improving the long term maintenance of the
+Mosaiq SQL code. Thank you Derek! 🎉 🎈 🥳.</p></li>
+<li><p><a class="reference external" href="https://github.com/Matthew-Jennings">Matt Jennings</a> has rejoined the team,
+picking up his previous hat of Maintainer, great to have you back Matt 😊.</p></li>
+</ul>
+</div>
+<div class="section" id="id7">
+<h3>Breaking changes<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The modules <code class="docutils literal notranslate"><span class="pre">pymedphys.electronfactors</span></code> and <code class="docutils literal notranslate"><span class="pre">pymedphys.wlutz</span></code> were removed
+from the public API.</p>
+<ul>
+<li><p>There did not appear to be any usage of these modules outside of Cancer
+Care Associates.</p></li>
+<li><p>The electron factors module can be re-exposed upon request.</p></li>
+<li><p>The Winston Lutz module is undergoing a significant re-work and will be
+re-exposed in its new form once complete.</p></li>
+</ul>
+</li>
+<li><p>There have been a range of changes to the previously undocumented Mosaiq
+database connection and execution API.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.mosaiq.connect</span></code> now returns a <code class="docutils literal notranslate"><span class="pre">Connection</span></code> object instead of a
+<code class="docutils literal notranslate"><span class="pre">Cursor</span></code> object. This was so as to align with PEP0249. See <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1352">https://github.com/pymedphys/pymedphys/pull/1352</a>.</p></li>
+<li><p>All instances where previously the argument name within a function or
+method was <code class="docutils literal notranslate"><span class="pre">cursor</span></code> have been changed to <code class="docutils literal notranslate"><span class="pre">connection</span></code>.</p></li>
+<li><p>Previously a server and port could be provided to <code class="docutils literal notranslate"><span class="pre">pymedphys.mosaiq.connect</span></code>
+by passing it as a colon separated string, for example <code class="docutils literal notranslate"><span class="pre">&quot;localhost:1234&quot;</span></code>.
+This is no longer the case. Now, hostname and port need to be provided
+separately. There are also three extra arguments, <code class="docutils literal notranslate"><span class="pre">alias</span></code>, <code class="docutils literal notranslate"><span class="pre">username</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">password</span></code>. See either the docs <a class="reference external" href="https://docs.pymedphys.com/lib/ref/mosaiq.html">https://docs.pymedphys.com/lib/ref/mosaiq.html</a>
+or the docstring for more details <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79">https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79</a>.</p></li>
+<li><p>Removed <code class="docutils literal notranslate"><span class="pre">pymedphys.mosaiq.qcls</span></code>.</p></li>
+</ul>
+</li>
+<li><p><strong>[Contributor facing only]</strong> replaced <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">tests</span> <span class="pre">--pylint</span></code> with
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">lint</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="id8">
+<h3>New features and enhancements<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Added CLI argument for setting the hostname on the DICOM listen server. For
+example <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">listen</span> <span class="pre">7779</span> <span class="pre">--host</span> <span class="pre">127.0.0.1</span></code>.</p></li>
+<li><p>Added DICOM send functionality to DICOM connect module and made it available on the CLI. For example <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">send</span> <span class="pre">127.0.0.1</span> <span class="pre">7779</span> <span class="pre">path\to\dicom\*.dcm</span></code></p></li>
+<li><p>A range of application changes and improvements. The PyMedPhys app can be
+accessed by running <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code>.</p></li>
+<li><p><strong>[Streamlit users only]</strong> A CLI command <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">streamlit</span> <span class="pre">run</span></code> was added
+to facilitate utilising the custom PyMedPhys patches on the streamlit server
+for arbitrary streamlit apps. See <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/1422">https://github.com/pymedphys/pymedphys/issues/1422</a>.</p></li>
+<li><p><strong>[Contributor facing only]</strong> Added the following contributor CLI tools/options:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">tests</span> <span class="pre">--mosaiqdb</span></code>, to load up the tests that depend on having
+a Microsoft SQL server running. Thanks to <a class="reference external" href="https://github.com/dg1an3">Derek Lane</a>
+for all of his work building the Mosaiq CI workflow and the first set of
+Mosaiq tests.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">doctests</span></code>, run doctests.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">imports</span></code>, verify optional import logic by creating a clean
+Python install and attempting to import all modules.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">lint</span></code>, run pylint.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">cypress</span></code>, load up Cypress for interactively writing and
+running the end-to-end tests.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="misc-changes">
+<h3>Misc changes<a class="headerlink" href="#misc-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Significant work was undergone to improve the documentation layout. Thanks to
+<a class="reference external" href="https://github.com/Matthew-Jennings">Matt Jennings</a> for all his work here.</p></li>
+<li><p>How Mosaiq username and passwords are saved has been updated. This will
+result in these credentials being requested once more.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id9">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.34.0...v0.35.0">0.35.0</a><a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id10">
+<h3>News around this release<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>PyMedPhys now has a Discourse group at <a class="reference external" href="https://pymedphys.discourse.group">https://pymedphys.discourse.group</a>.
+The goal for this group is to build a community where we can discuss and
+collaborate around all things related to PyMedPhys.</p></li>
+</ul>
+</div>
+<div class="section" id="id11">
+<h3>Breaking changes<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Developer facing only</strong>: The <code class="docutils literal notranslate"><span class="pre">--live</span></code> parameter within <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">docs</span></code>
+has been removed.</p></li>
+</ul>
+</div>
+<div class="section" id="id12">
+<h3>New features and enhancements<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">listen</span></code> stores incoming DICOM objects in a directory
+hierarchy: PatientID/Study Instance UID/Series Instance UID aligning with the
+DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and
+OnkoDICOM. See PR <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1208">#1208</a>
+for more details.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">listen</span></code> adjustment changes where a 3rd party or in-house
+program would expect to find the DICOM data on the file system compared to the
+previous release.</p>
+<p>Please raise an issue on GitHub
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/new">https://github.com/pymedphys/pymedphys/issues/new</a> if you believe changes like
+this in the future should be considered a breaking change.</p>
+</div>
+<ul class="simple">
+<li><p>Documentation now uses the new <a class="reference external" href="https://jupyterbook.org/">Jupyter Book</a> tool
+from the <a class="reference external" href="https://executablebooks.org/">Executable Book Project</a>. Among other
+things this has enabled:</p>
+<ul>
+<li><p>Live running of notebook documentation using
+<a class="reference external" href="https://thebelab.readthedocs.io/">Thebe</a></p></li>
+<li><p>Discourse commenting now available directly within the hosted documentation</p></li>
+<li><p>The ability to utilise the expanded
+<a class="reference external" href="https://jupyterbook.org/content/myst.html">MyST</a> Documentation formatting.</p></li>
+</ul>
+</li>
+<li><p>Increased docstring coverage of public functions</p></li>
+<li><p>Installation on MacOS (Intel) has been simplified and is now the same as for
+other platforms, thanks to <a class="reference external" href="https://github.com/termim">&#64;termim</a> who has taken
+on the mantle of maintaining <code class="docutils literal notranslate"><span class="pre">pymssql</span></code>. See PR
+<a class="reference external" href="https://github.com/pymssql/pymssql/pull/677">pymssql#677</a> for more details.</p></li>
+<li><p>Streamlit development now supports reloading during development across the
+whole PyMedPhys library. See PR
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1202">#1202</a> for more details.</p></li>
+<li><p>A pre-release binary has been built and CI infrastructure around it has begun
+being built. Watch this space for a future release where it will be
+officially distributed. See PR
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1192">#1192</a> for more details.</p></li>
+<li><p>Create a <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/__main__.py#L1-L19"><code class="docutils literal notranslate"><span class="pre">__main__.py</span></code></a>
+so that the PyMedPhys CLI can be called using <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">pymedphys</span></code>.</p>
+<ul>
+<li><p>This is to support running the GUI and the tests within the binary.</p></li>
+</ul>
+</li>
+<li><p>Created a <code class="docutils literal notranslate"><span class="pre">requirements-user.txt</span></code>, this will allow users to install PyMedPhys
+from the repo while using the exact dependencies that are being tested within
+the CI. See PR <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1266">#1266</a> for
+more details.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">propagate</span></code> had the <code class="docutils literal notranslate"><span class="pre">--copies</span></code> and <code class="docutils literal notranslate"><span class="pre">--pyproject</span></code> flags added.
+This allows for subsections of propagate to be undergone instead of the whole
+procedure.</p></li>
+</ul>
+</div>
+<div class="section" id="id13">
+<h3>Bug fixes<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>CLI initialisation was delayed by unused tensorflow imports</p></li>
+<li><p>Pseudonymisation of Decimal String (e.g. Patient Weight) was failing. See
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1244">#1244</a> for more details.</p></li>
+<li><p>Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets
+would fail.</p></li>
+<li><p>Improved Mosaiq username and password login. Thank you
+<a class="reference external" href="https://github.com/nickmenzies">&#64;nickmenzies</a> for reporting. See PR
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1199">#1199</a> for more details.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> will use the Python used to run the CLI to boot streamlit as
+opposed to the streamlit able to be found on the user’s PATH. See
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/_gui.py#L48-L56">pymedphys/_gui.py</a> for
+more details. This is to support booting the GUI within the binary.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dateutil</span></code> dependency was removed for compatibility reasons with Streamlit’s
+cache. This tool was replaced with an equivalent tool within <code class="docutils literal notranslate"><span class="pre">pandas</span></code>. See
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/_trf/manage/identify.py#L31-L66">pymedphys/_trf/manage/identify.py</a>
+for more details.</p></li>
+<li><p>A range of fixes for the testing infrastructure for the case where the
+pymedphys CLI isn’t on the user’s path.</p>
+<ul>
+<li><p>This was to support testing within the binary infrastructure.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="library-structure-changes">
+<h3>Library structure changes<a class="headerlink" href="#library-structure-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>All GUI tools that are labelled experimental are now appropriately located
+within the experimental part of the library.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id14">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0">0.34.0</a><a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id15">
+<h3>News around this release<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>🚀 Stuart Swerdloff (<a class="reference external" href="https://github.com/sjswerdloff">&#64;sjswerdloff</a>) has
+agreed to come on board as a maintainer of PyMedPhys. Thank you Stuart! You
+have been a massive help and encouragement.</p></li>
+<li><p>Created an online PyMedPhys GUI. It is accessible from
+<a class="reference external" href="https://app.pymedphys.com">https://app.pymedphys.com</a>. This is in its early stages and most parts of
+the online GUI are not optimised for use in this fashion.</p>
+<ul>
+<li><p>Of note, its main purpose is to demonstrate the GUI functionality. If you
+wish to begin using this GUI in your centre install PyMedPhys on your local
+machine and then start it by calling <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> within a
+terminal/command prompt.</p></li>
+<li><p>The online demo GUI should not have sensitive information submitted to it.</p></li>
+</ul>
+</li>
+<li><p><a class="reference external" href="https://github.com/matthewdeancooper">&#64;matthewdeancooper</a> uploaded his
+Masters thesis on deep learning auto-segmentation to
+<a class="reference external" href="https://docs.pymedphys.com/background/autocontouring.html#details">the docs</a>.</p></li>
+<li><p>PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
+<a class="reference external" href="https://simonbiggs.net/acpsem-summer-school-2020-video">video</a> and
+<a class="reference external" href="https://simonbiggs.net/acpsem-summer-school-2020-slides">slides</a> are
+available online.</p></li>
+</ul>
+</div>
+<div class="section" id="stable-api-changes">
+<h3>“Stable” API changes<a class="headerlink" href="#stable-api-changes" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id16">
+<h4>Breaking changes<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>The parameter <code class="docutils literal notranslate"><span class="pre">fraction_number</span></code> within <code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_dicom</span></code> and
+<code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.to_dicom</span></code> has been changed to <code class="docutils literal notranslate"><span class="pre">fraction_group_number</span></code>.</p></li>
+<li><p>The name of the first argument to <code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_dicom</span></code> has been
+changed from <code class="docutils literal notranslate"><span class="pre">dicom_dataset</span></code> to <code class="docutils literal notranslate"><span class="pre">rtplan</span></code>. It now also accepts either a
+<code class="docutils literal notranslate"><span class="pre">pydicom.Dataset</span></code> or a filepath.</p></li>
+<li><p>A range of files utilised by <code class="docutils literal notranslate"><span class="pre">pymedphys.data_path</span></code> and related functions
+that contained the words “mudensity”, “mu-density”, or “mu_density” have
+been replaced with “metersetmap”.</p></li>
+<li><p>The exceptions that <code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_mosaiq</span></code> raises when either
+no entry in Mosaiq is found (<code class="docutils literal notranslate"><span class="pre">NoMosaiqEntries</span></code>) or multiple entries are found
+(<code class="docutils literal notranslate"><span class="pre">MultipleMosaiqEntries</span></code>) now both inherit from <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> instead of the
+base <code class="docutils literal notranslate"><span class="pre">Exception</span></code> class.</p></li>
+</ul>
+</div>
+<div class="section" id="deprecations">
+<h4>Deprecations<a class="headerlink" href="#deprecations" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>All instances of <code class="docutils literal notranslate"><span class="pre">mudensity</span></code> have been replaced with <code class="docutils literal notranslate"><span class="pre">metersetmap</span></code>. The
+<code class="docutils literal notranslate"><span class="pre">mudensity</span></code> API is still currently available, but it will be removed in a
+future release.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_logfile</span></code> has been renamed as
+<code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_trf</span></code>. The previous name is still temporarily
+available but it will be removed in a future release.</p></li>
+</ul>
+</div>
+<div class="section" id="new-features">
+<h4>New features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Added CLI <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">listen</span></code> <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1161">#1161</a>.
+This begins a DICOM listener which will store the DICOM files sent to it to
+disk. It accepts the arguments <code class="docutils literal notranslate"><span class="pre">--port</span></code>, <code class="docutils literal notranslate"><span class="pre">--aetitle</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">--storage_directory</span></code>. Thanks <a class="reference external" href="https://github.com/pchlap">&#64;pchlap</a>!</p></li>
+</ul>
+</div>
+<div class="section" id="id17">
+<h4>Bug fixes<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Sometimes a range of DICOM API calls would require the downloading of a
+baseline DICOM dictionary. This is now distributed with the library.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="gui-changes">
+<h3>GUI changes<a class="headerlink" href="#gui-changes" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="logistics-changes">
+<h4>Logistics changes<a class="headerlink" href="#logistics-changes" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> now boots up a multi application index. This index breaks
+applications up into five categories, mature, maturing, raw, beta, and
+experimental.</p></li>
+</ul>
+</div>
+<div class="section" id="pseudonymise">
+<h4>Pseudonymise<a class="headerlink" href="#pseudonymise" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>A new pseudonymise application has been created. This allows users to drag
+and drop DICOM files into the GUI and then download the resulting DICOM file
+in its pseudonymised form. Thanks
+<a class="reference external" href="https://github.com/sjswerdloff">&#64;sjswerdloff</a>!</p></li>
+</ul>
+</div>
+<div class="section" id="metersetmap">
+<h4>MetersetMap<a class="headerlink" href="#metersetmap" title="Permalink to this headline">¶</a></h4>
+<div class="section" id="id18">
+<h5>New Features<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h5>
+<ul class="simple">
+<li><p>The MetersetMap comparison application (which used to be MU density) is now
+able to work with a bare bones configuration file which can be used by just
+dragging and dropping TRF and DICOM files for comparison. See
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1117#issue-513765705">#1117</a>
+for details of the configuration file needed.</p></li>
+<li><p>Path configuration now supports expansion of <code class="docutils literal notranslate"><span class="pre">~</span></code> to the users home directory.</p></li>
+</ul>
+</div>
+<div class="section" id="id19">
+<h5>Bug fixes<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h5>
+<ul class="simple">
+<li><p>In some cases a patient having a middle name would cause the DICOM file
+upload method to crash. Thanks <a class="reference external" href="https://github.com/mchamberland">&#64;mchamberland</a>
+for reporting in <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/1137">#1137</a>
+and thanks <a class="reference external" href="https://github.com/sjswerdloff">&#64;sjswerdloff</a> for the prompt fix
+in <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1144">#1144</a>!</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="experimental-applications">
+<h4>Experimental applications<a class="headerlink" href="#experimental-applications" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>A new “anonymise monaco” application has been exposed. This allows the
+back-end Monaco filesystem to be anonymised in such a way that Monaco can
+still open and work with the contents.</p></li>
+<li><p>A new “dashboard” application has been exposed. This connects to multiple
+Mosaiq sites and displays the QCLs across each site.</p></li>
+<li><p>A new “electrons” application has been exposed. This reads Monaco back-end
+files, extract the electron insert shape and then predicts the corresponding
+insert output factor.</p></li>
+<li><p>A new “iviewdb” application has been exposed. This allows for exploration of
+the iView database.</p></li>
+<li><p>Work has begun on a new Winston Lutz Arc GUI.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="configuration-changes">
+<h3>Configuration changes<a class="headerlink" href="#configuration-changes" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="new-keys">
+<h4>New keys<a class="headerlink" href="#new-keys" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">~/.pymedphys/config.toml</span></code> should now include a <code class="docutils literal notranslate"><span class="pre">version</span> <span class="pre">=</span> <span class="pre">1</span></code> entry. This
+is to support undergoing breaking changes within <code class="docutils literal notranslate"><span class="pre">config.toml</span></code> but allowing
+PyMedPhys to still read in old configuration files without issue.</p></li>
+<li><p>For use within the up-coming Winston-Lutz Arc GUI a new key
+<code class="docutils literal notranslate"><span class="pre">site.export-directories.iviewdb</span></code> has been created.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="beta-api-changes">
+<h3>Beta API changes<a class="headerlink" href="#beta-api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Nil</p></li>
+</ul>
+</div>
+<div class="section" id="experimental-api-changes">
+<h3>Experimental API changes<a class="headerlink" href="#experimental-api-changes" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id20">
+<h4>Breaking changes<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Removed <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">experimental</span> <span class="pre">gui</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="id21">
+<h4>New Features<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Within <code class="docutils literal notranslate"><span class="pre">pymedphys.experimental.pseudonymisation</span></code> both <code class="docutils literal notranslate"><span class="pre">pseudonymise</span></code> and
+<code class="docutils literal notranslate"><span class="pre">is_valid_strategy_for_keywords</span></code> were added. <code class="docutils literal notranslate"><span class="pre">pseudonymise</span></code> provides
+a convenient simple API for pseudonymisation. See <a class="reference external" href="https://docs.pymedphys.com/ref/lib/experimental/pseudonymisation.html#api">the API docs</a>
+for more information. Credit to <a class="reference external" href="https://github.com/sjswerdloff">&#64;sjswerdloff</a>
+for all his work here.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="developer-facing-api-changes">
+<h3>Developer facing API changes<a class="headerlink" href="#developer-facing-api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The pymedphys library directory has moved to <code class="docutils literal notranslate"><span class="pre">lib/pymedphys</span></code>.
+After this move you will need to rerun <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">install</span> <span class="pre">-E</span> <span class="pre">dev</span></code></p></li>
+<li><p>The development branch of pymedphys has moved from <a class="reference external" href="https://github.com/pymedphys/pymedphys/tree/master">master</a>
+to <a class="reference external" href="https://github.com/pymedphys/pymedphys/tree/main">main</a></p></li>
+<li><p>Documentation is now stored within the library, moving from <code class="docutils literal notranslate"><span class="pre">docs</span></code> to
+<code class="docutils literal notranslate"><span class="pre">lib/pymedphys/docs</span></code></p></li>
+<li><p>Docs can now be built, viewed, and updated with hot-reloading by running
+<code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span> <span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">docs</span> <span class="pre">--live</span></code>.</p></li>
+<li><p>The output directory for the docs building can now be controlled by passing
+an <code class="docutils literal notranslate"><span class="pre">--output</span></code> flag to <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">docs</span></code>.</p></li>
+<li><p>A new CLI utility that propagates a range of files that depend upon each
+other files within the repo are “propagated” by calling
+<code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span> <span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">propagate</span></code>. The files created/updated by this
+command are <code class="docutils literal notranslate"><span class="pre">lib/pymedphys/_version.py</span></code>, <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code> and
+<code class="docutils literal notranslate"><span class="pre">requirements-dev.txt</span></code>, <code class="docutils literal notranslate"><span class="pre">lib/pymedphys/.pylintrc</span></code>,
+<code class="docutils literal notranslate"><span class="pre">lib/pymedphys/docs/README.rst</span></code>, <code class="docutils literal notranslate"><span class="pre">lib/pymedphys/docs/CHANGELOG.md</span></code>, and the
+‘extras’ field within <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">tests</span></code> includes simplified flags. <code class="docutils literal notranslate"><span class="pre">--run-only-slow</span></code> can
+be undergone with <code class="docutils literal notranslate"><span class="pre">--slow</span></code>, <code class="docutils literal notranslate"><span class="pre">--run-only-yarn</span></code> with <code class="docutils literal notranslate"><span class="pre">--cypress</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--run-only-pydicom</span></code> with <code class="docutils literal notranslate"><span class="pre">--pydicom</span></code>, and <code class="docutils literal notranslate"><span class="pre">--run-only-pylinac</span></code> with
+<code class="docutils literal notranslate"><span class="pre">--pylinac</span></code>.</p></li>
+<li><p>Within cypress end to end testing the custom <code class="docutils literal notranslate"><span class="pre">cy.start</span></code> command now has a
+parameter <code class="docutils literal notranslate"><span class="pre">app</span></code> which refers to the URL app key of the application to be
+tested <code class="docutils literal notranslate"><span class="pre">http://localhost:8501/?app=${app}</span></code>.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id22">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0">0.33.0</a><a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id23">
+<h3>“Stable” API changes<a class="headerlink" href="#id23" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="installation-changes">
+<h4>Installation changes<a class="headerlink" href="#installation-changes" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>To install pymedphys with all of its user dependencies now the following
+needs to be run:</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install pymedphys<span class="o">[</span>user<span class="o">]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>When <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys</span></code> is called, PyMedPhys will now be installed with
+minimal/no dependencies.</p>
+<ul>
+<li><p>Pull request <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1036">#1036</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id24">
+<h3>Beta API changes<a class="headerlink" href="#id24" title="Permalink to this headline">¶</a></h3>
+<p>Nil</p>
+</div>
+<div class="section" id="id25">
+<h3>Experimental API changes<a class="headerlink" href="#id25" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id26">
+<h4>Breaking changes<a class="headerlink" href="#id26" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Removed a range of unmaintained experimental package APIs; film, collimation,
+sinogram, and Profile. The underlying code has not been removed, but they
+are no longer exposed through the APIs.</p></li>
+</ul>
+</div>
+<div class="section" id="id27">
+<h4>Bug fixes<a class="headerlink" href="#id27" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Made it so that <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">pymedphys.experimental</span></code> does not raise an
+<code class="docutils literal notranslate"><span class="pre">ImportError</span></code> when an optional dependency has not been installed.</p>
+<ul>
+<li><p>Issue <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/1035">#1035</a></p></li>
+<li><p>Pull request <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1036">#1036</a></p></li>
+</ul>
+</li>
+<li><p>Fixed a bug where pseudonymisation wouldn’t work when in cases of identifying
+sequences.</p>
+<ul>
+<li><p>Issue <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/1034">#1034</a></p></li>
+<li><p>Pull request <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/1038">#1038</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id28">
+<h4>New Features<a class="headerlink" href="#id28" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Created a Mosaiq QCL dashboard that reads the QCLs from multiple Mosaiq
+installs across multiple sites. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_gui/streamlit/dashboard.py#L20-L78">_gui/streamlit/dashboard.py#L20-L78</a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="internal-changes">
+<h3>Internal Changes<a class="headerlink" href="#internal-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Made it so that when developing streamlit apps an autoreload function can
+be used to have the streamlit app update on dependency changes.
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_streamlit/rerun.py#L89-L96">_streamlit/rerun.py#L89-L96</a></p>
+<ul>
+<li><p>See discussion over on <a class="reference external" href="https://github.com/streamlit/streamlit/issues/653#issuecomment-678954708">streamlit’s issue tracker</a></p></li>
+</ul>
+</li>
+<li><p>Internal Mosaiq connection function now accepts custom functions for
+prompting the user for their database username, password, and prompting the
+user with responses. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_mosaiq/connect.py#L134-L147">_mosaiq/connect.py#L134-L147</a></p>
+<ul>
+<li><p>This was utilised for connecting to a fresh database within streamlit.
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_streamlit/mosaiq.py#L20-L50">_streamlit/mosaiq.py#L20-L50</a></p></li>
+</ul>
+</li>
+<li><p>Created tool to manage <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> extras. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/scripts/propagate-extras.py#L26-L51">scripts/propagate-extras.py#L26-L51</a></p>
+<ul>
+<li><p>See discussion on the poetry
+<a class="reference external" href="https://github.com/python-poetry/poetry/issues/1644#issuecomment-688256688">issue tracker</a>
+for more details.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id29">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0">0.32.0</a><a class="headerlink" href="#id29" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id30">
+<h3>“Stable” API changes<a class="headerlink" href="#id30" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id31">
+<h4>Bug fixes<a class="headerlink" href="#id31" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Fixed bug in the PyMedPhys trf decoding logic where leaf pairs 77, 78, 79,
+and 80 on the Y2 bank were decoded into having the wrong sign.</p>
+<ul>
+<li><p>See issue <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/968">#968</a> and
+pull request <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/970">#970</a> for
+more details.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id32">
+<h4>Breaking changes<a class="headerlink" href="#id32" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">config.toml</span></code> has undergone a few breaking changes.</p>
+<ul>
+<li><p>See <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/1241924d027163fccdc95750db0c984805bb83d4/site-specific/cancer-care-associates/config.toml">the example</a>
+for a working config file.</p></li>
+<li><p>See below for a comparison highlighting the key differences.</p></li>
+</ul>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Previous version</span>
+<span class="k">[[site]]</span>
+<span class="n">name</span> <span class="o">=</span> <span class="s">&quot;rccc&quot;</span>
+<span class="n">escan_directory</span> <span class="o">=</span> <span class="s">&#39;\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs&#39;</span>
+
+    <span class="k">[[site.linac]]</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;2619&quot;</span>
+    <span class="n">icom_live_directory</span> <span class="o">=</span> <span class="s">&#39;\\rccc-physicssvr\iComLogFiles\live\192.168.100.200&#39;</span>
+
+
+<span class="c1"># New version</span>
+<span class="k">[[site]]</span>
+<span class="n">name</span> <span class="o">=</span> <span class="s">&quot;rccc&quot;</span>
+
+    <span class="k">[site.export-directories]</span>
+    <span class="n">escan</span> <span class="o">=</span> <span class="s">&#39;\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs&#39;</span>
+    <span class="n">anonymised_monaco</span> <span class="o">=</span> <span class="s">&#39;S:\DataExchange\anonymised-monaco&#39;</span>
+    <span class="n">icom_live</span> <span class="o">=</span> <span class="s">&#39;\\rccc-physicssvr\iComLogFiles\live&#39;</span>
+
+    <span class="k">[[site.linac]]</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;2619&quot;</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="s">&#39;192.168.100.200&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id33">
+<h4>New Features<a class="headerlink" href="#id33" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Two new optional keywords were added to <code class="docutils literal notranslate"><span class="pre">pymedphys.dicom.anonymise</span></code>. These
+are <code class="docutils literal notranslate"><span class="pre">replacement_strategy</span></code> and <code class="docutils literal notranslate"><span class="pre">identifying_keywords</span></code>. This was designed to
+support alternative anonymisation methods. The API to the anonymise function
+is being flagged for a rework and simplification for which a breaking change
+is likely to occur in the near future.</p></li>
+<li><p>Added ability to configure logging via <code class="docutils literal notranslate"><span class="pre">config.toml</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="data-file-changes">
+<h4>Data file changes<a class="headerlink" href="#data-file-changes" title="Permalink to this headline">¶</a></h4>
+<p>Refers to the data files accessible via <code class="docutils literal notranslate"><span class="pre">pymedphys.data_path</span></code>,
+<code class="docutils literal notranslate"><span class="pre">pymedphys.zip_data_paths</span></code>, and <code class="docutils literal notranslate"><span class="pre">pymedphys.zenodo_data_paths</span></code>.</p>
+<ul class="simple">
+<li><p>The data file <code class="docutils literal notranslate"><span class="pre">pinnacle_test_data_no_image.zip</span></code> was removed and its contents
+were moved into <code class="docutils literal notranslate"><span class="pre">pinnacle_test_data.zip</span></code>.</p></li>
+<li><p>Data files <code class="docutils literal notranslate"><span class="pre">treatment-record-anonymisation.zip</span></code>, <code class="docutils literal notranslate"><span class="pre">negative-mu-density.trf</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">trf-references-and-baselines.zip</span></code> were added.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id34">
+<h3>Beta API changes<a class="headerlink" href="#id34" title="Permalink to this headline">¶</a></h3>
+<p>Nil</p>
+</div>
+<div class="section" id="id35">
+<h3>Experimental API changes<a class="headerlink" href="#id35" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id36">
+<h4>New Features<a class="headerlink" href="#id36" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Added pseudonymisation as an experimental extension of anonymise.</p>
+<ul>
+<li><p>This API is undergoing refinement, however in its current form it is
+accessible via
+<code class="docutils literal notranslate"><span class="pre">pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch</span></code>
+and <code class="docutils literal notranslate"><span class="pre">pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords</span></code>.
+These are designed to be passed to the new keywords <code class="docutils literal notranslate"><span class="pre">replacement_strategy</span></code>
+and <code class="docutils literal notranslate"><span class="pre">identifying_keywords</span></code> within <code class="docutils literal notranslate"><span class="pre">pymedphys.dicom.anonymise</span></code>.</p></li>
+<li><p>The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date
+shifting for dates, and jittering for Age. The intent is to enable sets of
+data that are correlated to remain correlated, and to prevent uncorrelated
+patient/study/series from clashing.</p></li>
+</ul>
+</li>
+<li><p>Added experimental pseudonymisation CLI. Callable via
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">experimental</span> <span class="pre">dicom</span> <span class="pre">anonymise</span> <span class="pre">--pseudo</span> <span class="pre">path/to/dicom.dcm</span></code></p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">experimental</span> <span class="pre">gui</span></code>. This is a testing ground for new GUIs
+that are intended to appear within <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> in the future. The GUIs
+exposed under this experimental scope are minimally tested.</p>
+<ul>
+<li><p>At this point in time, the new GUIs include a GUI index, an electron
+insert factor prediction tool, and a Monaco anonymisation tool.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id37">
+<h4>Bug Fixes<a class="headerlink" href="#id37" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Pinnacle Export Tool now allows for the trial to be set using the CLI.
+See issue <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/973">#973</a>
+and pull request <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/995">#995</a> for
+more details.</p></li>
+<li><p>Fixed bug where the dose grid in the Pinnacle Export Tool was only correct
+when patients were in HFS. See
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/929">#929</a> for more details.</p></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="id38">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0">0.31.0</a><a class="headerlink" href="#id38" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id39">
+<h3>“Stable” API changes<a class="headerlink" href="#id39" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="critical-bug-fixes">
+<h4>Critical bug fixes<a class="headerlink" href="#critical-bug-fixes" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Fixed bug where <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">anonymise</span></code> and <code class="docutils literal notranslate"><span class="pre">pymedphys.dicom.anonymise</span></code>
+would not anonymise nested tags. Thanks
+<a class="reference external" href="https://github.com/sjswerdloff">sjswerdloff</a> for finding and fixing
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/920">#920</a>.</p></li>
+</ul>
+</div>
+<div class="section" id="id40">
+<h4>Breaking changes<a class="headerlink" href="#id40" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Removed the <code class="docutils literal notranslate"><span class="pre">--publish</span></code> option from CLI <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">docs</span></code>.</p></li>
+<li><p>Moved <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">logfile</span> <span class="pre">orchestration</span></code> to <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">trf</span> <span class="pre">orchestrate</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="id41">
+<h4>New features<a class="headerlink" href="#id41" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.zenodo_data_paths</span></code> has a new optional parameter <code class="docutils literal notranslate"><span class="pre">filenames</span></code> that
+can be used to only download some files.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.data_path</span></code> has a new optional parameter <code class="docutils literal notranslate"><span class="pre">hash_filepath</span></code> which can
+be used to provide a custom hash record.</p></li>
+<li><p>Added usage warning to the MU Density GUI.</p></li>
+</ul>
+</div>
+<div class="section" id="id42">
+<h4>Deprecations<a class="headerlink" href="#id42" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.read_trf</span></code> has been replaced with <code class="docutils literal notranslate"><span class="pre">pymedphys.trf.read</span></code>. The old
+API is still available, but will be removed in a future version.</p></li>
+</ul>
+</div>
+<div class="section" id="id43">
+<h4>Bug fixes<a class="headerlink" href="#id43" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Cache data downloads now also retry when a <code class="docutils literal notranslate"><span class="pre">ConnectionResetError</span></code> occurs.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id44">
+<h3>Beta API changes<a class="headerlink" href="#id44" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id45">
+<h4>New features<a class="headerlink" href="#id45" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>A new <code class="docutils literal notranslate"><span class="pre">pymedphys.beta</span></code> module created. This is intended to allow a section
+of the API to be exposed and iterated on but having breaking changes not
+induce a major version bump (when PyMedPhys goes to <code class="docutils literal notranslate"><span class="pre">v1.0.0+</span></code>)</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">pymedphys.beta.trf.identify</span></code> to allow the usage of Mosaiq to identify
+a trf logfile.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id46">
+<h3>Experimental API changes<a class="headerlink" href="#id46" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id47">
+<h4>Breaking changes<a class="headerlink" href="#id47" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Instances of <code class="docutils literal notranslate"><span class="pre">labs</span></code> has been changed to <code class="docutils literal notranslate"><span class="pre">experimental</span></code>. This affects all
+imports from the labs and the CLI usage.</p></li>
+</ul>
+</div>
+<div class="section" id="id48">
+<h4>Bug fixes<a class="headerlink" href="#id48" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><p>Fixed issue with Pinnacle Export Tool crashing when an image is missing from
+the archive.</p></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="id49">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.29.1...v0.30.0">0.30.0</a><a class="headerlink" href="#id49" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id50">
+<h3>Breaking changes<a class="headerlink" href="#id50" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed the proof of concept <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">bundle</span></code> CLI as well all of its
+associated code.</p></li>
+<li><p>Removed a range of unused files from the <code class="docutils literal notranslate"><span class="pre">pymedphys.data_path</span></code> API.</p></li>
+<li><p>The previous install options <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[pytest]</span></code> and
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[pylint]</span></code> have been removed and replaced with
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[tests]</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="id51">
+<h3>New Features<a class="headerlink" href="#id51" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Added a new toolbox for retrieving PTW Quickcheck measurement data and write
+it to a csv file.
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">labs</span> <span class="pre">quickcheck</span> <span class="pre">to-csv</span> <span class="pre">your.quickcheck.ip</span> <span class="pre">path/to/output.csv</span></code></p>
+<ul>
+<li><p>See <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/2d5148e2eabce3a6a4fd54e43e7dc8d4e050f5ed/pymedphys/labs/quickcheck/qcheck.py">labs/quickcheck/qcheck.py</a></p></li>
+</ul>
+</li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">tests</span></code> to the CLI.</p>
+<ul>
+<li><p>Moved all of tests into the pymedphys repo itself. Now the automated
+testing suite is able to be run from a pypi install.</p></li>
+<li><p>This CLI has options such as <code class="docutils literal notranslate"><span class="pre">--run-only-pydicom</span></code>, <code class="docutils literal notranslate"><span class="pre">--run-only-slow</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">--run-only-pylinac</span></code> so that upstream tools can run tests on this
+downstream project.</p></li>
+<li><p>These extra options are directly passed through to <code class="docutils literal notranslate"><span class="pre">pytest</span></code>. To achieve
+this, made the <code class="docutils literal notranslate"><span class="pre">pymedphys</span></code> CLI be able to optionally handle arbitrary
+commands.</p></li>
+</ul>
+</li>
+<li><p>Made the Zenodo download tool retry up to four times should the download
+fail.</p></li>
+<li><p>Added DICOM helpers functionality and updated the Mosaiq helpers as a part of
+the UTHSCSA TPS/OIS comparison project. Not yet exposed as part of the API.
+See <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/2d5148e2eabce3a6a4fd54e43e7dc8d4e050f5ed/pymedphys/_mosaiq/helpers.py#L353-L482">_mosaiq/helpers.py#L353-L482</a></p></li>
+<li><p>Added more debugging strings to the iCOM CLI. See these outputs by running
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">--debug</span> <span class="pre">icom</span> <span class="pre">listen</span> <span class="pre">external.nss.ip.address</span> <span class="pre">your/output/directory</span></code></p>
+<ul>
+<li><p>These were added to support remotely debugging the iCOM listen software.
+To see the conversation around debugging that tool see the
+<a class="reference external" href="https://groups.google.com/forum/#%21topic/pymedphys/2LczVpmc_Ak">PyMedPhys forum discussion</a></p></li>
+</ul>
+</li>
+<li><p>Format of MU in logging display now rounded to one decimal.</p></li>
+</ul>
+</div>
+<div class="section" id="dependency-changes">
+<h3>Dependency changes<a class="headerlink" href="#dependency-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Now depending on <code class="docutils literal notranslate"><span class="pre">pylibjpeg-libjpeg</span></code> in order to decode lossless-jpeg files.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m2r</span></code> is no longer used to build the docs.</p></li>
+<li><p>No longer using <code class="docutils literal notranslate"><span class="pre">tox</span></code> for tests.</p></li>
+</ul>
+</div>
+<div class="section" id="id52">
+<h3>Bug fixes<a class="headerlink" href="#id52" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fixed an issue where the iCOM listener could not handle Machine IDs that
+were not entirely an integer.</p>
+<ul>
+<li><p>See <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/2d5148e2eabce3a6a4fd54e43e7dc8d4e050f5ed/pymedphys/_icom/mappings.py#L6">_icom/mappings.py#L6</a>
+for changes.</p></li>
+<li><p>See the <a class="reference external" href="https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/c5nUeUfQAQAJ">PyMedPhys forum discussion</a> for details.</p></li>
+</ul>
+</li>
+<li><p>Fixed a case where on some Windows environments <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">docs</span></code> would
+not run.</p></li>
+<li><p>Fixed a case where on some Windows environments <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> would not
+run.</p></li>
+<li><p>Fixed issue where the <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">logfile</span> <span class="pre">orchestration</span></code> CLI would not be able
+to create an <code class="docutils literal notranslate"><span class="pre">index.json</span></code>, or a range of the needed directories on its first
+run.</p>
+<ul>
+<li><p>See the <a class="reference external" href="https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/5mFZig1cAgAJ">PyMedPhys forum discussion</a> for more details.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="documentation-updates">
+<h3>Documentation updates<a class="headerlink" href="#documentation-updates" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fixed an issue where the displayed CSV files for configuring
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">logfile</span> <span class="pre">orchestration</span></code> would actually cause an error due to excess
+spaces used for display purposes.</p>
+<ul>
+<li><p>See the <a class="reference external" href="https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/m41v_LVRAgAJ">PyMedPhys forum discussion</a> for more details.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="development-changes">
+<h3>Development changes<a class="headerlink" href="#development-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed any file that was larger than 300 kB from the git history bring down
+clone times to a manageable state.</p>
+<ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> tool now does not allow commits greater than 300 kB.</p></li>
+<li><p>All testing files that were larger than 300 kB have been moved to Zenodo.</p></li>
+</ul>
+</li>
+<li><p>All tests have been moved from <code class="docutils literal notranslate"><span class="pre">/tests</span></code> into <code class="docutils literal notranslate"><span class="pre">/pymedphys/tests</span></code>, running
+these tests can now be undergone by calling <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">tests</span></code></p>
+<ul>
+<li><p>No longer using <code class="docutils literal notranslate"><span class="pre">tox</span></code>.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id53">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.29.0...v0.29.1">0.29.1</a><a class="headerlink" href="#id53" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id54">
+<h3>Bug fixes<a class="headerlink" href="#id54" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fix issue in some Windows environments where running <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> would
+not find the streamlit installation. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43">_gui/<strong>init</strong>.py</a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id55">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.28.0...v0.29.0">0.29.0</a><a class="headerlink" href="#id55" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id56">
+<h3>Breaking changes<a class="headerlink" href="#id56" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Changed the <code class="docutils literal notranslate"><span class="pre">patient_directories</span></code> icom parameter to accept a list of paths
+instead of a single path within the pymedphys <code class="docutils literal notranslate"><span class="pre">config.toml</span></code>. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/examples/site-specific/cancer-care-associates/config.toml#L67-L72">config.toml#L67-L72</a></p></li>
+<li><p>Changed <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> iCOM path resolution logic to instead search over
+a list of paths instead of just one path as before. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/pymedphys/_gui/streamlit/mudensity-compare.py#L668-L670">mudensity-compare.py#L668-L670</a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id57">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.27.0...v0.28.0">0.28.0</a><a class="headerlink" href="#id57" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="overview">
+<h3>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h3>
+<p>This release primarily focused on changes regarding the iCOM listener and the
+PyMedPhys GUI that utilises these iCOM records.</p>
+</div>
+<div class="section" id="id58">
+<h3>Breaking changes<a class="headerlink" href="#id58" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed the <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">icom</span> <span class="pre">archive</span></code> CLI command, this archiving is now built
+directly into the listener itself.</p></li>
+</ul>
+</div>
+<div class="section" id="id59">
+<h3>New Features<a class="headerlink" href="#id59" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">icom</span> <span class="pre">listener</span></code> CLI command now will collect the icom stream
+into beam delivery batches and index them by patient name. This functionality
+used to be undergone within the <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">icom</span> <span class="pre">archive</span></code> CLI, but this
+functionality has now been merged into the listener. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L79">listener.py#L79</a></p></li>
+<li><p>Should an error occur within <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">icom</span> <span class="pre">listener</span></code> CLI it will now pause
+for 15 minutes and then reattempt a connection.</p></li>
+<li><p>Add in extra sanity checks within the iCOM patient indexing tooling.</p></li>
+<li><p>Added a <code class="docutils literal notranslate"><span class="pre">--debug</span></code> and <code class="docutils literal notranslate"><span class="pre">--verbose</span></code> flag to the PyMedPhys CLI which allows
+users to set the logging level. These logging levels are currently only
+utilised within the <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">icom</span> <span class="pre">listen</span></code> CLI. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/9c7c7e3c2d7fb49d30b418dca2fa28e6982ff97e/pymedphys/cli/main.py#L51-L70">cli/main.py#L51-L70</a></p></li>
+</ul>
+</div>
+<div class="section" id="id60">
+<h3>Bug fixes<a class="headerlink" href="#id60" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Reduced the buffer size of the iCOM listener. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L9">listener.py#L9</a></p></li>
+<li><p>If either the listener is turned off and then on again, or it is interrupted
+the next time an iCOM stream socket is opened the Linac appears to send a
+larger batch containing prior irradiations. The listener code was adjusted
+to handle these extra bursts. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L57-L83">listener.py#L57-L83</a></p></li>
+<li><p>Made PyMedPhys GUI skip name formatting attempt if the original patient name
+format was not as expected. <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_gui/streamlit/mudensity-compare.py#L733-L738">mudensity-compare.py#L733-L738</a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id61">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.26.0...v0.27.0">0.27.0</a><a class="headerlink" href="#id61" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id62">
+<h3>New Features<a class="headerlink" href="#id62" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Added an optional <code class="docutils literal notranslate"><span class="pre">--structures</span></code> flag to <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">merge-contours</span></code>.
+This allows you to only compute the merge for those structures named.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id63">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.25.1...v0.26.0">0.26.0</a><a class="headerlink" href="#id63" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id64">
+<h3>New Features<a class="headerlink" href="#id64" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Created a function to merge overlapping contours that have the same name
+within a DICOM structure file.</p>
+<ul>
+<li><p>Underlying function – <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/_dicom/structure/merge.py#L172-L200">https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/_dicom/structure/merge.py#L172-L200</a></p></li>
+<li><p>API exposure – <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/dicom.py#L13">https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/dicom.py#L13</a></p></li>
+</ul>
+</li>
+<li><p>Exposed the above command as a part of the CLI. It is runnable with <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">merge-contours</span></code></p>
+<ul>
+<li><p>CLI exposure – <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/cli/dicom.py#L42-L50">https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/cli/dicom.py#L42-L50</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id65">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.25.0...v0.25.1">0.25.1</a><a class="headerlink" href="#id65" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id66">
+<h3>Dependency Changes<a class="headerlink" href="#id66" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Now included <code class="docutils literal notranslate"><span class="pre">psutil</span></code> as an optional dependency.</p></li>
+</ul>
+</div>
+<div class="section" id="quality-of-life-improvements">
+<h3>Quality of life improvements<a class="headerlink" href="#quality-of-life-improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Now raises a descriptive error when a DICOM RT plan file’s control point is
+missing a cumulative meterset weight.
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/pymedphys/_dicom/delivery/core.py#L180-L196">https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/pymedphys/_dicom/delivery/core.py#L180-L196</a></p></li>
+<li><p>When running <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> for the first time, no longer does <code class="docutils literal notranslate"><span class="pre">streamlit</span></code>
+request credentials.
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/pymedphys/_gui/__init__.py#L24-L36">https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/pymedphys/_gui/__init__.py#L24-L36</a></p></li>
+</ul>
+</div>
+<div class="section" id="id67">
+<h3>Development changes<a class="headerlink" href="#id67" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Implemented Cypress GUI testing infrastructure into the CI workflow. See
+details at <a class="reference external" href="https://dashboard.cypress.io/projects/tgt8f6/runs">https://dashboard.cypress.io/projects/tgt8f6/runs</a>.</p>
+<ul>
+<li><p>Tests – <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/tests/e2e/cypress/integration/streamlit/mudensity-compare.js">https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/tests/e2e/cypress/integration/streamlit/mudensity-compare.js</a></p></li>
+<li><p>CI config – <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/.github/workflows/cypress.yml">https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/.github/workflows/cypress.yml</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id68">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.24.3...v0.25.0">0.25.0</a><a class="headerlink" href="#id68" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id69">
+<h3>New Features<a class="headerlink" href="#id69" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Created the command line tool <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> which boots the GUI for
+PyMedPhys within your browser. GUI at this stage is quite minimal.</p></li>
+<li><p>Created a tool to handle a PyMedPhys config file, by default stored within
+<code class="docutils literal notranslate"><span class="pre">~/.pymedphys/.config.toml</span></code>. That config file can have a <code class="docutils literal notranslate"><span class="pre">redirect</span></code> field
+to allow configuration to be stored in a different location such as
+within a git repo, or a network drive.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.zip_data_paths</span></code> now has a new optional parameter
+<code class="docutils literal notranslate"><span class="pre">extract_directory</span></code>. When this parameter is passed the contents of the zip
+downloaded zip data will be extracted to the provided directory. For example
+now the following is possible:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pathlib</span>
+
+<span class="kn">import</span> <span class="nn">pymedphys</span>
+
+<span class="n">CWD</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
+<span class="n">pymedphys</span><span class="o">.</span><span class="n">zip_data_paths</span><span class="p">(</span><span class="s2">&quot;mu-density-gui-e2e-data.zip&quot;</span><span class="p">,</span> <span class="n">extract_directory</span><span class="o">=</span><span class="n">CWD</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_dicom()</span></code> now supports step and shoot and 3DCRT DICOM
+plan files.</p></li>
+<li><p>Work on <code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_monaco()</span></code> was undergone with an attempt to
+support step and shoot plans. This work was preliminary.</p></li>
+<li><p>Created a utility to pretty print patient names</p></li>
+<li><p>Added ground work for e2e testing of <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">gui</span></code> with the cypress tool.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id70">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.24.2...v0.24.3">0.24.3</a><a class="headerlink" href="#id70" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id71">
+<h3>Bug Fixes<a class="headerlink" href="#id71" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Within the bundle created by <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">bundle</span></code> fixed a bug where
+the streamlit server will not start due stdout not flushing.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id72">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.24.1...v0.24.2">0.24.2</a><a class="headerlink" href="#id72" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id73">
+<h3>Bug Fixes<a class="headerlink" href="#id73" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Within the bundle created by <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">bundle</span></code> fixed a bug where sometimes
+the streamlit server would not start should a stdout race condition occur.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id74">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.24.0...v0.24.1">0.24.1</a><a class="headerlink" href="#id74" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id75">
+<h3>Bug Fixes<a class="headerlink" href="#id75" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Include <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code> within <code class="docutils literal notranslate"><span class="pre">streamlit</span></code> bundle. Streamlit requires this but
+has not labeled it as a dependency.</p></li>
+<li><p>Call <code class="docutils literal notranslate"><span class="pre">yarn</span></code> from <code class="docutils literal notranslate"><span class="pre">os.system</span></code>, for some reason on Windows
+<code class="docutils literal notranslate"><span class="pre">subprocess.check_call</span></code> could not find <code class="docutils literal notranslate"><span class="pre">yarn</span></code> on the path, although on Linux
+this worked fine.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id76">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.23.0...v0.24.0">0.24.0</a><a class="headerlink" href="#id76" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id77">
+<h3>Breaking Changes<a class="headerlink" href="#id77" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>If <code class="docutils literal notranslate"><span class="pre">pymedphys.mosaiq.connect</span></code> is passed a list of length one, it will now
+return a cursor within a list of length 1 instead of just returning a cursor
+by itself.</p></li>
+</ul>
+</div>
+<div class="section" id="id78">
+<h3>New Features<a class="headerlink" href="#id78" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Added a <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">bundle</span></code> cli function which creates an electron streamlit
+installation bundle.</p></li>
+<li><p>Added the ‘all’ fractions option to <code class="docutils literal notranslate"><span class="pre">Delivery.from_dicom</span></code> which can be used
+as <code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery.from_dicom(dicom_file,</span> <span class="pre">fraction_number='all')</span></code></p></li>
+<li><p>Made the iCOM patient archiving only save the data if MU was delivered.</p></li>
+<li><p>Added wlutz mock image generation functions</p></li>
+<li><p>Handle more Monaco <code class="docutils literal notranslate"><span class="pre">tel.1</span></code> cases within <code class="docutils literal notranslate"><span class="pre">Delivery.from_monaco</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_patient_name</span></code> added to <code class="docutils literal notranslate"><span class="pre">pymedphys._mosaiq.helpers</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="algorithm-adjustments">
+<h3>Algorithm Adjustments<a class="headerlink" href="#algorithm-adjustments" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Wlutz bb finding cost function adjusted</p>
+<ul>
+<li><p>Note, wlutz algorithm still not ready for the prime time</p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id79">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.22.0...v0.23.0">0.23.0</a><a class="headerlink" href="#id79" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id80">
+<h3>Breaking Changes<a class="headerlink" href="#id80" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed <code class="docutils literal notranslate"><span class="pre">jupyter</span></code>, <code class="docutils literal notranslate"><span class="pre">bundle</span></code>, and <code class="docutils literal notranslate"><span class="pre">app</span></code> sub commands from the CLI.</p></li>
+<li><p>Removed the <code class="docutils literal notranslate"><span class="pre">gui</span></code> and <code class="docutils literal notranslate"><span class="pre">jupyter</span></code> optional extra installation commands.</p></li>
+<li><p>In order to support Python 3.8, the <code class="docutils literal notranslate"><span class="pre">pymssql</span></code> dependency needed to be
+removed for that Python version. All tools that make SQL calls to Mosaiq
+will not currently work on Python 3.8.</p></li>
+</ul>
+</div>
+<div class="section" id="id81">
+<h3>New Features<a class="headerlink" href="#id81" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>PyMedPhys now is able to be installed on Python 3.8.</p></li>
+</ul>
+</div>
+<div class="section" id="id82">
+<h3>Dependency Changes<a class="headerlink" href="#id82" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>No longer depend upon <code class="docutils literal notranslate"><span class="pre">pymssql</span></code> for Python 3.8.</p></li>
+</ul>
+</div>
+<div class="section" id="id83">
+<h3>Bug Fixes<a class="headerlink" href="#id83" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">pymedphys._monaco</span></code> package path.</p></li>
+<li><p>Fixed issue where the following header adjustment DICOM CLI tools may not
+work with <code class="docutils literal notranslate"><span class="pre">pydicom==1.4.2</span></code>. See
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/747">https://github.com/pymedphys/pymedphys/pull/747</a> and
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/748">https://github.com/pymedphys/pymedphys/pull/748</a>.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">adjust-machine-name</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">adjust-RED</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">dicom</span> <span class="pre">adjust-RED-by-structure-name</span></code></p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id84">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.21.0...v0.22.0">0.22.0</a><a class="headerlink" href="#id84" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id85">
+<h3>New Features<a class="headerlink" href="#id85" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Implemented <code class="docutils literal notranslate"><span class="pre">from_icom</span></code> method on the <code class="docutils literal notranslate"><span class="pre">pymedphys.Delivery</span></code> object. This
+was to support calculating an MU Density from an iCOM stream.</p>
+<ul>
+<li><p>See <a class="reference external" href="https://github.com/pymedphys/pymedphys/pull/733">https://github.com/pymedphys/pymedphys/pull/733</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id86">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.20.0...v0.21.0">0.21.0</a><a class="headerlink" href="#id86" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id87">
+<h3>Dependency Changes<a class="headerlink" href="#id87" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Once again made <code class="docutils literal notranslate"><span class="pre">shapely</span></code> a default dependency with the aim to make
+installation be “batteries included”.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">Shapely</span></code> now ships wheels for Windows. This means <code class="docutils literal notranslate"><span class="pre">shapely</span></code> will install
+normally with pip. See
+<a class="reference external" href="https://github.com/Toblerity/Shapely/issues/815#issuecomment-579945334">https://github.com/Toblerity/Shapely/issues/815#issuecomment-579945334</a></p></li>
+</ul>
+</li>
+<li><p>Pinned <code class="docutils literal notranslate"><span class="pre">pydicom</span></code> due to a currently unknown issue with a new version breaking
+a <code class="docutils literal notranslate"><span class="pre">pymedphys</span></code> test.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id88">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.19.0...v0.20.0">0.20.0</a><a class="headerlink" href="#id88" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id89">
+<h3>New Features<a class="headerlink" href="#id89" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Expose some portions of the Winston Lutz API.</p></li>
+<li><p>Add iCom listener CLI.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id90">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.18.0...v0.19.0">0.19.0</a><a class="headerlink" href="#id90" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id91">
+<h3>Breaking Changes<a class="headerlink" href="#id91" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Made shapely an optional dependency once more. No longer depending on
+<code class="docutils literal notranslate"><span class="pre">shapely-helper</span></code>.</p>
+<ul>
+<li><p>Shapely can be installed by running <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[difficult]==0.19.0</span></code></p></li>
+<li><p>This fixes an issue where <code class="docutils literal notranslate"><span class="pre">pip</span></code> refuses to install due to the
+<code class="docutils literal notranslate"><span class="pre">shapely-helper</span></code> workaround.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id92">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.17.1...v0.18.0">0.18.0</a><a class="headerlink" href="#id92" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id93">
+<h3>Breaking Changes<a class="headerlink" href="#id93" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed the optional extras tags of <code class="docutils literal notranslate"><span class="pre">library</span></code>, <code class="docutils literal notranslate"><span class="pre">labs</span></code>, and <code class="docutils literal notranslate"><span class="pre">difficult</span></code>. All
+of these now install by default. For example PyMedPhys can no longer be
+installed with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[library]</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="id94">
+<h3>Quality of life improvements<a class="headerlink" href="#id94" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Installation of PyMedPhys has been reverted to including all of its primary
+dependencies. This was done to make the default install less confusing.
+Nevertheless, these dependencies are mostly optional and if you wish you can
+install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys</span> <span class="pre">--no-deps</span></code> to have a minimal
+installation.</p></li>
+<li><p>Made a <code class="docutils literal notranslate"><span class="pre">shapely-helpers</span></code> package which automatically handles installation
+of <code class="docutils literal notranslate"><span class="pre">shapely</span></code> on Windows. PyMedPhys now depends on <code class="docutils literal notranslate"><span class="pre">shapely-helpers</span></code> instead
+of <code class="docutils literal notranslate"><span class="pre">shapely</span></code>.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id95">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.17.0...v0.17.1">0.17.1</a><a class="headerlink" href="#id95" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id96">
+<h3>Quality of life improvements<a class="headerlink" href="#id96" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Made wlutz determination less fussy.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id97">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.16.3...v0.17.0">0.17.0</a><a class="headerlink" href="#id97" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id98">
+<h3>New Features<a class="headerlink" href="#id98" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Initial alpha release of an experimental JupyterLab application bundler.
+Run with <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">bundle</span></code> in a directory that contains a <code class="docutils literal notranslate"><span class="pre">notebooks</span></code> dir
+and a <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code> file.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id99">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.16.2...v0.16.3">0.16.3</a><a class="headerlink" href="#id99" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id100">
+<h3>Bug Fixes<a class="headerlink" href="#id100" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Gracefully reject ipython inspection for optional modules by returning <code class="docutils literal notranslate"><span class="pre">None</span></code>
+for ‘<strong>file</strong>’ attribute requests for modules that are not currently
+installed.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id101">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.16.1...v0.16.2">0.16.2</a><a class="headerlink" href="#id101" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id102">
+<h3>Bug Fixes<a class="headerlink" href="#id102" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fixed bug with optional dependency logic within <code class="docutils literal notranslate"><span class="pre">apipkg</span></code>. Occurred whenever
+an optional submodule was called, for example <code class="docutils literal notranslate"><span class="pre">scipy.interpolate</span></code>.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id103">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.16.0...v0.16.1">0.16.1</a><a class="headerlink" href="#id103" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="aesthetic-changes">
+<h3>Aesthetic Changes<a class="headerlink" href="#aesthetic-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Updated the badges reported within the README.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id104">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.15.0...v0.16.0">0.16.0</a><a class="headerlink" href="#id104" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="package-changes">
+<h3>Package changes<a class="headerlink" href="#package-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The license of the package has changed from <code class="docutils literal notranslate"><span class="pre">AGPL-3.0-or-later</span></code> to
+<code class="docutils literal notranslate"><span class="pre">Apache-2.0</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="id105">
+<h3>New Features<a class="headerlink" href="#id105" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Expose <code class="docutils literal notranslate"><span class="pre">pymedphys.electronfactors.plot_model</span></code> as part of the public API.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id106">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.14.3...v0.15.0">0.15.0</a><a class="headerlink" href="#id106" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id107">
+<h3>New Features<a class="headerlink" href="#id107" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Experimental support for Elekta Unity trf log file decoding.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id108">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.14.2...v0.14.3">0.14.3</a><a class="headerlink" href="#id108" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id109">
+<h3>Package changes<a class="headerlink" href="#id109" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Updated wheel to correctly handle optional dependencies.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id110">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.14.1...v0.14.2">0.14.2</a><a class="headerlink" href="#id110" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id111">
+<h3>Bug Fixes<a class="headerlink" href="#id111" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Vendored in <code class="docutils literal notranslate"><span class="pre">apipkg</span></code> due to PyPI installation issues.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id112">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.14.0...v0.14.1">0.14.1</a><a class="headerlink" href="#id112" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id113">
+<h3>Bug Fixes<a class="headerlink" href="#id113" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Given the input to <code class="docutils literal notranslate"><span class="pre">pymedphys.gamma</span></code> is unitless, removed the units from
+the logging output of gamma. See <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/611">https://github.com/pymedphys/pymedphys/issues/611</a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id114">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.13.2...v0.14.0">0.14.0</a><a class="headerlink" href="#id114" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id115">
+<h3>Breaking Changes<a class="headerlink" href="#id115" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Moved <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">pinnacle</span></code> cli command to be nested under
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">labs</span> <span class="pre">pinnacle</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="id116">
+<h3>Dependency Changes<a class="headerlink" href="#id116" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Made the greater majority of the pymedphys dependencies optional. Should a
+dependency be required during usage an error is raised informing the user to
+install the package. To install all pymedphys dependencies as before now run
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pymedphys[library,labs]==0.14.0</span></code>.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id117">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.13.1...v0.13.2">0.13.2</a><a class="headerlink" href="#id117" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="bug-fix">
+<h3>Bug Fix<a class="headerlink" href="#bug-fix" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fixed issue where <code class="docutils literal notranslate"><span class="pre">pymedphys.mosaiq.connect</span></code> would not work for just one
+hostname.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id118">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.13.0...v0.13.1">0.13.1</a><a class="headerlink" href="#id118" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id119">
+<h3>Bug Fix<a class="headerlink" href="#id119" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fixed issue where <code class="docutils literal notranslate"><span class="pre">pymedphys.mosaiq.connect</span></code> would not work for just one
+hostname.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id120">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.12.2...v0.13.0">0.13.0</a><a class="headerlink" href="#id120" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="new-feature">
+<h3>New Feature<a class="headerlink" href="#new-feature" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Made <code class="docutils literal notranslate"><span class="pre">pymedphys.mosaiq.execute</span></code> a part of the API.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id121">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.12.1...v0.12.2">0.12.2</a><a class="headerlink" href="#id121" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id122">
+<h3>Package changes<a class="headerlink" href="#id122" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fixed version number within package.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id123">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.12.0...v0.12.1">0.12.1</a><a class="headerlink" href="#id123" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id124">
+<h3>Package changes<a class="headerlink" href="#id124" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Re-added the license classifier to the PyPI upload.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id125">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.11.0...v0.12.0">0.12.0</a><a class="headerlink" href="#id125" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id126">
+<h3>Breaking Changes<a class="headerlink" href="#id126" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The API has undergone a complete redesign. Expect most code to be broken with
+this release.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id127">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.10.0...v0.11.0">0.11.0</a><a class="headerlink" href="#id127" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id128">
+<h3>Breaking Changes<a class="headerlink" href="#id128" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Within <code class="docutils literal notranslate"><span class="pre">dose_from_dataset</span></code> the <code class="docutils literal notranslate"><span class="pre">reshape</span></code> parameter has been removed.</p></li>
+<li><p>Removed the following functions:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">load_dicom_data</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">axes_and_dose_from_dicom</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extract_depth_dose</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extract_profiles</span></code></p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id129">
+<h3>New Features<a class="headerlink" href="#id129" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Added functions <code class="docutils literal notranslate"><span class="pre">pymedphys.dicom.depth_dose</span></code> and <code class="docutils literal notranslate"><span class="pre">pymedphys.dicom.profiles</span></code>.</p></li>
+<li><p>Exposed the <code class="docutils literal notranslate"><span class="pre">trf2pandas</span></code> function via <code class="docutils literal notranslate"><span class="pre">pymedphys.fileformats.trf2pandas</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Made the resolution detection of <code class="docutils literal notranslate"><span class="pre">pymedphys.plt.pcolormesh_grid</span></code> more robust.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id130">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.9.0...v0.10.0">0.10.0</a><a class="headerlink" href="#id130" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id131">
+<h3>New Features<a class="headerlink" href="#id131" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Re-exposed <code class="docutils literal notranslate"><span class="pre">convert2_ratio_perim_area</span></code> and <code class="docutils literal notranslate"><span class="pre">create_transformed_mesh</span></code> from
+<code class="docutils literal notranslate"><span class="pre">pymedphys.electronfactors</span></code>.</p></li>
+<li><p>Pinnacle module providing a tool to export raw Pinnacle data to DICOM
+objects.</p>
+<ul>
+<li><p>A CLI is provided: See
+<a class="reference external" href="https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html">the Pinnacle CLI docs</a>.</p></li>
+<li><p>As well as an API: See
+<a class="reference external" href="https://docs.pymedphys.com/user/library/pinnacle.html">the Pinnacle library docs</a>.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id132">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.8.4...v0.9.0">0.9.0</a> – 2019/06/06<a class="headerlink" href="#id132" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id133">
+<h3>New Features<a class="headerlink" href="#id133" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Re-exposed <code class="docutils literal notranslate"><span class="pre">multi_mosaiq_connect</span></code>, <code class="docutils literal notranslate"><span class="pre">multi_fetch_and_verify_mosaiq</span></code>,
+<code class="docutils literal notranslate"><span class="pre">get_qcls_by_date</span></code>, and <code class="docutils literal notranslate"><span class="pre">get_staff_name</span></code> from <code class="docutils literal notranslate"><span class="pre">pymedphys.msq</span></code>.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id134">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.8.3...v0.8.4">0.8.4</a> – 2019/06/04<a class="headerlink" href="#id134" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id135">
+<h3>Package changes<a class="headerlink" href="#id135" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Made <code class="docutils literal notranslate"><span class="pre">xlwings</span></code> not install by default if system is <code class="docutils literal notranslate"><span class="pre">Linux</span></code> within <code class="docutils literal notranslate"><span class="pre">setup.py</span></code></p></li>
+<li><p>Removed unreleased <code class="docutils literal notranslate"><span class="pre">jupyter</span></code> based GUI</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id136">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.8.2...v0.8.3">0.8.3</a> – 2019/06/04<a class="headerlink" href="#id136" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id137">
+<h3>Package changes<a class="headerlink" href="#id137" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Updated MANIFEST file within <code class="docutils literal notranslate"><span class="pre">pymedphys_fileformats</span></code> to appropriately include
+LICENSE files.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id138">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.8.1...v0.8.2">0.8.2</a> – 2019/06/01<a class="headerlink" href="#id138" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id139">
+<h3>Package changes<a class="headerlink" href="#id139" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Included license files within the subpackage distributions</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id140">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.8.0...v0.8.1">0.8.1</a> – 2019/06/01<a class="headerlink" href="#id140" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id141">
+<h3>Dependency changes<a class="headerlink" href="#id141" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed numpy version upper-limit</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id142">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.7.2...v0.8.0">0.8.0</a> – 2019/06/01<a class="headerlink" href="#id142" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id143">
+<h3>Breaking Changes<a class="headerlink" href="#id143" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">DeliveryData</span></code> has been renamed to <code class="docutils literal notranslate"><span class="pre">Delivery</span></code> and is now importable by
+running <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">pymedphys</span> <span class="pre">import</span> <span class="pre">Delivery</span></code></p>
+<ul>
+<li><p>A range of functions that used to use <code class="docutils literal notranslate"><span class="pre">DeliveryData</span></code> are now instead
+accessible as methods on the <code class="docutils literal notranslate"><span class="pre">Delivery</span></code> object.</p></li>
+</ul>
+</li>
+<li><p>A large number of functions that were previously exposed have now been made
+private in preparation for eventually stabilising the API. No function that
+was within the documentation has been removed. If there is a function that
+you were using that you would like to be exposed via <code class="docutils literal notranslate"><span class="pre">import</span></code> again, please
+let us know by
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/issues">opening an issue on GitHub</a>
+and we will happily re-expose it! However, please bear in mind that the
+entire API that is currently exposed will likely change before a 1.0.0
+release.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">anonymise_dicom_dataset()</span></code> has been renamed to <code class="docutils literal notranslate"><span class="pre">anonymise_dataset()</span></code> to
+remove redundant labelling.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mu_density_from_delivery_data</span></code> moved from the <code class="docutils literal notranslate"><span class="pre">msq</span></code> module to the
+<code class="docutils literal notranslate"><span class="pre">mudensity</span></code> module.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compare_mosaiq_fields</span></code> moved from the <code class="docutils literal notranslate"><span class="pre">msq</span></code> module into the <code class="docutils literal notranslate"><span class="pre">plancompare</span></code>
+module.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.dicom.get_structure_aligned_cube</span></code> has had its <code class="docutils literal notranslate"><span class="pre">x0</span></code> parameter
+changed from required to optional. It is no longer the first parameter
+passed to the function. By default <code class="docutils literal notranslate"><span class="pre">x0</span></code> is now determined using the min/max
+bounds of the structure.</p></li>
+<li><p>The DICOM coordinate extraction functions - <code class="docutils literal notranslate"><span class="pre">extract_dicom_patient_xyz()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">extract_iec_patient_xyz()</span></code> and <code class="docutils literal notranslate"><span class="pre">extract_iec_fixed_xyz()</span></code> - have been
+combined into a single function called <code class="docutils literal notranslate"><span class="pre">xyz_from_dataset()</span></code>. The x, y, z axes
+can still be returned in either the DICOM, IEC fixed or IEC patient
+coordinate systems by passing the following case-insensitive strings to the
+<code class="docutils literal notranslate"><span class="pre">coord_system=</span></code> parameter of <code class="docutils literal notranslate"><span class="pre">xyz_from_dataset()</span></code>:</p>
+<ul>
+<li><p>DICOM: <code class="docutils literal notranslate"><span class="pre">'d'</span></code> or <code class="docutils literal notranslate"><span class="pre">'DICOM'</span></code></p></li>
+<li><p>IEC fixed: <code class="docutils literal notranslate"><span class="pre">'f'</span></code>, <code class="docutils literal notranslate"><span class="pre">'fixed'</span></code> or <code class="docutils literal notranslate"><span class="pre">'IEC</span> <span class="pre">fixed'</span></code></p></li>
+<li><p>IEC patient: <code class="docutils literal notranslate"><span class="pre">'p'</span></code>, <code class="docutils literal notranslate"><span class="pre">'patient'</span></code> or <code class="docutils literal notranslate"><span class="pre">'IEC</span> <span class="pre">patient'</span></code></p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gamma_dicom</span></code> now take datasets as opposed to filenames</p></li>
+</ul>
+</div>
+<div class="section" id="id144">
+<h3>New Features<a class="headerlink" href="#id144" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>A DICOM anonymisation CLI! See
+<span class="xref myst">the DICOM Files CLI docs</span>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">anonymise_file()</span></code> and <code class="docutils literal notranslate"><span class="pre">anonymise_directory()</span></code>:</p>
+<ul>
+<li><p>two new DICOM anonymisation
+wrapper functions that take a DICOM file and a directory as respective
+arguments.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">is_anonymised_dataset()</span></code>, <code class="docutils literal notranslate"><span class="pre">is_anonymised_file()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">is_anonymised_directory()</span></code>:</p>
+<ul>
+<li><p>three new functions that check whether a pydicom
+dataset, a DICOM file or all files within a directory have been anonymised,
+respectively.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">coords_from_xyz_axes()</span></code> is a previously internal function that has now been
+exposed in the API. It converts x, y, z axes returned by <code class="docutils literal notranslate"><span class="pre">xyz_from_dataset()</span></code>
+into a full grid of coordinate triplets that correspond to the original grid
+(pixel array or dose grid).</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id145">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.7.1...v0.7.2">0.7.2</a> – 2019/04/05<a class="headerlink" href="#id145" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id146">
+<h3>Dependency changes<a class="headerlink" href="#id146" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed numpy version upper-limit</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id147">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.7.0...v0.7.1">0.7.1</a> – 2019/04/05<a class="headerlink" href="#id147" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="performance-improvements">
+<h3>Performance Improvements<a class="headerlink" href="#performance-improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>reduced PyPI package size by removing unnecessary development testing files.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id148">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.6.0...v0.7.0">0.7.0</a> – 2019/04/05<a class="headerlink" href="#id148" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id149">
+<h3>Breaking Changes<a class="headerlink" href="#id149" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">anonymise_dicom</span></code> has been renamed to <code class="docutils literal notranslate"><span class="pre">anonymise_dicom_dataset</span></code></p></li>
+<li><p>The CLI interface <code class="docutils literal notranslate"><span class="pre">trf2csv</span></code> has been replaced with <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">trf</span> <span class="pre">to-csv</span></code>.
+This has the same usage, just a changed name to come in line with the rest of
+the CLI interfaces exposed by PyMedPhys.</p></li>
+</ul>
+</div>
+<div class="section" id="id150">
+<h3>New Features<a class="headerlink" href="#id150" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Implementing a suite of Dicom objects, currently a work in progress:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomBase</span></code>, a base DICOM class that wraps <code class="docutils literal notranslate"><span class="pre">pydicom</span></code>’s <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> object.
+This class includes additions such as an anonymisation method.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomImage</span></code>, designed to hold a single DICOM image slice. Might someday
+contain methods such as <code class="docutils literal notranslate"><span class="pre">resample</span></code> and the like.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomSeries</span></code>, a series of <code class="docutils literal notranslate"><span class="pre">DicomImage</span></code> objects creating a CT dataset.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomStructure</span></code>, designed to house DICOM structure datasets.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomPlan</span></code>, a class that holds RT plan DICOM datasets.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomDose</span></code>, a class that to hold RT DICOM dose datasets. It has helper
+functions and parameters such as coordinate transforms built into it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code>, a class designed to hold an interrelated set of <code class="docutils literal notranslate"><span class="pre">DicomDose</span></code>,
+<code class="docutils literal notranslate"><span class="pre">DicomPlan</span></code>, <code class="docutils literal notranslate"><span class="pre">DicomStructure</span></code>, and <code class="docutils literal notranslate"><span class="pre">DicomSeries</span></code>. Not every type is
+required to create a <code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code>. Certain methods will be
+available on <code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code> depending what is housed within it. For example
+having both <code class="docutils literal notranslate"><span class="pre">DicomDose</span></code> and <code class="docutils literal notranslate"><span class="pre">DicomStructure</span></code> should enable DVH based
+methods.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DicomCollection</span></code>, a class that can hold multiple studies, interrelated or
+not. A common use case that will likely be implemented is
+<code class="docutils literal notranslate"><span class="pre">DicomCollection.from_directory(directory_path)</span></code> which would pull all DICOM
+files nested within a directory and sort them into <code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code> objects
+based on their header UIDs.</p></li>
+</ul>
+</li>
+<li><p>Added CLI commands for a WIP docker server, logfile orchestration, and DICOM
+editor tools.</p></li>
+<li><p>Added a range of xlwings tools that allow the use of PyMedPhys functions
+within Excel</p></li>
+<li><p>Added rudimentary code to pull profiles from Mephysto
+files.</p></li>
+<li><p>The previously separate <code class="docutils literal notranslate"><span class="pre">decodetrf</span></code> library is now distributed within
+PyMedPhys. You can now simply install PyMedPhys and run
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">trf</span> <span class="pre">to-csv</span></code> within the command line to convert <code class="docutils literal notranslate"><span class="pre">.trf</span></code> files into
+<code class="docutils literal notranslate"><span class="pre">.csv</span></code> files.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id151">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.5.1...v0.6.0">0.6.0</a> – 2019/03/15<a class="headerlink" href="#id151" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id152">
+<h3>Breaking Changes<a class="headerlink" href="#id152" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>All uses of “dcm” in directory names, module names, function names, etc.
+have been converted to “dicom”. Anything that makes use of this code will
+need to be adjusted accordingly. Required changes include:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">pymedphys.dcm</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">pymedphys.dicom</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">coords_and_dose_from_dcm()</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">coords_and_dose_from_dicom()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dcmfromdict()</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">dicom_dataset_from_dict()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gamma_dcm()</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">gamma_dicom()</span></code></p></li>
+</ul>
+</li>
+<li><p>MU Density related functions are no longer available under the
+<code class="docutils literal notranslate"><span class="pre">pymedphys.coll</span></code> package, instead they are found within <code class="docutils literal notranslate"><span class="pre">pymedphys.mudensity</span></code>
+package.</p></li>
+<li><p>The DICOM coordinate extraction functions now return simple tuples rather
+than <code class="docutils literal notranslate"><span class="pre">Coords</span></code> namedtuples:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">extract_dicom_patient_xyz()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extract_iec_patient_xyz()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extract_iec_fixed_xyz()</span></code></p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id153">
+<h3>New Features<a class="headerlink" href="#id153" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>DICOM anonymisation now permits replacing deidentified values with suitable
+“dummy” values. This helps to maintain compatibility with DICOM software that
+includes checks (beyond those specified in the DICOM Standard) of valid DICOM
+tag values. Replacing tags with dummy values upon anonymisation is now the
+default behaviour.</p></li>
+<li><p>A set of 3D coordinate transformation functions, including rotations (passive
+or active) and translations. Transformations may be applied to a single
+coordinate triplet (an <code class="docutils literal notranslate"><span class="pre">ndarray</span></code>) or a list of arbitrarily many coordinate
+triplets (a 3 x n <code class="docutils literal notranslate"><span class="pre">ndarray</span></code>). <strong>NB</strong>: Documentation forthcoming.</p></li>
+</ul>
+</div>
+<div class="section" id="code-refactoring">
+<h3>Code Refactoring<a class="headerlink" href="#code-refactoring" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>All uses of <code class="docutils literal notranslate"><span class="pre">dcm</span></code> as a variable name for instances of PyDicom Datasets have
+been converted to <code class="docutils literal notranslate"><span class="pre">ds</span></code> to match PyDicom convention.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id154">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.4.3...v0.5.1">0.5.1</a> – 2019/01/05<a class="headerlink" href="#id154" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id155">
+<h3>New Features<a class="headerlink" href="#id155" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Began keeping record of changes in <code class="docutils literal notranslate"><span class="pre">changelog.md</span></code></p></li>
+</ul>
+</div>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./."
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+
+            <div class="section" id="comments">
+                <h2>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h2>
+                <div id='discourse-comments'></div>
+            </div>
+
+            <script type="text/javascript">
+                DiscourseEmbed = {
+                    discourseUrl: 'https://pymedphys.discourse.group/',
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/release-notes'
+                };
+
+                (function () {
+                    var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                    d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+                })();
+            </script>
+            
+            <div class='prev-next-bottom'>
+                
+    <a class='left-prev' id="prev-link" href="general/index.html" title="previous page">Overview</a>
+    <a class='right-next' id="next-link" href="general/file-structure.html" title="next page">Repository File Structure</a>
+
+            </div>
+            
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+
+    
+  <script src="_static/js/index.d3f166471bb80abb5163.js"></script>
+
+
+    
+    <!-- Google Analytics -->
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-26591325-7', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('send', 'pageview');
+    </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <!-- End Google Analytics -->
+    
+  </body>
+</html>
