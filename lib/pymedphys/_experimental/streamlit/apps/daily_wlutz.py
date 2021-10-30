@@ -150,12 +150,19 @@ def _ui():
             statistics_collection = statistics_collection.set_index(["Direction"])
             statistics_collection = statistics_collection.sort_index()
 
-            styled_dataframe = statistics_collection.style.apply(
-                _highlight_projection_tol, subset=["Min (mm)", "Max (mm)"]
-            )
-            styled_dataframe = styled_dataframe.apply(
-                _highlight_mean_tol, subset=["Mean (mm)"]
-            )
+            try:
+                styled_dataframe: pd.DataFrame = statistics_collection.style.apply(
+                    _highlight_projection_tol, subset=["Min (mm)", "Max (mm)"]
+                )
+                styled_dataframe = styled_dataframe.apply(
+                    _highlight_mean_tol, subset=["Mean (mm)"]
+                )
+            except ValueError as e:
+                st.warning(
+                    "Unable to highlight the collected statistics as either pass or "
+                    f"fail. The error message was:\n{e}"
+                )
+                styled_dataframe = statistics_collection
 
             st.dataframe(styled_dataframe)
 
