@@ -31,7 +31,8 @@ def test_icom_cli():
 
     env = os.environ.copy()
     if getattr(sys, "frozen", False):
-        env["PATH"] = str(LIBRARY_ROOT.parents[1]) + os.pathsep + env["PATH"]
+        FROZEN_BINARY_DIRECTORY = LIBRARY_ROOT.parents[1]
+        env["PATH"] = str(FROZEN_BINARY_DIRECTORY) + os.pathsep + env["PATH"]
 
     with tempfile.TemporaryDirectory() as temp_dir:
         icom_listen_cli = subprocess.Popen(
