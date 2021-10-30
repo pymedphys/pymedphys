@@ -1,2 +1,2 @@
 toml==0.10.2; (python_version >= "2.6" and python_full_version < "3.0.0") or (python_full_version >= "3.3.0")
-typing-extensions==3.10.0.0
+typing-extensions==3.10.0.2
