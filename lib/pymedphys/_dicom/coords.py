@@ -129,8 +129,8 @@ def xyz_axes_from_dataset(
     is_decubitus = orientation[0] == 0
     is_head_first = _orientation_is_head_first(orientation, is_decubitus)
 
-    di = float(ds.PixelSpacing[0])
-    dj = float(ds.PixelSpacing[1])
+    di = float(ds.PixelSpacing[1])
+    dj = float(ds.PixelSpacing[0])
 
     col_range = np.arange(0, ds.Columns * di, di)
     row_range = np.arange(0, ds.Rows * dj, dj)
