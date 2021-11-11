@@ -21,10 +21,15 @@ import subprocess
 import sys
 import tempfile
 
+import pytest
+
 from pymedphys._data import download
 from pymedphys._root import LIBRARY_ROOT
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Does not currently work on Windows"
+)
 def test_icom_cli():
     icom_server_process = multiprocessing.Process(target=_mock_icom_server)
     icom_server_process.start()
