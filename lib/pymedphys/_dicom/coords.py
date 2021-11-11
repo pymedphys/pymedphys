@@ -129,11 +129,11 @@ def xyz_axes_from_dataset(
     is_decubitus = orientation[0] == 0
     is_head_first = _orientation_is_head_first(orientation, is_decubitus)
 
-    di = float(ds.PixelSpacing[1])
-    dj = float(ds.PixelSpacing[0])
+    di = float(ds.PixelSpacing[0])
+    dj = float(ds.PixelSpacing[1])
 
-    col_range = np.arange(0, ds.Columns * di, di)
-    row_range = np.arange(0, ds.Rows * dj, dj)
+    row_range = np.array([di * i for i in range(ds.Rows)])
+    col_range = np.array([dj * i for i in range(ds.Columns)])
 
     if is_decubitus:
         x_dicom_fixed = orientation[1] * position[1] + col_range
