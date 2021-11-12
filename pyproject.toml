@@ -144,7 +144,7 @@ pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "t
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
-black = { version = "^20.8b1", optional = true }  # groups = ["dev", "propagate", "doctests"]
+black = { version = "^21.10b0", optional = true }  # groups = ["dev", "propagate", "doctests"]
 mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]
