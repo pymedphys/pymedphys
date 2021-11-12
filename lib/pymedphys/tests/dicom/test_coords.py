@@ -156,4 +156,4 @@ def test_non_square_pixels():
             if path.contains_point(p[:2]):
                 is_inside_count += 1
     assert(is_inside_count == 3)
-    matplotlib.pyplot.close('all')
+    plt.close('all')
