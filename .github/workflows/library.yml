@@ -14,6 +14,7 @@ jobs:
 
   PreCommit:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -39,6 +40,7 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git pull
           git commit -m "Fix pre-commit failures" -a
           exit 1
       - name: Push changes
@@ -111,6 +113,7 @@ jobs:
             python-version: 3.8
 
     runs-on: ${{ matrix.os }}-latest
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -160,7 +163,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1.1.1
         with:
-          version: 1.1.8
+          version: 1.1.11
           virtualenvs-create: true
 
       - name: Update PATH in Windows
@@ -470,6 +473,8 @@ jobs:
     # - Tests
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Hello World
         run: |
@@ -480,6 +485,8 @@ jobs:
       - PyPI
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Hello World
         run: |
@@ -491,6 +498,8 @@ jobs:
       - WheelBundles
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Hello World
         run: |

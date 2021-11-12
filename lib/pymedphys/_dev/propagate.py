@@ -193,7 +193,10 @@ def propagate_version():
         """
     )
 
-    version_contents = black.format_str(version_contents, mode=black.FileMode())
+    try:
+        version_contents = black.format_str(version_contents, mode=black.FileMode())
+    except ModuleNotFoundError:
+        pass
 
     with open(VERSION_PATH, "w") as f:
         f.write(version_contents)
@@ -226,7 +229,10 @@ def _propagate_setup():
     setup_contents_list.insert(2, f"{AUTOGEN_MESSAGE[1]}\n")
     setup_contents = "\n".join(setup_contents_list)
 
-    setup_contents = black.format_str(setup_contents, mode=black.FileMode())
+    try:
+        setup_contents = black.format_str(setup_contents, mode=black.FileMode())
+    except ModuleNotFoundError:
+        pass
 
     setup_contents = setup_contents.encode("utf-8")
 
