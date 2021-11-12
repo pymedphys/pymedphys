@@ -111,6 +111,14 @@ def xyz_axes_from_dataset(
        Carlo (DOSXYZnrc and VMC++) verifications of DICOM compatible
        radiotherapy treatment plans", arXiv:1406.0014, Table 1,
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+
+    Extra notes
+    -----------
+    The ordering to unpac the pixel spacing values from PixelSpacing have 
+    importance when dealing with non square pixels. For more informations 
+    on how to unpack the PixelSpacing values in the right order, see : 
+    http://dicom.nema.org/medical/dicom/current/output/chtml/part03/
+    sect_10.7.html#sect_10.7.1.3
     """
 
     position = np.array(ds.ImagePositionPatient)
