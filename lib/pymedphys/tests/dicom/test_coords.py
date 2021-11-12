@@ -18,6 +18,7 @@ import json
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import matplotlib
 
 import pymedphys
 from pymedphys._data import download
@@ -135,3 +136,24 @@ def test_coords_in_datasets_are_equal():
     ds2.ImageOrientationPatient = [1.0, 0, 0, 0, 1, 0]
     ds2.GridFrameOffsetVector = [0, -1, -2]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
+
+def test_non_square_pixels():
+    path_to_downloaded_file = pymedphys.data_path("rtdose_non_square_pixels.dcm")
+    rtdose = pydicom.read_file(path_to_downloaded_file, force=True)
+    zyx, dose = pymedphys.dicom.zyx_and_dose_from_dataset(rtdose)
+    test_points = []
+    for p in rtdose.ROIContourSequence:
+        test_points.append(p.ContourData)
+    test_points = np.array(test_points)
+    prescription = 100*rtdose.DoseGridScaling
+    z, y, x = zyx
+    index = np.argmin(np.abs(z - test_points[0][2]))
+    cs = matplotlib.pyplot.contour(x, y, dose[index], levels=[2*prescription], colors=['r'])
+    is_inside_count = 0
+    for p in test_points:
+        for contour in cs.allsegs[0]:
+            path = matplotlib.Path(contour)
+            if path.contains_point(p[:2]):
+                is_inside_count += 1
+    assert(is_inside_count == 3)
+    matplotlib.pyplot.close('all')
