@@ -82,7 +82,6 @@ packages = [
     "pymedphys.cli.experimental",
     "pymedphys.docs",
     "pymedphys.docs._build.html._static",
-    "pymedphys.docs.theme",
     "pymedphys.experimental",
     "pymedphys.tests",
     "pymedphys.tests.coordinates",
@@ -183,10 +182,6 @@ package_data = {
         "vendor/fontawesome/5.13.0/*",
         "vendor/fontawesome/5.13.0/css/*",
         "vendor/fontawesome/5.13.0/webfonts/*",
-        "vendor/lato_latin-ext/1.44.1/*",
-        "vendor/lato_latin-ext/1.44.1/files/*",
-        "vendor/open-sans_all/1.44.1/*",
-        "vendor/open-sans_all/1.44.1/files/*",
     ],
     "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
     "pymedphys.tests.e2e": [
@@ -338,10 +333,7 @@ extras_require = {
     'user:sys_platform == "win32"': ["pywin32>=301"],
 }
 
-entry_points = {
-    "console_scripts": ["pymedphys = pymedphys.__main__:main"],
-    "sphinx.html_themes": ["sphinx_pymedphys_theme = pymedphys.docs.theme"],
-}
+entry_points = {"console_scripts": ["pymedphys = pymedphys.__main__:main"]}
 
 setup_kwargs = {
     "name": "pymedphys",
