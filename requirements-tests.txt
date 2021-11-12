@@ -1,19 +1,20 @@
-astroid==2.5.6; python_version >= "3.6" and python_version < "4.0"
+astroid==2.8.4; python_version >= "3.6" and python_version < "4.0"
 atomicwrites==1.4.0; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "win32" or sys_platform == "win32" and python_version >= "3.6" and python_full_version >= "3.4.0"
-attrs==20.3.0; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
+attrs==21.2.0; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.5.0")
 colorama==0.4.4; python_version >= "3.6" and python_full_version < "3.0.0" and platform_system == "Windows" and sys_platform == "win32" and python_version < "4.0" or python_full_version >= "3.5.0" and platform_system == "Windows" and sys_platform == "win32" and python_version >= "3.6" and python_version < "4.0"
 hypothesis==5.49.0; python_version >= "3.6"
-importlib-metadata==4.8.1; python_version < "3.8" and python_version >= "3.6"
+importlib-metadata==4.8.2; python_version < "3.8" and python_version >= "3.6"
 iniconfig==1.1.1; python_version >= "3.6"
-isort==5.9.3; python_full_version >= "3.6.1" and python_version < "4.0" and python_version >= "3.6"
+isort==5.10.1; python_full_version >= "3.6.1" and python_version < "4.0" and python_version >= "3.6"
 lazy-object-proxy==1.6.0; python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "4.0" or python_version >= "3.6" and python_version < "4.0" and python_full_version >= "3.6.0"
 mccabe==0.6.1; python_version >= "3.6" and python_version < "4.0"
-packaging==21.2; python_version >= "3.6"
+packaging==21.0; python_version >= "3.6"
+platformdirs==2.4.0; python_version >= "3.6" and python_version < "4.0"
 pluggy==1.0.0; python_version >= "3.6"
 psutil==5.8.0; (python_version >= "2.6" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
-py==1.10.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
-pylint==2.8.3; python_version >= "3.6" and python_version < "4.0"
-pyparsing==2.4.7; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.3.0" and python_version >= "3.6"
+py==1.11.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
+pylint==2.11.1; python_version >= "3.6" and python_version < "4.0"
+pyparsing==3.0.5; python_version >= "3.6"
 pytest-rerunfailures==10.2; python_version >= "3.6"
 pytest-sugar==0.9.4
 pytest==6.2.5; python_version >= "3.6"
@@ -25,5 +26,5 @@ toml==0.10.2; (python_version >= "2.6" and python_full_version < "3.0.0") or (py
 tqdm==4.62.3; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
 typed-ast==1.4.3; implementation_name == "cpython" and python_version < "3.8" and python_version >= "3.6"
 typing-extensions==3.10.0.2
-wrapt==1.12.1; python_version >= "3.6" and python_version < "4.0"
+wrapt==1.13.3; python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "4.0" or python_version >= "3.6" and python_version < "4.0" and python_full_version >= "3.5.0"
 zipp==3.6.0; python_version < "3.8" and python_version >= "3.6"

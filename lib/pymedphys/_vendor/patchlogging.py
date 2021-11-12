@@ -46,7 +46,7 @@ def apply_logging_patch():
         )
 
     if _patch_applied:
-        raise ValueError("This patch has already been applied.")
+        return
 
     def basicConfig(**kwargs):
         force = kwargs.pop("force", False)

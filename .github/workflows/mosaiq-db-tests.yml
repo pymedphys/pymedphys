@@ -11,6 +11,7 @@ jobs:
 
   TestMosaiqDb:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     services:
       SQLServer:
@@ -62,7 +63,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1.1.1
         with:
-          version: 1.1.8
+          version: 1.1.11
           virtualenvs-create: true
 
       - name: Configure Poetry to not use experimental installer
