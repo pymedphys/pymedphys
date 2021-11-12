@@ -17,9 +17,10 @@ import os
 import pathlib
 import re
 import subprocess
+import sys
 import tempfile
 
-from pymedphys._imports import tabulate, tqdm
+from pymedphys._imports import pytest, tabulate, tqdm
 
 import pymedphys._utilities.test as pmp_test_utils
 import pymedphys.tests.e2e.utilities as cypress_test_utilities
@@ -167,19 +168,12 @@ def _call_pytest(remaining, label):
     if "--cypress" in remaining:
         remaining += ["--reruns", "5", "-v", "-s"]
 
-    python_executable = pmp_test_utils.get_executable_even_when_embedded()
-    command = [
-        python_executable,
-        "-m",
-        "pytest",
-        "--pyargs",
-        "pymedphys",
-    ] + remaining
-
     try:
-        subprocess.check_call(command)
+        retcode = pytest.main(["--pyargs", "pymedphys"] + remaining)
     finally:
         os.chdir(original_cwd)
+
+    sys.exit(retcode)
 
 
 def run_pylint(_, remaining):

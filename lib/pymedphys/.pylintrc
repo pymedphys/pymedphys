@@ -31,7 +31,11 @@ disable =
     use-maxsplit-arg,
     unused-private-member,
     consider-using-from-import,
-
+    unspecified-encoding,
+    consider-using-f-string,
+    consider-iterating-dictionary,
+    use-dict-literal,
+    use-list-literal,
 
 [FORMAT]
 max-line-length=88
