@@ -33,6 +33,7 @@ def apply_patch_if_needed_and_test_it():
 
         return
 
+    _config.is_cli = False
     try:
         patchlogging.apply_logging_patch()
     except ValueError:
@@ -42,13 +43,6 @@ def apply_patch_if_needed_and_test_it():
 
     _config.is_cli = True
     patchlogging.apply_logging_patch()
-
-    try:
-        patchlogging.apply_logging_patch()
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Logging patch should not be able to be run twice")
 
     _config.is_cli = False
 
