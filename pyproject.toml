@@ -279,9 +279,6 @@ user = [
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"
 
-[tool.poetry.plugins."sphinx.html_themes"]
-sphinx_pymedphys_theme = "pymedphys.docs.theme"
-
 [tool.isort]
 multi_line_output = 3
 line_length = 88
