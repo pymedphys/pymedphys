@@ -18,7 +18,7 @@ import json
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
-from pymedphys._imports import matplotlib
+from pymedphys._imports import matplotlib, plt
 
 import pymedphys
 from pymedphys._data import download
