@@ -33,6 +33,7 @@ def apply_patch_if_needed_and_test_it():
 
         return
 
+    _config.is_cli = False
     try:
         patchlogging.apply_logging_patch()
     except ValueError:
