@@ -39,6 +39,7 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git pull
           git commit -m "Fix pre-commit failures" -a
           exit 1
       - name: Push changes
