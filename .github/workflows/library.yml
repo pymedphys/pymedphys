@@ -14,6 +14,7 @@ jobs:
 
   PreCommit:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -112,6 +113,7 @@ jobs:
             python-version: 3.8
 
     runs-on: ${{ matrix.os }}-latest
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -471,6 +473,8 @@ jobs:
     # - Tests
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Hello World
         run: |
@@ -481,6 +485,8 @@ jobs:
       - PyPI
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Hello World
         run: |
@@ -492,6 +498,8 @@ jobs:
       - WheelBundles
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Hello World
         run: |
