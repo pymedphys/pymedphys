@@ -149,12 +149,16 @@ def test_non_square_pixels():
     prescription = 100*rtdose.DoseGridScaling
     z, y, x = zyx
     index = np.argmin(np.abs(z - test_points[0][2]))
-    cs = plt.contour(x, y, dose[index], levels=[2*prescription], colors=['r'])
-    is_inside_count = 0
-    for p in test_points:
-        for contour in cs.allsegs[0]:
-            path = matplotlib.path.Path(contour)
-            if path.contains_point(p[:2]):
-                is_inside_count += 1
+    try:
+        fig, ax = plt.subplots()
+        cs = ax.contour(x, y, dose[index], levels=[2*prescription], colors=['r'])
+        is_inside_count = 0
+        for p in test_points:
+            for contour in cs.allsegs[0]:
+                path = matplotlib.path.Path(contour)
+                if path.contains_point(p[:2]):
+                    is_inside_count += 1
+    finally:
+        plt.close(fig)
+
     assert(is_inside_count == 3)
-    plt.close('all')
