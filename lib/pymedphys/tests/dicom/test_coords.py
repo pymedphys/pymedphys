@@ -137,6 +137,7 @@ def test_coords_in_datasets_are_equal():
     ds2.GridFrameOffsetVector = [0, -1, -2]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
 
+@pytest.mark.pydicom
 def test_non_square_pixels():
     path_to_downloaded_file = pymedphys.data_path("rtdose_non_square_pixels.dcm")
     rtdose = pydicom.read_file(path_to_downloaded_file, force=True)
