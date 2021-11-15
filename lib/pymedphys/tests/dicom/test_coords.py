@@ -153,7 +153,7 @@ def test_non_square_pixels():
     is_inside_count = 0
     for p in test_points:
         for contour in cs.allsegs[0]:
-            path = matplotlib.Path(contour)
+            path = matplotlib.path.Path(contour)
             if path.contains_point(p[:2]):
                 is_inside_count += 1
     assert(is_inside_count == 3)
