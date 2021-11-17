@@ -16,9 +16,9 @@
 import copy
 import json
 
+from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom, pytest
-from pymedphys._imports import matplotlib, plt
+from pymedphys._imports import plt, pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
@@ -137,6 +137,7 @@ def test_coords_in_datasets_are_equal():
     ds2.GridFrameOffsetVector = [0, -1, -2]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
 
+
 @pytest.mark.pydicom
 def test_non_square_pixels():
     path_to_downloaded_file = pymedphys.data_path("rtdose_non_square_pixels.dcm")
@@ -146,12 +147,12 @@ def test_non_square_pixels():
     for p in rtdose.ROIContourSequence:
         test_points.append(p.ContourData)
     test_points = np.array(test_points)
-    prescription = 100*rtdose.DoseGridScaling
+    prescription = 100 * rtdose.DoseGridScaling
     z, y, x = zyx
     index = np.argmin(np.abs(z - test_points[0][2]))
     try:
         fig, ax = plt.subplots()
-        cs = ax.contour(x, y, dose[index], levels=[2*prescription], colors=['r'])
+        cs = ax.contour(x, y, dose[index], levels=[2 * prescription], colors=["r"])
         is_inside_count = 0
         for p in test_points:
             for contour in cs.allsegs[0]:
@@ -161,4 +162,4 @@ def test_non_square_pixels():
     finally:
         plt.close(fig)
 
-    assert(is_inside_count == 3)
+    assert is_inside_count == 3

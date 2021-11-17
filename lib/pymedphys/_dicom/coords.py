@@ -114,9 +114,9 @@ def xyz_axes_from_dataset(
 
     Extra notes
     -----------
-    The ordering to unpack the pixel spacing values from PixelSpacing have 
-    importance when dealing with non square pixels. For more information 
-    on how to unpack the PixelSpacing values in the right order, see : 
+    The ordering to unpack the pixel spacing values from PixelSpacing have
+    importance when dealing with non square pixels. For more information
+    on how to unpack the PixelSpacing values in the right order, see :
     http://dicom.nema.org/medical/dicom/current/output/chtml/part03/
     sect_10.7.html#sect_10.7.1.3
     """
