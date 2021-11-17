@@ -111,6 +111,14 @@ def xyz_axes_from_dataset(
        Carlo (DOSXYZnrc and VMC++) verifications of DICOM compatible
        radiotherapy treatment plans", arXiv:1406.0014, Table 1,
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+
+    Extra notes
+    -----------
+    The ordering to unpack the pixel spacing values from PixelSpacing have 
+    importance when dealing with non square pixels. For more information 
+    on how to unpack the PixelSpacing values in the right order, see : 
+    http://dicom.nema.org/medical/dicom/current/output/chtml/part03/
+    sect_10.7.html#sect_10.7.1.3
     """
 
     position = np.array(ds.ImagePositionPatient)
@@ -129,11 +137,11 @@ def xyz_axes_from_dataset(
     is_decubitus = orientation[0] == 0
     is_head_first = _orientation_is_head_first(orientation, is_decubitus)
 
-    di = float(ds.PixelSpacing[1])
-    dj = float(ds.PixelSpacing[0])
+    row_spacing = float(ds.PixelSpacing[0])
+    column_spacing = float(ds.PixelSpacing[1])
 
-    col_range = np.arange(0, ds.Columns * di, di)
-    row_range = np.arange(0, ds.Rows * dj, dj)
+    row_range = np.array([row_spacing * i for i in range(ds.Rows)])
+    col_range = np.array([column_spacing * i for i in range(ds.Columns)])
 
     if is_decubitus:
         x_dicom_fixed = orientation[1] * position[1] + col_range
