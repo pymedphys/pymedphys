@@ -1,5 +1,5 @@
 ---
-title: 'PyMedPhys'
+title: 'PyMedPhys: A community effort to develop an open standard library for Medical Physics in Python'
 tags:
   - Python
   - medical physics
