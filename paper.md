@@ -52,10 +52,6 @@ function that someone else has already created.
 By creating and promoting an open-source repository, PyMedPhys aims to make the solutions physicists have created easily accessible
 to others looking to do the same.
 
-# Citations
-
-# Figures
-
 # Acknowledgements
 
 We acknowledge the support of all who have contributed to the development of PyMedPhys along the way. 
