@@ -1,4 +1,3 @@
-<mark>PLEASE MAKE ANY AND ALL EDITS YOU SEE FIT</mark>
 ---
 title: 'PyMedPhys: A community effort to develop an open standard library for Medical Physics in Python'
 tags:
@@ -31,6 +30,8 @@ affiliations:
 date: 19 November 2021
 bibliography: paper.bib
 ---
+
+<mark>PLEASE MAKE ANY AND ALL EDITS YOU SEE FIT</mark>
 
 # Summary
 
