@@ -1,0 +1,56 @@
+---
+title: 'PyMedPhys'
+tags:
+  - Python
+  - medical physics
+  - radiation therapy
+  - diagnostic imaging
+  - dicom
+authors:
+  - name: Simon Biggs^[co-first author]
+    orcid: 
+    affiliation: 1 #
+  - name: Stuart Swerdloff^[co-first author]
+    affiliation: 2
+  - name: Matthew Jennings^[co-first author]
+    affiliation: 3
+  - name: Phillip Chlap^[co-first author]
+    affiliation: "4, 5"
+affiliations:
+ - name: Radiotherapy AI, Australia
+   index: 1
+ - name: ELEKTA Pty Ltd: New Zealand
+   index: 2
+ - name: Royal Adelaide Hospital, Australia
+   index: 3
+ - name: University of News South Wales, Australia
+   index: 4
+ - name: Ingham Institute, Australia
+   index: 5
+date: 19 November 2021
+bibliography: paper.bib
+---
+
+# Summary
+
+PyMedPhys is an open-source medical physics Python library library built by an
+open community that values and prioritizes code sharing, review, improvement, and
+learning from each other. It is inspired by the collaborative work of our physics
+peers in astronomy and the Astropy Project.
+
+# Statement of need
+
+As the treatment delivery methods used in radiation oncology continue to improve,
+the complexity associated with ensuring precise and accurate delivery continues to
+increase. What used to be feasible Many medical physicists are turning toward software solutions to help
+maximize efficiency and quality of care. 
+
+# Citations
+
+# Figures
+
+# Acknowledgements
+
+We acknowledge the support of all who have contributed to the development of PyMedPhys along the way. 
+
+# References
