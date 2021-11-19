@@ -1,11 +1,12 @@
+<mark>PLEASE MAKE ANY AND ALL EDITS YOU SEE FIT</mark>
 ---
 title: 'PyMedPhys: A community effort to develop an open standard library for Medical Physics in Python'
 tags:
   - Python
-  - medical physics
-  - radiation therapy
-  - diagnostic imaging
-  - dicom
+  - Medical Physics
+  - Radiation Therapy
+  - Diagnostic Imaging
+  - DICOM
 authors:
   - name: Simon Biggs^[co-first author]
     orcid: 
@@ -33,9 +34,8 @@ bibliography: paper.bib
 
 # Summary
 
-PyMedPhys is an open-source medical physics Python library library built by an
-open community that values and prioritizes code sharing, review, improvement, and
-learning from each other. It is inspired by the collaborative work of our physics
+PyMedPhys is an open-source Python library built by a community that values and prioritizes code sharing, review, 
+improvement, and peer development pertaining to the field of medical physics. It is inspired by the collaborative work of our physics
 peers in astronomy and the Astropy Project.
 
 # Statement of need
