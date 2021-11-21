@@ -240,7 +240,7 @@ extras_require = {
         "streamlit==0.82.0",
         "streamlit-ace==0.0.4",
         "pylinac==2.3.2",
-        "reportlab<=3.5.54",
+        "reportlab>=3.6",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
         "sphinx-book-theme",
@@ -328,7 +328,7 @@ extras_require = {
         "streamlit==0.82.0",
         "streamlit-ace==0.0.4",
         "pylinac==2.3.2",
-        "reportlab<=3.5.54",
+        "reportlab>=3.6",
     ],
     'user:sys_platform == "win32"': ["pywin32>=301"],
 }
