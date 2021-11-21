@@ -601,7 +601,7 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "imageio"
-version = "2.11.1"
+version = "2.10.3"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
 category = "main"
 optional = true
@@ -617,12 +617,11 @@ dev = ["invoke", "pytest", "pytest-cov", "black", "flake8"]
 docs = ["sphinx", "numpydoc", "pydata-sphinx-theme"]
 ffmpeg = ["imageio-ffmpeg", "psutil"]
 fits = ["astropy"]
-full = ["astropy", "black", "flake8", "gdal", "imageio-ffmpeg", "invoke", "itk", "numpydoc", "psutil", "pydata-sphinx-theme", "pytest", "pytest-cov", "sphinx", "tifffile", "wheel"]
+full = ["astropy", "black", "flake8", "gdal", "imageio-ffmpeg", "invoke", "itk", "numpydoc", "psutil", "pydata-sphinx-theme", "pytest", "pytest-cov", "sphinx", "wheel"]
 gdal = ["gdal"]
 itk = ["itk"]
 linting = ["black", "flake8"]
 test = ["invoke", "pytest", "pytest-cov"]
-tifffile = ["tifffile"]
 
 [[package]]
 name = "imagesize"
@@ -3290,8 +3289,8 @@ idna = [
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
 ]
 imageio = [
-    {file = "imageio-2.11.1-py3-none-any.whl", hash = "sha256:87e43b7553286d2eff1806aa30d5e72b30ce2cfb356bc9a2f13466063d2e1259"},
-    {file = "imageio-2.11.1.tar.gz", hash = "sha256:73e53bbf21777173232cd7a1c66361516b58cd09d4828a10dcfe83bb14c2b187"},
+    {file = "imageio-2.10.3-py3-none-any.whl", hash = "sha256:93ee376a8dc96182ead8d773c3ac2becf79c6f2b93d38f31d7ac036c62a6c72e"},
+    {file = "imageio-2.10.3.tar.gz", hash = "sha256:469c59fe71c81cdc41c84f842d62dd2739a08fac8cb85f5a518a92a6227e2ed6"},
 ]
 imagesize = [
     {file = "imagesize-1.3.0-py2.py3-none-any.whl", hash = "sha256:1db2f82529e53c3e929e8926a1fa9235aa82d0bd0c580359c67ec31b2fddaa8c"},
