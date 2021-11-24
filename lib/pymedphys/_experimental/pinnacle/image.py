@@ -226,5 +226,5 @@ def convert_image(image, export_path):
             export_path, f"{image.image['Modality']}.{imageds.SOPInstanceUID}.dcm"
         )
 
-        imageds.save_as(output_file)
+        imageds.save_as(output_file, False)
         image.logger.info("Exported: %s to %s", file, output_file)

@@ -997,4 +997,4 @@ def convert_plan(plan, export_path):
     # Save the RTPlan Dicom File
     output_file = os.path.join(export_path, RPfilename)
     plan.logger.info("Creating Plan file: %s", output_file)
-    ds.save_as(output_file)
+    ds.save_as(output_file, False)
