@@ -54,8 +54,9 @@ def _get_pepper():
     """
     pepper = "mynotveryprotectivepeppertest".encode("ASCII")
 
-    _config = get_config()
+    _config = None
     try:
+        _config = get_config()
         pseudo_config = _config["pseudo"]
         pepper = pseudo_config["pepper"].encode("ASCII")
     except:
@@ -94,8 +95,9 @@ def _get_epoch_jitter():
         a value from 0 to 1000
     """
     epoch_jitter = 0
-    _config = get_config()
+    _config = None
     try:
+        _config = get_config()
         pseudo_config = _config["pseudo"]
         epoch_jitter = pseudo_config["epoch_jitter"]
     except:
