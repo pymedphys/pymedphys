@@ -59,7 +59,7 @@ def _get_pepper():
         _config = get_config()
         pseudo_config = _config["pseudo"]
         pepper = pseudo_config["pepper"].encode("ASCII")
-    except:
+    except (KeyError, OSError) as e:
         pepper = secrets.token_urlsafe(32).encode("ASCII")
         _config_dir = get_config_dir()
         config_path = _config_dir.joinpath("config.toml")
@@ -100,7 +100,7 @@ def _get_epoch_jitter():
         _config = get_config()
         pseudo_config = _config["pseudo"]
         epoch_jitter = pseudo_config["epoch_jitter"]
-    except:
+    except (KeyError, OSError) as e:
         random.seed()
         epoch_jitter = random.randrange(0, 1000)
         _config_dir = get_config_dir()
