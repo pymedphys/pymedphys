@@ -7,4 +7,4 @@ WARNING = """
     details.
     """
 
-warnings.warn(WARNING)
+# warnings.warn(WARNING)
