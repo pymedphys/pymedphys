@@ -601,7 +601,7 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "imageio"
-version = "2.11.1"
+version = "2.10.5"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
 category = "main"
 optional = true
@@ -2985,7 +2985,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "455f9d65650bb600eb2f486c2d0f063b0cc44aa6888d52aa79ae75ea5168576f"
+content-hash = "a19b3604fc0315e2c2b94b458b02025218b746ce3229058a1c54397136d71794"
 
 [metadata.files]
 alabaster = [
@@ -3291,8 +3291,8 @@ idna = [
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
 ]
 imageio = [
-    {file = "imageio-2.11.1-py3-none-any.whl", hash = "sha256:87e43b7553286d2eff1806aa30d5e72b30ce2cfb356bc9a2f13466063d2e1259"},
-    {file = "imageio-2.11.1.tar.gz", hash = "sha256:73e53bbf21777173232cd7a1c66361516b58cd09d4828a10dcfe83bb14c2b187"},
+    {file = "imageio-2.10.5-py3-none-any.whl", hash = "sha256:68457947e29c0341f12ff459d63019e386bf4dadc38c11ffa15941fe6d55f40e"},
+    {file = "imageio-2.10.5.tar.gz", hash = "sha256:f3f6e9a73d62f12348f098364219f4fc64462760bc07abfe16d14db0e4974845"},
 ]
 imagesize = [
     {file = "imagesize-1.3.0-py2.py3-none-any.whl", hash = "sha256:1db2f82529e53c3e929e8926a1fa9235aa82d0bd0c580359c67ec31b2fddaa8c"},
