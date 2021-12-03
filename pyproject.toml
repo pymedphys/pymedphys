@@ -51,7 +51,7 @@ python-dateutil = { version = "*", optional = true }  # groups = ["user", "dev",
 matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
 Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
-imageio = { version = "<2.13", optional = true }  # groups = ["user", "dev"]
+imageio = { version = "<2.12", optional = true }  # groups = ["user", "dev"]
 xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
