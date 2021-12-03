@@ -34,8 +34,7 @@ def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
 
 
 def calculate_coordinates_shell_1d(distance):
-    """Output the two points that are of the defined distance in one-dimension
-    """
+    """Output the two points that are of the defined distance in one-dimension"""
     if distance == 0:
         x_coords = np.array([0])
     else:

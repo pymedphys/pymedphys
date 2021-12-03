@@ -18,10 +18,9 @@
 import pathlib
 import tempfile
 
-import pytest
-
-import numpy as np
-import pandas as pd
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import pytest
 
 import pymedphys
 from pymedphys._trf.decode.trf2csv import trf2csv

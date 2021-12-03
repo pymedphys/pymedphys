@@ -161,8 +161,8 @@ def calc_metersetmap(
     >>> import pymedphys
     >>>
     >>> def metersetmap_from_mosaiq(msq_server_name, field_id):
-    ...     with pymedphys.mosaiq.connect(msq_server_name) as cursor:
-    ...         delivery = pymedphys.Delivery.from_mosaiq(cursor, field_id)
+    ...     with pymedphys.mosaiq.connect(msq_server_name) as connection:
+    ...         delivery = pymedphys.Delivery.from_mosaiq(connection, field_id)
     ...
     ...     grid = pymedphys.metersetmap.grid()
     ...     metersetmap = delivery.metersetmap()
@@ -296,6 +296,8 @@ def calc_single_control_point(
            [0.14, 0.86, 1.  , 1.  , 1.  , 0.86, 0.14],
            [0.03, 0.17, 0.2 , 0.2 , 0.2 , 0.17, 0.03]])
     """
+    mlc = np.array(mlc, copy=False)
+    jaw = np.array(jaw, copy=False)
 
     leaf_pair_widths = np.array(leaf_pair_widths)
     leaf_division = leaf_pair_widths / grid_resolution
@@ -430,7 +432,7 @@ def get_grid(
 
     Examples
     --------
-    See `pymedphys.metersetmap.calculate`_.
+    See :func:`pymedphys.metersetmap.calculate`.
     """
 
     leaf_pair_widths = np.array(leaf_pair_widths)
@@ -493,7 +495,7 @@ def display_metersetmap(
 
     Examples
     --------
-    See `pymedphys.metersetmap.calculate`_.
+    See :func:`pymedphys.metersetmap.calculate`.
     """
     if grid_resolution is None:
         grid_resolution = grid["mlc"][1] - grid["mlc"][0]
@@ -616,6 +618,9 @@ def _determine_reference_grid_position(top_of_reference_leaf, grid_resolution):
 
 
 def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths, grid_resolution):
+    mlc = np.array(mlc, copy=False)
+    jaw = np.array(jaw, copy=False)
+
     min_y = np.min(-jaw[:, 0])
     max_y = np.max(jaw[:, 1])
 

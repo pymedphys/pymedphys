@@ -19,15 +19,12 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys._experimental.wlutz import transformation as _transformation
 
-from . import _utilities
-
 DEFAULT_OPPOSING_COLLIMATOR_TOLERANCE = 5  # degrees
 DEFAULT_AGREEING_GANTRY_TOLERANCE = 10  # degrees
 
 
 def apply_corrections(dataframe):
-    """Only one algorithm should be provided
-    """
+    """Only one algorithm should be provided"""
 
     assert len(dataframe["algorithm"].unique()) == 1
 
@@ -186,7 +183,7 @@ def _transform_points_to_field_reference_frame(dataframe, point_columns):
 
 def _make_coll_corrected_plots(dataframe, axis, correction_types):
     gantry = np.array(dataframe["gantry"])
-    collimator = np.array(dataframe["collimator"])
+    # collimator = np.array(dataframe["collimator"])
     original_column = f"diff_{axis}"
 
     fig, ax = plt.subplots()
@@ -238,8 +235,10 @@ def _determine_logfile_corrected_deviations(
     for (icom_x_centre, icom_y_centre, collimator) in zip(
         icom_x_centres, icom_y_centres, collimator_angles
     ):
-        icom_correction_in_collimator_coordinates = -np.array(
-            [icom_x_centre, icom_y_centre]
+        icom_correction_in_collimator_coordinates = (
+            -np.array(  # pylint: disable = invalid-unary-operand-type
+                [icom_x_centre, icom_y_centre]
+            )
         )
         icom_correction_in_world_coordinates = _transformation.rotate_point(
             icom_correction_in_collimator_coordinates, -collimator
@@ -265,11 +264,13 @@ def _estimate_collimator_rotation_correction(
     corrections_for_all_groups = []
     for grouping_label in np.unique(grouping_labels):
         mask = grouping_labels == grouping_label
-        corrections = _determine_predicted_collimator_rotation_correction_for_opposing_pairs(
-            gantry_angles[mask],
-            collimator_angles[mask],
-            x_deviations[mask],
-            y_deviations[mask],
+        corrections = (
+            _determine_predicted_collimator_rotation_correction_for_opposing_pairs(
+                gantry_angles[mask],
+                collimator_angles[mask],
+                x_deviations[mask],
+                y_deviations[mask],
+            )
         )
 
         corrections_for_all_groups.append(corrections)

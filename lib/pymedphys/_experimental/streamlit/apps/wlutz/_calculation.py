@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Cancer Care Associates
 # Copyright (C) 2020 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 
 
 import base64
+import pathlib
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -25,7 +27,7 @@ from pymedphys._utilities import filesystem as _pp_filesystem_utilities
 from pymedphys._experimental.wlutz import main as _wlutz
 from pymedphys._experimental.wlutz import reporting as _reporting
 
-from . import _altair, _utilities
+from . import _altair
 
 RESULTS_DATA_COLUMNS = [
     "filepath",
@@ -38,6 +40,22 @@ RESULTS_DATA_COLUMNS = [
     "bb_centre_y",
 ]
 
+# Draw a plot within the app when algorithms deviate from each other
+# by this much
+DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD = 0.5  # mm
+
+# Draw a plot within the app when the total deviation from the origin
+# is more than this much
+DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD = 1.5  # mm
+
+# Draw a plot when an algorithm doesn't return a result
+DEFAULT_PLOT_WHEN_DATA_IS_MISSING = False
+
+# Whether or not the app should "march on" in the face of an error or
+# produce a traceback. When it "marches on" it will not produce data
+# points in the locations where an error occurred.
+DEFAULT_FILL_ERRORS_WITH_NAN = True
+
 
 def calculations_ui(
     database_table,
@@ -46,8 +64,40 @@ def calculations_ui(
     bb_diameter,
     penumbra,
     advanced_mode,
+    loosened_internal_tolerances,
+    quiet=False,
 ):
-    st.write("## Calculations")
+    """The WLutz streamlit calculation UI
+
+    Parameters
+    ----------
+    database_table
+    database_directory
+    wlutz_directory_by_date
+    bb_diameter
+    penumbra
+    advanced_mode
+    loosened_internal_tolerances
+        Whether or not to use a 'less strict' version of PyMedPhys'
+        WLutz algorithm. This is to handle the lower contrast when
+        trying to find an air cavity instead of ball bearing.
+    quiet : bool, optional
+        Run the calculation UI with minimal feedback. This mode is
+        designed for use in Daily QA where all the extra
+        "physics feedback" will get in the way.
+
+    Returns
+    -------
+    statistics_collection
+
+    """
+    if not quiet:
+        st.write("## Calculations")
+
+        st.write("### Calculation options")
+
+    if not advanced_mode and not quiet:
+        st.write("*Calculation options are available by ticking advanced mode*")
 
     if advanced_mode:
         plot_x_axis = st.radio("Plot x-axis", ["Gantry", "Collimator", "Time"])
@@ -56,7 +106,17 @@ def calculations_ui(
 
     ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 
-    algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
+    loosened_tolerance_names = ["PyMedPhys-LoosenedTolerance", "PyMedPhys-NoTolerance"]
+
+    if loosened_internal_tolerances:
+        if quiet:
+            algorithm_options = loosened_tolerance_names[0:1]
+        else:
+            algorithm_options = loosened_tolerance_names
+    else:
+        algorithm_options = list(
+            set(ALGORITHM_FUNCTION_MAP.keys()).difference(loosened_tolerance_names)
+        )
 
     if advanced_mode:
         selected_algorithms = st.multiselect(
@@ -65,26 +125,60 @@ def calculations_ui(
     else:
         selected_algorithms = algorithm_options
 
-    database_table["filename"] = database_table["filepath"].apply(
-        _utilities.filepath_to_filename
-    )
+    database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
+
+    if quiet:
+        default_data_missing_plot = False
+    elif loosened_internal_tolerances:
+        default_data_missing_plot = True
+    else:
+        default_data_missing_plot = DEFAULT_PLOT_WHEN_DATA_IS_MISSING
+
+    if quiet:
+        default_deviation_plot_threshold = np.inf
+        default_total_deviation_plot_threshold = np.inf
+
+    else:
+        default_deviation_plot_threshold = (
+            DEFAULT_INTER_ALGORITHM_DEVIATION_PLOT_THRESHOLD
+        )
+
+        if loosened_internal_tolerances:
+            default_total_deviation_plot_threshold = 3.0
+        else:
+            default_total_deviation_plot_threshold = (
+                DEFAULT_TOTAL_DEVIATION_PLOT_THRESHOLD
+            )
 
     if advanced_mode:
         deviation_plot_threshold = st.number_input(
-            "Display deviations greater than", value=0.2
+            "Display inter-algorithm deviations greater than",
+            value=default_deviation_plot_threshold,
+        )
+        total_deviation_plot_threshold = st.number_input(
+            "Display total deviations greater than",
+            value=default_total_deviation_plot_threshold,
         )
 
-        plot_when_data_missing = st.checkbox("Plot when data missing", value=True)
-
-        fill_errors_with_nan = st.checkbox("Fill errors with nan", value=True)
+        plot_when_data_missing = st.checkbox(
+            "Plot when data missing", value=default_data_missing_plot
+        )
+        fill_errors_with_nan = st.checkbox(
+            "Fill errors with nan", value=DEFAULT_FILL_ERRORS_WITH_NAN
+        )
     else:
-        deviation_plot_threshold = 0.5
-        plot_when_data_missing = False
-        fill_errors_with_nan = True
+        deviation_plot_threshold = default_deviation_plot_threshold
+        total_deviation_plot_threshold = default_total_deviation_plot_threshold
+        plot_when_data_missing = default_data_missing_plot
+        fill_errors_with_nan = DEFAULT_FILL_ERRORS_WITH_NAN
 
-    if st.button("Calculate"):
-        run_calculation(
+    if not quiet:
+        st.write("### Run calculations")
+        calculate = st.button("Calculate")
+
+    if quiet or calculate:
+        return run_calculation(
             database_table,
             database_directory,
             wlutz_directory_by_date,
@@ -92,11 +186,15 @@ def calculations_ui(
             bb_diameter,
             penumbra,
             deviation_plot_threshold,
+            total_deviation_plot_threshold,
             plot_when_data_missing,
             advanced_mode,
             plot_x_axis,
             fill_errors_with_nan,
+            quiet=quiet,
         )
+
+    return None
 
 
 def run_calculation(
@@ -107,22 +205,28 @@ def run_calculation(
     bb_diameter,
     penumbra,
     deviation_plot_threshold,
+    total_deviation_plot_threshold,
     plot_when_data_missing,
     advanced_mode,
     plot_x_axis,
     fill_errors_with_nan,
+    quiet,
 ):
+    xlim = (-180, 180)
+    ylim = (-2, 2)
+
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
-        previously_calculated_results = pd.read_csv(
+        previously_calculated_results: pd.DataFrame = pd.read_csv(
             raw_results_csv_path, index_col=False
         )
     except FileNotFoundError:
         previously_calculated_results = None
 
-    st.sidebar.write("---\n## Progress")
-    progress_bar = st.sidebar.progress(0)
-    status_text = st.sidebar.empty()
+    if not quiet:
+        st.sidebar.write("## Progress")
+        progress_bar = st.sidebar.progress(0)
+        status_text = st.sidebar.empty()
 
     collated_results = pd.DataFrame()
     chart_bucket = {}
@@ -133,8 +237,11 @@ def run_calculation(
         relative_image_path = database_row["filepath"]
 
         if previously_calculated_results is not None:
-            results = previously_calculated_results.loc[
-                previously_calculated_results["filepath"] == relative_image_path
+            results = previously_calculated_results.loc[  # pylint: disable = no-member
+                previously_calculated_results[  # pylint: disable = unsubscriptable-object
+                    "filepath"
+                ]
+                == relative_image_path
             ][RESULTS_DATA_COLUMNS]
 
             selected_algorithms_already_calculated = set(selected_algorithms).issubset(
@@ -167,14 +274,21 @@ def run_calculation(
             "bb_centre_x",
             "bb_centre_y",
         ]
+
+        for column in columns_to_check_for_deviation:
+            results[column] = pd.to_numeric(results[column])
+
         min_result = results[columns_to_check_for_deviation].min(axis=0)
         max_result = results[columns_to_check_for_deviation].max(axis=0)
 
         result_range = max_result - min_result
 
+        diff_columns = ["diff_x", "diff_y"]
+        max_diff = np.max(np.abs(results[diff_columns]))
+
         a_deviation_is_larger_than_threshold = np.any(
             result_range > deviation_plot_threshold
-        )
+        ) or np.any(max_diff > total_deviation_plot_threshold)
         at_least_one_diff_is_missing = (
             results[["diff_x", "diff_y"]].isnull().values.any()
         )
@@ -203,8 +317,10 @@ def run_calculation(
                 penumbra,
             )
 
-            for fig in figures:
-                st.pyplot(fig)
+            columns = st.beta_columns(len(figures))
+            for fig, col in zip(figures, columns):
+                with col:
+                    st.pyplot(fig)
 
         collated_results = collated_results.append(results)
 
@@ -232,17 +348,20 @@ def run_calculation(
             for _, item in treatment_chart_bucket[port].items():
                 item.add_rows(table_filtered_by_port)
         except KeyError:
-            st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
+            if not quiet:
+                st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
+
             port_chart_bucket = _altair.build_both_axis_altair_charts(
-                table_filtered_by_port, plot_x_axis
+                table_filtered_by_port, plot_x_axis, quiet=quiet, xlim=xlim, ylim=ylim
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
-        ratio_complete = (progress_index + 1) / total_files
-        progress_bar.progress(ratio_complete)
+        if not quiet:
+            ratio_complete = (progress_index + 1) / total_files
+            progress_bar.progress(ratio_complete)
 
-        percent_complete = round(ratio_complete * 100, 2)
-        status_text.text(f"{percent_complete}% Complete")
+            percent_complete = round(ratio_complete * 100, 2)
+            status_text.text(f"{percent_complete}% Complete")
 
     contextualised_results: pd.DataFrame = collated_results.merge(
         database_table, left_on="filepath", right_on="filepath"
@@ -298,23 +417,30 @@ def run_calculation(
                 masked = contextualised_results.loc[mask]
 
                 fig, ax = plt.subplots()
-                for algorithm in sorted(selected_algorithms):
-                    algorithm_masked = masked.loc[masked["algorithm"] == algorithm]
-                    ax.plot(
-                        algorithm_masked["gantry"],
-                        algorithm_masked[column],
-                        ".-",
-                        label=algorithm,
-                    )
 
-                    description = algorithm_masked[column].describe()
-                    description = description.round(2)
-                    description["algorithm"] = algorithm
-                    description["treatment"] = treatment
-                    description["port"] = port
-                    description["orientation"] = orientation
+                energies = masked["energy"].unique()
+                for energy in energies:
+                    energy_masked = masked.loc[masked["energy"] == energy]
+                    for algorithm in sorted(selected_algorithms):
+                        algorithm_masked = energy_masked.loc[
+                            energy_masked["algorithm"] == algorithm
+                        ]
+                        ax.plot(
+                            algorithm_masked["gantry"],
+                            algorithm_masked[column],
+                            ".-",
+                            label=algorithm,
+                        )
 
-                    statistics_collection.append(description)
+                        description = algorithm_masked[column].describe()
+                        description = description.round(2)
+                        description["algorithm"] = algorithm
+                        description["treatment"] = treatment
+                        description["energy"] = energy
+                        description["port"] = port
+                        description["orientation"] = orientation
+
+                        statistics_collection.append(description)
 
                 ax.set_xlabel("Gantry Angle (degrees)")
                 ax.set_ylabel("Field centre - BB centre (mm)")
@@ -330,7 +456,16 @@ def run_calculation(
     statistics_collection = pd.concat(statistics_collection, axis=1).T
     statistics_collection.reset_index(inplace=True)
     statistics_collection = statistics_collection[
-        ["treatment", "port", "orientation", "algorithm", "min", "max", "mean"]
+        [
+            "energy",
+            "orientation",
+            "min",
+            "max",
+            "mean",
+            "treatment",
+            "port",
+            "algorithm",
+        ]
     ]
 
     if advanced_mode:
@@ -353,6 +488,8 @@ def run_calculation(
             </a>
         """
         st.markdown(href, unsafe_allow_html=True)
+
+    return statistics_collection
 
 
 def _collapse_column_to_single_value(dataframe, column):
@@ -474,3 +611,10 @@ def _calculate_wlutz(
     )
 
     return field_centre, bb_centre
+
+
+def _filepath_to_filename(path):
+    path = pathlib.Path(path)
+    filename = path.name
+
+    return filename

@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2019 Matthew Jennings and Simon Biggs
+# Copyright (C) 2016-2021 Matthew Jennings and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +14,16 @@
 
 """A DICOM RT Dose toolbox"""
 
+import copy
+from typing import Sequence
+
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt, pydicom, scipy
 
-from .constants import IMAGE_ORIENTATION_MAP
-from .coords import xyz_axes_from_dataset
+from . import orientation
+from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
+from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 from .structure import pull_structure
 
@@ -35,8 +39,7 @@ def zyx_and_dose_from_dataset(dataset):
 
 
 def dose_from_dataset(ds, set_transfer_syntax_uid=True):
-    r"""Extract the dose grid from a DICOM RT Dose file.
-    """
+    r"""Extract the dose grid from a DICOM RT Dose file."""
 
     if set_transfer_syntax_uid:
         ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
@@ -102,7 +105,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
         The RT DICOM plan used to extract surface parameters and verify gantry
         angle 0 beams are used.
     """
-    require_patient_orientation(dose_dataset, "HFS")
+    orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
     depths = np.array(depths, copy=False)
 
@@ -156,7 +159,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
         parameters and verify gantry angle 0 beams are used.
     """
 
-    require_patient_orientation(dose_dataset, "HFS")
+    orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
     displacements = np.array(displacements, copy=False)
 
@@ -307,11 +310,68 @@ def create_dvh(structure, structure_dataset, dose_dataset):
     plt.ylabel("Relative Volume (%)")
 
 
-def require_patient_orientation(ds, patient_orientation):
-    if not np.array_equal(
-        ds.ImageOrientationPatient, np.array(IMAGE_ORIENTATION_MAP[patient_orientation])
-    ):
+def sum_doses_in_datasets(
+    datasets: Sequence["pydicom.dataset.Dataset"],
+) -> "pydicom.dataset.Dataset":
+    """Sum two or more DICOM dose grids and save to new DICOM RT
+    Dose dataset"
+
+    Parameters
+    ----------
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM RT Dose datasets whose doses are to be
+        summed.
+
+    Returns
+    -------
+    pydicom.dataset.Dataset
+        A new DICOM RT Dose dataset whose dose is the sum of all doses
+        within `datasets`
+    """
+
+    if not all(ds.Modality == "RTDOSE" for ds in datasets):
+        raise ValueError("`datasets` must only contain DICOM RT Dose datasets.")
+
+    if not patient_ids_in_datasets_are_equal(datasets):
+        raise ValueError("Patient ID must match for all datasets")
+
+    if not all(ds.DoseSummationType == "PLAN" for ds in datasets):
         raise ValueError(
-            "The supplied dataset has a patient "
-            f"orientation other than {patient_orientation}."
+            "Only DICOM RT Doses whose DoseSummationTypes are 'PLAN' are supported"
         )
+
+    if not all(ds.DoseUnits == datasets[0].DoseUnits for ds in datasets):
+        raise ValueError(
+            "All DICOM RT Doses must have the same units ('GY or 'RELATIVE')"
+        )
+
+    if not coords_in_datasets_are_equal(datasets):
+        raise ValueError("All dose grids must have perfectly coincident coordinates")
+
+    ds_summed = copy.deepcopy(datasets[0])
+
+    ds_summed.BitsAllocated = 32
+    ds_summed.BitsStored = 32
+    ds_summed.HighBit = 31
+    ds_summed.DoseSummationType = "MULTI_PLAN"
+    ds_summed.DoseComment = "Summed Dose"
+
+    if not all(ds.DoseType in ("PHYSICAL", "EFFECTIVE") for ds in datasets):
+        raise ValueError(
+            "Only DICOM RT Doses whose DoseTypes are 'PHYSICAL' or "
+            "'EFFECTIVE' are supported"
+        )
+    if any(ds.DoseType == "EFFECTIVE" for ds in datasets):
+        ds_summed.DoseType = "EFFECTIVE"
+    else:
+        ds_summed.DoseType = "PHYSICAL"
+
+    doses = np.array([dose_from_dataset(ds) for ds in datasets])
+    doses_summed = np.sum(doses, axis=0, dtype=np.float32)
+
+    ds_summed.DoseGridScaling = np.max(doses_summed) / (2 ** int(ds_summed.HighBit))
+
+    pixel_array_summed = (doses_summed / ds_summed.DoseGridScaling).astype(np.uint32)
+    ds_summed.PixelData = pixel_array_summed.tobytes()
+
+    return ds_summed

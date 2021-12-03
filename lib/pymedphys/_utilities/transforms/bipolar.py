@@ -16,8 +16,8 @@
 from pymedphys._imports import numpy as np
 
 
-def convert_IEC_angle_to_bipolar(angle):
-    angle = np.copy(angle)
+def convert_IEC_angle_to_bipolar(input_angle):
+    angle = np.copy(input_angle)
     if np.all(angle == 180):
         return angle
 
@@ -38,9 +38,14 @@ def convert_IEC_angle_to_bipolar(angle):
     closest_left_leaning = not_180[where_closest_left_leaning]
     closest_right_leaning = not_180[where_closest_right_leaning]
 
-    assert np.all(
+    if not np.all(
         np.sign(angle[closest_left_leaning]) == np.sign(angle[closest_right_leaning])
-    ), "Unable to automatically determine whether angle is 180 or -180"
+    ):
+        raise ValueError(
+            "While trying to convert IEC angles to bipolar angles, "
+            "unable to automatically determine whether angle is 180 or "
+            f" -180. The input angles were {input_angle}"
+        )
 
     angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
 

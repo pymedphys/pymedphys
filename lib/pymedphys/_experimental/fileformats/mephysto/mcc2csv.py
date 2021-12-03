@@ -39,8 +39,7 @@ def file_output(output_directory, distance, relative_dose, scan_curvetype, scan_
 
 
 def determine_output_filepaths(output_directory, scan_curvetype, scan_depth):
-    """Determine a useful filepath for the saving of each mephysto scan.
-    """
+    """Determine a useful filepath for the saving of each mephysto scan."""
     filepaths = []
 
     # Loop over each scan curvetype creating a relevant filepath

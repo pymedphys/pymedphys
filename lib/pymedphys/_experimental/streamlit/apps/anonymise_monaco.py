@@ -24,7 +24,6 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
-from pymedphys._streamlit.utilities import rerun as st_rerun
 
 CATEGORY = categories.PRE_ALPHA
 TITLE = "Anonymising Monaco Backend Files"
@@ -44,7 +43,7 @@ def main():
         patient_id,
         _,
         patient_directory,
-    ) = st_monaco.monaco_patient_directory_picker(config, advanced_mode_local=True)
+    ) = st_monaco.monaco_patient_directory_picker(config, advanced_mode=True)
 
     st.write(f"Directory to anonymise: `{patient_directory}`")
 
@@ -68,7 +67,7 @@ def main():
         st.write(FileExistsError("This zip file already exists."))
         if st.button("Delete zip file"):
             zip_path.unlink()
-            st_rerun.rerun()
+            st.experimental_rerun()
 
         st.stop()
 

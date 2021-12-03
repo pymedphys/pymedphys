@@ -16,18 +16,15 @@
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-import pymedphys
 from pymedphys._mosaiq.delivery import NoMosaiqEntries as _NoMosaiqEntries
 from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+from pymedphys._trf.decode import header as _header
+from pymedphys._trf.decode import partition as _partition
+from pymedphys._trf.decode import table as _table
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
-
-
-@st.cache
-def read_trf(trf):
-    return pymedphys.read_trf(trf)
 
 
 @st.cache
@@ -46,21 +43,24 @@ def get_logfile_mosaiq_info(
 ):
     details = []
 
-    cursors = {server: st_mosaiq.get_mosaiq_cursor(server) for server in mosaiq_servers}
+    connections = {
+        server["alias"]: st_mosaiq.get_cached_mosaiq_connection(**server)
+        for server in mosaiq_servers
+    }
 
     for _, header in headers.iterrows():
         machine_id = header["machine"]
         centre = machine_centre_map[machine_id]
         mosaiq_timezone = mosaiq_details[centre]["timezone"]
-        server = mosaiq_details[centre]["server"]
-        cursor = cursors[server]
+        server_alias = mosaiq_details[centre]["server"]["alias"]
+        connection = connections[server_alias]
 
         field_label = header["field_label"]
         field_name = header["field_name"]
         utc_date = header["date"]
 
         current_details = pmp_index.get_logfile_mosaiq_info(
-            cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
+            connection, machine_id, utc_date, mosaiq_timezone, field_label, field_name
         )
         current_details = pd.Series(data=current_details)
 
@@ -71,7 +71,6 @@ def get_logfile_mosaiq_info(
     return details
 
 
-@st.cache()
 def _attempt_patient_name_from_mosaiq(config, headers):
     UNKNOWN_PATIENT_NAME = "Unknown"
 
@@ -253,7 +252,7 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
         except AttributeError:
             pass
 
-        header, table = read_trf(path_or_binary)
+        header, table = _read_trf(path_or_binary)
         headers.append(header)
         tables.append(table)
 
@@ -279,3 +278,24 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
         "identifier": identifier,
         "deliveries": deliveries,
     }
+
+
+@st.cache()
+def _read_trf(path_or_binary):
+    try:
+        path_or_binary.seek(0)
+        trf_contents = path_or_binary.read()
+    except AttributeError:
+        with open(path_or_binary, "rb") as f:
+            trf_contents = f.read()
+
+    trf_header_contents, trf_table_contents = _partition.split_into_header_table(
+        trf_contents
+    )
+
+    header = _header.decode_header(trf_header_contents)
+    header_dataframe = pd.DataFrame([header], columns=_header.Header._fields)
+
+    table_dataframe = _table.decode_trf_table(trf_table_contents)
+
+    return header_dataframe, table_dataframe

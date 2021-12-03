@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from pymedphys._imports import numpy as np
 
 import pymedphys._mocks.wlutz as wlutz_mocks
@@ -87,10 +86,7 @@ def run_test(
         bb_max_attenuation,
     )
 
-    (
-        determined_field_centre,
-        determined_bb_centre,
-    ) = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
+    (determined_field_centre, determined_bb_centre,) = _wlutz.pymedphys_wlutz_calculate(
         x,
         y,
         img,

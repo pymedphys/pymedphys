@@ -1,6 +1,6 @@
 title: PyMedPhys
 author: the PyMedPhys community
-copyright: "2018-2020"
+copyright: "2018-2021"
 logo: img/pymedphys.svg
 execute:
   execute_notebooks: cache
@@ -30,11 +30,6 @@ launch_buttons:
 sphinx:
   config:
     language: en
-
-    html_theme: 'sphinx_pymedphys_theme'
-
-    html_css_files:
-      - style.css
 
   extra_extensions:
     - sphinx.ext.autodoc

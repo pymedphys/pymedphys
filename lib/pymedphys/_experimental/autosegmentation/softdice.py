@@ -18,8 +18,7 @@ from pymedphys._imports import skimage
 
 
 def soft_surface_dice(reference, evaluation):
-    """Non-TensorFlow implementation of a soft surface dice
-    """
+    """Non-TensorFlow implementation of a soft surface dice"""
     edge_reference = skimage.filters.scharr(reference)
     edge_evaluation = skimage.filters.scharr(evaluation)
 
@@ -31,6 +30,5 @@ def soft_surface_dice(reference, evaluation):
 
 
 def tf_soft_surface_dice(reference, evaluation):
-    """TensorFlow implementation of a soft surface dice
-    """
+    """TensorFlow implementation of a soft surface dice"""
     raise NotImplementedError()

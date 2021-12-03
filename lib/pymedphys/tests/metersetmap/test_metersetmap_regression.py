@@ -19,17 +19,15 @@
 """End to end regression testing.
 """
 
-import pytest
-
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 import pymedphys
 
 
 @pytest.mark.slow
 def test_regression():
-    """The results of MetersetMap calculation should not change
-    """
+    """The results of MetersetMap calculation should not change"""
 
     data_filepath = pymedphys.data_path("metersetmap_example_arrays.npz")
     regress_test_arrays = np.load(data_filepath)

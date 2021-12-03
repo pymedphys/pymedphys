@@ -297,8 +297,7 @@ class PinnaclePlan:
 
     @property
     def iso_center(self):
-        """Gets and sets the iso center for this plan.
-        """
+        """Gets and sets the iso center for this plan."""
 
         if len(self._iso_center) == 0:
             find_iso_center(self)

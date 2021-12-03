@@ -75,6 +75,7 @@ def decode_rows(
     else:
         reference_state_codes = set(reference_state_code_keys)
 
+    non_reference_state_codes_found = set()
     decoded_results = []
     possible_column_adjustment_key = []
     for key, (line_grouping, linac_state_codes_column) in possible_groupings.items():
@@ -91,9 +92,22 @@ def decode_rows(
         if set(tentative_state_codes).issubset(reference_state_codes):
             decoded_results.append(decode_table_data(rows, line_grouping))
             possible_column_adjustment_key.append(key)
+        else:
+            non_reference_state_codes = set(tentative_state_codes).difference(
+                reference_state_codes
+            )
+            non_reference_state_codes_found = non_reference_state_codes_found.union(
+                non_reference_state_codes
+            )
 
     if not decoded_results:
-        raise ValueError("Decoded table didn't pass shape test")
+        raise ValueError(
+            "Decoded table didn't pass shape test. While attempting to "
+            "decode the TRF logfile there were some non-reference state "
+            "codes that were found. This may be the cause of this shape "
+            "test failure. The non-reference state codes found are "
+            f"{non_reference_state_codes_found}"
+        )
 
     if len(decoded_results) > 1:
         raise ValueError("Can't determine version of trf file from table shape")

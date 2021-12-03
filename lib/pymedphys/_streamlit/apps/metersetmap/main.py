@@ -70,7 +70,11 @@ def get_most_recent_file_and_print(linac_id, filepaths):
     if not isinstance(filepaths, list):
         raise ValueError("Filepaths needs to be a list")
 
-    latest_filepath = max(filepaths, key=os.path.getmtime)
+    try:
+        latest_filepath = max(filepaths, key=os.path.getmtime)
+    except ValueError:
+        st.sidebar.markdown(f"{linac_id}: `Never`")
+        return
 
     most_recent = datetime.fromtimestamp(os.path.getmtime(latest_filepath))
     now = datetime.now()
@@ -97,8 +101,8 @@ def trf_status(linac_id, backup_directory):
 def show_status_indicators(config):
     if st.sidebar.button("Check status of iCOM and backups"):
         try:
-            linac_icom_live_stream_directories = _config.get_icom_live_stream_directories(
-                config
+            linac_icom_live_stream_directories = (
+                _config.get_icom_live_stream_directories(config)
             )
             linac_indexed_backups_directory = _config.get_indexed_backups_directory(
                 config
@@ -171,10 +175,10 @@ def get_input_data_ui(
     data_method_map,
     default_method,
     key_namespace,
-    advanced_mode_local,
+    advanced_mode,
     **previous_results,
 ):
-    if advanced_mode_local:
+    if advanced_mode:
         data_method_options = list(data_method_map.keys())
         data_method = st.selectbox(
             "Data Input Method",
@@ -187,7 +191,7 @@ def get_input_data_ui(
 
     results = data_method_map[data_method](  # type: ignore
         key_namespace=key_namespace,
-        advanced_mode_local=advanced_mode_local,
+        advanced_mode=advanced_mode,
         **previous_results,
     )
 
@@ -417,8 +421,8 @@ def run_calculation(
     reference_results,
     evaluation_results,
     gamma_options,
-    escan_directory,
-    png_output_directory,
+    escan_directory: pathlib.Path,
+    png_output_directory: pathlib.Path,
 ):
     st.write("Calculating Reference MetersetMap...")
     reference_metersetmap = calculate_batch_metersetmap(reference_results["deliveries"])
@@ -444,7 +448,7 @@ def run_calculation(
         escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
     )
     png_record_directory = png_output_directory.joinpath(output_base_filename)
-    png_record_directory.mkdir(exist_ok=True)
+    png_record_directory.mkdir(exist_ok=True, parents=True)
     png_filepath = str(png_record_directory.joinpath("report.png").resolve())
 
     try:
@@ -650,34 +654,42 @@ def main():
         """
     )
 
-    st.write(
-        """
-        ### Reference
-        """
-    )
+    st.write("---")
 
-    reference_results = get_input_data_ui(
-        overview_updater_map,
-        data_method_map,
-        default_reference,
-        "reference",
-        advanced_mode,
-    )
+    ref_col, eval_col = st.beta_columns(2)
 
-    st.write(
-        """
-        ### Evaluation
-        """
-    )
+    with ref_col:
+        st.write(
+            """
+            ### Reference
+            """
+        )
 
-    evaluation_results = get_input_data_ui(
-        overview_updater_map,
-        data_method_map,
-        default_evaluation,
-        "evaluation",
-        advanced_mode,
-        **reference_results,
-    )
+        reference_results = get_input_data_ui(
+            overview_updater_map,
+            data_method_map,
+            default_reference,
+            "reference",
+            advanced_mode,
+        )
+
+    with eval_col:
+        st.write(
+            """
+            ### Evaluation
+            """
+        )
+
+        evaluation_results = get_input_data_ui(
+            overview_updater_map,
+            data_method_map,
+            default_evaluation,
+            "evaluation",
+            advanced_mode,
+            **reference_results,
+        )
+
+    st.write("---")
 
     st.write(
         """

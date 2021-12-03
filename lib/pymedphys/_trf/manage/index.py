@@ -24,7 +24,7 @@ from glob import glob
 
 from pymedphys._imports import attr
 
-from pymedphys._mosaiq.connect import multi_mosaiq_connect
+import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import Header, decode_header_from_file
 from pymedphys._utilities.filehash import hash_file
@@ -124,11 +124,22 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
 
 
 def get_logfile_mosaiq_info(
-    cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name, buffer=240
+    connection,
+    machine_id,
+    utc_date,
+    mosaiq_timezone,
+    field_label,
+    field_name,
+    buffer=240,
 ):
     mosaiq_string_time, _ = date_convert(utc_date, mosaiq_timezone)
     delivery_details = get_mosaiq_delivery_details(
-        cursor, machine_id, mosaiq_string_time, field_label, field_name, buffer=buffer
+        connection,
+        machine_id,
+        mosaiq_string_time,
+        field_label,
+        field_name,
+        buffer=buffer,
     )
 
     return attr.asdict(delivery_details)
@@ -136,7 +147,7 @@ def get_logfile_mosaiq_info(
 
 # TODO Split this function up into smaller functions for easier reuse.
 def file_ready_to_be_indexed(
-    cursors,
+    connections,
     filehash_list,
     to_be_indexed_dict,
     unknown_error_in_logfile,
@@ -167,7 +178,7 @@ def file_ready_to_be_indexed(
             mosaiq_string_time, path_string_time = date_convert(
                 header.date, centre_details[centre]["timezone"]
             )
-        except Exception as e:  # pylint: disable = broad-except
+        except Exception:  # pylint: disable = broad-except
             traceback.print_exc()
             new_filepath = os.path.join(unknown_error_in_logfile, logfile_basename)
             rename_and_handle_fileexists(to_be_indexed_dict[filehash], new_filepath)
@@ -175,7 +186,7 @@ def file_ready_to_be_indexed(
 
         try:
             delivery_details = get_mosaiq_delivery_details(
-                cursors[server],
+                connections[server],
                 header.machine,
                 mosaiq_string_time,
                 header.field_label,
@@ -227,6 +238,36 @@ def file_ready_to_be_indexed(
         )
 
 
+def _separate_server_port_string(sql_server_and_port):
+    """separates a server:port string
+    Parameters
+    ----------
+    sql_server_and_port : str
+        the server:port string
+    Returns
+    -------
+    tuple
+        server (str) and port number
+    Raises
+    ------
+    ValueError
+        if the string isn't properly formatted
+    """
+    split_tuple = str(sql_server_and_port).split(":")
+    if len(split_tuple) == 1:
+        server = split_tuple[0]
+        port = 1433
+    elif len(split_tuple) == 2:
+        server, port = split_tuple
+    else:
+        raise ValueError(
+            "Only one : should appear in server name,"
+            " and it should be used to divide hostname from port number"
+        )
+
+    return server, port
+
+
 def index_logfiles(centre_map, machine_map, logfile_data_directory):
     data_directory = logfile_data_directory
     index_filepath = os.path.abspath(os.path.join(data_directory, "index.json"))
@@ -265,56 +306,59 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
     indexset = set(index.keys())
 
     print("\nConnecting to Mosaiq SQL servers...")
-    with multi_mosaiq_connect(sql_server_and_ports) as cursors:
 
-        print("Globbing index directory...")
-        to_be_indexed = glob(
-            os.path.join(to_be_indexed_directory, "**/*.trf"), recursive=True
+    connections = {
+        server_port: _pp_mosaiq.connect(*_separate_server_port_string(server_port))
+        for server_port in sql_server_and_ports
+    }
+
+    print("Globbing index directory...")
+    to_be_indexed = glob(
+        os.path.join(to_be_indexed_directory, "**/*.trf"), recursive=True
+    )
+
+    chunk_size = 50
+    number_to_be_indexed = len(to_be_indexed)
+    to_be_indexed_chunked = [
+        to_be_indexed[i : i + chunk_size]
+        for i in range(0, number_to_be_indexed, chunk_size)
+    ]
+
+    for i, a_to_be_indexed_chunk in enumerate(to_be_indexed_chunked):
+        print(
+            "\nHashing a chunk of logfiles ({}/{})".format(
+                i + 1, len(to_be_indexed_chunked)
+            )
         )
-
-        chunk_size = 50
-        number_to_be_indexed = len(to_be_indexed)
-        to_be_indexed_chunked = [
-            to_be_indexed[i : i + chunk_size]
-            for i in range(0, number_to_be_indexed, chunk_size)
+        hashlist = [
+            hash_file(filename, dot_feedback=True) for filename in a_to_be_indexed_chunk
         ]
 
-        for i, a_to_be_indexed_chunk in enumerate(to_be_indexed_chunked):
-            print(
-                "\nHashing a chunk of logfiles ({}/{})".format(
-                    i + 1, len(to_be_indexed_chunked)
-                )
+        print(" ")
+
+        to_be_indexed_dict = dict(zip(hashlist, a_to_be_indexed_chunk))
+
+        hashset = set(hashlist)
+
+        for filehash in list(hashset.intersection(indexset)):
+            file_already_in_index(
+                os.path.join(indexed_directory, index[filehash]["filepath"]),
+                to_be_indexed_dict[filehash],
+                filehash,
             )
-            hashlist = [
-                hash_file(filename, dot_feedback=True)
-                for filename in a_to_be_indexed_chunk
-            ]
 
-            print(" ")
-
-            to_be_indexed_dict = dict(zip(hashlist, a_to_be_indexed_chunk))
-
-            hashset = set(hashlist)
-
-            for filehash in list(hashset.intersection(indexset)):
-                file_already_in_index(
-                    os.path.join(indexed_directory, index[filehash]["filepath"]),
-                    to_be_indexed_dict[filehash],
-                    filehash,
-                )
-
-            file_ready_to_be_indexed(
-                cursors,
-                list(hashset.difference(indexset)),
-                to_be_indexed_dict,
-                unknown_error_in_logfile,
-                no_mosaiq_record_found,
-                no_field_label_in_logfile,
-                indexed_directory,
-                index_filepath,
-                index,
-                machine_map,
-                centre_details,
-                centre_server_map,
-            )
+        file_ready_to_be_indexed(
+            connections,
+            list(hashset.difference(indexset)),
+            to_be_indexed_dict,
+            unknown_error_in_logfile,
+            no_mosaiq_record_found,
+            no_field_label_in_logfile,
+            indexed_directory,
+            index_filepath,
+            index,
+            machine_map,
+            centre_details,
+            centre_server_map,
+        )
     print("Complete")

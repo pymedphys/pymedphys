@@ -29,6 +29,22 @@ path_or_binary_file = Union[BinaryIO, "os.PathLike[Any]"]
 
 
 def trf2pandas(trf: path_or_binary_file) -> Tuple["pd.DataFrame", "pd.DataFrame"]:
+    """Read an Elekta Linac Agility Head TRF into a Pandas DataFrame.
+
+    Parameters
+    ----------
+    trf : Union[BinaryIO, os.PathLike[Any]]
+        Either a file-like object or a pathlike object pointing to
+        either the file location on disk, or the binary contents of a
+        given TRF.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        Two DataFrames, the first being the TRF header information, the
+        second being the TRF table content.
+
+    """
     binary_file_trf = cast(BinaryIO, trf)
     path_like_trf = cast("os.PathLike[Any]", trf)
 
@@ -40,9 +56,7 @@ def trf2pandas(trf: path_or_binary_file) -> Tuple["pd.DataFrame", "pd.DataFrame"
             trf_contents = f.read()
 
     trf_header_contents, trf_table_contents = split_into_header_table(trf_contents)
-
     header_dataframe = header_as_dataframe(trf_header_contents)
-
     table_dataframe = decode_trf_table(trf_table_contents)
 
     return header_dataframe, table_dataframe
@@ -58,8 +72,7 @@ def header_as_dataframe(trf_header_contents):
 
 
 def decode_trf(filepath):
-    """DEPRECATED
-    """
+    """DEPRECATED"""
     _, table_dataframe = trf2pandas(filepath)
 
     return table_dataframe

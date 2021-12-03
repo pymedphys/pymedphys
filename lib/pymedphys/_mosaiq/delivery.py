@@ -21,12 +21,12 @@ import struct
 
 from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
 
 from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
-from .connect import execute_sql
-from .constants import FIELD_TYPES
+from . import api, constants
 
 
 @functools.lru_cache()
@@ -54,7 +54,7 @@ class NoMosaiqEntries(ValueError):
     """Raise an exception when no entry is found"""
 
 
-def get_field_type(cursor, field_id):
+def get_field_type(connection, field_id):
     execute_string = """
         SELECT
             TxField.Type_Enum
@@ -65,19 +65,19 @@ def get_field_type(cursor, field_id):
 
     parameters = {"field_id": field_id}
 
-    sql_result = execute_sql(cursor, execute_string, parameters)
+    sql_result = api.execute(connection, execute_string, parameters)
 
-    return FIELD_TYPES[sql_result[0][0]]
+    return constants.FIELD_TYPES[sql_result[0][0]]
 
 
 def get_mosaiq_delivery_details(
-    cursor, machine, delivery_time, field_label, field_name, buffer=0
+    connection, machine, delivery_time, field_label, field_name, buffer=0
 ):
     """Identifies the patient details for a given delivery time.
 
     Args:
     Args:
-        cursor: A pymssql cursor pointing to the Mosaiq SQL server
+        connection: A connection pointing to the Mosaiq SQL server
         machine: The name of the machine the delivery occurred on
         delivery_time: The time of the treatment delivery
         field_label: The beam field label, called Field ID within Monaco
@@ -138,14 +138,14 @@ def get_mosaiq_delivery_details(
         "field_name": field_name,
     }
 
-    sql_result = execute_sql(cursor, execute_string, parameters)
+    sql_result = api.execute(connection, execute_string, parameters)
 
     if len(sql_result) > 1:
         for result in sql_result[1::]:
             if result != sql_result[0]:
                 if buffer != 0:
                     return get_mosaiq_delivery_details(
-                        cursor,
+                        connection,
                         machine,
                         delivery_time,
                         field_label,
@@ -165,7 +165,7 @@ def get_mosaiq_delivery_details(
     OISDeliveryDetails = create_ois_delivery_details_class()
     delivery_details = OISDeliveryDetails(*sql_result[0])
 
-    delivery_details.field_type = FIELD_TYPES[delivery_details.field_type]
+    delivery_details.field_type = constants.FIELD_TYPES[delivery_details.field_type]
 
     return delivery_details
 
@@ -198,17 +198,19 @@ def append_x00_byte_to_all(raw_bytes_list):
 
 
 def check_all_items_equal_length(items, name):
-    all_lengths = [len(item) for item in items]
-    length = list(set(all_lengths))
+    all_lengths = {len(item) for item in items}
 
-    assert len(length) == 1, "All {} should be the same length".format(name)
+    if len(all_lengths) != 1:
+        raise ValueError(
+            f"All {name} should be the same length. The lengths seen were "
+            f"{all_lengths}."
+        )
 
-    return length[0]
+    return list(all_lengths)[0]
 
 
 def decode_msq_mlc(raw_bytes):
-    """Convert MLCs from Mosaiq SQL byte format to cm floats.
-    """
+    """Convert MLCs from Mosaiq SQL byte format to cm floats."""
     raw_bytes = mosaiq_mlc_missing_byte_workaround(raw_bytes)
 
     length = check_all_items_equal_length(raw_bytes, "mlc bytes")
@@ -248,19 +250,9 @@ def collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2):
     return mlc, jaw
 
 
-def delivery_data_sql(cursor, field_id):
-    """Get the treatment delivery data from Mosaiq given the SQL field_id
-
-    Args:
-        cursor: A pymssql cursor pointing to the Mosaiq SQL server
-        field_id: The Mosaiq SQL field ID
-
-    Returns:
-        txfield_results: The results from the TxField table.
-        txfieldpoint_results: The results from the TxFieldPoint table.
-    """
-    txfield_results = execute_sql(
-        cursor,
+def _raw_delivery_data_sql(connection, field_id):
+    txfield_results = api.execute(
+        connection,
         """
         SELECT
             TxField.Meterset
@@ -268,13 +260,14 @@ def delivery_data_sql(cursor, field_id):
         WHERE
             TxField.FLD_ID = %(field_id)s
         """,
-        {"field_id": field_id},
+        {
+            "field_id": field_id,
+        },
     )
 
-    txfieldpoint_results = np.array(
-        execute_sql(
-            cursor,
-            """
+    txfieldpoint_results = api.execute(
+        connection,
+        """
         SELECT
             TxFieldPoint.[Index],
             TxFieldPoint.A_Leaf_Set,
@@ -286,98 +279,81 @@ def delivery_data_sql(cursor, field_id):
         FROM TxFieldPoint
         WHERE
             TxFieldPoint.FLD_ID = %(field_id)s
+        ORDER BY
+            TxFieldPoint.Point
         """,
-            {"field_id": field_id},
-        )
+        {"field_id": field_id},
     )
 
     return txfield_results, txfieldpoint_results
 
 
-def fetch_and_verify_mosaiq_sql(cursor, field_id):
-    reference_results = delivery_data_sql(cursor, field_id)
-    test_results = delivery_data_sql(cursor, field_id)
+def delivery_data_sql(connection, field_id):
+    """Get the treatment delivery data from Mosaiq given the SQL field_id
 
-    agreement = False
+    Args:
+        connection: A connection pointing to the Mosaiq SQL server
+        field_id: The Mosaiq SQL field ID
 
-    while not agreement:
-        agreements = []
-        for ref, test in zip(reference_results, test_results):
-            agreements.append(np.all(ref == test))
+    Returns:
+        txfield_results: The results from the TxField table.
+        txfieldpoint_results: The results from the TxFieldPoint table.
+    """
+    raw_txfield_results, raw_txfieldpoint_results = _raw_delivery_data_sql(
+        connection, field_id
+    )
 
-        agreement = np.all(agreements)
-        if not agreement:
-            print("Mosaiq sql query gave conflicting data.")
-            print("Trying again...")
-            reference_results = test_results
-            test_results = delivery_data_sql(cursor, field_id)
+    if len(raw_txfield_results) != 1:
+        raise ValueError(
+            f"The return results from txfield query gave {raw_txfield_results}. "
+            "Expected exactly one row."
+        )
+    meterset = np.array(raw_txfield_results[0]).astype(float)
 
-    return test_results
+    if len(raw_txfieldpoint_results) == 0:
+        raise ValueError("No TxFieldPoints were returned.")
+
+    txfieldpoint_results = pd.DataFrame(
+        data=raw_txfieldpoint_results,
+        columns=[
+            "Index",
+            "A_Leaf_Set",
+            "B_Leaf_Set",
+            "Gantry_Ang",
+            "Coll_Ang",
+            "Coll_Y1",
+            "Coll_Y2",
+        ],
+    )
+
+    return meterset, txfieldpoint_results
 
 
 class DeliveryMosaiq(DeliveryBase):
     @classmethod
-    def from_mosaiq(cls, cursor, field_id):
-        mosaiq_delivery_data = cls._from_mosaiq_base(cursor, field_id)
-        reference_data = (
-            mosaiq_delivery_data.monitor_units,
-            mosaiq_delivery_data.mlc,
-            mosaiq_delivery_data.jaw,
-        )
+    def from_mosaiq(cls, connection, field_id):
+        total_mu, tx_field_points = delivery_data_sql(connection, field_id)
+        tx_field_points_index = tx_field_points["Index"].to_numpy(dtype=float)
 
-        delivery_data = cls._from_mosaiq_base(cursor, field_id)
-        test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
-
-        agreement = False
-
-        while not agreement:
-            agreements = []
-            for ref, test in zip(reference_data, test_data):
-                agreements.append(np.all(ref == test))
-
-            agreement = np.all(agreements)
-            if not agreement:
-                print("Converted Mosaiq delivery data was conflicting.")
-                print(
-                    "MU agreement: {}\nMLC agreement: {}\n"
-                    "Jaw agreement: {}".format(*agreements)
-                )
-                print("Trying again...")
-                reference_data = test_data
-                delivery_data = cls._from_mosaiq_base(cursor, field_id)
-                test_data = (
-                    delivery_data.monitor_units,
-                    delivery_data.mlc,
-                    delivery_data.jaw,
-                )
-
-        return delivery_data
-
-    @classmethod
-    def _from_mosaiq_base(cls, cursor, field_id):
-        txfield_results, txfieldpoint_results = fetch_and_verify_mosaiq_sql(
-            cursor, field_id
-        )
-
-        total_mu = np.array(txfield_results[0]).astype(float)
-        cumulative_percentage_mu = txfieldpoint_results[:, 0].astype(float)
-
-        if np.shape(cumulative_percentage_mu) == ():
+        if np.shape(tx_field_points_index) == ():
             mu_per_control_point = [0, total_mu]
         else:
-            cumulative_mu = cumulative_percentage_mu * total_mu / 100
+            cumulative_mu = tx_field_points_index / tx_field_points_index[-1] * total_mu
             mu_per_control_point = np.concatenate([[0], np.diff(cumulative_mu)])
 
         monitor_units = np.cumsum(mu_per_control_point).tolist()
 
-        mlc_a = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 1].astype(bytes))).T
-        mlc_b = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 2].astype(bytes))).T
+        raw_mlc_a = tx_field_points["A_Leaf_Set"].to_numpy(dtype=bytes)
+        mlc_a = np.squeeze(decode_msq_mlc(raw_mlc_a)).T
 
-        msq_gantry_angle = txfieldpoint_results[:, 3].astype(float)
-        msq_collimator_angle = txfieldpoint_results[:, 4].astype(float)
+        raw_mlc_b = tx_field_points["B_Leaf_Set"].to_numpy(dtype=bytes)
+        mlc_b = np.squeeze(decode_msq_mlc(raw_mlc_b)).T
 
-        coll_y1 = txfieldpoint_results[:, 5].astype(float)
-        coll_y2 = txfieldpoint_results[:, 6].astype(float)
+        msq_gantry_angle = tx_field_points["Gantry_Ang"].to_numpy(dtype=float)
+        msq_collimator_angle = tx_field_points["Coll_Ang"].to_numpy(dtype=float)
+
+        coll_y1 = tx_field_points["Coll_Y1"].to_numpy(dtype=float)
+        coll_y2 = tx_field_points["Coll_Y2"].to_numpy(dtype=float)
 
         mlc, jaw = collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2)
         gantry = convert_IEC_angle_to_bipolar(msq_gantry_angle)

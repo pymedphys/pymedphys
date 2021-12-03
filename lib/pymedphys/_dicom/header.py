@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Matthew Jennings
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,7 @@
 
 import re
 from copy import deepcopy
+from typing import Sequence
 
 from pymedphys._imports import pydicom
 
@@ -22,8 +24,7 @@ from .create import dicom_dataset_from_dict
 
 
 def adjust_machine_name(dicom_dataset, new_machine_name):
-    """Change the machine name within the DICOM header
-    """
+    """Change the machine name within the DICOM header"""
 
     new_dicom_dataset = deepcopy(dicom_dataset)
 
@@ -56,8 +57,7 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
 def adjust_rel_elec_density(
     dicom_dataset, adjustment_map, ignore_missing_structure=False
 ):
-    """Append or adjust relative electron densities of structures
-    """
+    """Append or adjust relative electron densities of structures"""
 
     new_dicom_dataset = deepcopy(dicom_dataset)
 
@@ -132,8 +132,7 @@ def RED_adjustment_map_from_structure_names(structure_names):
 
 
 def adjust_RED_by_structure_name(dicom_dataset):
-    """Adjust the structure electron density based on structure name.
-    """
+    """Adjust the structure electron density based on structure name."""
     structure_names = [
         structure_set.ROIName for structure_set in dicom_dataset.StructureSetROISequence
     ]
@@ -150,3 +149,23 @@ def adjust_RED_by_structure_name_cli(args):
     new_dicom_dataset = adjust_RED_by_structure_name(dicom_dataset)
 
     pydicom.write_file(args.output_file, new_dicom_dataset)
+
+
+def patient_ids_in_datasets_are_equal(
+    datasets: Sequence["pydicom.dataset.Dataset"],
+) -> bool:
+    """True if all DICOM datasets have the same Patient ID
+
+    Parameters
+    ----------
+    datasets : sequence of pydicom.dataset.Dataset
+        A sequence of DICOM datasets whose Patient IDs are to be
+        compared.
+
+    Returns
+    -------
+    bool
+        True if Patient IDs match for all datasets, False otherwise.
+    """
+
+    return all(ds.PatientID == datasets[0].PatientID for ds in datasets)

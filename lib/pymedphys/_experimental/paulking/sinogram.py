@@ -29,7 +29,7 @@ from pymedphys._imports import numpy as np
 
 
 def read_csv_file(file_name):
-    """ read sinogram from csv file
+    """read sinogram from csv file
 
     Return patient ID and sinogram array produced by reading a RayStation
     sinogram CSV file with the provided file name.
@@ -76,7 +76,7 @@ def read_csv_file(file_name):
 
 
 def read_bin_file(file_name):
-    """ read sinogram from binary file
+    """read sinogram from binary file
 
     Return sinogram np.array produced by reading an Accuray sinogram
     BIN file with the provided file name.
@@ -106,7 +106,7 @@ def read_bin_file(file_name):
 
 
 def crop(sinogram):
-    """ crop sinogram
+    """crop sinogram
 
     Return a symmetrically cropped sinogram, such that always-closed
     leaves are excluded and the sinogram center is maintained.
@@ -133,7 +133,7 @@ def crop(sinogram):
 
 
 def unshuffle(sinogram):
-    """ unshuffle singram by angle
+    """unshuffle singram by angle
 
     Return a list of 51 sinograms, by unshuffling the provided
     sinogram; so that all projections in the result correspond
@@ -157,7 +157,7 @@ def unshuffle(sinogram):
 
 
 def make_histogram(sinogram, num_bins=10):
-    """ make a leaf-open-time histogram
+    """make a leaf-open-time histogram
 
     Return a histogram of leaf-open-times for the provided sinogram
     comprised of the specified number of bins, in the form of a list
@@ -199,7 +199,7 @@ def make_histogram(sinogram, num_bins=10):
 
 
 def find_modulation_factor(sinogram):
-    """ read sinogram from csv file
+    """read sinogram from csv file
 
     Calculate the ratio of the maximum leaf open time (assumed
     fully open) to the mean leaf open time, as determined over all

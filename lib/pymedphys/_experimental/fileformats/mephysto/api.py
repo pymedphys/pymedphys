@@ -39,7 +39,7 @@ def load_mephysto(filepath, output_to_file=False, output_directory=None, sort=Tr
     individual scan.
     """
     # Open the file and store the contents in file_contents
-    with open(filepath) as file_pointer:
+    with open(filepath, errors="surrogateescape") as file_pointer:
         file_contents = np.array(file_pointer.readlines())
 
     # Use the functions defined within mccread.py to pull the desired data

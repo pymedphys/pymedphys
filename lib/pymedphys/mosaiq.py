@@ -1,6 +1,7 @@
-# pylint: disable = unused-import, missing-docstring
+"""Module to handle the connection to a Mosaiq SQL database and execute SQL queries.
+"""
 
 
-from ._mosaiq.connect import connect
-from ._mosaiq.connect import execute_sql as execute
-from ._mosaiq.helpers import get_qcls_by_date as qcls
+# pylint: disable = unused-import
+
+from ._mosaiq.api import Connection, Cursor, connect, execute

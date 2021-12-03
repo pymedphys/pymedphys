@@ -16,41 +16,39 @@
 import pathlib
 import shutil
 
-from pymedphys._imports import streamlit as st
+from pymedphys._streamlit.server import start
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
 
 
-def fill_streamlit_credentials():
-    streamlit_config_dir = pathlib.Path.home().joinpath(".streamlit")
-    streamlit_config_dir.mkdir(exist_ok=True)
-
-    template_streamlit_credentials_file = STREAMLIT_CONTENT_DIR.joinpath(
-        "credentials.toml"
-    )
-    new_credential_file = streamlit_config_dir.joinpath("credentials.toml")
-
-    try:
-        shutil.copy2(template_streamlit_credentials_file, new_credential_file)
-    except FileExistsError:
-        pass
-
-
-def main(_):
-    """Boot up the pymedphys GUI
-
-    """
-    fill_streamlit_credentials()
+def main(args):
+    """Boot up the pymedphys GUI"""
+    _fill_streamlit_credentials()
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
-    # This direct private call is undergone so as to guarantee that the
-    # same Python that called ``pymedphys gui`` is the same Python that
-    # is used to run streamlit.
+    if args.port:
+        config = {"server.port": args.port}
+    else:
+        config = {}
 
-    # Unfortunately streamlit does not as of yet support
-    # ``python -m streamlit``. See <https://github.com/streamlit/streamlit/pull/2351>
-    # for more details.
-    st._is_running_with_streamlit = True
-    st.bootstrap.run(streamlit_script_path, "", [])
+    start.start_streamlit_server(streamlit_script_path, config)
+
+
+def _fill_streamlit_credentials():
+    streamlit_config_file = pathlib.Path.home().joinpath(
+        ".streamlit", "credentials.toml"
+    )
+    if streamlit_config_file.exists():
+        return
+
+    streamlit_config_dir = streamlit_config_file.parent
+    streamlit_config_dir.mkdir(exist_ok=True)
+
+    template_streamlit_config_file = STREAMLIT_CONTENT_DIR.joinpath("credentials.toml")
+
+    try:
+        shutil.copy2(template_streamlit_config_file, streamlit_config_file)
+    except FileExistsError:
+        pass

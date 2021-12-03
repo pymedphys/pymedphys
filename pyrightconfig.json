@@ -2,7 +2,13 @@
     "include": [
         "lib/pymedphys"
     ],
-    "reportMissingImports": true,
+    "reportMissingImports": false,
     "reportGeneralTypeIssues": false,
-    "reportUnboundVariable": false
+    "reportUnboundVariable": false,
+    "reportOptionalMemberAccess": false,
+    "reportOptionalSubscript": false,
+    "reportOptionalOperand": false,
+    "reportOptionalCall": false,
+    "reportOptionalIterable": false,
+    "reportPrivateImportUsage": false,
 }

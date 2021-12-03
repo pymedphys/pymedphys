@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
+import itertools
 
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 
@@ -28,38 +27,38 @@ DIRS_TO_SKIP = (
 @pytest.mark.pydicom
 def test_delivery_from_monaco():
     data_paths = pymedphys.zip_data_paths("tel-dicom-pairs.zip")
-    dir_names = {path.parent.name for path in data_paths}
+    directories = {path.parent for path in data_paths if path.suffix == ".dcm"}
 
-    assert len(dir_names) >= 2
+    assert len(directories) >= 2
 
-    for dir_name in dir_names:
-        if dir_name in DIRS_TO_SKIP:
+    for directory in directories:
+        if directory.name in DIRS_TO_SKIP:
             continue
 
-        current_paths = [path for path in data_paths if path.parent.name == dir_name]
+        current_paths = [path for path in data_paths if directory in path.parents]
+        tel_paths = [path for path in current_paths if path.name.endswith("tel.1")]
+        dcm_paths = [path for path in current_paths if path.suffix == ".dcm"]
 
-        tel_path = get_file_type(current_paths, "tel.1", exact_match=True)
-        dcm_path = get_file_type(current_paths, "dcm")
-
-        delivery_dcm = pymedphys.Delivery.from_dicom(
-            pydicom.read_file(str(dcm_path), force=True), fraction_group_number=1
-        )
-
-        delivery_monaco = pymedphys.Delivery.from_monaco(tel_path)
-
-        assert np.allclose(delivery_monaco.mu, delivery_dcm.mu, atol=0.01)
-        assert np.allclose(delivery_monaco.gantry, delivery_dcm.gantry, atol=0.01)
-        assert np.allclose(
-            delivery_monaco.collimator, delivery_dcm.collimator, atol=0.01
-        )
-        assert np.allclose(delivery_monaco.mlc, delivery_dcm.mlc, atol=0.1)
-        assert np.allclose(delivery_monaco.jaw, delivery_dcm.jaw, atol=0.01)
+        for tel_path, dcm_path in itertools.product(tel_paths, dcm_paths):
+            _compare_tel_to_dicom(tel_path, dcm_path)
 
 
-def get_file_type(input_paths, name, exact_match=False):
-    if exact_match:
-        paths = [path for path in input_paths if name == path.name]
+def _compare_tel_to_dicom(tel_path, dcm_path):
+    print(f"tel_path: {tel_path} | dcm_path: {dcm_path}")
+
+    if tel_path.name.startswith("rxB"):
+        fraction_group_number = 2
     else:
-        paths = [path for path in input_paths if name in path.name]
-    assert len(paths) == 1
-    return paths[0]
+        fraction_group_number = 1
+
+    delivery_dcm = pymedphys.Delivery.from_dicom(
+        pydicom.read_file(str(dcm_path), force=True),
+        fraction_group_number=fraction_group_number,
+    )
+    delivery_monaco = pymedphys.Delivery.from_monaco(tel_path)
+
+    assert np.allclose(delivery_monaco.mu, delivery_dcm.mu, atol=0.01)
+    assert np.allclose(delivery_monaco.gantry, delivery_dcm.gantry, atol=0.01)
+    assert np.allclose(delivery_monaco.collimator, delivery_dcm.collimator, atol=0.01)
+    assert np.allclose(delivery_monaco.mlc, delivery_dcm.mlc, atol=0.1)
+    assert np.allclose(delivery_monaco.jaw, delivery_dcm.jaw, atol=0.01)

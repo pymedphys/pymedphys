@@ -22,6 +22,6 @@ repos:
         additional_dependencies: ['toml']
         files: ^lib/pymedphys/.*\.py$
 -   repo: https://github.com/ambv/black
-    rev: 19.3b0
+    rev: 20.8b1
     hooks:
     - id: black
