@@ -83,6 +83,8 @@ jobs:
             task: "pyright"
           - os: "windows"
             task: "propagate"
+          - os: "windows"
+            task: "cypress"
 
           - os: "macos"
             task: "stackoverflow"
