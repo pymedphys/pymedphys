@@ -47,7 +47,7 @@ def main():
     download("a_text_file.txt", "Some beautiful text!")
 
     st.write("### Download a matplotlib figure")
-    left, right = st.beta_columns(2)
+    left, right = st.columns(2)
 
     fig, ax = plt.subplots()
     ax.plot([-1, 0, 1], [1, -1, 1])

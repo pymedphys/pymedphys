@@ -656,7 +656,7 @@ def main():
 
     st.write("---")
 
-    ref_col, eval_col = st.beta_columns(2)
+    ref_col, eval_col = st.columns(2)
 
     with ref_col:
         st.write(

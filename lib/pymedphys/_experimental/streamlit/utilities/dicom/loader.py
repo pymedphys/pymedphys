@@ -56,7 +56,7 @@ def dicom_file_loader(
         The PyDICOM datasets corresponding to the files uploaded by the
         user.
     """
-    left_column, right_column = st.beta_columns(2)
+    left_column, right_column = st.columns(2)
 
     if accept_multiple_files:
         file_string = "files"

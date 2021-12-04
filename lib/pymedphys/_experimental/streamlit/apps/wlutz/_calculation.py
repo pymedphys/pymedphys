@@ -317,7 +317,7 @@ def run_calculation(
                 penumbra,
             )
 
-            columns = st.beta_columns(len(figures))
+            columns = st.columns(len(figures))
             for fig, col in zip(figures, columns):
                 with col:
                     st.pyplot(fig)
