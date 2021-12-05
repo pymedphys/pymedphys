@@ -119,7 +119,7 @@ protobuf==3.19.1; python_version >= "3.6"
 psutil==5.8.0; (python_version >= "2.6" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
 ptyprocess==0.7.0; sys_platform != "win32" and python_version >= "3.7" and os_name != "nt"
 py==1.11.0; python_full_version >= "3.6.1" and python_version >= "3.7" and implementation_name == "pypy"
-pyarrow==6.0.1; python_version < "3.9" and python_version >= "3.6"
+pyarrow==6.0.1; python_version >= "3.6"
 pybtex-docutils==1.0.1; python_version >= "3.6"
 pybtex==0.24.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.3.0" and python_version >= "3.6"
 pycparser==2.21; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "linux" or sys_platform == "linux" and python_version >= "3.6" and python_full_version >= "3.4.0"
@@ -130,6 +130,7 @@ pygments==2.10.0; python_version >= "3.7" and python_full_version < "3.0.0" or p
 pylibjpeg-libjpeg==1.2.0; python_version >= "3.6"
 pylinac==2.3.2
 pylint==2.12.2; python_full_version >= "3.6.2"
+pympler==0.9; python_version >= "3.6"
 pymssql==2.2.2
 pynetdicom==1.5.7
 pyoxidizer==0.18.0
@@ -187,8 +188,8 @@ sphinxcontrib-qthelp==1.0.3; python_version >= "3.6" and python_full_version < "
 sphinxcontrib-serializinghtml==1.1.5; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 sqlalchemy==1.3.24; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
 stevedore==3.5.0; python_version >= "3.6"
-streamlit-ace==0.0.4; python_version >= "3.6"
-streamlit==0.82.0; python_version >= "3.6"
+streamlit-ace==0.1.0; python_version >= "3.6"
+streamlit==1.2.0; python_version >= "3.6"
 tabulate==0.8.9
 tenacity==8.0.1; python_version >= "3.6"
 termcolor==1.1.0
