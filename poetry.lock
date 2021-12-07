@@ -1812,6 +1812,14 @@ toml = ">=0.9.2"
 typing-extensions = {version = ">=3.10.0", markers = "python_version < \"3.10\""}
 
 [[package]]
+name = "pympler"
+version = "0.9"
+description = "A development tool to measure, monitor and analyze the memory behavior of Python objects."
+category = "main"
+optional = true
+python-versions = "*"
+
+[[package]]
 name = "pymssql"
 version = "2.2.2"
 description = "DB-API interface to Microsoft SQL Server for Python. (new Cython-based version)"
@@ -2553,7 +2561,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "streamlit"
-version = "0.82.0"
+version = "1.2.0"
 description = "The fastest way to build data apps in Python"
 category = "main"
 optional = true
@@ -2562,18 +2570,20 @@ python-versions = ">=3.6"
 [package.dependencies]
 altair = ">=3.2.0"
 astor = "*"
+attrs = "*"
 base58 = "*"
 blinker = "*"
 cachetools = ">=4.0"
 click = ">=7.0,<8.0"
-gitpython = "*"
+gitpython = "!=3.1.19"
 numpy = "*"
 packaging = "*"
 pandas = ">=0.21.0"
 pillow = ">=6.2.0"
 protobuf = ">=3.6.0,<3.11 || >3.11"
-pyarrow = {version = "*", markers = "python_version < \"3.9\""}
+pyarrow = "*"
 pydeck = ">=0.1.dev5"
+pympler = ">=0.9"
 python-dateutil = "*"
 requests = "*"
 toml = "*"
@@ -2584,8 +2594,8 @@ watchdog = {version = "*", markers = "platform_system != \"Darwin\""}
 
 [[package]]
 name = "streamlit-ace"
-version = "0.0.4"
-description = "React Ace component for Streamlit"
+version = "0.1.0"
+description = "Ace editor component for Streamlit."
 category = "main"
 optional = true
 python-versions = ">=3.6"
@@ -2985,7 +2995,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "a19b3604fc0315e2c2b94b458b02025218b746ce3229058a1c54397136d71794"
+content-hash = "45598d974ee7794a51009e314f694df578c92e6e6d09295a65b57e46e9945b80"
 
 [metadata.files]
 alabaster = [
@@ -4054,6 +4064,9 @@ pylint = [
     {file = "pylint-2.12.2-py3-none-any.whl", hash = "sha256:daabda3f7ed9d1c60f52d563b1b854632fd90035bcf01443e234d3dc794e3b74"},
     {file = "pylint-2.12.2.tar.gz", hash = "sha256:9d945a73640e1fec07ee34b42f5669b770c759acd536ec7b16d7e4b87a9c9ff9"},
 ]
+pympler = [
+    {file = "Pympler-0.9.tar.gz", hash = "sha256:f2cbe7df622117af890249f2dea884eb702108a12d729d264b7c5983a6e06e47"},
+]
 pymssql = [
     {file = "pymssql-2.2.2-cp36-cp36m-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:0fc1723898fba044cd7e63741eb2dfbd09083aca5b9365b88e1757786bb559ac"},
     {file = "pymssql-2.2.2-cp36-cp36m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:645e0b90bf969464e1f6868270c81bb1ac2f7b00bc793dc06eed15068f39dfd6"},
@@ -4689,14 +4702,12 @@ stevedore = [
     {file = "stevedore-3.5.0.tar.gz", hash = "sha256:f40253887d8712eaa2bb0ea3830374416736dc8ec0e22f5a65092c1174c44335"},
 ]
 streamlit = [
-    {file = "streamlit-0.82.0-py2.py3-none-any.whl", hash = "sha256:350b49b8a0677fb781ece048b225d39b298dd0375cd298d3520f48583178959a"},
-    {file = "streamlit-0.82.0.tar.gz", hash = "sha256:362539ea398d9528742a47e92216e076cc594e012998504aaec2ee00249ac331"},
+    {file = "streamlit-1.2.0-py2.py3-none-any.whl", hash = "sha256:36846f56973f019c980a65739fcd6b621591a0c5aae1caee959b238b1432ebb7"},
+    {file = "streamlit-1.2.0.tar.gz", hash = "sha256:f13f7463d53fb866a1d07dccfacb60333c56dc9f34b001f310475beee71a08a5"},
 ]
 streamlit-ace = [
-    {file = "streamlit_ace-0.0.4-1-py3-none-any.whl", hash = "sha256:471acbeee755aa16d1b1b031eb413e6e2d8ac2208bf69bc9ff748660ffe2fbee"},
-    {file = "streamlit_ace-0.0.4-2-py3-none-any.whl", hash = "sha256:a94ee7fb5de58bcda6c0176aa123c3fd3de450a7f022460fed1772099a38f60b"},
-    {file = "streamlit_ace-0.0.4-3-py3-none-any.whl", hash = "sha256:c46f066c21441b487b464d58d1abd7cabdaf8757ffb9e97499f99524ac2dcbcd"},
-    {file = "streamlit_ace-0.0.4-py3-none-any.whl", hash = "sha256:848d9053a51539b7c7351bbd636c3bcb43e1cfb81de693fa7fd2aa036ebae732"},
+    {file = "streamlit_ace-0.1.0-py3-none-any.whl", hash = "sha256:b89d6799e34d90673f4f9a9dbcdafda0fcf731a9a862e481e8c6b670796f78e7"},
+    {file = "streamlit_ace-0.1.0.tar.gz", hash = "sha256:475ad13d5dc09e6a01aa3869e1e4bd7744c4f0f70c38e8354536e5c0d5da945c"},
 ]
 tabulate = [
     {file = "tabulate-0.8.9-py3-none-any.whl", hash = "sha256:d7c013fe7abbc5e491394e10fa845f8f32fe54f8dc60c6622c6cf482d25d47e4"},
