@@ -309,7 +309,7 @@ def read_roi(ds, plan, skip_pattern):
                 points = points + curr_points
             if "Beginning of ROI" in line:  # Start of ROI
                 ROIName = line[22:].rstrip()
-                plan.logger.debug("Start of ROI [" + ROIName + "]")
+                plan.logger.debug("Start of ROI [%s]", ROIName)
 
                 if re.match(skip_pattern, ROIName):
                     plan.logger.info("Skipping ROI [" + ROIName + "]")
