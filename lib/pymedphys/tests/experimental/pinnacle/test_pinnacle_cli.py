@@ -45,6 +45,8 @@ import tempfile
 from pathlib import Path
 from zipfile import ZipFile
 
+import pydicom
+
 from pymedphys._imports import pytest
 
 from pymedphys._data import download
@@ -140,3 +142,37 @@ def test_pinnacle_cli_missing_trial(data):
 
         cli_output = str(subprocess.check_output(command))
         assert "No Trial: nonexistenttrial found in Plan" in cli_output
+
+
+@pytest.mark.slow
+def test_pinnacle_cli_skip_roi(data):
+
+    output_path = tempfile.mkdtemp()
+
+    skip_roi_name = "Target"
+
+    for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
+
+        command = (
+            [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
+            + "pymedphys experimental pinnacle export".split()
+            + [
+                "-o",
+                output_path,
+                "-m",
+                "RTSTRUCT",
+                "-r",
+                skip_roi_name,
+                "-t",
+                "Trial_1",
+                pinn_dir.as_posix(),
+            ]
+        )
+
+        subprocess.check_call(command)
+
+    # Check that the ROI excluded is not in the resulting RTStruct
+    rts_dcm = os.listdir(output_path)[0]
+    ds = pydicom.read_file(os.path.join(output_path, rts_dcm))
+    for roi in ds.StructureSetROISequence:
+        assert not roi.ROIName == skip_roi_name
