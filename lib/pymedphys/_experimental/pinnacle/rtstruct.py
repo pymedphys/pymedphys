@@ -312,7 +312,7 @@ def read_roi(ds, plan, skip_pattern):
                 plan.logger.debug("Start of ROI [%s]", ROIName)
 
                 if re.match(skip_pattern, ROIName):
-                    plan.logger.info("Skipping ROI [" + ROIName + "]")
+                    plan.logger.info("Skipping ROI [%s]", ROIName)
                     flag_skip_roi = True
                     continue
 
