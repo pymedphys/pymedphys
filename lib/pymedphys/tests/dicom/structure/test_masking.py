@@ -125,7 +125,9 @@ def _convert_contours_to_dummy_dicom_files(
         {
             "Columns": len(x_grid),
             "Rows": len(y_grid),
-            "PixelSpacing": [dx, dy],
+            # The order of PixelSpacing is Row, Column (dy, dx).
+            # http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_10.7.html#sect_10.7.1.3
+            "PixelSpacing": [dy, dx],
             "ImagePositionPatient": [x0, y0, contour_z[0]],
             "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],  # HFS
             "GridFrameOffsetVector": contour_z,

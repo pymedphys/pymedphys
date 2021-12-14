@@ -13,6 +13,7 @@
 
 # pylint: disable = protected-access
 
+import pathlib
 import uuid
 from typing import Any, Dict, Tuple
 
@@ -20,6 +21,10 @@ from pymedphys._imports import streamlit as st
 from pymedphys._imports import tornado
 
 from . import downloads
+
+THIS = pathlib.Path(__file__).resolve()
+PYMEDPHYS_ROOT = THIS.parents[2]
+DOCS_BUILD_HTML = PYMEDPHYS_ROOT / "docs" / "_build" / "html"
 
 Handlers = Dict[str, Tuple[Any, Dict[str, Any]]]
 
@@ -76,4 +81,5 @@ def _create_handlers() -> Handlers:
     return {
         "pymedphys": (HelloWorldHandler, {}),
         "downloads/(.*)/(.*)": (DownloadHandler, {}),
+        "docs/(.*)": (tornado.web.StaticFileHandler, {"path": DOCS_BUILD_HTML}),
     }

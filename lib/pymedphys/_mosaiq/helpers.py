@@ -153,7 +153,7 @@ def get_treatments(connection, start, end, machine):
             TrackTreatment.Edit_DtTm >= %(start)s AND
             TrackTreatment.Create_DtTm <= %(end)s
         """,
-        {"machine": machine, "start": start, "end": end},
+        {"machine": str(machine), "start": str(start), "end": str(end)},
     )
 
     table = pd.DataFrame(
@@ -225,37 +225,38 @@ def get_qcls_by_date(connection, location, start, end):
             Patient.First_Name,
             Chklist.Due_DtTm,
             Chklist.Act_DtTm,
-            Chklist.Instructions,
-            Chklist.Notes,
+            Com_Staff.Last_Name,
+            Com_Staff.First_Name,
             QCLTask.Description
-        FROM Chklist, Staff, QCLTask, Ident, Patient
+        FROM Chklist, Staff as Rsp_Staff, Staff as Com_Staff, QCLTask, Ident, Patient
         WHERE
             Chklist.Pat_ID1 = Ident.Pat_ID1 AND
             Patient.Pat_ID1 = Ident.Pat_ID1 AND
             QCLTask.TSK_ID = Chklist.TSK_ID AND
-            Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
-            Staff.Last_Name = %(location)s AND
+            Rsp_Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+            RTRIM(LTRIM(Rsp_Staff.Last_Name)) = RTRIM(LTRIM(%(location)s)) AND
+            Com_Staff.Staff_ID = Chklist.Com_Staff_ID AND
             Chklist.Act_DtTm >= %(start)s AND
             Chklist.Act_DtTm < %(end)s
         """,
-        {"location": location, "start": start, "end": end},
+        {"location": str(location), "start": str(start), "end": str(end)},
     )
 
     results = pd.DataFrame(
         data=data,
         columns=[
             "patient_id",
-            "last_name",
-            "first_name",
+            "patient_last_name",
+            "patient_first_name",
             "due",
             "actual_completed_time",
-            "instructions",
-            "comment",
+            "staff_last_name",
+            "staff_first_name",
             "task",
         ],
     )
 
-    results = results.sort_values(by=["actual_completed_time"])
+    results = results.sort_values(by=["actual_completed_time"], ascending=False)
 
     return results
 

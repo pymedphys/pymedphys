@@ -178,7 +178,7 @@ def file_ready_to_be_indexed(
             mosaiq_string_time, path_string_time = date_convert(
                 header.date, centre_details[centre]["timezone"]
             )
-        except Exception as e:  # pylint: disable = broad-except
+        except Exception:  # pylint: disable = broad-except
             traceback.print_exc()
             new_filepath = os.path.join(unknown_error_in_logfile, logfile_basename)
             rename_and_handle_fileexists(to_be_indexed_dict[filehash], new_filepath)

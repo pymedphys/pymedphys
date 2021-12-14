@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import pathlib
 from typing import List, Union, cast
 
 from typing_extensions import Literal
@@ -36,29 +36,38 @@ MAXIMUM_ANGLE_AXIS_MAGNITUDE = 200
 
 
 def iview_and_icom_filter_and_align(
-    config, advanced_mode, filter_angles_by_default=False
+    config, advanced_mode, filter_angles_by_default=False, quiet=False
 ):
-    refresh_cache = st.button("Re-query databases")
+    if quiet:
+        refresh_cache = True
+    else:
+        refresh_cache = st.button("Re-query databases")
     (
         database_directory,
         icom_directory,
-        qa_directory,
         database_table,
         selected_date,
-        selected_machine_id,
+        linac_to_directories_map,
     ) = _utilities.get_directories_and_initial_database(config, refresh_cache)
 
     icom_patients_directory = icom_directory.joinpath("patients")
 
-    database_table = _get_user_image_set_selection(database_table, advanced_mode)
-    # if advanced_mode:
-    #     st.write(database_table)
+    if not quiet:
+        st.write("## Filtering")
 
-    database_table = _load_image_frame_database(
+    database_table = get_user_image_set_selection(
+        database_table, advanced_mode, quiet=quiet
+    )
+    database_table = load_image_frame_database(
         database_directory, database_table, refresh_cache, advanced_mode
     )
-    # if advanced_mode:
-    #     st.write(database_table)
+
+    machine_ids = database_table["machine_id"].unique()
+    if len(machine_ids) != 1:
+        raise ValueError("Expected exactly one machine id")
+
+    selected_machine_id = machine_ids[0]
+    qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
 
     filepaths_to_load, offset_to_apply = _sync.icom_iview_timestamp_alignment(
         database_table,
@@ -66,6 +75,7 @@ def iview_and_icom_filter_and_align(
         selected_date,
         selected_machine_id,
         advanced_mode,
+        quiet=quiet,
     )
 
     icom_datasets = []
@@ -82,7 +92,7 @@ def iview_and_icom_filter_and_align(
     icom_datasets["time"] = icom_datasets["datetime"].dt.round("ms").dt.time
 
     try:
-        icom_datasets = _angles.make_icom_angles_continuous(icom_datasets)
+        icom_datasets = _angles.make_icom_angles_continuous(icom_datasets, quiet=quiet)
     finally:
         if advanced_mode:
             beam_on_mask = _utilities.expand_border_events(
@@ -161,7 +171,7 @@ def iview_and_icom_filter_and_align(
         (
             icom_datasets[lower],
             icom_datasets[upper],
-        ) = _get_bounds_from_centre_and_diameter(
+        ) = get_bounds_from_centre_and_diameter(
             icom_datasets[centre], icom_datasets[diameter]
         )
 
@@ -174,7 +184,7 @@ def iview_and_icom_filter_and_align(
         "y_lower",
         "y_upper",
     ]:
-        _table_transfer_via_interpolation(icom_datasets, database_table, column)
+        table_transfer_via_interpolation(icom_datasets, database_table, column)
 
     icom_seconds = icom_datasets["seconds_since_midnight"]
     iview_seconds = database_table["seconds_since_midnight"]
@@ -192,26 +202,32 @@ def iview_and_icom_filter_and_align(
     if advanced_mode:
         st.write(database_table)
 
-    st.write("## Filtering by gantry and collimator")
-    if st.checkbox(
-        "Filter to specific gantry and collimator angles",
-        value=filter_angles_by_default,
-    ):
-        database_table = _angle_filtering(database_table, advanced_mode)
+    if not quiet:
+        st.write("## Filtering by gantry and collimator")
+        if st.checkbox(
+            "Filter to specific gantry and collimator angles",
+            value=filter_angles_by_default,
+        ):
+            database_table = _angle_filtering(database_table, advanced_mode)
 
     return database_table, database_directory, qa_directory, selected_date
 
 
-def _get_bounds_from_centre_and_diameter(centre, diameter):
+def get_bounds_from_centre_and_diameter(centre, diameter):
+    """Convert centre and field size into collimation edge positions."""
     lower = centre - diameter / 2
     upper = centre + diameter / 2
 
     return lower, upper
 
 
-def _get_user_image_set_selection(database_table, advanced_mode):
-    st.write("## Filtering")
-    filtered = _filtering.filter_image_sets(database_table, advanced_mode)
+def get_user_image_set_selection(database_table, advanced_mode, quiet=False):
+    """Narrow down the database_table via a range of user inputs
+
+    User inputs are detailed further within the docstring of
+    ``_filtering.filter_image_sets``.
+    """
+    filtered = _filtering.filter_image_sets(database_table, advanced_mode, quiet=quiet)
     filtered.sort_values("datetime", ascending=False, inplace=True)
 
     if advanced_mode:
@@ -223,9 +239,10 @@ def _get_user_image_set_selection(database_table, advanced_mode):
     return filtered
 
 
-def _load_image_frame_database(
+def load_image_frame_database(
     database_directory, input_database_table, refresh_cache, advanced_mode
 ):
+    """Load an image frame, attempting both known iView database schemas"""
     if advanced_mode:
         st.write("## Loading database image frame data")
 
@@ -241,7 +258,13 @@ def _load_image_frame_database(
     return database_table
 
 
-def _table_transfer_via_interpolation(source, location, key):
+def table_transfer_via_interpolation(source, location, key):
+    """Create a linear interpolation function for a given dataframe
+    column based on the iCom timestamps.
+
+    This is utilised to then interpolate the data points to the iView
+    frames.
+    """
     interpolation = scipy.interpolate.interp1d(
         source["seconds_since_midnight"], source[key]
     )
@@ -261,7 +284,7 @@ def _angle_filtering(
         """
     )
 
-    gantry_column, collimator_column = st.beta_columns(2)
+    gantry_column, collimator_column = st.columns(2)
 
     default_gantry_angles: List[Number] = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
     default_collimator_angles: List[Number] = [-180, -90, 0, 90, 180]

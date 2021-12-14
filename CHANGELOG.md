@@ -13,6 +13,158 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.1]
+
+### Bug fixes
+
+* Make it so that Mephysto files that have non-unicode characters can still
+  be opened.
+* Varying penumbra and ball bearing diameter within the Monthly WLutz
+  application now accepts floating point numbers as well as numbers smaller
+  than the default.
+* Fixed a bug where `Delivery.from_monaco` wouldn't be able to load beams
+  where the stop angle of one beam was +180 and the start angle of the
+  subsequent beam was -180 (or visa-versa). The conversion from IEC to bipolar
+  is now handled on a "per-beam" basis. This bug affected the MetersetMap
+  application.
+
+### Non-API changing enhancements
+
+* The daily WLutz application can now have its bb size configured.
+* Site can now be passed as a URL parameter to the daily WLutz application.
+* Improved error messaging around the configuration of the iView machine alias.
+
+## [0.37.0]
+
+### News around this release
+
+* [Jake Rembish](https://github.com/rembishj) has been undergoing his PhD with
+  the output of his work being contributed to PyMedPhys. This release coincides
+  with the culmination of Jake's PhD and this version will be the one
+  referenced within his dissertation. It has been brilliant to see both Jake
+  and his project grow to be what it is today. Thank you Jake 😊.
+
+### Breaking changes
+
+* The configuration for the TRF CLI now utilises the centralised `config.toml`
+  file instead of the prior `CSV` files.
+
+### New features and enhancements
+
+* A range of application have been added to and improved on within the
+  PyMedPhys GUI.
+  * A Daily WLutz application was added which utilises the air cavity within
+    an iso-cube, combined with morning run-up beams (as arcs) to record the
+    beam position at every gantry angle for each photon beam each morning.
+  * A range of configuration improvements, making more applications more widely
+    able to be utilised. Of particular note are Jake's transfer check and
+    weekly check applications which were written as a part of his PhD.
+  * A QCL investigator tool, allowing one to produce plots and break downs
+    of numbers of QCLs broken down either by QCL type, or the user who
+    completed them.
+  * An extend ct application was added providing the means to duplicate slices
+    superiorly and inferiorly.
+  * An application for the viewing of back-end iView jpg images.
+  * An application for tweaking the WLutz algorithm options from iView back-end
+    jpg images.
+  * A range of fixes and improvements within the WLutz Arc and the MetersetMap
+    applications.
+* The docs are now distributed with the PyMedPhys package. These are accessible
+  by opening `http://localhost:8501/docs/index.html` after running
+  `pymedphys gui`. In the future it is intended to make this link more
+  accessible.
+* A range of error messaging has been improved. Of particular benefit to new
+  users is the error message that occurs when a dependency is missing.
+* The ball-bearing finding component of the WLutz algorithm was tweaked to
+  be able to also support the finding of air-cavities within an iso-cube.
+* The testing suite around Mosaiq was built upon and extended across the
+  breadth of PyMedPhys.
+* Fixed a bug which was making `pymedphys.Delivery.from_mosaiq` non functional.
+* Fixed a bug where some TRF files where not able to be decoded. Thank you
+  LipTeck for [the bug report](https://pymedphys.discourse.group/t/request-to-use-file-name-for-missing-field-id-and-field-name-in-trf/156/6).
+* The `pymedphys.trf.identify` interface was moved out of beta. See the
+  documentation for this newly stable API over at <https://docs.pymedphys.com/lib/ref/trf.html>.
+* Improved the robustness of the internal `extend ct` routines.
+* **[Contributor facing only]** created `pymedphys dev mssql` which boots up
+  a docker image of the Developer edition of Microsoft SQL. This is for
+  utilisation by the Mosaiq testing suite.
+* **[Contributor facing only]** made `pymedphys dev tests --cypress`
+  automatically include the options `-v` and `-s` for displaying the `cypress`
+  printouts during testing as well as `--reruns 5` so that the test
+  automatically reruns on failure in alignment with the CI procedure.
+
+## [0.36.1]
+
+### New features and enhancements
+
+* Added the `icom` installation option which can be run by calling
+  `pip install pymedphys[icom]==0.36.1`. This will install only the
+  dependencies needed for the iCom listener.
+
+## [0.36.0]
+
+### News around this release
+
+* We have a new team member, [Derek Lane](https://github.com/dg1an3) he has
+  undergone swathes of work around improving the long term maintenance of the
+  Mosaiq SQL code. Thank you Derek! 🎉 🎈 🥳.
+* [Matt Jennings](https://github.com/Matthew-Jennings) has rejoined the team,
+  picking up his previous hat of Maintainer, great to have you back Matt 😊.
+
+### Breaking changes
+
+* The modules `pymedphys.electronfactors` and `pymedphys.wlutz` were removed
+  from the public API.
+  * There did not appear to be any usage of these modules outside of Cancer
+    Care Associates.
+  * The electron factors module can be re-exposed upon request.
+  * The Winston Lutz module is undergoing a significant re-work and will be
+    re-exposed in its new form once complete.
+* There have been a range of changes to the previously undocumented Mosaiq
+  database connection and execution API.
+  * `pymedphys.mosaiq.connect` now returns a `Connection` object instead of a
+    `Cursor` object. This was so as to align with PEP0249. See <https://github.com/pymedphys/pymedphys/pull/1352>.
+  * All instances where previously the argument name within a function or
+    method was `cursor` have been changed to `connection`.
+  * Previously a server and port could be provided to `pymedphys.mosaiq.connect`
+    by passing it as a colon separated string, for example `"localhost:1234"`.
+    This is no longer the case. Now, hostname and port need to be provided
+    separately. There are also three extra arguments, `alias`, `username`, and
+    `password`. See either the docs <https://docs.pymedphys.com/lib/ref/mosaiq.html>
+    or the docstring for more details <https://github.com/pymedphys/pymedphys/blob/a124bc56fb576456cc6eec44a711ebd478a995f3/lib/pymedphys/_mosaiq/api.py#L33-L79>.
+  * Removed `pymedphys.mosaiq.qcls`.
+* **[Contributor facing only]** replaced `pymedphys dev tests --pylint` with
+  `pymedphys dev lint`.
+
+### New features and enhancements
+
+* Added CLI argument for setting the hostname on the DICOM listen server. For
+  example `pymedphys dicom listen 7779 --host 127.0.0.1`.
+* Added DICOM send functionality to DICOM connect module and made it available on the CLI. For example `pymedphys dicom send 127.0.0.1 7779 path\to\dicom\*.dcm`
+* A range of application changes and improvements. The PyMedPhys app can be
+  accessed by running `pymedphys gui`.
+* **[Streamlit users only]** A CLI command `pymedphys streamlit run` was added
+  to facilitate utilising the custom PyMedPhys patches on the streamlit server
+  for arbitrary streamlit apps. See <https://github.com/pymedphys/pymedphys/issues/1422>.
+* **[Contributor facing only]** Added the following contributor CLI tools/options:
+  * `pymedphys dev tests --mosaiqdb`, to load up the tests that depend on having
+    a Microsoft SQL server running. Thanks to [Derek Lane](https://github.com/dg1an3)
+    for all of his work building the Mosaiq CI workflow and the first set of
+    Mosaiq tests.
+  * `pymedphys dev doctests`, run doctests.
+  * `pymedphys dev imports`, verify optional import logic by creating a clean
+    Python install and attempting to import all modules.
+  * `pymedphys dev lint`, run pylint.
+  * `pymedphys dev cypress`, load up Cypress for interactively writing and
+    running the end-to-end tests.
+
+### Misc changes
+
+* Significant work was undergone to improve the documentation layout. Thanks to
+  [Matt Jennings](https://github.com/Matthew-Jennings) for all his work here.
+* How Mosaiq username and passwords are saved has been updated. This will
+  result in these credentials being requested once more.
+
 ## [0.35.0]
 
 ### News around this release
@@ -1159,6 +1311,10 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
+[0.37.1]: https://github.com/pymedphys/pymedphys/compare/v0.37.0...v0.37.1
+[0.37.0]: https://github.com/pymedphys/pymedphys/compare/v0.36.1...v0.37.0
+[0.36.1]: https://github.com/pymedphys/pymedphys/compare/v0.36.0...v0.36.1
+[0.36.0]: https://github.com/pymedphys/pymedphys/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0

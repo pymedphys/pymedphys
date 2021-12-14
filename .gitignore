@@ -281,3 +281,6 @@ v*.tar.gz
 *-demo
 *-demo-files
 downloads/
+offline/
+.history/
+scratch/

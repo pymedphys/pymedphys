@@ -17,9 +17,10 @@ import os
 import pathlib
 import re
 import subprocess
+import sys
 import tempfile
 
-from pymedphys._imports import tabulate, tqdm
+from pymedphys._imports import pytest, tabulate, tqdm
 
 import pymedphys._utilities.test as pmp_test_utils
 import pymedphys.tests.e2e.utilities as cypress_test_utilities
@@ -164,19 +165,15 @@ def _call_pytest(remaining, label):
     os.chdir(LIBRARY_ROOT)
     print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
 
-    python_executable = pmp_test_utils.get_executable_even_when_embedded()
-    command = [
-        python_executable,
-        "-m",
-        "pytest",
-        "--pyargs",
-        "pymedphys",
-    ] + remaining
+    if "--cypress" in remaining:
+        remaining += ["--reruns", "5", "-v", "-s"]
 
     try:
-        subprocess.check_call(command)
+        retcode = pytest.main(["--pyargs", "pymedphys"] + remaining)
     finally:
         os.chdir(original_cwd)
+
+    sys.exit(retcode)
 
 
 def run_pylint(_, remaining):
@@ -206,4 +203,21 @@ def run_pylint(_, remaining):
 
 
 def run_cypress(_):
-    cypress_test_utilities.run_test_commands_with_gui_process(["yarn cypress open"])
+    cypress_test_utilities.run_test_commands_with_gui_process(
+        ["yarn", "yarn cypress open"]
+    )
+
+
+def start_mssql_docker(args):
+    CWD = REPO_ROOT.joinpath("docker", "mosaiq")
+
+    if args.daemon:
+        if args.stop:
+            raise ValueError("Can't call stop and daemon flag together")
+        command = "docker-compose up -d"
+    elif args.stop:
+        command = "docker-compose down"
+    else:
+        command = "docker-compose up"
+
+    subprocess.check_output(command, cwd=CWD, shell=True)

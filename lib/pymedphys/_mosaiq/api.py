@@ -38,9 +38,8 @@ def connect(
     facilities. Subsequent calls to this function will pull from that
     password storage in order to connect.
 
-    Can optionally be called as a context manager. This will have the
-    extra benefit of closing the database cursor once leaving the
-    context manager.
+    Can optionally be called as a context manager. This will close the
+    database connection once leaving the context manager.
 
     Parameters
     ----------

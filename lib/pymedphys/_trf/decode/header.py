@@ -37,12 +37,40 @@ def determine_header_length(trf_contents: bytes) -> int:
         The length of the TRF header, prior to the table portion of the
         TRF file.
     """
-    test = trf_contents.split(b"\t")
-    row_skips = 6
-    i = next(i for i, item in enumerate(test[row_skips::]) if len(item) > 3) + row_skips
-    header_length = len(b"\t".join(test[0:i])) + 3
+
+    column_end = b"\t\xdc\x00\xe8\t\xdc\x00\xe9\t\xdc\x00\xea\t\xdc\x00\xeb\t\xdc\x00"
+    header_length = trf_contents.index(column_end) + len(column_end)
+
+    # test = trf_contents.split(b"\t")
+    # row_skips = 6
+    # i = next(i for i, item in enumerate(test[row_skips::]) if len(item) > 3) + row_skips
+    # header_length_old_method = len(b"\t".join(test[0:i])) + 3
+
+    # if header_length_old_method != header_length:
+    #     raise ValueError("Inconsistent header length determination")
 
     return header_length
+
+
+def _header_match(contents):
+    match = re.match(
+        br"[\x00-\x19]"  # start bit
+        br"(\d\d[/-]\d\d[/-]\d\d \d\d:\d\d:\d\d Z)"  # date
+        br"[\x00-\x19]"  # divider bit
+        br"((\+|\-)\d\d:\d\d)"  # time zone
+        br"[\x00-\x25]"  # divider bit
+        br"([\x20-\x7F]*)"  # field label and name
+        br"[\x00-\x19]"  # divider bit
+        br"([\x20-\x7F]+)"  # machine name
+        br"[\x00-\x19]",  # divider bit
+        contents,
+    )
+
+    if match is None:
+        print(contents)
+        raise ValueError("TRF header not in an expected form.")
+
+    return match
 
 
 def decode_header(trf_header_contents: bytes) -> Header:
@@ -70,22 +98,7 @@ def decode_header(trf_header_contents: bytes) -> Header:
         The second item that identifies the delivered field. Eg 'AP G0'.
     """
 
-    match = re.match(
-        br"[\x00-\x19]"  # start bit
-        br"(\d\d[/-]\d\d[/-]\d\d \d\d:\d\d:\d\d Z)"  # date
-        br"[\x00-\x19]"  # divider bit
-        br"((\+|\-)\d\d:\d\d)"  # time zone
-        br"[\x00-\x25]"  # divider bit
-        br"([\x20-\x7F]*)"  # field label and name
-        br"[\x00-\x19]"  # divider bit
-        br"([\x20-\x7F]+)"  # machine name
-        br"[\x00-\x19]",  # divider bit
-        trf_header_contents,
-    )
-
-    if match is None:
-        print(trf_header_contents)
-        raise ValueError("TRF header not in an expected form.")
+    match = _header_match(trf_header_contents)
 
     groups = match.groups()
     date = groups[0].decode("ascii")

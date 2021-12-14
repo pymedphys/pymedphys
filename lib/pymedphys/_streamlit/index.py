@@ -15,6 +15,7 @@
 import functools
 import pathlib
 import re
+import textwrap
 import time
 
 from pymedphys._imports import streamlit as st
@@ -62,13 +63,13 @@ def index(application_options):
         """
     )
 
-    _, central_header_column, _ = st.beta_columns((1, 2, 1))
+    _, central_header_column, _ = st.columns((1, 2, 1))
 
     title_filter = central_header_column.text_input("Filter")
     pattern = re.compile(f".*{title_filter}.*", re.IGNORECASE)
 
     num_columns = len(_categories.APPLICATION_CATEGORIES_BY_COLUMN.keys())
-    columns = st.beta_columns(num_columns)
+    columns = st.columns(num_columns)
 
     for (
         column_index,
@@ -118,11 +119,21 @@ def _get_apps_from_module(module):
 
 
 def main():
-    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="wide")
     session_state = utilities.session_state(app=get_url_app())
 
     stable_apps = _get_apps_from_module(_stable_apps)
     experimental_apps = _get_apps_from_module(_experimental_apps)
+    application_options = {**stable_apps, **experimental_apps}
+
+    try:
+        simple = application_options[session_state.app].SIMPLE
+    except (AttributeError, KeyError):
+        simple = False
+
+    if simple:
+        st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="centered")
+    else:
+        st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="wide")
 
     application_options = {**stable_apps, **experimental_apps}
 
@@ -134,10 +145,17 @@ def main():
 
     if session_state.app != "index":
         st.title(application_options[session_state.app].TITLE)
-        if st.sidebar.button("Return to Index"):
-            swap_app("index")
 
-        st.sidebar.write("---")
+        docstring = application_options[session_state.app].main.__doc__
+        if docstring is not None:
+            docstring = textwrap.dedent(f"    {docstring}")
+            st.write(docstring)
+
+        if not simple:
+            if st.sidebar.button("Return to Index"):
+                swap_app("index")
+
+            st.sidebar.write("---")
 
     if session_state.app == "index":
         application_function = functools.partial(

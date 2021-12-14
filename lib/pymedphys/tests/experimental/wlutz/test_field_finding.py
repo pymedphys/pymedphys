@@ -36,7 +36,7 @@ def test_find_field_in_image():
     image_path = pymedphys.data_path("wlutz_image.png")
     x, y, img = iview.iview_image_transform_from_path(image_path)
 
-    centre, _ = _wlutz._pymedphys_wlutz_calculate(  # pylint: disable = protected-access
+    centre, _ = _wlutz.pymedphys_wlutz_calculate(
         x, y, img, np.nan, edge_lengths, 2, expected_rotation
     )
 

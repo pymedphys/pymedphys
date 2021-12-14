@@ -1,5 +1,6 @@
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,20 +15,112 @@
 
 import base64
 import datetime
+import functools
 import hashlib
 import logging
 import random
+import secrets
 from decimal import Decimal
 
-from pymedphys._imports import pydicom
+from pymedphys._imports import pydicom, toml
 
+from pymedphys._config import get_config, get_config_dir
 from pymedphys._dicom.anonymise import get_baseline_keyword_vr_dict
-from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
+from pymedphys._dicom.uid import PYMEDPHYS_ROOT_UID
 
 EPOCH_START = "20000101"
 DEFAULT_EARLIEST_STUDY_DATE = "20040415"
 DICOM_DATE_FORMAT_STR = "%Y%m%d"
 DICOM_DATETIME_FORMAT_STR = "%Y%m%d%H%M%S.%f"
+
+
+@functools.lru_cache()
+def _get_pepper():
+    """
+    pepper is seasoning for a hash, but isn't quite salt because the pepper is not
+    going to be stored along with the hashed value (as is done with passwords).
+    We store the pepper in the user's pymedphys configuration data so it is consistent
+    between runs of pseudonymisation, but it's not available with the pseudonymised data.
+    The value of pepper (or salt) is to make the hashed data less susceptible to a rainbow table attack.
+
+    Look for pseudo_pepper value in the .pymedphys configuration file
+    If not present, generate a pseudorandom pepper value, attempt to save it to the config file
+    provide back either the value previously stored or just generated.
+
+    Returns
+    -------
+    Bytes representing the pepper (which were stored as ASCII)
+
+    """
+    pepper = "mynotveryprotectivepeppertest".encode("ASCII")
+
+    _config = None
+    try:
+        _config = get_config()
+        pseudo_config = _config["pseudo"]
+        pepper = pseudo_config["pepper"].encode("ASCII")
+    except (KeyError, OSError):
+        pepper = secrets.token_urlsafe(32).encode("ASCII")
+        _config_dir = get_config_dir()
+        config_path = _config_dir.joinpath("config.toml")
+        if _config is None:
+            _config = dict()
+
+        if "pseudo" in _config:
+            pseudo_config = _config["pseudo"]
+        else:
+            pseudo_config = dict()
+            _config["pseudo"] = pseudo_config
+
+        if "pepper" not in pseudo_config:
+            pseudo_config["pepper"] = pepper.decode("ASCII")
+
+        with open(config_path, "w") as f:
+            toml.dump(_config, f)
+
+    return pepper
+
+
+@functools.lru_cache()
+def _get_epoch_jitter():
+    """
+    A value from 0 to 1000 days used to make it harder for an attacker to directly determine
+    the original dates in the pseudonymised object
+    First attempt to read it from the pymedphys configuration file
+    Otherwise generate a random integer between 0 and 1000, write that to the config file
+    provide back either the value read or the value generated
+
+    Returns
+    -------
+        a value from 0 to 1000
+    """
+    epoch_jitter = 0
+    _config = None
+    try:
+        _config = get_config()
+        pseudo_config = _config["pseudo"]
+        epoch_jitter = pseudo_config["epoch_jitter"]
+    except (KeyError, OSError):
+        random.seed()
+        epoch_jitter = random.randrange(0, 1000)
+        _config_dir = get_config_dir()
+        config_path = _config_dir.joinpath("config.toml")
+        if _config is None:
+            _config = dict()
+
+        if "pseudo" in _config:
+            pseudo_config = _config["pseudo"]
+        else:
+            pseudo_config = dict()
+            _config["pseudo"] = pseudo_config
+
+        if "epoch_jitter" not in pseudo_config:
+            pseudo_config["epoch_jitter"] = epoch_jitter
+
+        with open(config_path, "w") as f:
+            toml.dump(_config, f)
+
+    return epoch_jitter
 
 
 def get_pseudonymous_replacement_value(keyword, value):
@@ -79,6 +172,7 @@ def _pseudonymise_plaintext(value):
 
     my_hash_func = hashlib.new("sha3_256")
     my_hash_func.update(encoded_value)
+    my_hash_func.update(_get_pepper())
     my_digest = my_hash_func.digest()
     # my_hex_digest = HASH3_256.hexdigest()
     # print ( "Hex: " + my_hex_digest )
@@ -182,6 +276,10 @@ def _pseudonymise_DA(
     epoch_start_datetime_obj = _add_tzinfo(
         epoch_start_datetime_obj, my_datetime_obj.tzinfo
     )
+    epoch_jitter_delta = datetime.timedelta(days=_get_epoch_jitter())
+
+    epoch_start_datetime_obj = epoch_start_datetime_obj + epoch_jitter_delta
+
     my_datetime_obj = _add_tzinfo(my_datetime_obj, my_datetime_obj.tzinfo)
 
     time_delta = my_datetime_obj - earliest_study_datetime_obj

@@ -1,10 +1,7 @@
 [MASTER]
-
 init-hook = "import sys; sys.setrecursionlimit(2000)"
 
-
 [MESSAGES CONTROL]
-
 disable =
     bad-continuation,
     missing-docstring,
@@ -27,16 +24,24 @@ disable =
     import-outside-toplevel,
     no-else-return,
     unbalanced-tuple-unpacking,
-    raise-missing-from
-
+    raise-missing-from,
+    consider-using-with,
+    consider-using-min-builtin,
+    consider-using-max-builtin,
+    use-maxsplit-arg,
+    unused-private-member,
+    consider-using-from-import,
+    unspecified-encoding,
+    consider-using-f-string,
+    consider-iterating-dictionary,
+    use-dict-literal,
+    use-list-literal,
 
 [FORMAT]
-
 max-line-length=88
-
 extension-pkg-whitelist =
     win32file,
     win32api,
     pymssql,
     numpy,
-    scipy.special
+    scipy.special,

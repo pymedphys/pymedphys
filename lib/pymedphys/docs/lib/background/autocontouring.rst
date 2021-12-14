@@ -49,18 +49,6 @@ and examines performance under multiple loss functions. In addition, this work
 discusses the development of a second model designed to fulfil the need for
 contouring to become part of regular quality assurance testing.
 
-Consider joining the PyMedPhys `mailing list
-<https://groups.google.com/g/pymedphys?pli=1>`_ to be notified of future
-progress on this topic.
-
-
-Basic Implementation
---------------------
-
-Details on how to implement the project into your own workflow will be provided
-once the code migrates from the experimental division of PyMedPhys into the main
-code base. Watch this space.
-
 
 References
 ----------

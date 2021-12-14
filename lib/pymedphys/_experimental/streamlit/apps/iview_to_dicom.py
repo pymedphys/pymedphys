@@ -20,7 +20,7 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys._dicom.create as _pp_dcm_create
 from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
+from pymedphys._dicom import uid
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import download
@@ -152,9 +152,9 @@ def _create_portal_image_dicom_dataset(
     ds = _pp_dcm_create.dicom_dataset_from_dict(
         {
             "Modality": "RTIMAGE",
-            "InstanceCreatorUID": PYMEDPHYS_ROOT_UID,
+            "InstanceCreatorUID": uid.PYMEDPHYS_ROOT_UID,
             "SOPClassUID": "1.2.840.10008.5.1.4.1.1.481.1",
-            "SOPInstanceUID": pydicom.uid.generate_uid(prefix=f"{PYMEDPHYS_ROOT_UID}."),
+            "SOPInstanceUID": uid.generate_uid(),
             # From <https://dicom.innolitics.com/ciods/cr-image/general-image/00080008>
             #
             # * is the image an ORIGINAL Image; an image whose pixel

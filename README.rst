@@ -20,10 +20,7 @@
 in Python. We build high quality, transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|online-app| |build| |pypi| |python| |license|
-
-.. |online-app| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/OnlineApp?event=schedule&label=online-app
-    :target: https://app.pymedphys.com
+|build| |pypi| |python| |license|
 
 .. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/Library
     :target: https://github.com/pymedphys/pymedphys/actions
@@ -75,18 +72,25 @@ know you!
 Documentation
 =============
 
-The PyMedPhys documentation is split into five categories:
+PyMedPhys can be installed with:
 
-1. `App Users Guide`_: for those who only wish to use ready-made PyMedPhys
-   tools.
-2. `Library Users Guide`_: for those building their own Python apps, scripts
+.. code:: bash
+
+    pip install pymedphys[user]
+
+If you'd like more details around installing PyMedPhys go to the
+`getting started`_ page within the docs.
+
+The PyMedPhys documentation is split into four categories:
+
+1. `Library Users Guide`_: for those building their own Python apps, scripts
    and other tools who wish to incorporate elements of the PyMedPhys library.
-3. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
+2. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
    line interface (e.g. to help automate existing workflows with minimal
    programming).
-4. `Contributors Guide`_: for those who wish to make new contributions to
+3. `Contributors Guide`_: for those who wish to make new contributions to
    either the PyMedPhys library or the PyMedPhys app.
-5. `General`_: Material that may apply to any visitor to PyMedPhys.
+4. `General`_: Material that may apply to any visitor to PyMedPhys.
 
 
 Our Team
@@ -99,7 +103,7 @@ Maintainers
 ***********
 
 * `Simon Biggs`_
-    * `Riverina Cancer Care Centre`_, Australia
+    * `Radiotherapy AI`_, Australia
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
@@ -113,71 +117,56 @@ Maintainers
 
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
-
-|rccc| |sjs| |rah|
-
-Active contributors
-****************************
-
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
     * `Ingham Institute`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
-* `Matthew Cooper`_
 
-.. _`Matthew Cooper`: https://github.com/matthewdeancooper
+|sjs| |rah|
+
+Active contributors
+****************************
+
+* `Derek Lane`_
+    * `ELEKTA AB`_, Houston TX
+
+.. _`Derek Lane`: https://github.com/dg1an3
 
 * `Jake Rembish`_
     * `UT Health San Antonio`_, USA
 
 .. _`Jake Rembish`: https://github.com/rembishj
 
-* `Pedro Martinez`_
-    * `University of Calgary`_, Canada
-    * `Tom Baker Cancer Centre`_, Canada
 
-.. _`Pedro Martinez`: https://github.com/peterg1t
-
-* `Rafael Ayala`_
-    * `Hospital General Universitario Gregorio Marañón`_, Spain
-
-.. _`Rafael Ayala`: https://github.com/ayalalazaro
-
-
-|uth| |uoc| |hgugm|
-
+|uth|
 
 Past contributors
 ****************************
 
+* `Matthew Cooper <https://github.com/matthewdeancooper>`_
+* `Pedro Martinez <https://github.com/peterg1t>`_
+* `Rafael Ayala <https://github.com/ayalalazaro>`_
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
 
-.. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/rccc_200x200.png
-    :target: `Riverina Cancer Care Centre`_
-
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
-
-.. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/363b544281aab282a56b297dc8fdd521233c6a63/logos/uoc_200x200.png
-    :target: `University of Calgary`_
 
 .. |uth| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/UTHSA_logo.png
     :target: `UT Health San Antonio`_
 
-.. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/HGUGM_200x200.png
-    :target: `Hospital General Universitario Gregorio Marañón`_
-
 .. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
 
-.. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
+.. _`Radiotherapy AI`: https://radiotherapy.ai/
 
 .. _`ELEKTA Pty Ltd`: https://www.elekta.com/
+
+.. _`ELEKTA AB`: https://www.elekta.com/
 
 .. _`Royal Adelaide Hospital`: https://www.rah.sa.gov.au/
 
@@ -203,10 +192,11 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
+.. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
+
 .. _`Release Notes`: ./CHANGELOG.md
 
 .. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.html
 .. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.html
-.. _`App Users Guide`: https://docs.pymedphys.com/app/index.html
 .. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.html
 .. _`General`: https://docs.pymedphys.com/general/index.html

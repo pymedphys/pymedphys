@@ -17,7 +17,7 @@ import logging
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
+from pymedphys._dicom.uid import PYMEDPHYS_ROOT_UID
 
 REPLACEMENT_TO_VR_MAP = {
     "Anonymous": ["AE", "LO", "LT", "PN", "SH", "ST"],
