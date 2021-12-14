@@ -45,9 +45,9 @@ import tempfile
 from pathlib import Path
 from zipfile import ZipFile
 
-import pydicom
-
 from pymedphys._imports import pytest
+
+import pydicom
 
 from pymedphys._data import download
 from pymedphys._utilities import test as pmp_test_utils
