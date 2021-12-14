@@ -202,7 +202,7 @@ def read_roi(ds, plan, skip_pattern):
     image_header = plan.primary_image.image_header
 
     path_roi = os.path.join(plan.path, "plan.roi")
-    plan.logger.debug("Will skip ROIs matching pattern[" + skip_pattern + "]")
+    plan.logger.debug("Will skip ROIs matching pattern[%s]", skip_pattern)
 
     flag_skip_roi = False
 
