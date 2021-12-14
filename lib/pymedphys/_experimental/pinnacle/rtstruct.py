@@ -90,7 +90,8 @@ def find_iso_center(plan):
 
     if len(iso_center) < 2:
         iso_center = ct_center
-        plan.logger.debug("Isocenter not located, setting to ct center: %s", iso_center)
+        plan.logger.debug(
+            "Isocenter not located, setting to ct center: %s", iso_center)
 
     if len(iso_center) < 2:
         plan.logger.debug(
@@ -217,7 +218,7 @@ def read_roi(ds, plan):
                 # all points for current curve saved until now. Here is where I
                 # need to add them to dicom file
                 numfind = int(line.find("curve") + 5)
-                line = line[numfind : len(line)]
+                line = line[numfind: len(line)]
                 line = line.strip()
                 curvenum = int(line)
 
@@ -239,11 +240,13 @@ def read_roi(ds, plan):
                 )
                 for s in plan.primary_image.image_info:
                     if (
-                        abs(float(s["TablePosition"]) - (-float(points[-1] / 10)))
+                        abs(float(s["TablePosition"]) -
+                            (-float(points[-1] / 10)))
                         <= closestvalue
                     ):
                         closestvalue = abs(
-                            float(s["TablePosition"]) - (-float(points[-1] / 10))
+                            float(s["TablePosition"]) -
+                            (-float(points[-1] / 10))
                         )
                         contour_image.ReferencedSOPClassUID = (
                             "1.2.840.10008.5.1.4.1.1.2"
@@ -296,7 +299,18 @@ def read_roi(ds, plan):
                     points[1] = round(points[1], 5)
                     points[2] = round(points[2], 5)
 
+                curr_points[0] = curr_points[0] \
+                    - (1*plan.ct_center[0]) \
+                    - (0*plan.iso_center[0])
+                curr_points[1] = curr_points[1] \
+                    - (1*plan.ct_center[1]) \
+                    - (0*plan.iso_center[1])
+                curr_points[2] = curr_points[2] \
+                    - (1*plan.ct_center[2]) \
+                    - (0*plan.iso_center[2])
+
                 points = points + curr_points
+
             if "Beginning of ROI" in line:  # Start of ROI
                 plan.roi_count = (
                     plan.roi_count + 1
@@ -312,7 +326,8 @@ def read_roi(ds, plan):
                 ].ROINumber = plan.roi_count
                 ROIName = line[22:]  # gets a string of ROI name
                 ROIName = ROIName.replace("\n", "")
-                ds.StructureSetROISequence[plan.roi_count - 1].ROIName = ROIName
+                ds.StructureSetROISequence[plan.roi_count -
+                                           1].ROIName = ROIName
                 ds.StructureSetROISequence[
                     plan.roi_count - 1
                 ].ROIGenerationAlgorithm = "SEMIAUTOMATIC"
@@ -353,7 +368,8 @@ def read_roi(ds, plan):
                 ds.RTROIObservationsSequence[
                     plan.roi_count - 1
                 ].RTROIInterpretedType = roiinterpretedtype
-                ds.RTROIObservationsSequence[plan.roi_count - 1].ROIInterpreter = ""
+                ds.RTROIObservationsSequence[plan.roi_count -
+                                             1].ROIInterpreter = ""
                 # add to ROI observation sequence
             if "volume =" in line:
                 vol = re.findall(r"[-+]?\d*\.\d+|\d+", line)[0]
