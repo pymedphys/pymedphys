@@ -47,7 +47,7 @@ from zipfile import ZipFile
 
 from pymedphys._imports import pytest
 
-import pydicom
+from pymedphys._imports import pydicom
 
 from pymedphys._data import download
 from pymedphys._utilities import test as pmp_test_utils
