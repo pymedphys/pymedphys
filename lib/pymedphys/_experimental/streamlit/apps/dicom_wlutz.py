@@ -88,7 +88,7 @@ def main():
 
 
 def _display_wl_image(wl_image, bb_diameter, penumbra):
-    left, right = st.beta_columns(2)
+    left, right = st.columns(2)
 
     (
         x,

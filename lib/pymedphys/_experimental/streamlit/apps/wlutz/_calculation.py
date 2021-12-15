@@ -217,7 +217,7 @@ def run_calculation(
 
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
-        previously_calculated_results = pd.read_csv(
+        previously_calculated_results: pd.DataFrame = pd.read_csv(
             raw_results_csv_path, index_col=False
         )
     except FileNotFoundError:
@@ -237,8 +237,11 @@ def run_calculation(
         relative_image_path = database_row["filepath"]
 
         if previously_calculated_results is not None:
-            results = previously_calculated_results.loc[
-                previously_calculated_results["filepath"] == relative_image_path
+            results = previously_calculated_results.loc[  # pylint: disable = no-member
+                previously_calculated_results[  # pylint: disable = unsubscriptable-object
+                    "filepath"
+                ]
+                == relative_image_path
             ][RESULTS_DATA_COLUMNS]
 
             selected_algorithms_already_calculated = set(selected_algorithms).issubset(
@@ -314,7 +317,7 @@ def run_calculation(
                 penumbra,
             )
 
-            columns = st.beta_columns(len(figures))
+            columns = st.columns(len(figures))
             for fig, col in zip(figures, columns):
                 with col:
                     st.pyplot(fig)

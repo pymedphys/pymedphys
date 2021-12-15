@@ -28,7 +28,7 @@ TITLE = "Sum Coincident DICOM Doses"
 
 
 def main():
-    left_column, right_column = st.beta_columns(2)
+    left_column, right_column = st.columns(2)
 
     with left_column:
         st.write("## Upload DICOM RT Dose files")

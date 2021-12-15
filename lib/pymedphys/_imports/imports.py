@@ -75,7 +75,6 @@ import streamlit.bootstrap
 import streamlit.caching
 import streamlit.cli
 import streamlit.config
-import streamlit.hashing
 import streamlit.report_session
 import streamlit.server
 import streamlit.server.server
