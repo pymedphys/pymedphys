@@ -7,6 +7,27 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0]
+
+### News around this release
+
+* [Phillip Chlap](https://github.com/pchlap) has joined as a pymedphys Maintainer
+* Thanks to [Cedric](https://github.com/cedricbelanger) for reporting and fixing DICOM coordinates bug: [Discourse](https://pymedphys.discourse.group/t/gamma-index-calculation-possible-issues/191/2)
+
+### Bug Fixes
+
+* DICOM Coordinates
+  * Fix pixel spacing bug [Pull Request](https://github.com/pymedphys/pymedphys/pull/1571)
+* Pinnacle Export Tool
+  * Write DICOM files to be more compatible with other software [Pull Request](https://github.com/pymedphys/pymedphys/pull/1578)
+* Daily Winston-lutz
+  * Small workaround [Pull Request](https://github.com/pymedphys/pymedphys/pull/1565)
+
+### Breaking Changes
+
+* Un-expose pseudonymise, susceptible to brute-force reversal [Pull Request](https://github.com/pymedphys/pymedphys/pull/1534)
+* Mitigated in [Pull Request](https://github.com/pymedphys/pymedphys/pull/1580), not yet re-exposed with the API
+
 ## [0.37.1]
 
 ### Bug fixes
@@ -27,7 +48,6 @@ This project adheres to
 * The daily WLutz application can now have its bb size configured.
 * Site can now be passed as a URL parameter to the daily WLutz application.
 * Improved error messaging around the configuration of the iView machine alias.
-
 ## [0.37.0]
 
 ### News around this release
