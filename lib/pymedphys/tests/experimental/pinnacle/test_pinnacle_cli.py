@@ -143,6 +143,7 @@ def test_pinnacle_cli_missing_trial(data):
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 def test_pinnacle_cli_skip_roi(data):
 
     output_path = tempfile.mkdtemp()
