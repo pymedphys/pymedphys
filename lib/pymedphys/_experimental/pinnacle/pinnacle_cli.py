@@ -60,6 +60,7 @@ def export_cli(args):
     list_available = args.list
     image_series = args.image
     uid_prefix = args.uid_prefix
+    roiskip = args.roiskip
 
     input_path = args.input_path
 
@@ -225,7 +226,12 @@ def export_cli(args):
             )
 
     if "RTSTRUCT" in modality:
-        p.export_struct(plan=plan, export_path=output_directory)
+        if roiskip:
+            p.export_struct(
+                plan=plan, export_path=output_directory, skip_pattern=roiskip
+            )
+        else:
+            p.export_struct(plan=plan, export_path=output_directory)
 
     if "RTPLAN" in modality:
         p.export_plan(plan=plan, export_path=output_directory)
