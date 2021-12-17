@@ -493,7 +493,7 @@ exported to.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.export_struct">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_struct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.export_struct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.export_struct" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_struct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_pattern</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'^$'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.export_struct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.export_struct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Exports the RTSTRUCT DICOM modality.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -501,6 +501,8 @@ exported to.</p></li>
 <li><p><strong>plan</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnaclePlan" title="pymedphys.experimental.pinnacle.PinnaclePlan"><em>PinnaclePlan</em></a>) – The plan for which structures should be exported.</p></li>
 <li><p><strong>export_path</strong> (<em>str</em><em>, </em><em>optional</em>) – The file system path where the DICOM object should be
 exported to.</p></li>
+<li><p><strong>skip_pattern</strong> (<em>str</em><em>, </em><em>optional</em>) – A regular expression specifying which ROIs to skip
+For example: RadCalc|normal_tissue</p></li>
 </ul>
 </dd>
 </dl>

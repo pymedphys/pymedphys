@@ -546,7 +546,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_images</span>
 
 <div class="viewcode-block" id="PinnacleExport.export_struct"><a class="viewcode-back" href="../../../../lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_struct">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">export_struct</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">export_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">export_struct</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">export_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">skip_pattern</span><span class="o">=</span><span class="s2">&quot;^$&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Exports the RTSTRUCT DICOM modality.</span>
 
 <span class="sd">        Parameters</span>
@@ -556,10 +556,13 @@
 <span class="sd">            export_path : str, optional</span>
 <span class="sd">                The file system path where the DICOM object should be</span>
 <span class="sd">                exported to.</span>
+<span class="sd">            skip_pattern : str, optional</span>
+<span class="sd">                A regular expression specifying which ROIs to skip</span>
+<span class="sd">                For example: RadCalc|normal_tissue</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># Export Structures for plan</span>
-        <span class="n">convert_struct</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">export_path</span><span class="p">)</span></div>
+        <span class="n">convert_struct</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">export_path</span><span class="p">,</span> <span class="n">skip_pattern</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="PinnacleExport.export_dose"><a class="viewcode-back" href="../../../../lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_dose">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">export_dose</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">export_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>

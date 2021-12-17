@@ -442,7 +442,7 @@
 <p>Export a raw file to DICOM</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pymedphys</span> <span class="n">experimental</span> <span class="n">pinnacle</span> <span class="n">export</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT_DIRECTORY</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span><span class="p">]</span>
                                        <span class="p">[</span><span class="o">-</span><span class="n">m</span> <span class="n">MODALITY</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">p</span> <span class="n">PLAN</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span> <span class="n">TRIAL</span><span class="p">]</span>
-                                       <span class="p">[</span><span class="o">-</span><span class="n">i</span> <span class="n">IMAGE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">u</span> <span class="n">UID_PREFIX</span><span class="p">]</span>
+                                       <span class="p">[</span><span class="o">-</span><span class="n">i</span> <span class="n">IMAGE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">u</span> <span class="n">UID_PREFIX</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">r</span> <span class="n">ROISKIP</span><span class="p">]</span>
                                        <span class="n">input_path</span>
 </pre></div>
 </div>
@@ -483,6 +483,9 @@
 </dd>
 <dt><kbd>-u, --uid-prefix</kbd></dt>
 <dd><p>Prefix to use for generated UIDs.</p>
+</dd>
+<dt><kbd>-r, --roiskip</kbd></dt>
+<dd><p>Regular expression defining which ROIs to skip. Note that you will probably need to enclose your regular expression in single-quotes. For example ‘Skin|.*_obj|RadCalc’ .</p>
 </dd>
 </dl>
 </div>
