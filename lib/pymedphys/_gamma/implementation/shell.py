@@ -89,7 +89,7 @@ def gamma_shell(
         False.
     global_normalisation : float, optional
         The dose normalisation value that the percent inputs calculate from.
-        Defaults to the maximum value of :obj:`dose_reference`.
+        Defaults to the maximum value of :obj:`dose_evaluation`.
     random_subset : int, optional
         Used to only calculate a random subset of the reference grid. The
         number chosen is how many random points to calculate.
@@ -250,7 +250,7 @@ class GammaInternalFixedOptions:
         distance_mm_threshold = expand_dims_to_1d(distance_mm_threshold)
 
         if global_normalisation is None:
-            global_normalisation = np.max(dose_reference)
+            global_normalisation = np.max(dose_evaluation)
 
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
