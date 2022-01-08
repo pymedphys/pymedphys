@@ -77,9 +77,22 @@ class DicomListener(DicomConnectBase):
         # Initialise the Application Entity
         self.ae = pynetdicom.AE(ae_title=self.ae_title)
 
+        # pynetdicom 2.0 changed attributes for Verification/C-ECHO
+        verification_sop_class = None
+        old_verification_attribute = "VerificationSOPClass"
+        new_verification_attribute = "Verification"
+        if hasattr(pynetdicom.sop_class, old_verification_attribute):
+            verification_sop_class = getattr(
+                pynetdicom.sop_class, old_verification_attribute
+            )
+        elif hasattr(pynetdicom.sop_class, new_verification_attribute):
+            verification_sop_class = getattr(
+                pynetdicom.sop_class, new_verification_attribute
+            )
+
         # Add the supported presentation context
         self.ae.add_supported_context(
-            pynetdicom.sop_class.VerificationSOPClass  # pylint: disable = no-member
+            verification_sop_class  # pylint: disable = no-member
         )
         for context in pynetdicom.StoragePresentationContexts:
             self.ae.add_supported_context(context.abstract_syntax)
