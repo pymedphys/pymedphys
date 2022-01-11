@@ -57,6 +57,12 @@ def export_pinnacle(pinnacle_subparsers):
     )
 
     parser.add_argument(
+        "--mrn",
+        action="store_true",
+        help=("Append the Patient ID/MRN to the end of the name of the export folder"),
+    )
+
+    parser.add_argument(
         "-l",
         "--list",
         action="store_true",
