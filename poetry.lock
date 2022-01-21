@@ -48,7 +48,7 @@ name = "appnope"
 version = "0.1.2"
 description = "Disable App Nap on macOS >= 10.9"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -149,7 +149,7 @@ name = "backcall"
 version = "0.2.0"
 description = "Specifications for callback functions passed in to an API"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -312,7 +312,7 @@ name = "colorama"
 version = "0.4.4"
 description = "Cross-platform colored terminal text."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
@@ -386,7 +386,7 @@ name = "decorator"
 version = "5.1.0"
 description = "Decorators for Humans"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [[package]]
@@ -696,10 +696,10 @@ test = ["pytest (!=5.3.4)", "pytest-cov", "flaky", "ipyparallel"]
 
 [[package]]
 name = "ipython"
-version = "7.30.1"
+version = "7.31.1"
 description = "IPython: Productive Interactive Computing"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -773,7 +773,7 @@ name = "jedi"
 version = "0.18.1"
 description = "An autocompletion tool for Python that can be used for text editors."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -1146,7 +1146,7 @@ name = "matplotlib-inline"
 version = "0.1.3"
 description = "Inline Matplotlib backend for Jupyter"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [package.dependencies]
@@ -1470,7 +1470,7 @@ name = "parso"
 version = "0.8.3"
 description = "A Python Parser"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.extras]
@@ -1498,7 +1498,7 @@ name = "pexpect"
 version = "4.8.0"
 description = "Pexpect allows easy control of interactive console applications."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [package.dependencies]
@@ -1509,7 +1509,7 @@ name = "pickleshare"
 version = "0.7.5"
 description = "Tiny 'shelve'-like database with concurrency support"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -1622,7 +1622,7 @@ name = "prompt-toolkit"
 version = "3.0.23"
 description = "Library for building powerful interactive command lines in Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6.2"
 
 [package.dependencies]
@@ -1652,7 +1652,7 @@ name = "ptyprocess"
 version = "0.7.0"
 description = "Run a subprocess in a pseudo terminal"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -1758,7 +1758,7 @@ name = "pygments"
 version = "2.10.0"
 description = "Pygments is a syntax highlighting package written in Python."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [[package]]
@@ -2751,7 +2751,7 @@ name = "traitlets"
 version = "5.1.1"
 description = "Traitlets Python configuration system"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [package.extras]
@@ -2873,7 +2873,7 @@ name = "wcwidth"
 version = "0.2.5"
 description = "Measures the displayed width of unicode strings in a terminal"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -3325,8 +3325,8 @@ ipykernel = [
     {file = "ipykernel-6.6.0.tar.gz", hash = "sha256:3a227788216b43982d9ac28195949467627b0d16e6b8af9741d95dcaa8c41a89"},
 ]
 ipython = [
-    {file = "ipython-7.30.1-py3-none-any.whl", hash = "sha256:fc60ef843e0863dd4e24ab2bb5698f071031332801ecf8d1aeb4fb622056545c"},
-    {file = "ipython-7.30.1.tar.gz", hash = "sha256:cb6aef731bf708a7727ab6cde8df87f0281b1427d41e65d62d4b68934fa54e97"},
+    {file = "ipython-7.31.1-py3-none-any.whl", hash = "sha256:55df3e0bd0f94e715abd968bedd89d4e8a7bce4bf498fb123fed4f5398fea874"},
+    {file = "ipython-7.31.1.tar.gz", hash = "sha256:b5548ec5329a4bcf054a5deed5099b0f9622eb9ea51aaa7104d215fece201d8c"},
 ]
 ipython-genutils = [
     {file = "ipython_genutils-0.2.0-py2.py3-none-any.whl", hash = "sha256:72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8"},
