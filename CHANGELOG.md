@@ -28,12 +28,12 @@ This project adheres to
   * Write DICOM files to be more compatible with other software [Pull Request](https://github.com/pymedphys/pymedphys/pull/1578)
 * Daily Winston-lutz
   * Small workaround [Pull Request](https://github.com/pymedphys/pymedphys/pull/1565)
+* DICOM pseudonymise
+  * Mitigated susceptibility to brute-force reversal of dates and other rainbow table attacks [Pull Request](https://github.com/pymedphys/pymedphys/pull/1580)
 
-### Breaking Changes
+### New features and enhancements
 
-* Un-expose pseudonymise, susceptible to brute-force reversal [Pull Request](https://github.com/pymedphys/pymedphys/pull/1534)
-* Mitigated in [Pull Request](https://github.com/pymedphys/pymedphys/pull/1580), not yet re-exposed with the API
-
+* Pinnacle CLI --mrn option
 ## [0.37.1]
 
 ### Bug fixes
