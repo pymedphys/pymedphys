@@ -1,0 +1,600 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pymedphys._experimental.pseudonymisation &#8212; PyMedPhys</title>
+    
+  <link href="../../../_static/css/theme.css" rel="stylesheet">
+  <link href="../../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../../../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/togglebutton.js"></script>
+    <script src="../../../_static/clipboard.min.js"></script>
+    <script src="../../../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/_modules/pymedphys/_experimental/pseudonymisation.html" />
+    <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en">
+    
+
+    <!-- Google Analytics -->
+    
+<script async="" src="https://www.google-analytics.com/analytics.js"></script>
+<script>
+                        window.ga = window.ga || function () {
+                            (ga.q = ga.q || []).push(arguments) };
+                        ga.l = +new Date;
+                        ga('create', 'UA-26591325-7', 'auto');
+                        ga('set', 'anonymizeIp', true);
+                        ga('send', 'pageview');
+                    </script>
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../../../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../../../_static/pymedphys.svg" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/get-started.html">
+   Get Started
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Reference
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../genindex.html">
+   Alphabetical Index
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/dicom.html">
+   DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/gamma.html">
+   Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/mosaiq.html">
+   Mosaiq
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/metersetmap.html">
+   MetersetMap
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/trf.html">
+   TRF
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/ref/experimental/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  How-to
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/gamma/effect-of-noise.html">
+   The Effects of Noise on Gamma
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/gamma/from-dicom.html">
+   Gamma from DICOM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/gamma/1D-from-csv.html">
+   Gamma from 1D ASCII data
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/howto/add-a-linac.html">
+   Adding a Linac
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  CLI Users Guide
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/dicom.html">
+   DICOM Files
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/trf.html">
+   Elekta Binary Logfiles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/icom.html">
+   iCom listener
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../cli/ref/pinnacle.html">
+   Pinnacle Export Tool
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-linux.html">
+   Linux Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-mac.html">
+   MacOS Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/setups/setup-win.html">
+   Windows Setup
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/documentation.html">
+   Writing documentation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/other/add-jupyter-kernel.html">
+   Add Jupyter kernel with
+   <em>
+    poetry
+   </em>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/other/win-open-ssh.html">
+   Setting up OpenSSH on Windows 10
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  General
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/file-structure.html">
+   Repository File Structure
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../general/open-source-benefits.html">
+   Benefits of Open Source for Medical Physics
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/background/autocontouring.html">
+   Automatic Contouring Project
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../lib/background/elekta-logfiles.html">
+   Elekta Logfile Decoding and Indexing
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="Source repository"><i
+                    class="fab fa-github"></i>repository</button></a>
+        <a class="issues-button"
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2F_modules/pymedphys/_experimental/pseudonymisation.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+        title="Fullscreen mode"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <h1>Source code for pymedphys._experimental.pseudonymisation</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2020 Stuart Swerdloff, Simon Biggs</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">pathlib</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">abspath</span><span class="p">,</span> <span class="n">basename</span><span class="p">,</span> <span class="n">dirname</span><span class="p">,</span> <span class="n">isdir</span><span class="p">,</span> <span class="n">isfile</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">join</span> <span class="k">as</span> <span class="n">pjoin</span>
+
+<span class="kn">from</span> <span class="nn">pymedphys._imports</span> <span class="kn">import</span> <span class="n">pydicom</span>
+
+<span class="kn">from</span> <span class="nn">pymedphys._dicom.anonymise</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">anonymise_dataset</span><span class="p">,</span>
+    <span class="n">anonymise_directory</span><span class="p">,</span>
+    <span class="n">anonymise_file</span><span class="p">,</span>
+    <span class="n">get_baseline_keyword_vr_dict</span><span class="p">,</span>
+    <span class="n">get_default_identifying_keywords</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">strategy</span>
+
+<span class="n">HERE</span> <span class="o">=</span> <span class="n">dirname</span><span class="p">(</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+
+<span class="n">IDENTIFYING_UIDS_FILEPATH</span> <span class="o">=</span> <span class="n">pjoin</span><span class="p">(</span><span class="n">HERE</span><span class="p">,</span> <span class="s2">&quot;identifying_uids.json&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">_get_default_identifying_uids</span><span class="p">():</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">IDENTIFYING_UIDS_FILEPATH</span><span class="p">)</span> <span class="k">as</span> <span class="n">uid_file</span><span class="p">:</span>
+        <span class="n">IDENTIFYING_UIDS</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">uid_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">IDENTIFYING_UIDS</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_default_identifying_uids</span><span class="p">():</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">_get_default_identifying_uids</span><span class="p">())</span>
+
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">_get_default_pseudonymisation_keywords</span><span class="p">():</span>
+    <span class="n">anon_keyword_list</span> <span class="o">=</span> <span class="n">get_default_identifying_keywords</span><span class="p">()</span>
+    <span class="c1"># The preferred approach is to pseudonymise the contents</span>
+    <span class="c1"># of sequences, rather than operate on the sequence itself</span>
+    <span class="c1">#</span>
+    <span class="c1"># Eliminating the keywords that are sequences fixes issue #1034</span>
+    <span class="c1"># for default usage</span>
+    <span class="n">identifying_keywords_less_sequences</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">anon_keyword_list</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;Sequence&quot;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">anon_keyword_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">identifying_keywords_less_sequences</span><span class="p">)</span>
+    <span class="n">pseudo_uid_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">get_default_identifying_uids</span><span class="p">())</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">anon_keyword_set</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">pseudo_uid_set</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="get_default_pseudonymisation_keywords"><a class="viewcode-back" href="../../../lib/ref/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords">[docs]</a><span class="k">def</span> <span class="nf">get_default_pseudonymisation_keywords</span><span class="p">():</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">_get_default_pseudonymisation_keywords</span><span class="p">())</span></div>
+
+
+<span class="k">def</span> <span class="nf">anonymise_with_pseudo_cli</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">delete_unknown_tags</span><span class="p">:</span>
+        <span class="n">handle_unknown_tags</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">ignore_unknown_tags</span><span class="p">:</span>
+        <span class="n">handle_unknown_tags</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">handle_unknown_tags</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">keywords_to_leave_unchanged</span><span class="p">:</span>
+        <span class="n">keywords_to_leave_unchanged</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">keywords_to_leave_unchanged</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">keywords_to_leave_unchanged</span>
+
+    <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pseudo</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Was run with pseudo!&quot;</span><span class="p">)</span>
+        <span class="n">identifying_keywords_for_pseudo</span> <span class="o">=</span> <span class="n">get_default_pseudonymisation_keywords</span><span class="p">()</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using pseudonymisation keywords&quot;</span><span class="p">)</span>
+        <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">pseudonymisation_dispatch</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using pseudonymisation strategy&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">isfile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input_path</span><span class="p">):</span>
+        <span class="n">anonymise_file</span><span class="p">(</span>
+            <span class="n">dicom_filepath</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">input_path</span><span class="p">,</span>
+            <span class="n">output_filepath</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">delete_original_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">delete_original_files</span><span class="p">,</span>
+            <span class="n">anonymise_filename</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">preserve_filenames</span><span class="p">,</span>
+            <span class="n">replace_values</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">clear_values</span><span class="p">,</span>
+            <span class="n">keywords_to_leave_unchanged</span><span class="o">=</span><span class="n">keywords_to_leave_unchanged</span><span class="p">,</span>
+            <span class="n">delete_private_tags</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">keep_private_tags</span><span class="p">,</span>
+            <span class="n">delete_unknown_tags</span><span class="o">=</span><span class="n">handle_unknown_tags</span><span class="p">,</span>
+            <span class="n">replacement_strategy</span><span class="o">=</span><span class="n">replacement_strategy</span><span class="p">,</span>
+            <span class="n">identifying_keywords</span><span class="o">=</span><span class="n">identifying_keywords_for_pseudo</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">isdir</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input_path</span><span class="p">):</span>
+        <span class="n">anonymise_directory</span><span class="p">(</span>
+            <span class="n">dicom_dirpath</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">input_path</span><span class="p">,</span>
+            <span class="n">output_dirpath</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">delete_original_files</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">delete_original_files</span><span class="p">,</span>
+            <span class="n">anonymise_filenames</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">preserve_filenames</span><span class="p">,</span>
+            <span class="n">replace_values</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">clear_values</span><span class="p">,</span>
+            <span class="n">keywords_to_leave_unchanged</span><span class="o">=</span><span class="n">keywords_to_leave_unchanged</span><span class="p">,</span>
+            <span class="n">delete_private_tags</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">keep_private_tags</span><span class="p">,</span>
+            <span class="n">delete_unknown_tags</span><span class="o">=</span><span class="n">handle_unknown_tags</span><span class="p">,</span>
+            <span class="n">replacement_strategy</span><span class="o">=</span><span class="n">replacement_strategy</span><span class="p">,</span>
+            <span class="n">identifying_keywords</span><span class="o">=</span><span class="n">identifying_keywords_for_pseudo</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+            <span class="s2">&quot;No file or directory was found at the supplied input path.&quot;</span>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="is_valid_strategy_for_keywords"><a class="viewcode-back" href="../../../lib/ref/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords">[docs]</a><span class="k">def</span> <span class="nf">is_valid_strategy_for_keywords</span><span class="p">(</span>
+    <span class="n">identifying_keywords</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">replacement_strategy</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">identifying_keywords</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">identifying_keywords</span> <span class="o">=</span> <span class="n">get_default_pseudonymisation_keywords</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">replacement_strategy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">pseudonymisation_dispatch</span>
+
+    <span class="n">baseline_keyword_vr_dict</span> <span class="o">=</span> <span class="n">get_baseline_keyword_vr_dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">identifying_keywords</span><span class="p">:</span>
+        <span class="n">vr</span> <span class="o">=</span> <span class="n">baseline_keyword_vr_dict</span><span class="p">[</span><span class="n">keyword</span><span class="p">]</span>
+        <span class="c1"># pydicom.datadict.dictionary_VR(pydicom.datadict.tag_for_keyword(keyword))</span>
+        <span class="k">if</span> <span class="n">vr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">replacement_strategy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="pseudonymise"><a class="viewcode-back" href="../../../lib/ref/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.pseudonymise">[docs]</a><span class="k">def</span> <span class="nf">pseudonymise</span><span class="p">(</span><span class="n">dicom_input</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convenient API to pseudonymisation.</span>
+<span class="sd">    Elements whose tags are not in the pydicom dictionary will be deleted</span>
+<span class="sd">    PatientSex will not be modified/pseudonymised</span>
+<span class="sd">    For fine tune control, use anonymise_dataset() instead</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dicom_input : ``pydicom.dataset.Dataset | str | pathlib.Path``</span>
+<span class="sd">        Either a dataset, a path to a file or a path to a directory</span>
+<span class="sd">    output_path : ``str | pathlib.Path``, optional</span>
+<span class="sd">        If the input is a file or a path, the directory to place the</span>
+<span class="sd">        pseudonymised files, by default None</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ``pydicom.dataset.Dataset`` | ``str`` | ``list`` of ``str``</span>
+<span class="sd">        if the dicom_input was a dataset, return the pseudonymised dataset</span>
+<span class="sd">        if the dicom input was a file, return the path to the pseudonymised file.</span>
+<span class="sd">        if the dicom input was a directory, return the list of successfully</span>
+<span class="sd">        anonymised files, and return that instead of None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">pseudonymisation_dispatch</span>
+    <span class="n">identifying_keywords_for_pseudo</span> <span class="o">=</span> <span class="n">get_default_pseudonymisation_keywords</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_strategy_for_keywords</span><span class="p">():</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Pseudonymisation strategy is not valid for keywords&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Please submit issue to PyMedPhys&quot;</span><span class="p">)</span>
+        <span class="c1"># but continue on, the data might not contain the offending keywords</span>
+        <span class="c1"># and if it does... there will be some kind of error raised</span>
+    <span class="n">keywords_to_leave_unchanged</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="s2">&quot;PatientSex&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dicom_input</span><span class="p">,</span> <span class="n">pydicom</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+        <span class="n">pseudo_ds</span> <span class="o">=</span> <span class="n">anonymise_dataset</span><span class="p">(</span>
+            <span class="n">dicom_input</span><span class="p">,</span>
+            <span class="n">keywords_to_leave_unchanged</span><span class="o">=</span><span class="n">keywords_to_leave_unchanged</span><span class="p">,</span>
+            <span class="n">delete_unknown_tags</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">replacement_strategy</span><span class="o">=</span><span class="n">replacement_strategy</span><span class="p">,</span>
+            <span class="n">identifying_keywords</span><span class="o">=</span><span class="n">identifying_keywords_for_pseudo</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">pseudo_ds</span>
+
+    <span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">dicom_input</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="n">pseudonymised_file_list</span> <span class="o">=</span> <span class="n">anonymise_directory</span><span class="p">(</span>
+            <span class="n">dicom_input</span><span class="p">,</span>
+            <span class="n">output_dirpath</span><span class="o">=</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">keywords_to_leave_unchanged</span><span class="o">=</span><span class="n">keywords_to_leave_unchanged</span><span class="p">,</span>
+            <span class="n">delete_unknown_tags</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">replacement_strategy</span><span class="o">=</span><span class="n">replacement_strategy</span><span class="p">,</span>
+            <span class="n">identifying_keywords</span><span class="o">=</span><span class="n">identifying_keywords_for_pseudo</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">pseudonymised_file_list</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">dicom_input</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unable to find </span><span class="si">{</span><span class="n">dicom_input</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">pseudonymised_filepath</span> <span class="o">=</span> <span class="n">anonymise_file</span><span class="p">(</span>
+        <span class="n">dicom_input</span><span class="p">,</span>
+        <span class="n">output_filepath</span><span class="o">=</span><span class="n">output_path</span><span class="p">,</span>
+        <span class="n">keywords_to_leave_unchanged</span><span class="o">=</span><span class="n">keywords_to_leave_unchanged</span><span class="p">,</span>
+        <span class="n">delete_unknown_tags</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">replacement_strategy</span><span class="o">=</span><span class="n">replacement_strategy</span><span class="p">,</span>
+        <span class="n">identifying_keywords</span><span class="o">=</span><span class="n">identifying_keywords_for_pseudo</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">pseudonymised_filepath</span></div>
+</pre></div>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          By the PyMedPhys community<br/>
+        
+            &copy; Copyright 2018-2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../../../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

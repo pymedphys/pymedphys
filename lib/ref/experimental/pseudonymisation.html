@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Experimental Modules &#8212; PyMedPhys</title>
+    <title>Pseudonymisation Tool &#8212; PyMedPhys</title>
     
   <link href="../../../_static/css/theme.css" rel="stylesheet">
   <link href="../../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
@@ -51,7 +51,7 @@
         const thebe_selector_output = ".output,.cell_output"
     </script>
     <script async="async" src="../../../_static/sphinx-thebe.js"></script>
-    <link rel="canonical" href="https://docs.pymedphys.com/lib/ref/experimental/index.html" />
+    <link rel="canonical" href="https://docs.pymedphys.com/lib/ref/experimental/pseudonymisation.html" />
     <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -336,7 +336,7 @@
         <!-- ipynb file if we had a myst markdown file -->
         
         <!-- Download raw file -->
-        <a class="dropdown-buttons" href="../../../_sources/lib/ref/experimental/index.rst"><button type="button"
+        <a class="dropdown-buttons" href="../../../_sources/lib/ref/experimental/pseudonymisation.rst"><button type="button"
                 class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
                 data-placement="left">.rst</button></a>
         <!-- Download PDF via print -->
@@ -356,10 +356,10 @@
                 data-toggle="tooltip" data-placement="left" title="Source repository"><i
                     class="fab fa-github"></i>repository</button></a>
         <a class="issues-button"
-            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/ref/experimental/index.html&body=Your%20issue%20content%20here."><button
+            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/ref/experimental/pseudonymisation.html&body=Your%20issue%20content%20here."><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
-        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/ref/experimental/index.rst"><button
+        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/ref/experimental/pseudonymisation.rst"><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
     </div>
@@ -379,6 +379,29 @@
         <!-- Table of contents -->
         <div class="d-none d-md-block col-md-2 bd-toc show">
             
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> Contents
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#summary">
+   Summary
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#api">
+   API
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#example">
+   Example
+  </a>
+ </li>
+</ul>
+
+            </nav>
         </div>
     </div>
 </div>
@@ -387,23 +410,75 @@
         
               <div>
                 
-  <div class="section" id="experimental-modules">
-<h1>Experimental Modules<a class="headerlink" href="#experimental-modules" title="Permalink to this headline">¶</a></h1>
-<div class="admonition caution">
-<p class="admonition-title">Caution</p>
-<p>Here are some experimental modules. They have not yet undergone
-either sufficient testing, review, or refinement to be included within
-pymedphys proper. Consider everything under this module to be always at
-an “alpha” level of development. Consider that from any version to any
-version of pymedphys release these modules may change in such a way that
-breaks code that depends on it. Changes within the experimental module are
-not tracked within the <a class="reference external" href="/api/release-notes.html">release notes</a>.</p>
+  <div class="section" id="module-pymedphys.experimental.pseudonymisation">
+<span id="pseudonymisation-tool"></span><h1>Pseudonymisation Tool<a class="headerlink" href="#module-pymedphys.experimental.pseudonymisation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><p>Pseudonymisation provides a list of identifying keywords that includes UIDs
+and an anonymisation strategy that utilises SHA3_256 to hash text which is then
+encoded as base64, or for UIDs, converted to an integer appended to the PyMedPhys Org Root.  Dates are shifted consistently and ages are jittered.
+The list of identifying keywords and the anonymisation strategy are passed in to
+the (non-experimental) anonymisation module/functions.</p>
+</div></blockquote>
 </div>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="pinnacle.html">Pinnacle Export Tool</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pseudonymisation.html">Pseudonymisation Tool</a></li>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.experimental.pseudonymisation.pseudonymise">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.experimental.pseudonymisation.</span></span><span class="sig-name descname"><span class="pre">pseudonymise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dicom_input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_experimental/pseudonymisation.html#pseudonymise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pseudonymisation.pseudonymise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenient API to pseudonymisation.
+Elements whose tags are not in the pydicom dictionary will be deleted
+PatientSex will not be modified/pseudonymised
+For fine tune control, use anonymise_dataset() instead</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dicom_input</strong> (<code class="docutils literal notranslate"><span class="pre">pydicom.dataset.Dataset</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">pathlib.Path</span></code>) – Either a dataset, a path to a file or a path to a directory</p></li>
+<li><p><strong>output_path</strong> (<code class="docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">pathlib.Path</span></code>, optional) – If the input is a file or a path, the directory to place the
+pseudonymised files, by default None</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>if the dicom_input was a dataset, return the pseudonymised dataset
+if the dicom input was a file, return the path to the pseudonymised file.
+if the dicom input was a directory, return the list of successfully
+anonymised files, and return that instead of None</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">pydicom.dataset.Dataset</span></code> | <code class="docutils literal notranslate"><span class="pre">str</span></code> | <code class="docutils literal notranslate"><span class="pre">list</span></code> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.experimental.pseudonymisation.</span></span><span class="sig-name descname"><span class="pre">get_default_pseudonymisation_keywords</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_experimental/pseudonymisation.html#get_default_pseudonymisation_keywords"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.experimental.pseudonymisation.</span></span><span class="sig-name descname"><span class="pre">is_valid_strategy_for_keywords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">identifying_keywords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replacement_strategy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_experimental/pseudonymisation.html#is_valid_strategy_for_keywords"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch">
+<span class="sig-prename descclassname"><span class="pre">pseudonymisation.</span></span><span class="sig-name descname"><span class="pre">pseudonymisation_dispatch</span></span><em class="property"><span class="w"> </span><span class="pre">strategy,</span> <span class="pre">i.e.</span> <span class="pre">dictionary</span> <span class="pre">of</span> <span class="pre">VR</span> <span class="pre">and</span> <span class="pre">function</span> <span class="pre">references</span> <span class="pre">for</span> <span class="pre">anonymisation</span> <span class="pre">to</span> <span class="pre">achieve</span> <span class="pre">pseudonymisation</span></em><a class="headerlink" href="#pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pymedphys.experimental.pseudonymisation</span> <span class="k">as</span> <span class="nn">pseudonymisation_api</span>
+
+<span class="n">pseudonymisation_api</span><span class="o">.</span><span class="n">pseudonymise</span><span class="p">(</span><span class="n">ds_input</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;/home/myname/pseudo_out/&quot;</span><span class="p">)</span>
+<span class="c1"># or</span>
+<span class="n">ds_pseudo</span> <span class="o">=</span> <span class="n">anonymise_dataset</span><span class="p">(</span><span class="n">ds_input</span><span class="p">,</span>
+    <span class="n">replacement_strategy</span><span class="o">=</span><span class="n">pseudonymisation_api</span><span class="o">.</span><span class="n">pseudonymisation_dispatch</span><span class="p">,</span>
+    <span class="n">identifying_keywords</span><span class="o">=</span><span class="n">pseudonymisation_api</span><span class="o">.</span><span class="n">get_default_pseudonymisation_keywords</span><span class="p">(),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 
