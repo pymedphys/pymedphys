@@ -28,6 +28,11 @@ This project adheres to
 * Un-expose pseudonymise, susceptible to brute-force reversal [Pull Request](https://github.com/pymedphys/pymedphys/pull/1534)
 * Mitigated in [Pull Request](https://github.com/pymedphys/pymedphys/pull/1580), not yet re-exposed with the API
 
+### New features and enhancements
+
+* Pinnacle Export Tool
+  * A new CLI option is provided to append the patient MRN to the output path for convenience. Thanks [crewso](https://github.com/crcrewso) for submitting this [Pull Request](https://github.com/pymedphys/pymedphys/pull/1608)
+
 ## [0.37.1]
 
 ### Bug fixes
