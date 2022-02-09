@@ -2975,7 +2975,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "b2efd45010010104c7effb536ed4a1a32204ac4408008c5bf13f64d6e47b0ec9"
+content-hash = "c43761aba856c87e9592884b901a70871e9de0dead95206907de8e5c386cd250"
 
 [metadata.files]
 alabaster = [
