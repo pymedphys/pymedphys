@@ -15,3 +15,4 @@ Experimental Modules
     :maxdepth: 1
 
     pinnacle
+    pseudonymisation
