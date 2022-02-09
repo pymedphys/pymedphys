@@ -59,8 +59,7 @@ natsort = { version = "*", optional = true }  # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }  # groups = ["user", "dev", "propagate"]
 toml = { version = "*", optional = true }  # groups = ["user", "cli", "dev"]
 
-# TODO Temp Pin
-pynetdicom = { version = "1.5.7", optional = true }  # groups = ["user", "dev", "dicom"]
+pynetdicom = { version = "*", optional = true }  # groups = ["user", "dev", "dicom"]
 
 dbfread = { version = "*", optional = true }  # groups = ["user", "dev"]
 xmltodict = { version = "*", optional = true }  # groups = ["user", "dev"]
