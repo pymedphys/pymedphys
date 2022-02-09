@@ -107,7 +107,7 @@ reportlab = { version = ">=3.6", optional = true }  # groups = ["user", "dev"]
 # CVE-2021-32559 <https://github.com/advisories/GHSA-hwfp-hg2m-9vr2>
 pywin32 = { version = ">=301", optional = true, platform = "win32" }  # groups = ["user", "dev"]
 # CVE-2022-21699 <https://github.com/advisories/GHSA-pq7m-3gw7-gq5x>
-ipython = { version = ">=8.0.1", optional = true }
+ipython = { version = ">=7.31.1", optional = true }
 # CVE-2022-22817 <https://github.com/advisories/GHSA-8vj2-vxx3-667w>
 Pillow = { version = ">=9.0.0", optional = true }  # groups = ["user", "dev"]
 
