@@ -83,8 +83,7 @@ numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "i
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
-# TODO Temp Pin
-pylibjpeg-libjpeg = { version = "1.2.0", optional = true }  # groups = ["user", "dev"]
+pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
