@@ -115,7 +115,6 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental.pseudonymisation": ["docs/cli/*", "docs/lib/*"],
     "pymedphys._experimental.serviceplans": ["templates/*"],
     "pymedphys._experimental.streamlit.apps": ["data/*"],
     "pymedphys.docs": [
@@ -141,7 +140,6 @@ package_data = {
     "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
     "pymedphys.tests.e2e": [
         "cypress/*",
-        "cypress/archive/*",
         "cypress/fixtures/*",
         "cypress/integration/streamlit/*",
         "cypress/plugins/*",
@@ -169,7 +167,6 @@ extras_require = {
         "python-dateutil",
         "matplotlib",
         "scipy",
-        "Pillow",
         "xarray",
         "pymssql",
         "sqlalchemy<1.4",
@@ -196,6 +193,7 @@ extras_require = {
         "streamlit-ace==0.1.0",
         "pylinac==2.3.2",
         "reportlab>=3.6",
+        "Pillow>=9.0.0",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
         "sphinx-book-theme",
@@ -257,7 +255,6 @@ extras_require = {
         "python-dateutil",
         "matplotlib",
         "scipy",
-        "Pillow",
         "xarray",
         "pymssql",
         "sqlalchemy<1.4",
@@ -284,6 +281,7 @@ extras_require = {
         "streamlit-ace==0.1.0",
         "pylinac==2.3.2",
         "reportlab>=3.6",
+        "Pillow>=9.0.0",
     ],
     'user:sys_platform == "win32"': ["pywin32>=301"],
 }
