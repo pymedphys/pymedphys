@@ -20,7 +20,7 @@ authors:
 affiliations:
  - name: Radiotherapy AI, Australia
    index: 1
- - name: ELEKTA Pty Ltd: New Zealand
+ - name: ELEKTA Pty Ltd, New Zealand
    index: 2
  - name: Royal Adelaide Hospital, Australia
    index: 3
@@ -30,10 +30,10 @@ affiliations:
    index: 5
  - name: NYU Langone Health, USA
    index: 6
-date: 10 February 2021
+date: 10 February 2022
 bibliography: paper.bib
 ---
-   
+
 # Summary
 
 PyMedPhys is an open-source medical physics Python library built by a community that values and prioritizes code
