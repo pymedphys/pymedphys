@@ -15,7 +15,7 @@ authors:
     affiliation: 3
   - name: Phillip Chlap^[co-first author]
     affiliation: "4, 5"
-  - name: Jake Rembish^[co-first author]
+  - name: Jacob Rembish^[co-first author]
     affiliation: 6
 affiliations:
  - name: Radiotherapy AI, Australia
@@ -40,7 +40,7 @@ PyMedPhys is an open-source medical physics Python library built by a community 
 sharing, review, improvement, and peer development. The overall goal of PyMedPhys is to provide medical physicists
 around the world with a free, open-source library of Python applications to simplify and enhance both their research and
 clinical work. It is inspired by the collaborative work of our physics peers in astronomy and the Astropy
-Project [@astropy].
+Project [@astropy]. 
 
 # Statement of need
 
@@ -53,7 +53,7 @@ the wheel", where physicists are wasting time writing code to perform a function
 
 By creating and promoting an open-source repository, PyMedPhys aims to make the software solutions medical physicists
 have created easily accessible to others. PyMedPhys is currently being implemented around the world for a handful of
-applications[@galic2020method, pastor2021learning, rembish2021automating, rodriguez2020new, baltz2021validation, spezialetti2021using, tsuneda2021plastic, cronholm2020mri, milan2019evaluation, gajewski2021commissioning, lysakovski2021development].
+applications[@galic2020method; pastor2021learning; rembish2021automating; rodriguez2020new; baltz2021validation; spezialetti2021using; tsuneda2021plastic; cronholm2020mri; milan2019evaluation; gajewski2021commissioning; lysakovski2021development].
 
 
 # Acknowledgements
