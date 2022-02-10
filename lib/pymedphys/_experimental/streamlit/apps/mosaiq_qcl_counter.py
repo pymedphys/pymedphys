@@ -92,7 +92,7 @@ def main():
     if st.button("Reset date range filtering"):
         session_state.reset_widget_id += 1
 
-    one, two, three = st.beta_columns(3)
+    one, two, three = st.columns(3)
     chosen_start = one.date_input(
         "Start date",
         value=start_of_last_month,

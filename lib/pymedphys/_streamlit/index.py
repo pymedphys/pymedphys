@@ -63,13 +63,13 @@ def index(application_options):
         """
     )
 
-    _, central_header_column, _ = st.beta_columns((1, 2, 1))
+    _, central_header_column, _ = st.columns((1, 2, 1))
 
     title_filter = central_header_column.text_input("Filter")
     pattern = re.compile(f".*{title_filter}.*", re.IGNORECASE)
 
     num_columns = len(_categories.APPLICATION_CATEGORIES_BY_COLUMN.keys())
-    columns = st.beta_columns(num_columns)
+    columns = st.columns(num_columns)
 
     for (
         column_index,

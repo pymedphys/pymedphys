@@ -18,12 +18,11 @@ from pymedphys._dicom.anonymise import (
 )
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
+from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 from pymedphys.tests.dicom.test_anonymise import (
     dicom_dataset_from_dict,
     get_test_filepaths,
 )
-
-from pymedphys._experimental.pseudonymisation import api as pseudonymisation_api
 
 
 @pytest.mark.pydicom
@@ -270,7 +269,6 @@ def _test_pseudonymise_file_at_path(
 @pytest.mark.skipif(
     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
 )
-@pytest.mark.skip(reason="Pseudonymise CLI is not currently being exposed.")
 def test_pseudonymise_cli(tmp_path):
     for test_file_path in get_test_filepaths():
         _test_pseudonymise_cli_for_file(tmp_path, test_file_path)

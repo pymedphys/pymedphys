@@ -43,6 +43,7 @@
 
     lib/howto/gamma/effect-of-noise
     lib/howto/gamma/from-dicom
+    lib/howto/gamma/1D-from-csv
     lib/howto/add-a-linac
 
 .. toctree::

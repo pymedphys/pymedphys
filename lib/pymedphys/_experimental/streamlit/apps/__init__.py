@@ -6,7 +6,6 @@ from . import (
     dicom_wlutz,
     download,
     electrons,
-    extend_ct,
     icom,
     iview_image_viewer,
     iview_image_wlutz,
