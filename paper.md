@@ -1,3 +1,4 @@
+'''
 title: 'PyMedPhys: A community effort to develop an open standard library for Medical Physics in Python'
 tags:
   - Python
@@ -31,7 +32,8 @@ affiliations:
    index: 6
 date: 10 February 2021
 bibliography: paper.bib
-
+'''
+   
 # Summary
 
 PyMedPhys is an open-source medical physics Python library built by a community that values and prioritizes code
