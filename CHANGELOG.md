@@ -56,6 +56,7 @@ This project adheres to
 * The daily WLutz application can now have its bb size configured.
 * Site can now be passed as a URL parameter to the daily WLutz application.
 * Improved error messaging around the configuration of the iView machine alias.
+
 ## [0.37.0]
 
 ### News around this release
@@ -739,7 +740,7 @@ Nil
 ### Bug fixes
 
 * Fix issue in some Windows environments where running `pymedphys gui` would
-  not find the streamlit installation. [_gui/__init__.py](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
+  not find the streamlit installation. [`_gui/__init__.py`](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
 
 ## [0.29.0]
 
@@ -1008,7 +1009,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 ### Bug Fixes
 
 * Gracefully reject ipython inspection for optional modules by returning `None`
-  for '__file__' attribute requests for modules that are not currently
+  for `__file__` attribute requests for modules that are not currently
   installed.
 
 ## [0.16.2]
