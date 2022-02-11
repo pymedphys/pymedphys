@@ -284,3 +284,5 @@ downloads/
 offline/
 .history/
 scratch/
+
+.devcontainer/*
