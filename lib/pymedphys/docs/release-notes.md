@@ -13,20 +13,17 @@ This project adheres to
 
 * [Phillip Chlap](https://github.com/pchlap) has joined as a pymedphys Maintainer
 * Thanks to [Cedric](https://github.com/cedricbelanger) for reporting and fixing DICOM coordinates bug: [Discourse](https://pymedphys.discourse.group/t/gamma-index-calculation-possible-issues/191/2)
+* Privacy related bug within the experimental components of pymedphys (not stable) has been fixed. See bug fix notes.
 
 ### Bug Fixes
 
+* Pseudonymise was susceptible to brute-force reversal, mitigated in [Pull Request](https://github.com/pymedphys/pymedphys/pull/1580)
 * DICOM Coordinates
   * Fix pixel spacing bug [Pull Request](https://github.com/pymedphys/pymedphys/pull/1571)
 * Pinnacle Export Tool
   * Write DICOM files to be more compatible with other software [Pull Request](https://github.com/pymedphys/pymedphys/pull/1578)
 * Daily Winston-lutz
   * Small workaround [Pull Request](https://github.com/pymedphys/pymedphys/pull/1565)
-
-### Breaking Changes
-
-* Un-expose pseudonymise, susceptible to brute-force reversal [Pull Request](https://github.com/pymedphys/pymedphys/pull/1534)
-* Mitigated in [Pull Request](https://github.com/pymedphys/pymedphys/pull/1580), not yet re-exposed with the API
 
 ### New features and enhancements
 
