@@ -53,7 +53,7 @@ the wheel", where physicists are wasting time writing code to perform a function
 
 By creating and promoting an open-source repository, PyMedPhys aims to make the software solutions medical physicists
 have created easily accessible to others. PyMedPhys is currently being implemented around the world for a handful of
-applications[@galic2020method; pastor2021learning; rembish2021automating; rodriguez2020new; baltz2021validation; spezialetti2021using; tsuneda2021plastic; cronholm2020mri; milan2019evaluation; gajewski2021commissioning; lysakovski2021development].
+applications[@galic2020method;pastor2021learning;rembish2021automating;rodriguez2020new;baltz2021validation;spezialetti2021using;tsuneda2021plastic;cronholm2020mri;milan2019evaluation;gajewski2021commissioning;lysakovski2021development].
 
 
 # Acknowledgements
