@@ -47,13 +47,13 @@ Project [@astropy].
 As the treatment delivery methods used in radiation oncology continue to improve, the complexity associated with
 ensuring precise and accurate delivery continues to increase. In response, many medical physicists are turning toward
 software solutions to help maximize efficiency and quality of care. It is common for medical physicists to develop their
-own in-house code for performing these tasks; many of which have been standardized through recommendations by
-organizations such as the American Association of Physicists in Medicine (AAPM). This can lead to the "reinvention of
-the wheel", where physicists are wasting time writing code to perform a function that someone else has already created.
+own in-house code for performing clinical tasks; many of which have been standardized through recommendations by
+organizations such as the American Association of Physicists in Medicine (AAPM). This can often lead to the "reinvention of
+the wheel", where physicists are wasting time writing code to serve a purpose that someone else has already accomplished.
 
 By creating and promoting an open-source repository, PyMedPhys aims to make the software solutions medical physicists
 have created easily accessible to others. PyMedPhys is currently being implemented around the world for a handful of
-applications[@galic2020method; @pastor2021learning; @rembish2021automating; @rodriguez2020new; @baltz2021validation; @spezialetti2021using; @tsuneda2021plastic; @cronholm2020mri; @milan2019evaluation; @gajewski2021commissioning; @lysakovski2021development].
+applications. Of particular note is the gamma analysis module [@galic2020method; @pastor2021learning; @rodriguez2020new; @spezialetti2021using; @castle2022; @tsuneda2021plastic; @cronholm2020mri; @milan2019evaluation; @gajewski2021commissioning; @lysakovski2021development], however the electron cutout factor module and others [@baltz2021validation; @rembish2021automating; @douglass2021deepwl] have additionally been referenced in literature. Additionally, the work has been recognized by the European Society for Radiotherapy and Oncology (ESTRO) and referenced as recommended literature in their 3rd Edition of Core Curriculum for Medical Physics Experts in Radiotherapy [@bertcatharine]. 
 
 
 # Acknowledgements
