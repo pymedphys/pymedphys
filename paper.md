@@ -65,7 +65,7 @@ applications. Of particular note is the gamma analysis module
 @spezialetti2021using; @castle2022; @tsuneda2021plastic; @cronholm2020mri;
 @milan2019evaluation; @gajewski2021commissioning; @lysakovski2021development],
 however the electron cutout factor module and others [@baltz2021validation;
-@rembish2021automating; @douglass2021deepwl] have additionally been referenced
+@rembish2021automating; @douglass2021deepwl] have also been referenced
 in literature. Additionally, the work has been recognized by the European
 Society for Radiotherapy and Oncology (ESTRO) and referenced as recommended
 literature in their 3rd Edition of Core Curriculum for Medical Physics Experts
