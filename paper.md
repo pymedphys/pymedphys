@@ -59,7 +59,7 @@ accomplished.
 
 By creating and promoting an open-source repository, PyMedPhys aims to make the
 software solutions medical physicists have created easily accessible to others.
-PyMedPhys is currently being implemented around the world for a handful of
+PyMedPhys is currently implemented around the world for a handful of
 applications. Of particular note is the gamma analysis module
 [@galic2020method; @pastor2021learning; @rodriguez2020new;
 @spezialetti2021using; @castle2022; @tsuneda2021plastic; @cronholm2020mri;
