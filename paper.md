@@ -57,16 +57,15 @@ organizations such as the American Association of Physicists in Medicine
 are wasting time writing code to serve a purpose that someone else has already
 accomplished.
 
-By creating and promoting an open-source repository, PyMedPhys aims to make the
-software solutions medical physicists have created easily accessible to others.
-PyMedPhys is currently implemented around the world for a handful of
-applications. Of particular note is the gamma analysis module
+By creating and promoting an open-source repository, PyMedPhys aims to improve 
+the quality and accessibility of exisiting software solutions to problems faced by 
+medical physicists. PyMedPhys is currently implemented around the world for a handful of
+applications. Many parties have embraced the gamma analysis module
 [@galic2020method; @pastor2021learning; @rodriguez2020new;
 @spezialetti2021using; @castle2022; @tsuneda2021plastic; @cronholm2020mri;
 @milan2019evaluation; @gajewski2021commissioning; @lysakovski2021development],
-however the electron cutout factor module and others [@baltz2021validation;
-@rembish2021automating; @douglass2021deepwl] have also been referenced
-in literature. Additionally, the work has been recognized by the European
+while implementations of the electron cutout factor module and others [@baltz2021validation;
+@rembish2021automating; @douglass2021deepwl] have also been reported. Additionally, the work has been recognized by the European
 Society for Radiotherapy and Oncology (ESTRO) and referenced as recommended
 literature in their 3rd Edition of Core Curriculum for Medical Physics Experts
 in Radiotherapy [@bertcatharine].
