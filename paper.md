@@ -57,8 +57,8 @@ organizations such as the American Association of Physicists in Medicine
 are wasting time writing code to serve a purpose that someone else has already
 accomplished.
 
-By creating and promoting an open-source repository, PyMedPhys aims to improve 
-the quality and accessibility of exisiting software solutions to problems faced by 
+By creating and promoting an open-source repository, PyMedPhys aims to improve
+the quality and accessibility of exisiting software solutions to problems faced by
 medical physicists. PyMedPhys is currently implemented around the world for a handful of
 applications. Many parties have embraced the gamma analysis module
 [@galic2020method; @pastor2021learning; @rodriguez2020new;
