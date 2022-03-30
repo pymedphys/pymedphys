@@ -7,15 +7,15 @@ tags:
   - Diagnostic Imaging
   - DICOM
 authors:
-  - name: Simon Biggs^[co-first author]
+  - name: Simon Biggs
     affiliation: 1
-  - name: Stuart Swerdloff^[co-first author]
+  - name: Stuart Swerdloff
     affiliation: 2
-  - name: Matthew Jennings^[co-first author]
+  - name: Matthew Jennings
     affiliation: 3
-  - name: Phillip Chlap^[co-first author]
+  - name: Phillip Chlap
     affiliation: "4, 5"
-  - name: Jacob Rembish^[co-first author]
+  - name: Jacob Rembish
     affiliation: 6
   - name: Jacob McAloney
     affiliation: 7
