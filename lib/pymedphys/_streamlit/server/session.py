@@ -38,20 +38,24 @@ class SessionState:
                 setattr(self, key, val)
 
 
-def get_session_id() -> uuid.UUID:
+def get_session_id() -> str:
     ctx = st.script_run_context.add_script_run_ctx()
-    session_id: uuid.UUID = ctx.streamlit_script_run_ctx.session_id
+    session_id: str = ctx.streamlit_script_run_ctx.session_id
 
     return session_id
 
 
-def get_session(session_id: uuid.UUID = None) -> "st.report_session.ReportSession":
+def get_session(session_id: str = None):
     if session_id is None:
         session_id = get_session_id()
 
-    report_session: st.report_session.ReportSession = (
-        st.server.server.Server.get_current()._get_session_info(session_id).session
-    )
+    session_info = st.server.server.Server.get_current()._get_session_info(session_id)
+
+    if session_info is None:
+        raise ValueError("No session info found")
+
+    report_session = session_info.session
+
     return report_session
 
 
