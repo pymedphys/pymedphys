@@ -15,12 +15,12 @@ authors:
     affiliation: 3
   - name: Phillip Chlap^[co-first author]
     affiliation: "4, 5"
+  - name: Jacob Rembish^[co-first author]
+    affiliation: 6
   - name: Jacob McAloney
     affiliation: 7
   - name: Matthew Sobolewski
     affiliation: "7, 8"
-  - name: Jacob Rembish^[co-first author]
-    affiliation: 6
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
