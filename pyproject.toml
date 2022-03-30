@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.38.0-dev4"
+version = "0.38.0"
 readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
@@ -50,7 +50,6 @@ python-dateutil = { version = "*", optional = true }  # groups = ["user", "dev",
 
 matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
 scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
-Pillow = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
@@ -83,7 +82,9 @@ numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "i
 # The following lower bounded packages are due to certain APIs utilised
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
-pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
+
+# TODO Remove upper pin for pylibjpeg-libjpeg once support for Python 3.7 is dropped
+pylibjpeg-libjpeg = { version = "<1.3.0", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
@@ -92,7 +93,7 @@ scikit-image = { version = ">=0.18.1", optional = true }  # groups = ["user", "d
 
 # Streamlit's pinning is due to its current beta nature and the fact that some
 # private APIs are utilised.
-streamlit = { version = "1.2.0", optional = true }  # groups = ["user", "dev"]
+streamlit = { version = "1.4.0", optional = true }  # groups = ["user", "dev"]
 streamlit-ace = { version = "0.1.0", optional = true }  # groups = ["user", "dev"]
 
 # PyLinac is pinned due to historical algorithm changes with both minor and
@@ -107,6 +108,10 @@ pylinac = { version = "2.3.2", optional = true }  # groups = ["user", "dev", "do
 reportlab = { version = ">=3.6", optional = true }  # groups = ["user", "dev"]
 # CVE-2021-32559 <https://github.com/advisories/GHSA-hwfp-hg2m-9vr2>
 pywin32 = { version = ">=301", optional = true, platform = "win32" }  # groups = ["user", "dev"]
+# CVE-2022-21699 <https://github.com/advisories/GHSA-pq7m-3gw7-gq5x>
+ipython = { version = ">=7.31.1", optional = true }
+# CVE-2022-22817 <https://github.com/advisories/GHSA-8vj2-vxx3-667w>
+Pillow = { version = ">=9.0.0", optional = true }  # groups = ["user", "dev"]
 
 
 # ----------- #
@@ -146,7 +151,7 @@ pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "t
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
-black = { version = "^21.10b0", optional = true }  # groups = ["dev", "propagate", "doctests"]
+black = { version = "^22.3.0", optional = true }  # groups = ["dev", "propagate", "doctests"]
 mypy = { version = "*", optional = true }  # groups = ["dev"]
 rope = { version = "*", optional = true }  # groups = ["dev"]
 doc8 = { version = "*", optional = true }  # groups = ["dev"]

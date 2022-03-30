@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
+# Copyright (C) 2020 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 from pymedphys.cli import dicom
 
-from pymedphys._experimental.pseudonymisation.main import anonymise_with_pseudo_cli
+from pymedphys._experimental.pseudonymisation import anonymise_with_pseudo_cli
 
 
 def dicom_cli(subparsers):

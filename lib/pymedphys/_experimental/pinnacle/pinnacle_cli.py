@@ -63,6 +63,7 @@ def export_cli(args):
     roiskip = args.roiskip
 
     input_path = args.input_path
+    MRN_flag = args.mrn
 
     # Create a logger to std out for cli
     log_level = logging.INFO
@@ -178,6 +179,8 @@ def export_cli(args):
         logger.error("Specifiy an output directory with -o")
         sys.exit()
 
+    if MRN_flag:
+        output_directory += "-" + p.patient_info["MedicalRecordNumber"]
     if not os.path.exists(output_directory):
         logger.info("Creating output directory: %s", output_directory)
         os.makedirs(output_directory)
