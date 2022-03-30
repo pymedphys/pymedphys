@@ -26,7 +26,7 @@ import pymedphys._utilities.createshells
 
 from ..utilities import run_input_checks
 
-DEFAULT_RAM = int(2 ** 30 * 1.5)  # 1.5 GB
+DEFAULT_RAM = int(2**30 * 1.5)  # 1.5 GB
 
 
 def gamma_shell(

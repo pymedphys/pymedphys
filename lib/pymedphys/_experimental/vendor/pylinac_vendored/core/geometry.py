@@ -226,7 +226,7 @@ class Vector:
 
     def as_scalar(self) -> float:
         """Return the scalar equivalent of the vector."""
-        return math.sqrt(self.x ** 2 + self.y ** 2 + self.z ** 2)
+        return math.sqrt(self.x**2 + self.y**2 + self.z**2)
 
     def distance_to(self, thing: Union[Circle, Point]):
         """Calculate the distance to the given point.
