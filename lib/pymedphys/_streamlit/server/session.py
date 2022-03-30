@@ -17,7 +17,6 @@
 # pylint: disable = protected-access
 
 import pathlib
-import uuid
 from typing import BinaryIO, Union
 
 from pymedphys._imports import streamlit as st
