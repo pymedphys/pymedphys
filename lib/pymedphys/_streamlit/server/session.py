@@ -39,8 +39,8 @@ class SessionState:
 
 
 def get_session_id() -> uuid.UUID:
-    ctx = st.report_thread.get_report_ctx()
-    session_id: uuid.UUID = ctx.session_id
+    ctx = st.script_run_context.add_script_run_ctx()
+    session_id: uuid.UUID = ctx.streamlit_script_run_ctx.session_id
 
     return session_id
 
