@@ -44,12 +44,11 @@
     <script src="../../../_static/copybutton.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/sphinx-book-theme.d59cb220de22ca1c485ebbdc042f0030.js"></script>
-    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
-    <script>
-        const thebe_selector = ".thebe,.cell"
-        const thebe_selector_input = "pre,.cell_input div.highlight"
-        const thebe_selector_output = ".output,.cell_output"
-    </script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
     <script async="async" src="../../../_static/sphinx-thebe.js"></script>
     <link rel="canonical" href="https://docs.pymedphys.com/lib/howto/gamma/1D-from-csv.html" />
     <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
@@ -507,7 +506,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&#39;dose_film_1D_z0mm.csv&#39;, &lt;http.client.HTTPMessage at 0x7f95895fcb80&gt;)
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&#39;dose_film_1D_z0mm.csv&#39;, &lt;http.client.HTTPMessage at 0x7f9ce3ac9880&gt;)
 </pre></div>
 </div>
 </div>
@@ -522,7 +521,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&#39;dose_MC_1D_z0mm.csv&#39;, &lt;http.client.HTTPMessage at 0x7f95895fc880&gt;)
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&#39;dose_MC_1D_z0mm.csv&#39;, &lt;http.client.HTTPMessage at 0x7f9ce3ac90a0&gt;)
 </pre></div>
 </div>
 </div>
