@@ -15,6 +15,10 @@ authors:
     affiliation: 3
   - name: Phillip Chlap^[co-first author]
     affiliation: "4, 5"
+  - name: Jacob McAloney
+    affiliation: 7
+  - name: Matthew Sobolewski
+    affiliation: "7, 8"
   - name: Jacob Rembish^[co-first author]
     affiliation: 6
 affiliations:
@@ -30,6 +34,10 @@ affiliations:
     index: 5
   - name: NYU Langone Health, USA
     index: 6
+  - name: Riverina Cancer Care Centre, Australia
+    index: 7
+  - name: CancerCare Partners, Australia
+    index: 8
 date: 10 February 2022
 bibliography: paper.bib
 ---
