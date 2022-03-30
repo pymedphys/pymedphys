@@ -251,9 +251,9 @@ def convert_wedge_codes(dataframe, wedge_codes):
 
 def apply_negative(column):
     result = np.ones_like(column).astype(np.float64) * np.nan
-    negative_values = column.values > 2 ** 15
+    negative_values = column.values > 2**15
 
-    result[negative_values] = column[negative_values] - 2 ** 16
+    result[negative_values] = column[negative_values] - 2**16
     result[np.invert(negative_values)] = column[np.invert(negative_values)]
 
     if np.any(np.isnan(result)):

@@ -27,7 +27,7 @@ def test_interp_field():
     img = img[:, 1:-1]
     assert np.shape(img) == (1024, 1022)
     assert img.dtype == np.dtype("uint16")
-    img = 1 - img[::-1, :] / 2 ** 16
+    img = 1 - img[::-1, :] / 2**16
     assert img.dtype == np.dtype("float64")
 
     shape = np.shape(img)

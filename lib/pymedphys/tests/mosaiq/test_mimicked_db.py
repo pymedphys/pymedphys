@@ -39,7 +39,7 @@ QCL_COMPLETED_DATETIMES = ["2021-04-14 09:11:30.387", "2021-04-14 09:11:35.383"]
 
 @pytest.fixture(name="connection")
 def connection_base():
-    """ will create the test database, if it does not already exist on the instance """
+    """will create the test database, if it does not already exist on the instance"""
     mimics.create_db_with_tables()
     return _connect.connect(database=mimics.DATABASE)
 
