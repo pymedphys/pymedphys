@@ -54,7 +54,7 @@ def iview_image_transform(img):
             f"  Min pixel value was {np.min(img)}\n"
             f"  Max pixel value was {np.max(img)}"
         )
-    img = 1 - img[::-1, :] / 2 ** 16
+    img = 1 - img[::-1, :] / 2**16
 
     shape = np.shape(img)
     x = np.arange(-shape[1] / 2, shape[1] / 2) / pixels_per_mm

@@ -112,8 +112,8 @@ def typed_property(name, expected_type_or_tuple_of_types):
 
 def simple_round(number, decimals: int = 0):
     """Round a number to the given number of decimals. Fixes small floating number errors."""
-    num = int(round(number * 10 ** decimals))
-    num /= 10 ** decimals
+    num = int(round(number * 10**decimals))
+    num /= 10**decimals
     return num
 
 

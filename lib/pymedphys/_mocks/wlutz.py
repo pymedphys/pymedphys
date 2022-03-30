@@ -31,7 +31,7 @@ def create_bb_attenuation_func(diameter, penumbra, max_attenuation):
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        z = np.sqrt(radius ** 2 - xx ** 2 - yy ** 2) / radius
+        z = np.sqrt(radius**2 - xx**2 - yy**2) / radius
 
     z[np.isnan(z)] = 0
 

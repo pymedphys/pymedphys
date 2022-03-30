@@ -82,11 +82,11 @@ class Profile:
             )
 
     def __len__(self):
-        """ # data points  """
+        """# data points"""
         return len(self.x)
 
     def __eq__(self, other):  # SAME DATA POINTS
-        """ same data points """
+        """same data points"""
         if (
             np.array_equal(self.x, other.x)
             and np.array_equal(self.y, other.y)
@@ -97,7 +97,7 @@ class Profile:
             return False
 
     def __copy__(self):
-        """ deep copy """
+        """deep copy"""
         return copy.deepcopy(self)
 
     def __str__(self):
@@ -117,7 +117,7 @@ class Profile:
             return ""  # EMPTY PROFILE
 
     def __add__(self, other):
-        """ shift right """
+        """shift right"""
         new_x = self.x + other
         return Profile(x=new_x, y=self.y, meta=self.meta)
 
@@ -125,7 +125,7 @@ class Profile:
     __iadd__ = __add__
 
     def __sub__(self, other):
-        """ shift left """
+        """shift left"""
         self.x -= other
         return Profile(x=self.x, y=self.y, meta=self.meta)
 
@@ -133,7 +133,7 @@ class Profile:
     __isub__ = __sub__
 
     def __mul__(self, other):
-        """ scale y """
+        """scale y"""
         self.y *= other
         return self
 
