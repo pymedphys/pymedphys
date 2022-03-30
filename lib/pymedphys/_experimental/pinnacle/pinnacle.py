@@ -187,7 +187,7 @@ class PinnacleExport:
         return self._images
 
     @staticmethod
-    def export_struct(plan, export_path="."):
+    def export_struct(plan, export_path=".", skip_pattern="^$"):
         """Exports the RTSTRUCT DICOM modality.
 
         Parameters
@@ -197,10 +197,13 @@ class PinnacleExport:
             export_path : str, optional
                 The file system path where the DICOM object should be
                 exported to.
+            skip_pattern : str, optional
+                A regular expression specifying which ROIs to skip
+                For example: RadCalc|normal_tissue
         """
 
         # Export Structures for plan
-        convert_struct(plan, export_path)
+        convert_struct(plan, export_path, skip_pattern)
 
     @staticmethod
     def export_dose(plan, export_path="."):

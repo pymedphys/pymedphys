@@ -77,10 +77,16 @@ class DicomListener(DicomConnectBase):
         # Initialise the Application Entity
         self.ae = pynetdicom.AE(ae_title=self.ae_title)
 
+        # pynetdicom 2.0 changed attributes for Verification/C-ECHO in pynetdicom.sop_classes
+        # The Verification SOP Class UID is a single well known constant
+        # https://dicom.nema.org/medical/dicom/current/output/html/part04.html#chapter_A
+        # section A.4 Verification SOP Class
+
+        verification_sop_class = "1.2.840.10008.1.1"
+
         # Add the supported presentation context
-        self.ae.add_supported_context(
-            pynetdicom.sop_class.VerificationSOPClass  # pylint: disable = no-member
-        )
+        self.ae.add_supported_context(verification_sop_class)
+
         for context in pynetdicom.StoragePresentationContexts:
             self.ae.add_supported_context(context.abstract_syntax)
 

@@ -57,6 +57,12 @@ def export_pinnacle(pinnacle_subparsers):
     )
 
     parser.add_argument(
+        "--mrn",
+        action="store_true",
+        help=("Append the Patient ID/MRN to the end of the name of the export folder"),
+    )
+
+    parser.add_argument(
         "-l",
         "--list",
         action="store_true",
@@ -100,6 +106,16 @@ def export_pinnacle(pinnacle_subparsers):
 
     parser.add_argument(
         "-u", "--uid-prefix", help=("Prefix to use for generated UIDs.")
+    )
+
+    parser.add_argument(
+        "-r",
+        "--roiskip",
+        help=(
+            "Regular expression defining which ROIs to skip. "
+            "Note that you will probably need to enclose your regular expression in single-quotes. "
+            "For example 'Skin|.*_obj|RadCalc' ."
+        ),
     )
 
     parser.set_defaults(func=export_cli)

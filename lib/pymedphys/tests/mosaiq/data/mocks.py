@@ -82,7 +82,7 @@ def dataframe_to_sql(
 
 
 def check_create_test_db(database=_connect.TEST_DB_NAME):
-    """Will create the test database, if it does not already exist on the instance """
+    """Will create the test database, if it does not already exist on the instance"""
 
     # sa connection to create the test database
     with pymssql.connect(

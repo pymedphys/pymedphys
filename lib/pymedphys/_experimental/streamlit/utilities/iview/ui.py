@@ -284,7 +284,7 @@ def _angle_filtering(
         """
     )
 
-    gantry_column, collimator_column = st.beta_columns(2)
+    gantry_column, collimator_column = st.columns(2)
 
     default_gantry_angles: List[Number] = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
     default_collimator_angles: List[Number] = [-180, -90, 0, 90, 180]

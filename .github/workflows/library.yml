@@ -57,15 +57,14 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu", "macos", "windows"]
-        task:
-          [
+        task: [
             "tests",
             "docs",
             "stackoverflow",
             "updates",
             "cypress",
             "slow",
-            "binary",
+            # "binary",  # Skip for now
             "pyright",
             "propagate",
           ]
@@ -84,6 +83,8 @@ jobs:
             task: "pyright"
           - os: "windows"
             task: "propagate"
+          - os: "windows"
+            task: "cypress"
 
           - os: "macos"
             task: "stackoverflow"

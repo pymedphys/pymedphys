@@ -119,7 +119,7 @@ class BaseImage:
         self.array = -orig_array + orig_array.max() + orig_array.min()
 
     def flipud(self):
-        """ Flip the image array upside down in-place. Wrapper for np.flipud()"""
+        """Flip the image array upside down in-place. Wrapper for np.flipud()"""
         self.array = np.flipud(self.array)
 
     def ground(self):

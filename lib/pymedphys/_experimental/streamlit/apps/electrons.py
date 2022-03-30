@@ -134,7 +134,7 @@ def _per_reference_index(config, tel_contents, reference_index):
 
     width, length, circle_centre = electronfactors.parameterise_insert(x, y)
 
-    left, right = st.beta_columns(2)
+    left, right = st.columns(2)
 
     with left:
         st.write("#### Insert parameterisation")

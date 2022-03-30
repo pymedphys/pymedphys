@@ -28,7 +28,7 @@ from .data import mocks
 
 @pytest.fixture(name="connection")
 def fixture_check_create_test_db():
-    """ will create the test database, if it does not already exist on the instance """
+    """will create the test database, if it does not already exist on the instance"""
     mocks.check_create_test_db()
 
     return _connect.connect()
@@ -36,7 +36,7 @@ def fixture_check_create_test_db():
 
 @pytest.mark.mosaiqdb
 def test_sessions_for_site(connection):
-    """ creates basic tx field and site metadata for the mock patients """
+    """creates basic tx field and site metadata for the mock patients"""
 
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = mocks.create_mock_patients()
@@ -77,7 +77,7 @@ def test_sessions_for_site(connection):
 
 @pytest.mark.mosaiqdb
 def test_session_offsets_for_site(connection):  # pylint: disable = unused-argument
-    """ creates basic tx field and site metadata for the mock patients """
+    """creates basic tx field and site metadata for the mock patients"""
 
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = mocks.create_mock_patients()
