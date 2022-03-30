@@ -145,8 +145,8 @@ def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
             / (top_bot_interpolated + top_bot_interpolated[::-1, :])
         )
 
-        return np.sum(left_right_weighted_diff ** 2) + np.sum(
-            top_bot_weighted_diff ** 2
+        return np.sum(left_right_weighted_diff**2) + np.sum(
+            top_bot_weighted_diff**2
         )
 
     return to_minimise

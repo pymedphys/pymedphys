@@ -54,15 +54,15 @@ def determine_header_length(trf_contents: bytes) -> int:
 
 def _header_match(contents):
     match = re.match(
-        br"[\x00-\x19]"  # start bit
-        br"(\d\d[/-]\d\d[/-]\d\d \d\d:\d\d:\d\d Z)"  # date
-        br"[\x00-\x19]"  # divider bit
-        br"((\+|\-)\d\d:\d\d)"  # time zone
-        br"[\x00-\x25]"  # divider bit
-        br"([\x20-\x7F]*)"  # field label and name
-        br"[\x00-\x19]"  # divider bit
-        br"([\x20-\x7F]+)"  # machine name
-        br"[\x00-\x19]",  # divider bit
+        rb"[\x00-\x19]"  # start bit
+        rb"(\d\d[/-]\d\d[/-]\d\d \d\d:\d\d:\d\d Z)"  # date
+        rb"[\x00-\x19]"  # divider bit
+        rb"((\+|\-)\d\d:\d\d)"  # time zone
+        rb"[\x00-\x25]"  # divider bit
+        rb"([\x20-\x7F]*)"  # field label and name
+        rb"[\x00-\x19]"  # divider bit
+        rb"([\x20-\x7F]+)"  # machine name
+        rb"[\x00-\x19]",  # divider bit
         contents,
     )
 

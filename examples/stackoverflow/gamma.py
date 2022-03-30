@@ -30,7 +30,7 @@ if __name__ == "__main__":
         "max_gamma": 2,
         "random_subset": None,  # Can be used to get quick pass rates
         "local_gamma": True,  # Change to false for global gamma
-        "ram_available": 2 ** 29,  # 1/2 GB
+        "ram_available": 2**29,  # 1/2 GB
     }
 
     gamma = pymedphys.gamma(

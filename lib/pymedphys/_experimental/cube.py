@@ -450,6 +450,6 @@ def calc_min_distance(cube_definition, contours):
 
     distance_to_planes = np.dot(plane_norms, contours) + plane_origin_dist[:, None]
 
-    min_dist_squared = np.min(distance_to_planes ** 2, axis=0)
+    min_dist_squared = np.min(distance_to_planes**2, axis=0)
 
     return min_dist_squared

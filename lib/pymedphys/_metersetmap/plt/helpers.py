@@ -19,7 +19,7 @@ from pymedphys._imports import numpy as np
 def pcolormesh_grid(x, y, grid_resolution=None):
     if grid_resolution is None:
         diffs = np.hstack([np.diff(x), np.diff(y)])
-        assert np.all(np.abs(diffs - diffs[0]) < 10 ** -12)
+        assert np.all(np.abs(diffs - diffs[0]) < 10**-12)
 
         grid_resolution = diffs[0]
 
