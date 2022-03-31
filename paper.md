@@ -19,6 +19,8 @@ authors:
     affiliation: 6
   - name: Jacob McAloney
     affiliation: 7
+  - name: Paul King
+    affiliation: 9
   - name: Matthew Sobolewski
     affiliation: "7, 8"
 affiliations:
@@ -38,6 +40,8 @@ affiliations:
     index: 7
   - name: CancerCare Partners, Australia
     index: 8
+  - name: Painless Skin Cancer Treatment, Mississippi, USA
+    index: 9
 date: 10 February 2022
 bibliography: paper.bib
 ---
