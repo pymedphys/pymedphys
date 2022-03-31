@@ -20,9 +20,9 @@ authors:
   - name: Jacob McAloney
     affiliation: 7
   - name: Paul King
-    affiliation: 9
+    affiliation: 8
   - name: Matthew Sobolewski
-    affiliation: "7, 8"
+    affiliation: "7, 9"
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
@@ -38,9 +38,9 @@ affiliations:
     index: 6
   - name: Riverina Cancer Care Centre, Australia
     index: 7
-  - name: CancerCare Partners, Australia
-    index: 8
   - name: Painless Skin Cancer Treatment, Mississippi, USA
+    index: 8
+  - name: CancerCare Partners, Australia
     index: 9
 date: 10 February 2022
 bibliography: paper.bib
