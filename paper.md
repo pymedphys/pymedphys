@@ -21,6 +21,8 @@ authors:
     affiliation: 7
   - name: Paul King
     affiliation: 8
+  - name: Rafael Ayala
+    affiliation: 10
   - name: Matthew Sobolewski
     affiliation: "7, 9"
 affiliations:
@@ -42,6 +44,8 @@ affiliations:
     index: 8
   - name: CancerCare Partners, Australia
     index: 9
+  - name: Hospital G.U. Gregorio Marañón, Spain
+    index: 10  
 date: 10 February 2022
 bibliography: paper.bib
 ---
