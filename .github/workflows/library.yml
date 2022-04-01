@@ -46,7 +46,7 @@ jobs:
 
           echo "##[set-output name=complete;]$(echo 1)"
 
-        id: fix_issues 
+        id: fix_issues
 
       - name: Push changes
         if: failure() && steps.fix_issues.outputs.complete
