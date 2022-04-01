@@ -49,7 +49,7 @@ jobs:
         id: fix_issues
 
       - name: Push changes
-        if: failure() && ${{ steps.fix_issues.outputs.complete }} == "true"
+        if: ${{ failure() && steps.fix_issues.outputs.complete == "true" }}
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
