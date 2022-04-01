@@ -24,7 +24,7 @@ authors:
   - name: Rafael Ayala
     affiliation: 9
   - name: Matthew Sobolewski
-    affiliation: "7, 10" 
+    affiliation: "7, 10"
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
