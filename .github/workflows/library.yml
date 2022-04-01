@@ -40,11 +40,16 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git checkout $GITHUB_HEAD_REF
           git pull
           git commit -m "Fix pre-commit failures" -a
-          exit 1
+
+          echo "##[set-output name=complete;]$(echo true)"
+
+        id: fix_issues
+
       - name: Push changes
-        if: failure()
+        if: failure() && ${{ steps.fix_issues.outputs.complete }} == "true"
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
