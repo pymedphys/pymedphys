@@ -45,7 +45,7 @@ affiliations:
   - name: CancerCare Partners, Australia
     index: 9
   - name: Hospital G.U. Gregorio Marañón, Spain
-    index: 10  
+    index: 10
 date: 10 February 2022
 bibliography: paper.bib
 ---
