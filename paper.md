@@ -22,9 +22,9 @@ authors:
   - name: Paul King
     affiliation: 8
   - name: Rafael Ayala
-    affiliation: 10
+    affiliation: 9
   - name: Matthew Sobolewski
-    affiliation: "7, 9"
+    affiliation: "7, 10" 
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
@@ -42,9 +42,9 @@ affiliations:
     index: 7
   - name: Painless Skin Cancer Treatment, Mississippi, USA
     index: 8
-  - name: CancerCare Partners, Australia
-    index: 9
   - name: Hospital G.U. Gregorio Marañón, Spain
+    index: 9
+  - name: CancerCare Partners, Australia
     index: 10
 date: 10 February 2022
 bibliography: paper.bib
