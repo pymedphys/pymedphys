@@ -31,6 +31,12 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-cache
 
+      # https://stackoverflow.com/a/58035262/3912576
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
       - name: Run Pre-Commit
         run: |
           pip install pre-commit
@@ -40,11 +46,16 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git checkout ${{ steps.extract_branch.outputs.branch }}
           git pull
           git commit -m "Fix pre-commit failures" -a
+          echo "##[set-output name=complete;]$(echo 1)"
+
           exit 1
+        id: fix_issues
+
       - name: Push changes
-        if: failure()
+        if: failure() && ${{ steps.fix_issues.outputs.complete }}
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
