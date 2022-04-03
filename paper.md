@@ -12,40 +12,44 @@ authors:
   - name: Stuart Swerdloff
     affiliation: 2
   - name: Matthew Jennings
-    affiliation: 3
+    affiliation: 4
   - name: Phillip Chlap
-    affiliation: "4, 5"
+    affiliation: "5, 6"
+  - name: Derek Lane
+    affiliation: 3
   - name: Jacob Rembish
-    affiliation: 6
-  - name: Jacob McAloney
     affiliation: 7
-  - name: Paul King
+  - name: Jacob McAloney
     affiliation: 8
-  - name: Rafael Ayala
+  - name: Paul King
     affiliation: 9
+  - name: Rafael Ayala
+    affiliation: 10
   - name: Matthew Sobolewski
-    affiliation: "7, 10"
+    affiliation: "8, 11"
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
   - name: ELEKTA Pty Ltd, New Zealand
     index: 2
-  - name: Royal Adelaide Hospital, Australia
+  - name: Elekta AB
     index: 3
-  - name: University of News South Wales, Australia
+  - name: Royal Adelaide Hospital, Australia
     index: 4
-  - name: Ingham Institute, Australia
+  - name: University of New South Wales, Australia
     index: 5
-  - name: NYU Langone Health, USA
+  - name: Ingham Institute, Australia
     index: 6
-  - name: Riverina Cancer Care Centre, Australia
+  - name: NYU Langone Health, USA
     index: 7
-  - name: Painless Skin Cancer Treatment, Mississippi, USA
+  - name: Riverina Cancer Care Centre, Australia
     index: 8
-  - name: Hospital G.U. Gregorio Marañón, Spain
+  - name: Painless Skin Cancer Treatment, Mississippi, USA
     index: 9
-  - name: CancerCare Partners, Australia
+  - name: Hospital G.U. Gregorio Marañón, Spain
     index: 10
+  - name: CancerCare Partners, Australia
+    index: 11
 date: 10 February 2022
 bibliography: paper.bib
 ---
