@@ -33,7 +33,7 @@ class QuickCheck:
         self.raw_MSG = ""
         self.measurements = pd.DataFrame()
         self.data = ""
-        self.raw_data = ""
+        self.raw_data = b""
         self.connected = False
 
     def connect(self):
@@ -48,6 +48,7 @@ class QuickCheck:
     def close(self):
         self.sock.close()
         del self.sock
+        self.connected = False
 
     def prepare_qcheck(self):
         self.MSG = (
@@ -55,6 +56,11 @@ class QuickCheck:
             + codecs.decode("0d", "hex")
             + codecs.decode("0a", "hex")
         )
+
+    def socket_send(self):
+        self.data = ''
+        self.sock.sendto(self.MSG, (self.ip, self.port))
+        self.raw_data, _ = self.sock.recvfrom(4096)
 
     def send_quickcheck(self, message):
         self.raw_MSG = message
@@ -64,8 +70,7 @@ class QuickCheck:
 
         while True:
             try:
-                self.sock.sendto(self.MSG, (self.ip, self.port))
-                self.raw_data, _ = self.sock.recvfrom(4096)
+                self.socket_send()
                 data = self.raw_data.decode(encoding="utf-8")
                 self.data = data.strip("\r\n")
                 break
@@ -186,3 +191,4 @@ class QuickCheck:
                 meas = self.parse_measurements()
                 meas_list.append(meas)
             self.measurements = pd.DataFrame(meas_list)
+            print(self.measurements.iloc[0]["AV_CAX_Value"])
