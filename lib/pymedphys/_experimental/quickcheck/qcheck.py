@@ -166,19 +166,23 @@ class QuickCheck:
         return m
 
     def get_measurements(self):
+
+        if not self.connected:
+            raise ValueError('Quickcheck device not connected')
         self.send_quickcheck("MEASCNT")
         if "MEASCNT" not in self.data:
             self.send_quickcheck("MEASCNT")
         m = self.parse_measurements()
-        n_meas = m["MEASCNT"]
-        print("Receiving Quickcheck measurements")
-        meas_list = []
-        for m in tqdm.tqdm(range(n_meas)):
-            control = False
-            while not control:
-                self.send_quickcheck("MEASGET;INDEX-MEAS=" + "%d" % (m,))
-                control = self.raw_MSG in self.data
+        if "MEASCNT" in m:
+            n_meas = m["MEASCNT"]
+            print("Receiving Quickcheck measurements")
+            meas_list = []
+            for m in tqdm.tqdm(range(n_meas)):
+                control = False
+                while not control:
+                    self.send_quickcheck("MEASGET;INDEX-MEAS=" + "%d" % (m,))
+                    control = self.raw_MSG in self.data
 
-            meas = self.parse_measurements()
-            meas_list.append(meas)
-        self.measurements = pd.DataFrame(meas_list)
+                meas = self.parse_measurements()
+                meas_list.append(meas)
+            self.measurements = pd.DataFrame(meas_list)
