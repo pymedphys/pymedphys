@@ -14,7 +14,8 @@
 
 # pylint: disable = unused-import
 import socket
-from unittest import mock, TestCase
+from unittest import TestCase, mock
+
 from pymedphys.experimental.quickcheck import QuickCheck
 
 
