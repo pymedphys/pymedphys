@@ -24,6 +24,17 @@ from pymedphys._imports import tqdm
 
 
 class QuickCheck:
+    """A class to interact with PTW QuickCheck linac daily QA device.
+
+    ...
+
+    Attributes
+    ----------
+    ip : str
+        IP address of the device
+
+    """
+
     def __init__(self, ip):
         self.ip = ip
         self.port = 8123
@@ -37,6 +48,7 @@ class QuickCheck:
         self.connected = False
 
     def connect(self):
+        """Opens connection to the device and prints its serial number if successful"""
         print("UDP target IP:", self.ip)
         print("UDP target port:", self.port)
         self.send_quickcheck("SER")
@@ -46,31 +58,39 @@ class QuickCheck:
             print(self.data)
 
     def close(self):
+        """Closes connection to the device"""
         self.sock.close()
         del self.sock
         self.connected = False
 
-    def prepare_qcheck(self):
+    def _prepare_qcheck(self):
         self.MSG = (
             self.raw_MSG.encode()
             + codecs.decode("0d", "hex")
             + codecs.decode("0a", "hex")
         )
 
-    def socket_send(self):
-        self.data = ''
+    def _socket_send(self):
+        self.data = ""
         self.sock.sendto(self.MSG, (self.ip, self.port))
         self.raw_data, _ = self.sock.recvfrom(4096)
 
     def send_quickcheck(self, message):
+        """Sends instructions to device
+
+        Args:
+            message: str
+                Instruction to send to QuickCheck device. eg: SER, KEY, MEASCNT, MEASGET;INDEX-MEAS=xx
+
+        """
         self.raw_MSG = message
-        self.prepare_qcheck()
+        self._prepare_qcheck()
         max_retries = 3
         n_retry = 0
 
         while True:
             try:
-                self.socket_send()
+                self._socket_send()
                 data = self.raw_data.decode(encoding="utf-8")
                 self.data = data.strip("\r\n")
                 break
@@ -88,7 +108,7 @@ class QuickCheck:
                 n_retry += 1
                 print("Retrying connection {}/{}".format(n_retry, max_retries))
 
-    def parse_measurements(self):
+    def _parse_measurements(self):
         data_split = self.data.split(";")
         m = {}  # Dictionary with measurements
         if data_split[0] == "MEASGET":
@@ -171,13 +191,13 @@ class QuickCheck:
         return m
 
     def get_measurements(self):
-
+        """Retrieves all the measurements in the QuickCheck device and stores them in self.measurements"""
         if not self.connected:
-            raise ValueError('Quickcheck device not connected')
+            raise ValueError("Quickcheck device not connected")
         self.send_quickcheck("MEASCNT")
         if "MEASCNT" not in self.data:
             self.send_quickcheck("MEASCNT")
-        m = self.parse_measurements()
+        m = self._parse_measurements()
         if "MEASCNT" in m:
             n_meas = m["MEASCNT"]
             print("Receiving Quickcheck measurements")
@@ -188,7 +208,7 @@ class QuickCheck:
                     self.send_quickcheck("MEASGET;INDEX-MEAS=" + "%d" % (m,))
                     control = self.raw_MSG in self.data
 
-                meas = self.parse_measurements()
+                meas = self._parse_measurements()
                 meas_list.append(meas)
             self.measurements = pd.DataFrame(meas_list)
             print(self.measurements.iloc[0]["AV_CAX_Value"])
