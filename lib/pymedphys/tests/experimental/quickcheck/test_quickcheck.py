@@ -13,18 +13,19 @@
 # limitations under the License.
 
 # pylint: disable = unused-import
-import socket
+
 from unittest import TestCase, mock
 
 from pymedphys.experimental.quickcheck import QuickCheck
 
 
-def mock_socket_send(self):
-    message = self.MSG
+def mock_socket_send(qc):
+    """Function that mocks a PTW QuickCheck device"""
+    message = qc.MSG
     if message == b"SER\r\n":
-        self.raw_data = b"SER;1000\r\n"
+        qc.raw_data = b"SER;1000\r\n"
     elif message == b"MEASCNT\r\n":
-        self.raw_data = b"MEASCNT;3\r\n"
+        qc.raw_data = b"MEASCNT;3\r\n"
     elif message.startswith(b"MEASGET;INDEX-MEAS="):
         index = message.split(b"=")[1].decode()
         raw_string = (
@@ -43,13 +44,14 @@ def mock_socket_send(self):
             "=1];We=[Min=0.0000E+00;Max=0.0000E+00;Target=0.0000E+00;Norm=1.0000E+00;Value=0.0000E+00;"
             "Valid=1]];3229717283\r\n".format(index)
         )
-        self.raw_data = raw_string.encode()
+        qc.raw_data = raw_string.encode()
 
 
 @mock.patch.object(QuickCheck, "_socket_send", autospec=True)
 class TestQcMethods(TestCase):
     def test_connect(self, _socket_send):
-        qc = QuickCheck("192.168.1.1")
+        """Tests connection to QuickCheck device, asserts connection, serial number in data and disconnection"""
+        qc = QuickCheck("127.0.0.1")
         _socket_send.side_effect = mock_socket_send
         qc.connect()
         self.assertTrue(qc.connected)
@@ -58,7 +60,9 @@ class TestQcMethods(TestCase):
         self.assertFalse(qc.connected)
 
     def test_get_measurements(self, socket_send):
-        qc = QuickCheck("192.168.1.1")
+        """Tests measurements retrieval, checks shape of the measurements pandas dataframe and specific
+         values of the data"""
+        qc = QuickCheck("127.0.0.1")
         socket_send.side_effect = mock_socket_send
         qc.connect()
         qc.get_measurements()
@@ -69,7 +73,8 @@ class TestQcMethods(TestCase):
         self.assertEqual("VERSA BETA", qc.measurements.iloc[2]["WORK_Name"])
 
     def test_not_connected(self, socket_send):
-        qc = QuickCheck("192.168.1.1")
+        """Tests that ValueError is raised when attempting to retrieve measurements without calling connect() before"""
+        qc = QuickCheck("127.0.0.1")
         socket_send.side_effect = mock_socket_send
         self.assertFalse(qc.connected)
         with self.assertRaises(ValueError):
