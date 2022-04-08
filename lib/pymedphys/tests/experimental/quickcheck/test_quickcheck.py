@@ -61,7 +61,7 @@ class TestQcMethods(TestCase):
 
     def test_get_measurements(self, socket_send):
         """Tests measurements retrieval, checks shape of the measurements pandas dataframe and specific
-         values of the data"""
+        values of the data"""
         qc = QuickCheck("127.0.0.1")
         socket_send.side_effect = mock_socket_send
         qc.connect()
