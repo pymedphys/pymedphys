@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Rafael Ayala
+# Copyright (C) 2022 Rafael Ayala
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,13 +25,29 @@ from pymedphys._imports import tqdm
 
 class QuickCheck:
     """A class to interact with PTW QuickCheck linac daily QA device.
+    Common usage will look like:
+        from pymedphys.experimental import QuickCheck
+        qc = QuickCheck('QUICKCHECK-XXX')      QUICKCHECK-XXX (your QUICKCHECK device hostname or IP)
+        qc.connect()
+        qc.get_measurements()
+
+            Receiving Quickcheck measurements
+            100%|██████████| 108/108 [00:01<00:00, 58.57it/s]
+
+        qc.measurements.to_csv(csv_path)       csv_path to save data as csv file
 
     ...
 
     Attributes
     ----------
     ip : str
-        IP address of the device
+        IP address or hostname of the device
+    MSG : str
+        Instruction to be sent to QuickCheck device e.g. MEASCNT, KEY, SER...
+    measurements: pandas DataFrame
+        DataFrame that contains all measurements retrieved from QuickCheck
+    data: str
+        Processed received data string
 
     """
 
@@ -64,6 +80,7 @@ class QuickCheck:
         self.connected = False
 
     def _prepare_qcheck(self):
+        """Appends characters \r\n to MSG"""
         self.MSG = (
             self.raw_MSG.encode()
             + codecs.decode("0d", "hex")
@@ -71,6 +88,7 @@ class QuickCheck:
         )
 
     def _socket_send(self):
+        """Encapsulates socket sending of MSG and data reception, easier to mock in tests"""
         self.data = ""
         self.sock.sendto(self.MSG, (self.ip, self.port))
         self.raw_data, _ = self.sock.recvfrom(4096)
@@ -109,6 +127,7 @@ class QuickCheck:
                 print("Retrying connection {}/{}".format(n_retry, max_retries))
 
     def _parse_measurements(self):
+        """Parses received data based on sent MSG"""
         data_split = self.data.split(";")
         m = {}  # Dictionary with measurements
         if data_split[0] == "MEASGET":
@@ -211,4 +230,3 @@ class QuickCheck:
                 meas = self._parse_measurements()
                 meas_list.append(meas)
             self.measurements = pd.DataFrame(meas_list)
-            print(self.measurements.iloc[0]["AV_CAX_Value"])
