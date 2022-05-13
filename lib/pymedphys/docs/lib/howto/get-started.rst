@@ -48,7 +48,7 @@ the `pyenv installation`_ steps. Once pyenv is installed first run the following
 
     pyenv install 3.9.7
 
-And then, after that is completed follow it with:
+And then, after that is completed, follow it with:
 
 .. code:: cmd
 
