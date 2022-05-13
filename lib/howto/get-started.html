@@ -512,9 +512,12 @@ will likely be an issue for installing Python packages. As such follow the
 <p>On Linux or MacOS we recommend not using your system Python and instead
 managing your Python installation using <a class="reference external" href="https://github.com/pyenv/pyenv/blob/master/README.md">pyenv</a>.</p>
 <p>To achieve this first install <a class="reference external" href="https://github.com/pyenv/pyenv/wiki#suggested-build-environment">the python build environment</a>, and then follow
-the <a class="reference external" href="https://github.com/pyenv/pyenv-installer#install">pyenv installation</a> steps. Once pyenv is installed run the following:</p>
+the <a class="reference external" href="https://github.com/pyenv/pyenv-installer#install">pyenv installation</a> steps. Once pyenv is installed first run the following:</p>
 <div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>pyenv install 3.9.7
-pyenv global 3.9.7
+</pre></div>
+</div>
+<p>And then, after that is completed, follow it with:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>pyenv global 3.9.7
 </pre></div>
 </div>
 <p>You can choose to adjust the version number provided above to be the latest
