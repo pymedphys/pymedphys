@@ -152,7 +152,7 @@ def gamma_shell(
         options.dose_percent_threshold,
     )
 
-    logging.info("Distance threshold set to %.1f", options.distance_mm_threshold)
+    logging.info("Distance threshold set to %s", options.distance_mm_threshold)
     logging.info(
         "Lower dose cutoff set to %.2f (%.2f%% of normalisation)",
         options.lower_dose_cutoff,
