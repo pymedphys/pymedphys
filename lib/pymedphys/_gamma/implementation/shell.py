@@ -99,7 +99,7 @@ def gamma_shell(
         to 0.8 times your total RAM as determined by psutil.
     quiet : bool, optional
         Deprecated but maintained for now for backwards compatibility.
-        `gamma_shell` now utilises the `logging` module. You can set
+        `pymedphys.gamma` now utilises the `logging` module. You can set
         your desired verbosity by setting the corresponding logging
         level. Basic information is given for the `info` level.
         Additional information using for benchmarking or troubleshooting
