@@ -321,7 +321,7 @@ def gamma_loop(options: GammaInternalFixedOptions):
     force_search_distances = np.sort(options.distance_mm_threshold)
     while distance <= options.maximum_test_distance:
         logging.debug(
-            "\rCurrent distance: %.2f mm | " "Number of reference points remaining: %i",
+            "Current distance: %.2f mm | " "Number of reference points remaining: %i",
             distance,
             np.sum(to_be_checked),
         )
