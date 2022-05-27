@@ -18,6 +18,7 @@
 import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
+from warnings import warn
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -44,6 +45,7 @@ def gamma_shell(
     skip_once_passed=False,
     random_subset=None,
     ram_available=DEFAULT_RAM,
+    quiet=None,
 ):
     """Compare two dose grids with the gamma index.
 
@@ -95,6 +97,8 @@ def gamma_shell(
     ram_available : int, optional
         The number of bytes of RAM available for use by this function. Defaults
         to 0.8 times your total RAM as determined by psutil.
+    quiet : bool, optional
+        (Deprecated but maintained for now for backwards compatibility)
 
     Returns
     -------
@@ -121,7 +125,15 @@ def gamma_shell(
         skip_once_passed,
         random_subset,
         ram_available,
+        quiet,
     )
+    # TODO: here?
+    if quiet is not None:
+        warn(
+            "Parameter `quiet` will be deprecated in the future",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     if options.local_gamma:
         logging.info("Calcing using local normalisation point for gamma")
@@ -196,6 +208,7 @@ class GammaInternalFixedOptions:
     local_gamma: bool = False
     skip_once_passed: bool = False
     ram_available: Optional[int] = DEFAULT_RAM
+    quiet: Any = None
 
     def __post_init__(self):
         self.set_defaults()
@@ -230,7 +243,9 @@ class GammaInternalFixedOptions:
         skip_once_passed=False,
         random_subset=None,
         ram_available=None,
+        quiet=None,
     ):
+
         if max_gamma is None:
             max_gamma = np.inf
 
@@ -296,10 +311,20 @@ class GammaInternalFixedOptions:
             local_gamma,
             skip_once_passed,
             ram_available,
+            quiet,
         )
 
 
 def gamma_loop(options: GammaInternalFixedOptions):
+
+    # TODO: warning here too or no?
+    if options.quiet is not None:
+        warn(
+            "Parameter `quiet` will be deprecated in the future",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     still_searching_for_gamma = np.full_like(
         options.flat_dose_reference, True, dtype=bool
     )
@@ -416,6 +441,14 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     Calculated for a given distance from each reference point.
     """
+
+    # TODO: DOes this need to go here too?
+    if options.quiet is not None:
+        warn(
+            "Parameter `quiet` will be deprecated in the future",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     min_relative_dose_difference = np.nan * np.ones_like(
         options.flat_dose_reference[to_be_checked]
