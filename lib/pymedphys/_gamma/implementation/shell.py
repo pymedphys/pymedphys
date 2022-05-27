@@ -98,7 +98,12 @@ def gamma_shell(
         The number of bytes of RAM available for use by this function. Defaults
         to 0.8 times your total RAM as determined by psutil.
     quiet : bool, optional
-        (Deprecated but maintained for now for backwards compatibility)
+        Deprecated but maintained for now for backwards compatibility.
+        `gamma_shell` now utilises the `logging` module. You can set
+        your desired verbosity by setting the corresponding logging
+        level. Basic information is given for the `info` level.
+        Additional information using for benchmarking or troubleshooting
+        performance is provided for the `debug` level.
 
     Returns
     -------
@@ -106,6 +111,13 @@ def gamma_shell(
         The array of gamma values the same shape as that
         given by the reference coordinates and dose.
     """
+
+    if quiet is not None:
+        warn(
+            "Parameter `quiet` will be deprecated in the future",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     if max_gamma is None:
         max_gamma = np.inf
@@ -127,13 +139,6 @@ def gamma_shell(
         ram_available,
         quiet,
     )
-    # TODO: here?
-    if quiet is not None:
-        warn(
-            "Parameter `quiet` will be deprecated in the future",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
     if options.local_gamma:
         logging.info("Calcing using local normalisation point for gamma")
@@ -317,14 +322,6 @@ class GammaInternalFixedOptions:
 
 def gamma_loop(options: GammaInternalFixedOptions):
 
-    # TODO: warning here too or no?
-    if options.quiet is not None:
-        warn(
-            "Parameter `quiet` will be deprecated in the future",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
     still_searching_for_gamma = np.full_like(
         options.flat_dose_reference, True, dtype=bool
     )
@@ -441,14 +438,6 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     Calculated for a given distance from each reference point.
     """
-
-    # TODO: DOes this need to go here too?
-    if options.quiet is not None:
-        warn(
-            "Parameter `quiet` will be deprecated in the future",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
     min_relative_dose_difference = np.nan * np.ones_like(
         options.flat_dose_reference[to_be_checked]
