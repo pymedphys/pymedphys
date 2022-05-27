@@ -15,7 +15,7 @@
 """Compare two dose grids with the gamma index.
 """
 
-import sys
+import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -44,7 +44,6 @@ def gamma_shell(
     skip_once_passed=False,
     random_subset=None,
     ram_available=DEFAULT_RAM,
-    quiet=False,
 ):
     """Compare two dose grids with the gamma index.
 
@@ -96,9 +95,6 @@ def gamma_shell(
     ram_available : int, optional
         The number of bytes of RAM available for use by this function. Defaults
         to 0.8 times your total RAM as determined by psutil.
-    quiet : bool, optional
-        Used to quiet informational printing during function usage. Defaults to
-        False.
 
     Returns
     -------
@@ -125,27 +121,26 @@ def gamma_shell(
         skip_once_passed,
         random_subset,
         ram_available,
-        quiet,
     )
 
-    if not options.quiet:
-        if options.local_gamma:
-            print("Calcing using local normalisation point for gamma")
-        else:
-            print("Calcing using global normalisation point for gamma")
-        print("Global normalisation set to {}".format(options.global_normalisation))
-        print(
-            "Global dose threshold set to {} ({}% of normalisation)".format(
-                options.global_dose_threshold, options.dose_percent_threshold
-            )
-        )
-        print("Distance threshold set to {}".format(options.distance_mm_threshold))
-        print(
-            "Lower dose cutoff set to {} ({}% of normalisation)".format(
-                options.lower_dose_cutoff, lower_percent_dose_cutoff
-            )
-        )
-        print("")
+    if options.local_gamma:
+        logging.info("Calcing using local normalisation point for gamma")
+    else:
+        logging.info("Calcing using global normalisation point for gamma")
+
+    logging.info("Global normalisation set to %f", options.global_normalisation)
+    logging.info(
+        "Global dose threshold set to %.2f (%.2f%% of normalisation)",
+        options.global_dose_threshold,
+        options.dose_percent_threshold,
+    )
+
+    logging.info("Distance threshold set to %.1f", options.distance_mm_threshold)
+    logging.info(
+        "Lower dose cutoff set to %.2f (%.2f%% of normalisation)",
+        options.lower_dose_cutoff,
+        lower_percent_dose_cutoff,
+    )
 
     current_gamma = gamma_loop(options)
 
@@ -164,8 +159,7 @@ def gamma_shell(
 
             gamma[key] = gamma_temp
 
-    if not options.quiet:
-        print("\nComplete!")
+    logging.info("Complete!")
 
     if len(gamma.keys()) == 1:
         gamma = next(iter(gamma.values()))
@@ -202,7 +196,6 @@ class GammaInternalFixedOptions:
     local_gamma: bool = False
     skip_once_passed: bool = False
     ram_available: Optional[int] = DEFAULT_RAM
-    quiet: bool = False
 
     def __post_init__(self):
         self.set_defaults()
@@ -237,7 +230,6 @@ class GammaInternalFixedOptions:
         skip_once_passed=False,
         random_subset=None,
         ram_available=None,
-        quiet=False,
     ):
         if max_gamma is None:
             max_gamma = np.inf
@@ -304,7 +296,6 @@ class GammaInternalFixedOptions:
             local_gamma,
             skip_once_passed,
             ram_available,
-            quiet,
         )
 
 
@@ -329,13 +320,11 @@ def gamma_loop(options: GammaInternalFixedOptions):
 
     force_search_distances = np.sort(options.distance_mm_threshold)
     while distance <= options.maximum_test_distance:
-        if not options.quiet:
-            sys.stdout.write(
-                "\rCurrent distance: {0:.2f} mm | "
-                "Number of reference points remaining: {1}".format(
-                    distance, np.sum(to_be_checked)
-                )
-            )
+        logging.debug(
+            "\rCurrent distance: %.2f mm | " "Number of reference points remaining: %i",
+            distance,
+            np.sum(to_be_checked),
+        )
 
         min_relative_dose_difference = calculate_min_dose_difference(
             options, distance, to_be_checked, distance_step_size
@@ -450,13 +439,11 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     num_slices = np.floor(estimated_ram_needed / options.ram_available).astype(int) + 1
 
-    if not options.quiet:
-        sys.stdout.write(
-            " | Points tested per reference point: {} | RAM split count: {}".format(
-                num_points_in_shell, num_slices
-            )
-        )
-        sys.stdout.flush()
+    logging.debug(
+        " | Points tested per reference point: %i | RAM split count: %i",
+        num_points_in_shell,
+        num_slices,
+    )
 
     all_checks = np.where(np.ravel(to_be_checked))[0]
     index = np.arange(len(all_checks))
