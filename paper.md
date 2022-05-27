@@ -66,29 +66,35 @@ Project [@astropy].
 
 # Statement of need
 
-As the treatment delivery methods used in radiation oncology continue to
-improve, the complexity associated with ensuring precise and accurate delivery
-continues to increase. In response, many medical physicists are turning toward
-software solutions to help maximize efficiency and quality of care. It is
-common for medical physicists to develop their own in-house code for performing
-clinical tasks; many of which have been standardized through recommendations by
-organizations such as the American Association of Physicists in Medicine
-(AAPM). This can often lead to the "reinvention of the wheel", where physicists
-are wasting time writing code to serve a purpose that someone else has already
-accomplished.
+Medical radiation applications are subject to fast-paced technological
+advancements. This is particularly true in the field of radiation oncology,
+where the implementation of increasingly sophisticated technologies requires
+increasingly complex processes to maintain the improving standard of care. To
+help address this challenge, software tools that improve the quality, safety
+and efficiency of clinical tasks are increasingly being developed "in-house".
+Commercial options are often prohibitively expensive or insufficiently tailored
+to an individual clinic's needs. On the other hand, in-house development
+efforts are often limited to a single institution. Similar tools that could
+otherwise be shared are instead "reinvented" in clinics worldwide on a routine
+basis. Moreover, individual institutions typically lack the personnel and
+resources to incorporate simple aspects of good development practice or to
+properly maintain in-house software.
 
 By creating and promoting an open-source repository, PyMedPhys aims to improve
-the quality and accessibility of exisiting software solutions to problems faced by
-medical physicists. PyMedPhys is currently implemented around the world for a handful of
-applications. Many parties have embraced the gamma analysis module
-[@galic2020method; @pastor2021learning; @rodriguez2020new;
-@spezialetti2021using; @castle2022; @tsuneda2021plastic; @cronholm2020mri;
-@milan2019evaluation; @gajewski2021commissioning; @lysakovski2021development],
-while implementations of the electron cutout factor module and others [@baltz2021validation;
-@rembish2021automating; @douglass2021deepwl] have also been reported. Additionally, the work has been recognized by the European
-Society for Radiotherapy and Oncology (ESTRO) and referenced as recommended
-literature in their 3rd Edition of Core Curriculum for Medical Physics Experts
-in Radiotherapy [@bertcatharine].
+the quality and accessibility of existing software solutions to problems faced
+across a range of medical radiation applications, especially those
+traditionally within the remit of medical physicists. PyMedPhys is currently
+implemented around the world for a handful of applications.
+Many parties have embraced the gamma analysis module [@galic2020method;
+@pastor2021learning; @rodriguez2020new; @spezialetti2021using; @castle2022;
+@tsuneda2021plastic; @cronholm2020mri; @milan2019evaluation;
+@gajewski2021commissioning; @lysakovski2021development], while implementations
+of the electron cutout factor module and others [@baltz2021validation;
+@rembish2021automating; @douglass2021deepwl] have also been reported.
+Additionally, the work has been recognized by the European Society for
+Radiotherapy and Oncology (ESTRO) and referenced as recommended literature in
+their 3rd Edition of Core Curriculum for Medical Physics Experts in
+Radiotherapy [@bertcatharine].
 
 # Acknowledgements
 
