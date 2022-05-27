@@ -12,11 +12,11 @@ authors:
   - name: Stuart Swerdloff
     affiliation: 2
   - name: Matthew Jennings
-    affiliation: 4
-  - name: Phillip Chlap
-    affiliation: "5, 6"
-  - name: Derek Lane
     affiliation: 3
+  - name: Phillip Chlap
+    affiliation: "4, 5"
+  - name: Derek Lane
+    affiliation: 6
   - name: Jacob Rembish
     affiliation: 7
   - name: Jacob McAloney
@@ -32,13 +32,13 @@ affiliations:
     index: 1
   - name: ELEKTA Pty Ltd, New Zealand
     index: 2
-  - name: Elekta AB
-    index: 3
   - name: Royal Adelaide Hospital, Australia
-    index: 4
+    index: 3
   - name: University of New South Wales, Australia
-    index: 5
+    index: 4
   - name: Ingham Institute, Australia
+    index: 5
+  - name: Elekta AB
     index: 6
   - name: NYU Langone Health, USA
     index: 7
