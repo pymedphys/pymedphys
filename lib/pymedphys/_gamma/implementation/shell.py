@@ -145,7 +145,7 @@ def gamma_shell(
     else:
         logging.info("Calcing using global normalisation point for gamma")
 
-    logging.info("Global normalisation set to %f", options.global_normalisation)
+    logging.info("Global normalisation set to %.3f", options.global_normalisation)
     logging.info(
         "Global dose threshold set to %.2f (%.2f%% of normalisation)",
         options.global_dose_threshold,
@@ -154,7 +154,7 @@ def gamma_shell(
 
     logging.info("Distance threshold set to %s", options.distance_mm_threshold)
     logging.info(
-        "Lower dose cutoff set to %.2f (%.2f%% of normalisation)",
+        "Lower dose cutoff set to %.3f (%.1f%% of normalisation)",
         options.lower_dose_cutoff,
         lower_percent_dose_cutoff,
     )
