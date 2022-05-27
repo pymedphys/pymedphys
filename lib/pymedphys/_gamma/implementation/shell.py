@@ -440,7 +440,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
     num_slices = np.floor(estimated_ram_needed / options.ram_available).astype(int) + 1
 
     logging.debug(
-        " | Points tested per reference point: %i | RAM split count: %i",
+        "Points tested per reference point: %i | RAM split count: %i",
         num_points_in_shell,
         num_slices,
     )
