@@ -17,7 +17,7 @@ This project adheres to
 
 ### New features and enhancements
 
-* The Gamma tool now utilises the `logging` module. The `quiet`parameter for
+* The Gamma tool now utilises the `logging` module. The `quiet` parameter for
   `pymedphys.gamma` is deprecated but its use is non-breaking (for now).
 
 ## [0.38.0]
