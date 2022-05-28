@@ -36,6 +36,7 @@ More Advanced Options
 .. _`Setting up OpenSSH on Windows 10`: ../other/win-open-ssh.html
 .. _`Add Jupyter Kernel to Poetry`: ../other/add-jupyter-kernel.html
 
+
 Opinionated Recommendations
 ===========================
 
