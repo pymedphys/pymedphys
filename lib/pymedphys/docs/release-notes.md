@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### New features and enhancements
+
+* The Gamma tool now utilises the `logging` module. The `quiet` parameter for
+  `pymedphys.gamma` is deprecated but its use is non-breaking (for now).
+
 ## [0.38.0]
 
 ### News around this release
