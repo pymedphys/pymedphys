@@ -98,6 +98,7 @@ packages = [
     "pymedphys.tests.experimental.pinnacle",
     "pymedphys.tests.experimental.profiler",
     "pymedphys.tests.experimental.pseudonymisation",
+    "pymedphys.tests.experimental.quickcheck",
     "pymedphys.tests.experimental.wlutz",
     "pymedphys.tests.gamma",
     "pymedphys.tests.icom",
