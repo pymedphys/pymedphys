@@ -116,7 +116,7 @@ pre-commit==2.19.0; python_version >= "3.7"
 premailer==3.10.0
 prometheus-client==0.14.1; python_version >= "3.7"
 prompt-toolkit==3.0.29; python_full_version >= "3.6.2" and python_version >= "3.8"
-protobuf==4.21.1; python_version >= "3.7"
+protobuf==3.18.1; python_version >= "3.5"
 psutil==5.9.1; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
 ptyprocess==0.7.0; sys_platform != "win32" and python_version >= "3.8" and os_name != "nt"
 pure-eval==0.2.2; python_version >= "3.8"
