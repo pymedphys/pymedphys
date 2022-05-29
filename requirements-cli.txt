@@ -1,4 +1,2 @@
-numpy==1.22.4; python_version >= "3.8"
-scipy==1.8.1; python_version >= "3.8" and python_version < "3.11"
 toml==0.10.2; (python_version >= "2.6" and python_full_version < "3.0.0") or (python_full_version >= "3.3.0")
 typing-extensions==4.2.0; python_version >= "3.7"
