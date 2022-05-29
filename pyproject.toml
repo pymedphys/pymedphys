@@ -69,11 +69,6 @@ plotly = { version = "*", optional = true }  # groups = ["user", "dev"]
 fsspec = { version = "*", optional = true }  # groups = ["user", "dev"]
 dicompyler-core = { version = "*", optional = true }  # groups = ["user", "dev"]
 scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "mosaiq"]
-
-# Versions of imageio between 2.11 and 2.13 were tested and each got an error
-# similar to the following within the `test_lossless_jpeg` test.
-# $ poetry run pymedphys dev tests -k test_lossless_jpeg
-# imageio.core.request.InitializationError: `TIFF` can not write to `/tmp/tmp6il3r7gi/output.ppm`
 imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # NumPy's lower bound here is for typing support
