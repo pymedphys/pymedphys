@@ -155,6 +155,7 @@ package_data = {
 install_requires = ["typing-extensions"]
 
 extras_require = {
+    ':extra == "dev" or extra == "user"': ["scipy==1.8.1"],
     "cli": ["toml"],
     "comparables": ["flashgamma"],
     "dev": [
@@ -167,7 +168,6 @@ extras_require = {
         "requests",
         "python-dateutil",
         "matplotlib",
-        "scipy",
         "xarray",
         "pymssql",
         "sqlalchemy<1.4",
@@ -255,7 +255,6 @@ extras_require = {
         "requests",
         "python-dateutil",
         "matplotlib",
-        "scipy",
         "xarray",
         "pymssql",
         "sqlalchemy<1.4",
