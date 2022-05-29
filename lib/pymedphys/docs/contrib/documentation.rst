@@ -25,12 +25,6 @@ build the documentation:
 
     poetry run pymedphys dev docs
 
-.. note::
-
-    On Windows to build the documentation you currently need to be using
-    Python 3.7. To track the requirements for building the documentation on
-    Windows see
-    <https://jupyterbook.org/advanced/advanced.html#working-on-windows>
 
 Docstring extraction
 --------------------

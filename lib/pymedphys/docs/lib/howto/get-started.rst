@@ -42,11 +42,16 @@ On Linux or MacOS we recommend not using your system Python and instead
 managing your Python installation using `pyenv`_.
 
 To achieve this first install `the python build environment`_, and then follow
-the `pyenv installation`_ steps. Once pyenv is installed run the following:
+the `pyenv installation`_ steps. Once pyenv is installed first run the following:
 
 .. code:: cmd
 
     pyenv install 3.9.7
+
+And then, after that is completed, follow it with:
+
+.. code:: cmd
+
     pyenv global 3.9.7
 
 You can choose to adjust the version number provided above to be the latest
