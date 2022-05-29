@@ -74,9 +74,8 @@ def get_executable_even_when_embedded():
         except FileNotFoundError:
             pass
 
-    exe = str(
-        pathlib.Path(np.__file__).parents[4].joinpath("bin", "python")
-    )  # pylint: disable=no-member
+    current_path = pathlib.Path(np.__file__).parents[4]
+    exe = str(current_path.joinpath("bin", "python"))  # pylint: disable=no-member
 
     try:
         test_exe(exe)
@@ -84,9 +83,8 @@ def get_executable_even_when_embedded():
     except FileNotFoundError:
         pass
 
-    exe = str(
-        pathlib.Path(np.__file__).parents[3].joinpath("python")
-    )  # pylint: disable=no-member
+    current_path = pathlib.Path(np.__file__).parents[3]
+    exe = str(current_path.joinpath("python"))  # pylint: disable=no-member
 
     try:
         test_exe(exe)
