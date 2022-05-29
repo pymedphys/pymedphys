@@ -1579,17 +1579,6 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
-name = "pockets"
-version = "0.9.1"
-description = "A collection of helpful Python tools!"
-category = "main"
-optional = true
-python-versions = "*"
-
-[package.dependencies]
-six = ">=1.5.2"
-
-[[package]]
 name = "pre-commit"
 version = "2.19.0"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
@@ -2525,18 +2514,6 @@ python-versions = ">=3.5"
 test = ["pytest", "flake8", "mypy"]
 
 [[package]]
-name = "sphinxcontrib-napoleon"
-version = "0.7"
-description = "Sphinx \"napoleon\" extension."
-category = "main"
-optional = true
-python-versions = "*"
-
-[package.dependencies]
-pockets = ">=0.3"
-six = ">=1.5.2"
-
-[[package]]
 name = "sphinxcontrib-qthelp"
 version = "1.0.3"
 description = "sphinxcontrib-qthelp is a sphinx extension which outputs QtHelp document."
@@ -3025,9 +3002,9 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [extras]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["Pillow", "PyYAML", "astroid", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pyoxidizer", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
+dev = ["Pillow", "PyYAML", "astroid", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pyoxidizer", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 dicom = ["pydicom", "pynetdicom"]
-docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme", "sphinxcontrib-napoleon"]
+docs = ["jupyter-book", "networkx", "sphinx-argparse", "sphinx-book-theme"]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy"]
@@ -3038,7 +3015,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "9cc0ea2716305c48d26cb77c469adff99c4258c557abdc9d418712ad008741e4"
+content-hash = "7e10d78b622108255e617439629c93a8fc3f56372904a972482a3ca04d18cf58"
 
 [metadata.files]
 alabaster = [
@@ -3938,10 +3915,6 @@ pluggy = [
     {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
-pockets = [
-    {file = "pockets-0.9.1-py2.py3-none-any.whl", hash = "sha256:68597934193c08a08eb2bf6a1d85593f627c22f9b065cc727a4f03f669d96d86"},
-    {file = "pockets-0.9.1.tar.gz", hash = "sha256:9320f1a3c6f7a9133fe3b571f283bcf3353cd70249025ae8d618e40e9f7e92b3"},
-]
 pre-commit = [
     {file = "pre_commit-2.19.0-py2.py3-none-any.whl", hash = "sha256:10c62741aa5704faea2ad69cb550ca78082efe5697d6f04e5710c3c229afdd10"},
     {file = "pre_commit-2.19.0.tar.gz", hash = "sha256:4233a1e38621c87d9dda9808c6606d7e7ba0e087cd56d3fe03202a01d2919615"},
@@ -4647,10 +4620,6 @@ sphinxcontrib-htmlhelp = [
 sphinxcontrib-jsmath = [
     {file = "sphinxcontrib-jsmath-1.0.1.tar.gz", hash = "sha256:a9925e4a4587247ed2191a22df5f6970656cb8ca2bd6284309578f2153e0c4b8"},
     {file = "sphinxcontrib_jsmath-1.0.1-py2.py3-none-any.whl", hash = "sha256:2ec2eaebfb78f3f2078e73666b1415417a116cc848b72e5172e596c871103178"},
-]
-sphinxcontrib-napoleon = [
-    {file = "sphinxcontrib-napoleon-0.7.tar.gz", hash = "sha256:407382beed396e9f2d7f3043fad6afda95719204a1e1a231ac865f40abcbfcf8"},
-    {file = "sphinxcontrib_napoleon-0.7-py2.py3-none-any.whl", hash = "sha256:711e41a3974bdf110a484aec4c1a556799eb0b3f3b897521a018ad7e2db13fef"},
 ]
 sphinxcontrib-qthelp = [
     {file = "sphinxcontrib-qthelp-1.0.3.tar.gz", hash = "sha256:4c33767ee058b70dba89a6fc5c1892c0d57a54be67ddd3e7875a18d14cba5a72"},
