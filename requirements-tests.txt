@@ -4,7 +4,6 @@ attrs==21.4.0; (python_version >= "2.7" and python_full_version < "3.0.0") or (p
 colorama==0.4.4; python_full_version >= "3.6.2" and platform_system == "Windows" and sys_platform == "win32" and python_version >= "3.7" and (python_version >= "3.7" and python_full_version < "3.0.0" and sys_platform == "win32" or sys_platform == "win32" and python_version >= "3.7" and python_full_version >= "3.5.0")
 dill==0.3.5.1; python_full_version >= "3.7.0"
 hypothesis==5.49.0; python_version >= "3.6"
-importlib-metadata==4.11.4; python_version < "3.8" and python_version >= "3.7"
 iniconfig==1.1.1; python_version >= "3.7"
 isort==5.10.1; python_full_version >= "3.6.2" and python_version < "4.0"
 lazy-object-proxy==1.7.1; python_version >= "3.6" and python_full_version >= "3.6.2"
@@ -25,7 +24,5 @@ sortedcontainers==2.4.0; python_version >= "3.6"
 termcolor==1.1.0
 tomli==2.0.1; python_version < "3.11" and python_full_version >= "3.6.2" and python_version >= "3.7"
 tqdm==4.64.0; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
-typed-ast==1.5.4; implementation_name == "cpython" and python_version < "3.8" and python_full_version >= "3.6.2" and python_version >= "3.6"
 typing-extensions==4.2.0; python_version >= "3.7"
 wrapt==1.14.1; python_full_version >= "3.6.2"
-zipp==3.8.0; python_version < "3.8" and python_version >= "3.7"
