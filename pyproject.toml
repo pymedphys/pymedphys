@@ -74,7 +74,7 @@ scikit-learn = { version = "*", optional = true }  # groups = ["user", "dev", "m
 # similar to the following within the `test_lossless_jpeg` test.
 # $ poetry run pymedphys dev tests -k test_lossless_jpeg
 # imageio.core.request.InitializationError: `TIFF` can not write to `/tmp/tmp6il3r7gi/output.ppm`
-imageio = { version = "<2.11", optional = true }  # groups = ["user", "dev"]
+imageio = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # NumPy's lower bound here is for typing support
 numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "icom"]
@@ -83,6 +83,7 @@ numpy = { version = ">=1.20.2", optional = true }  # groups = ["user", "dev", "i
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "dev", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true }  # groups = ["user", "dev", "dicom"]
 
+# TODO Remove upper pin for pylibjpeg-libjpeg once support for Python 3.7 is dropped
 pylibjpeg-libjpeg = { version = "*", optional = true }  # groups = ["user", "dev"]
 
 # The following lower bounds are so that the versions with wheels are utilised
@@ -130,7 +131,7 @@ flashgamma = { version = "*", optional = true }  # groups = ["comparables"]
 # Documentation #
 # ------------- #
 sphinx-argparse = { version = "*", optional = true }  # groups = ["dev", "docs"]
-sphinxcontrib-napoleon = { version = "*", optional = true }  # groups = ["dev", "docs"]
+# sphinx-ext-napoleon = { version = "*", optional = true }  # groups = ["dev", "docs"]
 sphinx-book-theme = { version = "*", optional = true }  # groups = ["dev", "docs", "doctests"]
 jupyter-book = { version = ">=0.12.0", optional = true }  # groups = ["dev", "docs"]
 networkx = { version = "*", optional = true }  # groups = ["dev", "docs"]
