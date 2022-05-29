@@ -187,7 +187,7 @@ extras_require = {
         "numpy>=1.20.2",
         "pandas>=1.0.0",
         "pydicom>=2.0.0",
-        "pylibjpeg-libjpeg<1.3.0",
+        "pylibjpeg-libjpeg",
         "shapely>=1.7.0",
         "scikit-image>=0.18.1",
         "streamlit==1.4.0",
@@ -275,7 +275,7 @@ extras_require = {
         "numpy>=1.20.2",
         "pandas>=1.0.0",
         "pydicom>=2.0.0",
-        "pylibjpeg-libjpeg<1.3.0",
+        "pylibjpeg-libjpeg",
         "shapely>=1.7.0",
         "scikit-image>=0.18.1",
         "streamlit==1.4.0",
@@ -305,7 +305,7 @@ setup_kwargs = {
     "install_requires": install_requires,
     "extras_require": extras_require,
     "entry_points": entry_points,
-    "python_requires": ">=3.7,<4.0",
+    "python_requires": ">=3.8,<4.0",
 }
 
 
