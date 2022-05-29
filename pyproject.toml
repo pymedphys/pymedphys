@@ -49,12 +49,12 @@ requests = { version = "*", optional = true }        # groups = ["user", "dev"]
 python-dateutil = { version = "*", optional = true } # groups = ["user", "dev", "tests"]
 
 matplotlib = { version = "*", optional = true } # groups = ["user", "dev"]
-scipy = "1.8.1"                                 # groups = ["user", "dev"]
+scipy = { version = "*", optional = true }      # groups = ["user", "dev"]
 
 xarray = { version = "*", optional = true } # groups = ["user", "dev"]
 
 pymssql = { version = "*", optional = true }       # groups = ["user", "dev", "mosaiq"]
-sqlalchemy = { version = "<1.4", optional = true } # groups = ["user", "dev", "mosaiq"]
+sqlalchemy = { version = "*", optional = true }    # groups = ["user", "dev", "mosaiq"]
 natsort = { version = "*", optional = true }       # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }       # groups = ["user", "dev", "propagate"]
 toml = { version = "*", optional = true }          # groups = ["user", "cli", "dev", "mosaiq"]
