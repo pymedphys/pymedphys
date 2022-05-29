@@ -31,7 +31,7 @@ packages = [{ include = "pymedphys", from = "lib" }]
 include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8,<3.11"
 typing-extensions = "*"
 
 
@@ -49,7 +49,7 @@ requests = { version = "*", optional = true }  # groups = ["user", "dev"]
 python-dateutil = { version = "*", optional = true }  # groups = ["user", "dev", "tests"]
 
 matplotlib = { version = "*", optional = true }  # groups = ["user", "dev"]
-scipy = { version = "*", optional = true }  # groups = ["user", "dev"]
+scipy = "1.8.1"  # groups = ["user", "dev"]
 
 xarray = { version = "*", optional = true }  # groups = ["user", "dev"]
 
