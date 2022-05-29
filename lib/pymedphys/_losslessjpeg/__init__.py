@@ -17,4 +17,4 @@ def convert_lossless_jpeg(input_filepath, output_filepath=None):
         output_filepath = input_filepath.parent.joinpath(f"{input_filepath.stem}.tif")
 
     im = imread(input_filepath)
-    imageio.imwrite(str(output_filepath), im, format="TIFF")
+    imageio.imwrite(str(output_filepath), im, format=".tif")
