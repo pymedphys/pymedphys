@@ -30,7 +30,9 @@ CATEGORY = categories.PLANNING
 TITLE = "Mosaiq to CSV"
 
 LIB_ROOT = pathlib.Path(__file__).parents[3]
-TEST_DATA_DIR = LIB_ROOT.joinpath("tests", "mosaiq", "data")
+TEST_DATA_DIR = LIB_ROOT.joinpath(
+    "tests", "mosaiq", "data"
+)  # pylint: disable=no-member
 
 PASSWORD_REPLACE = b"\x00" * 15
 FIRST_NAME_USERNAME_MAP = {
