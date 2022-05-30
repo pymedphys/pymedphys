@@ -25,8 +25,10 @@ authors:
     affiliation: 9
   - name: Rafael Ayala
     affiliation: 10
+  - name: Fada Guan
+  - affiliation: 11  
   - name: Matthew Sobolewski
-    affiliation: "8, 11"
+    affiliation: "8, 12"
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
@@ -48,8 +50,10 @@ affiliations:
     index: 9
   - name: Hospital G.U. Gregorio Marañón, Spain
     index: 10
-  - name: CancerCare Partners, Australia
+  - name: Yale University School of Medicine, USA
     index: 11
+  - name: CancerCare Partners, Australia
+    index: 12
 date: 10 February 2022
 bibliography: paper.bib
 ---
