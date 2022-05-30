@@ -9,9 +9,9 @@ tags:
 authors:
   - name: Simon Biggs
     affiliation: 1
-  - name: Stuart Swerdloff
-    affiliation: 2
   - name: Matthew Jennings
+    affiliation: 2
+  - name: Stuart Swerdloff
     affiliation: 3
   - name: Phillip Chlap
     affiliation: "4, 5"
@@ -30,9 +30,9 @@ authors:
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
-  - name: ELEKTA Pty Ltd, New Zealand
-    index: 2
   - name: Royal Adelaide Hospital, Australia
+    index: 2
+  - name: ELEKTA Pty Ltd, New Zealand
     index: 3
   - name: University of New South Wales, Australia
     index: 4
