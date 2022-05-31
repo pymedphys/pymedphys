@@ -27,10 +27,12 @@ authors:
     affiliation: 10
   - name: Fada Guan
     affiliation: 11
+  - name: Nicola Lambri
+    affiliation: "12, 13"
   - name: Matthew Sobolewski
-    affiliation: "8, 12"
+    affiliation: "8, 14"
   - name: Cody Crewson
-    affiliation: 13
+    affiliation: 15
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
@@ -54,10 +56,14 @@ affiliations:
     index: 10
   - name: Yale University School of Medicine, USA
     index: 11
-  - name: CancerCare Partners, Australia
+  - name: IRCCS Humanitas Research Hospital, Italy
     index: 12
-  - name: Saskatchewan Cancer Agency, Canada
+  - name: Humanitas University, Italy
     index: 13
+  - name: CancerCare Partners, Australia
+    index: 14
+  - name: Saskatchewan Cancer Agency, Canada
+    index: 15
 date: 10 February 2022
 bibliography: paper.bib
 ---
