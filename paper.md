@@ -29,10 +29,10 @@ authors:
     affiliation: 11
   - name: Nicola Lambri
     affiliation: "12, 13"
-  - name: Matthew Sobolewski
-    affiliation: "8, 14"
   - name: Cody Crewson
-    affiliation: 15
+    affiliation: 14
+  - name: Matthew Sobolewski
+    affiliation: "8, 15"
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
@@ -60,9 +60,9 @@ affiliations:
     index: 12
   - name: Humanitas University, Italy
     index: 13
-  - name: CancerCare Partners, Australia
-    index: 14
   - name: Saskatchewan Cancer Agency, Canada
+    index: 14
+  - name: CancerCare Partners, Australia
     index: 15
 date: 10 February 2022
 bibliography: paper.bib
