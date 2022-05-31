@@ -29,6 +29,8 @@ authors:
     affiliation: 11
   - name: Matthew Sobolewski
     affiliation: "8, 12"
+  - name: Cody Crewson
+    affiliation: 13
 affiliations:
   - name: Radiotherapy AI, Australia
     index: 1
@@ -54,6 +56,8 @@ affiliations:
     index: 11
   - name: CancerCare Partners, Australia
     index: 12
+  - name: Saskatchewan Cancer Agency, Canada
+    index: 13
 date: 10 February 2022
 bibliography: paper.bib
 ---
