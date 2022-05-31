@@ -365,7 +365,7 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
-          git fetch origin $BRANCH || git remote add upstream_fork ${{ env.FORK_URL }} && git fetch upstream_fork
+          git fetch origin $BRANCH || git remote add upstream_fork $FORK_URL && git fetch upstream_fork
           git checkout $BRANCH
 
           git add poetry.lock setup.py
