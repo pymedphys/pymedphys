@@ -26,7 +26,7 @@ authors:
   - name: Rafael Ayala
     affiliation: 10
   - name: Fada Guan
-  - affiliation: 11
+    affiliation: 11
   - name: Matthew Sobolewski
     affiliation: "8, 12"
 affiliations:
