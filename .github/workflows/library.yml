@@ -359,7 +359,7 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
-          git fetch origin $BRANCH || git remote add upstream_fork https://github.com/nlambriICH/pymedphys.git && git fetch upstream_fork
+          git fetch origin $BRANCH || git remote add upstream_fork "https://github.com/${REPO}.git" && git fetch upstream_fork
           git checkout $BRANCH
 
           git add poetry.lock setup.py
@@ -371,9 +371,7 @@ jobs:
           git diff-index --quiet HEAD -- || echo "::set-output name=status::failed"
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
-          REPO: ${{ github.event.pull_request.repository }}
-          REPO1: ${{ github.event.pull_request.head.repo.full_name }}
-          REPO2: ${{ github.event.pull_request.base.repo.full_name }}
+          REPO: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Fix any issues
         if: steps.propagate-test.outputs.status == 'failed'
