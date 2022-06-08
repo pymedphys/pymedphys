@@ -93,6 +93,7 @@ def get_patient_name(connection, patient_id):
     patient_name_results = api.execute(
         connection,
         """
+        SET TEXTSIZE 2147483647
         SELECT
             Patient.Last_Name,
             Patient.First_Name

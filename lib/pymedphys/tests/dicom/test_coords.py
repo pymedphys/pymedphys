@@ -150,6 +150,9 @@ def test_non_square_pixels():
     prescription = 100 * rtdose.DoseGridScaling
     z, y, x = zyx
     index = np.argmin(np.abs(z - test_points[0][2]))
+
+    fig = None
+
     try:
         fig, ax = plt.subplots()
         cs = ax.contour(x, y, dose[index], levels=[2 * prescription], colors=["r"])
