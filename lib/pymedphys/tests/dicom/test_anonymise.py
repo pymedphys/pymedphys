@@ -278,6 +278,8 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     # baseline dict
     patient_name_tag = pydicom.datadict.tag_for_keyword("PatientName")
 
+    patient_name = None
+
     try:
         patient_name = get_baseline_dicom_dict().pop(patient_name_tag)
 

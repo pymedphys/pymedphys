@@ -36,6 +36,6 @@ sphinx:
     - sphinx.ext.doctest
     - sphinx.ext.viewcode
     - sphinx.ext.autosummary
-    - sphinxcontrib.napoleon
+    - sphinx.ext.napoleon
     - sphinxarg.ext
     - matplotlib.sphinxext.plot_directive

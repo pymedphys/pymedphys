@@ -106,7 +106,7 @@ class DicomListener(DicomConnectBase):
         if self.ae:
             self.ae.shutdown()
 
-    def on_c_echo(self, _):  # pylint: disable = no-self-use
+    def on_c_echo(self, _):
         """Respond to a C-ECHO service request."""
         logging.debug("C-ECHO!")
         return 0x0000

@@ -110,6 +110,8 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
             # but then when the user goes to close the buffer (click x on screen)
             # there will be an error.
 
+            original_file_name = None
+
             try:
                 original_file_name = uploaded_file_buffer.name
                 ds_input: pydicom.FileDataset = pydicom.dcmread(
