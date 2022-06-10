@@ -39,7 +39,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     r"""A simple tool to anonymise a DICOM dataset.
 
     You can find the list of DICOM keywords that are included in default
-    anonymisation `here <./identifying_keywords.json>`__.
+    anonymisation `here <https://github.com/pymedphys/pymedphys/blob/main/lib/pymedphys/_dicom/anonymise/identifying_keywords.json>`__.
     These were drawn from `DICOM Supp 142
     <https://www.dicomstandard.org/supplements/>`__
 
