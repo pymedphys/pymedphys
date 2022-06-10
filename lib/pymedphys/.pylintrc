@@ -3,7 +3,6 @@ init-hook = "import sys; sys.setrecursionlimit(2000)"
 
 [MESSAGES CONTROL]
 disable =
-    bad-continuation,
     missing-docstring,
     empty-docstring,
     too-few-public-methods,
