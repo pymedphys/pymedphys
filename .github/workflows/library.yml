@@ -107,9 +107,9 @@ jobs:
           # https://github.com/executablebooks/jupyter-book/issues/906 is fixed.
           # See https://jupyterbook.org/advanced/advanced.html#working-on-windows
           - os: "ubuntu"
-            python-version: 3.9
+            python-version: "3.10"
           - os: "windows"
-            python-version: 3.9
+            python-version: "3.10"
           - os: "macos"
             python-version: 3.8
 
@@ -162,7 +162,7 @@ jobs:
           pip install --upgrade pip setuptools
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1.1.1
+        uses: snok/install-poetry@v1
         with:
           version: 1.1.13
           virtualenvs-create: true
@@ -534,7 +534,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu", "macos", "windows"]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8, 3.9, 3.10]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
