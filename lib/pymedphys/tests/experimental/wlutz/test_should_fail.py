@@ -19,8 +19,8 @@ should fail instead of producing a return value.
 
 
 import pytest
-import toml
 from pymedphys._imports import numpy as np
+from pymedphys._imports import toml
 
 import pymedphys
 

@@ -3,7 +3,6 @@ init-hook = "import sys; sys.setrecursionlimit(2000)"
 
 [MESSAGES CONTROL]
 disable =
-    bad-continuation,
     missing-docstring,
     empty-docstring,
     too-few-public-methods,
@@ -36,6 +35,9 @@ disable =
     consider-iterating-dictionary,
     use-dict-literal,
     use-list-literal,
+    implicit-str-concat,
+    unnecessary-dunder-call,
+    unnecessary-list-index-lookup,
 
 [FORMAT]
 max-line-length=88
