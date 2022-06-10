@@ -35,6 +35,9 @@ disable =
     consider-iterating-dictionary,
     use-dict-literal,
     use-list-literal,
+    implicit-str-concat,
+    unnecessary-dunder-call,
+    unnecessary-list-index-lookup,
 
 [FORMAT]
 max-line-length=88
