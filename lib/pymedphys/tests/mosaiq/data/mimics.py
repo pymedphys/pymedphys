@@ -42,6 +42,7 @@ COLUMN_TYPES_TO_USE = {
     "float",
     "decimal",
     "binary",
+    "largebinary",
     "bit",
 }
 
@@ -50,7 +51,8 @@ COLUMN_TYPES_TO_USE = {
 # something else for now.
 TYPE_CASTING = {
     "char": "varchar",
-    "timestamp": "binary",
+    "timestamp": "largebinary",
+    "binary": "largebinary",
 }
 
 
@@ -88,7 +90,7 @@ def create_mimic_tables(database):
                 table = table.drop(columns=[column_name])
                 continue
 
-            if a_type == sql_types_map["binary"]:
+            if a_type == sql_types_map["largebinary"]:
                 table[column_name] = table[column_name].apply(
                     lambda x: base64.decodebytes(x.encode("utf-8"))
                 )
