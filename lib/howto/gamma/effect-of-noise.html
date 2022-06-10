@@ -4,11 +4,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>The Effects of Noise on Gamma &#8212; PyMedPhys</title>
     
-  <link href="../../../_static/css/theme.css" rel="stylesheet">
-  <link href="../../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
 
     
   <link rel="stylesheet"
@@ -18,22 +20,18 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin
     href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
 
-    
-      
-
-    
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" href="../../../_static/styles/sphinx-book-theme.css?digest=62ba249389abaaa9ffc34bf36a076bdc1d65ee18" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
     
-  <link rel="preload" as="script" href="../../../_static/js/index.be7d3bbb2ef33a8344ce.js">
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
 
     <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
@@ -41,12 +39,13 @@
     <script src="../../../_static/doctools.js"></script>
     <script src="../../../_static/clipboard.min.js"></script>
     <script src="../../../_static/copybutton.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=f31d14ad54b65d19161ba51d4ffff3a77ae00456"></script>
     <script>let toggleHintShow = 'Click to show';</script>
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../../../_static/togglebutton.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
-    <script src="../../../_static/sphinx-book-theme.d59cb220de22ca1c485ebbdc042f0030.js"></script>
+    <script src="../../../_static/design-tabs.js"></script>
     <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
 const thebe_selector = ".thebe,.cell"
 const thebe_selector_input = "pre"
@@ -76,7 +75,21 @@ const thebe_selector_output = ".output, .cell_output"
                     </script>
 
   </head>
-  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+<!-- Checkboxes to toggle the left sidebar -->
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle navigation sidebar">
+<label class="overlay overlay-navbar" for="__navigation">
+    <div class="visually-hidden">Toggle navigation sidebar</div>
+</label>
+<!-- Checkboxes to toggle the in-page toc -->
+<input type="checkbox" class="sidebar-toggle" name="__page-toc" id="__page-toc" aria-label="Toggle in-page Table of Contents">
+<label class="overlay overlay-pagetoc" for="__page-toc">
+    <div class="visually-hidden">Toggle in-page Table of Contents</div>
+</label>
+<!-- Headers at the top -->
+<div class="announcement header-item noprint"></div>
+<div class="header header-item noprint"></div>
+
     
     <div class="container-fluid" id="banner"></div>
 
@@ -85,9 +98,10 @@ const thebe_selector_output = ".output, .cell_output"
     <div class="container-xl">
       <div class="row">
           
-<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
-    
-        <div class="navbar-brand-box">
+<!-- Sidebar -->
+<div class="bd-sidebar noprint" id="site-navigation">
+    <div class="bd-sidebar__content">
+        <div class="bd-sidebar__top"><div class="navbar-brand-box">
     <a class="navbar-brand text-wrap" href="../../../index.html">
       
         <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
@@ -302,117 +316,262 @@ const thebe_selector_output = ".output, .cell_output"
 </ul>
 
     </div>
-</nav> <!-- To handle the deprecated key -->
-
-<div class="navbar_extra_footer">
-  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
-</div>
-
-</div>
-
-
-          
-
-
-          
-<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
-    
-    <div class="topbar container-xl fixed-top">
-    <div class="topbar-contents row">
-        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
-        <div class="col pl-md-4 topbar-main">
+</nav></div>
+        <div class="bd-sidebar__bottom">
+             <!-- To handle the deprecated key -->
             
-            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
-                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
-                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
-                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
-                <i class="fas fa-bars"></i>
-                <i class="fas fa-arrow-left"></i>
-                <i class="fas fa-arrow-up"></i>
-            </button>
-            
-            
-<div class="dropdown-buttons-trigger">
-    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
-            class="fas fa-download"></i></button>
-
-    <div class="dropdown-buttons">
-        <!-- ipynb file if we had a myst markdown file -->
-        
-        <!-- Download raw file -->
-        <a class="dropdown-buttons" href="../../../_sources/lib/howto/gamma/effect-of-noise.ipynb"><button type="button"
-                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
-                data-placement="left">.ipynb</button></a>
-        <!-- Download PDF via print -->
-        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
-                onclick="printPdf(this)" data-toggle="tooltip" data-placement="left">.pdf</button>
-    </div>
-</div>
-
-            <!-- Source interaction buttons -->
-
-<div class="dropdown-buttons-trigger">
-    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
-        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
-    <div class="dropdown-buttons sourcebuttons">
-        <a class="repository-button"
-            href="https://github.com/pymedphys/pymedphys"><button type="button" class="btn btn-secondary topbarbtn"
-                data-toggle="tooltip" data-placement="left" title="Source repository"><i
-                    class="fab fa-github"></i>repository</button></a>
-        <a class="issues-button"
-            href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/howto/gamma/effect-of-noise.html&body=Your%20issue%20content%20here."><button
-                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
-                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
-        <a class="edit-button" href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/howto/gamma/effect-of-noise.ipynb"><button
-                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
-                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
-    </div>
-</div>
-
-            <!-- Full screen (wrap in <a> to have style consistency -->
-
-<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
-        data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
-        title="Fullscreen mode"><i
-            class="fas fa-expand"></i></button></a>
-
-            <!-- Launch buttons -->
-
-<div class="dropdown-buttons-trigger">
-    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
-        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
-    <div class="dropdown-buttons">
-        
-        <a class="binder-button" href="https://mybinder.org/v2/gh/pymedphys/pymedphys/main?urlpath=lab/tree/lib/pymedphys/docs/lib/howto/gamma/effect-of-noise.ipynb"><button type="button"
-                class="btn btn-secondary topbarbtn" title="Launch Binder" data-toggle="tooltip"
-                data-placement="left"><img class="binder-button-logo"
-                    src="../../../_static/images/logo_binder.svg"
-                    alt="Interact on binder">Binder</button></a>
-        
-        
-        
-        <a class="colab-button" href="https://colab.research.google.com/github/pymedphys/pymedphys/blob/main/lib/pymedphys/docs/lib/howto/gamma/effect-of-noise.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
-                title="Launch Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
-                    src="../../../_static/images/logo_colab.png"
-                    alt="Interact on Colab">Colab</button></a>
-        
-        <button type="button" class="btn btn-secondary topbarbtn"
-            onclick="initThebeSBT()" title="Launch Thebe" data-toggle="tooltip" data-placement="left"><i
-                class="fas fa-play"></i><span style="margin-left: .4em;">Live Code</span></button>
-        
-    </div>
-</div>
-
-        </div>
-
-        <!-- Table of contents -->
-        <div class="d-none d-md-block col-md-2 bd-toc show noprint">
-            
-            <div class="tocsection onthispage pt-5 pb-3">
-                <i class="fas fa-list"></i> Contents
+            <div class="navbar_extra_footer">
+            Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
             </div>
-            <nav id="bd-toc-nav" aria-label="Page">
-                <ul class="visible nav section-nav flex-column">
+            
+        </div>
+    </div>
+    <div id="rtd-footer-container"></div>
+</div>
+
+
+          
+
+
+          
+<!-- A tiny helper pixel to detect if we've scrolled -->
+<div class="sbt-scroll-pixel-helper"></div>
+<!-- Main content -->
+<div class="col py-0 content-container">
+    
+    <div class="header-article row sticky-top noprint">
+        
+
+
+
+<div class="col py-1 d-flex header-article-main">
+    <div class="header-article__left">
+        
+        <label for="__navigation"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="right"
+title="Toggle navigation"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-bars"></i>
+  </span>
+
+</label>
+
+        
+    </div>
+    <div class="header-article__right">
+<div class="menu-dropdown menu-dropdown-launch-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Launch interactive content">
+      <i class="fas fa-rocket"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/main?urlpath=lab/tree/lib/pymedphys/docs/lib/howto/gamma/effect-of-noise.ipynb"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Launch on Binder"
+>
+  
+
+<span class="headerbtn__icon-container">
+  
+    <img src="../../../_static/images/logo_binder.svg">
+  </span>
+<span class="headerbtn__text-container">Binder</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://colab.research.google.com/github/pymedphys/pymedphys/blob/main/lib/pymedphys/docs/lib/howto/gamma/effect-of-noise.ipynb"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Launch on Colab"
+>
+  
+
+<span class="headerbtn__icon-container">
+  
+    <img src="../../../_static/images/logo_colab.png">
+  </span>
+<span class="headerbtn__text-container">Colab</span>
+</a>
+
+      </li>
+      
+      <li>
+        
+<button onclick="initThebeSBT()"
+  class="headerbtn headerbtn-launch-thebe"
+  data-toggle="tooltip"
+data-placement="left"
+title="Launch Thebe"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-play"></i>
+  </span>
+<span class="headerbtn__text-container">Live Code</span>
+</button>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+
+<button onclick="toggleFullScreen()"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="bottom"
+title="Fullscreen mode"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+<div class="menu-dropdown menu-dropdown-repository-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Source repositories">
+      <i class="fab fa-github"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Source repository"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="headerbtn__text-container">repository</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Flib/howto/gamma/effect-of-noise.html&body=Your%20issue%20content%20here."
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Open an issue"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="headerbtn__text-container">open issue</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/lib/howto/gamma/effect-of-noise.ipynb"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Edit this page"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="headerbtn__text-container">suggest edit</span>
+</a>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+
+<div class="menu-dropdown menu-dropdown-download-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Download this page">
+      <i class="fas fa-download"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="../../../_sources/lib/howto/gamma/effect-of-noise.ipynb"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Download source file"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="headerbtn__text-container">.ipynb</span>
+</a>
+
+      </li>
+      
+      <li>
+        
+<button onclick="printPdf(this)"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="left"
+title="Print to PDF"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="headerbtn__text-container">.pdf</span>
+</button>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+<label for="__page-toc"
+  class="headerbtn headerbtn-page-toc"
+  
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-list"></i>
+  </span>
+
+</label>
+
+    </div>
+</div>
+
+<!-- Table of contents -->
+<div class="col-md-3 bd-toc show noprint">
+    <div class="tocsection onthispage pt-5 pb-3">
+        <i class="fas fa-list"></i> Contents
+    </div>
+    <nav id="bd-toc-nav" aria-label="Page">
+        <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#defining-an-example-dose-reference">
    Defining an example dose reference
@@ -445,12 +604,11 @@ const thebe_selector_output = ".output, .cell_output"
  </li>
 </ul>
 
-            </nav>
-        </div>
-    </div>
+    </nav>
 </div>
-    <div id="main-content" class="row">
-        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+    </div>
+    <div class="article row">
+        <div class="col pl-md-3 pl-lg-5 content-container">
             <!-- Table of contents that is only displayed when printing the page -->
             <div id="jb-print-docs-body" class="onlyprint">
                 <h1>The Effects of Noise on Gamma</h1>
@@ -499,11 +657,12 @@ const thebe_selector_output = ".output, .cell_output"
                     </div>
                 </div>
             </div>
-            
+            <main id="main-content" role="main">
+                
               <div>
                 
-  <div class="tex2jax_ignore mathjax_ignore section" id="the-effects-of-noise-on-gamma">
-<h1>The Effects of Noise on Gamma<a class="headerlink" href="#the-effects-of-noise-on-gamma" title="Permalink to this headline">¶</a></h1>
+  <section class="tex2jax_ignore mathjax_ignore" id="the-effects-of-noise-on-gamma">
+<h1>The Effects of Noise on Gamma<a class="headerlink" href="#the-effects-of-noise-on-gamma" title="Permalink to this headline">#</a></h1>
 <p>Here is an example of the effects noise can have on gamma.
 Simply by adding noise to the evaluation distribution the Gamma <strong>goes from a passing rate of about <code class="docutils literal notranslate"><span class="pre">50%</span></code> to about <code class="docutils literal notranslate"><span class="pre">99%</span></code></strong>.
 For a Monte Carlo planning system this dose distribution includes statistical noise potentially pushing the Gamma pass rate artificially higher than should that noise be absent.</p>
@@ -531,25 +690,23 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 Requirement already satisfied: ipython&gt;=7.31.1 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from pymedphys) (8.4.0)
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: matplotlib-inline in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.1.3)
-Requirement already satisfied: stack-data in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.2.0)
-Requirement already satisfied: prompt-toolkit!=3.0.0,!=3.0.1,&lt;3.1.0,&gt;=2.0.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (3.0.29)
-Requirement already satisfied: decorator in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (5.1.1)
-Requirement already satisfied: setuptools&gt;=18.5 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (62.1.0)
-Requirement already satisfied: pickleshare in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.7.5)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: decorator in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (5.1.1)
 Requirement already satisfied: pexpect&gt;4.3 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (4.8.0)
-Requirement already satisfied: traitlets&gt;=5 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (5.2.1.post0)
-Requirement already satisfied: pygments&gt;=2.4.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (2.12.0)
-Requirement already satisfied: backcall in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.2.0)
+Requirement already satisfied: matplotlib-inline in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.1.3)
 Requirement already satisfied: jedi&gt;=0.16 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.18.1)
-</pre></div>
-</div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: parso&lt;0.9.0,&gt;=0.8.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from jedi&gt;=0.16-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (0.8.3)
+Requirement already satisfied: prompt-toolkit!=3.0.0,!=3.0.1,&lt;3.1.0,&gt;=2.0.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (3.0.29)
+Requirement already satisfied: setuptools&gt;=18.5 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (62.1.0)
+Requirement already satisfied: pygments&gt;=2.4.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (2.12.0)
+Requirement already satisfied: stack-data in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.2.0)
+Requirement already satisfied: backcall in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.2.0)
+Requirement already satisfied: traitlets&gt;=5 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (5.2.2.post1)
+Requirement already satisfied: pickleshare in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from ipython&gt;=7.31.1-&gt;pymedphys) (0.7.5)
+Requirement already satisfied: parso&lt;0.9.0,&gt;=0.8.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from jedi&gt;=0.16-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (0.8.3)
 Requirement already satisfied: ptyprocess&gt;=0.5 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from pexpect&gt;4.3-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (0.7.0)
 Requirement already satisfied: wcwidth in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from prompt-toolkit!=3.0.0,!=3.0.1,&lt;3.1.0,&gt;=2.0.0-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (0.2.5)
-Requirement already satisfied: pure-eval in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from stack-data-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (0.2.2)
 Requirement already satisfied: asttokens in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from stack-data-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (2.0.5)
 Requirement already satisfied: executing in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from stack-data-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (0.8.3)
+Requirement already satisfied: pure-eval in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from stack-data-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (0.2.2)
 Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.10/site-packages (from asttokens-&gt;stack-data-&gt;ipython&gt;=7.31.1-&gt;pymedphys) (1.16.0)
 </pre></div>
 </div>
@@ -598,8 +755,8 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 </div>
 </div>
 </div>
-<div class="section" id="defining-an-example-dose-reference">
-<h2>Defining an example dose reference<a class="headerlink" href="#defining-an-example-dose-reference" title="Permalink to this headline">¶</a></h2>
+<section id="defining-an-example-dose-reference">
+<h2>Defining an example dose reference<a class="headerlink" href="#defining-an-example-dose-reference" title="Permalink to this headline">#</a></h2>
 <p>Here we are defining an idealised square field using an exponential function. We are also creating a <code class="docutils literal notranslate"><span class="pre">coords</span></code> variable which we will be passing to the <code class="docutils literal notranslate"><span class="pre">pymedphys.gamma</span></code> function.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -670,9 +827,9 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 </div>
 </div>
 </div>
-</div>
-<div class="section" id="defining-an-example-evaluation-dose">
-<h2>Defining an example evaluation dose<a class="headerlink" href="#defining-an-example-evaluation-dose" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="defining-an-example-evaluation-dose">
+<h2>Defining an example evaluation dose<a class="headerlink" href="#defining-an-example-evaluation-dose" title="Permalink to this headline">#</a></h2>
 <p>Let’s scale our reference dose by a scaling factor. We have chosen above to scale by 3.5% purposefully so that the dose will go larger than the dose percent evaluation criterion of 3% that was chosen above.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -691,9 +848,9 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 <img alt="../../../_images/effect-of-noise_14_0.png" src="../../../_images/effect-of-noise_14_0.png" />
 </div>
 </div>
-</div>
-<div class="section" id="seeing-a-dose-difference">
-<h2>Seeing a dose difference<a class="headerlink" href="#seeing-a-dose-difference" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="seeing-a-dose-difference">
+<h2>Seeing a dose difference<a class="headerlink" href="#seeing-a-dose-difference" title="Permalink to this headline">#</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dose_diff</span> <span class="o">=</span> <span class="n">dose_eval</span> <span class="o">-</span> <span class="n">dose_ref</span>
@@ -714,9 +871,9 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 <img alt="../../../_images/effect-of-noise_16_0.png" src="../../../_images/effect-of-noise_16_0.png" />
 </div>
 </div>
-</div>
-<div class="section" id="evaluation-gamma">
-<h2>Evaluation Gamma<a class="headerlink" href="#evaluation-gamma" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="evaluation-gamma">
+<h2>Evaluation Gamma<a class="headerlink" href="#evaluation-gamma" title="Permalink to this headline">#</a></h2>
 <p>Now lets evaluate gamma for the distributions defined above. As expected, due to the dose being scaled larger than the dose threshold, quite a few points fail.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -747,7 +904,7 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_3484/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_3426/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_no_noise = pymedphys.gamma(
 </pre></div>
 </div>
@@ -755,9 +912,9 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 <img alt="../../../_images/effect-of-noise_18_2.png" src="../../../_images/effect-of-noise_18_2.png" />
 </div>
 </div>
-</div>
-<div class="section" id="investigating-the-effect-of-noise">
-<h2>Investigating the effect of noise<a class="headerlink" href="#investigating-the-effect-of-noise" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="investigating-the-effect-of-noise">
+<h2>Investigating the effect of noise<a class="headerlink" href="#investigating-the-effect-of-noise" title="Permalink to this headline">#</a></h2>
 <p>Let’s now slightly adjust our evaluation distribution by adding some random normal noise.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -831,7 +988,7 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_3484/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_3426/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_with_noise = pymedphys.gamma(
 </pre></div>
 </div>
@@ -839,9 +996,9 @@ Requirement already satisfied: six in /home/runner/work/pymedphys/pymedphys/.ven
 <img alt="../../../_images/effect-of-noise_24_2.png" src="../../../_images/effect-of-noise_24_2.png" />
 </div>
 </div>
-</div>
-<div class="section" id="conclusion">
-<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this headline">#</a></h2>
 <p>So, <code class="docutils literal notranslate"><span class="pre">pymedphys</span></code> does provide a gamma implementation, but should it be a defacto standard of validation? I highly recommend giving the following paper a read to highlight some other tools we can use to augment our usage of Gamma.</p>
 <blockquote>
 <div><p><a class="reference external" href="http://download.xuebalib.com/xuebalib.com.42814.pdf">Evaluating IMRT and VMAT dose accuracy: Practical examples of failure to detect systematic errors when applying a commonly used metric and action levels</a></p>
@@ -858,8 +1015,8 @@ metric’s insensitivity, supporting the argument that it is inappropriate as a 
 validation by medical device manufacturers and their clinical
 partners.</p>
 </div></blockquote>
-</div>
-</div>
+</section>
+</section>
 
     <script type="text/x-thebe-config">
     {
@@ -883,9 +1040,11 @@ partners.</p>
 
               </div>
               
-            
-                <!-- Previous / next buttons -->
-<div class='prev-next-area'> 
+            </main>
+            <footer class="footer-article noprint">
+                
+    <!-- Previous / next buttons -->
+<div class='prev-next-area'>
     <a class='left-prev' id="prev-link" href="../../ref/experimental/pinnacle.html" title="previous page">
         <i class="fas fa-angle-left"></i>
         <div class="prev-next-info">
@@ -901,24 +1060,28 @@ partners.</p>
     <i class="fas fa-angle-right"></i>
     </a>
 </div>
-            
+            </footer>
         </div>
     </div>
-    <footer class="footer">
-  <p>
+    <div class="footer-content row">
+        <footer class="col footer"><p>
+  
+    By the PyMedPhys community<br/>
+  
+      &copy; Copyright 2018-2021.<br/>
+</p>
+        </footer>
+    </div>
     
-      By the PyMedPhys community<br/>
-    
-        &copy; Copyright 2018-2021.<br/>
-  </p>
-</footer>
-</main>
+</div>
 
 
       </div>
     </div>
   
-  <script src="../../../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+
 
   </body>
 </html>
