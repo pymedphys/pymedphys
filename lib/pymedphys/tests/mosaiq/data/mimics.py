@@ -15,6 +15,7 @@
 
 import base64
 import functools
+import logging
 import pathlib
 from typing import Dict, Tuple, cast
 
@@ -70,6 +71,8 @@ def create_mimic_tables(database):
     }
 
     for table_name, table in tables.items():
+        logging.debug("Creating mimic table for %s", table_name)
+
         column_types = types_map[table_name]
         for column_name, a_type in column_types.items():
             try:
