@@ -141,13 +141,13 @@ def gamma_shell(
     )
 
     if options.local_gamma:
-        logging.info("Calcing using local normalisation point for gamma")
+        logging.info("Computing the gamma using local normalisation point")
     else:
-        logging.info("Calcing using global normalisation point for gamma")
+        logging.info("Computing the gamma using global normalisation point")
 
     logging.info("Global normalisation set to %.3f", options.global_normalisation)
     logging.info(
-        "Global dose threshold set to %.2f (%.2f%% of normalisation)",
+        "Global dose threshold set to %.3f (%.2f%% of normalisation)",
         options.global_dose_threshold,
         options.dose_percent_threshold,
     )

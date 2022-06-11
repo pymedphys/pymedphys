@@ -39,6 +39,13 @@
 .. toctree::
     :hidden:
     :maxdepth: 3
+    :caption: Tutorials
+
+    lib/tutes/gamma/gamma_tutorial
+
+.. toctree::
+    :hidden:
+    :maxdepth: 3
     :caption: How-to
 
     lib/howto/gamma/effect-of-noise
