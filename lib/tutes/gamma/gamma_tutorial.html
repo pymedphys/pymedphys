@@ -627,12 +627,17 @@ title="Print to PDF"
 </div>
 </div>
 <p><code>axes_reference</code> and <code>axes_evaluation</code> are tuples of numpy arrays, whose values define the grid coordinates in the DICOM frame of reference.</p>
-<p>Let’s check the shape of the reference image axes</p>
+<p>Let’s check the shape of the reference image axes:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">z_ref</span><span class="p">,</span> <span class="n">y_ref</span><span class="p">,</span> <span class="n">x_ref</span> <span class="o">=</span> <span class="n">axes_reference</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">z_ref</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">y_ref</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">x_ref</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152,) (158,) (254,)
 </pre></div>
 </div>
 </div>
@@ -643,6 +648,11 @@ title="Print to PDF"
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152, 158, 254)
 </pre></div>
 </div>
 </div>
@@ -681,9 +691,13 @@ title="Print to PDF"
 <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">cbar</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;[Dose Eval] - [Dose Ref] (Gy)&quot;</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
 <span class="n">cbar</span><span class="o">.</span><span class="n">formatter</span><span class="o">.</span><span class="n">set_powerlimits</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../../_images/gamma_tutorial_13_0.png" src="../../../_images/gamma_tutorial_13_0.png" />
 </div>
 </div>
 <p>As you can see, the largest dose differences are concentrated in small regions of the slices, which will end up in a fast gamma evaluation, as the computation will be immediate for those points where the dose difference is zero.</p>
@@ -705,8 +719,14 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Maximum reference dose:  1.95 Gy
+Dose threshold: 0.0195 Gy
+</pre></div>
 </div>
-<p>In order to see in detail the messages traced by the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/lib/ref/gamma.html">gamma</a>, we import the logging module and set the logging level to DEBUG</p>
+</div>
+</div>
+<p>In order to see in detail the messages traced by the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/lib/ref/gamma.html">gamma</a>, we import the logging module and set the logging level to DEBUG:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
@@ -725,6 +745,66 @@ title="Print to PDF"
     <span class="n">axes_reference</span><span class="p">,</span> <span class="n">dose_reference</span><span class="p">,</span> 
     <span class="n">axes_evaluation</span><span class="p">,</span> <span class="n">dose_evaluation</span><span class="p">,</span> 
     <span class="n">dose_percent_threshold</span><span class="p">,</span> <span class="n">distance_mm_threshold</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Computing the gamma using global normalisation point
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Global normalisation set to 1.946
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Global dose threshold set to 0.019 (1.00% of normalisation)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Distance threshold set to [1]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Lower dose cutoff set to 0.389 (20.0% of normalisation)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.00 mm | Number of reference points remaining: 106910
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 1 | RAM split count: 1
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.10 mm | Number of reference points remaining: 106910
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 23 | RAM split count: 1
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.20 mm | Number of reference points remaining: 28520
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 67 | RAM split count: 1
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.30 mm | Number of reference points remaining: 2888
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 135 | RAM split count: 1
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.40 mm | Number of reference points remaining: 602
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 227 | RAM split count: 1
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.50 mm | Number of reference points remaining: 128
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 348 | RAM split count: 1
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Complete!
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 2.69 s, sys: 634 ms, total: 3.32 s
+Wall time: 3.18 s
 </pre></div>
 </div>
 </div>
@@ -755,6 +835,11 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152, 158, 254)
+</pre></div>
+</div>
+</div>
 </div>
 <p>Let’s check the distribution of the gamma values to get a sense of the function output</p>
 <div class="cell docutils container">
@@ -770,6 +855,9 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<img alt="../../../_images/gamma_tutorial_27_0.png" src="../../../_images/gamma_tutorial_27_0.png" />
+</div>
 </div>
 <p>Once the gamma index distribution has been computed, one can consider the gamma pass rate, defined as the fraction of points having <span class="math notranslate nohighlight">\(\gamma\le 1\)</span>, to assess the agreement between the reference and evaluated dose distributions.</p>
 <p>Suppose that, for our purposes, we consider a gamma pass rate above 95% in order to have “passed” this comparison test.</p>
@@ -777,6 +865,11 @@ title="Print to PDF"
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pass rate(</span><span class="se">\u03B3</span><span class="s2">&lt;=1): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">[</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Pass rate(γ&lt;=1): 100.0%
 </pre></div>
 </div>
 </div>
@@ -792,6 +885,11 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Fraction of grid points where [Dose Eval] = [Dose Ref]: 39.5%
+</pre></div>
+</div>
+</div>
 </div>
 <p>In practice, calculations of 3D gamma index distributions can be very time consuming. The problem is further exacerbated in applications where multiple comparisons are required.</p>
 <p>For many applications, it is sufficient to simply calculate an accurate pass rate.</p>
@@ -802,7 +900,7 @@ title="Print to PDF"
 </ul>
 <p>Let’s see how these parameters affect the gamma calculation time.</p>
 <p>For simplicity, we restrict ourself on the z-slice with the highest disagreement.</p>
-<p>We also add a small shift to the evaluation dose distribution to obtain a worse gamma agreement which will make the computation slower</p>
+<p>We also add a small shift to the evaluation dose distribution to obtain a worse gamma agreement which will make the computation slower:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># add 1% of the evaluation dose standard deviation where the evaluation dose in non zero</span>
@@ -842,6 +940,12 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 791 ms, sys: 55.4 ms, total: 847 ms
+Wall time: 846 ms
+</pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -853,6 +957,9 @@ title="Print to PDF"
 <span class="n">title</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gamma passing rate: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../../_images/gamma_tutorial_41_0.png" src="../../../_images/gamma_tutorial_41_0.png" />
 </div>
 </div>
 <p>If we want to evaluate the gamma pass rate, we are uninterested in accurate gamma index values for <span class="math notranslate nohighlight">\(\gamma &gt; 1\)</span>.</p>
@@ -871,6 +978,12 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 508 ms, sys: 3.91 ms, total: 512 ms
+Wall time: 507 ms
+</pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -882,6 +995,9 @@ title="Print to PDF"
 <span class="n">title</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gamma passing rate: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../../_images/gamma_tutorial_44_0.png" src="../../../_images/gamma_tutorial_44_0.png" />
 </div>
 </div>
 <p>Notice how the gamma passing rate value (shown in the plot title) did not change. Of course now all the points with <span class="math notranslate nohighlight">\(\gamma &gt; 1.1\)</span> are collapsed to the 1.1 bin.</p>
@@ -901,6 +1017,12 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 428 ms, sys: 4 ms, total: 432 ms
+Wall time: 423 ms
+</pre></div>
+</div>
+</div>
 </div>
 <p>The <span class="math notranslate nohighlight">\(\gamma\)</span> index distribution should look something like the following plot</p>
 <div class="cell docutils container">
@@ -913,6 +1035,9 @@ title="Print to PDF"
 <span class="n">title</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gamma passing rate: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../../_images/gamma_tutorial_49_0.png" src="../../../_images/gamma_tutorial_49_0.png" />
 </div>
 </div>
 <p>As you can see, the computation time decreased and, despite the the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/lib/ref/gamma.html">gamma</a> function sampled one 10th of the points, the pass rate deviates by less than 1% from the true value. Therefore, you can use <code>random_subset</code> to get a sense of what could be the pass rate of the dose distributions you are assessing.</p>
@@ -930,16 +1055,16 @@ title="Print to PDF"
         },
         codeMirrorConfig: {
             theme: "abcdef",
-            mode: "pymedphys"
+            mode: "python"
         },
         kernelOptions: {
-            kernelName: "pymedphys",
+            kernelName: "python3",
             path: "./lib/tutes/gamma"
         },
         predefinedOutput: true
     }
     </script>
-    <script>kernelName = 'pymedphys'</script>
+    <script>kernelName = 'python3'</script>
 
               </div>
               
