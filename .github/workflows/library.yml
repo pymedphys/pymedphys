@@ -366,7 +366,7 @@ jobs:
 
           git remote set-url origin "https://github.com/${REPO}.git"
           git fetch origin $BRANCH
-git checkout $BRANCH
+          git checkout $BRANCH
 
           git add poetry.lock setup.py
           git commit -m "commit changes to poetry.lock and setup.py" || true
