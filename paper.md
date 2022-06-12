@@ -1,5 +1,5 @@
 ---
-title: "PyMedPhys: A community effort to develop an open standard library for Medical Physics in Python"
+title: "PyMedPhys: A community effort to develop an open, Python-based standard library for medical physics applications"
 tags:
   - Python
   - Medical Physics
@@ -70,13 +70,12 @@ bibliography: paper.bib
 
 # Summary
 
-PyMedPhys is an open-source medical physics Python library built by a community
-that values and prioritizes code sharing, review, improvement, and peer
-development. The overall goal of PyMedPhys is to provide medical physicists
-around the world with a free, open-source library of Python applications to
-simplify and enhance both their research and clinical work. It is inspired by
-the collaborative work of our physics peers in astronomy and the Astropy
-Project [@astropy].
+PyMedPhys is an open-source medical physics library built for Python by a
+diverse community that values and prioritizes code sharing, review,
+continuous improvement, and peer development. PyMedPhys aims to simplify
+and enhance both research and clinical work related to medical physics. It
+is inspired by the Astropy Project [@astropy]; a highly successful
+collaborative work of our physics peers in astronomy.
 
 # Statement of need
 
