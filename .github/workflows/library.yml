@@ -364,7 +364,14 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
-          git remote set-url origin "https://github.com/${REPO}.git"
+          # When on the main branch REPO is not set
+          if [ ! -z "${REPO}" ]
+          then
+            # Designed to handle the case where a fork has been created
+            # Still might need more refinement/testing.
+            git remote set-url origin "https://github.com/${REPO}.git"
+          fi
+
           git fetch origin $BRANCH
           git checkout $BRANCH
 
