@@ -364,8 +364,13 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
-          git remote add upstream "https://github.com/${REPO}.git"
-          (git fetch upstream $BRANCH && git checkout upstream/$BRANCH) || (git fetch origin $BRANCH && git checkout origin/$BRANCH)
+          if [ ! -z "${REPO}" ]
+          then
+            git remote set-url origin "https://github.com/${REPO}.git"
+          fi
+
+          git fetch origin $BRANCH
+          git checkout $BRANCH
 
           git add poetry.lock setup.py
           git commit -m "commit changes to poetry.lock and setup.py" || true
