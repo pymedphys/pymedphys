@@ -364,8 +364,8 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
-          git remote set-url origin "https://github.com/${REPO}.git"
-          git fetch origin $BRANCH
+          git remote set-url upstream "https://github.com/${REPO}.git"
+          git fetch upstream $BRANCH || git fetch origin $BRANCH
           git checkout $BRANCH
 
           git add poetry.lock setup.py
