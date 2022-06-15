@@ -128,6 +128,12 @@ Active contributors
 
 .. _`Jake Rembish`: https://github.com/rembishj
 
+* `Nicola Lambri`_
+    * `IRCCS Humanitas Research Hospital`_, Italy
+    * `Humanitas University`_, Italy
+
+.. _`Nicola Lambri`: https://github.com/nlambriICH
+
 
 |uth|
 
