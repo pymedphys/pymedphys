@@ -185,6 +185,10 @@ Past contributors
 
 .. _`Ingham Institute`: https://inghaminstitute.org.au/
 
+.. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
+
+.. _`Humanitas University`: https://www.hunimed.eu/
+
 .. END_OF_DOCS_IMPORT
 
 .. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
