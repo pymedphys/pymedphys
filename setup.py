@@ -265,6 +265,7 @@ extras_require = {
     'dev:sys_platform == "win32"': ["pywin32>=301"],
     "dicom": ["pynetdicom", "pydicom>=2.0.0"],
     "docs": [
+        "matplotlib",
         "sphinx-argparse",
         "sphinx-book-theme",
         "jupyter-book>=0.12.0",

@@ -64,17 +64,21 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: ["ubuntu", "macos", "windows"]
+        os: [
+            "ubuntu",
+            # "macos",
+            # "windows",
+          ]
         task: [
-            "tests",
+            # "tests",
             "docs",
-            "stackoverflow",
-            "updates",
-            "cypress",
-            "slow",
+            # "stackoverflow",
+            # "updates",
+            # "cypress",
+            # "slow",
             # "binary",  # Skip for now
-            "pyright",
-            "propagate",
+            # "pyright",
+            # "propagate",
           ]
 
         exclude:
@@ -278,7 +282,7 @@ jobs:
       - name: Install a docs environment
         if: matrix.task == 'docs'
         run: |
-          poetry install -E user -E docs
+          poetry install -E docs
 
       ## Install with Tests Environment
 
