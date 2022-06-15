@@ -8,7 +8,7 @@ Python but brand new to PyMedPhys, start
 
 The **Library Users Guide** is separated into following sub-categories:
 
-- :doc:`Tutorials<users/tutes/index>`
+- **Tutorials (coming!)**
 
   - Lessons that take you through complete projects and illustrate what you can
     achieve by writing PyMedPhys-based Python software.

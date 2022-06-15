@@ -30,9 +30,9 @@
 
     users/get-started/index
     users/howto/index
-    users/ref/index
-    users/tutes/index
     users/background/index
+    users/ref/index
+
 
 .. toctree::
     :hidden:
@@ -42,5 +42,5 @@
     contrib/index
     contrib/info/index
     contrib/setups/index
-    contrib/tips-tricks/index
+    contrib/tips/index
     contrib/why-open-source

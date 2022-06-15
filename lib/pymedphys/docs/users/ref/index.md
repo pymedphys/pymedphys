@@ -4,6 +4,6 @@
 ```{toctree}
 :maxdepth: 2
 
-lib-ref/index
-cli-ref/index
+lib/index
+cli/index
 ```

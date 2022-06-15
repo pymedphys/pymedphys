@@ -5,5 +5,5 @@
 :maxdepth: 2
 
 file-structure
-documentation
+docs-guide
 ```

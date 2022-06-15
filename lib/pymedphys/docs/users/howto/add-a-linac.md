@@ -44,7 +44,7 @@ Before getting started you will need the following:
 
 Elekta Linacs have an iCom protocol that can be utilised to determine various
 parameters about the Linac state, eg. Gantry angle. This section details how
-we have set up the [PyMedPhys iCom listener CLI tool](../ref/cli-ref/icom.rst).
+we have set up the [PyMedPhys iCom listener CLI tool](../ref/cli/icom.rst).
 
 ### Installing PyMedPhys on the iCom listener server
 
