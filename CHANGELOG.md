@@ -13,6 +13,36 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### New features and enhancements
+
+* The Gamma tool now utilises the `logging` module. The `quiet` parameter for
+  `pymedphys.gamma` is deprecated but its use is non-breaking (for now).
+
+## [0.38.0]
+
+### News around this release
+
+* [Phillip Chlap](https://github.com/pchlap) has joined as a pymedphys Maintainer
+* Thanks to [Cedric](https://github.com/cedricbelanger) for reporting and fixing DICOM coordinates bug: [Discourse](https://pymedphys.discourse.group/t/gamma-index-calculation-possible-issues/191/2)
+* Privacy related bug within the experimental components of pymedphys (not stable) has been fixed. See bug fix notes.
+
+### Bug Fixes
+
+* Pseudonymise was susceptible to brute-force reversal, mitigated in [Pull Request](https://github.com/pymedphys/pymedphys/pull/1580)
+* DICOM Coordinates
+  * Fix pixel spacing bug [Pull Request](https://github.com/pymedphys/pymedphys/pull/1571)
+* Pinnacle Export Tool
+  * Write DICOM files to be more compatible with other software [Pull Request](https://github.com/pymedphys/pymedphys/pull/1578)
+* Daily Winston-lutz
+  * Small workaround [Pull Request](https://github.com/pymedphys/pymedphys/pull/1565)
+
+### New features and enhancements
+
+* Pinnacle Export Tool
+  * A new CLI option is provided to append the patient MRN to the output path for convenience. Thanks [crewso](https://github.com/crcrewso) for submitting this [Pull Request](https://github.com/pymedphys/pymedphys/pull/1608)
+
 ## [0.37.1]
 
 ### Bug fixes
@@ -717,7 +747,7 @@ Nil
 ### Bug fixes
 
 * Fix issue in some Windows environments where running `pymedphys gui` would
-  not find the streamlit installation. [_gui/__init__.py](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
+  not find the streamlit installation. [`_gui/__init__.py`](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
 
 ## [0.29.0]
 
@@ -986,7 +1016,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 ### Bug Fixes
 
 * Gracefully reject ipython inspection for optional modules by returning `None`
-  for '__file__' attribute requests for modules that are not currently
+  for `__file__` attribute requests for modules that are not currently
   installed.
 
 ## [0.16.2]

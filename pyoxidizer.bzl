@@ -14,7 +14,7 @@
 
 
 def make_exe():
-    dist = default_python_distribution(python_version = "3.9")
+    dist = default_python_distribution(python_version = "3.10")
 
     policy = dist.make_python_packaging_policy()
     policy.resources_location = "filesystem-relative:lib"
@@ -35,15 +35,10 @@ def make_exe():
     exe.windows_runtime_dlls_mode = "always"
     exe.windows_subsystem = "console"
 
-    exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-cli.txt"]))
-    exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-icom.txt"]))
-    exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "-r", "requirements-tests.txt"]))
-    exe.add_python_resources(exe.pip_install(["--use-feature", "in-tree-build", "."]))
+    exe.add_python_resources(exe.pip_install(["-r", "requirements-deploy.txt"]))
+    exe.add_python_resources(exe.pip_install(["."]))
 
     return exe
-
-def make_embedded_resources(exe):
-    return exe.to_embedded_resources()
 
 def make_install(exe):
     # Create an object that represents our installed application file layout.
@@ -56,28 +51,10 @@ def make_install(exe):
 
     return files
 
-def make_exe_installer(exe):
-    files = FileManifest()
-    files.add_python_resource(".", exe)
-
-    installer = WiXInstaller("pymedphys", "PyMedPhys-0.38.0-dev4-Setup.msi")
-    installer.add_simple_installer(
-        "pymedphys",
-        "PyMedPhys",
-        "0.38.0",
-        "PyMedPhys Contributors",
-        files
-    )
-
-    installer.add_wxs_file('test.wxs')
-
-    return installer
 
 # Tell PyOxidizer about the build targets defined above.
 register_target("exe", make_exe)
-register_target("resources", make_embedded_resources, depends = ["exe"], default_build_script = True)
-register_target("install", make_install, depends = ["exe"])
-register_target("exe_installer", make_exe_installer, depends = ["exe"], default = True)
+register_target("install", make_install, depends = ["exe"], default_build_script = True)
 
 # Resolve whatever targets the invoker of this configuration file is requesting
 # be resolved.

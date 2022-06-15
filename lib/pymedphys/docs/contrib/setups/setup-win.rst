@@ -9,7 +9,7 @@ access. To achieve this choose "Install for my user only" when prompted.
 Overview
 ========
 
-* Install Python 3.7 (with `Anaconda`_ for example)
+* `Install Python`_ (3.7, 3.8 or 3.9)
 * `Install Poetry`_
 * `Install git`_
 * Clone the PyMedPhys git repo
@@ -21,6 +21,7 @@ Overview
 
 You're good to go.
 
+.. _`Install Python`: https://www.python.org/downloads/
 .. _`Install Poetry`: https://poetry.eustace.io/docs/#installation
 .. _`Install git`: https://git-scm.com/download/win
 .. _`Install pandoc`: https://pandoc.org/installing.html
@@ -35,15 +36,15 @@ More Advanced Options
 .. _`Setting up OpenSSH on Windows 10`: ../other/win-open-ssh.html
 .. _`Add Jupyter Kernel to Poetry`: ../other/add-jupyter-kernel.html
 
+
 Opinionated Recommendations
 ===========================
 
-* Install Python with `Anaconda`_
 * Install `VSCode`_ as your code editor
 * Install `Jupyter Lab`_ to work with Notebooks
 
 
-.. _`Anaconda`: https://www.anaconda.com/download
+.. _`official distribution`: https://www.python.org/downloads/
 .. _`VSCode`: https://code.visualstudio.com/Download
 .. _`Jupyter Lab`: https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html#pip
 
@@ -57,11 +58,12 @@ Install contributor system dependencies
 Python
 ......
 
-Download the latest `Anaconda`_ **Python 3** version. When installing Anaconda
-make sure to install it for your user only, and tick the option "add to path":
+Download and install **Python 3** for Windows, preferably from the
+`official distribution`_.
 
-.. image:: /img/add_anaconda_to_path.png
-
+.. warning::
+    At present, although PyMedPhys works with Python 3.10, not all of its
+    dependencies do. For now, we recommend installing Python 3.7, 3.8 or 3.9.
 
 VSCode
 ......

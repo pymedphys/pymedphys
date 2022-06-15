@@ -39,7 +39,7 @@ def create_dose_function(net_od, dose):
 def create_cal_fit(a, b, n):
     def cal_fit(net_od):
         net_od = np.array(net_od, copy=False)
-        return a * net_od + b * net_od ** n
+        return a * net_od + b * net_od**n
 
     return cal_fit
 

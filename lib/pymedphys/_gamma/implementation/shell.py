@@ -15,9 +15,10 @@
 """Compare two dose grids with the gamma index.
 """
 
-import sys
+import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
+from warnings import warn
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -26,7 +27,7 @@ import pymedphys._utilities.createshells
 
 from ..utilities import run_input_checks
 
-DEFAULT_RAM = int(2 ** 30 * 1.5)  # 1.5 GB
+DEFAULT_RAM = int(2**30 * 1.5)  # 1.5 GB
 
 
 def gamma_shell(
@@ -44,7 +45,7 @@ def gamma_shell(
     skip_once_passed=False,
     random_subset=None,
     ram_available=DEFAULT_RAM,
-    quiet=False,
+    quiet=None,
 ):
     """Compare two dose grids with the gamma index.
 
@@ -97,8 +98,12 @@ def gamma_shell(
         The number of bytes of RAM available for use by this function. Defaults
         to 0.8 times your total RAM as determined by psutil.
     quiet : bool, optional
-        Used to quiet informational printing during function usage. Defaults to
-        False.
+        Deprecated but maintained for now for backwards compatibility.
+        `pymedphys.gamma` now utilises the `logging` module. You can set
+        your desired verbosity by setting the corresponding logging
+        level. Basic information is given for the `info` level.
+        Additional information using for benchmarking or troubleshooting
+        performance is provided for the `debug` level.
 
     Returns
     -------
@@ -106,6 +111,13 @@ def gamma_shell(
         The array of gamma values the same shape as that
         given by the reference coordinates and dose.
     """
+
+    if quiet is not None:
+        warn(
+            "Parameter `quiet` will be deprecated in the future",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     if max_gamma is None:
         max_gamma = np.inf
@@ -128,24 +140,24 @@ def gamma_shell(
         quiet,
     )
 
-    if not options.quiet:
-        if options.local_gamma:
-            print("Calcing using local normalisation point for gamma")
-        else:
-            print("Calcing using global normalisation point for gamma")
-        print("Global normalisation set to {}".format(options.global_normalisation))
-        print(
-            "Global dose threshold set to {} ({}% of normalisation)".format(
-                options.global_dose_threshold, options.dose_percent_threshold
-            )
-        )
-        print("Distance threshold set to {}".format(options.distance_mm_threshold))
-        print(
-            "Lower dose cutoff set to {} ({}% of normalisation)".format(
-                options.lower_dose_cutoff, lower_percent_dose_cutoff
-            )
-        )
-        print("")
+    if options.local_gamma:
+        logging.info("Computing the gamma using local normalisation point")
+    else:
+        logging.info("Computing the gamma using global normalisation point")
+
+    logging.info("Global normalisation set to %.3f", options.global_normalisation)
+    logging.info(
+        "Global dose threshold set to %.3f (%.2f%% of normalisation)",
+        options.global_dose_threshold,
+        options.dose_percent_threshold,
+    )
+
+    logging.info("Distance threshold set to %s", options.distance_mm_threshold)
+    logging.info(
+        "Lower dose cutoff set to %.3f (%.1f%% of normalisation)",
+        options.lower_dose_cutoff,
+        lower_percent_dose_cutoff,
+    )
 
     current_gamma = gamma_loop(options)
 
@@ -164,8 +176,7 @@ def gamma_shell(
 
             gamma[key] = gamma_temp
 
-    if not options.quiet:
-        print("\nComplete!")
+    logging.info("Complete!")
 
     if len(gamma.keys()) == 1:
         gamma = next(iter(gamma.values()))
@@ -202,7 +213,7 @@ class GammaInternalFixedOptions:
     local_gamma: bool = False
     skip_once_passed: bool = False
     ram_available: Optional[int] = DEFAULT_RAM
-    quiet: bool = False
+    quiet: Any = None
 
     def __post_init__(self):
         self.set_defaults()
@@ -237,8 +248,9 @@ class GammaInternalFixedOptions:
         skip_once_passed=False,
         random_subset=None,
         ram_available=None,
-        quiet=False,
+        quiet=None,
     ):
+
         if max_gamma is None:
             max_gamma = np.inf
 
@@ -309,6 +321,7 @@ class GammaInternalFixedOptions:
 
 
 def gamma_loop(options: GammaInternalFixedOptions):
+
     still_searching_for_gamma = np.full_like(
         options.flat_dose_reference, True, dtype=bool
     )
@@ -329,13 +342,11 @@ def gamma_loop(options: GammaInternalFixedOptions):
 
     force_search_distances = np.sort(options.distance_mm_threshold)
     while distance <= options.maximum_test_distance:
-        if not options.quiet:
-            sys.stdout.write(
-                "\rCurrent distance: {0:.2f} mm | "
-                "Number of reference points remaining: {1}".format(
-                    distance, np.sum(to_be_checked)
-                )
-            )
+        logging.debug(
+            "Current distance: %.2f mm | " "Number of reference points remaining: %i",
+            distance,
+            np.sum(to_be_checked),
+        )
 
         min_relative_dose_difference = calculate_min_dose_difference(
             options, distance, to_be_checked, distance_step_size
@@ -450,13 +461,11 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     num_slices = np.floor(estimated_ram_needed / options.ram_available).astype(int) + 1
 
-    if not options.quiet:
-        sys.stdout.write(
-            " | Points tested per reference point: {} | RAM split count: {}".format(
-                num_points_in_shell, num_slices
-            )
-        )
-        sys.stdout.flush()
+    logging.debug(
+        "Points tested per reference point: %i | RAM split count: %i",
+        num_points_in_shell,
+        num_slices,
+    )
 
     all_checks = np.where(np.ravel(to_be_checked))[0]
     index = np.arange(len(all_checks))

@@ -24,7 +24,7 @@ from .data import mocks
 
 @pytest.fixture(name="connection")
 def fixture_check_create_test_db() -> pymedphys.mosaiq.Connection:
-    """ will create the test database, if it does not already exist on the instance """
+    """will create the test database, if it does not already exist on the instance"""
     mocks.check_create_test_db()
 
     return _connect.connect()
@@ -32,7 +32,7 @@ def fixture_check_create_test_db() -> pymedphys.mosaiq.Connection:
 
 @pytest.mark.mosaiqdb
 def test_get_patient_name(connection: pymedphys.mosaiq.Connection):
-    """ tests the get_patient_name helper function"""
+    """tests the get_patient_name helper function"""
     mocks.create_mock_patients()
 
     # test a generic query for patient info
@@ -64,7 +64,7 @@ def test_get_patient_name(connection: pymedphys.mosaiq.Connection):
 
 @pytest.mark.mosaiqdb
 def test_get_patient_fields(connection: pymedphys.mosaiq.Connection):
-    """ creates basic tx field and site metadata for the mock patients """
+    """creates basic tx field and site metadata for the mock patients"""
 
     # the create_mock_patients output is the patient_ident dataframe
     mock_patient_ident_df = mocks.create_mock_patients()

@@ -19,7 +19,7 @@ from pymedphys._utilities.constants import AGILITY
 
 
 def abutted(a, b, tolerance=1):
-    """ Returns True iff leaf-tips a and b are within 1 mm. """
+    """Returns True iff leaf-tips a and b are within 1 mm."""
     if abs(a + b) < tolerance:
         return True
     else:
@@ -72,8 +72,8 @@ def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths):
             area += leaf_pair_widths[i] * (segment_a + segment_b)
             # zero for leaf past mid-line
             segment_a, segment_b = max(0.0, segment_a), max(0.0, segment_b)
-            distSqrA = y_component[i] ** 2 + segment_a ** 2
-            distSqrB = y_component[i] ** 2 + segment_b ** 2
+            distSqrA = y_component[i] ** 2 + segment_a**2
+            distSqrB = y_component[i] ** 2 + segment_b**2
             numer += (
                 leaf_pair_widths[i] * segment_a / distSqrA
                 + leaf_pair_widths[i] * segment_b / distSqrB
