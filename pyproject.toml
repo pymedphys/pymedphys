@@ -49,7 +49,7 @@ requests = { version = "*", optional = true }        # groups = ["user", "dev"]
 python-dateutil = { version = "*", optional = true } # groups = ["user", "dev", "tests"]
 
 matplotlib = { version = "*", optional = true } # groups = ["user", "dev", "docs"]
-scipy = { version = "*", optional = true }      # groups = ["user", "dev"]
+scipy = { version = "*", optional = true }      # groups = ["user", "dev", "docs"]
 
 xarray = { version = "*", optional = true } # groups = ["user", "dev"]
 
@@ -57,7 +57,7 @@ pymssql = { version = "*", optional = true }       # groups = ["user", "dev", "m
 sqlalchemy = { version = "*", optional = true }    # groups = ["user", "dev", "mosaiq"]
 natsort = { version = "*", optional = true }       # groups = ["user", "dev"]
 tomlkit = { version = "*", optional = true }       # groups = ["user", "dev", "propagate"]
-toml = { version = "*", optional = true }          # groups = ["user", "cli", "dev", "mosaiq"]
+toml = { version = "*", optional = true }          # groups = ["user", "cli", "dev", "mosaiq", "docs"]
 
 pynetdicom = { version = "*", optional = true } # groups = ["user", "dev", "dicom"]
 
@@ -104,7 +104,7 @@ reportlab = { version = ">=3.6", optional = true } # groups = ["user", "dev"]
 # CVE-2021-32559 <https://github.com/advisories/GHSA-hwfp-hg2m-9vr2>
 pywin32 = { version = ">=301", optional = true, platform = "win32" } # groups = ["user", "dev"]
 # CVE-2022-21699 <https://github.com/advisories/GHSA-pq7m-3gw7-gq5x>
-ipython = { version = ">=7.31.1", optional = true }
+ipython = { version = ">=7.31.1", optional = true } # groups = ["docs", "dev"]
 # CVE-2022-22817 <https://github.com/advisories/GHSA-8vj2-vxx3-667w>
 Pillow = { version = ">=9.0.0", optional = true } # groups = ["user", "dev"]
 
@@ -170,6 +170,7 @@ dev = [
     "fsspec",
     "hypothesis",
     "imageio",
+    "ipython",
     "jupyter-book",
     "keyring",
     "matplotlib",
@@ -220,13 +221,16 @@ dev = [
 ]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
+    "ipython",
     "jupyter-book",
     "matplotlib",
     "networkx",
     "numpy",
     "pydicom",
+    "scipy",
     "sphinx-argparse",
     "sphinx-book-theme",
+    "toml",
     "tqdm",
 ]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]

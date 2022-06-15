@@ -92,6 +92,7 @@ pywinpty==2.0.5; os_name == "nt" and python_version >= "3.7"
 pyyaml==6.0; python_version >= "3.6"
 pyzmq==23.1.0; python_full_version >= "3.7.0" and python_version >= "3.7"
 requests==2.28.0; python_version >= "3.7" and python_version < "4"
+scipy==1.8.1; python_version >= "3.8" and python_version < "3.11"
 send2trash==1.8.0; python_version >= "3.7"
 setuptools-scm==6.4.2; python_version >= "3.7"
 six==1.16.0; python_version >= "3.8" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.8"
@@ -121,6 +122,7 @@ sqlalchemy==1.4.37; (python_version >= "2.7" and python_full_version < "3.0.0") 
 stack-data==0.2.0; python_version >= "3.8"
 terminado==0.15.0; python_version >= "3.7"
 tinycss2==1.1.1; python_version >= "3.7"
+toml==0.10.2; (python_version >= "2.6" and python_full_version < "3.0.0") or (python_full_version >= "3.3.0")
 tomli==2.0.1; python_version >= "3.7"
 tornado==6.1; python_full_version >= "3.7.0" and python_version >= "3.7"
 tqdm==4.64.0; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")

@@ -8,7 +8,8 @@ on:
 
 jobs:
   paper:
-    if: false
+    # if: false
+
     runs-on: ubuntu-latest
     name: Paper Draft
     steps:
