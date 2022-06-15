@@ -131,6 +131,12 @@ Active contributors
 
 .. _`Jake Rembish`: https://github.com/rembishj
 
+* `Nicola Lambri`_
+    * `IRCCS Humanitas Research Hospital`_, Italy
+    * `Humanitas University`_, Italy
+
+.. _`Nicola Lambri`: https://github.com/nlambriICH
+
 
 |uth|
 
@@ -181,6 +187,10 @@ Past contributors
 .. _`Swerdloff Family`: https://github.com/sjswerdloff
 
 .. _`Ingham Institute`: https://inghaminstitute.org.au/
+
+.. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
+
+.. _`Humanitas University`: https://www.hunimed.eu/
 
 .. END_OF_DOCS_IMPORT
 
