@@ -21,6 +21,7 @@
     :maxdepth: 3
 
     overview
+    release-notes
 
 .. toctree::
     :hidden:
@@ -39,6 +40,8 @@
     :caption: Contributors Guide
 
     contrib/setups/index
+    contrib/tips-tricks/index
 ..
+    TODO: write these pages:
+
     contrib/get-started
-    contrib/tips-tricks

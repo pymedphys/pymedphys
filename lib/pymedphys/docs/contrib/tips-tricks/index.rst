@@ -1,6 +1,6 @@
-======================
-Additional Tips/Tricks
-======================
+=============
+Tips & Tricks
+=============
 
 .. toctree::
     :maxdepth: 1
