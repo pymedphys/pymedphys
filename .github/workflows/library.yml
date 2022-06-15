@@ -33,8 +33,6 @@ jobs:
 
       - name: Run Pre-Commit
         run: |
-          git checkout $GITHUB_HEAD_REF
-          git pull
           pip install pre-commit
           pre-commit run --all-files
       - name: Fix any issues
@@ -42,6 +40,11 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git add -A
+          git stash
+          git checkout $GITHUB_HEAD_REF
+          git pull
+          pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
 
           echo "##[set-output name=complete;]$(echo 1)"
