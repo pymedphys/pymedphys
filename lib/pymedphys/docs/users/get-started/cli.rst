@@ -11,4 +11,4 @@ PyMedPhys functions from a range of locations such as:
 * ``.bat`` and ``.sh`` files
 
 You can find the technical reference for the command line tools
-:doc:`here<../users/ref/cli-ref/index>`.
+:doc:`here<../ref/cli-ref/index>`.

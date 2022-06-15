@@ -39,6 +39,9 @@
     :maxdepth: 3
     :caption: Contributors Guide
 
+    contrib/index
+    contrib/info/index
+    contrib/documentation
     contrib/setups/index
     contrib/tips-tricks/index
 ..

@@ -7,7 +7,7 @@ Python but brand new to PyMedPhys, start :doc:`here<get-started>`.
 
 The **Library Users Guide** is separated into following sub-categories:
 
-- :doc:`Tutorials<tutes/index>`
+- :doc:`Tutorials<users/tutes/index>`
 
   - Lessons that take you through complete projects and illustrate what you can
     achieve by writing PyMedPhys-based Python software.
@@ -16,7 +16,7 @@ The **Library Users Guide** is separated into following sub-categories:
 
 |
 
-- :doc:`How-to Guides<howto/index>`
+- :doc:`How-to Guides<users/howto/index>`
 
   - Guides and recipes for common problems and tasks. These are aimed for you
     if you already know how to use Python and PyMedPhys and are looking for
@@ -24,7 +24,7 @@ The **Library Users Guide** is separated into following sub-categories:
 
 |
 
-- :doc:`Reference<ref/index>`
+- :doc:`Reference<users/ref/index>`
 
   - Technical reference for the PyMedPhys library (modules, functions and
     classes). This is where you will find listed information for the exposed
@@ -34,7 +34,7 @@ The **Library Users Guide** is separated into following sub-categories:
 
 |
 
-- :doc:`Background<background/index>`
+- :doc:`Background<users/background/index>`
 
   - Explanations and discussions of key topics and concepts. This is aimed at
     you if you are looking to be able to think about PyMedPhys and its

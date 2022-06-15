@@ -1,5 +1,6 @@
-Writing documentation
-=====================
+================================
+Documentation Guide
+================================
 
 This documentation site uses a toolbox called Sphinx. This particular
 document aims to help contributors to improve the PyMedPhys
@@ -13,8 +14,8 @@ Documentation"
 <https://documentation.divio.com/>`__ by Daniele Procida.
 
 
-Starting a live update documentation server
--------------------------------------------
+Building the documentation on your workstation
+----------------------------------------------
 
 Assuming you have set up your machine according to the appropriate development
 guide (:doc:`setups/setup-win`, :doc:`setups/setup-linux`,
