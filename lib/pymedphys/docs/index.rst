@@ -20,7 +20,7 @@
     :hidden:
     :maxdepth: 3
 
-    users/index
+    overview
 
 .. toctree::
     :hidden:
