@@ -38,6 +38,7 @@
     :maxdepth: 3
     :caption: Contributors Guide
 
-    contrib/get-started
+    contrib/setups/index
 ..
+    contrib/get-started
     contrib/tips-tricks
