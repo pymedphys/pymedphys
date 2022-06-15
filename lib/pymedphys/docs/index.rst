@@ -28,7 +28,7 @@
     :maxdepth: 3
     :caption: Users Guide
 
-    users/get-started
+    users/get-started/index
     users/howto/index
     users/ref/index
     users/tutes/index
