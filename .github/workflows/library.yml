@@ -62,7 +62,7 @@ jobs:
 
   Tests:
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: ["ubuntu", "macos", "windows"]
         task: [
@@ -548,7 +548,7 @@ jobs:
     # - ValidateVersionReleaseMatch
     runs-on: ${{ matrix.os }}-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: ["ubuntu", "macos", "windows"]
         python-version: [3.8, 3.9, 3.10]
