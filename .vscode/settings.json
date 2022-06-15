@@ -505,5 +505,6 @@
     "zlabel",
     "zlim",
     "zorder"
-  ]
+  ],
+  "esbonio.sphinx.confDir": ""
 }
