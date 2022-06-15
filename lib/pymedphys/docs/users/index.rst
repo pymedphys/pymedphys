@@ -3,7 +3,7 @@ Overview
 ======================
 
 Resources to assist users of the PyMedPhys library. If you're experienced with
-Python but brand new to PyMedPhys, start :doc:`here<howto/get-started>`.
+Python but brand new to PyMedPhys, start :doc:`here<get-started>`.
 
 The **Library Users Guide** is separated into following sub-categories:
 

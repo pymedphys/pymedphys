@@ -20,71 +20,24 @@
     :hidden:
     :maxdepth: 3
 
-    lib/index
-    lib/howto/get-started
+    users/index
 
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: Reference
+    :caption: Users Guide
 
-    genindex
-    lib/ref/dicom
-    lib/ref/gamma
-    lib/ref/mosaiq
-    lib/ref/metersetmap
-    lib/ref/trf
-    lib/ref/experimental/pinnacle
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: Tutorials
-
-    lib/tutes/gamma/gamma_tutorial
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: How-to
-
-    lib/howto/gamma/effect-of-noise
-    lib/howto/gamma/from-dicom
-    lib/howto/gamma/1D-from-csv
-    lib/howto/add-a-linac
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: CLI Users Guide
-
-    cli/index
-    cli/ref/dicom
-    cli/ref/trf
-    cli/ref/icom
-    cli/ref/pinnacle
+    users/get-started
+    users/howto/index
+    users/ref/index
+    users/tutes/index
+    users/background/index
 
 .. toctree::
     :hidden:
     :maxdepth: 3
     :caption: Contributors Guide
 
-    contrib/index
-    contrib/setups/setup-linux
-    contrib/setups/setup-mac
-    contrib/setups/setup-win
-    contrib/documentation
-    contrib/other/add-jupyter-kernel
-    contrib/other/win-open-ssh
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: General
-
-    general/index
-    release-notes
-    general/file-structure
-    general/open-source-benefits
-    lib/background/autocontouring
-    lib/background/elekta-logfiles
+    contrib/get-started
+..
+    contrib/tips-tricks
