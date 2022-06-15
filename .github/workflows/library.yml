@@ -40,11 +40,19 @@ jobs:
         run: |
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git add -A
+          git stash
+          git checkout $GITHUB_HEAD_REF
           git pull
+          pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
-          exit 1
+
+          echo "##[set-output name=complete;]$(echo 1)"
+
+        id: fix_issues
+
       - name: Push changes
-        if: failure()
+        if: failure() && steps.fix_issues.outputs.complete
         uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
         with:
           github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
@@ -54,7 +62,7 @@ jobs:
 
   Tests:
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: ["ubuntu", "macos", "windows"]
         task: [
@@ -359,6 +367,14 @@ jobs:
           git config --local user.email "propagate-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Propagate Bot"
 
+          # When on the main branch REPO is not set
+          if [ ! -z "${REPO}" ]
+          then
+            # Designed to handle the case where a fork has been created
+            # Still might need more refinement/testing.
+            git remote set-url origin "https://github.com/${REPO}.git"
+          fi
+
           git fetch origin $BRANCH
           git checkout $BRANCH
 
@@ -371,6 +387,7 @@ jobs:
           git diff-index --quiet HEAD -- || echo "::set-output name=status::failed"
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Fix any issues
         if: steps.propagate-test.outputs.status == 'failed'
@@ -531,7 +548,7 @@ jobs:
     # - ValidateVersionReleaseMatch
     runs-on: ${{ matrix.os }}-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: ["ubuntu", "macos", "windows"]
         python-version: [3.8, 3.9, 3.10]
