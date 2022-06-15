@@ -3031,7 +3031,7 @@ cli = ["toml"]
 comparables = ["flashgamma"]
 dev = ["Pillow", "PyYAML", "astroid", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "protobuf", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylinac", "pylint", "pymssql", "pynetdicom", "pyoxidizer", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
 dicom = ["pydicom", "pynetdicom"]
-docs = ["jupyter-book", "matplotlib", "networkx", "sphinx-argparse", "sphinx-book-theme"]
+docs = ["jupyter-book", "matplotlib", "networkx", "numpy", "pydicom", "sphinx-argparse", "sphinx-book-theme", "tqdm"]
 doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
@@ -3042,7 +3042,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "0b54f6907751a06ebfa8095b973bff79e0e55941b6f7c436bffe25431b2f0442"
+content-hash = "140890aec63b5e5f7dc1d162c4ce4c085b3bf59b893a230c043fb3236b6100b6"
 
 [metadata.files]
 alabaster = [
