@@ -1,6 +1,6 @@
-=========
-Reference
-=========
+=============
+CLI Reference
+=============
 
 This section displays the help text for each of PyMedPhys' CLI commands. Help
 test is sturctured as follows:
