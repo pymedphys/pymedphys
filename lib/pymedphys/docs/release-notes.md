@@ -8,7 +8,7 @@
 
 # Release Notes
 
-All notable changes to this project will be documented in this file.
+All notable changes to are documented here.
 
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -1228,7 +1228,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 ### New Features
 
 - A DICOM anonymisation CLI! See
-  [the DICOM Files CLI docs](../user/interfaces/cli/dicom.rst).
+  [the DICOM Files CLI docs](../user/ref/cli-ref/cli/dicom.rst).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
     wrapper functions that take a DICOM file and a directory as respective
