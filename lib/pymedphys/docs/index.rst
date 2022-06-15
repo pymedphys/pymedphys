@@ -41,10 +41,6 @@
 
     contrib/index
     contrib/info/index
-    contrib/documentation
     contrib/setups/index
     contrib/tips-tricks/index
-..
-    TODO: write these pages:
-
-    contrib/get-started
+    contrib/why-open-source

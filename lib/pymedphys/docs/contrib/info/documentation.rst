@@ -18,8 +18,8 @@ Building the documentation on your workstation
 ----------------------------------------------
 
 Assuming you have set up your machine according to the appropriate development
-guide (:doc:`setups/setup-win`, :doc:`setups/setup-linux`,
-:doc:`setups/setup-mac`) you can then run the following within a terminal to
+guide (:doc:`../setups/setup-win`, :doc:`../setups/setup-linux`,
+:doc:`../setups/setup-mac`) you can then run the following within a terminal to
 build the documentation:
 
 .. code:: bash
