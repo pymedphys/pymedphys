@@ -53,22 +53,17 @@ def propagate_all(args):
 
     propagate_version()
     propagate_extras()
-
-    # Propagation of setup.py last as this has the side effect of building
-    # a distribution file. Want to make sure that this distribution
-    # file includes the above propagations in case someone decides to
-    # use it.
     propagate_lock_requirements_and_hash()
 
 
 def propagate_lock_requirements_and_hash():
     """Propagate poetry.lock, requirements.txt, and pyproject.hash
 
-    Order here is important. Lock file propagation from pyproject.toml is needed
-    to create an up to date requirements. Setup.py creation and poetry.lock file
-    creation are non-deterministic via OS, so the hash propagation is undergone
-    last to verify that this step has been run to its completion for the
-    given pyproject.toml file.
+    Order here is important. Lock file propagation from pyproject.toml
+    is needed to create an up to date requirements. Poetry.lock file
+    creation is non-deterministic via OS, so the hash propagation is
+    undergone last to verify that this step has been run to its
+    completion for the given pyproject.toml file.
 
     """
 
