@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  pull_request_target: # https://github.com/Drassil/action-package-version-bump/blob/a4caade1bd6ec37db508f19812355a30506eee9c/.github/workflows/test.yml?rgh-link-date=2022-03-27T14%3A31%3A49Z#L8-L9
+  pull_request:
   release:
     types:
       - created
