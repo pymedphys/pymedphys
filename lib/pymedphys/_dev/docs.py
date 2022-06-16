@@ -12,31 +12,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
+import shutil
 import subprocess
 
-LIBRARY_ROOT = pathlib.Path(__file__).resolve().parent.parent
-DOCS_DIR = LIBRARY_ROOT.joinpath("docs")
+from .propagate import LIBRARY_PATH, REPO_ROOT
+
+DOCS_PATH = LIBRARY_PATH.joinpath("docs")
+
+DOCS_README = DOCS_PATH.joinpath("README.rst")
+ROOT_README = REPO_ROOT.joinpath("README.rst")
+
+ROOT_CHANGELOG = REPO_ROOT.joinpath("CHANGELOG.md")
+DOCS_CHANGELOG = DOCS_PATH.joinpath("release-notes.md")
+
+ROOT_CONTRIBUTING = REPO_ROOT.joinpath("CONTRIBUTING.md")
+DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contrib", "index.md")
+
+
+FILE_COPY_MAPPING = [
+    # Reference document, copied-to location
+    (ROOT_README, DOCS_README),
+    (ROOT_CHANGELOG, DOCS_CHANGELOG),
+    (ROOT_CONTRIBUTING, DOCS_CONTRIBUTING),
+]
 
 
 def build_docs(args):
     if args.output:
         output_directory = args.output
     else:
-        output_directory = str(DOCS_DIR)
+        output_directory = str(DOCS_PATH)
 
     if args.clean:
         subprocess.check_call(["jupyter-book", "clean", output_directory])
-    else:
-        subprocess.check_call(
-            [
-                "jupyter-book",
-                "build",
-                # "-W",
-                # "-n",
-                # "--keep-going",
-                str(DOCS_DIR),
-                "--path-output",
-                output_directory,
-            ]
-        )
+
+        return
+
+    for original_path, target_path in FILE_COPY_MAPPING:
+        shutil.copy(original_path, target_path)
+
+    if args.prep:
+        subprocess.check_call(["jupyter-book", "config", "sphinx", output_directory])
+
+        return
+
+    subprocess.check_call(
+        [
+            "jupyter-book",
+            "build",
+            # "-W",
+            # "-n",
+            # "--keep-going",
+            str(DOCS_PATH),
+            "--path-output",
+            output_directory,
+        ]
+    )

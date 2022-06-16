@@ -23,6 +23,11 @@ def add_docs_parser(dev_subparsers):
     parser.add_argument(
         "--clean", help="Delete all of the built files.", action="store_true"
     )
+    parser.add_argument(
+        "--prep",
+        help="Undergo preparation steps for building with sphinx directly.",
+        action="store_true",
+    )
 
     parser.set_defaults(func=docs.build_docs)
 
@@ -44,18 +49,6 @@ def add_doctests_parser(dev_subparsers):
 
 def add_propagate_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("propagate")
-
-    parser.add_argument(
-        "--copies",
-        help="Only propagate the file copying tasks. This is much quicker.",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--pyproject",
-        help="Only propagate the dependencies of pyproject.",
-        action="store_true",
-    )
 
     parser.add_argument(
         "--update",
