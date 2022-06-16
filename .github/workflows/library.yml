@@ -76,6 +76,7 @@ jobs:
             "slow",
             # "binary",  # Skip for now
             "pyright",
+            "propagate",
           ]
 
         exclude:
@@ -91,6 +92,8 @@ jobs:
           - os: "windows"
             task: "pyright"
           - os: "windows"
+            task: "propagate"
+          - os: "windows"
             task: "cypress"
 
           - os: "macos"
@@ -105,6 +108,8 @@ jobs:
             task: "binary"
           - os: "macos"
             task: "pyright"
+          - os: "macos"
+            task: "propagate"
 
         include:
           # Version numbers chosen so that highest and lowest Python version is
@@ -123,6 +128,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        if: matrix.task != 'propagate'
+
+      - uses: actions/checkout@v2
+        if: matrix.task == 'propagate'
+        with:
+          persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -286,11 +298,10 @@ jobs:
 
       ## Install remaining packages for pyright
 
-      # TODO: Likely best to make an explicit pyright extra and delete the propagate extra
       - name: Install a propagate environment
-        if: matrix.task == 'pyright'
+        if: matrix.task == 'pyright' || matrix.task == 'propagate'
         run: |
-          poetry install -E propagate
+          poetry install -E propagate || poetry lock --no-update && poetry install -E propagate
 
       ## Update all packages and then install with tests environment
 
@@ -344,6 +355,25 @@ jobs:
           python test.py
 
       # -----------------------------------------------------------------------------
+
+      # TESTS
+
+      ## Propagate
+      - name: See if propagate is needed
+        if: matrix.task == 'propagate'
+        id: propagate-test
+        run: |
+          echo "::set-output name=status::before"
+          poetry run pymedphys dev propagate
+
+          git config --local user.email "propagate-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Propagate Bot"
+
+          git add poetry.lock
+          git commit -m "commit changes to poetry.lock" || true
+
+          git status
+          git diff-index --quiet HEAD --
 
       ## Pyright
 
