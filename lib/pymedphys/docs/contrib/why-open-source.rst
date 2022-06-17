@@ -1,4 +1,4 @@
-Benefits of Open Source for Medical Physics
+Why Open Source?
 ===========================================
 
 The aim of this document is to outline some of the benefits of Medical Physics

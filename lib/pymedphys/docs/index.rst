@@ -16,53 +16,25 @@
 .. _`Contributors Guide`: contrib/index.html
 .. _`General`: general/index.html
 
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-
-    lib/index
-    lib/howto/get-started
 
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: Reference
 
-    genindex
-    lib/ref/dicom
-    lib/ref/gamma
-    lib/ref/mosaiq
-    lib/ref/metersetmap
-    lib/ref/trf
-    lib/ref/experimental/pinnacle
+    overview
+    release-notes
+
 
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: Tutorials
+    :caption: Users Guide
 
-    lib/tutes/gamma/gamma_tutorial
+    users/get-started/index
+    users/howto/index
+    users/background/index
+    users/ref/index
 
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: How-to
-
-    lib/howto/gamma/effect-of-noise
-    lib/howto/gamma/from-dicom
-    lib/howto/gamma/1D-from-csv
-    lib/howto/add-a-linac
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: CLI Users Guide
-
-    cli/index
-    cli/ref/dicom
-    cli/ref/trf
-    cli/ref/icom
-    cli/ref/pinnacle
 
 .. toctree::
     :hidden:
@@ -70,21 +42,7 @@
     :caption: Contributors Guide
 
     contrib/index
-    contrib/setups/setup-linux
-    contrib/setups/setup-mac
-    contrib/setups/setup-win
-    contrib/documentation
-    contrib/other/add-jupyter-kernel
-    contrib/other/win-open-ssh
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: General
-
-    general/index
-    release-notes
-    general/file-structure
-    general/open-source-benefits
-    lib/background/autocontouring
-    lib/background/elekta-logfiles
+    contrib/info/index
+    contrib/setups/index
+    contrib/tips/index
+    contrib/why-open-source

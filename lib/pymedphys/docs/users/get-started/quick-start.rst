@@ -1,5 +1,5 @@
 ==================
-Get Started
+Quick Start Guide
 ==================
 
 Install Python
@@ -44,13 +44,13 @@ managing your Python installation using `pyenv`_.
 To achieve this first install `the python build environment`_, and then follow
 the `pyenv installation`_ steps. Once pyenv is installed first run the following:
 
-.. code:: cmd
+.. code:: shell
 
     pyenv install 3.9.7
 
 And then, after that is completed, follow it with:
 
-.. code:: cmd
+.. code:: shell
 
     pyenv global 3.9.7
 

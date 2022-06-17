@@ -1,5 +1,5 @@
 ==============================
-Recommended Contributor Setups
+Workstation Setup Guides
 ==============================
 
 .. toctree::

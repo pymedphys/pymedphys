@@ -44,14 +44,15 @@ Before getting started you will need the following:
 
 Elekta Linacs have an iCom protocol that can be utilised to determine various
 parameters about the Linac state, eg. Gantry angle. This section details how
-we have set up the [PyMedPhys iCom listener CLI tool](/cli/ref/icom.rst).
+we have set up the [PyMedPhys iCom listener CLI tool](../ref/cli/icom.rst).
 
 ### Installing PyMedPhys on the iCom listener server
 
 In our case, the server where the iCom listener is to be installed has the
 requirement that the installation has minimal impact on the other software that
 is also running on that same server. If you don't have that restriction you
-can follow the [](get-started.rst) to install PyMedPhys in the usual fashion.
+can follow the [](../get-started/quick-start.rst) to install PyMedPhys in the
+usual fashion.
 
 So that the Python installation itself has minimal impact on the system we
 utilise Python's embedded distribution, an example download of one such
