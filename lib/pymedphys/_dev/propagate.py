@@ -38,7 +38,7 @@ REQUIREMENTS_CONFIG = (
     (["icom"], "requirements-icom.txt", False, None),
     (["cli"], "requirements-cli.txt", False, None),
     (["tests"], "requirements-tests.txt", False, None),
-    (["docs"], "requirements-docs.txt", False, None),
+    (["docs"], "requirements-docs.txt", True, True),
 )
 
 AUTOGEN_MESSAGE = [
