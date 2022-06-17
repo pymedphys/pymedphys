@@ -118,127 +118,249 @@ const thebe_selector_output = ".output, .cell_output"
     <div class="bd-toc-item active">
         <ul class="nav bd-sidenav">
  <li class="toctree-l1">
-  <a class="reference internal" href="lib/index.html">
+  <a class="reference internal" href="overview.html">
    Overview
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="lib/howto/get-started.html">
-   Get Started
+  <a class="reference internal" href="release-notes.html">
+   Release Notes
   </a>
  </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Reference
+  Users Guide
  </span>
 </p>
 <ul class="current nav bd-sidenav">
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
-   Alphabetical Index
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="users/get-started/index.html">
+   Getting started
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="users/get-started/quick-start.html">
+     Quick Start Guide
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="users/get-started/cli.html">
+     Using the CLI
+    </a>
+   </li>
+  </ul>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/ref/dicom.html">
-   DICOM
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="users/howto/index.html">
+   How-to Guides
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+  <label for="toctree-checkbox-2">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="users/howto/gamma/index.html">
+     Gamma
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/howto/gamma/speed-up.html">
+       Speeding up gamma calculations
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/howto/gamma/1D-from-csv.html">
+       Gamma from 1D ASCII data
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/howto/gamma/effect-of-noise.html">
+       The Effects of Noise on Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/howto/gamma/from-dicom.html">
+       Gamma from DICOM
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="users/howto/add-a-linac.html">
+     Adding a Linac
+    </a>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="users/howto/tunnels/index.html">
+     Tunnels
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+    <label for="toctree-checkbox-4">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/howto/tunnels/samba.html">
+       SAMBA SSH Tunnelling
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/howto/tunnels/rsync.html">
+       Backups using rsync
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/ref/gamma.html">
-   Gamma
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="users/background/index.html">
+   Background
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+  <label for="toctree-checkbox-5">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="users/background/autocontouring.html">
+     Automatic Contouring Project
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="users/background/elekta-logfiles.html">
+     Elekta Logfile Decoding and Indexing
+    </a>
+   </li>
+  </ul>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/ref/mosaiq.html">
-   Mosaiq
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="users/ref/index.html">
+   Technical Reference
   </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/ref/metersetmap.html">
-   MetersetMap
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/ref/trf.html">
-   TRF
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/ref/experimental/pinnacle.html">
-   Pinnacle Export Tool
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  Tutorials
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/tutes/gamma/gamma_tutorial.html">
-   Gamma calculation
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  How-to
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/howto/gamma/effect-of-noise.html">
-   The Effects of Noise on Gamma
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/howto/gamma/from-dicom.html">
-   Gamma from DICOM
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/howto/gamma/1D-from-csv.html">
-   Gamma from 1D ASCII data
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/howto/add-a-linac.html">
-   Adding a Linac
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  CLI Users Guide
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="cli/index.html">
-   Overview
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="cli/ref/dicom.html">
-   DICOM Files
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="cli/ref/trf.html">
-   Elekta Binary Logfiles
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="cli/ref/icom.html">
-   iCom listener
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="cli/ref/pinnacle.html">
-   Pinnacle Export Tool
-  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+  <label for="toctree-checkbox-6">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="users/ref/lib/index.html">
+     Library Reference
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3 current active">
+      <a class="current reference internal" href="#">
+       Alphabetical Index
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/lib/dicom.html">
+       DICOM
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/lib/gamma.html">
+       Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/lib/mosaiq.html">
+       Mosaiq
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/lib/metersetmap.html">
+       MetersetMap
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/lib/trf.html">
+       TRF
+      </a>
+     </li>
+     <li class="toctree-l3 has-children">
+      <a class="reference internal" href="users/ref/lib/experimental/index.html">
+       Experimental Modules
+      </a>
+      <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+      <label for="toctree-checkbox-8">
+       <i class="fas fa-chevron-down">
+       </i>
+      </label>
+      <ul>
+       <li class="toctree-l4">
+        <a class="reference internal" href="users/ref/lib/experimental/pinnacle.html">
+         Pinnacle Export Tool
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="users/ref/lib/experimental/pseudonymisation.html">
+         Pseudonymisation Tool
+        </a>
+       </li>
+      </ul>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="users/ref/cli/index.html">
+     CLI Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/>
+    <label for="toctree-checkbox-9">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/cli/dicom.html">
+       DICOM Files
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/cli/trf.html">
+       Elekta Binary Logfiles
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/cli/icom.html">
+       iCom listener
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/cli/pinnacle.html">
+       Pinnacle Export Tool
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="users/ref/cli/pseudonymisation.html">
+       Pseudonymisation Tool
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
  </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
@@ -252,74 +374,83 @@ const thebe_selector_output = ".output, .cell_output"
    Overview
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="contrib/setups/setup-linux.html">
-   Linux Setup
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="contrib/info/index.html">
+   Repository Information
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/>
+  <label for="toctree-checkbox-10">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="contrib/info/file-structure.html">
+     Repository File Structure
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="contrib/info/docs-guide.html">
+     Documentation Guide
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="contrib/setups/index.html">
+   Workstation Setup Guides
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/>
+  <label for="toctree-checkbox-11">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="contrib/setups/setup-win.html">
+     Windows Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="contrib/setups/setup-linux.html">
+     Linux Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="contrib/setups/setup-mac.html">
+     MacOS Setup
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="contrib/tips/index.html">
+   Tips &amp; Tricks
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/>
+  <label for="toctree-checkbox-12">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="contrib/tips/add-jupyter-kernel.html">
+     Add Jupyter kernel with
+     <em>
+      poetry
+     </em>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="contrib/tips/win-open-ssh.html">
+     Setting up OpenSSH on Windows 10
+    </a>
+   </li>
+  </ul>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="contrib/setups/setup-mac.html">
-   MacOS Setup
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="contrib/setups/setup-win.html">
-   Windows Setup
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="contrib/documentation.html">
-   Writing documentation
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="contrib/other/add-jupyter-kernel.html">
-   Add Jupyter kernel with
-   <em>
-    poetry
-   </em>
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="contrib/other/win-open-ssh.html">
-   Setting up OpenSSH on Windows 10
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  General
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="general/index.html">
-   Overview
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="release-notes.html">
-   Release Notes
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="general/file-structure.html">
-   Repository File Structure
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="general/open-source-benefits.html">
-   Benefits of Open Source for Medical Physics
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/background/autocontouring.html">
-   Automatic Contouring Project
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="lib/background/elekta-logfiles.html">
-   Elekta Logfile Decoding and Indexing
+  <a class="reference internal" href="contrib/why-open-source.html">
+   Why Open Source?
   </a>
  </li>
 </ul>
@@ -477,11 +608,11 @@ title="Open an issue"
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.active_trial">active_trial (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.active_trial">active_trial (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/dicom.html#pymedphys.dicom.anonymise">anonymise() (in module pymedphys.dicom)</a>
+      <li><a href="users/ref/lib/dicom.html#pymedphys.dicom.anonymise">anonymise() (in module pymedphys.dicom)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -489,13 +620,13 @@ title="Open an issue"
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/metersetmap.html#pymedphys.metersetmap.calculate">calculate() (in module pymedphys.metersetmap)</a>
+      <li><a href="users/ref/lib/metersetmap.html#pymedphys.metersetmap.calculate">calculate() (in module pymedphys.metersetmap)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/mosaiq.html#pymedphys.mosaiq.connect">connect() (in module pymedphys.mosaiq)</a>
+      <li><a href="users/ref/lib/mosaiq.html#pymedphys.mosaiq.connect">connect() (in module pymedphys.mosaiq)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.convert_point">convert_point() (pymedphys.experimental.pinnacle.PinnaclePlan method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.convert_point">convert_point() (pymedphys.experimental.pinnacle.PinnaclePlan method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -503,15 +634,15 @@ title="Open an issue"
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/dicom.html#pymedphys.dicom.depth_dose">depth_dose() (in module pymedphys.dicom)</a>
+      <li><a href="users/ref/lib/dicom.html#pymedphys.dicom.depth_dose">depth_dose() (in module pymedphys.dicom)</a>
 </li>
-      <li><a href="lib/ref/dicom.html#pymedphys.dicom.dicom_dose_interpolate">dicom_dose_interpolate() (in module pymedphys.dicom)</a>
+      <li><a href="users/ref/lib/dicom.html#pymedphys.dicom.dicom_dose_interpolate">dicom_dose_interpolate() (in module pymedphys.dicom)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/metersetmap.html#pymedphys.metersetmap.display">display() (in module pymedphys.metersetmap)</a>
+      <li><a href="users/ref/lib/metersetmap.html#pymedphys.metersetmap.display">display() (in module pymedphys.metersetmap)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.dose_inst_uid">dose_inst_uid (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.dose_inst_uid">dose_inst_uid (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -519,17 +650,17 @@ title="Open an issue"
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/mosaiq.html#pymedphys.mosaiq.execute">execute() (in module pymedphys.mosaiq)</a>
+      <li><a href="users/ref/lib/mosaiq.html#pymedphys.mosaiq.execute">execute() (in module pymedphys.mosaiq)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_dose">export_dose() (pymedphys.experimental.pinnacle.PinnacleExport static method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_dose">export_dose() (pymedphys.experimental.pinnacle.PinnacleExport static method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_image">export_image() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_image">export_image() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_plan">export_plan() (pymedphys.experimental.pinnacle.PinnacleExport static method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_plan">export_plan() (pymedphys.experimental.pinnacle.PinnacleExport static method)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_struct">export_struct() (pymedphys.experimental.pinnacle.PinnacleExport static method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.export_struct">export_struct() (pymedphys.experimental.pinnacle.PinnacleExport static method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -537,15 +668,15 @@ title="Open an issue"
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/gamma.html#pymedphys.gamma">gamma() (in module pymedphys)</a>
+      <li><a href="users/ref/lib/gamma.html#pymedphys.gamma">gamma() (in module pymedphys)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.generate_uids">generate_uids() (pymedphys.experimental.pinnacle.PinnaclePlan method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.generate_uids">generate_uids() (pymedphys.experimental.pinnacle.PinnaclePlan method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords">get_default_pseudonymisation_keywords() (in module pymedphys.experimental.pseudonymisation)</a>
+      <li><a href="users/ref/lib/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords">get_default_pseudonymisation_keywords() (in module pymedphys.experimental.pseudonymisation)</a>
 </li>
-      <li><a href="lib/ref/metersetmap.html#pymedphys.metersetmap.grid">grid() (in module pymedphys.metersetmap)</a>
+      <li><a href="users/ref/lib/metersetmap.html#pymedphys.metersetmap.grid">grid() (in module pymedphys.metersetmap)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -553,25 +684,25 @@ title="Open an issue"
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/trf.html#pymedphys.trf.identify">identify() (in module pymedphys.trf)</a>
+      <li><a href="users/ref/lib/trf.html#pymedphys.trf.identify">identify() (in module pymedphys.trf)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image">image (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image">image (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image_header">image_header (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image_header">image_header (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image_info">image_info (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image_info">image_info (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image_set">image_set (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.image_set">image_set (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.images">images (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.images">images (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.is_prefix_valid">is_prefix_valid() (pymedphys.experimental.pinnacle.PinnaclePlan static method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.is_prefix_valid">is_prefix_valid() (pymedphys.experimental.pinnacle.PinnaclePlan static method)</a>
 </li>
-      <li><a href="lib/ref/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords">is_valid_strategy_for_keywords() (in module pymedphys.experimental.pseudonymisation)</a>
+      <li><a href="users/ref/lib/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords">is_valid_strategy_for_keywords() (in module pymedphys.experimental.pseudonymisation)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.iso_center">iso_center (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.iso_center">iso_center (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -579,22 +710,22 @@ title="Open an issue"
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_images">log_images() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_images">log_images() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_plan_names">log_plan_names() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_plan_names">log_plan_names() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names">log_trial_names() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names">log_trial_names() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names_in_plan">log_trial_names_in_plan() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names_in_plan">log_trial_names_in_plan() (pymedphys.experimental.pinnacle.PinnacleExport method)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.logger">logger (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.logger">logger (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
 
       <ul>
-        <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.logger">(pymedphys.experimental.pinnacle.PinnacleImage property)</a>
+        <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.logger">(pymedphys.experimental.pinnacle.PinnacleImage property)</a>
 </li>
-        <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.logger">(pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+        <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.logger">(pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -603,33 +734,33 @@ title="Open an issue"
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.machine_info">machine_info (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.machine_info">machine_info (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
       <li>
     module
 
       <ul>
-        <li><a href="cli/ref/dicom.html#module-pymedphys.cli.dicom">pymedphys.cli.dicom</a>
+        <li><a href="users/ref/cli/dicom.html#module-pymedphys.cli.dicom">pymedphys.cli.dicom</a>
 </li>
-        <li><a href="cli/ref/pseudonymisation.html#module-pymedphys.cli.experimental.dicom">pymedphys.cli.experimental.dicom</a>
+        <li><a href="users/ref/cli/pseudonymisation.html#module-pymedphys.cli.experimental.dicom">pymedphys.cli.experimental.dicom</a>
 </li>
-        <li><a href="cli/ref/pinnacle.html#module-pymedphys.cli.experimental.pinnacle">pymedphys.cli.experimental.pinnacle</a>
+        <li><a href="users/ref/cli/pinnacle.html#module-pymedphys.cli.experimental.pinnacle">pymedphys.cli.experimental.pinnacle</a>
 </li>
-        <li><a href="cli/ref/icom.html#module-pymedphys.cli.icom">pymedphys.cli.icom</a>
+        <li><a href="users/ref/cli/icom.html#module-pymedphys.cli.icom">pymedphys.cli.icom</a>
 </li>
-        <li><a href="cli/ref/trf.html#module-pymedphys.cli.trf">pymedphys.cli.trf</a>
+        <li><a href="users/ref/cli/trf.html#module-pymedphys.cli.trf">pymedphys.cli.trf</a>
 </li>
-        <li><a href="lib/ref/dicom.html#module-pymedphys.dicom">pymedphys.dicom</a>
+        <li><a href="users/ref/lib/dicom.html#module-pymedphys.dicom">pymedphys.dicom</a>
 </li>
-        <li><a href="lib/ref/experimental/pinnacle.html#module-pymedphys.experimental.pinnacle">pymedphys.experimental.pinnacle</a>
+        <li><a href="users/ref/lib/experimental/pinnacle.html#module-pymedphys.experimental.pinnacle">pymedphys.experimental.pinnacle</a>
 </li>
-        <li><a href="lib/ref/experimental/pseudonymisation.html#module-pymedphys.experimental.pseudonymisation">pymedphys.experimental.pseudonymisation</a>
+        <li><a href="users/ref/lib/experimental/pseudonymisation.html#module-pymedphys.experimental.pseudonymisation">pymedphys.experimental.pseudonymisation</a>
 </li>
-        <li><a href="lib/ref/metersetmap.html#module-pymedphys.metersetmap">pymedphys.metersetmap</a>
+        <li><a href="users/ref/lib/metersetmap.html#module-pymedphys.metersetmap">pymedphys.metersetmap</a>
 </li>
-        <li><a href="lib/ref/mosaiq.html#module-pymedphys.mosaiq">pymedphys.mosaiq</a>
+        <li><a href="users/ref/lib/mosaiq.html#module-pymedphys.mosaiq">pymedphys.mosaiq</a>
 </li>
-        <li><a href="lib/ref/trf.html#module-pymedphys.trf">pymedphys.trf</a>
+        <li><a href="users/ref/lib/trf.html#module-pymedphys.trf">pymedphys.trf</a>
 </li>
       </ul></li>
   </ul></td>
@@ -638,49 +769,49 @@ title="Open an issue"
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.path">path (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.path">path (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
 
       <ul>
-        <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.path">(pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+        <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.path">(pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
       </ul></li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.patient_info">patient_info (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.patient_info">patient_info (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.patient_position">patient_position (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.patient_position">patient_position (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.pinnacle">pinnacle (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage.pinnacle">pinnacle (pymedphys.experimental.pinnacle.PinnacleImage property)</a>
 
       <ul>
-        <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.pinnacle">(pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+        <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.pinnacle">(pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
       </ul></li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport">PinnacleExport (class in pymedphys.experimental.pinnacle)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport">PinnacleExport (class in pymedphys.experimental.pinnacle)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage">PinnacleImage (class in pymedphys.experimental.pinnacle)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleImage">PinnacleImage (class in pymedphys.experimental.pinnacle)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan">PinnaclePlan (class in pymedphys.experimental.pinnacle)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan">PinnaclePlan (class in pymedphys.experimental.pinnacle)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.plan_info">plan_info (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.plan_info">plan_info (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.plan_inst_uid">plan_inst_uid (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.plan_inst_uid">plan_inst_uid (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.plans">plans (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnacleExport.plans">plans (pymedphys.experimental.pinnacle.PinnacleExport property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.points">points (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.points">points (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.primary_image">primary_image (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.primary_image">primary_image (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
-      <li><a href="lib/ref/dicom.html#pymedphys.dicom.profile">profile() (in module pymedphys.dicom)</a>
+      <li><a href="users/ref/lib/dicom.html#pymedphys.dicom.profile">profile() (in module pymedphys.dicom)</a>
 </li>
-      <li><a href="lib/ref/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch">pseudonymisation_dispatch (pymedphys.experimental.pseudonymisation attribute)</a>
+      <li><a href="users/ref/lib/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch">pseudonymisation_dispatch (pymedphys.experimental.pseudonymisation attribute)</a>
 </li>
-      <li><a href="lib/ref/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.pseudonymise">pseudonymise() (in module pymedphys.experimental.pseudonymisation)</a>
+      <li><a href="users/ref/lib/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.pseudonymise">pseudonymise() (in module pymedphys.experimental.pseudonymisation)</a>
 </li>
       <li>
     pymedphys.cli.dicom
 
       <ul>
-        <li><a href="cli/ref/dicom.html#module-pymedphys.cli.dicom">module</a>
+        <li><a href="users/ref/cli/dicom.html#module-pymedphys.cli.dicom">module</a>
 </li>
       </ul></li>
   </ul></td>
@@ -689,70 +820,70 @@ title="Open an issue"
     pymedphys.cli.experimental.dicom
 
       <ul>
-        <li><a href="cli/ref/pseudonymisation.html#module-pymedphys.cli.experimental.dicom">module</a>
+        <li><a href="users/ref/cli/pseudonymisation.html#module-pymedphys.cli.experimental.dicom">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.cli.experimental.pinnacle
 
       <ul>
-        <li><a href="cli/ref/pinnacle.html#module-pymedphys.cli.experimental.pinnacle">module</a>
+        <li><a href="users/ref/cli/pinnacle.html#module-pymedphys.cli.experimental.pinnacle">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.cli.icom
 
       <ul>
-        <li><a href="cli/ref/icom.html#module-pymedphys.cli.icom">module</a>
+        <li><a href="users/ref/cli/icom.html#module-pymedphys.cli.icom">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.cli.trf
 
       <ul>
-        <li><a href="cli/ref/trf.html#module-pymedphys.cli.trf">module</a>
+        <li><a href="users/ref/cli/trf.html#module-pymedphys.cli.trf">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.dicom
 
       <ul>
-        <li><a href="lib/ref/dicom.html#module-pymedphys.dicom">module</a>
+        <li><a href="users/ref/lib/dicom.html#module-pymedphys.dicom">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.experimental.pinnacle
 
       <ul>
-        <li><a href="lib/ref/experimental/pinnacle.html#module-pymedphys.experimental.pinnacle">module</a>
+        <li><a href="users/ref/lib/experimental/pinnacle.html#module-pymedphys.experimental.pinnacle">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.experimental.pseudonymisation
 
       <ul>
-        <li><a href="lib/ref/experimental/pseudonymisation.html#module-pymedphys.experimental.pseudonymisation">module</a>
+        <li><a href="users/ref/lib/experimental/pseudonymisation.html#module-pymedphys.experimental.pseudonymisation">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.metersetmap
 
       <ul>
-        <li><a href="lib/ref/metersetmap.html#module-pymedphys.metersetmap">module</a>
+        <li><a href="users/ref/lib/metersetmap.html#module-pymedphys.metersetmap">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.mosaiq
 
       <ul>
-        <li><a href="lib/ref/mosaiq.html#module-pymedphys.mosaiq">module</a>
+        <li><a href="users/ref/lib/mosaiq.html#module-pymedphys.mosaiq">module</a>
 </li>
       </ul></li>
       <li>
     pymedphys.trf
 
       <ul>
-        <li><a href="lib/ref/trf.html#module-pymedphys.trf">module</a>
+        <li><a href="users/ref/lib/trf.html#module-pymedphys.trf">module</a>
 </li>
       </ul></li>
   </ul></td>
@@ -761,7 +892,7 @@ title="Open an issue"
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/trf.html#pymedphys.trf.read">read() (in module pymedphys.trf)</a>
+      <li><a href="users/ref/lib/trf.html#pymedphys.trf.read">read() (in module pymedphys.trf)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -769,7 +900,7 @@ title="Open an issue"
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.struct_inst_uid">struct_inst_uid (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.struct_inst_uid">struct_inst_uid (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -777,11 +908,11 @@ title="Open an issue"
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.trial_info">trial_info (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.trial_info">trial_info (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.trials">trials (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
+      <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.experimental.pinnacle.PinnaclePlan.trials">trials (pymedphys.experimental.pinnacle.PinnaclePlan property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -789,7 +920,7 @@ title="Open an issue"
 <h2 id="Z">Z</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="lib/ref/dicom.html#pymedphys.dicom.zyx_and_dose_from_dataset">zyx_and_dose_from_dataset() (in module pymedphys.dicom)</a>
+      <li><a href="users/ref/lib/dicom.html#pymedphys.dicom.zyx_and_dose_from_dataset">zyx_and_dose_from_dataset() (in module pymedphys.dicom)</a>
 </li>
   </ul></td>
 </tr></table>

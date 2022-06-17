@@ -1,0 +1,1334 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Pinnacle Export Tool &#8212; PyMedPhys</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" href="../../../../_static/styles/sphinx-book-theme.css?digest=62ba249389abaaa9ffc34bf36a076bdc1d65ee18" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/clipboard.min.js"></script>
+    <script src="../../../../_static/copybutton.js"></script>
+    <script src="../../../../_static/scripts/sphinx-book-theme.js?digest=f31d14ad54b65d19161ba51d4ffff3a77ae00456"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../../_static/design-tabs.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../../../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/users/ref/lib/experimental/pinnacle.html" />
+    <link rel="shortcut icon" href="../../../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="Pseudonymisation Tool" href="pseudonymisation.html" />
+    <link rel="prev" title="Experimental Modules" href="index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en">
+    
+
+    <!-- Google Analytics -->
+    
+<script async="" src="https://www.google-analytics.com/analytics.js"></script>
+<script>
+                        window.ga = window.ga || function () {
+                            (ga.q = ga.q || []).push(arguments) };
+                        ga.l = +new Date;
+                        ga('create', 'UA-26591325-7', 'auto');
+                        ga('set', 'anonymizeIp', true);
+                        ga('send', 'pageview');
+                    </script>
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+<!-- Checkboxes to toggle the left sidebar -->
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle navigation sidebar">
+<label class="overlay overlay-navbar" for="__navigation">
+    <div class="visually-hidden">Toggle navigation sidebar</div>
+</label>
+<!-- Checkboxes to toggle the in-page toc -->
+<input type="checkbox" class="sidebar-toggle" name="__page-toc" id="__page-toc" aria-label="Toggle in-page Table of Contents">
+<label class="overlay overlay-pagetoc" for="__page-toc">
+    <div class="visually-hidden">Toggle in-page Table of Contents</div>
+</label>
+<!-- Headers at the top -->
+<div class="announcement header-item noprint"></div>
+<div class="header header-item noprint"></div>
+
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<!-- Sidebar -->
+<div class="bd-sidebar noprint" id="site-navigation">
+    <div class="bd-sidebar__content">
+        <div class="bd-sidebar__top"><div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../../../../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../../../../_static/pymedphys.svg" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../../overview.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Users Guide
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../get-started/index.html">
+   Getting started
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../get-started/quick-start.html">
+     Quick Start Guide
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../get-started/cli.html">
+     Using the CLI
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../howto/index.html">
+   How-to Guides
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+  <label for="toctree-checkbox-2">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../howto/gamma/index.html">
+     Gamma
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../howto/gamma/speed-up.html">
+       Speeding up gamma calculations
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../howto/gamma/1D-from-csv.html">
+       Gamma from 1D ASCII data
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../howto/gamma/effect-of-noise.html">
+       The Effects of Noise on Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../howto/gamma/from-dicom.html">
+       Gamma from DICOM
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../howto/add-a-linac.html">
+     Adding a Linac
+    </a>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../howto/tunnels/index.html">
+     Tunnels
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+    <label for="toctree-checkbox-4">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../howto/tunnels/samba.html">
+       SAMBA SSH Tunnelling
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../howto/tunnels/rsync.html">
+       Backups using rsync
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../background/index.html">
+   Background
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+  <label for="toctree-checkbox-5">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../background/autocontouring.html">
+     Automatic Contouring Project
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../background/elekta-logfiles.html">
+     Elekta Logfile Decoding and Indexing
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../../index.html">
+   Technical Reference
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+  <label for="toctree-checkbox-6">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="../index.html">
+     Library Reference
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../../genindex.html">
+       Alphabetical Index
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../dicom.html">
+       DICOM
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../gamma.html">
+       Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../mosaiq.html">
+       Mosaiq
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../metersetmap.html">
+       MetersetMap
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../trf.html">
+       TRF
+      </a>
+     </li>
+     <li class="toctree-l3 current active has-children">
+      <a class="reference internal" href="index.html">
+       Experimental Modules
+      </a>
+      <input checked="" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+      <label for="toctree-checkbox-8">
+       <i class="fas fa-chevron-down">
+       </i>
+      </label>
+      <ul class="current">
+       <li class="toctree-l4 current active">
+        <a class="current reference internal" href="#">
+         Pinnacle Export Tool
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="pseudonymisation.html">
+         Pseudonymisation Tool
+        </a>
+       </li>
+      </ul>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../cli/index.html">
+     CLI Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/>
+    <label for="toctree-checkbox-9">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../cli/dicom.html">
+       DICOM Files
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../cli/trf.html">
+       Elekta Binary Logfiles
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../cli/icom.html">
+       iCom listener
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../cli/pinnacle.html">
+       Pinnacle Export Tool
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../cli/pseudonymisation.html">
+       Pseudonymisation Tool
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../../contrib/info/index.html">
+   Repository Information
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/>
+  <label for="toctree-checkbox-10">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../../contrib/info/file-structure.html">
+     Repository File Structure
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../../contrib/info/docs-guide.html">
+     Documentation Guide
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../../contrib/setups/index.html">
+   Workstation Setup Guides
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/>
+  <label for="toctree-checkbox-11">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../../contrib/setups/setup-win.html">
+     Windows Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../../contrib/setups/setup-linux.html">
+     Linux Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../../contrib/setups/setup-mac.html">
+     MacOS Setup
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../../contrib/tips/index.html">
+   Tips &amp; Tricks
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/>
+  <label for="toctree-checkbox-12">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../../contrib/tips/add-jupyter-kernel.html">
+     Add Jupyter kernel with
+     <em>
+      poetry
+     </em>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../../contrib/tips/win-open-ssh.html">
+     Setting up OpenSSH on Windows 10
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../../contrib/why-open-source.html">
+   Why Open Source?
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav></div>
+        <div class="bd-sidebar__bottom">
+             <!-- To handle the deprecated key -->
+            
+            <div class="navbar_extra_footer">
+            Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+            </div>
+            
+        </div>
+    </div>
+    <div id="rtd-footer-container"></div>
+</div>
+
+
+          
+
+
+          
+<!-- A tiny helper pixel to detect if we've scrolled -->
+<div class="sbt-scroll-pixel-helper"></div>
+<!-- Main content -->
+<div class="col py-0 content-container">
+    
+    <div class="header-article row sticky-top noprint">
+        
+
+
+
+<div class="col py-1 d-flex header-article-main">
+    <div class="header-article__left">
+        
+        <label for="__navigation"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="right"
+title="Toggle navigation"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-bars"></i>
+  </span>
+
+</label>
+
+        
+    </div>
+    <div class="header-article__right">
+<button onclick="toggleFullScreen()"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="bottom"
+title="Fullscreen mode"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+<div class="menu-dropdown menu-dropdown-repository-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Source repositories">
+      <i class="fab fa-github"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Source repository"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="headerbtn__text-container">repository</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fusers/ref/lib/experimental/pinnacle.html&body=Your%20issue%20content%20here."
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Open an issue"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="headerbtn__text-container">open issue</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/users/ref/lib/experimental/pinnacle.rst"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Edit this page"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="headerbtn__text-container">suggest edit</span>
+</a>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+
+<div class="menu-dropdown menu-dropdown-download-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Download this page">
+      <i class="fas fa-download"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="../../../../_sources/users/ref/lib/experimental/pinnacle.rst"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Download source file"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="headerbtn__text-container">.rst</span>
+</a>
+
+      </li>
+      
+      <li>
+        
+<button onclick="printPdf(this)"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="left"
+title="Print to PDF"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="headerbtn__text-container">.pdf</span>
+</button>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+<label for="__page-toc"
+  class="headerbtn headerbtn-page-toc"
+  
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-list"></i>
+  </span>
+
+</label>
+
+    </div>
+</div>
+
+<!-- Table of contents -->
+<div class="col-md-3 bd-toc show noprint">
+    <div class="tocsection onthispage pt-5 pb-3">
+        <i class="fas fa-list"></i> Contents
+    </div>
+    <nav id="bd-toc-nav" aria-label="Page">
+        <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-pymedphys.experimental.pinnacle">
+   Summary
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#api">
+   API
+  </a>
+ </li>
+</ul>
+
+    </nav>
+</div>
+    </div>
+    <div class="article row">
+        <div class="col pl-md-3 pl-lg-5 content-container">
+            <!-- Table of contents that is only displayed when printing the page -->
+            <div id="jb-print-docs-body" class="onlyprint">
+                <h1>Pinnacle Export Tool</h1>
+                <!-- Table of contents -->
+                <div id="print-main-content">
+                    <div id="jb-print-toc">
+                        
+                        <div>
+                            <h2> Contents </h2>
+                        </div>
+                        <nav aria-label="Page">
+                            <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-pymedphys.experimental.pinnacle">
+   Summary
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#api">
+   API
+  </a>
+ </li>
+</ul>
+
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            <main id="main-content" role="main">
+                
+              <div>
+                
+  <section id="pinnacle-export-tool">
+<h1>Pinnacle Export Tool<a class="headerlink" href="#pinnacle-export-tool" title="Permalink to this headline">#</a></h1>
+<section id="module-pymedphys.experimental.pinnacle">
+<span id="summary"></span><h2>Summary<a class="headerlink" href="#module-pymedphys.experimental.pinnacle" title="Permalink to this headline">#</a></h2>
+<p>A tool to export DICOM objects from raw Pinnacle data:</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The DICOM objects exported by this tool are not the same as the DICOM
+objects exported from within the Pinnacle application. Certain DICOM
+modalities correspond fairly well to the Pinnacle exported objects
+for some versions of Pinnacle. Others are not working as expected or
+have not been validated.</p>
+<p>The first step when using this tool is to compare the output generated
+to the ‘ground truth’ generated by your version(s) of Pinnacle. You can
+then determine if this tool currently meets your export needs, or if
+some adjustments need to be made. Please create an issue on the PyMedPhys
+GitHub describing the circumstances where the tool is not working,
+providing some sample raw Pinnacle data where possible. If you’re up for
+a challenge, clone the PyMedPhys repository and attempt to solve the
+problem yourself! Don’t be afraid to ask for help when contributing your
+changes. The more developers we can encourage to contribute to this tool,
+the sooner it will become stable and reliable.</p>
+<p>Finally, note that while this tool can be extremely useful for exporting
+large amounts of Pinnacle data to DICOM, we recommend that this should
+only be used for research purposes and not clinically.</p>
+</div>
+</section>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pymedphys.experimental.pinnacle.</span></span><span class="sig-name descname"><span class="pre">PinnacleExport</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport" title="Permalink to this definition">#</a></dt>
+<dd><p>Handle Pinnacle data to allow export of DICOM objects</p>
+<p>This class is used to export the various DICOM objects from Pinnacle
+data found within the given path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to raw Pinnacle data (directory containing ‘Patient’ file).</p></li>
+<li><p><strong>logger</strong> (<em>Logger</em>) – Logger the tool will log to.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.export_dose">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_dose</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.export_dose"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.export_dose" title="Permalink to this definition">#</a></dt>
+<dd><p>Exports the RTDOSE DICOM modality.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plan</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnaclePlan" title="pymedphys.experimental.pinnacle.PinnaclePlan"><em>PinnaclePlan</em></a>) – The plan for which dose should be exported.</p></li>
+<li><p><strong>export_path</strong> (<em>str</em><em>, </em><em>optional</em>) – The file system path where the DICOM object should be
+exported to.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.export_image">
+<span class="sig-name descname"><span class="pre">export_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">series_uid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.export_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.export_image" title="Permalink to this definition">#</a></dt>
+<dd><p>Exports an image from the Pinnacle data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnacleImage" title="pymedphys.experimental.pinnacle.PinnacleImage"><em>PinnacleImage</em></a><em>, </em><em>optional</em>) – The image to export.</p></li>
+<li><p><strong>series_uid</strong> (<em>str</em><em>, </em><em>optional</em>) – The SeriesInstanceUID of the image to export.</p></li>
+<li><p><strong>export_path</strong> (<em>str</em><em>, </em><em>optional</em>) – The file system path where the DICOM objects should be
+exported to.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.export_plan">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.export_plan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.export_plan" title="Permalink to this definition">#</a></dt>
+<dd><p>Exports the RTPLAN DICOM modality.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plan</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnaclePlan" title="pymedphys.experimental.pinnacle.PinnaclePlan"><em>PinnaclePlan</em></a>) – The plan for which dose should be exported.</p></li>
+<li><p><strong>export_path</strong> (<em>str</em><em>, </em><em>optional</em>) – The file system path where the DICOM object should be
+exported to.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.export_struct">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_struct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_pattern</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'^$'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.export_struct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.export_struct" title="Permalink to this definition">#</a></dt>
+<dd><p>Exports the RTSTRUCT DICOM modality.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plan</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnaclePlan" title="pymedphys.experimental.pinnacle.PinnaclePlan"><em>PinnaclePlan</em></a>) – The plan for which structures should be exported.</p></li>
+<li><p><strong>export_path</strong> (<em>str</em><em>, </em><em>optional</em>) – The file system path where the DICOM object should be
+exported to.</p></li>
+<li><p><strong>skip_pattern</strong> (<em>str</em><em>, </em><em>optional</em>) – A regular expression specifying which ROIs to skip
+For example: RadCalc|normal_tissue</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.images">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">images</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.images" title="Permalink to this definition">#</a></dt>
+<dd><p>Get the images available.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>images</strong> – List of PinnacleImage’s available within the Pinnacle raw data in the path
+configured.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.log_images">
+<span class="sig-name descname"><span class="pre">log_images</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.log_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.log_images" title="Permalink to this definition">#</a></dt>
+<dd><p>Outputs all images found in the Pinnacle data to the log.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.log_plan_names">
+<span class="sig-name descname"><span class="pre">log_plan_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.log_plan_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.log_plan_names" title="Permalink to this definition">#</a></dt>
+<dd><p>Outputs all plans found in the Pinnacle data to the log.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names">
+<span class="sig-name descname"><span class="pre">log_trial_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.log_trial_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names" title="Permalink to this definition">#</a></dt>
+<dd><p>Outputs all trials found in the Pinnacle data to the log.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names_in_plan">
+<span class="sig-name descname"><span class="pre">log_trial_names_in_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle.html#PinnacleExport.log_trial_names_in_plan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.log_trial_names_in_plan" title="Permalink to this definition">#</a></dt>
+<dd><p>Outputs all trials found within a plan to the log.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>plan</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnaclePlan" title="pymedphys.experimental.pinnacle.PinnaclePlan"><em>PinnaclePlan</em></a>) – The plan for which to log the trials.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.logger">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">logger</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.logger" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the configured logger.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>logger</strong> – Logger configured.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Logger</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.patient_info">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">patient_info</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.patient_info" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the patient info.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>patient_info</strong> – Dictionary object containing the data found in the ‘Patient’
+file within the raw Pinnacle data.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleExport.plans">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plans</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleExport.plans" title="Permalink to this definition">#</a></dt>
+<dd><p>Get the plans available.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>plans</strong> – List of PinnaclePlan’s available within the Pinnacle raw data in the path
+configured.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pymedphys.experimental.pinnacle.</span></span><span class="sig-name descname"><span class="pre">PinnaclePlan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pinnacle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plan</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle_plan.html#PinnaclePlan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan" title="Permalink to this definition">#</a></dt>
+<dd><p>Represents a plan within the Pinnacle data.</p>
+<p>This class manages the data specific to a plan within a Pinnacle dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pinnacle</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnacleExport" title="pymedphys.experimental.pinnacle.PinnacleExport"><em>PinnacleExport</em></a>) – PinnacleExport object representing the dataset.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – Path to raw Pinnacle data (directoy containing ‘Patient’ file).</p></li>
+<li><p><strong>plan</strong> (<em>dict</em>) – Plan info dict from ‘Patient’ file.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.active_trial">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">active_trial</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.active_trial" title="Permalink to this definition">#</a></dt>
+<dd><p>Get and set the active trial for this plan.</p>
+<p>When DICOM objects are exported, data from the active trial is
+used to generate the output.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.convert_point">
+<span class="sig-name descname"><span class="pre">convert_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle_plan.html#PinnaclePlan.convert_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.convert_point" title="Permalink to this definition">#</a></dt>
+<dd><p>Convert a point from Pinnacle coordinates to DICOM coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>point</strong> (<em>list</em>) – The point to convert.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>The converted point.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.dose_inst_uid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dose_inst_uid</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.dose_inst_uid" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the instance UID for RTDOSE.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>uid</strong> – The UID to use for the dose.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.generate_uids">
+<span class="sig-name descname"><span class="pre">generate_uids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uid_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HASH'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle_plan.html#PinnaclePlan.generate_uids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.generate_uids" title="Permalink to this definition">#</a></dt>
+<dd><p>Generates UIDs to be used for exporting this plan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>uid_type</strong> (<em>str</em><em>, </em><em>optional</em>) – If ‘HASH’, the entropy will be generated
+to hash to consistant UIDs. If not then random UIDs will be
+generated. Default: ‘HASH’</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.is_prefix_valid">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_prefix_valid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle_plan.html#PinnaclePlan.is_prefix_valid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.is_prefix_valid" title="Permalink to this definition">#</a></dt>
+<dd><p>Check if a UID prefix is valid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>prefix</strong> (<em>str</em>) – The UID prefix to check.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>True if valid, False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.iso_center">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">iso_center</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.iso_center" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets and sets the iso center for this plan.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.logger">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">logger</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.logger" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the configured logger.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>logger</strong> – Logger configured.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Logger</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.machine_info">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">machine_info</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.machine_info" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the machine info for this plan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>machine_info</strong> – Machine info read from ‘plan.Pinnacle.Machines’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.path" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the path of the Pinnacle data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>path</strong> – Path containing the Pinnacle data.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.patient_position">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">patient_position</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.patient_position" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the patient position</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>patient_position</strong> – The patient position for this plan.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.pinnacle">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pinnacle</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.pinnacle" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the PinnacleExport object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>pinnacle</strong> – PinnacleExport object for this dataset.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnacleExport" title="pymedphys.experimental.pinnacle.PinnacleExport">PinnacleExport</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.plan_info">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plan_info</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.plan_info" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the plan information for this plan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>plan_info</strong> – Plan info as found in the Pinnacle ‘Patient’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.plan_inst_uid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plan_inst_uid</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.plan_inst_uid" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the instance UID for RTPLAN.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>uid</strong> – The UID to use for the plan.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.points">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.points" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the points defined within the plan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>points</strong> – List of points read from the ‘plan.Points’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.primary_image">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">primary_image</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.primary_image" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the primary image for this plan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>primary_image</strong> – PinnacleImage representing the primary image for this plan.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnacleImage" title="pymedphys.experimental.pinnacle.PinnacleImage">PinnacleImage</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.struct_inst_uid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">struct_inst_uid</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.struct_inst_uid" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the instance UID for RTSTRUCT.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>uid</strong> – The UID to use for the struct.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.trial_info">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">trial_info</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.trial_info" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the trial information of the active trial.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>trial_info</strong> – Trial info from the ‘plan.Trial’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnaclePlan.trials">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">trials</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnaclePlan.trials" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the trials within this plan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>trials</strong> – List of all trials found within this plan.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pymedphys.experimental.pinnacle.</span></span><span class="sig-name descname"><span class="pre">PinnacleImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pinnacle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/pymedphys/_experimental/pinnacle/pinnacle_image.html#PinnacleImage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage" title="Permalink to this definition">#</a></dt>
+<dd><p>Represents an image within the Pinnacle data.</p>
+<p>This class manages the data specific to an image within a Pinnacle dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pinnacle</strong> (<a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnacleExport" title="pymedphys.experimental.pinnacle.PinnacleExport"><em>PinnacleExport</em></a>) – PinnacleExport object representing the dataset.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – Path to raw Pinnacle data (directoy containing ‘Patient’ file).</p></li>
+<li><p><strong>image</strong> (<em>dict</em>) – Image info dict from ‘Patient’ file.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage.image">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">image</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage.image" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the image information from the ‘Patient’ file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>image</strong> – Image info as found in the Pinnacle ‘Patient’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage.image_header">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">image_header</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage.image_header" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the image header from the ‘.header’ file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>image_header</strong> – Image info as found in the Pinnacle ‘.header’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage.image_info">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">image_info</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage.image_info" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the image information from the ‘.ImageInfo’ file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>image_info</strong> – Image info as found in the Pinnacle ‘.ImageInfo’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage.image_set">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">image_set</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage.image_set" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the image set from the ‘.ImageSet’ file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>image_set</strong> – Image set as found in the Pinnacle ‘.ImageSet’ file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage.logger">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">logger</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage.logger" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the configured logger.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>logger</strong> – Logger configured.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Logger</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage.path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage.path" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the path of the Pinnacle data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>path</strong> – Path containing the Pinnacle data.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pymedphys.experimental.pinnacle.PinnacleImage.pinnacle">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pinnacle</span></span><a class="headerlink" href="#pymedphys.experimental.pinnacle.PinnacleImage.pinnacle" title="Permalink to this definition">#</a></dt>
+<dd><p>Gets the PinnacleExport object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>pinnacle</strong> – PinnacleExport object for this dataset.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#pymedphys.experimental.pinnacle.PinnacleExport" title="pymedphys.experimental.pinnacle.PinnacleExport">PinnacleExport</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./users/ref/lib/experimental"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+            </main>
+            <footer class="footer-article noprint">
+                
+    <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+    <a class='left-prev' id="prev-link" href="index.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">Experimental Modules</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="pseudonymisation.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Pseudonymisation Tool</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+            </footer>
+        </div>
+    </div>
+    <div class="footer-content row">
+        <footer class="col footer"><p>
+  
+    By the PyMedPhys community<br/>
+  
+      &copy; Copyright 2018-2021.<br/>
+</p>
+        </footer>
+    </div>
+    
+</div>
+
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+
+
+  </body>
+</html>

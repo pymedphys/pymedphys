@@ -1,0 +1,1031 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>SAMBA SSH Tunnelling &#8212; PyMedPhys</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" href="../../../_static/styles/sphinx-book-theme.css?digest=62ba249389abaaa9ffc34bf36a076bdc1d65ee18" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/clipboard.min.js"></script>
+    <script src="../../../_static/copybutton.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=f31d14ad54b65d19161ba51d4ffff3a77ae00456"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/design-tabs.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/users/howto/tunnels/samba.html" />
+    <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Backups using rsync" href="rsync.html" />
+    <link rel="prev" title="Tunnels" href="index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en">
+    
+
+    <!-- Google Analytics -->
+    
+<script async="" src="https://www.google-analytics.com/analytics.js"></script>
+<script>
+                        window.ga = window.ga || function () {
+                            (ga.q = ga.q || []).push(arguments) };
+                        ga.l = +new Date;
+                        ga('create', 'UA-26591325-7', 'auto');
+                        ga('set', 'anonymizeIp', true);
+                        ga('send', 'pageview');
+                    </script>
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+<!-- Checkboxes to toggle the left sidebar -->
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle navigation sidebar">
+<label class="overlay overlay-navbar" for="__navigation">
+    <div class="visually-hidden">Toggle navigation sidebar</div>
+</label>
+<!-- Checkboxes to toggle the in-page toc -->
+<input type="checkbox" class="sidebar-toggle" name="__page-toc" id="__page-toc" aria-label="Toggle in-page Table of Contents">
+<label class="overlay overlay-pagetoc" for="__page-toc">
+    <div class="visually-hidden">Toggle in-page Table of Contents</div>
+</label>
+<!-- Headers at the top -->
+<div class="announcement header-item noprint"></div>
+<div class="header header-item noprint"></div>
+
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<!-- Sidebar -->
+<div class="bd-sidebar noprint" id="site-navigation">
+    <div class="bd-sidebar__content">
+        <div class="bd-sidebar__top"><div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../../../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../../../_static/pymedphys.svg" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../overview.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Users Guide
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../get-started/index.html">
+   Getting started
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../get-started/quick-start.html">
+     Quick Start Guide
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../get-started/cli.html">
+     Using the CLI
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../index.html">
+   How-to Guides
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+  <label for="toctree-checkbox-2">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../gamma/index.html">
+     Gamma
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../gamma/speed-up.html">
+       Speeding up gamma calculations
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../gamma/1D-from-csv.html">
+       Gamma from 1D ASCII data
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../gamma/effect-of-noise.html">
+       The Effects of Noise on Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../gamma/from-dicom.html">
+       Gamma from DICOM
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../add-a-linac.html">
+     Adding a Linac
+    </a>
+   </li>
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="index.html">
+     Tunnels
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+    <label for="toctree-checkbox-4">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3 current active">
+      <a class="current reference internal" href="#">
+       SAMBA SSH Tunnelling
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="rsync.html">
+       Backups using rsync
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../background/index.html">
+   Background
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+  <label for="toctree-checkbox-5">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../background/autocontouring.html">
+     Automatic Contouring Project
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../background/elekta-logfiles.html">
+     Elekta Logfile Decoding and Indexing
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../ref/index.html">
+   Technical Reference
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+  <label for="toctree-checkbox-6">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../ref/lib/index.html">
+     Library Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../genindex.html">
+       Alphabetical Index
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/lib/dicom.html">
+       DICOM
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/lib/gamma.html">
+       Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/lib/mosaiq.html">
+       Mosaiq
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/lib/metersetmap.html">
+       MetersetMap
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/lib/trf.html">
+       TRF
+      </a>
+     </li>
+     <li class="toctree-l3 has-children">
+      <a class="reference internal" href="../../ref/lib/experimental/index.html">
+       Experimental Modules
+      </a>
+      <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+      <label for="toctree-checkbox-8">
+       <i class="fas fa-chevron-down">
+       </i>
+      </label>
+      <ul>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../../ref/lib/experimental/pinnacle.html">
+         Pinnacle Export Tool
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../../ref/lib/experimental/pseudonymisation.html">
+         Pseudonymisation Tool
+        </a>
+       </li>
+      </ul>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../ref/cli/index.html">
+     CLI Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/>
+    <label for="toctree-checkbox-9">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/cli/dicom.html">
+       DICOM Files
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/cli/trf.html">
+       Elekta Binary Logfiles
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/cli/icom.html">
+       iCom listener
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/cli/pinnacle.html">
+       Pinnacle Export Tool
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../ref/cli/pseudonymisation.html">
+       Pseudonymisation Tool
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../contrib/info/index.html">
+   Repository Information
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/>
+  <label for="toctree-checkbox-10">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../contrib/info/file-structure.html">
+     Repository File Structure
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../contrib/info/docs-guide.html">
+     Documentation Guide
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../contrib/setups/index.html">
+   Workstation Setup Guides
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/>
+  <label for="toctree-checkbox-11">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../contrib/setups/setup-win.html">
+     Windows Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../contrib/setups/setup-linux.html">
+     Linux Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../contrib/setups/setup-mac.html">
+     MacOS Setup
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../contrib/tips/index.html">
+   Tips &amp; Tricks
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/>
+  <label for="toctree-checkbox-12">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../contrib/tips/add-jupyter-kernel.html">
+     Add Jupyter kernel with
+     <em>
+      poetry
+     </em>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../contrib/tips/win-open-ssh.html">
+     Setting up OpenSSH on Windows 10
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../contrib/why-open-source.html">
+   Why Open Source?
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav></div>
+        <div class="bd-sidebar__bottom">
+             <!-- To handle the deprecated key -->
+            
+            <div class="navbar_extra_footer">
+            Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+            </div>
+            
+        </div>
+    </div>
+    <div id="rtd-footer-container"></div>
+</div>
+
+
+          
+
+
+          
+<!-- A tiny helper pixel to detect if we've scrolled -->
+<div class="sbt-scroll-pixel-helper"></div>
+<!-- Main content -->
+<div class="col py-0 content-container">
+    
+    <div class="header-article row sticky-top noprint">
+        
+
+
+
+<div class="col py-1 d-flex header-article-main">
+    <div class="header-article__left">
+        
+        <label for="__navigation"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="right"
+title="Toggle navigation"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-bars"></i>
+  </span>
+
+</label>
+
+        
+    </div>
+    <div class="header-article__right">
+<button onclick="toggleFullScreen()"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="bottom"
+title="Fullscreen mode"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+<div class="menu-dropdown menu-dropdown-repository-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Source repositories">
+      <i class="fab fa-github"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Source repository"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="headerbtn__text-container">repository</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fusers/howto/tunnels/samba.html&body=Your%20issue%20content%20here."
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Open an issue"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="headerbtn__text-container">open issue</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/users/howto/tunnels/samba.md"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Edit this page"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="headerbtn__text-container">suggest edit</span>
+</a>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+
+<div class="menu-dropdown menu-dropdown-download-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Download this page">
+      <i class="fas fa-download"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="../../../_sources/users/howto/tunnels/samba.md"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Download source file"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="headerbtn__text-container">.md</span>
+</a>
+
+      </li>
+      
+      <li>
+        
+<button onclick="printPdf(this)"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="left"
+title="Print to PDF"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="headerbtn__text-container">.pdf</span>
+</button>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+<label for="__page-toc"
+  class="headerbtn headerbtn-page-toc"
+  
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-list"></i>
+  </span>
+
+</label>
+
+    </div>
+</div>
+
+<!-- Table of contents -->
+<div class="col-md-3 bd-toc show noprint">
+    <div class="tocsection onthispage pt-5 pb-3">
+        <i class="fas fa-list"></i> Contents
+    </div>
+    <nav id="bd-toc-nav" aria-label="Page">
+        <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#background">
+   Background
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#pre-requisites">
+   Pre-requisites
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#overview">
+   Overview
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#setting-the-ip-addresses">
+   Setting the IP addresses
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#add-ssh-server-to-hosts-file">
+   Add SSH server to hosts file
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#initial-set-up-of-the-ssh-connection">
+   Initial set up of the SSH connection
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#setting-up-the-ssh-port-forward-service-to-run-on-boot">
+   Setting up the SSH port forward service to run on boot
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#viewing-the-logs">
+   Viewing the logs
+  </a>
+ </li>
+</ul>
+
+    </nav>
+</div>
+    </div>
+    <div class="article row">
+        <div class="col pl-md-3 pl-lg-5 content-container">
+            <!-- Table of contents that is only displayed when printing the page -->
+            <div id="jb-print-docs-body" class="onlyprint">
+                <h1>SAMBA SSH Tunnelling</h1>
+                <!-- Table of contents -->
+                <div id="print-main-content">
+                    <div id="jb-print-toc">
+                        
+                        <div>
+                            <h2> Contents </h2>
+                        </div>
+                        <nav aria-label="Page">
+                            <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#background">
+   Background
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#pre-requisites">
+   Pre-requisites
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#overview">
+   Overview
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#setting-the-ip-addresses">
+   Setting the IP addresses
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#add-ssh-server-to-hosts-file">
+   Add SSH server to hosts file
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#initial-set-up-of-the-ssh-connection">
+   Initial set up of the SSH connection
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#setting-up-the-ssh-port-forward-service-to-run-on-boot">
+   Setting up the SSH port forward service to run on boot
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#viewing-the-logs">
+   Viewing the logs
+  </a>
+ </li>
+</ul>
+
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            <main id="main-content" role="main">
+                
+              <div>
+                
+  <section class="tex2jax_ignore mathjax_ignore" id="samba-ssh-tunnelling">
+<h1>SAMBA SSH Tunnelling<a class="headerlink" href="#samba-ssh-tunnelling" title="Permalink to this headline">#</a></h1>
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Permalink to this headline">#</a></h2>
+<p>We need to access file shares across a range of sites. We do not yet have the
+top level infrastructure to join the centre’s domains together, so we need a
+way to share network drives between sites for use by the PyMedPhys Streamlit
+server. In the past we utilised tools such as Citrix’s NetScaler Gateway,
+however this often has intermittent connection issues and we wanted something
+more reliable.</p>
+<p>As such, we have set up a Windows OpenSSH server at one of our sites, and
+provided access to that server from an SSH client at each site. That client
+SSH machine then utilises SSH tunnelling to forward the appropriate ports
+between the sites and the central hub where the PyMedPhys application is
+running.</p>
+<p>However, this by itself, does not enable network file sharing between sites.
+The SAMBA port by default is port <code class="docutils literal notranslate"><span class="pre">445</span></code>. Linux machines are more than
+capable of accessing file shares that are hosted on custom ports, but Windows
+machines are not. So, even though the remote file-shares can be forwarded
+through via SSH tunnelling to a range of ports, they cannot be accessed by
+Windows clients.</p>
+<p>As such, we need to remap the range of incoming ports onto port <code class="docutils literal notranslate"><span class="pre">445</span></code>. And
+herein lies the issue. When a Windows machine boots up, port <code class="docutils literal notranslate"><span class="pre">445</span></code> is promptly
+occupied by <code class="docutils literal notranslate"><span class="pre">lanman</span></code>. As such this port can no longer be utilised for SSH
+tunnelling. This service can be set to be a delayed start, and then loopback
+devices can be created, however we found that Windows updates would often come
+in and clobber these settings throwing the whole networking system down.
+This approach was documented over at <a class="reference external" href="https://www.nikhef.nl/~janjust/CifsOverSSH/">https://www.nikhef.nl/~janjust/CifsOverSSH/</a>.</p>
+<p>As such, we instead opted to go for creating an Ubuntu machine within Hyper-V
+and having it be in-charge of remapping the ports. This is the document
+describing how to set up a fresh instance of an Ubuntu VM such that it can
+remap SSH tunnelled SAMBA ports onto port <code class="docutils literal notranslate"><span class="pre">445</span></code> for use by Windows clients.
+This approach has been reliable.</p>
+</section>
+<section id="pre-requisites">
+<h2>Pre-requisites<a class="headerlink" href="#pre-requisites" title="Permalink to this headline">#</a></h2>
+<ul class="simple">
+<li><p>A fresh minimal installation of Ubuntu 20.04 within Hyper-V utilising the
+<a class="reference external" href="https://mirror.aarnet.edu.au/pub/ubuntu/releases/20.04.2.0/ubuntu-20.04.2.0-desktop-amd64.iso">official Ubuntu iso</a>.</p>
+<ul>
+<li><p>Set this up with a single <code class="docutils literal notranslate"><span class="pre">External</span></code> type network adapter</p></li>
+<li><p>Disable secure boot</p></li>
+<li><p>Utilise Generation 2 so that UEFI is available</p></li>
+<li><p>Throughout this document it will be assumed that the non-root username on
+the Ubuntu machine is <code class="docutils literal notranslate"><span class="pre">pexit</span></code></p></li>
+</ul>
+</li>
+<li><p>A set up Windows OpenSSH server. For use within this document it will be
+assumed that the server is running on the hostname <code class="docutils literal notranslate"><span class="pre">rccc-ssh</span></code> and all ssh
+clients will connect as the non-administrator <code class="docutils literal notranslate"><span class="pre">pexit</span></code> user. The config
+is the following:</p></li>
+</ul>
+<div class="highlight-config notranslate"><div class="highlight"><pre><span></span>Port 38471
+PubkeyAuthentication yes
+PasswordAuthentication no
+GatewayPorts yes
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>SSH tunnels already set up to forwarding ports through to a PC on the local
+network. This PC throughout this document will be called <code class="docutils literal notranslate"><span class="pre">rccc-ssh</span></code>. The
+ports being forwarded through to <code class="docutils literal notranslate"><span class="pre">rccc-ssh</span></code> from remote SSH clients for this
+document will be ports <code class="docutils literal notranslate"><span class="pre">44445</span></code> - <code class="docutils literal notranslate"><span class="pre">44451</span></code>.</p></li>
+<li><p>A range of IP addresses that can be utilised for the remapping of port <code class="docutils literal notranslate"><span class="pre">445</span></code>
+onto them. Throughout this document these IP addresses will be
+<code class="docutils literal notranslate"><span class="pre">192.168.100.230</span></code> - <code class="docutils literal notranslate"><span class="pre">192.168.100.236</span></code>.</p></li>
+<li><p>The DNS IP address. Throughout this document this will be assumed to be
+<code class="docutils literal notranslate"><span class="pre">192.168.100.15</span></code></p></li>
+</ul>
+</section>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">#</a></h2>
+<p>The general approach here will be to:</p>
+<ul class="simple">
+<li><p>first add the IP addresses that we will be occupying,</p></li>
+<li><p>then create an SSH key pair, add the public key to the server’s list of
+authorised keys,</p></li>
+<li><p>and then lastly set up the appropriate SSH port forwarding so that it runs on
+boot and retries when there are network interruptions.</p></li>
+</ul>
+</section>
+<section id="setting-the-ip-addresses">
+<h2>Setting the IP addresses<a class="headerlink" href="#setting-the-ip-addresses" title="Permalink to this headline">#</a></h2>
+<p>Utilise the <code class="docutils literal notranslate"><span class="pre">gnome-control-center</span></code> to change the IPv4 network settings to
+Manual, and then add in the IP addresses that you would like to have this
+VM occupy.</p>
+<p><img alt="Setting the IP addresses" src="../../../_images/set-ip.png" /></p>
+<p>Once the IPv4 method has been set to Manual you may lose internet access
+and/or the ability to resolve network hostnames. As such you need to also add
+in the IP address of the DNS server.</p>
+<p><img alt="Setting up the DNS" src="../../../_images/set-dns.png" /></p>
+</section>
+<section id="add-ssh-server-to-hosts-file">
+<h2>Add SSH server to hosts file<a class="headerlink" href="#add-ssh-server-to-hosts-file" title="Permalink to this headline">#</a></h2>
+<p>At this stage, the Ubuntu image in question still struggled to find the
+<code class="docutils literal notranslate"><span class="pre">rccc-ssh</span></code> host. As such, as a work-a-round, the file at <code class="docutils literal notranslate"><span class="pre">/etc/hosts</span></code> was
+edited to include the line <code class="docutils literal notranslate"><span class="pre">192.168.100.13</span>&#160; <span class="pre">rccc-ssh</span></code>.</p>
+</section>
+<section id="initial-set-up-of-the-ssh-connection">
+<h2>Initial set up of the SSH connection<a class="headerlink" href="#initial-set-up-of-the-ssh-connection" title="Permalink to this headline">#</a></h2>
+<p>Run the command <code class="docutils literal notranslate"><span class="pre">ssh-keygen</span> <span class="pre">-t</span> <span class="pre">ed25519</span></code> to create an SSH key pair. See the
+<a class="reference external" href="https://docs.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent">GitHub docs</a>
+for more details on this.</p>
+<p>Then add the contents of the newly created file <code class="docutils literal notranslate"><span class="pre">~/.ssh/id_ed25519.pub</span></code> to the
+<code class="docutils literal notranslate"><span class="pre">C:\Users\pexit\.ssh\authorized_keys</span></code> file stored on the <code class="docutils literal notranslate"><span class="pre">rccc-ssh</span></code> server.</p>
+<p>Then test that this has been successful by running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh pexit@rccc-ssh -p <span class="m">38471</span>
+</pre></div>
+</div>
+<p>The above command is required at least once, so that the host key can be added
+by ssh to the <code class="docutils literal notranslate"><span class="pre">known_hosts</span></code> file.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you see the error <code class="docutils literal notranslate"><span class="pre">Permission</span> <span class="pre">denied</span> <span class="pre">(publickey,keyboard-interactive)</span></code> the
+cause is likely either the key hasn’t been added to the <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file
+appropriately, or that the <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file has the wrong permissions.
+Simply deleting the <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file and then recreating it as the
+<code class="docutils literal notranslate"><span class="pre">pexit</span></code> user should fix its permissions. To see if this is working it a helpful
+troubleshooting step is to see if the <code class="docutils literal notranslate"><span class="pre">pexit</span></code> user can ssh into
+<code class="docutils literal notranslate"><span class="pre">pexit&#64;localhost</span></code> while on the <code class="docutils literal notranslate"><span class="pre">rccc-ssh</span></code> server.</p>
+</div>
+<p>Since port <code class="docutils literal notranslate"><span class="pre">445</span></code> is a privileged port we need to utilise <code class="docutils literal notranslate"><span class="pre">authbind</span></code> to allow
+<code class="docutils literal notranslate"><span class="pre">ssh</span></code> to listen on this port without being a root user. This process is as
+follows utilising the tips found at <a class="reference external" href="https://superuser.com/a/892391">https://superuser.com/a/892391</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo apt install authbind
+sudo touch /etc/authbind/byport/445
+sudo chmod <span class="m">500</span> /etc/authbind/byport/445
+sudo chown pexit /etc/authbind/byport/445
+</pre></div>
+</div>
+<p>Then, from there, an initial test of the port forwarding can be undergone:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>authbind ssh -N -L <span class="m">192</span>.168.100.233:445:localhost:44448 pexit@rccc-ssh -p <span class="m">38471</span>
+</pre></div>
+</div>
+<p>With the above command still running, verify that going to the address
+<code class="docutils literal notranslate"><span class="pre">\\192.168.100.233</span></code> within Windows Explorer on a Windows client does indeed
+present the user with the tunnelled network share drive.</p>
+</section>
+<section id="setting-up-the-ssh-port-forward-service-to-run-on-boot">
+<h2>Setting up the SSH port forward service to run on boot<a class="headerlink" href="#setting-up-the-ssh-port-forward-service-to-run-on-boot" title="Permalink to this headline">#</a></h2>
+<p>So that the port forwarding is self-healing in case of network interruptions
+we will be utilising the package <code class="docutils literal notranslate"><span class="pre">autossh</span></code>. These instructions here were
+adapted from <a class="reference external" href="https://www.everythingcli.org/ssh-tunnelling-for-fun-and-profit-autossh/#gfm-8">https://www.everythingcli.org/ssh-tunnelling-for-fun-and-profit-autossh/#gfm-8</a>.</p>
+<p>Also, when running this <code class="docutils literal notranslate"><span class="pre">autossh</span></code> service, we want the service to run as the
+<code class="docutils literal notranslate"><span class="pre">pexit</span></code> user so that the SSH key-pair created and authorised above gets
+utilised. And so that we are not unnecessarily running our commands as root.
+The guide for adding a <code class="docutils literal notranslate"><span class="pre">systemd</span></code> service as a custom user was adapted from
+<a class="reference external" href="https://askubuntu.com/a/676022">https://askubuntu.com/a/676022</a>.</p>
+<p>First, verify that the command that is going to be run works as expected. In
+our case this full command was:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/usr/bin/authbind --deep <span class="se">\</span>
+  /usr/bin/autossh -M <span class="m">0</span> -o <span class="s2">&quot;ServerAliveInterval 30&quot;</span> -o <span class="s2">&quot;ServerAliveCountMax 3&quot;</span> -N <span class="se">\</span>
+  -L <span class="m">192</span>.168.100.230:445:localhost:44445 <span class="se">\</span>
+  -L <span class="m">192</span>.168.100.231:445:localhost:44446 <span class="se">\</span>
+  -L <span class="m">192</span>.168.100.232:445:localhost:44447 <span class="se">\</span>
+  -L <span class="m">192</span>.168.100.233:445:localhost:44448 <span class="se">\</span>
+  -L <span class="m">192</span>.168.100.234:445:localhost:44449 <span class="se">\</span>
+  -L <span class="m">192</span>.168.100.235:445:localhost:44450 <span class="se">\</span>
+  -L <span class="m">192</span>.168.100.236:445:localhost:44451 <span class="se">\</span>
+  pexit@rccc-ssh -p <span class="m">38471</span>
+</pre></div>
+</div>
+<p>Then, once it has been verified that the above command worked as expected,
+the following file was created at <code class="docutils literal notranslate"><span class="pre">/etc/systemd/system/autossh-samba-tunnel.service</span></code>:</p>
+<div class="highlight-service notranslate"><div class="highlight"><pre><span></span>[Unit]
+Description=AutoSSH samba port forwarding
+After=network.target
+
+[Service]
+User=pexit
+Group=pexit
+Environment=&quot;AUTOSSH_GATETIME=0&quot;
+ExecStart=/usr/bin/authbind --deep \
+  /usr/bin/autossh -M 0 -o &quot;ServerAliveInterval 30&quot; -o &quot;ServerAliveCountMax 3&quot; -N \
+  -L 192.168.100.230:445:localhost:44445 \
+  -L 192.168.100.231:445:localhost:44446 \
+  -L 192.168.100.232:445:localhost:44447 \
+  -L 192.168.100.233:445:localhost:44448 \
+  -L 192.168.100.234:445:localhost:44449 \
+  -L 192.168.100.235:445:localhost:44450 \
+  -L 192.168.100.236:445:localhost:44451 \
+  pexit@rccc-ssh -p 38471
+
+[Install]
+WantedBy=multi-user.target
+</pre></div>
+</div>
+<p>To then enable this service the following was run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo systemctl daemon-reload
+sudo systemctl start autossh-samba-tunnel.service
+sudo systemctl <span class="nb">enable</span> autossh-samba-tunnel.service
+</pre></div>
+</div>
+</section>
+<section id="viewing-the-logs">
+<h2>Viewing the logs<a class="headerlink" href="#viewing-the-logs" title="Permalink to this headline">#</a></h2>
+<p>To view the logs for this service the following can be run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>journalctl -u autossh-samba-tunnel.service
+</pre></div>
+</div>
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./users/howto/tunnels"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+            </main>
+            <footer class="footer-article noprint">
+                
+    <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+    <a class='left-prev' id="prev-link" href="index.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">Tunnels</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="rsync.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Backups using rsync</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+            </footer>
+        </div>
+    </div>
+    <div class="footer-content row">
+        <footer class="col footer"><p>
+  
+    By the PyMedPhys community<br/>
+  
+      &copy; Copyright 2018-2021.<br/>
+</p>
+        </footer>
+    </div>
+    
+</div>
+
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+
+
+  </body>
+</html>

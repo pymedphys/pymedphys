@@ -57,7 +57,7 @@ const thebe_selector_output = ".output, .cell_output"
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="MacOS Setup" href="setup-mac.html" />
-    <link rel="prev" title="Overview" href="../index.html" />
+    <link rel="prev" title="Windows Setup" href="setup-win.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="docsearch:language" content="en">
     
@@ -121,127 +121,249 @@ const thebe_selector_output = ".output, .cell_output"
     <div class="bd-toc-item active">
         <ul class="nav bd-sidenav">
  <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/index.html">
+  <a class="reference internal" href="../../overview.html">
    Overview
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/howto/get-started.html">
-   Get Started
+  <a class="reference internal" href="../../release-notes.html">
+   Release Notes
   </a>
  </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Reference
+  Users Guide
  </span>
 </p>
 <ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="../../genindex.html">
-   Alphabetical Index
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/get-started/index.html">
+   Getting started
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/get-started/quick-start.html">
+     Quick Start Guide
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/get-started/cli.html">
+     Using the CLI
+    </a>
+   </li>
+  </ul>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/ref/dicom.html">
-   DICOM
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/howto/index.html">
+   How-to Guides
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+  <label for="toctree-checkbox-2">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/howto/gamma/index.html">
+     Gamma
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/speed-up.html">
+       Speeding up gamma calculations
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/1D-from-csv.html">
+       Gamma from 1D ASCII data
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/effect-of-noise.html">
+       The Effects of Noise on Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/from-dicom.html">
+       Gamma from DICOM
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/howto/add-a-linac.html">
+     Adding a Linac
+    </a>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/howto/tunnels/index.html">
+     Tunnels
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+    <label for="toctree-checkbox-4">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/tunnels/samba.html">
+       SAMBA SSH Tunnelling
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/tunnels/rsync.html">
+       Backups using rsync
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/ref/gamma.html">
-   Gamma
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/background/index.html">
+   Background
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+  <label for="toctree-checkbox-5">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/background/autocontouring.html">
+     Automatic Contouring Project
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/background/elekta-logfiles.html">
+     Elekta Logfile Decoding and Indexing
+    </a>
+   </li>
+  </ul>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/ref/mosaiq.html">
-   Mosaiq
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/ref/index.html">
+   Technical Reference
   </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/ref/metersetmap.html">
-   MetersetMap
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/ref/trf.html">
-   TRF
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/ref/experimental/pinnacle.html">
-   Pinnacle Export Tool
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  Tutorials
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/tutes/gamma/gamma_tutorial.html">
-   Gamma calculation
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  How-to
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/howto/gamma/effect-of-noise.html">
-   The Effects of Noise on Gamma
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/howto/gamma/from-dicom.html">
-   Gamma from DICOM
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/howto/gamma/1D-from-csv.html">
-   Gamma from 1D ASCII data
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/howto/add-a-linac.html">
-   Adding a Linac
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  CLI Users Guide
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="../../cli/index.html">
-   Overview
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../cli/ref/dicom.html">
-   DICOM Files
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../cli/ref/trf.html">
-   Elekta Binary Logfiles
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../cli/ref/icom.html">
-   iCom listener
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../cli/ref/pinnacle.html">
-   Pinnacle Export Tool
-  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+  <label for="toctree-checkbox-6">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/ref/lib/index.html">
+     Library Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../genindex.html">
+       Alphabetical Index
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/dicom.html">
+       DICOM
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/gamma.html">
+       Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/mosaiq.html">
+       Mosaiq
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/metersetmap.html">
+       MetersetMap
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/trf.html">
+       TRF
+      </a>
+     </li>
+     <li class="toctree-l3 has-children">
+      <a class="reference internal" href="../../users/ref/lib/experimental/index.html">
+       Experimental Modules
+      </a>
+      <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+      <label for="toctree-checkbox-8">
+       <i class="fas fa-chevron-down">
+       </i>
+      </label>
+      <ul>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../../users/ref/lib/experimental/pinnacle.html">
+         Pinnacle Export Tool
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../../users/ref/lib/experimental/pseudonymisation.html">
+         Pseudonymisation Tool
+        </a>
+       </li>
+      </ul>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/ref/cli/index.html">
+     CLI Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/>
+    <label for="toctree-checkbox-9">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/dicom.html">
+       DICOM Files
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/trf.html">
+       Elekta Binary Logfiles
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/icom.html">
+       iCom listener
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/pinnacle.html">
+       Pinnacle Export Tool
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/pseudonymisation.html">
+       Pseudonymisation Tool
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
  </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
@@ -255,74 +377,83 @@ const thebe_selector_output = ".output, .cell_output"
    Overview
   </a>
  </li>
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
-   Linux Setup
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../info/index.html">
+   Repository Information
   </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/>
+  <label for="toctree-checkbox-10">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../info/file-structure.html">
+     Repository File Structure
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../info/docs-guide.html">
+     Documentation Guide
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="index.html">
+   Workstation Setup Guides
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/>
+  <label for="toctree-checkbox-11">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2">
+    <a class="reference internal" href="setup-win.html">
+     Windows Setup
+    </a>
+   </li>
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
+     Linux Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="setup-mac.html">
+     MacOS Setup
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../tips/index.html">
+   Tips &amp; Tricks
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/>
+  <label for="toctree-checkbox-12">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../tips/add-jupyter-kernel.html">
+     Add Jupyter kernel with
+     <em>
+      poetry
+     </em>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../tips/win-open-ssh.html">
+     Setting up OpenSSH on Windows 10
+    </a>
+   </li>
+  </ul>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="setup-mac.html">
-   MacOS Setup
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="setup-win.html">
-   Windows Setup
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../documentation.html">
-   Writing documentation
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../other/add-jupyter-kernel.html">
-   Add Jupyter kernel with
-   <em>
-    poetry
-   </em>
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../other/win-open-ssh.html">
-   Setting up OpenSSH on Windows 10
-  </a>
- </li>
-</ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  General
- </span>
-</p>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="../../general/index.html">
-   Overview
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../release-notes.html">
-   Release Notes
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../general/file-structure.html">
-   Repository File Structure
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../general/open-source-benefits.html">
-   Benefits of Open Source for Medical Physics
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/background/autocontouring.html">
-   Automatic Contouring Project
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="../../lib/background/elekta-logfiles.html">
-   Elekta Logfile Decoding and Indexing
+  <a class="reference internal" href="../why-open-source.html">
+   Why Open Source?
   </a>
  </li>
 </ul>
@@ -629,11 +760,11 @@ title="Print to PDF"
                 
     <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-    <a class='left-prev' id="prev-link" href="../index.html" title="previous page">
+    <a class='left-prev' id="prev-link" href="setup-win.html" title="previous page">
         <i class="fas fa-angle-left"></i>
         <div class="prev-next-info">
             <p class="prev-next-subtitle">previous</p>
-            <p class="prev-next-title">Overview</p>
+            <p class="prev-next-title">Windows Setup</p>
         </div>
     </a>
     <a class='right-next' id="next-link" href="setup-mac.html" title="next page">
