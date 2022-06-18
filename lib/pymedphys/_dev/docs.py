@@ -56,6 +56,8 @@ def build_docs(args):
         shutil.copy(original_path, target_path)
 
     for file_name in FILES_TO_PRE_DOWNLOAD:
+        # Implemented to remove the downloading prompts from appearing
+        # within the online doc notebooks
         pymedphys.data_path(file_name)
 
     if args.prep:
