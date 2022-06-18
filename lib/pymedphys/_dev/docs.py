@@ -15,6 +15,8 @@
 import shutil
 import subprocess
 
+import pymedphys
+
 from .propagate import LIBRARY_PATH, REPO_ROOT
 
 DOCS_PATH = LIBRARY_PATH.joinpath("docs")
@@ -27,6 +29,8 @@ DOCS_CHANGELOG = DOCS_PATH.joinpath("release-notes.md")
 
 ROOT_CONTRIBUTING = REPO_ROOT.joinpath("CONTRIBUTING.md")
 DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contrib", "index.md")
+
+FILES_TO_PRE_DOWNLOAD = ["original_dose_beam_4.dcm", "logfile_dose_beam_4.dcm"]
 
 
 FILE_COPY_MAPPING = [
@@ -50,6 +54,11 @@ def build_docs(args):
 
     for original_path, target_path in FILE_COPY_MAPPING:
         shutil.copy(original_path, target_path)
+
+    for file_name in FILES_TO_PRE_DOWNLOAD:
+        # Implemented to remove the downloading prompts from appearing
+        # within the online doc notebooks
+        pymedphys.data_path(file_name)
 
     if args.prep:
         subprocess.check_call(["jupyter-book", "config", "sphinx", output_directory])
