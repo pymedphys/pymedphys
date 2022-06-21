@@ -35,10 +35,14 @@ def make_exe():
     exe.windows_runtime_dlls_mode = "always"
     exe.windows_subsystem = "console"
 
+    exe.pip_install(["wheel"])
     exe.add_python_resources(exe.pip_install(["-r", "requirements-cli.txt", "-r", "requirements-icom.txt", "-r", "requirements-tests.txt", ]))
     exe.add_python_resources(exe.pip_install(["."]))
 
     return exe
+
+def make_embedded_resources(exe):
+    return exe.to_embedded_resources()
 
 def make_install(exe):
     # Create an object that represents our installed application file layout.
@@ -54,7 +58,8 @@ def make_install(exe):
 
 # Tell PyOxidizer about the build targets defined above.
 register_target("exe", make_exe)
-register_target("install", make_install, depends = ["exe"], default_build_script = True)
+register_target("resources", make_embedded_resources, depends = ["exe"], default_build_script = True)
+register_target("install", make_install, depends = ["exe"], default=True)
 
 # Resolve whatever targets the invoker of this configuration file is requesting
 # be resolved.
