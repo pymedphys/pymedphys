@@ -15,7 +15,7 @@
 using System;
 using System.Threading.Tasks;
 using Grpc.Core;
-using Helloworld;
+using HelloWorld;
 
 namespace GreeterServer
 {

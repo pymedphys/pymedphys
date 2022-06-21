@@ -14,7 +14,7 @@
 
 using System;
 using Grpc.Core;
-using Helloworld;
+using HelloWorld;
 
 namespace GreeterClient
 {
