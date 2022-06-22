@@ -11,19 +11,20 @@ from betterproto.grpc.grpclib_server import ServiceBase
 
 @dataclass(eq=False, repr=False)
 class GammaRequest(betterproto.Message):
-    axes_reference: "Double2DArray" = betterproto.message_field(1)
-    dose_reference: "DoubleNdArray" = betterproto.message_field(2)
-    axes_evaluation: "Double2DArray" = betterproto.message_field(3)
-    dose_evaluation: "DoubleNdArray" = betterproto.message_field(4)
-    dose_percent_threshold: float = betterproto.double_field(5)
-    distance_threshold: float = betterproto.double_field(6)
-    lower_percent_dose_cutoff: float = betterproto.double_field(7)
-    interpolation_fraction: float = betterproto.double_field(8)
-    max_gamma: float = betterproto.double_field(9)
-    local_gamma: bool = betterproto.bool_field(10)
-    global_normalisation: float = betterproto.double_field(11)
-    random_subset: int = betterproto.int64_field(12)
-    ram_available: int = betterproto.int64_field(13)
+    token: str = betterproto.string_field(1)
+    axes_reference: "Double2DArray" = betterproto.message_field(2)
+    dose_reference: "DoubleNdArray" = betterproto.message_field(3)
+    axes_evaluation: "Double2DArray" = betterproto.message_field(4)
+    dose_evaluation: "DoubleNdArray" = betterproto.message_field(5)
+    dose_percent_threshold: float = betterproto.double_field(6)
+    distance_threshold: float = betterproto.double_field(7)
+    lower_percent_dose_cutoff: float = betterproto.double_field(8)
+    interpolation_fraction: float = betterproto.double_field(9)
+    max_gamma: float = betterproto.double_field(10)
+    local_gamma: bool = betterproto.bool_field(11)
+    global_normalisation: float = betterproto.double_field(12)
+    random_subset: int = betterproto.int64_field(13)
+    ram_available: int = betterproto.int64_field(14)
 
 
 @dataclass(eq=False, repr=False)
@@ -57,6 +58,7 @@ class GammaServiceStub(betterproto.ServiceStub):
     async def gamma(
         self,
         *,
+        token: str = "",
         axes_reference: "Double2DArray" = None,
         dose_reference: "DoubleNdArray" = None,
         axes_evaluation: "Double2DArray" = None,
@@ -73,6 +75,7 @@ class GammaServiceStub(betterproto.ServiceStub):
     ) -> "GammaReply":
 
         request = GammaRequest()
+        request.token = token
         if axes_reference is not None:
             request.axes_reference = axes_reference
         if dose_reference is not None:
@@ -97,6 +100,7 @@ class GammaServiceStub(betterproto.ServiceStub):
 class GammaServiceBase(ServiceBase):
     async def gamma(
         self,
+        token: str,
         axes_reference: "Double2DArray",
         dose_reference: "DoubleNdArray",
         axes_evaluation: "Double2DArray",
@@ -117,6 +121,7 @@ class GammaServiceBase(ServiceBase):
         request = await stream.recv_message()
 
         request_kwargs = {
+            "token": request.token,
             "axes_reference": request.axes_reference,
             "dose_reference": request.dose_reference,
             "axes_evaluation": request.axes_evaluation,

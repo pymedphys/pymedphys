@@ -21,21 +21,23 @@ service GammaService {
 }
 
 message GammaRequest {
-  Double2DArray axesReference = 1;
-  DoubleNDArray doseReference = 2;
+  string token = 1;
 
-  Double2DArray axesEvaluation = 3;
-  DoubleNDArray doseEvaluation = 4;
+  Double2DArray axesReference = 2;
+  DoubleNDArray doseReference = 3;
 
-  double dosePercentThreshold = 5;
-  double distanceThreshold = 6;
-  double lowerPercentDoseCutoff = 7;
-  double interpolationFraction = 8;
-  double maxGamma = 9;
-  bool localGamma = 10;
-  double globalNormalisation = 11;
-  int64 randomSubset = 12;
-  int64 ramAvailable = 13;
+  Double2DArray axesEvaluation = 4;
+  DoubleNDArray doseEvaluation = 5;
+
+  double dosePercentThreshold = 6;
+  double distanceThreshold = 7;
+  double lowerPercentDoseCutoff = 8;
+  double interpolationFraction = 9;
+  double maxGamma = 10;
+  bool localGamma = 11;
+  double globalNormalisation = 12;
+  int64 randomSubset = 13;
+  int64 ramAvailable = 14;
 }
 
 message GammaReply {
