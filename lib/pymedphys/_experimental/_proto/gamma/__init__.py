@@ -53,7 +53,7 @@ class DoubleNdArray(betterproto.Message):
     array3_d: "Double3DArray" = betterproto.message_field(3, group="type")
 
 
-class GreeterStub(betterproto.ServiceStub):
+class GammaServiceStub(betterproto.ServiceStub):
     async def gamma(
         self,
         *,
@@ -91,10 +91,10 @@ class GreeterStub(betterproto.ServiceStub):
         request.random_subset = random_subset
         request.ram_available = ram_available
 
-        return await self._unary_unary("/gamma.Greeter/Gamma", request, GammaReply)
+        return await self._unary_unary("/gamma.GammaService/Gamma", request, GammaReply)
 
 
-class GreeterBase(ServiceBase):
+class GammaServiceBase(ServiceBase):
     async def gamma(
         self,
         axes_reference: "Double2DArray",
@@ -137,7 +137,7 @@ class GreeterBase(ServiceBase):
 
     def __mapping__(self) -> Dict[str, grpclib.const.Handler]:
         return {
-            "/gamma.Greeter/Gamma": grpclib.const.Handler(
+            "/gamma.GammaService/Gamma": grpclib.const.Handler(
                 self.__rpc_gamma,
                 grpclib.const.Cardinality.UNARY_UNARY,
                 GammaRequest,

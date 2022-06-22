@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package gamma;
 
-service Greeter {
+service GammaService {
   rpc Gamma (GammaRequest) returns (GammaReply) {}
 }
 

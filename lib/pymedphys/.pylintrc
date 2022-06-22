@@ -38,6 +38,7 @@ disable =
     implicit-str-concat,
     unnecessary-dunder-call,
     unnecessary-list-index-lookup,
+    logging-fstring-interpolation,
 
 [FORMAT]
 max-line-length=88
