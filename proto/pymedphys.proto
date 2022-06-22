@@ -14,7 +14,9 @@
 
 syntax = "proto3";
 
-package gamma;
+option csharp_namespace = "PyMedPhys";
+
+package pymedphys;
 
 service GammaService {
   rpc Gamma (GammaRequest) returns (GammaReply) {}
@@ -23,25 +25,25 @@ service GammaService {
 message GammaRequest {
   string token = 1;
 
-  Double2DArray axesReference = 2;
-  DoubleNDArray doseReference = 3;
+  Double2DArray axes_reference = 2;
+  DoubleArray dose_reference = 3;
 
-  Double2DArray axesEvaluation = 4;
-  DoubleNDArray doseEvaluation = 5;
+  Double2DArray axes_evaluation = 4;
+  DoubleArray dose_evaluation = 5;
 
-  double dosePercentThreshold = 6;
-  double distanceThreshold = 7;
-  double lowerPercentDoseCutoff = 8;
-  double interpolationFraction = 9;
-  double maxGamma = 10;
-  bool localGamma = 11;
-  double globalNormalisation = 12;
-  int64 randomSubset = 13;
-  int64 ramAvailable = 14;
+  double dose_percent_threshold = 6;
+  double distance_threshold = 7;
+  double lower_percent_dose_cutoff = 8;
+  double interpolation_fraction = 9;
+  double max_gamma = 10;
+  bool local_gamma = 11;
+  double global_normalisation = 12;
+  int64 random_subset = 13;
+  int64 ram_available = 14;
 }
 
 message GammaReply {
-  DoubleNDArray data = 1;
+  DoubleArray data = 1;
 }
 
 
@@ -57,10 +59,10 @@ message Double3DArray {
   repeated Double2DArray data = 1;
 }
 
-message DoubleNDArray {
+message DoubleArray {
   oneof type {
-    Double1DArray array1D = 1;
-    Double2DArray array2D = 2;
-    Double3DArray array3D = 3;
+    Double1DArray array_1d = 1;
+    Double2DArray array_2d = 2;
+    Double3DArray array_3d = 3;
   }
 }

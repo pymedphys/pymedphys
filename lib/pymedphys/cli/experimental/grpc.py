@@ -22,9 +22,16 @@ def grpc_cli(subparsers):
 
     grpc_parser.add_argument(
         "token",
-        help=("The secret token used to secure the localhost socket communications."),
+        help=(
+            "Defining the secret token that the client will need to "
+            "provide to secure the localhost socket communications."
+        ),
     )
 
-    grpc_parser.set_defaults(func=main.start)
+    grpc_parser.set_defaults(func=start)
 
     return grpc_parser
+
+
+def start(args):
+    main.start(token=args.token)

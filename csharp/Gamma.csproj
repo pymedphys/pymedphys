@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="./HelloWorld.proto" Link="HelloWorld.proto" />
+    <Protobuf Include="../proto/pymedphys.proto" Link="pymedphys.proto" />
   </ItemGroup>
 
 </Project>

@@ -21,7 +21,13 @@ import random
 
 import grpclib.server
 
-from .._proto import gamma
+from .._proto.pymedphys import (
+    Double1DArray,
+    Double2DArray,
+    DoubleArray,
+    GammaReply,
+    GammaServiceBase,
+)
 from . import _async
 
 PORT_RETRIES = 50
@@ -43,102 +49,60 @@ def start(token: str):
     _async.start(server_start, shutdown_callback)
 
 
-class AppService(gamma.ElectronPythonInterfaceBase):
+class GammaService(GammaServiceBase):
     def __init__(
         self,
         token: str,
         executor: concurrent.futures.ThreadPoolExecutor,
-        aiohttp_session: aiohttp.ClientSession,
     ):
         self._token = token
         self._loop = asyncio.get_running_loop()
         self._executor = executor
-        self._aiohttp_session = aiohttp_session
 
     async def _token_guard(self, token: str):
         if token != self._token:
-            raise ValueError("Token doesn't match")
+            raise ValueError(
+                f"Token doesn't match. Received {token}, expected {self._token}."
+            )
 
-    async def get_dicom_service_user(self, token: str) -> app.DicomServiceUser:
+    async def gamma(
+        self,
+        token: str,
+        axes_reference: Double2DArray,
+        dose_reference: DoubleArray,
+        axes_evaluation: Double2DArray,
+        dose_evaluation: DoubleArray,
+        dose_percent_threshold: float,
+        distance_threshold: float,
+        lower_percent_dose_cutoff: float,
+        interpolation_fraction: float,
+        max_gamma: float,
+        local_gamma: bool,
+        global_normalisation: float,
+        random_subset: int,
+        ram_available: int,
+    ) -> GammaReply:
+        logging.info("gamma called")
+
         await self._token_guard(token=token)
 
-        logging.info("get_dicom_service_user was called")
+        print(max_gamma)
 
-        dicom_service_id = await _deploy.get_dicom_service_user(
-            aiohttp_session=self._aiohttp_session
-        )
-
-        response = app.DicomServiceUser(dicom_service_id=dicom_service_id)
-
-        logging.info(f"Response: {response}")
-        return response
-
-    async def create_dicom_service_user(
-        self, token: str, organisation_id: str, deployer_id: str
-    ) -> app.DicomServiceUser:
-        await self._token_guard(token=token)
-
-        logging.info("create_dicom_service_user was called")
-
-        dicom_service_id = await _deploy.create_dicom_service_user(
-            executor=self._executor,
-            aiohttp_session=self._aiohttp_session,
-            organisation_id=organisation_id,
-            deployer_id=deployer_id,
-        )
-
-        response = app.DicomServiceUser(dicom_service_id=dicom_service_id)
-
-        logging.info(f"Response: {response}")
-        return response
-
-    async def get_local_hmac(self, token: str) -> app.Hmac:
-        await self._token_guard(token=token)
-
-        logging.info("get_local_hmac was called")
-
-        hmac = await self._loop.run_in_executor(
-            self._executor,
-            _deploy.get_local_hmac,
-        )
-
-        response = app.Hmac(hmac=hmac)
-
-        logging.info(f"Response: {response}")
-        return response
-
-    async def trigger_firewall(self, token: str):
-        await self._token_guard(token=token)
-
-        logging.info("trigger_firewall was called")
-
-        await self._loop.run_in_executor(
-            self._executor,
-            _deploy.trigger_firewall,
-        )
-
-        return app.Empty()
+        return GammaReply(data=DoubleArray(array_1_d=Double1DArray([])))
 
 
 async def main(token: str, executor: concurrent.futures.ThreadPoolExecutor):
-    async with aiohttp.ClientSession() as aiohttp_session:
-        server = grpclib.server.Server(
-            [
-                AppService(
-                    token=token, executor=executor, aiohttp_session=aiohttp_session
-                )
-            ]
-        )
+    server = grpclib.server.Server([GammaService(token=token, executor=executor)])
 
-        for i in range(PORT_RETRIES):
-            port = random.randint(PORT_MIN, PORT_MAX)
-            try:
-                await server.start(host="127.0.0.1", port=port)
-                break
-            except OSError:
-                if i >= PORT_RETRIES - 1:
-                    raise
+    for i in range(PORT_RETRIES):
+        port = random.randint(PORT_MIN, PORT_MAX)
+        try:
+            await server.start(host="127.0.0.1", port=port)
+            break
+        except OSError:
+            if i >= PORT_RETRIES - 1:
+                raise
 
-        print(json.dumps({"port": port}), flush=True)
+    print(json.dumps({"port": port}), flush=True)
 
-        await server.wait_closed()
+    await server.wait_closed()

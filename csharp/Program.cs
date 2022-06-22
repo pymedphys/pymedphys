@@ -1,4 +1,4 @@
-// Copyright 2015 gRPC authors.
+// Copyright 2022 Simon Biggs.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,20 @@
 
 using System;
 using Grpc.Core;
-using HelloWorld;
+using PyMedPhys;
 
-namespace GreeterClient
+namespace GammaCSharpClient
 {
     class Program
     {
         public static void Main(string[] args)
         {
-            Channel channel = new Channel("127.0.0.1:30051", ChannelCredentials.Insecure);
+            Channel channel = new Channel("127.0.0.1:34572", ChannelCredentials.Insecure);
 
-            var client = new Greeter.GreeterClient(channel);
-            String user = "you";
+            var client = new GammaService.GammaServiceClient(channel);
 
-            var reply = client.SayHello(new HelloRequest { Name = user });
-            Console.WriteLine("Greeting: " + reply.Message);
+            var reply = client.Gamma(new GammaRequest { Token = "abcd" });
+            Console.WriteLine("Greeting: " + reply.Data.ToString());
 
             channel.ShutdownAsync().Wait();
             Console.WriteLine("Press any key to exit...");
