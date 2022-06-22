@@ -153,6 +153,12 @@ doc8 = { version = "*", optional = true }            # groups = ["dev"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "doctests"]
 pyoxidizer = { version = "*", optional = true }      # groups = ["dev"]
+betterproto = { extras = ["compiler"], version = "^2.0.0b3", optional = true }  # groups = ["dev"]
+grpcio-tools = { version = "*", optional = true }   # groups = ["dev"]
+
+# https://github.com/danielgtaylor/python-betterproto/issues/341#issuecomment-1045610303
+markupsafe = { version = "2.0.1", optional = true }   # groups = ["dev"]
+
 
 
 [tool.poetry.extras]
@@ -163,16 +169,19 @@ dev = [
     "PyYAML",
     "astroid",
     "attrs",
+    "betterproto",
     "black",
     "dbfread",
     "dicompyler-core",
     "doc8",
     "fsspec",
+    "grpcio-tools",
     "hypothesis",
     "imageio",
     "ipython",
     "jupyter-book",
     "keyring",
+    "markupsafe",
     "matplotlib",
     "mypy",
     "natsort",

@@ -1,0 +1,64 @@
+// Copyright 2022 Simon Biggs.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package gamma;
+
+service Greeter {
+  rpc Gamma (GammaRequest) returns (GammaReply) {}
+}
+
+message GammaRequest {
+  Double2DArray axesReference = 1;
+  DoubleNDArray doseReference = 2;
+
+  Double2DArray axesEvaluation = 3;
+  DoubleNDArray doseEvaluation = 4;
+
+  double dosePercentThreshold = 5;
+  double distanceThreshold = 6;
+  double lowerPercentDoseCutoff = 7;
+  double interpolationFraction = 8;
+  double maxGamma = 9;
+  bool localGamma = 10;
+  double globalNormalisation = 11;
+  int64 randomSubset = 12;
+  int64 ramAvailable = 13;
+}
+
+message GammaReply {
+  DoubleNDArray data = 1;
+}
+
+
+message Double1DArray {
+  repeated double data = 1;
+}
+
+message Double2DArray {
+  repeated Double1DArray data = 1;
+}
+
+message Double3DArray {
+  repeated Double2DArray data = 1;
+}
+
+message DoubleNDArray {
+  oneof type {
+    Double1DArray array1D = 1;
+    Double2DArray array2D = 2;
+    Double3DArray array3D = 3;
+  }
+}
