@@ -19,7 +19,6 @@ def make_exe():
     policy = dist.make_python_packaging_policy()
     policy.set_resource_handling_mode("files")
     policy.resources_location = "filesystem-relative:lib"
-    policy.resources_location_fallback = "filesystem-relative:lib"
 
     python_config = dist.make_python_interpreter_config()
     python_config.module_search_paths = ["$ORIGIN/lib"]
@@ -39,10 +38,7 @@ def make_exe():
 
     exe.pip_install(["wheel"])
 
-    for resource in exe.pip_install(["-r", "requirements-deploy.txt"]):
-        resource.add_location = "filesystem-relative:lib"
-        exe.add_python_resource(resource)
-
+    exe.add_python_resources(exe.pip_install(["-r", "requirements-deploy.txt"]))
     exe.add_python_resources(exe.pip_install(["."]))
 
     return exe
