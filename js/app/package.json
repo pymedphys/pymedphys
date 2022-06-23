@@ -10,6 +10,7 @@
   "private": true,
   "homepage": "https://pymedphys.com",
   "main": "app/main.js",
+  "packageManager": "yarn@3.2.1",
   "build": {
     "productName": "PyMedPhys",
     "appId": "com.pymedphys.app",
