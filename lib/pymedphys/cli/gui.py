@@ -11,14 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 
 from pymedphys._gui import main
 
 
-def gui_cli(subparsers):
-    parser = subparsers.add_parser("gui", help=("Run the PyMedPhys GUI."))
+def gui_cli(subparsers: argparse._SubParsersAction):
+    parser: argparse.ArgumentParser = subparsers.add_parser(
+        "gui", help=("Run the PyMedPhys GUI.")
+    )
 
     parser.add_argument("--port")
+    parser.add_argument("--electron", action="store_true")
     parser.set_defaults(func=main)
 
     return parser

@@ -19,30 +19,29 @@ import { app, Menu, shell } from "electron";
 
 import { spawn, ChildProcess } from "child_process";
 
+import { PromiseDelegate } from "promise-delegate";
 import window from "./window";
 
 // @ts-ignore
 import env from "env";
 
-
 let appStreamlitServer: ChildProcess;
-
-// TODO: Make it so that the port is dynamically loaded from the streamlit start printout
-// Potentially could have an option to suppress the streamlit printout and provide a json encoded port.
-const pymedphysAppUrl = url.format({
-  pathname: `localhost:8501`,
-  protocol: "http:",
-  slashes: true,
-});
+let streamlitPortDelegate = new PromiseDelegate<string>();
 
 if (env.name === "development") {
-  console.log("Development")
-  appStreamlitServer = spawn("poetry", ["run", "pymedphys", "gui"]);
+  appStreamlitServer = spawn("poetry", ["run", "pymedphys", "gui", "--electron"]);
 } else {
-  appStreamlitServer = spawn("pymedphys",  ["gui"], {
+  appStreamlitServer = spawn("pymedphys",  ["gui", "--electron"], {
     cwd: path.join(process.resourcesPath, "python"),
   });
 }
+
+appStreamlitServer.stdout.once("data", (data) => {
+  const stdoutJson = JSON.parse(`${data}`);
+  const port: string = stdoutJson["port"];
+
+  streamlitPortDelegate.resolve(port);
+});
 
 appStreamlitServer.stderr.on("data", (data) => {
   console.log(`${data}`);
@@ -65,19 +64,25 @@ app.on("web-contents-created", (event, contents) => {
 });
 
 app.on("ready", () => {
-  // const menu = Menu.buildFromTemplate([devMenu]);
-
   Menu.setApplicationMenu(null);
 
   const mainWindow = window("main", {
-    width: 500,
-    height: 809,
+    width: 1400,
+    height: 865,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
   });
 
-  mainWindow.loadURL(pymedphysAppUrl);
+  streamlitPortDelegate.promise.then((port) => {
+    const pymedphysAppUrl = url.format({
+      pathname: `localhost:${port}`,
+      protocol: "http:",
+      slashes: true,
+    });
+
+    mainWindow.loadURL(pymedphysAppUrl);
+  });
 });
 
 app.on('before-quit', function() {
