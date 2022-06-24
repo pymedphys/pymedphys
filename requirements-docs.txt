@@ -42,7 +42,7 @@ jupyter-cache==0.4.3; python_version >= "3.7"
 jupyter-client==7.3.4; python_full_version >= "3.7.0" and python_version >= "3.7"
 jupyter-core==4.10.0; python_full_version >= "3.7.0" and python_version >= "3.7"
 jupyter-server-mathjax==0.2.5; python_version >= "3.7"
-jupyter-server==1.17.1; python_version >= "3.7"
+jupyter-server==1.18.0; python_version >= "3.7"
 jupyter-sphinx==0.3.2; python_version >= "3.7"
 jupyterlab-pygments==0.2.2; python_version >= "3.7"
 jupyterlab-widgets==1.1.1; python_version >= "3.7"
@@ -118,7 +118,7 @@ sphinxcontrib-htmlhelp==2.0.0; python_version >= "3.7" and python_full_version <
 sphinxcontrib-jsmath==1.0.1; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.7"
 sphinxcontrib-qthelp==1.0.3; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.7"
 sphinxcontrib-serializinghtml==1.1.5; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.7"
-sqlalchemy==1.4.37; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.6.0")
+sqlalchemy==1.4.38; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.6.0")
 stack-data==0.3.0; python_version >= "3.8"
 terminado==0.15.0; python_version >= "3.7"
 tinycss2==1.1.1; python_version >= "3.7"

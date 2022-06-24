@@ -30,8 +30,12 @@ let streamlitPortDelegate = new PromiseDelegate<string>();
 
 if (env.name === "development") {
   appStreamlitServer = spawn("poetry", ["run", "pymedphys", "gui", "--electron"]);
+
+  // appStreamlitServer = spawn("./pymedphys",  ["gui", "--electron"], {
+  //   cwd: path.join(__dirname, "..", "python"),
+  // });
 } else {
-  appStreamlitServer = spawn("pymedphys",  ["gui", "--electron"], {
+  appStreamlitServer = spawn("./pymedphys",  ["gui", "--electron"], {
     cwd: path.join(process.resourcesPath, "python"),
   });
 }
