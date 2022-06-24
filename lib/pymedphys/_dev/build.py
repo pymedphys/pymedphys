@@ -28,8 +28,15 @@ PYTHON_APP_DESTINATION = ELECTRON_APP_DIR.joinpath("python")
 def build_binary(args):
     # TODO: Propagate versions into bazel and package.json files
 
-    shutil.rmtree(PYOXIDIZER_BUILD)
-    shutil.rmtree(PYTHON_APP_DESTINATION)
+    try:
+        shutil.rmtree(PYOXIDIZER_BUILD)
+    except FileNotFoundError:
+        pass
+
+    try:
+        shutil.rmtree(PYTHON_APP_DESTINATION)
+    except FileNotFoundError:
+        pass
 
     subprocess.check_call(
         ["poetry", "run", "pyoxidizer", "build", "install"], cwd=REPO_ROOT
