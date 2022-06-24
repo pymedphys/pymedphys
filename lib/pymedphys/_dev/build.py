@@ -26,8 +26,10 @@ PYTHON_APP_DESTINATION = ELECTRON_APP_DIR.joinpath("python")
 
 
 def build_binary(args):
+    # shutil.which is needed for yarn to work on Windows
+    # https://stackoverflow.com/a/32799942/3912576
     if args.install:
-        subprocess.check_call(["yarn", "install"], cwd=ELECTRON_APP_DIR)
+        subprocess.check_call([shutil.which("yarn"), "install"], cwd=ELECTRON_APP_DIR)
 
     # TODO: Propagate versions into bazel and package.json files
 
@@ -46,4 +48,4 @@ def build_binary(args):
     )
     shutil.move(PYOXIDIZER_DIST, PYTHON_APP_DESTINATION)
 
-    subprocess.check_call(["yarn", "build"], cwd=ELECTRON_APP_DIR)
+    subprocess.check_call([shutil.which("yarn"), "build"], cwd=ELECTRON_APP_DIR)
