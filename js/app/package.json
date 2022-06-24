@@ -7,7 +7,7 @@
   },
   "description": "A community effort to develop an open standard library for Medical Physics in Python. We build high quality, transparent software together via peer review and open source distribution. Open code is better science.",
   "licence": "Apache-2.0",
-  "version": "0.1.0",
+  "version": "0.38.0",
   "private": true,
   "homepage": "https://pymedphys.com",
   "main": "app/main.js",
