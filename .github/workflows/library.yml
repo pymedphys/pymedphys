@@ -346,7 +346,10 @@ jobs:
         with:
           name: PyMedPhysApp-${{ runner.os }}
           path: |
-            js/app/dist/
+            js/app/dist/*.dmg
+            js/app/dist/*.exe
+            js/app/dist/*.snap
+            js/app/dist/*.AppImage
             !js/app/dist/*unpacked/
 
       # TODO:
