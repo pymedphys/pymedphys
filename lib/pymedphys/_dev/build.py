@@ -26,6 +26,9 @@ PYTHON_APP_DESTINATION = ELECTRON_APP_DIR.joinpath("python")
 
 
 def build_binary(args):
+    if args.install:
+        subprocess.check_call(["yarn", "install"], cwd=ELECTRON_APP_DIR)
+
     # TODO: Propagate versions into bazel and package.json files
 
     try:
@@ -42,8 +45,5 @@ def build_binary(args):
         ["poetry", "run", "pyoxidizer", "build", "install"], cwd=REPO_ROOT
     )
     shutil.move(PYOXIDIZER_DIST, PYTHON_APP_DESTINATION)
-
-    if args.install:
-        subprocess.check_call(["yarn", "install"], cwd=ELECTRON_APP_DIR)
 
     subprocess.check_call(["yarn", "build"], cwd=ELECTRON_APP_DIR)

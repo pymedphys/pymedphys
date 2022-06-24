@@ -93,6 +93,8 @@ jobs:
             task: "propagate"
           - os: "windows"
             task: "cypress"
+          - os: "windows"
+            task: "build"
 
           - os: "macos"
             task: "stackoverflow"
