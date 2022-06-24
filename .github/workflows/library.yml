@@ -344,7 +344,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         if: matrix.task == 'build'
         with:
-          name: PyMedPhysApp
+          name: PyMedPhysApp-${{ runner.os }}
           path: js/app/dist/*
 
       # TODO:
