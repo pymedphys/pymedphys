@@ -111,7 +111,7 @@ jobs:
           # Version numbers chosen so that highest and lowest Python version is
           # utilised
           - os: "ubuntu"
-            python-version: "3.7"
+            python-version: "3.9"
           - os: "windows"
             python-version: "3.10"
           - os: "macos"
