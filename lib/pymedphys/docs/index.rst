@@ -45,4 +45,4 @@
     contrib/info/index
     contrib/setups/index
     contrib/tips/index
-    contrib/why-open-source
+    contrib/dive/index
