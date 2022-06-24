@@ -244,7 +244,7 @@ jobs:
         if: matrix.task == 'cypress' || matrix.task == 'pyright' || matrix.task == 'build'
         with:
           node-version: "14"
-          cache: "yarn"
+          # cache: "yarn"  # TODO: Sort out this cache parameter
 
       # -----------------------------------------------------------------------------
 
