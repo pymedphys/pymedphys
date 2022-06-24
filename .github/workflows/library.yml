@@ -108,7 +108,7 @@ jobs:
             task: "propagate"
 
         include:
-          # Version numbers under support currently are version 3.8, 3.9, and
+          # Version numbers under support currently are versions 3.8, 3.9, and
           # 3.10. Instead of doing a full OS python version matrix, instead
           # just one version is chosen per OS in the hope that that offers a
           # reasonable trade off between test coverage and CI minutes utilised.
