@@ -3069,6 +3069,7 @@ docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
 
 [extras]
+build = ["pyoxidizer"]
 cli = ["toml"]
 comparables = ["flashgamma"]
 dev = ["Pillow", "PyYAML", "astroid", "attrs", "black", "dbfread", "dicompyler-core", "doc8", "fsspec", "hypothesis", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylinac", "pylint", "pymedphys-pylibjpeg-libjpeg", "pymssql", "pynetdicom", "pyoxidizer", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "reportlab", "requests", "rope", "scikit-image", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tomlkit", "tqdm", "watchdog", "xarray", "xlsxwriter", "xmltodict"]
@@ -3084,7 +3085,7 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "fsspec", "im
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "57b1ecebc132444198c88ade9bce531d380bf07f595e427e5f430dfadbaafc62"
+content-hash = "03f69ad7d7410f196079604b92c9de573d73dd9e60e8f3a22c7d119633eac15f"
 
 [metadata.files]
 alabaster = [

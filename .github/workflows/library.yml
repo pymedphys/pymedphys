@@ -67,22 +67,20 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu", "macos", "windows"]
-        task: [
+        task:
+          [
             "tests",
             "docs",
             "stackoverflow",
             "updates",
             "cypress",
             "slow",
-            # "binary",  # Skip for now
+            "build",
             "pyright",
             "propagate",
           ]
 
         exclude:
-          - os: "ubuntu"
-            task: "binary"
-
           - os: "windows"
             task: "stackoverflow"
           - os: "windows"
@@ -104,8 +102,6 @@ jobs:
             task: "cypress"
           - os: "macos"
             task: "slow"
-          - os: "macos"
-            task: "binary"
           - os: "macos"
             task: "pyright"
           - os: "macos"
@@ -121,7 +117,7 @@ jobs:
           - os: "windows"
             python-version: "3.10"
           - os: "macos"
-            python-version: 3.8
+            python-version: "3.8"
 
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 60
@@ -244,10 +240,11 @@ jobs:
 
       # Install Node
 
-      - uses: actions/setup-node@v1
-        if: matrix.task == 'cypress' || matrix.task == 'pyright'
+      - uses: actions/setup-node@v3
+        if: matrix.task == 'cypress' || matrix.task == 'pyright' || matrix.task == 'build'
         with:
           node-version: "14"
+          cache: "yarn"
 
       # -----------------------------------------------------------------------------
 
@@ -303,6 +300,13 @@ jobs:
         run: |
           poetry install -E propagate || poetry lock --no-update && poetry install -E propagate
 
+      ## Install with Binary Build Environment
+
+      - name: Install a binary build environment
+        if: matrix.task == 'build'
+        run: |
+          poetry install -E build -E cli
+
       ## Update all packages and then install with tests environment
 
       - name: Update all packages then install with tests and user environment
@@ -318,13 +322,13 @@ jobs:
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        if: matrix.task != 'build' && matrix.task != 'pyright'
         run: |
           echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
       - name: PyMedPhys Cache
         id: pymedphys-cache
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        if: matrix.task != 'build' && matrix.task != 'pyright'
         uses: actions/cache@v2
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
@@ -335,24 +339,20 @@ jobs:
       # Binary building
 
       - name: Build Binary
-        if: matrix.task == 'binary'
+        if: matrix.task == 'build'
         run: |
-          pip install tomlkit wheel pyinstaller
-          cd binary
-          python build-binary.py
+          poetry run pymedphys dev build --install
 
-      - uses: actions/upload-artifact@v2
-        if: matrix.task == 'binary'
+      - uses: actions/upload-artifact@v3
+        if: matrix.task == 'build'
         with:
-          name: PyMedPhysGUI
-          path: binary/build/dist/PyMedPhysGUI*.exe
+          name: PyMedPhysApp
+          path: js/app/dist/*
 
-      - name: Test Binary
-        if: matrix.task == 'binary'
-        run: |
-          pip install psutil
-          cd binary
-          python test.py
+      # TODO:
+      # - name: Test Binary
+      #   if: matrix.task == 'build'
+      #   run: |
 
       # -----------------------------------------------------------------------------
 

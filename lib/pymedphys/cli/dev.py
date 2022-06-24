@@ -1,4 +1,4 @@
-from pymedphys._dev import docs, propagate, tests
+from pymedphys._dev import build, docs, propagate, tests
 
 
 def dev_cli(subparsers):
@@ -12,6 +12,7 @@ def dev_cli(subparsers):
     add_cypress_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
     add_mosaiq_mssql_parser(dev_subparsers)
+    add_build_parser(dev_subparsers)
 
     return dev_parser
 
@@ -57,6 +58,18 @@ def add_propagate_parser(dev_subparsers):
     )
 
     parser.set_defaults(func=propagate.propagate_all)
+
+
+def add_build_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser("build")
+
+    parser.add_argument(
+        "--install",
+        help="Run yarn install first.",
+        action="store_true",
+    )
+
+    parser.set_defaults(func=build.build_binary)
 
 
 def add_cypress_parser(dev_subparsers):

@@ -154,10 +154,11 @@ rope = { version = "*", optional = true }            # groups = ["dev"]
 doc8 = { version = "*", optional = true }            # groups = ["dev"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "doctests"]
-pyoxidizer = { version = "*", optional = true }      # groups = ["dev"]
+pyoxidizer = { version = "*", optional = true }      # groups = ["dev", "build"]
 
 
 [tool.poetry.extras]
+build = ["pyoxidizer"]
 cli = ["toml"]
 comparables = ["flashgamma"]
 dev = [
