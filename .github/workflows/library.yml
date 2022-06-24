@@ -108,8 +108,13 @@ jobs:
             task: "propagate"
 
         include:
-          # Version numbers chosen so that highest and lowest Python version is
-          # utilised
+          # Version numbers under support currently are version 3.8, 3.9, and
+          # 3.10. Instead of doing a full OS python version matrix, instead
+          # just one version is chosen per OS in the hope that that offers a
+          # reasonable trade off between test coverage and CI minutes utilised.
+          # Windows is chosen to be the one using 3.10 since that is known to
+          # work for the docs build. 3.9 and 3.8 are divied up between Ubuntu
+          # and macOS arbitrarily.
           - os: "ubuntu"
             python-version: "3.9"
           - os: "windows"
