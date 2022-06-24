@@ -345,7 +345,9 @@ jobs:
         if: matrix.task == 'build'
         with:
           name: PyMedPhysApp-${{ runner.os }}
-          path: js/app/dist/*
+          path: |
+            js/app/dist/
+            !js/app/dist/*unpacked/
 
       # TODO:
       # - name: Test Binary
