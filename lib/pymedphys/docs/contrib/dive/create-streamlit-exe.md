@@ -124,9 +124,8 @@ To set up the Electron code base I began with the following boilerplate code:
 I significantly stripped it back so as to include as little as possible while
 still having success.
 
-The resulting Electron application code utilised can be found at:
-
-> <https://github.com/pymedphys/pymedphys/tree/836f272d092f294099bb51db05bab80d2bfcb628/js/app>
+The resulting Electron application code utilised can be found at
+[`js/app`](https://github.com/pymedphys/pymedphys/tree/836f272d092f294099bb51db05bab80d2bfcb628/js/app).
 
 To install all of the required dependencies run `yarn install` within the
 `js/app` directory. You will need to have both [Node](https://nodejs.org/en/)
@@ -138,38 +137,94 @@ installed to achieve this.
 Below is a short overview of the key components of the Electron application
 code base.
 
-#### `package.json`
+#### The `package.json` file
 
 A resources directory called `python` is selected and included within the
 build:
 
-> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/package.json#L22-L33>
+```json
+    "directories": {
+      "buildResources": "resources"
+    },
+    "extraResources": [
+      {
+        "from": "python",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+```
+
+> [js/app/package.json#L22-L33](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/package.json#L22-L33)
 
 This directory doesn't exist in the source tree. When the Electron app is being
 built with `poetry run pymedphys dev build` this `python` directory is created
 by running `pyoxidizer` and then moving the resulting built distribution over
 to `js/app/python`:
 
-- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L46-L49>
-- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L21-L25>
+```python
+PYOXIDIZER_BUILD = REPO_ROOT.joinpath("build")
+PYOXIDIZER_DIST = PYOXIDIZER_BUILD.joinpath("dist")
 
-#### `main.ts`
+ELECTRON_APP_DIR = REPO_ROOT.joinpath("js", "app")
+PYTHON_APP_DESTINATION = ELECTRON_APP_DIR.joinpath("python")
+
+...
+
+    subprocess.check_call(
+        ["poetry", "run", "pyoxidizer", "build", "install"], cwd=REPO_ROOT
+    )
+    shutil.move(PYOXIDIZER_DIST, PYTHON_APP_DESTINATION)
+```
+
+> [lib/pymedphys/\_dev/build.py](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py)
+
+#### The `main.ts` file
 
 Within `main.ts` the streamlit GUI itself is booted from within the above
 defined `python` resources directory:
 
-> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L31-L41>
+```typescript
+appStreamlitServer = spawn("./pymedphys", ["gui", "--electron"], {
+  cwd: path.join(process.resourcesPath, "python"),
+});
+```
+
+> [js/app/src/main.ts#L38-L40](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L38-L40)
 
 And the entire Electron application is really just a light wrapper that opens
 up the Streamlit hosted URL:
 
-> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89>
+```typescript
+streamlitPortDelegate.promise.then((port) => {
+  const pymedphysAppUrl = url.format({
+    pathname: `localhost:${port}`,
+    protocol: "http:",
+    slashes: true,
+  });
+
+  mainWindow.loadURL(pymedphysAppUrl);
+});
+```
+
+> [js/app/src/main.ts#L81-L89](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89)
 
 So that the Electron app doesn't open the Streamlit webpage before the server
 is running, it waits for the Streamlit CLI print out to print out that the
 server is ready:
 
-> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L43-L48>
+```typescript
+appStreamlitServer.stdout.once("data", (data) => {
+  const stdoutJson = JSON.parse(`${data}`);
+  const port: string = stdoutJson["port"];
+
+  streamlitPortDelegate.resolve(port);
+});
+```
+
+> [js/app/src/main.ts#L43-L48](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L43-L48)
 
 ## Booting the streamlit app and syncing the port with Electron
 
