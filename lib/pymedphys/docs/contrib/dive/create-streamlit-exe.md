@@ -12,7 +12,8 @@ All code links will be pointing to the code base at that commit hash.
 
 ## Quick version
 
-To actually build and create the binary all you actually need to do is the following:
+To actually build and create the PyMedPhys Streamlit binary all you actually
+need to do is the following:
 
 - Install [Poetry](https://python-poetry.org/docs/#installation)
 - Install [Node](https://nodejs.org/en/) and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install#debian-stable)
@@ -24,8 +25,9 @@ To actually build and create the binary all you actually need to do is the follo
 The final built application for your current OS will be contained within
 `js/app/dist`.
 
-If you would like to dig deeper into what the above is doing under the hood,
-then read on.
+If you would like to dig deeper into what the above is doing under the hood, or
+you would like to adapt PyMedPhys' approach to your own Streamlit project, then
+read on.
 
 ## Approach overview
 
@@ -47,7 +49,7 @@ given below.
 
 To create the self contained Python environment PyOxidizer was utilised. This
 tool contains a range of embeddable Python distributions for each OS. There are
-a range of issues with a standard Python install (venv) or otherwise that make
+a range of issues with a standard Python install, venv or otherwise, that make
 it hard to pick up the Python install off one computer onto another computer in
 a portable fashion. One such issue is that the standard Python install
 explicitly hardcodes the install location. Therefore, subsequent moving of the
