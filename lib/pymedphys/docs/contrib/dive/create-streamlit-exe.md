@@ -74,18 +74,39 @@ Further details about the PyOxidizer configuration file can be found in
 
 PyOxidizer comes with a range of amazing tooling to create custom binaries. We
 however will be mostly turning all of this amazing tooling off for maximum
-compatibility with a standard Python installation. The key steps are:
+compatibility with a standard Python installation. The key steps are the
+following.
 
-- Make resource handling be set to "files" mode (needed for NumPy at least) [#L20](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl)
-- Use filesystem-relative for the resource location, and use a filename of
-  "site-packages". [#L22-L24](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L22-L24)
-- Disable the PyOxidizer importer [#L30-L31](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L30-L31)
+#### Files mode
+
+Make resource handling be set to "files" mode (needed for NumPy at least) [#L20](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L20)
+
+```python
+policy.set_resource_handling_mode("files")
+```
+
+#### File system relative resources with site-packages name
+
+Use filesystem-relative for the resource location, and use a filename of "site-packages" [#L22-L24](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L22-L24)
+
+```python
+policy.resources_location = "filesystem-relative:site-packages"
+```
 
 A specific fix for Streamlit is the need to use "site-packages" within the
 resource location
 ([#L22-L27](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L22-L27)).
 This is due to Streamlit using [that file directory location as an indicator](https://github.com/streamlit/streamlit/blob/953dfdbeb51a4d0cb4ddb81aaad8e4321fe5db73/lib/streamlit/config.py#L255-L267)
 that Streamlit is not running in developer mode.
+
+#### Use standard importer
+
+Disable the PyOxidizer importer [#L30-L31](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L30-L31)
+
+```python
+python_config.filesystem_importer = True
+python_config.oxidized_importer = False
+```
 
 ### Running the build
 
@@ -238,7 +259,25 @@ This promise only resolves when the Streamlit CLI prints out a
 However, by default, Streamlit doesn't print the port that it is serving on to
 the CLI in such a machine readable format. Instead, it uses a more human
 readable approach. As such, the Streamlit package was lightly ["monkey patched"](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_gui.py#L47-L59)
-to print out its utilised port in this JSON format. That way, when Streamlit is
+to print out its utilised port in this JSON format:
+
+```python
+def _patch_streamlit_print_url():
+    _original_print_url = st.bootstrap._print_url
+
+    def _new_print_url(is_running_hello: bool) -> None:
+        port = int(st.config.get_option("browser.serverPort"))
+
+        sys.stdout.flush()
+        print(json.dumps({"port": port}))
+        sys.stdout.flush()
+
+        _original_print_url(is_running_hello)
+
+    st.bootstrap._print_url = _new_print_url
+```
+
+That way, when Streamlit is
 serving and ready, the first thing it does is print something like the
 following to the CLI:
 
@@ -247,9 +286,21 @@ following to the CLI:
 ```
 
 This then subsequently triggers the promise within Electron and loads up the
-Streamlit URL at the given port:
+Streamlit URL at the given port (same as copied in from above):
 
-> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89>
+```typescript
+streamlitPortDelegate.promise.then((port) => {
+  const pymedphysAppUrl = url.format({
+    pathname: `localhost:${port}`,
+    protocol: "http:",
+    slashes: true,
+  });
+
+  mainWindow.loadURL(pymedphysAppUrl);
+});
+```
+
+> [js/app/src/main.ts#L81-L89](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89)
 
 ## Building for all OSs within GitHub Actions
 
@@ -268,7 +319,7 @@ The actual build itself was scripted out within the
     poetry run pymedphys dev build --install
 ```
 
--- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L344-L347>
+> [.github/workflows/library.yml#L344-L347](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L344-L347)
 
 To set up the CI, need to make sure that
 [Node, Yarn](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L244-L250),
@@ -295,7 +346,7 @@ be uploaded. That was achieved with:
       !js/app/dist/*unpacked/
 ```
 
--- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L349-L358>
+> [.github/workflows/library.yml#L349-L358](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L349-L358)
 
 ## Getting help
 
