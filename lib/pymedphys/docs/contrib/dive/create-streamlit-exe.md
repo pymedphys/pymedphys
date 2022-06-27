@@ -41,7 +41,8 @@ To create this binary build four key steps were undergone:
   across the three major OSs.
 
 Further detail into each of these steps along with the corresponding code is
-given below.
+given below. Also, if you'd like help achieving any of this, some details
+around that are provided at the end of this document.
 
 ## Creating a self contained PyMedPhys python bundle
 
@@ -116,7 +117,7 @@ Once that configuration file is created, and once PyOxidizer is installed then
 running `poetry run pyoxidizer build install` will create a `pymedphys` binary
 within a `dist` directory within the repository root.
 
-## The use and setting up Electron
+## The use and setting up of Electron
 
 ### Justification
 
@@ -235,8 +236,8 @@ streamlitPortDelegate.promise.then((port) => {
 > [js/app/src/main.ts#L81-L89](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89)
 
 So that the Electron app doesn't open the Streamlit webpage before the server
-is running, it waits for the Streamlit CLI print out to print out that the
-server is ready:
+is running, it waits for the Streamlit CLI to print out that the server is
+ready:
 
 ```typescript
 appStreamlitServer.stdout.once("data", (data) => {
