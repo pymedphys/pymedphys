@@ -15,9 +15,9 @@ All code links will be pointing to the code base at that commit hash.
 To actually build and create the binary all you actually need to do is the following:
 
 - Install [Poetry](https://python-poetry.org/docs/#installation)
-- Install [Node](https://nodejs.org/en/) and [Yarn](https://classic.yarnpkg.com/en/docs/install#debian-stable)
+- Install [Node](https://nodejs.org/en/) and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install#debian-stable)
 - Install PyOxidizer by installing all the project build dependencies:
-  - poetry install -E build
+  - `poetry install -E build -E cli`
 - Then run `poetry run pymedphys dev build --install`
   - Which runs [this](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L28-L51) under the hood.
 
@@ -43,7 +43,7 @@ given below.
 
 ## Creating a self contained PyMedPhys python bundle
 
-### Justification of approach
+### Justification
 
 To create the self contained Python environment PyOxidizer was utilised. This
 tool contains a range of embeddable Python distributions for each OS. There are
@@ -87,12 +87,164 @@ resource location
 This is due to Streamlit using [that file directory location as an indicator](https://github.com/streamlit/streamlit/blob/953dfdbeb51a4d0cb4ddb81aaad8e4321fe5db73/lib/streamlit/config.py#L255-L267)
 that Streamlit is not running in developer mode.
 
+### Running the build
+
 Once that configuration file is created, and once PyOxidizer is installed then
 running `poetry run pyoxidizer build install` will create a `pymedphys` binary
 within a `dist` directory within the repository root.
 
-## Setting up electron
+## The use and setting up Electron
+
+### Justification
+
+Now that we have a self contained PyMedPhys distribution, arguably we could be
+done. Also, arguably, bringing in the heavy beast of Electron potentially
+complicates things significantly. However, it does have a few benefits. The
+primary benefits being that electron builder manages the creation of the
+installer as well as management of auto-update capacity, if we want to support
+that in the future.
+
+PyOxidizer does also manage the creation of the installer. However, with my
+trialling of it in the past this installer was only able to run as
+administrator on Windows, which is likely a deal breaker in many scenarios.
+
+Instead of using Electron we could manually handle the installer ourselves. But
+then we'd have to do that independently for each OS. By using electron, we can
+run the same set up on one OS, and have it automatically create installers on
+each target OS with little to no adjustments needed. Having a bulky executable
+created at the other side is a reasonable trade off in my opinion for
+significantly reduced maintenance burden on PyMedPhys.
+
+### Setting up Electron
+
+To set up the Electron code base I began with the following boilerplate code:
+
+> <https://github.com/szwacz/electron-boilerplate>
+
+I significantly stripped it back so as to include as little as possible while
+still having success.
+
+The resulting Electron application code utilised can be found at:
+
+> <https://github.com/pymedphys/pymedphys/tree/836f272d092f294099bb51db05bab80d2bfcb628/js/app>
+
+To install all of the required dependencies run `yarn install` within the
+`js/app` directory. You will need to have both [Node](https://nodejs.org/en/)
+and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install#debian-stable)
+installed to achieve this.
+
+### The key components of the Electron code base
+
+Below is a short overview of the key components of the Electron application
+code base.
+
+#### `package.json`
+
+A resources directory called `python` is selected and included within the
+build:
+
+> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/package.json#L22-L33>
+
+This directory doesn't exist in the source tree. When the Electron app is being
+built with `poetry run pymedphys dev build` this `python` directory is created
+by running `pyoxidizer` and then moving the resulting built distribution over
+to `js/app/python`:
+
+- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L46-L49>
+- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L21-L25>
+
+#### `main.ts`
+
+Within `main.ts` the streamlit GUI itself is booted from within the above
+defined `python` resources directory:
+
+> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L31-L41>
+
+And the entire Electron application is really just a light wrapper that opens
+up the Streamlit hosted URL:
+
+> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89>
+
+So that the Electron app doesn't open the Streamlit webpage before the server
+is running, it waits for the Streamlit CLI print out to print out that the
+server is ready:
+
+> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L43-L48>
 
 ## Booting the streamlit app and syncing the port with Electron
 
+When the user starts the application, first the Electron `main.ts` script
+starts. This
+[spawns the Streamlit GUI](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L38-L40).
+Then, the server [waits for a given promise to resolve](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81) called `streamlitPortDelegate`.
+This promise only resolves when the Streamlit CLI prints out a
+[specific JSON string](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L43-L48) within the CLI.
+
+However, by default, Streamlit doesn't print the port that it is serving on to
+the CLI in such a machine readable format. Instead, it uses a more human
+readable approach. As such, the Streamlit package was lightly ["monkey patched"](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_gui.py#L47-L59)
+to print out its utilised port in this JSON format. That way, when Streamlit is
+serving and ready, the first thing it does is print something like the
+following to the CLI:
+
+```json
+{ "port": 8051 }
+```
+
+This then subsequently triggers the promise within Electron and loads up the
+Streamlit URL at the given port:
+
+> <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89>
+
 ## Building for all OSs within GitHub Actions
+
+Once the built Streamlit app was up and running on a given OS, then, given the
+cross platform nature of the tools utilised, all that was required to create
+cross platform installers was to run the binary build across the various
+platforms within the CI suite.
+
+The actual build itself was scripted out within the
+[PyMedPhys dev CLI](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L16-L51). This was then utilised within the CI:
+
+```yaml
+- name: Build Binary
+  if: matrix.task == 'build'
+  run: |
+    poetry run pymedphys dev build --install
+```
+
+-- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L344-L347>
+
+To set up the CI, need to make sure that
+[Node, Yarn](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L244-L250),
+[Python](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L138-L141)
+and
+[Poetry](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L173-L187)
+were all installed. Needed to also install PyOxidizer, which was included as
+PyMedPhys `build` dependency extras. So installation of PyOxidizer and other
+CLI dependencies was achieved with [`poetry install -E build -E cli`](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311).
+
+Once this build was completed within the CI, the resulting artifacts needed to
+be uploaded. That was achieved with:
+
+```yaml
+- uses: actions/upload-artifact@v3
+  if: matrix.task == 'build'
+  with:
+    name: PyMedPhysApp-${{ runner.os }}
+    path: |
+      js/app/dist/*.dmg
+      js/app/dist/*.exe
+      js/app/dist/*.snap
+      js/app/dist/*.AppImage
+      !js/app/dist/*unpacked/
+```
+
+-- <https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L349-L358>
+
+## Getting help
+
+If you'd like to get help with any of the above, or you'd like to use some of
+the above to make your own portable Streamlit executables and you're running
+into trouble. Feel free to reach out over at the PyMedPhys discourse group
+<https://pymedphys.discourse.group/>.
