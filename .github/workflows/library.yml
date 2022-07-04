@@ -374,8 +374,6 @@ jobs:
 
           git status
           git diff-index --quiet HEAD --
-          REPO1: ${{ github.event.pull_request.head.repo.full_name }}
-          REPO2: ${{ github.event.pull_request.base.repo.full_name }}
 
       ## Pyright
 
