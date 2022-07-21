@@ -196,6 +196,8 @@ Past contributors
 
 .. _`Humanitas University`: https://www.hunimed.eu/
 
+.. _`Yale University School of Medicine`: https://medicine.yale.edu/
+
 .. END_OF_DOCS_IMPORT
 
 .. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
