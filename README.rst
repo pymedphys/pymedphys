@@ -137,6 +137,10 @@ Active contributors
 
 .. _`Nicola Lambri`: https://github.com/nlambriICH
 
+* `Fada Guan`_
+    * `Yale University School of Medicine`_, USA
+
+.. _`Fada Guan`: https://github.com/guanfada
 
 |uth|
 
