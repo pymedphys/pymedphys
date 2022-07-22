@@ -131,8 +131,6 @@ Active contributors
 
 .. _`Jake Rembish`: https://github.com/rembishj
 
-|uth|
-
 * `Nicola Lambri`_
     * `IRCCS Humanitas Research Hospital`_, Italy
     * `Humanitas University`_, Italy
@@ -143,6 +141,8 @@ Active contributors
     * `Yale University School of Medicine`_, USA
 
 .. _`Fada Guan`: https://github.com/guanfada
+
+|uth|
 
 Past contributors
 ****************************
