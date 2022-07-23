@@ -9,7 +9,7 @@
 .. _`Release Notes`: release-notes.html
 
 .. _`Quick Start Guide`: users/get-started/quick-start.html
-.. _`get started` : users/get-started/index.html
+.. _`get started`: users/get-started/index.html
 .. _`how-to guides`: users/howto/index.html
 .. _`background information`: users/background/index.html
 .. _`Technical Reference`: users/ref/index.html

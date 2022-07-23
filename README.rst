@@ -200,7 +200,7 @@ Past contributors
 .. _`Release Notes`: ./CHANGELOG.md
 
 .. _`Quick Start Guide`: https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html
-.. _`get started` : https://docs.pymedphys.com/en/latest/users/get-started/index.html
+.. _`get started`: https://docs.pymedphys.com/en/latest/users/get-started/index.html
 .. _`how-to guides`: https://docs.pymedphys.com/en/latest/users/howto/index.html
 .. _`background information`: https://docs.pymedphys.com/en/latest/users/background/index.html
 .. _`Technical Reference`: https://docs.pymedphys.com/en/latest/users/ref/index.html
