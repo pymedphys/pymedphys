@@ -87,8 +87,8 @@ in terms of both dose and distance to agreement (DTA) differences.
 Many of these tools are in use clinically at affiliated sites, and
 additionally, aspects of PyMedPhys are implemented around the world for some
 applications. Many parties have embraced the gamma analysis module
-[`Milan et al., 2019`_; `Galic et al., 2020`_; `Rodriguez et al., 2020`_; `Cronholm et al., 2020`_; 
-`Spezialetti et al., 2021`_; `Tsuneda et al., 2021`_; `Pastor-Serrano & Perko, 2021`_; 
+[`Milan et al., 2019`_; `Galic et al., 2020`_; `Rodriguez et al., 2020`_; `Cronholm et al., 2020`_;
+`Spezialetti et al., 2021`_; `Tsuneda et al., 2021`_; `Pastor-Serrano & Perko, 2021`_;
 `Gajewski et al., 2021`_; `Lysakovski et al., 2021`_; `Castle et al., 2022`_; `Yang et al., 2022`_],
 while implementations of the electron cutout factor module and others
 [`Baltz & Kirsner, 2021`_; `Douglass & Keal, 2021`_; `Rembish, 2021`_] have also
