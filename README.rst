@@ -67,22 +67,19 @@ PyMedPhys can be installed with:
 
     pip install pymedphys[user]
 
-If you'd like more details around installing PyMedPhys go to the
-`getting started`_ page within the docs.
+Further user installation instructions can be found in the `Quick Start Guide`_.
 
-..
-    TODO: reword:
+The PyMedPhys documentation contains two overarching guides:
 
-The PyMedPhys documentation is split into four categories:
+1. **The Users Guide**: where you can find instructions to `get started`_ with
+   the library and the CLI, in-depth `how-to guides`_ on PyMedPhys' various
+   tools, some `background information`_ on individual PyMedPhys projects as
+   well as the `Technical Reference`_.
 
-1. `Library Users Guide`_: for those building their own Python apps, scripts
-   and other tools who wish to incorporate elements of the PyMedPhys library.
-2. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
-   line interface (e.g. to help automate existing workflows with minimal
-   programming).
-3. `Contributors Guide`_: for those who wish to make new contributions to
-   either the PyMedPhys library or the PyMedPhys app.
-4. `General`_: Material that may apply to any visitor to PyMedPhys.
+2. **The Contributors Guide**: for those who wish to make new contributions
+   to the PyMedPhys library, CLI or app. Here you'll find detailed `workstation
+   setup guides`_ to enable contributions, important `repository information`_,
+   and some `tips & tricks`_ to overcome common issues.
 
 
 Our Team
@@ -200,11 +197,13 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
-.. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
-
 .. _`Release Notes`: ./CHANGELOG.md
 
-.. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.html
-.. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.html
-.. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.html
-.. _`General`: https://docs.pymedphys.com/general/index.html
+.. _`Quick Start Guide`: https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html
+.. _`get started` : https://docs.pymedphys.com/en/latest/users/get-started/index.html
+.. _`how-to guides`: https://docs.pymedphys.com/en/latest/users/howto/index.html
+.. _`background information`: https://docs.pymedphys.com/en/latest/users/background/index.html
+.. _`Technical Reference`: https://docs.pymedphys.com/en/latest/users/ref/index.html
+.. _`workstation setup guides`: https://docs.pymedphys.com/en/latest/contrib/setups/index.html
+.. _`repository information`: https://docs.pymedphys.com/en/latest/contrib/info/index.html
+.. _`tips & tricks`: https://docs.pymedphys.com/en/latest/contrib/tips/index.html
