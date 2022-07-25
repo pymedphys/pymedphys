@@ -37,13 +37,17 @@ def main():
     config = _get_config(demo_mode)
 
     telfile_picker_results = st_monaco.monaco_tel_files_picker(config)
-    monaco_directory, tel_paths = [
-        telfile_picker_results[key]
-        for key in (
-            "monaco_directory",
-            "tel_paths",
-        )
-    ]
+
+    try:
+        monaco_directory, tel_paths = [
+            telfile_picker_results[key]
+            for key in (
+                "monaco_directory",
+                "tel_paths",
+            )
+        ]
+    except KeyError:
+        st.stop()
 
     if st.button("Calculate"):
         for filepath in tel_paths:

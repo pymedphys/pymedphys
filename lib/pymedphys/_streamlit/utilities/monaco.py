@@ -136,7 +136,7 @@ def monaco_patient_directory_picker(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
     )
     if advanced_mode:
-        patient_id
+        st.write(patient_id)
 
     if patient_id == "":
         st.stop()
