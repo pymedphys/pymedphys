@@ -37,16 +37,19 @@ def monaco_input_method(
         ),
     )
 
-    monaco_site, patient_id, patient_name, selected_monaco_plan, tel_paths = [
-        telfile_picker_results[key]
-        for key in (
-            "monaco_site",
-            "patient_id",
-            "patient_name",
-            "selected_monaco_plan",
-            "tel_paths",
-        )
-    ]
+    try:
+        monaco_site, patient_id, patient_name, selected_monaco_plan, tel_paths = [
+            telfile_picker_results[key]
+            for key in (
+                "monaco_site",
+                "patient_id",
+                "patient_name",
+                "selected_monaco_plan",
+                "tel_paths",
+            )
+        ]
+    except KeyError:
+        st.stop()
 
     if advanced_mode:
         st.write([str(path.resolve()) for path in tel_paths])

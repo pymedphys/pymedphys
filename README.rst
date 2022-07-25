@@ -137,6 +137,10 @@ Active contributors
 
 .. _`Nicola Lambri`: https://github.com/nlambriICH
 
+* `Fada Guan`_
+    * `Yale University School of Medicine`_, USA
+
+.. _`Fada Guan`: https://github.com/guanfada
 
 |uth|
 
@@ -191,6 +195,8 @@ Past contributors
 .. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
 
 .. _`Humanitas University`: https://www.hunimed.eu/
+
+.. _`Yale University School of Medicine`: https://medicine.yale.edu/
 
 .. END_OF_DOCS_IMPORT
 
