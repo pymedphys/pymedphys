@@ -1,0 +1,1344 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Creating a Streamlit Executable &#8212; PyMedPhys</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" href="../../_static/styles/sphinx-book-theme.css?digest=62ba249389abaaa9ffc34bf36a076bdc1d65ee18" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?digest=f31d14ad54b65d19161ba51d4ffff3a77ae00456"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/design-tabs.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <link rel="canonical" href="https://docs.pymedphys.com/contrib/dive/create-streamlit-exe.html" />
+    <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="Why Open Source?" href="why-open-source.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en">
+    
+
+    <!-- Google Analytics -->
+    
+<script async="" src="https://www.google-analytics.com/analytics.js"></script>
+<script>
+                        window.ga = window.ga || function () {
+                            (ga.q = ga.q || []).push(arguments) };
+                        ga.l = +new Date;
+                        ga('create', 'UA-26591325-7', 'auto');
+                        ga('set', 'anonymizeIp', true);
+                        ga('send', 'pageview');
+                    </script>
+
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+<!-- Checkboxes to toggle the left sidebar -->
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle navigation sidebar">
+<label class="overlay overlay-navbar" for="__navigation">
+    <div class="visually-hidden">Toggle navigation sidebar</div>
+</label>
+<!-- Checkboxes to toggle the in-page toc -->
+<input type="checkbox" class="sidebar-toggle" name="__page-toc" id="__page-toc" aria-label="Toggle in-page Table of Contents">
+<label class="overlay overlay-pagetoc" for="__page-toc">
+    <div class="visually-hidden">Toggle in-page Table of Contents</div>
+</label>
+<!-- Headers at the top -->
+<div class="announcement header-item noprint"></div>
+<div class="header header-item noprint"></div>
+
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<!-- Sidebar -->
+<div class="bd-sidebar noprint" id="site-navigation">
+    <div class="bd-sidebar__content">
+        <div class="bd-sidebar__top"><div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../../_static/pymedphys.svg" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">PyMedPhys</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../overview.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../release-notes.html">
+   Release Notes
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Users Guide
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/get-started/index.html">
+   Getting Started
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/get-started/quick-start.html">
+     Quick Start Guide
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/get-started/cli.html">
+     Using the CLI
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/howto/index.html">
+   How-to Guides
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+  <label for="toctree-checkbox-2">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/howto/gamma/index.html">
+     Gamma
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/speed-up.html">
+       Speeding up gamma calculations
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/1D-from-csv.html">
+       Gamma from 1D ASCII data
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/effect-of-noise.html">
+       The Effects of Noise on Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/gamma/from-dicom.html">
+       Gamma from DICOM
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/howto/add-a-linac.html">
+     Adding a Linac
+    </a>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/howto/tunnels/index.html">
+     Tunnels
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+    <label for="toctree-checkbox-4">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/tunnels/samba.html">
+       SAMBA SSH Tunnelling
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/howto/tunnels/rsync.html">
+       Backups using rsync
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/background/index.html">
+   Background
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+  <label for="toctree-checkbox-5">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/background/autocontouring.html">
+     Automatic Contouring Project
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../users/background/elekta-logfiles.html">
+     Elekta Logfile Decoding and Indexing
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../users/ref/index.html">
+   Technical Reference
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+  <label for="toctree-checkbox-6">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/ref/lib/index.html">
+     Library Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../genindex.html">
+       Alphabetical Index
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/dicom.html">
+       DICOM
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/gamma.html">
+       Gamma
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/mosaiq.html">
+       Mosaiq
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/metersetmap.html">
+       MetersetMap
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/lib/trf.html">
+       TRF
+      </a>
+     </li>
+     <li class="toctree-l3 has-children">
+      <a class="reference internal" href="../../users/ref/lib/experimental/index.html">
+       Experimental Modules
+      </a>
+      <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+      <label for="toctree-checkbox-8">
+       <i class="fas fa-chevron-down">
+       </i>
+      </label>
+      <ul>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../../users/ref/lib/experimental/pinnacle.html">
+         Pinnacle Export Tool
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../../users/ref/lib/experimental/pseudonymisation.html">
+         Pseudonymisation Tool
+        </a>
+       </li>
+      </ul>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../users/ref/cli/index.html">
+     CLI Reference
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/>
+    <label for="toctree-checkbox-9">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/dicom.html">
+       DICOM Files
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/trf.html">
+       Elekta Binary Logfiles
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/icom.html">
+       iCom listener
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/pinnacle.html">
+       Pinnacle Export Tool
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../users/ref/cli/pseudonymisation.html">
+       Pseudonymisation Tool
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Contributors Guide
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   Overview
+  </a>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../info/index.html">
+   Repository Information
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/>
+  <label for="toctree-checkbox-10">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../info/file-structure.html">
+     Repository File Structure
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../info/docs-guide.html">
+     Documentation Guide
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../setups/index.html">
+   Workstation Setup Guides
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/>
+  <label for="toctree-checkbox-11">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../setups/setup-win.html">
+     Windows Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../setups/setup-linux.html">
+     Linux Setup
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../setups/setup-mac.html">
+     MacOS Setup
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../tips/index.html">
+   Tips &amp; Tricks
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/>
+  <label for="toctree-checkbox-12">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../tips/add-jupyter-kernel.html">
+     Add Jupyter kernel with
+     <em>
+      poetry
+     </em>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../tips/win-open-ssh.html">
+     Setting up OpenSSH on Windows 10
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="index.html">
+   Deep Dive
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/>
+  <label for="toctree-checkbox-13">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2">
+    <a class="reference internal" href="why-open-source.html">
+     Why Open Source?
+    </a>
+   </li>
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
+     Creating a Streamlit Executable
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+    </div>
+</nav></div>
+        <div class="bd-sidebar__bottom">
+             <!-- To handle the deprecated key -->
+            
+            <div class="navbar_extra_footer">
+            Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+            </div>
+            
+        </div>
+    </div>
+    <div id="rtd-footer-container"></div>
+</div>
+
+
+          
+
+
+          
+<!-- A tiny helper pixel to detect if we've scrolled -->
+<div class="sbt-scroll-pixel-helper"></div>
+<!-- Main content -->
+<div class="col py-0 content-container">
+    
+    <div class="header-article row sticky-top noprint">
+        
+
+
+
+<div class="col py-1 d-flex header-article-main">
+    <div class="header-article__left">
+        
+        <label for="__navigation"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="right"
+title="Toggle navigation"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-bars"></i>
+  </span>
+
+</label>
+
+        
+    </div>
+    <div class="header-article__right">
+<button onclick="toggleFullScreen()"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="bottom"
+title="Fullscreen mode"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+<div class="menu-dropdown menu-dropdown-repository-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Source repositories">
+      <i class="fab fa-github"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Source repository"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="headerbtn__text-container">repository</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fcontrib/dive/create-streamlit-exe.html&body=Your%20issue%20content%20here."
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Open an issue"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="headerbtn__text-container">open issue</span>
+</a>
+
+      </li>
+      
+      <li>
+        <a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/contrib/dive/create-streamlit-exe.md"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Edit this page"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="headerbtn__text-container">suggest edit</span>
+</a>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+
+<div class="menu-dropdown menu-dropdown-download-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Download this page">
+      <i class="fas fa-download"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="../../_sources/contrib/dive/create-streamlit-exe.md"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Download source file"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="headerbtn__text-container">.md</span>
+</a>
+
+      </li>
+      
+      <li>
+        
+<button onclick="printPdf(this)"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="left"
+title="Print to PDF"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="headerbtn__text-container">.pdf</span>
+</button>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+<label for="__page-toc"
+  class="headerbtn headerbtn-page-toc"
+  
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-list"></i>
+  </span>
+
+</label>
+
+    </div>
+</div>
+
+<!-- Table of contents -->
+<div class="col-md-3 bd-toc show noprint">
+    <div class="tocsection onthispage pt-5 pb-3">
+        <i class="fas fa-list"></i> Contents
+    </div>
+    <nav id="bd-toc-nav" aria-label="Page">
+        <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#document-overview">
+   Document overview
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#quick-version">
+   Quick version
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#approach-overview">
+   Approach overview
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#creating-a-self-contained-pymedphys-python-bundle">
+   Creating a self contained PyMedPhys python bundle
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#justification">
+     Justification
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#the-pyoxidizer-bzl-configuration-file">
+     The
+     <code class="docutils literal notranslate">
+      <span class="pre">
+       pyoxidizer.bzl
+      </span>
+     </code>
+     configuration file
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#files-mode">
+       Files mode
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#file-system-relative-resources-with-site-packages-name">
+       File system relative resources with site-packages name
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#use-standard-importer">
+       Use standard importer
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#running-the-build">
+     Running the build
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#the-use-and-setting-up-of-electron">
+   The use and setting up of Electron
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id1">
+     Justification
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#setting-up-electron">
+     Setting up Electron
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#the-key-components-of-the-electron-code-base">
+     The key components of the Electron code base
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#the-package-json-file">
+       The
+       <code class="docutils literal notranslate">
+        <span class="pre">
+         package.json
+        </span>
+       </code>
+       file
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#the-main-ts-file">
+       The
+       <code class="docutils literal notranslate">
+        <span class="pre">
+         main.ts
+        </span>
+       </code>
+       file
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#booting-the-streamlit-app-and-syncing-the-port-with-electron">
+   Booting the streamlit app and syncing the port with Electron
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#building-for-all-oss-within-github-actions">
+   Building for all OSs within GitHub Actions
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#getting-help">
+   Getting help
+  </a>
+ </li>
+</ul>
+
+    </nav>
+</div>
+    </div>
+    <div class="article row">
+        <div class="col pl-md-3 pl-lg-5 content-container">
+            <!-- Table of contents that is only displayed when printing the page -->
+            <div id="jb-print-docs-body" class="onlyprint">
+                <h1>Creating a Streamlit Executable</h1>
+                <!-- Table of contents -->
+                <div id="print-main-content">
+                    <div id="jb-print-toc">
+                        
+                        <div>
+                            <h2> Contents </h2>
+                        </div>
+                        <nav aria-label="Page">
+                            <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#document-overview">
+   Document overview
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#quick-version">
+   Quick version
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#approach-overview">
+   Approach overview
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#creating-a-self-contained-pymedphys-python-bundle">
+   Creating a self contained PyMedPhys python bundle
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#justification">
+     Justification
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#the-pyoxidizer-bzl-configuration-file">
+     The
+     <code class="docutils literal notranslate">
+      <span class="pre">
+       pyoxidizer.bzl
+      </span>
+     </code>
+     configuration file
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#files-mode">
+       Files mode
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#file-system-relative-resources-with-site-packages-name">
+       File system relative resources with site-packages name
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#use-standard-importer">
+       Use standard importer
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#running-the-build">
+     Running the build
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#the-use-and-setting-up-of-electron">
+   The use and setting up of Electron
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id1">
+     Justification
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#setting-up-electron">
+     Setting up Electron
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#the-key-components-of-the-electron-code-base">
+     The key components of the Electron code base
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#the-package-json-file">
+       The
+       <code class="docutils literal notranslate">
+        <span class="pre">
+         package.json
+        </span>
+       </code>
+       file
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#the-main-ts-file">
+       The
+       <code class="docutils literal notranslate">
+        <span class="pre">
+         main.ts
+        </span>
+       </code>
+       file
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#booting-the-streamlit-app-and-syncing-the-port-with-electron">
+   Booting the streamlit app and syncing the port with Electron
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#building-for-all-oss-within-github-actions">
+   Building for all OSs within GitHub Actions
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#getting-help">
+   Getting help
+  </a>
+ </li>
+</ul>
+
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            <main id="main-content" role="main">
+                
+              <div>
+                
+  <section class="tex2jax_ignore mathjax_ignore" id="creating-a-streamlit-executable">
+<h1>Creating a Streamlit Executable<a class="headerlink" href="#creating-a-streamlit-executable" title="Permalink to this headline">#</a></h1>
+<section id="document-overview">
+<h2>Document overview<a class="headerlink" href="#document-overview" title="Permalink to this headline">#</a></h2>
+<p>This document details the process undergone to create an Electron application
+that embeds streamlit. The result is an easily shareable binary built for each
+of the major operating systems.</p>
+<p>This document refers to the state of the PyMedPhys code base as at commit hash
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/tree/836f272d092f294099bb51db05bab80d2bfcb628">836f272d092f294099bb51db05bab80d2bfcb628</a>.
+All code links will be pointing to the code base at that commit hash.</p>
+</section>
+<section id="quick-version">
+<h2>Quick version<a class="headerlink" href="#quick-version" title="Permalink to this headline">#</a></h2>
+<p>To actually build and create the PyMedPhys Streamlit binary all you actually
+need to do is the following:</p>
+<ul class="simple">
+<li><p>Install <a class="reference external" href="https://python-poetry.org/docs/#installation">Poetry</a></p></li>
+<li><p>Install <a class="reference external" href="https://nodejs.org/en/">Node</a> and <a class="reference external" href="https://classic.yarnpkg.com/en/docs/install#debian-stable">Yarn 1.x</a></p></li>
+<li><p>Install PyOxidizer by installing all the project build dependencies:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">install</span> <span class="pre">-E</span> <span class="pre">build</span> <span class="pre">-E</span> <span class="pre">cli</span></code></p></li>
+</ul>
+</li>
+<li><p>Then run <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span> <span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">build</span> <span class="pre">--install</span></code></p>
+<ul>
+<li><p>Which runs <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L28-L51">this</a> under the hood.</p></li>
+</ul>
+</li>
+</ul>
+<p>The final built application for your current OS will be contained within
+<code class="docutils literal notranslate"><span class="pre">js/app/dist</span></code>.</p>
+<p>If you would like to dig deeper into what the above is doing under the hood, or
+you would like to adapt PyMedPhys’ approach to your own Streamlit project, then
+read on.</p>
+</section>
+<section id="approach-overview">
+<h2>Approach overview<a class="headerlink" href="#approach-overview" title="Permalink to this headline">#</a></h2>
+<p>To create this binary build four key steps were undergone:</p>
+<ul class="simple">
+<li><p>Create a completely system independent self contained Python environment</p></li>
+<li><p>Set up the electron desktop application wrapper</p></li>
+<li><p>Make the desktop application boot and connect to the streamlit running within
+the self contained Python environment.</p></li>
+<li><p>Use electron builder to create an installer, run this within GitHub actions
+across the three major OSs.</p></li>
+</ul>
+<p>Further detail into each of these steps along with the corresponding code is
+given below. Also, if you’d like help achieving any of this, some details
+around that are provided at the end of this document.</p>
+</section>
+<section id="creating-a-self-contained-pymedphys-python-bundle">
+<h2>Creating a self contained PyMedPhys python bundle<a class="headerlink" href="#creating-a-self-contained-pymedphys-python-bundle" title="Permalink to this headline">#</a></h2>
+<section id="justification">
+<h3>Justification<a class="headerlink" href="#justification" title="Permalink to this headline">#</a></h3>
+<p>To create the self contained Python environment PyOxidizer was utilised. This
+tool contains a range of embeddable Python distributions for each OS. There are
+a range of issues with a standard Python install, venv or otherwise, that make
+it hard to pick up the Python install off one computer onto another computer in
+a portable fashion. One such issue is that the standard Python install
+explicitly hardcodes the install location. Therefore, subsequent moving of the
+installation causes issues.</p>
+<p>There are many tools that can create embedded Python installations. PyInstaller
+is one, however I have had issues where it gets flagged as the created program
+gets flagged as a virus on Windows. It also, in the name of trying to make a
+small install size, by default strips out a lot of dependencies. This
+“stripping out” makes the resulting binary have many weird edge case issues.</p>
+<p>At the end of the day, the goal was to utilise a tool that creates an embedded
+Python distribution that is as close to “standard” as possible. PyOxidizer can
+be configured to achieve that, so that was utilised.</p>
+</section>
+<section id="the-pyoxidizer-bzl-configuration-file">
+<h3>The <code class="docutils literal notranslate"><span class="pre">pyoxidizer.bzl</span></code> configuration file<a class="headerlink" href="#the-pyoxidizer-bzl-configuration-file" title="Permalink to this headline">#</a></h3>
+<p>The configuration file for building the binary can be found at
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl">pyoxidizer.bzl</a>.</p>
+<p>We’ll go into the key details that make this configuration file different here.
+Further details about the PyOxidizer configuration file can be found in
+<a class="reference external" href="https://pyoxidizer.readthedocs.io/en/stable/">the official docs</a>.</p>
+<p>PyOxidizer comes with a range of amazing tooling to create custom binaries. We
+however will be mostly turning all of this amazing tooling off for maximum
+compatibility with a standard Python installation. The key steps are the
+following.</p>
+<section id="files-mode">
+<h4>Files mode<a class="headerlink" href="#files-mode" title="Permalink to this headline">#</a></h4>
+<p>Make resource handling be set to “files” mode (needed for NumPy at least) <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L20">#L20</a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">policy</span><span class="o">.</span><span class="n">set_resource_handling_mode</span><span class="p">(</span><span class="s2">&quot;files&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="file-system-relative-resources-with-site-packages-name">
+<h4>File system relative resources with site-packages name<a class="headerlink" href="#file-system-relative-resources-with-site-packages-name" title="Permalink to this headline">#</a></h4>
+<p>Use filesystem-relative for the resource location, and use a filename of “site-packages” <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L22-L24">#L22-L24</a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">policy</span><span class="o">.</span><span class="n">resources_location</span> <span class="o">=</span> <span class="s2">&quot;filesystem-relative:site-packages&quot;</span>
+</pre></div>
+</div>
+<p>A specific fix for Streamlit is the need to use “site-packages” within the
+resource location
+(<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L22-L27">#L22-L27</a>).
+This is due to Streamlit using <a class="reference external" href="https://github.com/streamlit/streamlit/blob/953dfdbeb51a4d0cb4ddb81aaad8e4321fe5db73/lib/streamlit/config.py#L255-L267">that file directory location as an indicator</a>
+that Streamlit is not running in developer mode.</p>
+</section>
+<section id="use-standard-importer">
+<h4>Use standard importer<a class="headerlink" href="#use-standard-importer" title="Permalink to this headline">#</a></h4>
+<p>Disable the PyOxidizer importer <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L30-L31">#L30-L31</a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python_config</span><span class="o">.</span><span class="n">filesystem_importer</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">python_config</span><span class="o">.</span><span class="n">oxidized_importer</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="running-the-build">
+<h3>Running the build<a class="headerlink" href="#running-the-build" title="Permalink to this headline">#</a></h3>
+<p>Once that configuration file is created, and once PyOxidizer is installed then
+running <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span> <span class="pre">pyoxidizer</span> <span class="pre">build</span> <span class="pre">install</span></code> will create a <code class="docutils literal notranslate"><span class="pre">pymedphys</span></code> binary
+within a <code class="docutils literal notranslate"><span class="pre">dist</span></code> directory within the repository root.</p>
+</section>
+</section>
+<section id="the-use-and-setting-up-of-electron">
+<h2>The use and setting up of Electron<a class="headerlink" href="#the-use-and-setting-up-of-electron" title="Permalink to this headline">#</a></h2>
+<section id="id1">
+<h3>Justification<a class="headerlink" href="#id1" title="Permalink to this headline">#</a></h3>
+<p>Now that we have a self contained PyMedPhys distribution, arguably we could be
+done. Also, arguably, bringing in the heavy beast of Electron potentially
+complicates things significantly. However, it does have a few benefits. The
+primary benefits being that electron builder manages the creation of the
+installer as well as management of auto-update capacity, if we want to support
+that in the future.</p>
+<p>PyOxidizer does also manage the creation of the installer. However, with my
+trialling of it in the past this installer was only able to run as
+administrator on Windows, which is likely a deal breaker in many scenarios.</p>
+<p>Instead of using Electron we could manually handle the installer ourselves. But
+then we’d have to do that independently for each OS. By using electron, we can
+run the same set up on one OS, and have it automatically create installers on
+each target OS with little to no adjustments needed. Having a bulky executable
+created at the other side is a reasonable trade off in my opinion for
+significantly reduced maintenance burden on PyMedPhys.</p>
+</section>
+<section id="setting-up-electron">
+<h3>Setting up Electron<a class="headerlink" href="#setting-up-electron" title="Permalink to this headline">#</a></h3>
+<p>To set up the Electron code base I began with the following boilerplate code:</p>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/szwacz/electron-boilerplate">https://github.com/szwacz/electron-boilerplate</a></p>
+</div></blockquote>
+<p>I significantly stripped it back so as to include as little as possible while
+still having success.</p>
+<p>The resulting Electron application code utilised can be found at
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/tree/836f272d092f294099bb51db05bab80d2bfcb628/js/app"><code class="docutils literal notranslate"><span class="pre">js/app</span></code></a>.</p>
+<p>To install all of the required dependencies run <code class="docutils literal notranslate"><span class="pre">yarn</span> <span class="pre">install</span></code> within the
+<code class="docutils literal notranslate"><span class="pre">js/app</span></code> directory. You will need to have both <a class="reference external" href="https://nodejs.org/en/">Node</a>
+and <a class="reference external" href="https://classic.yarnpkg.com/en/docs/install#debian-stable">Yarn 1.x</a>
+installed to achieve this.</p>
+</section>
+<section id="the-key-components-of-the-electron-code-base">
+<h3>The key components of the Electron code base<a class="headerlink" href="#the-key-components-of-the-electron-code-base" title="Permalink to this headline">#</a></h3>
+<p>Below is a short overview of the key components of the Electron application
+code base.</p>
+<section id="the-package-json-file">
+<h4>The <code class="docutils literal notranslate"><span class="pre">package.json</span></code> file<a class="headerlink" href="#the-package-json-file" title="Permalink to this headline">#</a></h4>
+<p>A resources directory called <code class="docutils literal notranslate"><span class="pre">python</span></code> is selected and included within the
+build:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="nt">&quot;directories&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="nt">&quot;buildResources&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;resources&quot;</span><span class="w"></span>
+<span class="w">    </span><span class="p">},</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;extraResources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="w">      </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;from&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;to&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;filter&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="w">          </span><span class="s2">&quot;**/*&quot;</span><span class="w"></span>
+<span class="w">        </span><span class="p">]</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">],</span><span class="w"></span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/package.json#L22-L33">js/app/package.json#L22-L33</a></p>
+</div></blockquote>
+<p>This directory doesn’t exist in the source tree. When the Electron app is being
+built with <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span> <span class="pre">pymedphys</span> <span class="pre">dev</span> <span class="pre">build</span></code> this <code class="docutils literal notranslate"><span class="pre">python</span></code> directory is created
+by running <code class="docutils literal notranslate"><span class="pre">pyoxidizer</span></code> and then moving the resulting built distribution over
+to <code class="docutils literal notranslate"><span class="pre">js/app/python</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PYOXIDIZER_BUILD</span> <span class="o">=</span> <span class="n">REPO_ROOT</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;build&quot;</span><span class="p">)</span>
+<span class="n">PYOXIDIZER_DIST</span> <span class="o">=</span> <span class="n">PYOXIDIZER_BUILD</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;dist&quot;</span><span class="p">)</span>
+
+<span class="n">ELECTRON_APP_DIR</span> <span class="o">=</span> <span class="n">REPO_ROOT</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;js&quot;</span><span class="p">,</span> <span class="s2">&quot;app&quot;</span><span class="p">)</span>
+<span class="n">PYTHON_APP_DESTINATION</span> <span class="o">=</span> <span class="n">ELECTRON_APP_DIR</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+<span class="o">...</span>
+
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">check_call</span><span class="p">(</span>
+        <span class="p">[</span><span class="s2">&quot;poetry&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="s2">&quot;pyoxidizer&quot;</span><span class="p">,</span> <span class="s2">&quot;build&quot;</span><span class="p">,</span> <span class="s2">&quot;install&quot;</span><span class="p">],</span> <span class="n">cwd</span><span class="o">=</span><span class="n">REPO_ROOT</span>
+    <span class="p">)</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">PYOXIDIZER_DIST</span><span class="p">,</span> <span class="n">PYTHON_APP_DESTINATION</span><span class="p">)</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py">lib/pymedphys/_dev/build.py</a></p>
+</div></blockquote>
+</section>
+<section id="the-main-ts-file">
+<h4>The <code class="docutils literal notranslate"><span class="pre">main.ts</span></code> file<a class="headerlink" href="#the-main-ts-file" title="Permalink to this headline">#</a></h4>
+<p>Within <code class="docutils literal notranslate"><span class="pre">main.ts</span></code> the streamlit GUI itself is booted from within the above
+defined <code class="docutils literal notranslate"><span class="pre">python</span></code> resources directory:</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="nx">appStreamlitServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">spawn</span><span class="p">(</span><span class="s2">&quot;./pymedphys&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;gui&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--electron&quot;</span><span class="p">],</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="nx">cwd</span><span class="o">:</span><span class="w"> </span><span class="kt">path.join</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">resourcesPath</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">),</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L38-L40">js/app/src/main.ts#L38-L40</a></p>
+</div></blockquote>
+<p>And the entire Electron application is really just a light wrapper that opens
+up the Streamlit hosted URL:</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="nx">streamlitPortDelegate</span><span class="p">.</span><span class="nx">promise</span><span class="p">.</span><span class="nx">then</span><span class="p">((</span><span class="nx">port</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">pymedphysAppUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">url</span><span class="p">.</span><span class="nx">format</span><span class="p">({</span><span class="w"></span>
+<span class="w">    </span><span class="nx">pathname</span><span class="o">:</span><span class="w"> </span><span class="sb">`localhost:</span><span class="si">${</span><span class="nx">port</span><span class="si">}</span><span class="sb">`</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nx">protocol</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;http:&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nx">slashes</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="p">});</span><span class="w"></span>
+
+<span class="w">  </span><span class="nx">mainWindow</span><span class="p">.</span><span class="nx">loadURL</span><span class="p">(</span><span class="nx">pymedphysAppUrl</span><span class="p">);</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89">js/app/src/main.ts#L81-L89</a></p>
+</div></blockquote>
+<p>So that the Electron app doesn’t open the Streamlit webpage before the server
+is running, it waits for the Streamlit CLI to print out that the server is
+ready:</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="nx">appStreamlitServer</span><span class="p">.</span><span class="nx">stdout</span><span class="p">.</span><span class="nx">once</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">stdoutJson</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="sb">`</span><span class="si">${</span><span class="nx">data</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">port</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">stdoutJson</span><span class="p">[</span><span class="s2">&quot;port&quot;</span><span class="p">];</span><span class="w"></span>
+
+<span class="w">  </span><span class="nx">streamlitPortDelegate</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">port</span><span class="p">);</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L43-L48">js/app/src/main.ts#L43-L48</a></p>
+</div></blockquote>
+</section>
+</section>
+</section>
+<section id="booting-the-streamlit-app-and-syncing-the-port-with-electron">
+<h2>Booting the streamlit app and syncing the port with Electron<a class="headerlink" href="#booting-the-streamlit-app-and-syncing-the-port-with-electron" title="Permalink to this headline">#</a></h2>
+<p>When the user starts the application, first the Electron <code class="docutils literal notranslate"><span class="pre">main.ts</span></code> script
+starts. This
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L38-L40">spawns the Streamlit GUI</a>.
+Then, the server <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81">waits for a given promise to resolve</a> called <code class="docutils literal notranslate"><span class="pre">streamlitPortDelegate</span></code>.
+This promise only resolves when the Streamlit CLI prints out a
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L43-L48">specific JSON string</a> within the CLI.</p>
+<p>However, by default, Streamlit doesn’t print the port that it is serving on to
+the CLI in such a machine readable format. Instead, it uses a more human
+readable approach. As such, the Streamlit package was lightly <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_gui.py#L47-L59">“monkey patched”</a>
+to print out its utilised port in this JSON format:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_patch_streamlit_print_url</span><span class="p">():</span>
+    <span class="n">_original_print_url</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">bootstrap</span><span class="o">.</span><span class="n">_print_url</span>
+
+    <span class="k">def</span> <span class="nf">_new_print_url</span><span class="p">(</span><span class="n">is_running_hello</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_option</span><span class="p">(</span><span class="s2">&quot;browser.serverPort&quot;</span><span class="p">))</span>
+
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="n">port</span><span class="p">}))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+        <span class="n">_original_print_url</span><span class="p">(</span><span class="n">is_running_hello</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">bootstrap</span><span class="o">.</span><span class="n">_print_url</span> <span class="o">=</span> <span class="n">_new_print_url</span>
+</pre></div>
+</div>
+<p>That way, when Streamlit is
+serving and ready, the first thing it does is print something like the
+following to the CLI:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8051</span><span class="w"> </span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This then subsequently triggers the promise within Electron and loads up the
+Streamlit URL at the given port (same as copied in from above):</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="nx">streamlitPortDelegate</span><span class="p">.</span><span class="nx">promise</span><span class="p">.</span><span class="nx">then</span><span class="p">((</span><span class="nx">port</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">pymedphysAppUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">url</span><span class="p">.</span><span class="nx">format</span><span class="p">({</span><span class="w"></span>
+<span class="w">    </span><span class="nx">pathname</span><span class="o">:</span><span class="w"> </span><span class="sb">`localhost:</span><span class="si">${</span><span class="nx">port</span><span class="si">}</span><span class="sb">`</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nx">protocol</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;http:&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nx">slashes</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="p">});</span><span class="w"></span>
+
+<span class="w">  </span><span class="nx">mainWindow</span><span class="p">.</span><span class="nx">loadURL</span><span class="p">(</span><span class="nx">pymedphysAppUrl</span><span class="p">);</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L81-L89">js/app/src/main.ts#L81-L89</a></p>
+</div></blockquote>
+</section>
+<section id="building-for-all-oss-within-github-actions">
+<h2>Building for all OSs within GitHub Actions<a class="headerlink" href="#building-for-all-oss-within-github-actions" title="Permalink to this headline">#</a></h2>
+<p>Once the built Streamlit app was up and running on a given OS, then, given the
+cross platform nature of the tools utilised, all that was required to create
+cross platform installers was to run the binary build across the various
+platforms within the CI suite.</p>
+<p>The actual build itself was scripted out within the
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L16-L51">PyMedPhys dev CLI</a>. This was then utilised within the CI:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build Binary</span><span class="w"></span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">matrix.task == &#39;build&#39;</span><span class="w"></span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span><span class="w"></span>
+<span class="w">    </span><span class="no">poetry run pymedphys dev build --install</span><span class="w"></span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L344-L347">.github/workflows/library.yml#L344-L347</a></p>
+</div></blockquote>
+<p>To set up the CI, need to make sure that
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L244-L250">Node, Yarn</a>,
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L138-L141">Python</a>
+and
+<a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L173-L187">Poetry</a>
+were all installed. Needed to also install PyOxidizer, which was included as
+PyMedPhys <code class="docutils literal notranslate"><span class="pre">build</span></code> dependency extras. So installation of PyOxidizer and other
+CLI dependencies was achieved with <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311"><code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">install</span> <span class="pre">-E</span> <span class="pre">build</span> <span class="pre">-E</span> <span class="pre">cli</span></code></a>.</p>
+<p>Once this build was completed within the CI, the resulting artifacts needed to
+be uploaded. That was achieved with:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/upload-artifact@v3</span><span class="w"></span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">matrix.task == &#39;build&#39;</span><span class="w"></span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PyMedPhysApp-${{ runner.os }}</span><span class="w"></span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span><span class="w"></span>
+<span class="w">      </span><span class="no">js/app/dist/*.dmg</span><span class="w"></span>
+<span class="w">      </span><span class="no">js/app/dist/*.exe</span><span class="w"></span>
+<span class="w">      </span><span class="no">js/app/dist/*.snap</span><span class="w"></span>
+<span class="w">      </span><span class="no">js/app/dist/*.AppImage</span><span class="w"></span>
+<span class="w">      </span><span class="no">!js/app/dist/*unpacked/</span><span class="w"></span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L349-L358">.github/workflows/library.yml#L349-L358</a></p>
+</div></blockquote>
+</section>
+<section id="getting-help">
+<h2>Getting help<a class="headerlink" href="#getting-help" title="Permalink to this headline">#</a></h2>
+<p>If you’d like to get help with any of the above, or you’d like to use some of
+the above to make your own portable Streamlit executables and you’re running
+into trouble. Feel free to reach out over at the PyMedPhys discourse group
+<a class="reference external" href="https://pymedphys.discourse.group/">https://pymedphys.discourse.group/</a>.</p>
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./contrib/dive"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+            </main>
+            <footer class="footer-article noprint">
+                
+    <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+    <a class='left-prev' id="prev-link" href="why-open-source.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">Why Open Source?</p>
+        </div>
+    </a>
+</div>
+            </footer>
+        </div>
+    </div>
+    <div class="footer-content row">
+        <footer class="col footer"><p>
+  
+    By the PyMedPhys community<br/>
+  
+      &copy; Copyright 2018-2021.<br/>
+</p>
+        </footer>
+    </div>
+    
+</div>
+
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+
+
+  </body>
+</html>
