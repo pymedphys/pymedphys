@@ -38,7 +38,7 @@ class SessionState:
 
 
 def get_session_id() -> str:
-    ctx = st.script_run_context.add_script_run_ctx()
+    ctx = st.scriptrunner.add_script_run_ctx()
     session_id: str = ctx.streamlit_script_run_ctx.session_id
 
     return session_id
