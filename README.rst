@@ -137,6 +137,11 @@ Active contributors
 
 .. _`Nicola Lambri`: https://github.com/nlambriICH
 
+* `Cody Crewson`_
+    * `Saskatchewan Cancer Agency`_, Canada
+
+.. _`Cody Crewson`: https://github.com/crcrewso
+
 * `Fada Guan`_
     * `Yale University School of Medicine`_, USA
 
@@ -193,6 +198,8 @@ Past contributors
 .. _`Ingham Institute`: https://inghaminstitute.org.au/
 
 .. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
+
+.. _`Saskatchewan Cancer Agency` : http://www.saskcancer.ca/
 
 .. _`Humanitas University`: https://www.hunimed.eu/
 
