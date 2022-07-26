@@ -227,4 +227,4 @@ xlsxwriter==3.0.3; python_version >= "3.4"
 xmltodict==0.13.0; python_version >= "3.4"
 yagmail==0.15.277
 zipp==3.8.0; python_version < "3.9" and python_version >= "3.7"
--e .[dev]
+-e .[all]
