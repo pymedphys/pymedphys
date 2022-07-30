@@ -67,22 +67,20 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu", "macos", "windows"]
-        task: [
+        task:
+          [
             "tests",
             "docs",
             "stackoverflow",
             "updates",
             "cypress",
             "slow",
-            # "binary",  # Skip for now
+            "build",
             "pyright",
             "propagate",
           ]
 
         exclude:
-          - os: "ubuntu"
-            task: "binary"
-
           - os: "windows"
             task: "stackoverflow"
           - os: "windows"
@@ -104,24 +102,25 @@ jobs:
             task: "cypress"
           - os: "macos"
             task: "slow"
-          - os: "macos"
-            task: "binary"
           - os: "macos"
             task: "pyright"
           - os: "macos"
             task: "propagate"
 
         include:
-          # Version numbers chosen so that highest and lowest Python version is
-          # utilised, 3.7 is chosen on Windows to align with Jupyter Book until
-          # https://github.com/executablebooks/jupyter-book/issues/906 is fixed.
-          # See https://jupyterbook.org/advanced/advanced.html#working-on-windows
+          # Version numbers under support currently are versions 3.8, 3.9, and
+          # 3.10. Instead of doing a full OS python version matrix, instead
+          # just one version is chosen per OS in the hope that that offers a
+          # reasonable trade off between test coverage and CI minutes utilised.
+          # Windows is chosen to be the one using 3.10 since that is known to
+          # work for the docs build. 3.9 and 3.8 are divied up between Ubuntu
+          # and macOS arbitrarily.
           - os: "ubuntu"
-            python-version: "3.10"
+            python-version: "3.9"
           - os: "windows"
             python-version: "3.10"
           - os: "macos"
-            python-version: 3.8
+            python-version: "3.8"
 
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 60
@@ -244,10 +243,11 @@ jobs:
 
       # Install Node
 
-      - uses: actions/setup-node@v1
-        if: matrix.task == 'cypress' || matrix.task == 'pyright'
+      - uses: actions/setup-node@v3
+        if: matrix.task == 'cypress' || matrix.task == 'pyright' || matrix.task == 'build'
         with:
           node-version: "14"
+          # cache: "yarn"  # TODO: Sort out this cache parameter
 
       # -----------------------------------------------------------------------------
 
@@ -303,6 +303,13 @@ jobs:
         run: |
           poetry install -E propagate || poetry lock --no-update && poetry install -E propagate
 
+      ## Install with Binary Build Environment
+
+      - name: Install a binary build environment
+        if: matrix.task == 'build'
+        run: |
+          poetry install -E build -E cli
+
       ## Update all packages and then install with tests environment
 
       - name: Update all packages then install with tests and user environment
@@ -318,13 +325,13 @@ jobs:
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        if: matrix.task != 'build' && matrix.task != 'pyright'
         run: |
           echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
       - name: PyMedPhys Cache
         id: pymedphys-cache
-        if: matrix.task != 'binary' && matrix.task != 'pyright'
+        if: matrix.task != 'build' && matrix.task != 'pyright'
         uses: actions/cache@v2
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
@@ -335,24 +342,25 @@ jobs:
       # Binary building
 
       - name: Build Binary
-        if: matrix.task == 'binary'
+        if: matrix.task == 'build'
         run: |
-          pip install tomlkit wheel pyinstaller
-          cd binary
-          python build-binary.py
+          poetry run pymedphys dev build --install
 
-      - uses: actions/upload-artifact@v2
-        if: matrix.task == 'binary'
+      - uses: actions/upload-artifact@v3
+        if: matrix.task == 'build'
         with:
-          name: PyMedPhysGUI
-          path: binary/build/dist/PyMedPhysGUI*.exe
+          name: PyMedPhysApp-${{ runner.os }}
+          path: |
+            js/app/dist/*.dmg
+            js/app/dist/*.exe
+            js/app/dist/*.snap
+            js/app/dist/*.AppImage
+            !js/app/dist/*unpacked/
 
-      - name: Test Binary
-        if: matrix.task == 'binary'
-        run: |
-          pip install psutil
-          cd binary
-          python test.py
+      # TODO:
+      # - name: Test Binary
+      #   if: matrix.task == 'build'
+      #   run: |
 
       # -----------------------------------------------------------------------------
 

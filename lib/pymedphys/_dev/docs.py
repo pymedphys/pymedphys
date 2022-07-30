@@ -17,7 +17,7 @@ import subprocess
 
 import pymedphys
 
-from .propagate import LIBRARY_PATH, REPO_ROOT
+from .paths import LIBRARY_PATH, REPO_ROOT
 
 DOCS_PATH = LIBRARY_PATH.joinpath("docs")
 

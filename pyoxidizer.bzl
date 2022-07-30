@@ -17,10 +17,14 @@ def make_exe():
     dist = default_python_distribution(python_version = "3.10")
 
     policy = dist.make_python_packaging_policy()
-    policy.resources_location = "filesystem-relative:lib"
+    policy.set_resource_handling_mode("files")
+
+    # site-packages is required here so that streamlit doesn't boot in development mode:
+    # https://github.com/streamlit/streamlit/blob/953dfdbeb51a4d0cb4ddb81aaad8e4321fe5db73/lib/streamlit/config.py#L255-L267
+    policy.resources_location = "filesystem-relative:site-packages"
 
     python_config = dist.make_python_interpreter_config()
-    python_config.module_search_paths = ["$ORIGIN/lib"]
+    python_config.module_search_paths = ["$ORIGIN/site-packages"]
     python_config.run_module = "pymedphys"
 
     python_config.filesystem_importer = True
@@ -35,8 +39,8 @@ def make_exe():
     exe.windows_runtime_dlls_mode = "always"
     exe.windows_subsystem = "console"
 
-    exe.pip_install(["wheel"])
-    exe.add_python_resources(exe.pip_install(["-r", "requirements-cli.txt", "-r", "requirements-icom.txt", "-r", "requirements-tests.txt", ]))
+    exe.add_python_resources(exe.pip_install(["wheel"]))
+    exe.add_python_resources(exe.pip_install(["-r", "requirements-deploy.txt"]))
     exe.add_python_resources(exe.pip_install(["."]))
 
     return exe
