@@ -302,3 +302,42 @@ def get_incomplete_qcls(connection, location):
     results = results.sort_values(by=["due"], ascending=True)
 
     return results
+
+
+def get_activity_schedule_by_location(connection, activity, location, start, end):
+    data = api.execute(
+        connection,
+        """
+        SELECT
+            Schedule.App_DtTm,
+            Schedule.Activity,
+            Schedule.Notes
+        FROM Schedule, Staff
+        WHERE
+            Staff.Last_Name = %(location)s AND
+            Schedule.Location = Staff.Staff_ID AND
+            Schedule.Activity = %(activity)s AND
+            Schedule.App_DtTm > %(start)s AND
+            Schedule.App_DtTm < %(end)s AND
+            Schedule.Version = 0
+        """,
+        {
+            "location": str(location),
+            "activity": str(activity),
+            "start": str(start),
+            "end": str(end),
+        },
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=[
+            "date",
+            "activity",
+            "notes",
+        ],
+    )
+
+    results = results.sort_values(by=["date"], ascending=True)
+
+    return results
