@@ -6,16 +6,16 @@
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
-
-.. _`getting started`: getting-started.html
-
 .. _`Release Notes`: release-notes.html
 
-.. _`Library Users Guide`: lib/index.html
-.. _`CLI Users Guide`: cli/index.html
-.. _`Contributors Guide`: contrib/index.html
-.. _`General`: general/index.html
-
+.. _`Quick Start Guide`: users/get-started/quick-start.html
+.. _`get started`: users/get-started/index.html
+.. _`how-to guides`: users/howto/index.html
+.. _`background information`: users/background/index.html
+.. _`Technical Reference`: users/ref/index.html
+.. _`workstation setup guides`: contrib/setups/index.html
+.. _`repository information`: contrib/info/index.html
+.. _`tips & tricks`: contrib/tips/index.html
 
 .. toctree::
     :hidden:
