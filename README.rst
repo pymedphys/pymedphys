@@ -199,7 +199,7 @@ Past contributors
 
 .. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
 
-.. _`Saskatchewan Cancer Agency` : http://www.saskcancer.ca/
+.. _`Saskatchewan Cancer Agency`: http://www.saskcancer.ca/
 
 .. _`Humanitas University`: https://www.hunimed.eu/
 
