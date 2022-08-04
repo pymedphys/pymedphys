@@ -8,7 +8,7 @@ Overview
 * Install Python 3.8
 * `Install Poetry`_
 * Clone the PyMedPhys git repo
-* Run ``poetry install -E dev`` within the root of the repo
+* Run ``poetry install -E all`` within the root of the repo
 * Run ``poetry run pre-commit install``
 * Install ``pandoc`` via your package manager
 
