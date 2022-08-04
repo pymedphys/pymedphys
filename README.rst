@@ -37,6 +37,82 @@ on `PyPI`_ and `GitHub`_.
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
+Statement of need
+*****************
+
+Medical radiation applications are subject to fast-paced technological
+advancements. This is particularly true in the field of radiation oncology,
+where the implementation of increasingly sophisticated technologies requires
+increasingly complex processes to maintain the improving standard of care. To
+help address this challenge, software tools that improve the quality, safety
+and efficiency of clinical tasks are increasingly being developed in-house.
+Commercial options are often prohibitively expensive or insufficiently tailored
+to an individual clinic's needs. On the other hand, in-house development
+efforts are often limited to a single institution. Similar tools that could
+otherwise be shared are instead "reinvented" in clinics worldwide on a routine
+basis. Moreover, individual institutions typically lack the personnel and
+resources to incorporate simple aspects of good development practice or to
+properly maintain in-house software.
+
+By creating and promoting an open-source repository, PyMedPhys aims to improve
+the quality and accessibility of existing software solutions to problems faced
+across a range of medical radiation applications, especially those
+traditionally within the remit of medical physicists. These solutions can be
+broadly categorised in two areas: data extraction/conversion of proprietary
+formats from a variety of radiotherapy systems, and manipulation of standard
+radiotherapy data to perform quality assurance (QA) tasks that are otherwise
+time-consuming or lack commercial solutions with the desired flexibility or
+true function.
+
+Data extraction and conversion currently includes: two treatment planning
+systems, an oncology information system, and a linear accelerator vendor
+family of systems. Data in proprietary formats from these systems are
+extracted and converted to allow for integration in a myriad of applications.
+Applications that use planning system information include: electron cut-out
+factor determination, CT extension, and extraction of dose information for
+patient QA purposes. Applications that use the oncology information systems
+include: clinical dashboards that summarise data, quality task tracking, and
+comparison of dose information to planning systems. Applications that use the
+linear accelerator data include: patient specific QA analysis against planning
+data, and analysis of machine performance such as the Winston-Lutz test.
+
+QA tasks using standard radiotherapy data include: anonymisation, extraction
+of dose data for analysis, manipulation of contour files to allow merging or
+adjustments/scaling of relative electron density, modifying machine names
+in plans, and most frequently used, the calculation of a Gamma index, a widely
+recognised metric in radiotherapy analysis that quantifies the difference
+between measured and calculated dose distributions on a point-by-point basis
+in terms of both dose and distance to agreement (DTA) differences.
+
+Many of these tools are in use clinically at affiliated sites, and
+additionally, aspects of PyMedPhys are implemented around the world for some
+applications. Many parties have embraced the gamma analysis module
+[`Milan et al., 2019`_; `Galic et al., 2020`_; `Rodriguez et al., 2020`_; `Cronholm et al., 2020`_;
+`Spezialetti et al., 2021`_; `Tsuneda et al., 2021`_; `Pastor-Serrano & Perko, 2021`_;
+`Gajewski et al., 2021`_; `Lysakovski et al., 2021`_; `Castle et al., 2022`_; `Yang et al., 2022`_],
+while implementations of the electron cutout factor module and others
+[`Baltz & Kirsner, 2021`_; `Douglass & Keal, 2021`_; `Rembish, 2021`_] have also
+been reported. Additionally, the work has been recognized by the European
+Society for Radiotherapy and Oncology (ESTRO) and referenced as recommended
+literature in their 3rd Edition of Core Curriculum for Medical Physics Experts
+in Radiotherapy [`Bert et al., 2021`_].
+
+.. _`Milan et al., 2019`: https://aapm.onlinelibrary.wiley.com/doi/10.1002/mp.13491
+.. _`Galic et al., 2020`: https://doi.org/10.4103/jmp.JMP_51_19
+.. _`Rodriguez et al., 2020`: https://doi.org/10.1088/1361-6560/abb71b
+.. _`Cronholm et al., 2020`: http://www.spectronic.se/files/Whitepaper_TFE_202106.pdf
+.. _`Spezialetti et al., 2021`: https://doi.org/10.1109/SMC52423.2021.9658879
+.. _`Tsuneda et al., 2021`: https://doi.org/10.1002/mp.15164
+.. _`Pastor-Serrano & Perko, 2021`: https://doi.org/10.48550/arXiv.2109.03951
+.. _`Gajewski et al., 2021`: https://doi.org/10.3389/fphy.2020.567300
+.. _`Lysakovski et al., 2021`: https://doi.org/10.3389/fphy.2021.741453
+.. _`Castle et al., 2022`: https://doi.org/10.1002/acm2.13556
+.. _`Yang et al., 2022`: https://doi.org/10.1088/1361-6560/ac8269
+.. _`Baltz & Kirsner, 2021`: https://doi.org/10.1002/acm2.13430
+.. _`Douglass & Keal, 2021`: https://doi.org/10.1016/j.ejmp.2021.08.012
+.. _`Rembish, 2021`: https://www.proquest.com/docview/2564568968
+.. _`Bert et al., 2021`: https://www.efomp.org/uploads/595e3c8a-52d9-440f-b50b-183c3a00cb00/Radiotherapy_cc_2022.pdf
+
 Beta level of development
 *************************
 
@@ -67,22 +143,19 @@ PyMedPhys can be installed with:
 
     pip install pymedphys[user]
 
-If you'd like more details around installing PyMedPhys go to the
-`getting started`_ page within the docs.
+Further user installation instructions can be found in the `Quick Start Guide`_.
 
-..
-    TODO: reword:
+The PyMedPhys documentation contains two overarching guides:
 
-The PyMedPhys documentation is split into four categories:
+1. **The Users Guide**: where you can find instructions to `get started`_ with
+   the library and the CLI, in-depth `how-to guides`_ (examples for users) on PyMedPhys' various
+   tools, some `background information`_ on individual PyMedPhys projects as
+   well as the `Technical Reference`_.
 
-1. `Library Users Guide`_: for those building their own Python apps, scripts
-   and other tools who wish to incorporate elements of the PyMedPhys library.
-2. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
-   line interface (e.g. to help automate existing workflows with minimal
-   programming).
-3. `Contributors Guide`_: for those who wish to make new contributions to
-   either the PyMedPhys library or the PyMedPhys app.
-4. `General`_: Material that may apply to any visitor to PyMedPhys.
+2. **The Contributors Guide**: for those who wish to make new contributions
+   to the PyMedPhys library, CLI or app. Here you'll find detailed `workstation
+   setup guides`_ to enable contributions, important `repository information`_,
+   and some `tips & tricks`_ to overcome common issues.
 
 
 Our Team
@@ -207,11 +280,13 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
-.. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
-
 .. _`Release Notes`: ./CHANGELOG.md
 
-.. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.html
-.. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.html
-.. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.html
-.. _`General`: https://docs.pymedphys.com/general/index.html
+.. _`Quick Start Guide`: https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html
+.. _`get started`: https://docs.pymedphys.com/en/latest/users/get-started/index.html
+.. _`how-to guides`: https://docs.pymedphys.com/en/latest/users/howto/index.html
+.. _`background information`: https://docs.pymedphys.com/en/latest/users/background/index.html
+.. _`Technical Reference`: https://docs.pymedphys.com/en/latest/users/ref/index.html
+.. _`workstation setup guides`: https://docs.pymedphys.com/en/latest/contrib/setups/index.html
+.. _`repository information`: https://docs.pymedphys.com/en/latest/contrib/info/index.html
+.. _`tips & tricks`: https://docs.pymedphys.com/en/latest/contrib/tips/index.html
