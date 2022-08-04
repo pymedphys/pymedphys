@@ -1,2 +1,2 @@
-numpy==1.23.0; python_version >= "3.8"
-typing-extensions==4.2.0; python_version >= "3.7"
+numpy==1.23.1; python_version >= "3.8"
+typing-extensions==4.3.0; python_version >= "3.7"
