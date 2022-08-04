@@ -14,6 +14,9 @@
 # limitations under the License.
 
 """Export DICOM objects from raw Pinnacle data.
+
+.. include:: /messages/warning-pinnacle.rst
+
 """
 
 from pymedphys._experimental.pinnacle import export_cli

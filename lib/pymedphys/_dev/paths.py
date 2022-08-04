@@ -1,5 +1,4 @@
-# Copyright (C) 2019 South Western Sydney Local Health District,
-# University of New South Wales
+# Copyright (C) 2022 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +13,7 @@
 # limitations under the License.
 
 
-"""A tool to export DICOM objects from raw Pinnacle data:
+import pathlib
 
-.. include:: /messages/warning-pinnacle.rst
-
-"""
-
-# pylint: disable = unused-import
-
-from pymedphys._experimental.pinnacle import PinnacleExport, PinnacleImage, PinnaclePlan
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
+LIBRARY_PATH = REPO_ROOT.joinpath("lib", "pymedphys")

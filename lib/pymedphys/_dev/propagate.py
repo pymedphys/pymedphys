@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import json
-import pathlib
 import re
 import subprocess
 import textwrap
@@ -21,19 +20,19 @@ from typing import List, Optional
 
 from pymedphys._imports import black, tomlkit
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
+from .paths import LIBRARY_PATH, REPO_ROOT
+
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 
 POETRY_LOCK_PATH = REPO_ROOT.joinpath("poetry.lock")
 PYPROJECT_TOML_HASH_PATH = REPO_ROOT.joinpath("pyproject.hash")
 
-LIBRARY_PATH = REPO_ROOT.joinpath("lib", "pymedphys")
 VERSION_PATH = LIBRARY_PATH.joinpath("_version.py")
 
 REQUIREMENTS_CONFIG = (
     # Extras | Filename | Include PyMedPhys | Make it an editable dev install
     (["user"], "requirements.txt", True, False),
-    (["dev"], "requirements-dev.txt", True, True),
+    (["all"], "requirements-all.txt", True, True),
     (["user", "tests"], "requirements-deploy.txt", False, None),
     (["icom"], "requirements-icom.txt", False, None),
     (["cli"], "requirements-cli.txt", False, None),
