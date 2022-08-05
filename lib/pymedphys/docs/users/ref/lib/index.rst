@@ -13,5 +13,6 @@ itself. Below is the documentation for a range of these libraries.
     gamma
     mosaiq
     metersetmap
+    trf
     electronfactors
     experimental/index
