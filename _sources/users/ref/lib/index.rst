@@ -14,4 +14,5 @@ itself. Below is the documentation for a range of these libraries.
     mosaiq
     metersetmap
     trf
+    electronfactors
     experimental/index
