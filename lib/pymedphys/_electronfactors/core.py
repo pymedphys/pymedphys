@@ -372,7 +372,7 @@ def calculate_length(x, y, width):
     return length
 
 
-def parameterise_insert(x, y, callback=None):
+def parametrise_insert(x, y, callback=None):
     """Return the parameterisation of an insert given x and y coords."""
     circle_centre = search_for_centre_of_largest_bounded_circle(x, y, callback=callback)
     width = calculate_width(x, y, circle_centre)
@@ -430,7 +430,7 @@ def parameterise_insert_with_visual_alignment(
     complete_parameterisation_callback=None,
 ):
     """Return an equivalent ellipse with visual alignment parameters."""
-    width, length, circle_centre = parameterise_insert(x, y, callback=circle_callback)
+    width, length, circle_centre = parametrise_insert(x, y, callback=circle_callback)
     if complete_parameterisation_callback is not None:
         complete_parameterisation_callback(width, length, circle_centre)
     x_shift, y_shift, rotation_angle = visual_alignment_of_equivalent_ellipse(

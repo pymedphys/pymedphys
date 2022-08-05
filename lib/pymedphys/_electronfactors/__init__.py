@@ -17,7 +17,7 @@ from .core import (
     calculate_percent_prediction_differences,
     convert2_ratio_perim_area,
     create_transformed_mesh,
-    parameterise_insert,
+    parametrise_insert,
     spline_model,
     spline_model_with_deformability,
     visual_alignment_of_equivalent_ellipse,

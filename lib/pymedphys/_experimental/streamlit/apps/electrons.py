@@ -136,7 +136,7 @@ def _per_reference_index(config, tel_contents, reference_index):
     x = insert_coords[0::2] / 10
     y = insert_coords[1::2] / 10
 
-    width, length, circle_centre = electronfactors.parameterise_insert(x, y)
+    width, length, circle_centre = electronfactors.parametrise_insert(x, y)
 
     left, right = st.columns(2)
 
