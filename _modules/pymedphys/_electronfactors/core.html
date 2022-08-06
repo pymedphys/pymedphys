@@ -983,13 +983,13 @@ title="Open an issue"
     <span class="k">return</span> <span class="n">length</span>
 
 
-<span class="k">def</span> <span class="nf">parametrise_insert</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="parameterise_insert"><a class="viewcode-back" href="../../../users/ref/lib/electronfactors.html#pymedphys.electronfactors.parameterise_insert">[docs]</a><span class="k">def</span> <span class="nf">parameterise_insert</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Return the parameterisation of an insert given x and y coords.&quot;&quot;&quot;</span>
     <span class="n">circle_centre</span> <span class="o">=</span> <span class="n">search_for_centre_of_largest_bounded_circle</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">)</span>
     <span class="n">width</span> <span class="o">=</span> <span class="n">calculate_width</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">circle_centre</span><span class="p">)</span>
     <span class="n">length</span> <span class="o">=</span> <span class="n">calculate_length</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">width</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">circle_centre</span>
+    <span class="k">return</span> <span class="n">width</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">circle_centre</span></div>
 
 
 <div class="viewcode-block" id="visual_alignment_of_equivalent_ellipse"><a class="viewcode-back" href="../../../users/ref/lib/electronfactors.html#pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse">[docs]</a><span class="k">def</span> <span class="nf">visual_alignment_of_equivalent_ellipse</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
@@ -1041,7 +1041,7 @@ title="Open an issue"
     <span class="n">complete_parameterisation_callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Return an equivalent ellipse with visual alignment parameters.&quot;&quot;&quot;</span>
-    <span class="n">width</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">circle_centre</span> <span class="o">=</span> <span class="n">parametrise_insert</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">circle_callback</span><span class="p">)</span>
+    <span class="n">width</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">circle_centre</span> <span class="o">=</span> <span class="n">parameterise_insert</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">circle_callback</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">complete_parameterisation_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">complete_parameterisation_callback</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">circle_centre</span><span class="p">)</span>
     <span class="n">x_shift</span><span class="p">,</span> <span class="n">y_shift</span><span class="p">,</span> <span class="n">rotation_angle</span> <span class="o">=</span> <span class="n">visual_alignment_of_equivalent_ellipse</span><span class="p">(</span>
