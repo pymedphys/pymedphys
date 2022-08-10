@@ -311,6 +311,7 @@ def get_activity_schedule_by_location(connection, activity, location, start, end
         SELECT
             Schedule.App_DtTm,
             Schedule.Activity,
+            Staff.Last_Name,
             Schedule.Notes
         FROM Schedule, Staff
         WHERE
@@ -334,6 +335,7 @@ def get_activity_schedule_by_location(connection, activity, location, start, end
         columns=[
             "date",
             "activity",
+            "location",
             "notes",
         ],
     )
