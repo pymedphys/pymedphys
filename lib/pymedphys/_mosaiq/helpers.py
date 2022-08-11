@@ -343,3 +343,30 @@ def get_activity_schedule_by_location(connection, activity, location, start, end
     results = results.sort_values(by=["date"], ascending=True)
 
     return results
+
+
+def get_column_data_types(connection, table_name):
+    data = api.execute(
+        connection,
+        """
+        SELECT
+            COLUMN_NAME,
+            DATA_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE
+            TABLE_NAME = %(table_name)s
+        """,
+        {
+            "table": str(table_name),
+        },
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=[
+            "column name",
+            "data type",
+        ],
+    )
+
+    return results
