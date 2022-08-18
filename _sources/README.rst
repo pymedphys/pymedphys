@@ -81,6 +81,24 @@ The PyMedPhys documentation contains two overarching guides:
    setup guides`_ to enable contributions, important `repository information`_,
    and some `tips & tricks`_ to overcome common issues.
 
+Development
+=============
+
+The PyMedPhys project is managed using `Poetry`_.
+
+After cloning the repository, install the PyMedPhys dependencies and set up pre-commit by running:
+
+.. code:: bash
+
+    poetry install -E all
+    poetry run pre-commit install
+
+Run automated tests with:
+
+.. code:: bash
+
+    poetry run pymedphys dev tests
+
 
 Our Team
 ========
@@ -214,3 +232,4 @@ Past contributors
 .. _`workstation setup guides`: https://docs.pymedphys.com/en/latest/contrib/setups/index.html
 .. _`repository information`: https://docs.pymedphys.com/en/latest/contrib/info/index.html
 .. _`tips & tricks`: https://docs.pymedphys.com/en/latest/contrib/tips/index.html
+.. _`Poetry`: https://python-poetry.org/

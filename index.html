@@ -694,6 +694,11 @@ title="Print to PDF"
   </a>
  </li>
  <li class="toc-h1 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#development">
+   Development
+  </a>
+ </li>
+ <li class="toc-h1 nav-item toc-entry">
   <a class="reference internal nav-link" href="#our-team">
    Our Team
   </a>
@@ -756,6 +761,11 @@ title="Print to PDF"
  <li class="toc-h1 nav-item toc-entry">
   <a class="reference internal nav-link" href="#documentation">
    Documentation
+  </a>
+ </li>
+ <li class="toc-h1 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#development">
+   Development
   </a>
  </li>
  <li class="toc-h1 nav-item toc-entry">
@@ -841,6 +851,19 @@ to the PyMedPhys library, CLI or app. Here you’ll find detailed <a class="refe
 setup guides</a> to enable contributions, important <a class="reference external" href="contrib/info/index.html">repository information</a>,
 and some <a class="reference external" href="contrib/tips/index.html">tips &amp; tricks</a> to overcome common issues.</p></li>
 </ol>
+</section>
+<section id="development">
+<h1>Development<a class="headerlink" href="#development" title="Permalink to this headline">#</a></h1>
+<p>The PyMedPhys project is managed using <a href="#id1"><span class="problematic" id="id2">`Poetry`_</span></a>.</p>
+<p>After cloning the repository, install the PyMedPhys dependencies and set up pre-commit by running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry install -E all
+poetry run pre-commit install
+</pre></div>
+</div>
+<p>Run automated tests with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry run pymedphys dev tests
+</pre></div>
+</div>
 </section>
 <section id="our-team">
 <h1>Our Team<a class="headerlink" href="#our-team" title="Permalink to this headline">#</a></h1>
