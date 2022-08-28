@@ -84,7 +84,10 @@ advancements. This is particularly true in the field of radiation oncology,
 where the implementation of increasingly sophisticated technologies requires
 increasingly complex processes to maintain the improving standard of care. To
 help address this challenge, software tools that improve the quality, safety
-and efficiency of clinical tasks are increasingly being developed in-house.
+and efficiency of clinical tasks are increasingly being developed in-house
+[@kuo2020JACMP; @Maughan2019MP; @Arumugam2016MP; @Edvardsson2018PMB; @LiJS2010MP; 
+@Bakhtiari2011MP; @Latala2020MD; @Bhagroo2019MP; @Huang2021JACMP; @Chan2015TCRT; 
+@Skouboe2019RO; @Kimura2021MP; @Inaniwa2018PMB; @Keall2014MP].
 Commercial options are often prohibitively expensive or insufficiently tailored
 to an individual clinic's needs. On the other hand, in-house development
 efforts are often limited to a single institution. Similar tools that could
