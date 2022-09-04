@@ -211,3 +211,55 @@ def test_distance_0_gives_1_point():
     )
 
     assert len(x) == 1 & len(y) == 1 & len(z) == 1
+
+
+def test_if_descending_coordinate_in_DICOM():
+    """Testing if the coordinate along an axis in DICOM is descending
+    0020,0037  Image Orientation (Patient):
+    head-in supine,  1\0\0\0\1\0  (all ascending in DICOM)
+    head-in prone,  -1\0\0\0\-1\0 (descending x, descending y in DICOM)
+    feet-in supine, -1\0\0\0\1\0  (descending x, descending z in DICOM)
+    feet-in prone,   1\0\0\0\-1\0 (descending y, descending z in DICOM)
+    if descending detected, flip the axis; otherwise, below error:
+    scipy\interpolate\interpolate.py", line 2475, in init "ascending" % i)
+    ValueError: The points in dimension 0 must be strictly ascending
+    """
+    reference_filepath = pymedphys.data_path("RD.TBB_feet_in_supine.dcm")
+    evaluation_filepath = pymedphys.data_path("RD.TBC_feet_in_supine.dcm")
+
+    reference = pydicom.read_file(str(reference_filepath), force=True)
+    evaluation = pydicom.read_file(str(evaluation_filepath), force=True)
+
+    axes_reference, dose_reference = pymedphys.dicom.zyx_and_dose_from_dataset(
+        reference
+    )
+    axes_evaluation, dose_evaluation = pymedphys.dicom.zyx_and_dose_from_dataset(
+        evaluation
+    )
+
+    (z_ref, y_ref, x_ref) = axes_reference
+    (z_eval, y_eval, x_eval) = axes_evaluation
+
+    np.shape(z_ref)
+    np.shape(y_ref)
+    np.shape(x_ref)
+    np.shape(dose_reference)
+
+    gamma_options = {
+        "dose_percent_threshold": 3,
+        "distance_mm_threshold": 2,
+        "lower_percent_dose_cutoff": 10,
+        "interp_fraction": 10,  # Should be 10 or more for more accurate results
+        "max_gamma": 5,
+        "random_subset": None,
+        "local_gamma": False,
+        "ram_available": 2**29,  # 1/2 GB
+    }
+
+    gamma = pymedphys.gamma(
+        axes_reference,
+        dose_reference,
+        axes_evaluation,
+        dose_evaluation,
+        **gamma_options
+    )
