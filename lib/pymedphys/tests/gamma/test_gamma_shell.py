@@ -20,6 +20,8 @@
 
 from pymedphys._imports import numpy as np
 
+import pydicom
+
 import pymedphys
 import pymedphys._utilities.createshells
 
@@ -216,16 +218,18 @@ def test_distance_0_gives_1_point():
 def test_if_descending_coordinate_in_DICOM():
     """Testing if the coordinate along an axis in DICOM is descending
     0020,0037  Image Orientation (Patient):
-    head-in supine,  1\0\0\0\1\0  (all ascending in DICOM)
-    head-in prone,  -1\0\0\0\-1\0 (descending x, descending y in DICOM)
-    feet-in supine, -1\0\0\0\1\0  (descending x, descending z in DICOM)
-    feet-in prone,   1\0\0\0\-1\0 (descending y, descending z in DICOM)
+    head-in supine,  1\\0\\0\\0\\1\\0  (all ascending in DICOM)
+    head-in prone,  -1\\0\\0\\0\\-1\\0 (descending x, descending y in DICOM)
+    feet-in supine, -1\\0\\0\\0\\1\\0  (descending x, descending z in DICOM)
+    feet-in prone,   1\\0\\0\\0\\-1\\0 (descending y, descending z in DICOM)
     if descending detected, flip the axis; otherwise, below error:
-    scipy\interpolate\interpolate.py", line 2475, in init "ascending" % i)
+    scipy\\interpolate\\interpolate.py", line 2475, in init "ascending" % i)
     ValueError: The points in dimension 0 must be strictly ascending
     """
     reference_filepath = pymedphys.data_path("RD.TBB_feet_in_supine.dcm")
     evaluation_filepath = pymedphys.data_path("RD.TBC_feet_in_supine.dcm")
+    # reference_filepath = pymedphys.data_path("original_dose_beam_4.dcm")
+    # evaluation_filepath = pymedphys.data_path("logfile_dose_beam_4.dcm")
 
     reference = pydicom.dcmread(reference_filepath, force=True)
     evaluation = pydicom.dcmread(evaluation_filepath, force=True)
@@ -239,11 +243,6 @@ def test_if_descending_coordinate_in_DICOM():
 
     (z_ref, y_ref, x_ref) = axes_reference
     (z_eval, y_eval, x_eval) = axes_evaluation
-
-    np.shape(z_ref)
-    np.shape(y_ref)
-    np.shape(x_ref)
-    np.shape(dose_reference)
 
     gamma_options = {
         "dose_percent_threshold": 3,
