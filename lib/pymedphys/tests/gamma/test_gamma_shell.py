@@ -228,7 +228,7 @@ def test_if_descending_coordinate_in_DICOM():
     evaluation_filepath = pymedphys.data_path("RD.TBC_feet_in_supine.dcm")
 
     reference = pydicom.dcmread(reference_filepath, force=True)
-    evaluation = pydicom.read_file(str(evaluation_filepath), force=True)
+    evaluation = pydicom.dcmread(evaluation_filepath, force=True)
 
     axes_reference, dose_reference = pymedphys.dicom.zyx_and_dose_from_dataset(
         reference
