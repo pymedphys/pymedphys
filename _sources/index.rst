@@ -7,6 +7,7 @@
    :end-before: END_OF_DOCS_IMPORT
 
 .. _`Release Notes`: release-notes.html
+.. _`Statement of Need`: statement-of-need.html
 
 .. _`Quick Start Guide`: users/get-started/quick-start.html
 .. _`get started`: users/get-started/index.html
@@ -22,6 +23,7 @@
     :maxdepth: 3
 
     overview
+    statement-of-need
     release-notes
 
 

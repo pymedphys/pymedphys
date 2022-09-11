@@ -31,7 +31,8 @@ PyMedPhys is an open-source Medical Physics python library built by an open
 community that values and prioritises code sharing, review, improvement, and
 learning from each other. It is inspired by the collaborative work of our
 physics peers in astronomy and the `Astropy Project`_. PyMedPhys is available
-on `PyPI`_ and `GitHub`_.
+on `PyPI`_ and `GitHub`_. For more information, please read the
+`Statement of Need`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
@@ -224,6 +225,7 @@ Past contributors
 
 .. _`Release Notes`: ./CHANGELOG.md
 
+.. _`Statement of Need`: https://docs.pymedphys.com/en/latest/statement-of-need.html
 .. _`Quick Start Guide`: https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html
 .. _`get started`: https://docs.pymedphys.com/en/latest/users/get-started/index.html
 .. _`how-to guides`: https://docs.pymedphys.com/en/latest/users/howto/index.html
