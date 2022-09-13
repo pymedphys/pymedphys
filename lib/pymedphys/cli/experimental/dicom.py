@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Experimental command line DICOM tools.
+
+Provides an extra argument `--pseudo` to the `dicom anonymise` CLI.
+If you wish to utilise standard anonymisation, please instead use `pymedphys dicom anonymise`
+as opposed to `pymedphys experimental dicom anonymise`."""
+
 from pymedphys.cli import dicom
 
 from pymedphys._experimental.pseudonymisation import anonymise_with_pseudo_cli
