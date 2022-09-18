@@ -643,6 +643,7 @@ title="Open an issue"
     <span class="n">get_baseline_keyword_vr_dict</span><span class="p">,</span>
     <span class="n">get_default_identifying_keywords</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pymedphys._dicom.anonymise</span> <span class="kn">import</span> <span class="n">strategy</span> <span class="k">as</span> <span class="n">anon_strategy</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">strategy</span>
 
@@ -696,7 +697,9 @@ title="Open an issue"
     <span class="k">else</span><span class="p">:</span>
         <span class="n">keywords_to_leave_unchanged</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">keywords_to_leave_unchanged</span>
 
-    <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="n">anon_strategy</span><span class="o">.</span><span class="n">ANONYMISATION_HARDCODE_DISPATCH</span>
+    <span class="n">identifying_keywords_for_pseudo</span> <span class="o">=</span> <span class="n">get_default_identifying_keywords</span><span class="p">()</span>
+
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pseudo</span><span class="p">:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Was run with pseudo!&quot;</span><span class="p">)</span>
         <span class="n">identifying_keywords_for_pseudo</span> <span class="o">=</span> <span class="n">get_default_pseudonymisation_keywords</span><span class="p">()</span>
