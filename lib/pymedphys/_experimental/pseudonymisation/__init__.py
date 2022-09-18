@@ -27,6 +27,7 @@ from pymedphys._dicom.anonymise import (
     get_baseline_keyword_vr_dict,
     get_default_identifying_keywords,
 )
+from pymedphys._dicom.anonymise import strategy as anon_strategy
 
 from . import strategy
 
@@ -80,7 +81,9 @@ def anonymise_with_pseudo_cli(args):
     else:
         keywords_to_leave_unchanged = args.keywords_to_leave_unchanged
 
-    replacement_strategy = None
+    replacement_strategy = anon_strategy.ANONYMISATION_HARDCODE_DISPATCH
+    identifying_keywords_for_pseudo = get_default_identifying_keywords()
+
     if args.pseudo:
         logging.info("Was run with pseudo!")
         identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
