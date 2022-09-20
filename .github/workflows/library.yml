@@ -285,7 +285,7 @@ jobs:
       ## Install with Tests Environment
 
       - name: Install a tests environment
-        if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
+        if: matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
         run: |
           poetry install -E user -E tests
 
@@ -294,7 +294,7 @@ jobs:
       - name: Install a doctests environment
         if: matrix.os == 'ubuntu' && matrix.task == 'tests' || matrix.task == 'pyright'
         run: |
-          poetry install -E user -E doctests
+          poetry install -E user -E doctests -E tests
 
       ## Install remaining packages for pyright
 
