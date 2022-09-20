@@ -285,7 +285,7 @@ jobs:
       ## Install with Tests Environment
 
       - name: Install a tests environment
-        if: matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
+        if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
         run: |
           poetry install -E user -E tests
 
