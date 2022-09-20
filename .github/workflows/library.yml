@@ -292,7 +292,7 @@ jobs:
       ## Install with Doctests Environment
 
       - name: Install a doctests environment
-        if: matrix.os == 'ubuntu' && matrix.task == 'tests' || matrix.task == 'pyright'
+        if: matrix.os == 'ubuntu' && (matrix.task == 'tests' || matrix.task == 'pyright')
         run: |
           poetry install -E user -E doctests -E tests
 
