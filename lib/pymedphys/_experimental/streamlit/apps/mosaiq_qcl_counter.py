@@ -190,6 +190,7 @@ def _get_all_results(site_config_map, connections, chosen_start, chosen_end):
         )
 
         for column in ("due", "actual_completed_time"):
+            # pylint: disable=unsupported-assignment-operation,unsubscriptable-object
             results[column] = _pandas_convert_series_to_date(results[column])
 
         all_results[site] = results
