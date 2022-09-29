@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.38.0"
+version = "0.39.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -141,7 +141,7 @@ pytest-sugar = { version = "*", optional = true }         # groups = ["all", "te
 hypothesis = { version = "<6", optional = true }          # groups = ["all", "tests"]
 astroid = { version = "*", optional = true }              # groups = ["all", "tests"]
 psutil = { version = "*", optional = true }               # groups = ["all", "tests"]
-pylint = { version = "<2.15.0", optional = true }               # groups = ["all", "tests"]
+pylint = { version = "*", optional = true }               # groups = ["all", "tests"]
 pytest-rerunfailures = { version = "*", optional = true } # groups = ["all", "tests"]
 
 # ---------------- #
