@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Repository File Structure &#8212; PyMedPhys</title>
+    <title>pymedphys Release Procedure &#8212; PyMedPhys</title>
     
   <!-- Loaded before other Sphinx assets -->
   <link href="../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
@@ -52,12 +52,12 @@ const thebe_selector_input = "pre"
 const thebe_selector_output = ".output, .cell_output"
 </script>
     <script async="async" src="../../_static/sphinx-thebe.js"></script>
-    <link rel="canonical" href="https://docs.pymedphys.com/contrib/info/file-structure.html" />
+    <link rel="canonical" href="https://docs.pymedphys.com/contrib/info/release-guide.html" />
     <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Documentation Guide" href="docs-guide.html" />
-    <link rel="prev" title="Repository Information" href="index.html" />
+    <link rel="next" title="Workstation Setup Guides" href="../setups/index.html" />
+    <link rel="prev" title="Documentation Guide" href="docs-guide.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="docsearch:language" content="en">
     
@@ -397,8 +397,8 @@ const thebe_selector_output = ".output, .cell_output"
    </i>
   </label>
   <ul class="current">
-   <li class="toctree-l2 current active">
-    <a class="current reference internal" href="#">
+   <li class="toctree-l2">
+    <a class="reference internal" href="file-structure.html">
      Repository File Structure
     </a>
    </li>
@@ -407,8 +407,8 @@ const thebe_selector_output = ".output, .cell_output"
      Documentation Guide
     </a>
    </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="release-guide.html">
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
      pymedphys Release Procedure
     </a>
    </li>
@@ -578,7 +578,7 @@ title="Source repository"
       </li>
       
       <li>
-        <a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fcontrib/info/file-structure.html&body=Your%20issue%20content%20here."
+        <a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fcontrib/info/release-guide.html&body=Your%20issue%20content%20here."
    class="headerbtn"
    data-toggle="tooltip"
 data-placement="left"
@@ -595,7 +595,7 @@ title="Open an issue"
       </li>
       
       <li>
-        <a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/contrib/info/file-structure.rst"
+        <a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/contrib/info/release-guide.md"
    class="headerbtn"
    data-toggle="tooltip"
 data-placement="left"
@@ -623,7 +623,7 @@ title="Edit this page"
   <div class="menu-dropdown__content">
     <ul>
       <li>
-        <a href="../../_sources/contrib/info/file-structure.rst"
+        <a href="../../_sources/contrib/info/release-guide.md"
    class="headerbtn"
    data-toggle="tooltip"
 data-placement="left"
@@ -634,7 +634,7 @@ title="Download source file"
 <span class="headerbtn__icon-container">
   <i class="fas fa-file"></i>
   </span>
-<span class="headerbtn__text-container">.rst</span>
+<span class="headerbtn__text-container">.md</span>
 </a>
 
       </li>
@@ -660,23 +660,168 @@ title="Print to PDF"
     </ul>
   </div>
 </div>
+<label for="__page-toc"
+  class="headerbtn headerbtn-page-toc"
+  
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-list"></i>
+  </span>
+
+</label>
 
     </div>
 </div>
 
 <!-- Table of contents -->
 <div class="col-md-3 bd-toc show noprint">
+    <div class="tocsection onthispage pt-5 pb-3">
+        <i class="fas fa-list"></i> Contents
+    </div>
+    <nav id="bd-toc-nav" aria-label="Page">
+        <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#determine-next-release-version">
+   Determine next release version
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#create-a-branch-to-prepare-the-release">
+   Create a branch to prepare the release
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#update-version-in-pyproject-toml">
+   Update version in pyproject.toml
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#update-changelog">
+   Update CHANGELOG
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#create-release-pull-request">
+   Create release pull request
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#troubleshooting-issues">
+     Troubleshooting issues
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#publish-release">
+   Publish Release
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#pypi-account-token">
+     PyPI Account &amp; Token
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#publish-release-to-pypi">
+     Publish release to PyPI
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#publish-release-on-github">
+     Publish release on GitHub
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#final-sanity-tests">
+     Final sanity tests
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+    </nav>
 </div>
     </div>
     <div class="article row">
         <div class="col pl-md-3 pl-lg-5 content-container">
             <!-- Table of contents that is only displayed when printing the page -->
             <div id="jb-print-docs-body" class="onlyprint">
-                <h1>Repository File Structure</h1>
+                <h1>pymedphys Release Procedure</h1>
                 <!-- Table of contents -->
                 <div id="print-main-content">
                     <div id="jb-print-toc">
                         
+                        <div>
+                            <h2> Contents </h2>
+                        </div>
+                        <nav aria-label="Page">
+                            <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#determine-next-release-version">
+   Determine next release version
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#create-a-branch-to-prepare-the-release">
+   Create a branch to prepare the release
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#update-version-in-pyproject-toml">
+   Update version in pyproject.toml
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#update-changelog">
+   Update CHANGELOG
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#create-release-pull-request">
+   Create release pull request
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#troubleshooting-issues">
+     Troubleshooting issues
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#publish-release">
+   Publish Release
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#pypi-account-token">
+     PyPI Account &amp; Token
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#publish-release-to-pypi">
+     Publish release to PyPI
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#publish-release-on-github">
+     Publish release on GitHub
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#final-sanity-tests">
+     Final sanity tests
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+                        </nav>
                     </div>
                 </div>
             </div>
@@ -684,63 +829,105 @@ title="Print to PDF"
                 
               <div>
                 
-  <section id="repository-file-structure">
-<h1>Repository File Structure<a class="headerlink" href="#repository-file-structure" title="Permalink to this headline">#</a></h1>
-<p>The PyMedPhys repository has the following general structure:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pymedphys/
-<span class="p">|</span>   README.rst
-<span class="p">|</span>   LICENSE
-<span class="p">|</span>   CHANGELOG.md
-<span class="p">|</span>   pyproject.toml
-<span class="p">|</span>   ...
-<span class="p">|</span>
-<span class="p">|</span>-- lib/pymedphys/
-<span class="p">|</span>   <span class="p">|</span> -- docs/
-<span class="p">|</span>
-<span class="p">|</span>-- ...
+  <section class="tex2jax_ignore mathjax_ignore" id="pymedphys-release-procedure">
+<h1>pymedphys Release Procedure<a class="headerlink" href="#pymedphys-release-procedure" title="Permalink to this headline">#</a></h1>
+<section id="determine-next-release-version">
+<h2>Determine next release version<a class="headerlink" href="#determine-next-release-version" title="Permalink to this headline">#</a></h2>
+<p>pymedphys uses <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a> in the format <code class="docutils literal notranslate"><span class="pre">MAJOR.MINOR.PATCH</span></code>, the next release number should typically be <code class="docutils literal notranslate"><span class="pre">MAJOR.MINOR+1.PATCH</span></code>. For example, if the previous release was <code class="docutils literal notranslate"><span class="pre">0.38.0</span></code>, the upcoming release will be <code class="docutils literal notranslate"><span class="pre">0.39.0</span></code>.</p>
+<p>In instances where the only changes since the last release are bug fixes and none of the pymedphys API has changed, you should increment the <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> value: <code class="docutils literal notranslate"><span class="pre">MAJOR.MINOR.PATCH+1</span></code></p>
+<p>In the remainder of this guide this version code will be referred to as <code class="docutils literal notranslate"><span class="pre">VERSION</span></code>.</p>
+</section>
+<section id="create-a-branch-to-prepare-the-release">
+<h2>Create a branch to prepare the release<a class="headerlink" href="#create-a-branch-to-prepare-the-release" title="Permalink to this headline">#</a></h2>
+<p>Create a branch named <code class="docutils literal notranslate"><span class="pre">VERSION-release-prep</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git checkout -b VERSION-release-prep
+git push --set-upstream origin <span class="m">0</span>.39.0-release-prep
 </pre></div>
 </div>
-<p>PyMedPhys contains a series of top-level files. These include:</p>
-<dl class="field-list simple">
-<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">README.rst</span></code></dt>
-<dd class="field-odd"><p>A text file containing general information on the PyMedPhys
-repository with links to important sections. On <a class="reference external" href="https://github.com/pymedphys/pymedphys">the PyMedPhys
-GitHub page</a>, <code class="docutils literal notranslate"><span class="pre">README.rst</span></code> determines the text you see
-below the file structure.</p>
-</dd>
-<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">LICENSE</span></code></dt>
-<dd class="field-even"><p>A text file that contains a full copy of the license used by
-PyMedPhys.</p>
-</dd>
-<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">CHANGELOG.md</span></code></dt>
-<dd class="field-odd"><p>A text file containing release notes for the PyMedPhys
-source code library. <code class="docutils literal notranslate"><span class="pre">changelog.md</span></code> determines the text
-presented on the <a class="reference external" href="/release-notes.html">Release Notes</a> documentation page.</p>
-</dd>
-<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code></dt>
-<dd class="field-even"><p>The poetry configuration file that designates dependencies
-and other library related details.</p>
-</dd>
-</dl>
-<p>You’ll quickly note from a cursory look through PyMedPhys that there are
-actually many more top-level files. Most of these help configure specific
-tasks, such as installation &amp; automated testing. They are probably less
-critical to understand in detail in order to comprehend PyMedPhys’ structure,
-so we’ll disregard them for now in the interest of brevity.</p>
-<p>(Most of) the rest of PyMedPhys is arranged in the following directories:</p>
-<dl class="field-list simple">
-<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">lib/pymedphys/</span></code></dt>
-<dd class="field-odd"><p>The main PyMedPhys package.</p>
-</dd>
-<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">lib/pymedphys/docs/</span></code></dt>
-<dd class="field-even"><p>Contains most of PyMedPhys’ documentation. The files within
-<code class="docutils literal notranslate"><span class="pre">docs/</span></code> make up the text you are reading right now! A
-documentation generator called Sphinx converts the files in
-<code class="docutils literal notranslate"><span class="pre">docs/</span></code> into human-readable format. The same tool also pulls the
-docstrings from PyMedPhys’ source code and displays them in the
-documentation pages.</p>
-</dd>
-</dl>
+</section>
+<section id="update-version-in-pyproject-toml">
+<h2>Update version in pyproject.toml<a class="headerlink" href="#update-version-in-pyproject-toml" title="Permalink to this headline">#</a></h2>
+<p>Update the version code near the top of the file:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.poetry]</span><span class="w"></span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;pymedphys&quot;</span><span class="w"></span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VERSION&quot;</span><span class="w"></span>
+<span class="n">readme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;README.rst&quot;</span><span class="w"></span>
+<span class="p">...</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Then run poetry update as well as propagate:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry update
+poetry run pymedphys propagate
+</pre></div>
+</div>
+</section>
+<section id="update-changelog">
+<h2>Update CHANGELOG<a class="headerlink" href="#update-changelog" title="Permalink to this headline">#</a></h2>
+<p>Amend the <code class="docutils literal notranslate"><span class="pre">CHANGELOG.md</span></code> file to describe the changes since the last release. Insert information for this release near the top of the file and populate the sections as appropriate (remove unused sections):</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>&lt;!-- markdownlint-disable MD024 MD039 --&gt;
+
+<span class="gh"># Release Notes</span>
+
+All notable changes to are documented here.
+
+This project adheres to
+[<span class="nt">Semantic Versioning</span>](<span class="na">https://semver.org/spec/v2.0.0.html</span>).
+
+<span class="gu">## [VERSION]</span>
+
+<span class="gu">### News around this release</span>
+
+<span class="gu">### Breaking changes</span>
+
+<span class="gu">### New features and enhancements</span>
+
+<span class="gu">### Bug Fixes</span>
+
+...
+</pre></div>
+</div>
+<p>To help determine what has changed since the last release, you can inspect the <a class="reference external" href="https://github.com/pymedphys/pymedphys/pulls?q=is%3Apr+is%3Amerged">merged pull requests</a> during that time frame.</p>
+</section>
+<section id="create-release-pull-request">
+<h2>Create release pull request<a class="headerlink" href="#create-release-pull-request" title="Permalink to this headline">#</a></h2>
+<p>Commit all changes to your release branch and push to GitHub. Then create a Pull Request of this branch into main. This will run the CI tests. Before finalising the release, ensure all tests are passing.</p>
+<section id="troubleshooting-issues">
+<h3>Troubleshooting issues<a class="headerlink" href="#troubleshooting-issues" title="Permalink to this headline">#</a></h3>
+<p>When preparing a release you will typically see certain steps of the CI failing. This is usually due to dependencies having been upgraded in the time since the last release and certain code within pymedphys is no longer compatible with the new versions.</p>
+<p>To confirm this is indeed the problem, you can set an upper pin for these libraries (to constrain them to a previous version). By doing this you should hopefully see the CI pass.</p>
+<p>In most instances, releasing pymedphys with an upper pin isn’t appropriate, as this would be too restrictive for pymedphys users. Unfortunately there isn’t a general solution to resolving these issues. You will need to remove the upper pins one-by-one and adjust the code in pymedphys to support the new version of the dependencies.</p>
+</section>
+</section>
+<section id="publish-release">
+<h2>Publish Release<a class="headerlink" href="#publish-release" title="Permalink to this headline">#</a></h2>
+<p>Once the release pull request has been approved and merged, you’re ready to release the new pymedphys version!</p>
+<section id="pypi-account-token">
+<h3>PyPI Account &amp; Token<a class="headerlink" href="#pypi-account-token" title="Permalink to this headline">#</a></h3>
+<p>Make sure you have an account at <a class="reference external" href="https://www.pypi.org">PyPI</a> and your account has been added to the pymedphys project (contact the <a class="reference external" href="https://github.com/pymedphys/pymedphys#maintainers">pymedphys maintainers</a> to be added).</p>
+<p>Next, create a token on PyPI for the pymedphys project used by to authenticate and upload the release. Create the token under the <a class="reference external" href="https://pypi.org/manage/project/pymedphys/settings/">pymedphys settings page</a>. Then add the token to your poetry configuration:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry config pypi-token.pypi <span class="o">[</span>your-pypi-token<span class="o">]</span>
+</pre></div>
+</div>
+</section>
+<section id="publish-release-to-pypi">
+<h3>Publish release to PyPI<a class="headerlink" href="#publish-release-to-pypi" title="Permalink to this headline">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry publish
+</pre></div>
+</div>
+</section>
+<section id="publish-release-on-github">
+<h3>Publish release on GitHub<a class="headerlink" href="#publish-release-on-github" title="Permalink to this headline">#</a></h3>
+<p>Create a new release on <a class="reference external" href="https://github.com/pymedphys/pymedphys/releases">GitHub</a>. Create a new tag in the format <code class="docutils literal notranslate"><span class="pre">vMAJOR.MINOR.PATCH</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">v0.39.0</span></code>). Enter the tag as the name for this release as well. Finally add in the change logs for this release (direct copy from CHANGELOG.md). Publish the release.</p>
+</section>
+<section id="final-sanity-tests">
+<h3>Final sanity tests<a class="headerlink" href="#final-sanity-tests" title="Permalink to this headline">#</a></h3>
+<p>Perform a final check to ensure the new version was released successfully. To do this, create a fresh Python virtual environment on your machine. Then install the new version of pymedphys and ensure all tests are passing as expected.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">pymedphys</span><span class="p">[</span><span class="n">user</span><span class="p">,</span><span class="n">tests</span><span class="p">]</span>
+<span class="n">pymedphys</span> <span class="n">dev</span> <span class="n">tests</span>
+</pre></div>
+</div>
+</section>
+</section>
 </section>
 
     <script type="text/x-thebe-config">
@@ -770,17 +957,17 @@ documentation pages.</p>
                 
     <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-    <a class='left-prev' id="prev-link" href="index.html" title="previous page">
+    <a class='left-prev' id="prev-link" href="docs-guide.html" title="previous page">
         <i class="fas fa-angle-left"></i>
         <div class="prev-next-info">
             <p class="prev-next-subtitle">previous</p>
-            <p class="prev-next-title">Repository Information</p>
+            <p class="prev-next-title">Documentation Guide</p>
         </div>
     </a>
-    <a class='right-next' id="next-link" href="docs-guide.html" title="next page">
+    <a class='right-next' id="next-link" href="../setups/index.html" title="next page">
     <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Documentation Guide</p>
+        <p class="prev-next-title">Workstation Setup Guides</p>
     </div>
     <i class="fas fa-angle-right"></i>
     </a>
