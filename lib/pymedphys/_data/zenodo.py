@@ -28,7 +28,7 @@ def get_all_zenodo_file_data(record_name):
 
 @functools.lru_cache()
 def get_all_zenodo_file_data_by_id(record_id):
-    response = requests.get(f"{BASE_URL}{record_id}")
+    response = requests.get(f"{BASE_URL}{record_id}", timeout=30)
     data = json.loads(response.text)
     files = data["files"]
 

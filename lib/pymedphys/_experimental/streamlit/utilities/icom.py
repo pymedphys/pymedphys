@@ -83,7 +83,9 @@ def get_relevant_times_for_filepaths(filepaths):
             raise ValueError("Expected length to be consistent")
 
         times_and_paths = pd.concat(
-            [relevant_times.reset_index()["datetime"], filepath_series], axis=1
+            # pylint: disable=unsubscriptable-object
+            [relevant_times.reset_index()["datetime"], filepath_series],
+            axis=1,
         )
 
         all_relevant_times_list[machine_id].append(times_and_paths)

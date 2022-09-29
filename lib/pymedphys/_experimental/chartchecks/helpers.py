@@ -404,6 +404,7 @@ def get_all_treatment_history_data(connection, mrn):
     )
     treatment_history = pd.DataFrame(data=table, columns=columns)
     treatment_history = treatment_history.sort_values(by=["date"])
+    # pylint: disable=unsubscriptable-object,unsupported-assignment-operation
     treatment_history["total_dose_delivered"] = (
         treatment_history["actual rx"] + treatment_history["field_dose_delivered"]
     )

@@ -71,7 +71,7 @@ dicompyler-core = { version = "*", optional = true }   # groups = ["user", "all"
 scikit-learn = { version = "*", optional = true }      # groups = ["user", "all", "mosaiq"]
 imageio = { version = "*", optional = true }           # groups = ["user", "all"]
 
-streamlit = { version = "*", optional = true }     # groups = ["user", "all"]
+streamlit = { version = "<1.12.0", optional = true }     # groups = ["user", "all"]
 streamlit-ace = { version = "*", optional = true } # groups = ["user", "all"]
 
 # NumPy's lower bound here is for typing support
@@ -141,7 +141,7 @@ pytest-sugar = { version = "*", optional = true }         # groups = ["all", "te
 hypothesis = { version = "<6", optional = true }          # groups = ["all", "tests"]
 astroid = { version = "*", optional = true }              # groups = ["all", "tests"]
 psutil = { version = "*", optional = true }               # groups = ["all", "tests"]
-pylint = { version = "*", optional = true }               # groups = ["all", "tests"]
+pylint = { version = "<2.15.0", optional = true }               # groups = ["all", "tests"]
 pytest-rerunfailures = { version = "*", optional = true } # groups = ["all", "tests"]
 
 # ---------------- #

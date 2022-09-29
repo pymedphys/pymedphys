@@ -173,7 +173,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 1.1.13
+          version: 1.2.1
           virtualenvs-create: true
 
       - name: Update PATH in Windows
@@ -283,18 +283,12 @@ jobs:
           poetry install -E docs
 
       ## Install with Tests Environment
+      # TODO: Redesign CI to be more efficient once this issue lands python-poetry/poetry#4842
 
-      - name: Install a tests environment
+      - name: Install a tests/doctests environment
         if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow' || matrix.task == 'pyright'
         run: |
-          poetry install -E user -E tests
-
-      ## Install with Doctests Environment
-
-      - name: Install a doctests environment
-        if: matrix.os == 'ubuntu' && matrix.task == 'tests' || matrix.task == 'pyright'
-        run: |
-          poetry install -E user -E doctests
+          poetry install -E user -E tests -E doctests
 
       ## Install remaining packages for pyright
 

@@ -114,6 +114,8 @@ def main():
         plot_dvh(dvh_calcs)
 
         treatment_site = define_treatment_site()
+
+        # pylint: disable=no-member
         institutional_history = pd.read_json(
             "P:/Share/AutoCheck/patient_archive.json"
         ).transpose()
@@ -124,7 +126,7 @@ def main():
         constraints_df = pd.DataFrame()
         ALIASES = get_structure_aliases()
         for roi in rois:
-            for structure in ALIASES.keys():
+            for structure in ALIASES.keys():  # pylint: disable=no-member
                 if roi.lower().strip(" ") in ALIASES[structure].iloc[0]:
                     structure_df = compare_structure_with_constraints(
                         roi, structure, dvh_calcs, constraints=constraints
