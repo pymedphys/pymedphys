@@ -106,6 +106,6 @@ Create a new release on [GitHub](https://github.com/pymedphys/pymedphys/releases
 Perform a final check to ensure the new version was released successfully. To do this, create a fresh Python virtual environment on your machine. Then install the new version of pymedphys and ensure all tests are passing as expected.
 
 ```python
-pip install pymedphys[all]
+pip install pymedphys[user,tests]
 pymedphys dev tests
 ```
