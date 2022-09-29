@@ -7,12 +7,14 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.39.0]
 
 ### New features and enhancements
 
 - The Gamma tool now utilises the `logging` module. The `quiet` parameter for
   `pymedphys.gamma` is deprecated but its use is non-breaking (for now).
+- The `pymedphys.electronfactors` has been added back in to the public API in
+  [Pull Request](https://github.com/pymedphys/pymedphys/pull/1719).
 
 ## [0.38.0]
 
