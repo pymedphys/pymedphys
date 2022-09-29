@@ -11,6 +11,8 @@ This project adheres to
 
 ### New features and enhancements
 
+- This is the version of PyMedPhys reviewed for first publication in the
+  [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
 - The Gamma tool now utilises the `logging` module. The `quiet` parameter for
   `pymedphys.gamma` is deprecated but its use is non-breaking (for now).
 - The `pymedphys.electronfactors` has been added back in to the public API in
