@@ -9,26 +9,35 @@ tags:
 authors:
   - name: Simon Biggs
     affiliation: 1
+    orcid: 0000-0003-2058-7868
   - name: Matthew Jennings
     affiliation: 2
+    orcid: 0000-0002-1288-2683
   - name: Stuart Swerdloff
     affiliation: 3
+    orcid: 0000-0003-0754-4679
   - name: Phillip Chlap
     affiliation: "4, 5"
+    orcid: 0000-0002-6517-8745
   - name: Derek Lane
     affiliation: 6
+    orcid: 0000-0002-4148-1213
   - name: Jacob Rembish
     affiliation: 7
   - name: Jacob McAloney
     affiliation: 8
+    orcid: 0000-0001-8060-6907
   - name: Paul King
     affiliation: 9
   - name: Rafael Ayala
     affiliation: 10
+    orcid: 0000-0001-6925-6176
   - name: Fada Guan
     affiliation: 11
+    orcid: 0000-0001-8477-7391
   - name: Nicola Lambri
     affiliation: "12, 13"
+    orcid: 0000-0001-8706-6480
   - name: Cody Crewson
     affiliation: 14
   - name: Matthew Sobolewski
