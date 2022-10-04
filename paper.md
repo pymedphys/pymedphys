@@ -29,6 +29,7 @@ authors:
     orcid: 0000-0001-8060-6907
   - name: Paul King
     affiliation: 9
+    orcid: 0000-0001-6748-4538
   - name: Rafael Ayala
     affiliation: 10
     orcid: 0000-0001-6925-6176
