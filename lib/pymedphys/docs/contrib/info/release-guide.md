@@ -1,5 +1,9 @@
 # pymedphys Release Procedure
 
+.. note::
+Please ensure that you have followed the [setup guide](https://docs.pymedphys.com/en/latest/contrib/setups/index.html)
+appropriate to you prior to commencing this release procedure.
+
 ## Determine next release version
 
 pymedphys uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) in the format `MAJOR.MINOR.PATCH`, the next release number should typically be `MAJOR.MINOR+1.PATCH`. For example, if the previous release was `0.38.0`, the upcoming release will be `0.39.0`.
@@ -14,7 +18,7 @@ Create a branch named `VERSION-release-prep`:
 
 ```bash
 git checkout -b VERSION-release-prep
-git push --set-upstream origin 0.39.0-release-prep
+git push --set-upstream origin VERSION-release-prep
 ```
 
 ## Update version in pyproject.toml
@@ -33,7 +37,7 @@ Then run poetry update as well as propagate:
 
 ```bash
 poetry update
-poetry run pymedphys propagate
+poetry run pymedphys dev propagate
 ```
 
 ## Update CHANGELOG
