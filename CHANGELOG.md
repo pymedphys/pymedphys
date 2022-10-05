@@ -7,12 +7,14 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.39.0]
+## [0.39.1]
 
 ### News around this release
 
 - This is the version of PyMedPhys reviewed for first publication in the
   [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
+
+## [0.39.0]
 
 ### New features and enhancements
 
