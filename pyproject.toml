@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.39.0"
+version = "0.39.1"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -53,26 +53,26 @@ scipy = { version = "*", optional = true }      # groups = ["user", "all", "docs
 
 xarray = { version = "*", optional = true } # groups = ["user", "all"]
 
-pymssql = { version = "*", optional = true }       # groups = ["user", "all", "mosaiq"]
-sqlalchemy = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
-natsort = { version = "*", optional = true }       # groups = ["user", "all"]
-tomlkit = { version = "*", optional = true }       # groups = ["user", "all", "propagate"]
-toml = { version = "*", optional = true }          # groups = ["user", "cli", "all", "mosaiq", "docs"]
+pymssql = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
+sqlalchemy = { version = "*", optional = true } # groups = ["user", "all", "mosaiq"]
+natsort = { version = "*", optional = true }    # groups = ["user", "all"]
+tomlkit = { version = "*", optional = true }    # groups = ["user", "all", "propagate"]
+toml = { version = "*", optional = true }       # groups = ["user", "cli", "all", "mosaiq", "docs"]
 
 pynetdicom = { version = "*", optional = true } # groups = ["user", "all", "dicom"]
 
-dbfread = { version = "*", optional = true }           # groups = ["user", "all"]
-xmltodict = { version = "*", optional = true }         # groups = ["user", "all"]
-timeago = { version = "*", optional = true }           # groups = ["user", "all"]
-xlsxwriter = { version = "*", optional = true }        # groups = ["user", "all"]
-plotly = { version = "*", optional = true }            # groups = ["user", "all"]
-fsspec = { version = "*", optional = true }            # groups = ["user", "all"]
-dicompyler-core = { version = "*", optional = true }   # groups = ["user", "all"]
-scikit-learn = { version = "*", optional = true }      # groups = ["user", "all", "mosaiq"]
-imageio = { version = "*", optional = true }           # groups = ["user", "all"]
+dbfread = { version = "*", optional = true }         # groups = ["user", "all"]
+xmltodict = { version = "*", optional = true }       # groups = ["user", "all"]
+timeago = { version = "*", optional = true }         # groups = ["user", "all"]
+xlsxwriter = { version = "*", optional = true }      # groups = ["user", "all"]
+plotly = { version = "*", optional = true }          # groups = ["user", "all"]
+fsspec = { version = "*", optional = true }          # groups = ["user", "all"]
+dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
+scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
+imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
-streamlit = { version = "<1.12.0", optional = true }     # groups = ["user", "all"]
-streamlit-ace = { version = "*", optional = true } # groups = ["user", "all"]
+streamlit = { version = "<1.12.0", optional = true } # groups = ["user", "all"]
+streamlit-ace = { version = "*", optional = true }   # groups = ["user", "all"]
 
 # NumPy's lower bound here is for typing support
 numpy = { version = ">=1.20.2", optional = true } # groups = ["user", "all", "icom", "docs"]
