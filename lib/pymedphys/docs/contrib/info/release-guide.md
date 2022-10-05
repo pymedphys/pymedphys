@@ -1,7 +1,7 @@
 # pymedphys Release Procedure
 
-.. note::
-Please ensure that you have followed the [setup guide](https://docs.pymedphys.com/en/latest/contrib/setups/index.html)
+
+> **NOTE:** Please ensure that you have followed the [setup guide](https://docs.pymedphys.com/en/latest/contrib/setups/index.html)
 appropriate to you prior to commencing this release procedure.
 
 ## Determine next release version
