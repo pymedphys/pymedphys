@@ -7,12 +7,18 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [unreleased]
+
+- No unreleased changes as of yet.
+
 ## [0.39.2]
 
 ### News around this release
 
 - This is the version of PyMedPhys reviewed for PyMedPhys' first publication
   within the [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
+  - Paper available for download at
+    [10.21105/joss.04555](https://doi.org/10.21105/joss.04555)
 
 ### Bug Fixes
 
@@ -1367,7 +1373,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 - Began keeping record of changes in `changelog.md`
 
-[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.39.1...main
+[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.39.2...main
+[0.39.2]: https://github.com/pymedphys/pymedphys/compare/v0.39.1...v0.39.2
 [0.39.1]: https://github.com/pymedphys/pymedphys/compare/v0.39.0...v0.39.1
 [0.39.0]: https://github.com/pymedphys/pymedphys/compare/v0.38.0...v0.39.0
 [0.38.0]: https://github.com/pymedphys/pymedphys/compare/v0.37.1...v0.38.0
