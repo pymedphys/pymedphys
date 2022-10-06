@@ -7,6 +7,17 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Bug Fixes
+
+- `pymedphys dicom anonymise` now produces DICOM conformant patient names in
+  the anonymised result.
+  - Shout out to
+    [Rebecca Moylan](https://www.linkedin.com/in/rebecca-moylan-9a4721a3/) and
+    [Stephen Smith](https://www.linkedin.com/in/stephen-smith-b17686147/) for
+    the bug report!
+
 ## [0.39.1]
 
 ### News around this release
