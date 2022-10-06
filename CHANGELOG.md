@@ -7,6 +7,18 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.1]
+
+### News around this release
+
+# Release Notes
+
+- This is a bug fix release
+
+### Bug Fixes
+
+- Utilise pylibjpeg-libjpeg 1.3.2 or greater (Current libjpeg version for Apple M1 compatibility)
+
 ## [0.39.0]
 
 ### News around this release

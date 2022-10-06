@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.39.0"
+version = "0.39.1"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -89,8 +89,8 @@ scikit-image = { version = ">=0.18.1", optional = true } # groups = ["user", "al
 
 # Utilising the pymedphys fork of pylibjpeg-libjpeg to fix the following issue:
 # https://github.com/pymedphys/pymedphys/issues/1556#issuecomment-1152821285
-pymedphys-pylibjpeg-libjpeg = { version = "1.3.1", optional = true } # groups = ["user", "all"]
-# pylibjpeg-libjpeg = { version = "*", optional = true } # groups = ["user", "all"]
+# pymedphys-pylibjpeg-libjpeg = { version = "1.3.1", optional = true } # groups = ["user", "all"]
+pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user", "all"]
 
 
 # PyLinac is pinned due to historical algorithm changes with both minor and
@@ -184,9 +184,9 @@ all = [
     "pre-commit",
     "psutil",
     "pydicom",
+    "pylibjpeg-libjpeg",
     "pylinac",
     "pylint",
-    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "pyoxidizer",
@@ -276,8 +276,8 @@ user = [
     "pandas",
     "plotly",
     "pydicom",
+    "pylibjpeg-libjpeg",
     "pylinac",
-    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "python-dateutil",
