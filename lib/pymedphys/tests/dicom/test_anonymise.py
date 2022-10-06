@@ -519,7 +519,7 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
             subprocess.check_call(anon_file_keep_command)
             assert not is_anonymised_file(temp_anon_filepath)
             ds = pydicom.dcmread(temp_anon_filepath)
-            ds.PatientName = "Anonymous"
+            ds.PatientName = "ANONYMOUS^PATIENT"
             assert is_anonymised_dataset(ds)
             assert exists(temp_filepath)
         finally:

@@ -7,23 +7,30 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.39.2]
+
+### News around this release
+
+- This is the version of PyMedPhys reviewed for PyMedPhys' first publication
+  within the [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
 
 ### Bug Fixes
 
+- Utilise pylibjpeg-libjpeg 1.3.2 or greater (Current libjpeg version for Apple
+  M1 compatibility)
 - `pymedphys dicom anonymise` now produces DICOM conformant patient names in
   the anonymised result.
   - Shout out to
     [Rebecca Moylan](https://www.linkedin.com/in/rebecca-moylan-9a4721a3/) and
     [Stephen Smith](https://www.linkedin.com/in/stephen-smith-b17686147/) for
-    the bug report!
+    the bug report! Thank you!
 
 ## [0.39.1]
 
-### News around this release
+### Release Notes
 
-- This is the version of PyMedPhys reviewed for first publication in the
-  [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
+- A release intended for use by JOSS, however, a subsequent release was
+  utilised instead.
 
 ## [0.39.0]
 
