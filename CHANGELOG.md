@@ -23,7 +23,7 @@ This project adheres to
   - Shout out to
     [Rebecca Moylan](https://www.linkedin.com/in/rebecca-moylan-9a4721a3/) and
     [Stephen Smith](https://www.linkedin.com/in/stephen-smith-b17686147/) for
-    the bug report!
+    the bug report! Thank you!
 
 ## [0.39.1]
 
