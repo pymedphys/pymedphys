@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.39.0"
+version = "0.39.1"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -184,9 +184,9 @@ all = [
     "pre-commit",
     "psutil",
     "pydicom",
+    "pylibjpeg-libjpeg",
     "pylinac",
     "pylint",
-    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "pyoxidizer",
@@ -276,8 +276,8 @@ user = [
     "pandas",
     "plotly",
     "pydicom",
+    "pylibjpeg-libjpeg",
     "pylinac",
-    "pymedphys-pylibjpeg-libjpeg",
     "pymssql",
     "pynetdicom",
     "python-dateutil",
