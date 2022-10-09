@@ -72,7 +72,7 @@ affiliations:
     index: 13
   - name: Saskatchewan Cancer Agency, Saskatoon, Canada
     index: 14
-  - name: CancerCare Partners, Australia
+  - name: CancerCare Partners, Wagga Wagga, Australia
     index: 15
 date: 10 February 2022
 bibliography: paper.bib
