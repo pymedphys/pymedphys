@@ -52,7 +52,7 @@ affiliations:
     index: 3
   - name: University of New South Wales, Sydney, Australia
     index: 4
-  - name: Ingham Institute for Applied Medical Research, Liverpool, Australia
+  - name: Ingham Institute for Applied Medical Research, Sydney, Australia
     index: 5
   - name: Elekta AB, Stockholm, Sweden
     index: 6
@@ -72,7 +72,7 @@ affiliations:
     index: 13
   - name: Saskatchewan Cancer Agency, Saskatoon, Canada
     index: 14
-  - name: CancerCare Partners, Wagga Wagga, Australia
+  - name: CancerCare Partners, Sydney, Australia
     index: 15
 date: 10 February 2022
 bibliography: paper.bib
