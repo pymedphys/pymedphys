@@ -56,15 +56,15 @@ affiliations:
     index: 5
   - name: Elekta AB, Stockholm, Sweden
     index: 6
-  - name: NYU Langone Health, New York, United States of America
+  - name: NYU Langone Health, New York, New York, United States of America
     index: 7
   - name: Riverina Cancer Care Centre, Wagga Wagga, Australia
     index: 8
-  - name: Painless Skin Cancer Treatment, Meridian, United States of America
+  - name: Painless Skin Cancer Treatment Center, Meridian, Mississippi, United States of America
     index: 9
   - name: Hospital G.U. Gregorio Marañón, Madrid, Spain
     index: 10
-  - name: Yale University School of Medicine, New Haven, United States of America
+  - name: Yale University School of Medicine, New Haven, Connecticut, United States of America
     index: 11
   - name: IRCCS Humanitas Research Hospital, Milan, Italy
     index: 12
