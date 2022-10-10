@@ -52,7 +52,7 @@ affiliations:
     index: 3
   - name: University of New South Wales, Sydney, Australia
     index: 4
-  - name: Ingham Institute for Applied Medical Research, Sydney, Australia
+  - name: Ingham Institute for Applied Medical Research, Liverpool, Australia
     index: 5
   - name: Elekta AB, Stockholm, Sweden
     index: 6
