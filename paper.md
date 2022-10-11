@@ -24,6 +24,7 @@ authors:
     orcid: 0000-0002-4148-1213
   - name: Jacob Rembish
     affiliation: 7
+    orcid: 0000-0002-6508-4175
   - name: Jacob McAloney
     affiliation: 8
     orcid: 0000-0001-8060-6907
