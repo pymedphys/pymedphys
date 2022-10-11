@@ -1,5 +1,5 @@
 ---
-title: "PyMedPhys: A community effort to develop an open, Python-based standard library for medical physics applications"
+title: 'PyMedPhys: A community effort to develop an open, Python-based standard library for medical physics applications'
 tags:
   - Python
   - Medical Physics
@@ -17,13 +17,14 @@ authors:
     affiliation: 3
     orcid: 0000-0003-0754-4679
   - name: Phillip Chlap
-    affiliation: "4, 5"
+    affiliation: '4, 5'
     orcid: 0000-0002-6517-8745
   - name: Derek Lane
     affiliation: 6
     orcid: 0000-0002-4148-1213
   - name: Jacob Rembish
     affiliation: 7
+    orcid: 0000-0002-6508-4175
   - name: Jacob McAloney
     affiliation: 8
     orcid: 0000-0001-8060-6907
@@ -37,42 +38,42 @@ authors:
     affiliation: 11
     orcid: 0000-0001-8477-7391
   - name: Nicola Lambri
-    affiliation: "12, 13"
+    affiliation: '12, 13'
     orcid: 0000-0001-8706-6480
   - name: Cody Crewson
     affiliation: 14
   - name: Matthew Sobolewski
-    affiliation: "8, 15"
+    affiliation: '8, 15'
 affiliations:
-  - name: Radiotherapy AI, Australia
+  - name: Radiotherapy AI, Wagga Wagga, Australia
     index: 1
-  - name: Royal Adelaide Hospital, Australia
+  - name: The Royal Adelaide Hospital, Adelaide, Australia
     index: 2
-  - name: ELEKTA Pty Ltd, New Zealand
+  - name: ELEKTA Pty Ltd, Auckland, New Zealand
     index: 3
-  - name: University of New South Wales, Australia
+  - name: University of New South Wales, Sydney, Australia
     index: 4
-  - name: Ingham Institute, Australia
+  - name: Ingham Institute for Applied Medical Research, Liverpool, Australia
     index: 5
-  - name: Elekta AB
+  - name: Elekta AB, Stockholm, Sweden
     index: 6
-  - name: NYU Langone Health, USA
+  - name: NYU Langone Health, New York, New York, United States of America
     index: 7
-  - name: Riverina Cancer Care Centre, Australia
+  - name: Riverina Cancer Care Centre, Wagga Wagga, Australia
     index: 8
-  - name: Painless Skin Cancer Treatment, Mississippi, USA
+  - name: Painless Skin Cancer Treatment Center, Meridian, Mississippi, United States of America
     index: 9
-  - name: Hospital G.U. Gregorio Marañón, Spain
+  - name: Hospital G.U. Gregorio Marañón, Madrid, Spain
     index: 10
-  - name: Yale University School of Medicine, USA
+  - name: Yale University School of Medicine, New Haven, Connecticut, United States of America
     index: 11
-  - name: IRCCS Humanitas Research Hospital, Italy
+  - name: IRCCS Humanitas Research Hospital, Milan, Italy
     index: 12
-  - name: Humanitas University, Italy
+  - name: Humanitas University, Milan, Italy
     index: 13
-  - name: Saskatchewan Cancer Agency, Canada
+  - name: Saskatchewan Cancer Agency, Saskatoon, Canada
     index: 14
-  - name: CancerCare Partners, Australia
+  - name: CancerCare Partners, Sydney, Australia
     index: 15
 date: 10 February 2022
 bibliography: paper.bib
