@@ -155,6 +155,7 @@ doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "doctests"]
 pyoxidizer = { version = "*", optional = true }      # groups = ["dev", "all", "build"]
+interpolation = "^2.2.4"
 
 
 [tool.poetry.extras]

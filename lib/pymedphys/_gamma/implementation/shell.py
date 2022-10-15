@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 from warnings import warn
 
+from interpolation.splines import CGrid, eval_linear
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
@@ -39,6 +40,7 @@ def gamma_shell(
     distance_mm_threshold,
     lower_percent_dose_cutoff=20,
     interp_fraction=10,
+    interpolator="scipy",
     max_gamma=None,
     local_gamma=False,
     global_normalisation=None,
@@ -131,6 +133,7 @@ def gamma_shell(
         distance_mm_threshold,
         lower_percent_dose_cutoff,
         interp_fraction,
+        interpolator,
         max_gamma,
         local_gamma,
         global_normalisation,
@@ -199,13 +202,15 @@ def expand_dims_to_1d(array):
 
 @dataclass(frozen=True)
 class GammaInternalFixedOptions:
+    axes_evaluation: Any
+    dose_evaluation: Any
     flat_mesh_axes_reference: Any
     flat_dose_reference: Any
     reference_points_to_calc: Any
     dose_percent_threshold: Any
     distance_mm_threshold: Any
-    evaluation_interpolation: Callable
     interp_fraction: int
+    interpolator: str
     max_gamma: float
     lower_dose_cutoff: float = 0
     maximum_test_distance: float = -1
@@ -242,6 +247,7 @@ class GammaInternalFixedOptions:
         distance_mm_threshold,
         lower_percent_dose_cutoff=20,
         interp_fraction=10,
+        interpolator="scipy",
         max_gamma=None,
         local_gamma=False,
         global_normalisation=None,
@@ -267,13 +273,6 @@ class GammaInternalFixedOptions:
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
         maximum_test_distance = np.max(distance_mm_threshold) * max_gamma
-
-        evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
-            axes_evaluation,
-            np.array(dose_evaluation),
-            bounds_error=False,
-            fill_value=np.inf,
-        )
 
         dose_reference = np.array(dose_reference)
         reference_dose_above_threshold = dose_reference >= lower_dose_cutoff
@@ -302,13 +301,15 @@ class GammaInternalFixedOptions:
         flat_dose_reference = np.ravel(dose_reference)
 
         return cls(
+            axes_evaluation,
+            np.array(dose_evaluation),
             flat_mesh_axes_reference,
             flat_dose_reference,
             reference_points_to_calc,
             dose_percent_threshold,
             distance_mm_threshold,
-            evaluation_interpolation,
             interp_fraction,
+            interpolator,
             max_gamma,
             lower_dose_cutoff,
             maximum_test_distance,
@@ -486,7 +487,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
         ]
 
         evaluation_dose = interpolate_evaluation_dose_at_distance(
-            options.evaluation_interpolation,
+            options,
             axes_reference_to_be_checked,
             coordinates_at_distance_shell,
         )
@@ -511,7 +512,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
 
 def interpolate_evaluation_dose_at_distance(
-    evaluation_interpolation,
+    options,
     axes_reference_to_be_checked,
     coordinates_at_distance_shell,
 ):
@@ -522,7 +523,42 @@ def interpolate_evaluation_dose_at_distance(
         axes_reference_to_be_checked, coordinates_at_distance_shell
     )
 
-    evaluation_dose = evaluation_interpolation(all_points)
+    print(np.shape(all_points))
+    print(type(all_points))
+
+    if options.interpolator.lower() == "scipy":
+        evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
+            options.axes_evaluation,
+            np.array(options.dose_evaluation),
+            bounds_error=False,
+            fill_value=np.inf,
+        )
+
+        evaluation_dose = evaluation_interpolation(all_points)
+
+    elif options.interpolator.lower() == "econforge":
+
+        coords_evaluation_grid = CGrid(
+            (
+                np.min(options.axes_evaluation[0]),
+                np.max(options.axes_evaluation[0]),
+                len(options.axes_evaluation[0]),
+            ),
+            (
+                np.min(options.axes_evaluation[1]),
+                np.max(options.axes_evaluation[1]),
+                len(options.axes_evaluation[1]),
+            ),
+            (
+                np.min(options.axes_evaluation[2]),
+                np.max(options.axes_evaluation[2]),
+                len(options.axes_evaluation[2]),
+            ),
+        )
+
+        evaluation_dose = eval_linear(
+            coords_evaluation_grid, np.array(options.dose_evaluation), all_points
+        )
 
     return evaluation_dose
 
