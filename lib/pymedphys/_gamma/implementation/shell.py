@@ -40,7 +40,7 @@ def gamma_shell(
     distance_mm_threshold,
     lower_percent_dose_cutoff=20,
     interp_fraction=10,
-    interpolator="scipy",
+    interpolator="econforge",
     max_gamma=None,
     local_gamma=False,
     global_normalisation=None,
@@ -523,9 +523,6 @@ def interpolate_evaluation_dose_at_distance(
         axes_reference_to_be_checked, coordinates_at_distance_shell
     )
 
-    print(np.shape(all_points))
-    print(type(all_points))
-
     if options.interpolator.lower() == "scipy":
         evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
             options.axes_evaluation,
@@ -538,27 +535,36 @@ def interpolate_evaluation_dose_at_distance(
 
     elif options.interpolator.lower() == "econforge":
 
+        grids = []
+        for i in range(all_points.shape[-1]):
+            grids.append(all_points[:, :, i])
+
+        points_interp = np.column_stack([np.ravel(mgrid) for mgrid in grids]).astype(
+            float
+        )
+
         coords_evaluation_grid = CGrid(
-            (
-                np.min(options.axes_evaluation[0]),
-                np.max(options.axes_evaluation[0]),
-                len(options.axes_evaluation[0]),
-            ),
-            (
-                np.min(options.axes_evaluation[1]),
-                np.max(options.axes_evaluation[1]),
-                len(options.axes_evaluation[1]),
-            ),
-            (
-                np.min(options.axes_evaluation[2]),
-                np.max(options.axes_evaluation[2]),
-                len(options.axes_evaluation[2]),
+            *tuple(
+                [
+                    tuple(
+                        (
+                            np.min(axis).astype(float),
+                            np.max(axis).astype(float),
+                            len(axis),
+                        )
+                    )
+                    for axis in options.axes_evaluation
+                ]
             ),
         )
 
+        print(coords_evaluation_grid)
+
         evaluation_dose = eval_linear(
-            coords_evaluation_grid, np.array(options.dose_evaluation), all_points
-        )
+            coords_evaluation_grid,
+            np.array(options.dose_evaluation),
+            points_interp,
+        ).reshape(np.shape(all_points)[:-1])
 
     return evaluation_dose
 
