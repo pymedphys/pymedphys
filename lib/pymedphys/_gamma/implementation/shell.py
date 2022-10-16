@@ -20,9 +20,9 @@ from dataclasses import dataclass
 from typing import Any, Optional
 from warnings import warn
 
+from pymedphys._imports import interpolation
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
-from pymedphys._imports.interpolation.splines import CGrid, eval_linear
 
 import pymedphys._utilities.createshells
 
@@ -543,9 +543,9 @@ def interpolate_evaluation_dose_at_distance(
             float
         )
 
-        coords_evaluation_grid = CGrid(*options.axes_evaluation)
+        coords_evaluation_grid = interpolation.splines.CGrid(*options.axes_evaluation)
 
-        evaluation_dose = eval_linear(
+        evaluation_dose = interpolation.splines.eval_linear(
             coords_evaluation_grid,
             np.array(options.dose_evaluation),
             points_interp,
