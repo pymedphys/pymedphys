@@ -543,20 +543,7 @@ def interpolate_evaluation_dose_at_distance(
             float
         )
 
-        coords_evaluation_grid = CGrid(
-            *tuple(
-                [
-                    tuple(
-                        (
-                            np.min(axis).astype(float),
-                            np.max(axis).astype(float),
-                            len(axis),
-                        )
-                    )
-                    for axis in options.axes_evaluation
-                ]
-            ),
-        )
+        coords_evaluation_grid = CGrid(*options.axes_evaluation)
 
         evaluation_dose = eval_linear(
             coords_evaluation_grid,
