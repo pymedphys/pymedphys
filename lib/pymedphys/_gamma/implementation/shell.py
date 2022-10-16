@@ -558,8 +558,6 @@ def interpolate_evaluation_dose_at_distance(
             ),
         )
 
-        print(coords_evaluation_grid)
-
         evaluation_dose = eval_linear(
             coords_evaluation_grid,
             np.array(options.dose_evaluation),
