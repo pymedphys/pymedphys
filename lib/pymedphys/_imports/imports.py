@@ -8,6 +8,7 @@ import black
 import dateutil
 import dateutil.relativedelta
 import dbfread
+import interpolation
 import keyring
 import natsort
 import packaging

@@ -17,12 +17,12 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 from warnings import warn
 
-from interpolation.splines import CGrid, eval_linear
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
+from pymedphys._imports.interpolation.splines import CGrid, eval_linear
 
 import pymedphys._utilities.createshells
 
