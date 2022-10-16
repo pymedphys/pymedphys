@@ -77,6 +77,9 @@ streamlit-ace = { version = "*", optional = true }   # groups = ["user", "all"]
 # NumPy's lower bound here is for typing support
 numpy = { version = ">=1.20.2", optional = true } # groups = ["user", "all", "icom", "docs"]
 
+# It looks like eval_linear() was added to the API from v2.1.0
+interpolation = { version = "^2.1.0", optional = true } # groups = ["user", "all"]
+
 # The following lower bounded packages are due to certain APIs utilised
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "all", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true } # groups = ["user", "all", "dicom", "docs"]
@@ -155,7 +158,6 @@ doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "doctests"]
 pyoxidizer = { version = "*", optional = true }      # groups = ["dev", "all", "build"]
-interpolation = "^2.2.4"
 
 
 [tool.poetry.extras]
