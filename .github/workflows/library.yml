@@ -171,7 +171,7 @@ jobs:
           pip install --upgrade pip setuptools
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@v1.2.1
         with:
           version: 1.2.1
           virtualenvs-create: true
