@@ -179,7 +179,7 @@ jobs:
       - name: Update PATH in Windows
         if: matrix.os == 'windows'
         run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:APPDATA\Python\Scripts"
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.poetry\bin"
           Get-Content -Path $env:GITHUB_PATH
 
       - name: Configure Poetry to not use experimental installer
