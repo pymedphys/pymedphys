@@ -17,6 +17,7 @@ This project adheres to
 
 - This is the version of PyMedPhys reviewed for PyMedPhys' first publication
   within the [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
+  The paper can be accessed [here](https://joss.theoj.org/papers/10.21105/joss.04555)
 
 ## [0.39.2]
 
