@@ -1,8 +1,7 @@
 # pymedphys Release Procedure
 
-
 > **NOTE:** Please ensure that you have followed the [setup guide](https://docs.pymedphys.com/en/latest/contrib/setups/index.html)
-appropriate to you prior to commencing this release procedure.
+> appropriate to you prior to commencing this release procedure.
 
 ## Determine next release version
 
@@ -98,7 +97,7 @@ poetry config pypi-token.pypi [your-pypi-token]
 ### Publish release to PyPI
 
 ```bash
-poetry publish
+poetry --build publish
 ```
 
 ### Publish release on GitHub
