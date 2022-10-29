@@ -57,14 +57,14 @@ def _check_for_supported_collimation_device(
     ------
     ValueError
         If the device types are not contained within the supported
-        configrations.
+        configurations.
 
     """
     rt_beam_limiting_device_types = {
         item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
     }
 
-    supported_configurations = [{"MLCX", "ASYMY"}]
+    supported_configurations = [{"MLCX", "ASYMY"}, {"MLCY", "ASYMX"}]
 
     if not rt_beam_limiting_device_types in supported_configurations:
         raise ValueError(
@@ -235,13 +235,17 @@ class DeliveryDicom(DeliveryBase):
         mlc_sequence = [
             item
             for item in beam_limiting_device_sequence
-            if item.RTBeamLimitingDeviceType == "MLCX"
+            if item.RTBeamLimitingDeviceType in ["MLCX", "MLCY"]
         ]
 
         if len(mlc_sequence) != 1:
-            raise ValueError("Expected there to be only one device labelled as MLCX")
+            raise ValueError(
+                "Expected there to be only one device labelled as MLCX or MLCY"
+            )
 
         mlc_limiting_device = mlc_sequence[0]
+
+        mlc_device_type = mlc_limiting_device.RTBeamLimitingDeviceType
 
         leaf_boundaries = mlc_limiting_device.LeafPositionBoundaries
         leaf_widths = np.diff(leaf_boundaries)
@@ -263,7 +267,7 @@ class DeliveryDicom(DeliveryBase):
         )
 
         dicom_mlcs = _pmp_rtplan.get_leaf_jaw_positions_for_type(
-            beam_limiting_device_position_sequences, "MLCX"
+            beam_limiting_device_position_sequences, mlc_device_type
         )
 
         mlcs = [
@@ -275,8 +279,19 @@ class DeliveryDicom(DeliveryBase):
             for mlc in dicom_mlcs
         ]
 
+        jaw_type = "ASYMY"
+        # leaf banks are swapped around for MLCY vs MLCX
+        # according to Martijn Kusters
+        # and the jaw will be in the X direction.
+        # previous hardcode was ASYMY, now including ASYMX
+        # but using jaw_type variable in case symmetric jaws show up
+        # in a supported collimation type set.
+        if mlc_device_type == "MLCY":
+            mlcs[:, :, [0, 1]] = mlcs[:, :, [1, 0]]
+            jaw_type = "ASYMX"
+
         dicom_jaw = _pmp_rtplan.get_leaf_jaw_positions_for_type(
-            beam_limiting_device_position_sequences, "ASYMY"
+            beam_limiting_device_position_sequences, jaw_type
         )
 
         jaw = np.array(dicom_jaw)
