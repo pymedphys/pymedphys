@@ -799,11 +799,6 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152,) (158,) (254,)
-</pre></div>
-</div>
-</div>
 </div>
 <p>That is, in this case the 3D reference dose image is composed of 152 z-slices, 158 y-slices, and 254 x-slices.</p>
 <p><code>dose_reference</code> and <code>dose_evaluation</code> are matrices containing the actual dose values at each grid point.</p>
@@ -811,11 +806,6 @@ title="Print to PDF"
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152, 158, 254)
 </pre></div>
 </div>
 </div>
@@ -859,9 +849,6 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/speed-up_13_0.png" src="../../../_images/speed-up_13_0.png" />
-</div>
 </div>
 <p>As you can see, the largest dose differences are concentrated in small regions of the slices, which will end up in a fast gamma evaluation, as the computation will be immediate for those points where the dose difference is zero.</p>
 <p>Now, we move to the actual calculation.</p>
@@ -879,12 +866,6 @@ title="Print to PDF"
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Maximum reference dose: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span><span class="si">:</span><span class="s2"> .2f</span><span class="si">}</span><span class="s2"> Gy&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dose threshold: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span> <span class="o">*</span> <span class="mf">.01</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> Gy&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Maximum reference dose:  1.95 Gy
-Dose threshold: 0.0195 Gy
 </pre></div>
 </div>
 </div>
@@ -908,66 +889,6 @@ Dose threshold: 0.0195 Gy
     <span class="n">axes_reference</span><span class="p">,</span> <span class="n">dose_reference</span><span class="p">,</span> 
     <span class="n">axes_evaluation</span><span class="p">,</span> <span class="n">dose_evaluation</span><span class="p">,</span> 
     <span class="n">dose_percent_threshold</span><span class="p">,</span> <span class="n">distance_mm_threshold</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Computing the gamma using global normalisation point
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Global normalisation set to 1.946
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Global dose threshold set to 0.019 (1.00% of normalisation)
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Distance threshold set to [1]
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Lower dose cutoff set to 0.389 (20.0% of normalisation)
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.00 mm | Number of reference points remaining: 106910
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 1 | RAM split count: 1
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.10 mm | Number of reference points remaining: 106910
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 23 | RAM split count: 1
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.20 mm | Number of reference points remaining: 28520
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 67 | RAM split count: 1
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.30 mm | Number of reference points remaining: 2888
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 135 | RAM split count: 1
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.40 mm | Number of reference points remaining: 602
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 227 | RAM split count: 1
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Current distance: 0.50 mm | Number of reference points remaining: 128
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DEBUG:root:Points tested per reference point: 348 | RAM split count: 1
-</pre></div>
-</div>
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Complete!
-</pre></div>
-</div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 2.57 s, sys: 578 ms, total: 3.14 s
-Wall time: 3.03 s
 </pre></div>
 </div>
 </div>
@@ -998,11 +919,6 @@ Wall time: 3.03 s
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152, 158, 254)
-</pre></div>
-</div>
-</div>
 </div>
 <p>Let’s check the distribution of the gamma values to get a sense of the function output</p>
 <div class="cell docutils container">
@@ -1018,9 +934,6 @@ Wall time: 3.03 s
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/speed-up_27_0.png" src="../../../_images/speed-up_27_0.png" />
-</div>
 </div>
 <p>Once the gamma index distribution has been computed, one can consider the gamma pass rate, defined as the fraction of points having <span class="math notranslate nohighlight">\(\gamma\le 1\)</span>, to assess the agreement between the reference and evaluated dose distributions.</p>
 <p>Suppose that, for our purposes, we consider a gamma pass rate above 95% in order to have “passed” this comparison test.</p>
@@ -1028,11 +941,6 @@ Wall time: 3.03 s
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pass rate(</span><span class="se">\u03B3</span><span class="s2">&lt;=1): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">[</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Pass rate(γ&lt;=1): 100.0%
 </pre></div>
 </div>
 </div>
@@ -1045,11 +953,6 @@ Wall time: 3.03 s
 <span class="n">b</span> <span class="o">=</span> <span class="n">dose_difference</span><span class="p">[</span><span class="n">dose_difference</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fraction of grid points where [Dose Eval] = [Dose Ref]: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dose_difference</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">dose_difference</span><span class="o">.</span><span class="n">flat</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Fraction of grid points where [Dose Eval] = [Dose Ref]: 39.5%
 </pre></div>
 </div>
 </div>
@@ -1103,12 +1006,6 @@ Wall time: 3.03 s
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 792 ms, sys: 88.4 ms, total: 880 ms
-Wall time: 880 ms
-</pre></div>
-</div>
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1120,9 +1017,6 @@ Wall time: 880 ms
 <span class="n">title</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gamma passing rate: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/speed-up_41_0.png" src="../../../_images/speed-up_41_0.png" />
 </div>
 </div>
 <p>If we want to evaluate the gamma pass rate, we are uninterested in accurate gamma index values for <span class="math notranslate nohighlight">\(\gamma &gt; 1\)</span>.</p>
@@ -1141,12 +1035,6 @@ Wall time: 880 ms
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 514 ms, sys: 32.1 ms, total: 546 ms
-Wall time: 547 ms
-</pre></div>
-</div>
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1158,9 +1046,6 @@ Wall time: 547 ms
 <span class="n">title</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gamma passing rate: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/speed-up_44_0.png" src="../../../_images/speed-up_44_0.png" />
 </div>
 </div>
 <p>Notice how the gamma passing rate value (shown in the plot title) did not change. Of course now all the points with <span class="math notranslate nohighlight">\(\gamma &gt; 1.1\)</span> are collapsed to the 1.1 bin.</p>
@@ -1180,12 +1065,6 @@ Wall time: 547 ms
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 416 ms, sys: 3.85 ms, total: 420 ms
-Wall time: 420 ms
-</pre></div>
-</div>
-</div>
 </div>
 <p>The <span class="math notranslate nohighlight">\(\gamma\)</span> index distribution should look something like the following plot</p>
 <div class="cell docutils container">
@@ -1198,9 +1077,6 @@ Wall time: 420 ms
 <span class="n">title</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gamma passing rate: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_gamma</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_gamma</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/speed-up_49_0.png" src="../../../_images/speed-up_49_0.png" />
 </div>
 </div>
 <p>As you can see, the computation time decreased and, despite the the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> function sampled one 10th of the points, the pass rate deviates by less than 1% from the true value. Therefore, you can use <code>random_subset</code> to get a sense of what could be the pass rate of the dose distributions you are assessing.</p>

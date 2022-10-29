@@ -826,15 +826,6 @@ title="Print to PDF"
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: pydicom in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.9/site-packages (2.3.0)
-Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.9/site-packages (0.39.3)
-</pre></div>
-</div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.9/site-packages (from pymedphys) (4.4.0)
-</pre></div>
-</div>
-</div>
 </div>
 <section id="getting-the-demo-dicom-files">
 <h2>Getting the demo DICOM files<a class="headerlink" href="#getting-the-demo-dicom-files" title="Permalink to this headline">#</a></h2>
@@ -846,21 +837,11 @@ Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphy
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>PosixPath(&#39;/home/runner/.pymedphys/data/original_dose_beam_4.dcm&#39;)
-</pre></div>
-</div>
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">evaluation_filepath</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">data_path</span><span class="p">(</span><span class="s2">&quot;logfile_dose_beam_4.dcm&quot;</span><span class="p">)</span>
 <span class="n">evaluation_filepath</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>PosixPath(&#39;/home/runner/.pymedphys/data/logfile_dose_beam_4.dcm&#39;)
 </pre></div>
 </div>
 </div>
@@ -891,20 +872,10 @@ Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphy
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152,)
-</pre></div>
-</div>
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">y_ref</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(158,)
 </pre></div>
 </div>
 </div>
@@ -915,20 +886,10 @@ Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphy
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(254,)
-</pre></div>
-</div>
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(152, 158, 254)
 </pre></div>
 </div>
 </div>
@@ -983,12 +944,6 @@ Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphy
 <span class="c1"># plt.savefig(&#39;gamma_hist.png&#39;, dpi=300)</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Text(0.5, 1.0, &#39;Dose cut: 20% | Local gamma (1%/1mm) | Pass Rate(γ&lt;=1): 100.00% \n ref pts: 6100064 | valid γ pts: 106910&#39;)
-</pre></div>
-</div>
-<img alt="../../../_images/from-dicom_15_1.png" src="../../../_images/from-dicom_15_1.png" />
 </div>
 </div>
 </section>
@@ -1086,36 +1041,6 @@ Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphy
     
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>    
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/from-dicom_18_0.png" src="../../../_images/from-dicom_18_0.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
-</div>
-<img alt="../../../_images/from-dicom_18_2.png" src="../../../_images/from-dicom_18_2.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
-</div>
-<img alt="../../../_images/from-dicom_18_4.png" src="../../../_images/from-dicom_18_4.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
-</div>
-<img alt="../../../_images/from-dicom_18_6.png" src="../../../_images/from-dicom_18_6.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
-</div>
-<img alt="../../../_images/from-dicom_18_8.png" src="../../../_images/from-dicom_18_8.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
-</div>
-<img alt="../../../_images/from-dicom_18_10.png" src="../../../_images/from-dicom_18_10.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
-</div>
-<img alt="../../../_images/from-dicom_18_12.png" src="../../../_images/from-dicom_18_12.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
 </pre></div>
 </div>
 </div>

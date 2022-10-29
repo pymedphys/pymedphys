@@ -857,14 +857,6 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.9/site-packages (0.39.3)
-</pre></div>
-</div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.9/site-packages (from pymedphys) (4.4.0)
-</pre></div>
-</div>
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -926,19 +918,11 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/effect-of-noise_7_0.png" src="../../../_images/effect-of-noise_7_0.png" />
-</div>
 </div>
 <p>Of importance the length of the first coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the first dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>, and the length of the second coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the second dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>. This is required because <code class="docutils literal notranslate"><span class="pre">pymedphys.gamma</span></code> internally uses <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.RegularGridInterpolator.html"><code class="docutils literal notranslate"><span class="pre">scipy.interpolate.RegularGridInterpolator</span></code></a> and the gamma implimentation has been chosen to align with this scipy coordinate convention uses here.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>101
 </pre></div>
 </div>
 </div>
@@ -949,20 +933,10 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>113
-</pre></div>
-</div>
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dose_ref</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(101, 113)
 </pre></div>
 </div>
 </div>
@@ -993,9 +967,6 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/effect-of-noise_14_0.png" src="../../../_images/effect-of-noise_14_0.png" />
-</div>
 </div>
 </section>
 <section id="seeing-a-dose-difference">
@@ -1015,9 +986,6 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">();</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/effect-of-noise_16_0.png" src="../../../_images/effect-of-noise_16_0.png" />
 </div>
 </div>
 </section>
@@ -1052,14 +1020,6 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2316/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
-  gamma_no_noise = pymedphys.gamma(
-</pre></div>
-</div>
-<img alt="../../../_images/effect-of-noise_18_1.png" src="../../../_images/effect-of-noise_18_1.png" />
-<img alt="../../../_images/effect-of-noise_18_2.png" src="../../../_images/effect-of-noise_18_2.png" />
-</div>
 </div>
 </section>
 <section id="investigating-the-effect-of-noise">
@@ -1082,9 +1042,6 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/effect-of-noise_20_0.png" src="../../../_images/effect-of-noise_20_0.png" />
-</div>
 </div>
 <p>Let’s see what our dise difference looks like with this noise</p>
 <div class="cell docutils container">
@@ -1102,9 +1059,6 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">();</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../../_images/effect-of-noise_22_0.png" src="../../../_images/effect-of-noise_22_0.png" />
 </div>
 </div>
 <p>But what about our gamma?</p>
@@ -1135,14 +1089,6 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 <span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">valid_gamma_with_noise</span><span class="p">,</span> <span class="mi">20</span><span class="p">);</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2316/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
-  gamma_with_noise = pymedphys.gamma(
-</pre></div>
-</div>
-<img alt="../../../_images/effect-of-noise_24_1.png" src="../../../_images/effect-of-noise_24_1.png" />
-<img alt="../../../_images/effect-of-noise_24_2.png" src="../../../_images/effect-of-noise_24_2.png" />
 </div>
 </div>
 </section>
