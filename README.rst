@@ -35,8 +35,8 @@ on `PyPI`_ and `GitHub`_.
 
 PyMedPhys first paper in the Journal of Open Source Software contains more
 background information, including a statement of need. You can access the paper
-[here](https://joss.theoj.org/papers/10.21105/joss.04555). Please cite this
-paper when referencing PyMedPhys in any publications as follows:
+`here <https://joss.theoj.org/papers/10.21105/joss.04555>`_. When referencing
+PyMedPhys, please cite this paper as follows:
 
 *Biggs et al., (2022). PyMedPhys: A community effort to develop an open,
 Python-based standard library for medical physics applications. Journal of
