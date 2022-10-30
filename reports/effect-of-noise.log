@@ -148,13 +148,13 @@ File [0;32m~/work/pymedphys/pymedphys/lib/pymedphys/_vendor/apipkg/__init__.py:
                     The easiest way to fix this issue is to use the "[user]"
                     option when installing PyMedPhys. For example,
                     with pip this can be done by calling
-                    "pip install pymedphys[user]==0.39.3".
+                    "pip install pymedphys[user]==0.40.0-dev2".
                     
 ModuleNotFoundError: 
                     PyMedPhys was unable to import "interpolation.splines.CGrid".
                     The easiest way to fix this issue is to use the "[user]"
                     option when installing PyMedPhys. For example,
                     with pip this can be done by calling
-                    "pip install pymedphys[user]==0.39.3".
+                    "pip install pymedphys[user]==0.40.0-dev2".
                     
 

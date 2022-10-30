@@ -831,10 +831,11 @@ title="Print to PDF"
                 
   <section class="tex2jax_ignore mathjax_ignore" id="pymedphys-release-procedure">
 <h1>pymedphys Release Procedure<a class="headerlink" href="#pymedphys-release-procedure" title="Permalink to this headline">#</a></h1>
-<blockquote>
-<div><p><strong>NOTE:</strong> Please ensure that you have followed the <a class="reference external" href="https://docs.pymedphys.com/en/latest/contrib/setups/index.html">setup guide</a>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Please ensure that you have followed the <a class="reference external" href="https://docs.pymedphys.com/en/latest/contrib/setups/index.html">setup guide</a>
 appropriate to you prior to commencing this release procedure.</p>
-</div></blockquote>
+</div>
 <section id="determine-next-release-version">
 <h2>Determine next release version<a class="headerlink" href="#determine-next-release-version" title="Permalink to this headline">#</a></h2>
 <p>pymedphys uses <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a> in the format <code class="docutils literal notranslate"><span class="pre">MAJOR.MINOR.PATCH</span></code>, the next release number should typically be <code class="docutils literal notranslate"><span class="pre">MAJOR.MINOR+1.PATCH</span></code>. For example, if the previous release was <code class="docutils literal notranslate"><span class="pre">0.38.0</span></code>, the upcoming release will be <code class="docutils literal notranslate"><span class="pre">0.39.0</span></code>.</p>
@@ -915,7 +916,7 @@ This project adheres to
 </section>
 <section id="publish-release-to-pypi">
 <h3>Publish release to PyPI<a class="headerlink" href="#publish-release-to-pypi" title="Permalink to this headline">#</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry publish
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry --build publish
 </pre></div>
 </div>
 </section>
