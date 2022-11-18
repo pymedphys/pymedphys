@@ -48,7 +48,6 @@ import mpl_toolkits
 import mpl_toolkits.mplot3d.art3d
 import numpy
 import pandas
-import pandas.core
 import PIL
 import plotly
 import plotly.express
