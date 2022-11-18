@@ -315,7 +315,7 @@ def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
         for i in range(0, item_parts_length, 2)
     ]
 
-    print(CONFIG["version_row"])
+    # print(CONFIG["version_row"])
     dtype = CONFIG["version_row"][str(version)]["dtype"]
     offset = CONFIG["version_row"][str(version)]["offset"]
     lg_scale = CONFIG["version_row"][str(version)]["lg_scale"]
