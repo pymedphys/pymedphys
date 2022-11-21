@@ -435,13 +435,17 @@ def convert_positional_items(
         "Step Dose/Actual Value (Mu)"
     ].divide(10)
 
+    dataframe["Dose/Raw value (1/64th Mu)"] = dataframe[
+        "Dose/Raw value (1/64th Mu)"
+    ].apply(lambda x: x + 2**16 if x < 0 else x)
+
     # Depending on the version (Versions < 3) do not have 'Mlc Status/Actual Value (None)'.
     # We get the index location of the columns that need to be divided by 10.
 
     column_names = dataframe.columns
 
     column_start_index = column_names.get_loc("Step Gantry/Scaled Actual (deg)")
-    if version == 4:
+    if int(version) == 4:
         column_end_index = column_names.get_loc("Mlc Status/Actual Value (None)")
     else:
         column_end_index = len(column_names)
@@ -454,6 +458,11 @@ def convert_positional_items(
     # This include Gantry, Collimator, Couch as well as Diaphragms Leaves and DLGs (in Agility).
     dataframe2 = dataframe.iloc[:, column_start_index:column_end_index].divide(10)
 
+    ### SOME Rollbacks to ensure regression passes:
+    dataframe2["Table Isocentric/Scaled Actual (deg)"] = (
+        dataframe2["Table Isocentric/Scaled Actual (deg)"].divide(0.1).astype(int)
+    )
+
     # Remaining columns post 'Mlc Status/Actual Value (None)'.
     dataframe3 = dataframe.iloc[:, column_end_index:]
 
@@ -463,6 +472,24 @@ def convert_positional_items(
     # Y2 Leaves Scaled Actual need to be multiplied by -1
     y2l = [l for l in column_names if ("Y2 Leaf" in l) and ("Scaled Actual" in l)]
     dataframe.loc[:, y2l] = -dataframe.loc[:, y2l]
+
+    if int(version) > 1:
+        dataframe["unknown1"] = dataframe["Timestamp Data"].apply(
+            lambda x: int.from_bytes(np.int64(x).tobytes()[0:2], "little")
+        )
+        dataframe["unknown2"] = dataframe["Timestamp Data"].apply(
+            lambda x: int.from_bytes(np.int64(x).tobytes()[2:4], "little")
+        )
+        dataframe["unknown3"] = dataframe["Timestamp Data"].apply(
+            lambda x: int.from_bytes(np.int64(x).tobytes()[4:6], "little")
+        )
+        dataframe["unknown4"] = dataframe["Timestamp Data"].apply(
+            lambda x: int.from_bytes(np.int64(x).tobytes()[6:8], "little")
+        )
+        dataframe = dataframe.drop("Timestamp Data", axis=1)
+        dataframe = dataframe[
+            dataframe.columns.to_list()[-4:] + dataframe.columns.to_list()[0:-4]
+        ]
 
     return dataframe
 
