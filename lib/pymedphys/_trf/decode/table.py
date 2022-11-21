@@ -407,8 +407,8 @@ def convert_wedge_codes(dataframe, wedge_codes):
 
 
 def convert_positional_items(
-    dataframe: pd.core.frame.DataFrame, version: str
-) -> pd.core.frame.DataFrame:
+    dataframe: "pd.core.frame.DataFrame", version: str
+) -> "pd.core.frame.DataFrame":
     """Process the dataframe and convert all of the relevant positional items to divided by 10.
     The Step Dose/Actual Value (Mu) also needs to be divided by 10.
     The Y2 Leaves need to be multiplied by -1.
