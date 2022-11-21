@@ -59,15 +59,15 @@ def determine_header_length(trf_contents: bytes) -> int:
     # Treatment Record related header
 
     regex_trf = (
-        rb"[\x00-\x19]"
-        + rb"(\d\d[/|-]\d\d[/|-]\d\d \d\d:\d\d:\d\d Z)"
-        + rb"[\x00-\x19]"
-        + rb"([\+|\-]\d\d:\d\d)"
-        + rb"[\x00-\x32]"
-        + rb"([\x20-\x7F]*)"
-        + rb"[\x00-\x10]"
-        + rb"([\x20-\x7F]*)"
-        + rb"([\x00-\xFFF]*)"
+        rb"[\x00-\x19]"  # start bit
+        + rb"(\d\d[/|-]\d\d[/|-]\d\d \d\d:\d\d:\d\d Z)"  # date
+        + rb"[\x00-\x19]"  # divider bit
+        + rb"([\+|\-]\d\d:\d\d)"  # time zone
+        + rb"[\x00-\x32]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # field label and name
+        + rb"[\x00-\x10]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # machine name
+        + rb"([\x00-\xFFF]*)"  # divider bit
     )
 
     # The first 4 groups in the regex match are dynamically allocated as
@@ -82,7 +82,7 @@ def determine_header_length(trf_contents: bytes) -> int:
         start_header_length = match.span(4)[1]
 
     else:
-        raise ValueError("Inconsistent header length determination")
+        raise ValueError("Unexpected header content found")
 
     item_parts_number = np.frombuffer(groups[4][12:16], dtype=np.int32).item()
     final_header_length = len(groups[4][0 : 16 + 4 * item_parts_number])
@@ -95,15 +95,15 @@ def determine_header_length(trf_contents: bytes) -> int:
 def _header_match(contents):
 
     regex_trf = (
-        rb"[\x00-\x19]"
-        + rb"(\d\d[/|-]\d\d[/|-]\d\d \d\d:\d\d:\d\d Z)"
-        + rb"[\x00-\x19]"
-        + rb"([\+|\-]\d\d:\d\d)"
-        + rb"[\x00-\x32]"
-        + rb"([\x20-\x7F]*)"
-        + rb"[\x00-\x10]"
-        + rb"([\x20-\x7F]*)"
-        + rb"([\x00-\xFFF]*)"
+        rb"[\x00-\x19]"  # start bit
+        + rb"(\d\d[/|-]\d\d[/|-]\d\d \d\d:\d\d:\d\d Z)"  # date
+        + rb"[\x00-\x19]"  # divider bit
+        + rb"([\+|\-]\d\d:\d\d)"  # time zone
+        + rb"[\x00-\x32]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # field label and name
+        + rb"[\x00-\x10]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # machine name
+        + rb"([\x00-\xFFF]*)"  # divider bit
     )
 
     match = re.match(regex_trf, contents)
