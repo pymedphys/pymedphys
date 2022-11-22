@@ -678,7 +678,8 @@ title="Open an issue"
 
     <span class="n">trf_header_contents</span><span class="p">,</span> <span class="n">trf_table_contents</span> <span class="o">=</span> <span class="n">split_into_header_table</span><span class="p">(</span><span class="n">trf_contents</span><span class="p">)</span>
     <span class="n">header_dataframe</span> <span class="o">=</span> <span class="n">header_as_dataframe</span><span class="p">(</span><span class="n">trf_header_contents</span><span class="p">)</span>
-    <span class="n">table_dataframe</span> <span class="o">=</span> <span class="n">decode_trf_table</span><span class="p">(</span><span class="n">trf_table_contents</span><span class="p">)</span>
+    <span class="c1"># table_dataframe = decode_trf_table(trf_table_contents)</span>
+    <span class="n">table_dataframe</span> <span class="o">=</span> <span class="n">decode_trf_table</span><span class="p">(</span><span class="n">trf_table_contents</span><span class="p">,</span> <span class="n">header_dataframe</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">header_dataframe</span><span class="p">,</span> <span class="n">table_dataframe</span>
 
