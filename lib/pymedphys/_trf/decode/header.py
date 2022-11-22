@@ -103,7 +103,7 @@ def _header_match(contents):
         + rb"([\x20-\x7F]*)"  # field label and name
         + rb"[\x00-\x10]"  # divider bit
         + rb"([\x20-\x7F]*)"  # machine name
-        + rb"([\x00-\xFFF]*)"  # divider bit
+        + rb"([\x00-\xFFF]*)"  # mu, version, and item parts numbers
     )
 
     match = re.match(regex_trf, contents)
