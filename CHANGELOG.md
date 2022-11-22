@@ -9,7 +9,11 @@ This project adheres to
 
 ## [unreleased]
 
-- No unreleased changes as of yet.
+### New features and enhancements
+
+- The gamma tool now utilises [Econforge's `interpolation`](https://github.com/EconForge/interpolation.py)
+  package by default. Initial testing shows improvements in gamma calculation
+  times by an approximate factor of 4. [PR #1761](https://github.com/pymedphys/pymedphys/pull/1761)
 
 ## [0.39.3]
 
@@ -17,6 +21,7 @@ This project adheres to
 
 - This is the version of PyMedPhys reviewed for PyMedPhys' first publication
   within the [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
+  The paper can be accessed [here](https://joss.theoj.org/papers/10.21105/joss.04555)
 
 ## [0.39.2]
 

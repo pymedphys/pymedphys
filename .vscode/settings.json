@@ -1,8 +1,11 @@
 {
   "editor.detectIndentation": true,
-  "editor.formatOnSave": true,
+  "editor.formatOnSave": false,
   "editor.insertSpaces": true,
-  "editor.rulers": [79, 119],
+  "editor.rulers": [
+    79,
+    119
+  ],
   "files.trimTrailingWhitespace": true,
   "autoDocstring.docstringFormat": "numpy",
   "autoDocstring.guessTypes": true,
@@ -13,11 +16,17 @@
   "python.linting.enabled": true,
   "python.linting.lintOnSave": true,
   "python.linting.pylintEnabled": true,
-  "python.linting.pylintArgs": ["--rcfile", "./lib/pymedphys/.pylintrc"],
+  "python.linting.pylintArgs": [
+    "--rcfile",
+    "./lib/pymedphys/.pylintrc"
+  ],
   "python.linting.mypyEnabled": true,
   "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
-    "editor.rulers": [72, 88]
+    "editor.rulers": [
+      72,
+      88
+    ]
   },
   "python.testing.unittestEnabled": false,
   "python.testing.nosetestsEnabled": false,
@@ -107,6 +116,8 @@
     "cutout",
     "cython",
     "dataelem",
+    "dataframe",
+    "dataframes",
     "dataset",
     "datasets",
     "datefmt",
@@ -130,6 +141,7 @@
     "dicoms",
     "dimse",
     "divied",
+    "DLGs",
     "dmax",
     "docmanager",
     "docstring",
@@ -209,6 +221,7 @@
     "Interpolator",
     "interppoints",
     "interps",
+    "Interupted",
     "iocharset",
     "ioloop",
     "ipykernel",
@@ -224,6 +237,7 @@
     "isinf",
     "islice",
     "isnan",
+    "Isocentric",
     "isort",
     "isroutine",
     "issubset",
