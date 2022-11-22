@@ -199,7 +199,6 @@ def convert_positional_items(
     # Remaining columns post 'Mlc Status/Actual Value (None)'.
     dataframe3 = dataframe.iloc[:, column_end_index:]
 
-    # Concatenate both dataframe
     dataframe = pd.concat([dataframe1, dataframe2, dataframe3], axis=1)
 
     # Y2 Leaves Scaled Actual need to be multiplied by -1
