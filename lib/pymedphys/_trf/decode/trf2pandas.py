@@ -57,7 +57,8 @@ def trf2pandas(trf: path_or_binary_file) -> Tuple["pd.DataFrame", "pd.DataFrame"
 
     trf_header_contents, trf_table_contents = split_into_header_table(trf_contents)
     header_dataframe = header_as_dataframe(trf_header_contents)
-    table_dataframe = decode_trf_table(trf_table_contents)
+    # table_dataframe = decode_trf_table(trf_table_contents)
+    table_dataframe = decode_trf_table(trf_table_contents, header_dataframe)
 
     return header_dataframe, table_dataframe
 

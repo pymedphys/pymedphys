@@ -16,8 +16,22 @@
 import re
 from collections import namedtuple
 
+from pymedphys._imports import numpy as np
+
 Header = namedtuple(
-    "Header", ["machine", "date", "timezone", "field_label", "field_name"]
+    "Header",
+    [
+        "machine",
+        "date",
+        "timezone",
+        "field_label",
+        "field_name",
+        "mu",
+        "version",
+        "item_parts_number",
+        "item_parts_length",
+        "item_parts",
+    ],
 )
 
 
@@ -38,33 +52,61 @@ def determine_header_length(trf_contents: bytes) -> int:
         TRF file.
     """
 
-    column_end = b"\t\xdc\x00\xe8\t\xdc\x00\xe9\t\xdc\x00\xea\t\xdc\x00\xeb\t\xdc\x00"
-    header_length = trf_contents.index(column_end) + len(column_end)
+    # Date regex match (any 25 characters \x00-\x19) with pattern (\d\d/\d\d/\d\d \d\d:\d\d:\d\d Z)
+    # UTC offset regex (any 25 characters \x00-\x19) with pattern ([\+|\-]\d\d:\d\d)
+    # Treatment name regex match (any 50 characters \x00-\x32) with pattern ([\x20-\x7F]*) according to ASCII table encoding
+    # Machine number (any 10 characters \x00-\x10) with pattern ([\x20-\x7F]*) according to ASCII table encoding
+    # Treatment Record related header
 
-    # test = trf_contents.split(b"\t")
-    # row_skips = 6
-    # i = next(i for i, item in enumerate(test[row_skips::]) if len(item) > 3) + row_skips
-    # header_length_old_method = len(b"\t".join(test[0:i])) + 3
+    regex_trf = (
+        rb"[\x00-\x19]"  # start bit
+        + rb"(\d\d[/|-]\d\d[/|-]\d\d \d\d:\d\d:\d\d Z)"  # date
+        + rb"[\x00-\x19]"  # divider bit
+        + rb"([\+|\-]\d\d:\d\d)"  # time zone
+        + rb"[\x00-\x32]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # field label and name
+        + rb"[\x00-\x10]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # machine name
+        + rb"([\x00-\xFFF]*)"  # divider bit
+    )
 
-    # if header_length_old_method != header_length:
-    #     raise ValueError("Inconsistent header length determination")
+    # The first 4 groups in the regex match are dynamically allocated as
+    # depend on the date, timezone, field and machine
+    # The field is likely to change the number of bytes.
+
+    start_header_length = 0
+    match = re.match(regex_trf, trf_contents)
+
+    if match:
+        groups = match.groups()
+        start_header_length = match.span(4)[1]
+
+    else:
+        raise ValueError("Unexpected header content found")
+
+    item_parts_number = np.frombuffer(groups[4][12:16], dtype=np.int32).item()
+    final_header_length = len(groups[4][0 : 16 + 4 * item_parts_number])
+
+    header_length = start_header_length + final_header_length
 
     return header_length
 
 
 def _header_match(contents):
-    match = re.match(
+
+    regex_trf = (
         rb"[\x00-\x19]"  # start bit
-        rb"(\d\d[/-]\d\d[/-]\d\d \d\d:\d\d:\d\d Z)"  # date
-        rb"[\x00-\x19]"  # divider bit
-        rb"((\+|\-)\d\d:\d\d)"  # time zone
-        rb"[\x00-\x25]"  # divider bit
-        rb"([\x20-\x7F]*)"  # field label and name
-        rb"[\x00-\x19]"  # divider bit
-        rb"([\x20-\x7F]+)"  # machine name
-        rb"[\x00-\x19]",  # divider bit
-        contents,
+        + rb"(\d\d[/|-]\d\d[/|-]\d\d \d\d:\d\d:\d\d Z)"  # date
+        + rb"[\x00-\x19]"  # divider bit
+        + rb"([\+|\-]\d\d:\d\d)"  # time zone
+        + rb"[\x00-\x32]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # field label and name
+        + rb"[\x00-\x10]"  # divider bit
+        + rb"([\x20-\x7F]*)"  # machine name
+        + rb"([\x00-\xFFF]*)"  # mu, version, and item parts numbers
     )
+
+    match = re.match(regex_trf, contents)
 
     if match is None:
         print(contents)
@@ -99,12 +141,25 @@ def decode_header(trf_header_contents: bytes) -> Header:
     """
 
     match = _header_match(trf_header_contents)
-
     groups = match.groups()
-    date = groups[0].decode("ascii")
-    timezone = groups[1].decode("ascii")
-    field = groups[3].decode("ascii")
-    machine = groups[4].decode("ascii")
+
+    # Decode data from first half of header. This comes from the first split groups
+    date = groups[0].decode("utf-8")
+    timezone = groups[1].decode("utf-8")
+    field = groups[2].decode("utf-8")
+    machine = groups[3].decode("utf-8")
+
+    # Decode data from the second half of header. This comes from the first bytes of the last group
+    mu = np.frombuffer(groups[4][0:8], dtype=np.float64).item()
+    version = np.frombuffer(groups[4][8:12], dtype=np.int32).item()
+    item_parts_number = np.frombuffer(groups[4][12:16], dtype=np.int32).item()
+
+    # With the item_parts_length read from the header we can get a list of IPVs. This will be useful for a lookup later. These have to be read as in
+    item_parts = np.frombuffer(
+        groups[4][16 : 16 + 4 * item_parts_number], dtype=np.int16
+    )
+
+    item_parts_length = int(len(item_parts))
 
     split_field = field.split("/")
     if len(split_field) == 2:
@@ -112,7 +167,18 @@ def decode_header(trf_header_contents: bytes) -> Header:
     else:
         field_label, field_name = "", field
 
-    header = Header(machine, date, timezone, field_label, field_name)
+    header = Header(
+        machine,
+        date,
+        timezone,
+        field_label,
+        field_name,
+        mu,
+        version,
+        item_parts_number,
+        item_parts_length,
+        item_parts,
+    )
 
     return header
 
