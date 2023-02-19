@@ -39,7 +39,7 @@ background information, including a statement of need. You can access the paper
 PyMedPhys, please cite this paper as follows:
 
 *Biggs, S., Jennings, M., Swerdloff, S., Chlap, P., Lane, D., Rembish, J.,
-McAloney, J., King, P., Ayala, R., Guan, F. and Lambri, N.., (2022).
+McAloney, J., King, P., Ayala, R., Guan, F., Lambri, N., Crewson, C., Sobolewski, M. (2022).
 PyMedPhys: A community effort to develop an open, Python-based standard
 library for medical physics applications. Journal of Open Source Software,
 7(78), 4555, https://doi.org/10.21105/joss.04555*
