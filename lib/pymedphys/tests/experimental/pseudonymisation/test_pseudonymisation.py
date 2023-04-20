@@ -264,16 +264,14 @@ def _test_pseudonymise_file_at_path(
         assert ds_pseudo["PatientID"].value not in ["", "Anonymous"]
 
 
-# Pseudonymise CLI is currently not being exposed. See https://github.com/pymedphys/pymedphys/issues/1793
-
-# @pytest.mark.slow
-# @pytest.mark.pydicom
-# @pytest.mark.skipif(
-#     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
-# )
-# def test_pseudonymise_cli(tmp_path):
-#     for test_file_path in get_test_filepaths():
-#         _test_pseudonymise_cli_for_file(tmp_path, test_file_path)
+@pytest.mark.slow
+@pytest.mark.pydicom
+@pytest.mark.skipif(
+    "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
+)
+def test_pseudonymise_cli(tmp_path):
+    for test_file_path in get_test_filepaths():
+        _test_pseudonymise_cli_for_file(tmp_path, test_file_path)
 
 
 def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
