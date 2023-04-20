@@ -47,7 +47,7 @@ def get_zenodo_file_md5s(record_name):
 
 @functools.lru_cache()
 def get_zenodo_record_id(record_name):
-    with open(HERE.joinpath("zenodo.json"), "r") as zenodo_file:
+    with open(HERE.joinpath("zenodo.json")) as zenodo_file:
         zenodo = json.load(zenodo_file)
 
     try:
@@ -61,7 +61,7 @@ def get_zenodo_record_id(record_name):
 
 
 def update_zenodo_record_id(record_name, record_id):
-    with open(HERE.joinpath("zenodo.json"), "r") as zenodo_file:
+    with open(HERE.joinpath("zenodo.json")) as zenodo_file:
         zenodo = json.load(zenodo_file)
 
     zenodo[record_name] = record_id

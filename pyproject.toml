@@ -4,16 +4,7 @@ version = "0.40.0-dev2"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
-    "PyMedPhys Contributors <developers@pymedphys.com>",
-    "Simon Biggs <sbiggs@pymedphys.com>",
-    "Stuart Swerdloff",
-    "Matthew Jennings <mjennings@pymedphys.com>",
-    "Phillip Chlap",
-    "Derek Lane",
-    "Jake Rembish",
-    "Matthew Cooper <mcooper@pymedphys.com>",
-    "Pedro Martinez",
-    "Rafael Ayala",
+    "PyMedPhys Contributors <developers@pymedphys.com>"
 ]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"
@@ -31,13 +22,15 @@ packages = [{ include = "pymedphys", from = "lib" }]
 include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.8,<3.12"
 typing-extensions = "*"
+setuptools = "*"
 
 
 # ------- #
 # Library #
 # ------- #
+
 tqdm = { version = "*", optional = true }     # groups = ["user", "all", "tests", "docs"]
 attrs = { version = "*", optional = true }    # groups = ["user", "all"]
 watchdog = { version = "*", optional = true } # groups = ["user", "all"]
@@ -51,8 +44,6 @@ python-dateutil = { version = "*", optional = true } # groups = ["user", "all", 
 matplotlib = { version = "*", optional = true } # groups = ["user", "all", "docs"]
 scipy = { version = "*", optional = true }      # groups = ["user", "all", "docs"]
 
-xarray = { version = "*", optional = true } # groups = ["user", "all"]
-
 pymssql = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 sqlalchemy = { version = "*", optional = true } # groups = ["user", "all", "mosaiq"]
 natsort = { version = "*", optional = true }    # groups = ["user", "all"]
@@ -64,41 +55,22 @@ pynetdicom = { version = "*", optional = true } # groups = ["user", "all", "dico
 dbfread = { version = "*", optional = true }         # groups = ["user", "all"]
 xmltodict = { version = "*", optional = true }       # groups = ["user", "all"]
 timeago = { version = "*", optional = true }         # groups = ["user", "all"]
-xlsxwriter = { version = "*", optional = true }      # groups = ["user", "all"]
-plotly = { version = "*", optional = true }          # groups = ["user", "all"]
-fsspec = { version = "*", optional = true }          # groups = ["user", "all"]
 dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
 scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
-streamlit = { version = "<1.12.0", optional = true } # groups = ["user", "all"]
-streamlit-ace = { version = "*", optional = true }   # groups = ["user", "all"]
-
 # NumPy's lower bound here is for typing support
 numpy = { version = ">=1.20.2", optional = true } # groups = ["user", "all", "icom", "docs"]
-
-# It looks like eval_linear() was added to the API from v2.1.0
-interpolation = { version = "^2.1.0", optional = true } # groups = ["user", "all"]
 
 # The following lower bounded packages are due to certain APIs utilised
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "all", "mosaiq"]
 pydicom = { version = ">=2.0.0", optional = true } # groups = ["user", "all", "dicom", "docs"]
 
-
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
 shapely = { version = ">=1.7.0", optional = true }       # groups = ["user", "all"]
-scikit-image = { version = ">=0.18.1", optional = true } # groups = ["user", "all"]
 
-# Utilising the pymedphys fork of pylibjpeg-libjpeg to fix the following issue:
-# https://github.com/pymedphys/pymedphys/issues/1556#issuecomment-1152821285
-# pymedphys-pylibjpeg-libjpeg = { version = "1.3.1", optional = true } # groups = ["user", "all"]
 pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user", "all"]
-
-
-# PyLinac is pinned due to historical algorithm changes with both minor and
-# patch version bumps.
-pylinac = { version = "2.3.2", optional = true } # groups = ["user", "all", "doctests"]
 
 # ---- #
 # CVEs #
@@ -113,19 +85,18 @@ ipython = { version = ">=7.31.1", optional = true } # groups = ["docs", "all"]
 # CVE-2022-22817 <https://github.com/advisories/GHSA-8vj2-vxx3-667w>
 Pillow = { version = ">=9.0.0", optional = true } # groups = ["user", "all"]
 
-
 # ----------- #
 # Comparables #
 # ----------- #
 flashgamma = { version = "*", optional = true } # groups = ["comparables"]
 
-# ---------------- #
-# Machine Learning #
-# ---------------- #
-# The following dependency was removed due to it coming with a numpy upper
-# bound. I don't want dependencies that have an upper bound on numpy.
+# -------- #
+# Speedups #
+# -------- #
 
-# tensorflow = { version = ">=2.4.0", optional = true }  # groups = ["ml", "doctests"]
+# Many environments have issue with installing llvmlite, so, until it is more
+# reliable, don't include this dependency in the standard install.
+interpolation = { version = ">=2.1.0", optional = true } # groups = ["speedups"]
 
 # ------------- #
 # Documentation #
@@ -151,14 +122,12 @@ pytest-rerunfailures = { version = "*", optional = true } # groups = ["all", "te
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }      # groups = ["dev", "all"]
-black = { version = "^22.3.0", optional = true }     # groups = ["dev", "all", "propagate", "doctests"]
+black = { version = ">=22.3.0", optional = true }     # groups = ["dev", "all", "propagate", "doctests"]
 mypy = { version = "*", optional = true }            # groups = ["dev", "all"]
 rope = { version = "*", optional = true }            # groups = ["dev", "all"]
 doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "doctests"]
-pyoxidizer = { version = "*", optional = true }      # groups = ["dev", "all", "build"]
-
 
 [tool.poetry.extras]
 all = [
@@ -170,10 +139,8 @@ all = [
     "dbfread",
     "dicompyler-core",
     "doc8",
-    "fsspec",
     "hypothesis",
     "imageio",
-    "interpolation",
     "ipython",
     "jupyter-book",
     "keyring",
@@ -184,16 +151,13 @@ all = [
     "numpy",
     "packaging",
     "pandas",
-    "plotly",
     "pre-commit",
     "psutil",
     "pydicom",
     "pylibjpeg-libjpeg",
-    "pylinac",
     "pylint",
     "pymssql",
     "pynetdicom",
-    "pyoxidizer",
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
@@ -203,38 +167,23 @@ all = [
     "reportlab",
     "requests",
     "rope",
-    "scikit-image",
     "scikit-learn",
     "scipy",
     "shapely",
     "sphinx-argparse",
     "sphinx-book-theme",
     "sqlalchemy",
-    "streamlit",
-    "streamlit-ace",
     "tabulate",
     "timeago",
     "toml",
     "tomlkit",
     "tqdm",
     "watchdog",
-    "xarray",
-    "xlsxwriter",
     "xmltodict",
 ]
-build = ["pyoxidizer"]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = [
-    "black",
-    "doc8",
-    "mypy",
-    "pre-commit",
-    "pyoxidizer",
-    "readme-renderer",
-    "rope",
-    "tabulate",
-]
+dev = ["black", "doc8", "mypy", "pre-commit", "readme-renderer", "rope", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
@@ -249,10 +198,11 @@ docs = [
     "toml",
     "tqdm",
 ]
-doctests = ["black", "pylinac", "sphinx-book-theme", "tabulate"]
+doctests = ["black", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["black", "tomlkit"]
+speedups = ["interpolation"]
 tests = [
     "astroid",
     "hypothesis",
@@ -270,39 +220,30 @@ user = [
     "attrs",
     "dbfread",
     "dicompyler-core",
-    "fsspec",
     "imageio",
-    "interpolation",
     "keyring",
     "matplotlib",
     "natsort",
     "numpy",
     "packaging",
     "pandas",
-    "plotly",
     "pydicom",
     "pylibjpeg-libjpeg",
-    "pylinac",
     "pymssql",
     "pynetdicom",
     "python-dateutil",
     "pywin32",
     "reportlab",
     "requests",
-    "scikit-image",
     "scikit-learn",
     "scipy",
     "shapely",
     "sqlalchemy",
-    "streamlit",
-    "streamlit-ace",
     "timeago",
     "toml",
     "tomlkit",
     "tqdm",
     "watchdog",
-    "xarray",
-    "xlsxwriter",
     "xmltodict",
 ]
 

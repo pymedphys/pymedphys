@@ -36,7 +36,7 @@ def get_config(path=None):
     config_path = path.joinpath("config.toml")
 
     while True:
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             results = toml.load(f)
 
         try:

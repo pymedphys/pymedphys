@@ -75,7 +75,7 @@ def get_file_within_data_zip(zip_name, file_name):
 
 @functools.lru_cache()
 def get_url_map():
-    with open(HERE.joinpath("urls.json"), "r") as f:
+    with open(HERE.joinpath("urls.json")) as f:
         url_map = json.load(f)
 
     return url_map
@@ -163,7 +163,7 @@ def get_cached_filehash(filename, hash_filepath=None):
 
     filename = str(filename).replace(os.sep, "/")
 
-    with open(hash_filepath, "r") as hash_file:
+    with open(hash_filepath) as hash_file:
         hashes = json.load(hash_file)
 
     try:
@@ -197,7 +197,7 @@ def data_file_hash_check(filename, hash_filepath=None):
         logging.debug("Cached filehash is %s", cached_filehash)
     except NoHashFound:
         logging.warning("Hash not found in %s. File will be updated.", hash_filepath)
-        with open(hash_filepath, "r") as hash_file:
+        with open(hash_filepath) as hash_file:
             hashes = json.load(hash_file)
 
         hashes[filename] = calculated_filehash

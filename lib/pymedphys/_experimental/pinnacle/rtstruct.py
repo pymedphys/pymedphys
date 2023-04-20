@@ -212,7 +212,7 @@ def read_roi(ds, plan, skip_pattern):
     )
     plan.logger.debug("Reading ROI from: %s", path_roi)
     first_points = []
-    with open(path_roi, "rt") as f:
+    with open(path_roi) as f:
         for _, line in enumerate(f, 1):
             if flag_skip_roi:
                 # read til we hit end of ROI

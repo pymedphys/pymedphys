@@ -161,7 +161,7 @@ def _shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon):
 def _loop_based_mask_approach(xx, yy, points_within_contour):
     mask = np.zeros_like(xx).astype("bool")
 
-    for point in points_within_contour:
+    for point in points_within_contour.geoms:
         coord = point.coords.xy
         mask[np.logical_and(xx == coord[0], yy == coord[1])] = True
 
