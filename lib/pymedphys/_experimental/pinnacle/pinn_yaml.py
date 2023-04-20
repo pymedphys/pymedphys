@@ -38,7 +38,6 @@
 # SOFTWARE.
 
 
-import io
 import re
 
 from pymedphys._imports import yaml

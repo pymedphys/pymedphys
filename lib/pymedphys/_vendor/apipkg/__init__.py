@@ -182,14 +182,14 @@ class ApiModule(ModuleType):
                 # retry, onfirstaccess might have set attrs
                 return getattr(self, name)
             raise AttributeError(name)
-        else:
-            result = importobj(modpath, attrname)
-            setattr(self, name, result)
-            try:
-                del self.__map__[name]
-            except KeyError:
-                pass  # in a recursive-import situation a double-del can happen
-            return result
+
+        result = importobj(modpath, attrname)
+        setattr(self, name, result)
+        try:
+            del self.__map__[name]
+        except KeyError:
+            pass  # in a recursive-import situation a double-del can happen
+        return result
 
     __getattr__ = __makeattr
 
