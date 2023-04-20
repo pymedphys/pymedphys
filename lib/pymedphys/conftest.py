@@ -33,7 +33,7 @@ SKIPPING_CONFIG = {
     "all": {
         "options": ["--run-all-tests", "--all"],
         "help": "run all tests",
-        "description": "run all tests that would normally be skipped",
+        "description": "run all tests that would normally be skipped due to a configuration flag",
         "skip_otherwise": False,
     },
 }

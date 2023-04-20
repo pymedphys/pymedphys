@@ -56,9 +56,6 @@ dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
 scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
-streamlit = { version = "*", optional = true } # groups = ["user", "all"]
-streamlit-ace = { version = "*", optional = true }   # groups = ["user", "all"]
-
 # NumPy's lower bound here is for typing support
 numpy = { version = ">=1.20.2", optional = true } # groups = ["user", "all", "icom", "docs"]
 
