@@ -138,7 +138,6 @@ all = [
     "doc8",
     "hypothesis",
     "imageio",
-    "interpolation",
     "ipython",
     "jupyter-book",
     "keyring",
@@ -200,6 +199,7 @@ doctests = ["black", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["black", "tomlkit"]
+speedups = ["interpolation"]
 tests = [
     "astroid",
     "hypothesis",
@@ -217,7 +217,6 @@ user = [
     "dbfread",
     "dicompyler-core",
     "imageio",
-    "interpolation",
     "keyring",
     "matplotlib",
     "natsort",
