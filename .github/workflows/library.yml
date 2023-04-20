@@ -256,7 +256,7 @@ jobs:
       - name: Install Pandoc on Windows
         if: matrix.task == 'docs' && matrix.os == 'windows'
         run: |
-          choco install pandoc
+          winget install -e --id JohnMacFarlane.Pandoc
 
       ## Plain install
 
