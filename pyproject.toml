@@ -73,7 +73,6 @@ pydicom = { version = ">=2.0.0", optional = true } # groups = ["user", "all", "d
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
 shapely = { version = ">=1.7.0", optional = true }       # groups = ["user", "all"]
-scikit-image = { version = ">=0.18.1", optional = true } # groups = ["user", "all"]
 
 # Utilising the pymedphys fork of pylibjpeg-libjpeg to fix the following issue:
 # https://github.com/pymedphys/pymedphys/issues/1556#issuecomment-1152821285
@@ -135,14 +134,12 @@ pyoxidizer = { version = "*", optional = true }      # groups = ["dev", "all", "
 [tool.poetry.extras]
 all = [
     "Pillow",
-    "PyYAML",
     "astroid",
     "attrs",
     "black",
     "dbfread",
     "dicompyler-core",
     "doc8",
-    "fsspec",
     "hypothesis",
     "imageio",
     "interpolation",
@@ -156,7 +153,6 @@ all = [
     "numpy",
     "packaging",
     "pandas",
-    "plotly",
     "pre-commit",
     "psutil",
     "pydicom",
@@ -174,7 +170,6 @@ all = [
     "reportlab",
     "requests",
     "rope",
-    "scikit-image",
     "scikit-learn",
     "scipy",
     "shapely",
@@ -189,8 +184,6 @@ all = [
     "tomlkit",
     "tqdm",
     "watchdog",
-    "xarray",
-    "xlsxwriter",
     "xmltodict",
 ]
 build = ["pyoxidizer"]
@@ -237,11 +230,9 @@ tests = [
 ]
 user = [
     "Pillow",
-    "PyYAML",
     "attrs",
     "dbfread",
     "dicompyler-core",
-    "fsspec",
     "imageio",
     "interpolation",
     "keyring",
@@ -250,7 +241,6 @@ user = [
     "numpy",
     "packaging",
     "pandas",
-    "plotly",
     "pydicom",
     "pylibjpeg-libjpeg",
     "pymssql",
@@ -259,7 +249,6 @@ user = [
     "pywin32",
     "reportlab",
     "requests",
-    "scikit-image",
     "scikit-learn",
     "scipy",
     "shapely",
@@ -271,8 +260,6 @@ user = [
     "tomlkit",
     "tqdm",
     "watchdog",
-    "xarray",
-    "xlsxwriter",
     "xmltodict",
 ]
 
