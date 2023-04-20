@@ -1,819 +1,488 @@
 
+
 <!DOCTYPE html>
 
-<html lang="en">
+
+<html lang="en" >
+
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>What is PyMedPhys? &#8212; PyMedPhys</title>
-    
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
-<link href="_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+  <link href="_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
 
-    
-  <link rel="stylesheet"
-    href="_static/vendor/fontawesome/5.13.0/css/all.min.css">
-  <link rel="preload" as="font" type="font/woff2" crossorigin
-    href="_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
-  <link rel="preload" as="font" type="font/woff2" crossorigin
-    href="_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+  
+  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" href="_static/styles/sphinx-book-theme.css?digest=5115cc725059bd94278eecd172e13a965bf8f5a9" type="text/css" />
+    <link rel="stylesheet" href="_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
     <link rel="stylesheet" type="text/css" href="_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/style.css" />
-    <link rel="stylesheet" type="text/css" href="_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
-    
+    <link rel="stylesheet" type="text/css" href="_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+  
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/clipboard.min.js"></script>
     <script src="_static/copybutton.js"></script>
-    <script src="_static/scripts/sphinx-book-theme.js?digest=9c920249402e914e316237a7dbc6769907cce411"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
     <script>let toggleHintShow = 'Click to show';</script>
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="_static/togglebutton.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script src="_static/design-tabs.js"></script>
+    <script async="async" src="https://www.googletagmanager.com/gtag/js?id=UA-26591325-7"></script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'UA-26591325-7');
+            </script>
     <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
 const thebe_selector = ".thebe,.cell"
 const thebe_selector_input = "pre"
 const thebe_selector_output = ".output, .cell_output"
 </script>
     <script async="async" src="_static/sphinx-thebe.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'README';</script>
     <link rel="canonical" href="https://docs.pymedphys.com/README.html" />
     <link rel="shortcut icon" href="_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="docsearch:language" content="en">
-    
-
-    <!-- Google Analytics -->
-    
-<script async="" src="https://www.google-analytics.com/analytics.js"></script>
-<script>
-                        window.ga = window.ga || function () {
-                            (ga.q = ga.q || []).push(arguments) };
-                        ga.l = +new Date;
-                        ga('create', 'UA-26591325-7', 'auto');
-                        ga('set', 'anonymizeIp', true);
-                        ga('send', 'pageview');
-                    </script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
   </head>
-  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
-<!-- Checkboxes to toggle the left sidebar -->
-<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle navigation sidebar">
-<label class="overlay overlay-navbar" for="__navigation">
-    <div class="visually-hidden">Toggle navigation sidebar</div>
-</label>
-<!-- Checkboxes to toggle the in-page toc -->
-<input type="checkbox" class="sidebar-toggle" name="__page-toc" id="__page-toc" aria-label="Toggle in-page Table of Contents">
-<label class="overlay overlay-pagetoc" for="__page-toc">
-    <div class="visually-hidden">Toggle in-page Table of Contents</div>
-</label>
-<!-- Headers at the top -->
-<div class="announcement header-item noprint"></div>
-<div class="header header-item noprint"></div>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
 
-    
-    <div class="container-fluid" id="banner"></div>
-
-    
-
-    <div class="container-xl">
-      <div class="row">
-          
-<!-- Sidebar -->
-<div class="bd-sidebar noprint" id="site-navigation">
-    <div class="bd-sidebar__content">
-        <div class="bd-sidebar__top"><div class="navbar-brand-box">
-    <a class="navbar-brand text-wrap" href="index.html">
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
       
-        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+      <div class="bd-sidebar-primary bd-sidebar">
         
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+    
+    
       
-      
-      <img src="_static/pymedphys.svg" class="logo" alt="logo">
-      
-      
-      <h1 class="site-logo" id="site-title">PyMedPhys</h1>
-      
-    </a>
-</div><form class="bd-search d-flex align-items-center" action="search.html" method="get">
-  <i class="icon fas fa-search"></i>
-  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search this book..." aria-label="Search this book..." autocomplete="off" >
-</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
-    <div class="bd-toc-item active">
+    
+    
+    <img src="_static/pymedphys.svg" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="_static/pymedphys.svg" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
         <ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="overview.html">
-   Overview
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="statement-of-need.html">
-   Statement of Need
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="release-notes.html">
-   Release Notes
-  </a>
- </li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statement-of-need.html">Statement of Need</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release-notes.html">Release Notes</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  Users Guide
- </span>
-</p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Users Guide</span></p>
 <ul class="nav bd-sidenav">
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="users/get-started/index.html">
-   Getting Started
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
-  <label for="toctree-checkbox-1">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2">
-    <a class="reference internal" href="users/get-started/quick-start.html">
-     Quick Start Guide
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="users/get-started/cli.html">
-     Using the CLI
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="users/howto/index.html">
-   How-to Guides
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
-  <label for="toctree-checkbox-2">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2 has-children">
-    <a class="reference internal" href="users/howto/gamma/index.html">
-     Gamma
-    </a>
-    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
-    <label for="toctree-checkbox-3">
-     <i class="fas fa-chevron-down">
-     </i>
-    </label>
-    <ul>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/howto/gamma/speed-up.html">
-       Speeding up gamma calculations
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/howto/gamma/1D-from-csv.html">
-       Gamma from 1D ASCII data
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/howto/gamma/effect-of-noise.html">
-       The Effects of Noise on Gamma
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/howto/gamma/from-dicom.html">
-       Gamma from DICOM
-      </a>
-     </li>
-    </ul>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="users/howto/add-a-linac.html">
-     Adding a Linac
-    </a>
-   </li>
-   <li class="toctree-l2 has-children">
-    <a class="reference internal" href="users/howto/tunnels/index.html">
-     Tunnels
-    </a>
-    <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
-    <label for="toctree-checkbox-4">
-     <i class="fas fa-chevron-down">
-     </i>
-    </label>
-    <ul>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/howto/tunnels/samba.html">
-       SAMBA SSH Tunnelling
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/howto/tunnels/rsync.html">
-       Backups using rsync
-      </a>
-     </li>
-    </ul>
-   </li>
-  </ul>
- </li>
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="users/background/index.html">
-   Background
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
-  <label for="toctree-checkbox-5">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2">
-    <a class="reference internal" href="users/background/autocontouring.html">
-     Automatic Contouring Project
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="users/background/elekta-logfiles.html">
-     Elekta Logfile Decoding and Indexing
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="users/ref/index.html">
-   Technical Reference
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
-  <label for="toctree-checkbox-6">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2 has-children">
-    <a class="reference internal" href="users/ref/lib/index.html">
-     Library Reference
-    </a>
-    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
-    <label for="toctree-checkbox-7">
-     <i class="fas fa-chevron-down">
-     </i>
-    </label>
-    <ul>
-     <li class="toctree-l3">
-      <a class="reference internal" href="genindex.html">
-       Alphabetical Index
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/lib/dicom.html">
-       DICOM
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/lib/gamma.html">
-       Gamma
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/lib/mosaiq.html">
-       Mosaiq
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/lib/metersetmap.html">
-       MetersetMap
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/lib/trf.html">
-       TRF
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/lib/electronfactors.html">
-       Electron Cutout Factors
-      </a>
-     </li>
-     <li class="toctree-l3 has-children">
-      <a class="reference internal" href="users/ref/lib/experimental/index.html">
-       Experimental Modules
-      </a>
-      <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
-      <label for="toctree-checkbox-8">
-       <i class="fas fa-chevron-down">
-       </i>
-      </label>
-      <ul>
-       <li class="toctree-l4">
-        <a class="reference internal" href="users/ref/lib/experimental/pinnacle.html">
-         Pinnacle Export Tool
-        </a>
-       </li>
-       <li class="toctree-l4">
-        <a class="reference internal" href="users/ref/lib/experimental/pseudonymisation.html">
-         Pseudonymisation Tool
-        </a>
-       </li>
-      </ul>
-     </li>
-    </ul>
-   </li>
-   <li class="toctree-l2 has-children">
-    <a class="reference internal" href="users/ref/cli/index.html">
-     CLI Reference
-    </a>
-    <input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/>
-    <label for="toctree-checkbox-9">
-     <i class="fas fa-chevron-down">
-     </i>
-    </label>
-    <ul>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/cli/dicom.html">
-       DICOM Files
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/cli/trf.html">
-       Elekta Binary Logfiles
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/cli/icom.html">
-       iCom listener
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/cli/pinnacle.html">
-       Pinnacle Export Tool
-      </a>
-     </li>
-     <li class="toctree-l3">
-      <a class="reference internal" href="users/ref/cli/pseudonymisation.html">
-       Pseudonymisation Tool
-      </a>
-     </li>
-    </ul>
-   </li>
-  </ul>
- </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="users/get-started/index.html">Getting Started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="users/get-started/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="users/get-started/cli.html">Using the CLI</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading">
- <span class="caption-text">
-  Contributors Guide
- </span>
-</p>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="users/howto/index.html">How-to Guides</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="users/howto/gamma/index.html">Gamma</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="users/howto/gamma/speed-up.html">Speeding up gamma calculations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/howto/gamma/1D-from-csv.html">Gamma from 1D ASCII data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/howto/gamma/effect-of-noise.html">The Effects of Noise on Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/howto/gamma/from-dicom.html">Gamma from DICOM</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="users/howto/add-a-linac.html">Adding a Linac</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="users/howto/tunnels/index.html">Tunnels</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="users/howto/tunnels/samba.html">SAMBA SSH Tunnelling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/howto/tunnels/rsync.html">Backups using rsync</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="users/background/index.html">Background</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="users/background/autocontouring.html">Automatic Contouring Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="users/background/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="users/ref/index.html">Technical Reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="users/ref/lib/index.html">Library Reference</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="genindex.html">Alphabetical Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/lib/dicom.html">DICOM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/lib/gamma.html">Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/lib/mosaiq.html">Mosaiq</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/lib/metersetmap.html">MetersetMap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/lib/trf.html">TRF</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/lib/electronfactors.html">Electron Cutout Factors</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="users/ref/lib/experimental/index.html">Experimental Modules</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="users/ref/lib/experimental/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l4"><a class="reference internal" href="users/ref/lib/experimental/pseudonymisation.html">Pseudonymisation Tool</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="users/ref/cli/index.html">CLI Reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/cli/dicom.html">DICOM Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/cli/trf.html">Elekta Binary Logfiles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/cli/icom.html">iCom listener</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/cli/pinnacle.html">Pinnacle Export Tool</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Contributors Guide</span></p>
 <ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="contrib/index.html">
-   Overview
-  </a>
- </li>
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="contrib/info/index.html">
-   Repository Information
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/>
-  <label for="toctree-checkbox-10">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/info/file-structure.html">
-     Repository File Structure
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/info/docs-guide.html">
-     Documentation Guide
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/info/release-guide.html">
-     pymedphys Release Procedure
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="contrib/setups/index.html">
-   Workstation Setup Guides
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/>
-  <label for="toctree-checkbox-11">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/setups/setup-win.html">
-     Windows Setup
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/setups/setup-linux.html">
-     Linux Setup
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/setups/setup-mac.html">
-     MacOS Setup
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="contrib/tips/index.html">
-   Tips &amp; Tricks
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/>
-  <label for="toctree-checkbox-12">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/tips/add-jupyter-kernel.html">
-     Add Jupyter kernel with
-     <em>
-      poetry
-     </em>
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/tips/win-open-ssh.html">
-     Setting up OpenSSH on Windows 10
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toctree-l1 has-children">
-  <a class="reference internal" href="contrib/dive/index.html">
-   Deep Dive
-  </a>
-  <input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/>
-  <label for="toctree-checkbox-13">
-   <i class="fas fa-chevron-down">
-   </i>
-  </label>
-  <ul>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/dive/why-open-source.html">
-     Why Open Source?
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="contrib/dive/create-streamlit-exe.html">
-     Creating a Streamlit Executable
-    </a>
-   </li>
-  </ul>
- </li>
+<li class="toctree-l1"><a class="reference internal" href="contrib/index.html">Overview</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="contrib/info/index.html">Repository Information</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-10"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="contrib/info/file-structure.html">Repository File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contrib/info/docs-guide.html">Documentation Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contrib/info/release-guide.html">pymedphys Release Procedure</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="contrib/setups/index.html">Workstation Setup Guides</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-11"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="contrib/setups/setup-win.html">Windows Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contrib/setups/setup-linux.html">Linux Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contrib/setups/setup-mac.html">MacOS Setup</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="contrib/tips/index.html">Tips &amp; Tricks</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-12"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="contrib/tips/add-jupyter-kernel.html">Add Jupyter kernel with <em>poetry</em></a></li>
+<li class="toctree-l2"><a class="reference internal" href="contrib/tips/win-open-ssh.html">Setting up OpenSSH on Windows 10</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="contrib/dive/index.html">Deep Dive</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-13"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="contrib/dive/why-open-source.html">Why Open Source?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contrib/dive/create-streamlit-exe.html">Creating a Streamlit Executable</a></li>
+</ul>
+</li>
 </ul>
 
     </div>
 </nav></div>
-        <div class="bd-sidebar__bottom">
-             <!-- To handle the deprecated key -->
-            
-            <div class="navbar_extra_footer">
-            Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
-            </div>
-            
-        </div>
     </div>
-    <div id="rtd-footer-container"></div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/README.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button dropdown-item"
+   title="Suggest edit"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="btn__text-container">Suggest edit</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2FREADME.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
 </div>
 
 
-          
-
-
-          
-<!-- A tiny helper pixel to detect if we've scrolled -->
-<div class="sbt-scroll-pixel-helper"></div>
-<!-- Main content -->
-<div class="col py-0 content-container">
-    
-    <div class="header-article row sticky-top noprint">
-        
 
 
 
-<div class="col py-1 d-flex header-article-main">
-    <div class="header-article__left">
-        
-        <label for="__navigation"
-  class="headerbtn"
-  data-toggle="tooltip"
-data-placement="right"
-title="Toggle navigation"
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/README.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
 >
   
 
-<span class="headerbtn__icon-container">
-  <i class="fas fa-bars"></i>
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
   </span>
-
-</label>
-
-        
-    </div>
-    <div class="header-article__right">
-<button onclick="toggleFullScreen()"
-  class="headerbtn"
-  data-toggle="tooltip"
-data-placement="bottom"
-title="Fullscreen mode"
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
 >
   
 
-<span class="headerbtn__icon-container">
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
   <i class="fas fa-expand"></i>
   </span>
 
 </button>
 
-<div class="menu-dropdown menu-dropdown-repository-buttons">
-  <button class="headerbtn menu-dropdown__trigger"
-      aria-label="Source repositories">
-      <i class="fab fa-github"></i>
+
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
   </button>
-  <div class="menu-dropdown__content">
-    <ul>
-      <li>
-        <a href="https://github.com/pymedphys/pymedphys"
-   class="headerbtn"
-   data-toggle="tooltip"
-data-placement="left"
-title="Source repository"
->
-  
+`);
+</script>
 
-<span class="headerbtn__icon-container">
-  <i class="fab fa-github"></i>
-  </span>
-<span class="headerbtn__text-container">repository</span>
-</a>
-
-      </li>
-      
-      <li>
-        <a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2FREADME.html&body=Your%20issue%20content%20here."
-   class="headerbtn"
-   data-toggle="tooltip"
-data-placement="left"
-title="Open an issue"
->
-  
-
-<span class="headerbtn__icon-container">
-  <i class="fas fa-lightbulb"></i>
-  </span>
-<span class="headerbtn__text-container">open issue</span>
-</a>
-
-      </li>
-      
-      <li>
-        <a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/README.rst"
-   class="headerbtn"
-   data-toggle="tooltip"
-data-placement="left"
-title="Edit this page"
->
-  
-
-<span class="headerbtn__icon-container">
-  <i class="fas fa-pencil-alt"></i>
-  </span>
-<span class="headerbtn__text-container">suggest edit</span>
-</a>
-
-      </li>
-      
-    </ul>
-  </div>
-</div>
-
-<div class="menu-dropdown menu-dropdown-download-buttons">
-  <button class="headerbtn menu-dropdown__trigger"
-      aria-label="Download this page">
-      <i class="fas fa-download"></i>
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
   </button>
-  <div class="menu-dropdown__content">
-    <ul>
-      <li>
-        <a href="_sources/README.rst"
-   class="headerbtn"
-   data-toggle="tooltip"
-data-placement="left"
-title="Download source file"
->
-  
-
-<span class="headerbtn__icon-container">
-  <i class="fas fa-file"></i>
-  </span>
-<span class="headerbtn__text-container">.rst</span>
-</a>
-
-      </li>
-      
-      <li>
-        
-<button onclick="printPdf(this)"
-  class="headerbtn"
-  data-toggle="tooltip"
-data-placement="left"
-title="Print to PDF"
->
-  
-
-<span class="headerbtn__icon-container">
-  <i class="fas fa-file-pdf"></i>
-  </span>
-<span class="headerbtn__text-container">.pdf</span>
-</button>
-
-      </li>
-      
-    </ul>
-  </div>
-</div>
-<label for="__page-toc"
-  class="headerbtn headerbtn-page-toc"
-  
->
-  
-
-<span class="headerbtn__icon-container">
-  <i class="fas fa-list"></i>
-  </span>
-
+`);
+</script>
+<label class="sidebar-toggle secondary-toggle btn btn-sm" for="__secondary"title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
 </label>
-
+</div></div>
+      
     </div>
+  
 </div>
-
-<!-- Table of contents -->
-<div class="col-md-3 bd-toc show noprint">
-    <div class="tocsection onthispage pt-5 pb-3">
-        <i class="fas fa-list"></i> Contents
-    </div>
-    <nav id="bd-toc-nav" aria-label="Page">
-        <ul class="visible nav section-nav flex-column">
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#">
-   What is PyMedPhys?
-  </a>
-  <ul class="visible nav section-nav flex-column">
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#beta-level-of-development">
-     Beta level of development
-    </a>
-   </li>
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#community">
-     Community
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#documentation">
-   Documentation
-  </a>
- </li>
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#development">
-   Development
-  </a>
- </li>
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#our-team">
-   Our Team
-  </a>
-  <ul class="visible nav section-nav flex-column">
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#maintainers">
-     Maintainers
-    </a>
-   </li>
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#active-contributors">
-     Active contributors
-    </a>
-   </li>
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#past-contributors">
-     Past contributors
-    </a>
-   </li>
-  </ul>
- </li>
-</ul>
-
-    </nav>
 </div>
-    </div>
-    <div class="article row">
-        <div class="col pl-md-3 pl-lg-5 content-container">
-            <!-- Table of contents that is only displayed when printing the page -->
-            <div id="jb-print-docs-body" class="onlyprint">
-                <h1>What is PyMedPhys?</h1>
-                <!-- Table of contents -->
-                <div id="print-main-content">
-                    <div id="jb-print-toc">
-                        
-                        <div>
-                            <h2> Contents </h2>
-                        </div>
-                        <nav aria-label="Page">
-                            <ul class="visible nav section-nav flex-column">
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#">
-   What is PyMedPhys?
-  </a>
-  <ul class="visible nav section-nav flex-column">
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#beta-level-of-development">
-     Beta level of development
-    </a>
-   </li>
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#community">
-     Community
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#documentation">
-   Documentation
-  </a>
- </li>
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#development">
-   Development
-  </a>
- </li>
- <li class="toc-h1 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#our-team">
-   Our Team
-  </a>
-  <ul class="visible nav section-nav flex-column">
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#maintainers">
-     Maintainers
-    </a>
-   </li>
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#active-contributors">
-     Active contributors
-    </a>
-   </li>
-   <li class="toc-h2 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#past-contributors">
-     Past contributors
-    </a>
-   </li>
-  </ul>
- </li>
-</ul>
+              
+              
 
-                        </nav>
-                    </div>
-                </div>
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>What is PyMedPhys?</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
             </div>
-            <main id="main-content" role="main">
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">What is PyMedPhys?</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#beta-level-of-development">Beta level of development</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#community">Community</a></li>
+</ul>
+</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation">Documentation</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#development">Development</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#our-team">Our Team</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maintainers">Maintainers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#active-contributors">Active contributors</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#past-contributors">Past contributors</a></li>
+</ul>
+</li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
                 
-              <div>
-                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
   <p><a class="reference external" href="https://docs.pymedphys.com/"><img alt="logo" src="https://github.com/pymedphys/pymedphys/raw/ca501275227f190a77e641a75af925d9070952b6/lib/pymedphys/docs/_static/pymedphys_title.svg" /></a></p>
 <p><strong>A community effort to develop an open standard library for Medical Physics
 in Python. We build high quality, transparent software together via peer review
 and open source distribution. Open code is better science.</strong></p>
-<p><a class="reference external" href="https://github.com/pymedphys/pymedphys/actions?query=branch%3Amain"><img alt="build" src="https://img.shields.io/github/workflow/status/pymedphys/pymedphys/Library" /></a> <a class="reference external" href="https://pypi.org/project/pymedphys/"><img alt="pypi" src="https://img.shields.io/pypi/v/pymedphys" /></a> <a class="reference external" href="https://pypi.org/project/pymedphys/"><img alt="python" src="https://img.shields.io/pypi/pyversions/pymedphys" /></a> <a class="reference external" href="https://choosealicense.com/licenses/apache-2.0/"><img alt="license" src="https://img.shields.io/pypi/l/pymedphys" /></a></p>
+<p><a class="reference external" href="https://github.com/pymedphys/pymedphys/actions?query=branch%3Amain"><img alt="build" src="https://img.shields.io/github/actions/workflow/status/pymedphys/pymedphys/library.yml?branch=main" /></a> <a class="reference external" href="https://pypi.org/project/pymedphys/"><img alt="pypi" src="https://img.shields.io/pypi/v/pymedphys" /></a> <a class="reference external" href="https://pypi.org/project/pymedphys/"><img alt="python" src="https://img.shields.io/pypi/pyversions/pymedphys" /></a> <a class="reference external" href="https://choosealicense.com/licenses/apache-2.0/"><img alt="license" src="https://img.shields.io/pypi/l/pymedphys" /></a></p>
 <section id="what-is-pymedphys">
-<h1>What is PyMedPhys?<a class="headerlink" href="#what-is-pymedphys" title="Permalink to this headline">#</a></h1>
+<h1>What is PyMedPhys?<a class="headerlink" href="#what-is-pymedphys" title="Permalink to this heading">#</a></h1>
 <p>PyMedPhys is an open-source Medical Physics python library built by an open
 community that values and prioritises code sharing, review, improvement, and
 learning from each other. It is inspired by the collaborative work of our
@@ -829,7 +498,7 @@ PyMedPhys: A community effort to develop an open, Python-based standard
 library for medical physics applications. Journal of Open Source Software,
 7(78), 4555, https://doi.org/10.21105/joss.04555</em></p>
 <section id="beta-level-of-development">
-<h2>Beta level of development<a class="headerlink" href="#beta-level-of-development" title="Permalink to this headline">#</a></h2>
+<h2>Beta level of development<a class="headerlink" href="#beta-level-of-development" title="Permalink to this heading">#</a></h2>
 <p>PyMedPhys is currently within the <code class="docutils literal notranslate"><span class="pre">beta</span></code> stage of its life-cycle. It will
 stay in this stage until the version number leaves <code class="docutils literal notranslate"><span class="pre">0.x.x</span></code> and enters
 <code class="docutils literal notranslate"><span class="pre">1.x.x</span></code>. While PyMedPhys is in <code class="docutils literal notranslate"><span class="pre">beta</span></code> stage, <strong>no API is guaranteed to be
@@ -841,7 +510,7 @@ this by providing details of any breaking changes from one release to the next
 within the <a class="reference external" href="./CHANGELOG.md">Release Notes</a>.</p>
 </section>
 <section id="community">
-<h2>Community<a class="headerlink" href="#community" title="Permalink to this headline">#</a></h2>
+<h2>Community<a class="headerlink" href="#community" title="Permalink to this heading">#</a></h2>
 <p>PyMedPhys has a <a class="reference external" href="https://pymedphys.discourse.group/">Discourse community</a>
 to both help you find your feet using PyMedPhys and to facilitate collaboration
 and general discussion. Please reach out over there and we’d love to get to
@@ -849,9 +518,9 @@ know you!</p>
 </section>
 </section>
 <section id="documentation">
-<h1>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">#</a></h1>
+<h1>Documentation<a class="headerlink" href="#documentation" title="Permalink to this heading">#</a></h1>
 <p>PyMedPhys can be installed with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install pymedphys<span class="o">[</span>user<span class="o">]</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>pymedphys<span class="o">[</span>user<span class="o">]</span>
 </pre></div>
 </div>
 <p>Further user installation instructions can be found in the <a class="reference external" href="https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html">Quick Start Guide</a>.</p>
@@ -868,24 +537,24 @@ and some <a class="reference external" href="https://docs.pymedphys.com/en/lates
 </ol>
 </section>
 <section id="development">
-<h1>Development<a class="headerlink" href="#development" title="Permalink to this headline">#</a></h1>
+<h1>Development<a class="headerlink" href="#development" title="Permalink to this heading">#</a></h1>
 <p>The PyMedPhys project is managed using <a class="reference external" href="https://python-poetry.org/">Poetry</a>.</p>
 <p>After cloning the repository, install the PyMedPhys dependencies and set up pre-commit by running:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry install -E all
-poetry run pre-commit install
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry<span class="w"> </span>install<span class="w"> </span>-E<span class="w"> </span>all
+poetry<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>install
 </pre></div>
 </div>
 <p>Run automated tests with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry run pymedphys dev tests
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry<span class="w"> </span>run<span class="w"> </span>pymedphys<span class="w"> </span>dev<span class="w"> </span>tests
 </pre></div>
 </div>
 </section>
 <section id="our-team">
-<h1>Our Team<a class="headerlink" href="#our-team" title="Permalink to this headline">#</a></h1>
+<h1>Our Team<a class="headerlink" href="#our-team" title="Permalink to this heading">#</a></h1>
 <p>PyMedPhys is what it is today due to its maintainers and contributors, both
 past and present. Here is our team.</p>
 <section id="maintainers">
-<h2>Maintainers<a class="headerlink" href="#maintainers" title="Permalink to this headline">#</a></h2>
+<h2>Maintainers<a class="headerlink" href="#maintainers" title="Permalink to this heading">#</a></h2>
 <ul class="simple">
 <li><dl class="simple">
 <dt><a class="reference external" href="https://github.com/SimonBiggs">Simon Biggs</a></dt><dd><ul>
@@ -926,7 +595,7 @@ past and present. Here is our team.</p>
 <p><a class="reference external" href="https://radiotherapy.ai/"><img alt="rai" src="https://github.com/pymedphys/pymedphys/raw/286deacdea2b3af9322796d413d0da6e1d8935a9/logos/rai.png" /></a> <a class="reference external" href="https://github.com/sjswerdloff"><img alt="sjs" src="https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png" /></a> <a class="reference external" href="https://www.rah.sa.gov.au/"><img alt="rah" src="https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png" /></a></p>
 </section>
 <section id="active-contributors">
-<h2>Active contributors<a class="headerlink" href="#active-contributors" title="Permalink to this headline">#</a></h2>
+<h2>Active contributors<a class="headerlink" href="#active-contributors" title="Permalink to this heading">#</a></h2>
 <ul class="simple">
 <li><dl class="simple">
 <dt><a class="reference external" href="https://github.com/dg1an3">Derek Lane</a></dt><dd><ul>
@@ -976,7 +645,7 @@ past and present. Here is our team.</p>
 <p><a class="reference external" href="https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd"><img alt="uth" src="https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/UTHSA_logo.png" /></a></p>
 </section>
 <section id="past-contributors">
-<h2>Past contributors<a class="headerlink" href="#past-contributors" title="Permalink to this headline">#</a></h2>
+<h2>Past contributors<a class="headerlink" href="#past-contributors" title="Permalink to this heading">#</a></h2>
 <ul class="simple">
 <li><p><a class="reference external" href="https://github.com/matthewdeancooper">Matthew Cooper</a></p></li>
 <li><p><a class="reference external" href="https://github.com/peterg1t">Pedro Martinez</a></p></li>
@@ -1000,7 +669,7 @@ past and present. Here is our team.</p>
             mode: "python"
         },
         kernelOptions: {
-            kernelName: "python3",
+            name: "python3",
             path: "./."
         },
         predefinedOutput: true
@@ -1008,36 +677,100 @@ past and present. Here is our team.</p>
     </script>
     <script>kernelName = 'python3'</script>
 
-              </div>
+                </article>
               
-            </main>
-            <footer class="footer-article noprint">
-                
-    <!-- Previous / next buttons -->
-<div class='prev-next-area'>
+
+              
+              
+                <footer class="bd-footer-article">
+                  
+<div class="footer-article-items footer-article__inner">
+  
+    <div class="footer-article-item"><!-- Previous / next buttons -->
+<div class="prev-next-area">
+</div></div>
+  
 </div>
-            </footer>
-        </div>
-    </div>
-    <div class="footer-content row">
-        <footer class="col footer"><p>
+
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">What is PyMedPhys?</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#beta-level-of-development">Beta level of development</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#community">Community</a></li>
+</ul>
+</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation">Documentation</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#development">Development</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#our-team">Our Team</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maintainers">Maintainers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#active-contributors">Active contributors</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#past-contributors">Past contributors</a></li>
+</ul>
+</li>
+</ul>
+
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
   
-    By the PyMedPhys community<br/>
-  
-      &copy; Copyright 2018-2021.<br/>
-</p>
-        </footer>
-    </div>
+  <div class="footer-item">
     
+<p class="component-author">
+By the PyMedPhys community
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  <p class="copyright">
+    
+      © Copyright 2018-2021.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
 </div>
+          </footer>
+        
 
-
-      </div>
+      </main>
     </div>
+  </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+  <script src="_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
 
-
+  <footer class="bd-footer">
+  </footer>
   </body>
 </html>
