@@ -22,7 +22,6 @@ from pymedphys._vendor.patchlogging import apply_logging_patch
 from .dev import dev_cli
 from .dicom import dicom_cli
 from .experimental import experimental_cli
-from .gui import gui_cli
 from .icom import icom_cli
 from .trf import trf_cli
 from .zenodo import zenodo_cli
@@ -45,7 +44,6 @@ def define_parser():
     dev_cli(subparsers)
     zenodo_cli(subparsers)
     icom_cli(subparsers)
-    gui_cli(subparsers)
 
     # https://stackoverflow.com/a/20663028/3912576
     parser.add_argument(
