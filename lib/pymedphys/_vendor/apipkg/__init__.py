@@ -37,6 +37,7 @@ see https://pypi.python.org/pypi/apipkg
 
 (c) holger krekel, 2009 - MIT license
 """
+
 import os
 import sys
 from types import ModuleType
@@ -227,7 +228,6 @@ def AliasModule(modname, modpath, attrname=None):
             return "<AliasModule {!r} for {!r}>".format(modname, x)
 
         def __getattribute__(self, name):
-
             attribute_call = f"{modname}.{name}"
             if attribute_call in sys.modules.keys():
                 return sys.modules[attribute_call]

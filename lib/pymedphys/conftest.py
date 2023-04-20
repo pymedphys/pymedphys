@@ -97,7 +97,7 @@ def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
         or (
             config.getoption("--doctest-modules")
             and (
-                "_streamlit" in relative_path_list
+                "_gamma" in relative_path_list
                 or "tests" in relative_path_list
                 or "_imports" in relative_path_list
                 or "_experimental" in relative_path_list
