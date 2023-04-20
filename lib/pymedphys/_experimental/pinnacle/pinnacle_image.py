@@ -161,7 +161,7 @@ class PinnacleImage:
 
             self.logger.debug("Reading image data from: %s", path_image_header)
             self._image_header = {}
-            with open(path_image_header, "rt") as f:
+            with open(path_image_header) as f:
                 for line in f:
                     parts = line.split(" = ")
 

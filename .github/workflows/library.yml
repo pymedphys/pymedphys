@@ -73,7 +73,6 @@ jobs:
             "docs",
             "stackoverflow",
             "updates",
-            "cypress",
             "slow",
             "build",
             "pyright",
@@ -91,15 +90,11 @@ jobs:
             task: "pyright"
           - os: "windows"
             task: "propagate"
-          - os: "windows"
-            task: "cypress"
 
           - os: "macos"
             task: "stackoverflow"
           - os: "macos"
             task: "updates"
-          - os: "macos"
-            task: "cypress"
           - os: "macos"
             task: "slow"
           - os: "macos"
@@ -171,9 +166,9 @@ jobs:
           pip install --upgrade pip setuptools
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1.2.1
+        uses: snok/install-poetry@v1.3.3
         with:
-          version: 1.2.1
+          version: 1.4.2
           virtualenvs-create: true
 
       - name: Update PATH in Windows

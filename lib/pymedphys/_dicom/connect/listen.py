@@ -134,7 +134,7 @@ class DicomListener(DicomConnectBase):
         self.association_directory = series_dir
 
         filename = pathlib.Path(
-            "{0!s}.{1!s}.dcm".format(mode_prefix, dataset.SOPInstanceUID)
+            "{!s}.{!s}.dcm".format(mode_prefix, dataset.SOPInstanceUID)
         )
         filepath = series_dir.joinpath(filename)
 
@@ -183,7 +183,7 @@ class DicomListener(DicomConnectBase):
             status_ds.Status = 0x0000  # Success
 
             logging.info("DICOM object received: %s", filepath)
-        except IOError:
+        except OSError:
             logging.error("Could not write file to specified directory:")
             logging.error("    %s", filepath)
             logging.error(

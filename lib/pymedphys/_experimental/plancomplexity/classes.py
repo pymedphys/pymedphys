@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Fri Mar 13 14:16:40 2020
 
@@ -116,7 +115,7 @@ class ModulationComplexity(Metrics):
         print("Beginning Modulation Complexity Score calculation....")
 
     def __str__(self):
-        return str("str function to be coded later")
+        return "str function to be coded later"
 
     def calcAAV(self, left, right, beamName, y1, y2, indices):
         leafSepSum = 0
@@ -276,7 +275,7 @@ class BeamComplexity(Metrics):
     #            raise jawPositionError(self.jawData)
 
     def __str__(self):
-        return str("str function to be coded later")
+        return "str function to be coded later"
 
     def calcApertureIrregularity(self, indices, A, B, y1, y2):
         AASeg = self.calcApertureArea(indices, A, B, y1, y2)

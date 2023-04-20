@@ -262,7 +262,7 @@ def _path_to_module(filepath, library_path):
 def _get_file_imports(filepath, library_path, apipkg_name):
     relative_path = filepath.relative_to(library_path)
 
-    with open(filepath, "r") as file:
+    with open(filepath) as file:
         module_contents = file.read()
 
     parsed = ast.parse(module_contents)

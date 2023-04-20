@@ -47,7 +47,7 @@ from pymedphys._imports import yaml
 def pinn_to_dict(filename):
 
     result = None
-    with io.open(filename, "r", encoding="ISO-8859-1", errors="ignore") as fp:
+    with open(filename, encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
 
         # Split data into smaller chunks, if first line appears more than one
@@ -131,6 +131,6 @@ def convert_to_yaml(data):
 
 def pinn_to_yaml(filename):
 
-    with io.open(filename, "r", encoding="ISO-8859-1", errors="ignore") as fp:
+    with open(filename, encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
         return convert_to_yaml(data)

@@ -62,7 +62,7 @@ def tomo_sinogram_csv2pdf(file_name="./sinogram.csv", show=True, save=True):
         top=0.975,
     )
 
-    with open(file_name, "r") as csvfile:
+    with open(file_name) as csvfile:
 
         # PATIENT NAME & ID
         pat_name, pat_num = csvfile.readline().split("ID:")
@@ -90,7 +90,7 @@ def tomo_sinogram_csv2pdf(file_name="./sinogram.csv", show=True, save=True):
         _ = subplot.imshow(angle, cmap="gray")
         subplot.axes.get_xaxis().set_visible(False)
         subplot.axes.get_yaxis().set_visible(False)
-        subplot.set_title("{0:.0f} dg".format(7.06 * idx), fontsize=9)
+        subplot.set_title("{:.0f} dg".format(7.06 * idx), fontsize=9)
 
     if save:
         plt.savefig(join(dirname(file_name), document_id + " Sinogram.pdf"))
@@ -107,5 +107,5 @@ if __name__ == "__main__":
             os.getcwd(), "src", "pymedphys", "_labs", "paulking", "sinogram.csv"
         )
         tomo_sinogram_csv2pdf(test, show=True, save=True)
-    except IOError:
+    except OSError:
         print("No sinogram csv file.")
