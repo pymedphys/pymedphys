@@ -24,11 +24,13 @@ include = ["lib/pymedphys/docs/_build/html/**/*"]
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
 typing-extensions = "*"
+setuptools = "*"
 
 
 # ------- #
 # Library #
 # ------- #
+
 tqdm = { version = "*", optional = true }     # groups = ["user", "all", "tests", "docs"]
 attrs = { version = "*", optional = true }    # groups = ["user", "all"]
 watchdog = { version = "*", optional = true } # groups = ["user", "all"]

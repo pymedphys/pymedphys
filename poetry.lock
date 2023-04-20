@@ -3294,7 +3294,7 @@ name = "setuptools"
 version = "67.6.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "setuptools-67.6.1-py3-none-any.whl", hash = "sha256:e728ca814a823bf7bf60162daf9db95b93d532948c4c0bea762ce62f60189078"},
@@ -4321,4 +4321,4 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "imageio", "k
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "b5af091db31ccd7becf0a340909a67180a78f77fd305f823115812205be4f286"
+content-hash = "48d401d03e95d15b5053f34d2bdc8c7aa378af0e975e65b96439ea5341f7622d"
