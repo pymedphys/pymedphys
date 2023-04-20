@@ -24,12 +24,6 @@ SKIPPING_CONFIG = {
         "description": "mark test as using pydicom",
         "skip_otherwise": False,
     },
-    "pylinac": {
-        "options": ["--run-only-pylinac", "--pylinac"],
-        "help": "run only the tests that use pylinac",
-        "description": "mark test as using pylinac",
-        "skip_otherwise": False,
-    },
     "mosaiqdb": {
         "options": ["--run-only-mosaiqdb", "--mosaiqdb"],
         "help": "run only the tests that use mosaiq db",

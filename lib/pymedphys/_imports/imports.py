@@ -32,8 +32,6 @@ import watchdog
 import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
-import xlsxwriter
-import xlsxwriter.worksheet
 import xmltodict
 import yaml
 
@@ -51,8 +49,6 @@ import mpl_toolkits.mplot3d.art3d
 import numpy
 import pandas
 import PIL
-import plotly
-import plotly.express
 import scipy
 import scipy.interpolate
 import scipy.ndimage
@@ -97,8 +93,6 @@ import pydicom.filereader
 import pydicom.sequence
 import pydicom.tag
 import pydicom.uid
-import pylinac
-import pylinac.winston_lutz
 import pynetdicom
 import pynetdicom.sop_class
 import pynetdicom.status
