@@ -35,8 +35,8 @@ watchdog = { version = "*", optional = true } # groups = ["user", "all"]
 
 keyring = { version = "*", optional = true }         # groups = ["user", "all"]
 packaging = { version = "*", optional = true }       # groups = ["user", "all"]
+PyYAML = { version = "*", optional = true }          # groups = ["user", "all"]
 requests = { version = "*", optional = true }        # groups = ["user", "all"]
-PyYaml = { version = "*", optional = true }        # groups = ["user", "all"]
 python-dateutil = { version = "*", optional = true } # groups = ["user", "all", "tests"]
 
 matplotlib = { version = "*", optional = true } # groups = ["user", "all", "docs"]
@@ -130,7 +130,7 @@ tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "
 [tool.poetry.extras]
 all = [
     "Pillow",
-    "PyYaml",
+    "PyYAML",
     "astroid",
     "attrs",
     "black",
@@ -214,7 +214,7 @@ tests = [
 ]
 user = [
     "Pillow",
-    "PyYaml",
+    "PyYAML",
     "attrs",
     "dbfread",
     "dicompyler-core",
