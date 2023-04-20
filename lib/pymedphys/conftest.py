@@ -30,6 +30,12 @@ SKIPPING_CONFIG = {
         "description": "mark test as using mosaiq db",
         "skip_otherwise": True,
     },
+    "all": {
+        "options": ["--run-all-tests", "--all"],
+        "help": "run all tests",
+        "description": "run all tests that would normally be skipped",
+        "skip_otherwise": False,
+    },
 }
 
 
@@ -48,6 +54,10 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
+    for option in SKIPPING_CONFIG["all"]["options"]:
+        if config.getoption(option):
+            return
+
     for key, skip_item in SKIPPING_CONFIG.items():
         this_option_set = False
         provided_option = ""
