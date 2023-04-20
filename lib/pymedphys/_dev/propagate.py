@@ -32,12 +32,12 @@ VERSION_PATH = LIBRARY_PATH.joinpath("_version.py")
 REQUIREMENTS_CONFIG = (
     # Extras | Filename | Include PyMedPhys | Make it an editable dev install
     (["user"], "requirements.txt", True, False),
-    (["all"], "requirements-all.txt", True, True),
-    (["user", "tests"], "requirements-deploy.txt", False, None),
-    (["icom"], "requirements-icom.txt", False, None),
-    (["cli"], "requirements-cli.txt", False, None),
-    (["tests"], "requirements-tests.txt", False, None),
-    (["docs"], "requirements-docs.txt", True, True),
+    # (["all"], "requirements-all.txt", True, True),
+    # (["user", "tests"], "requirements-deploy.txt", False, None),
+    # (["icom"], "requirements-icom.txt", False, None),
+    # (["cli"], "requirements-cli.txt", False, None),
+    # (["tests"], "requirements-tests.txt", False, None),
+    # (["docs"], "requirements-docs.txt", True, True),
 )
 
 AUTOGEN_MESSAGE = [
