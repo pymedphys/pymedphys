@@ -68,10 +68,6 @@ jobs:
           version: 1.4.2
           virtualenvs-create: true
 
-      - name: Configure Poetry to not use experimental installer
-        run: |
-          poetry config experimental.new-installer false
-
       # -----------------------------------------------------------------------------
 
       # Set up Poetry

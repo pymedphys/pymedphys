@@ -14,7 +14,6 @@
 
 
 from .pinnacle import pinnacle_cli
-from .quickcheck import quickcheck_cli
 
 
 def experimental_cli(subparsers):
@@ -24,6 +23,5 @@ def experimental_cli(subparsers):
     experimental_subparsers = experimental_parser.add_subparsers(dest="experimental")
 
     pinnacle_cli(experimental_subparsers)
-    quickcheck_cli(experimental_subparsers)
 
     return experimental_parser
