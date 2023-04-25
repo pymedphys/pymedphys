@@ -133,7 +133,7 @@ class QuickCheck:
         if data_split[0] == "MEASGET":
             #  MD section:__________________________________________________________
             MD = re.findall(r"MD=\[(.*?)\]", self.data)[0]
-            m["MD_ID"] = np.int(re.findall(r"ID=(.*?);", MD)[0])
+            m["MD_ID"] = int(re.findall(r"ID=(.*?);", MD)[0])
             meas_date = re.findall(r"Date=(.*?);", MD)[0]
             m["MD_Date"] = datetime.datetime.strptime(meas_date, "%Y-%m-%d").date()
             meas_time = re.findall(r"Time=(.*?)$", MD)[0]
@@ -161,50 +161,48 @@ class QuickCheck:
                 "MV_ExpTime": "ExpTime=(.*?)$",
             }
             for key, pattern in regex_map.items():
-                m[key] = np.float(re.findall(pattern, str_val)[0])
+                m[key] = float(re.findall(pattern, str_val)[0])
 
             #  AV section:__________________________________________________________
             AV = re.findall(r"AV=\[(.*?)\]\]", self.data)[0]
             AV = AV + "]"  # add last character ]
             for s in ("CAX", "FLAT", "SYMGT", "SYMLR", "BQF", "We"):
                 str_val = re.findall(s + r"=\[(.*?)\]", AV)[0]
-                m["AV_" + s + "_Min"] = np.float(re.findall("Min=(.*?);", str_val)[0])
-                m["AV_" + s + "_Max"] = np.float(re.findall("Max=(.*?);", str_val)[0])
-                m["AV_" + s + "_Target"] = np.float(
+                m["AV_" + s + "_Min"] = float(re.findall("Min=(.*?);", str_val)[0])
+                m["AV_" + s + "_Max"] = float(re.findall("Max=(.*?);", str_val)[0])
+                m["AV_" + s + "_Target"] = float(
                     re.findall("Target=(.*?);", str_val)[0]
                 )
-                m["AV_" + s + "_Norm"] = np.float(re.findall("Norm=(.*?);", str_val)[0])
-                m["AV_" + s + "_Value"] = np.float(
-                    re.findall("Value=(.*?);", str_val)[0]
-                )
-                m["AV_" + s + "_Valid"] = np.int(re.findall("Valid=(.*?)$", str_val)[0])
+                m["AV_" + s + "_Norm"] = float(re.findall("Norm=(.*?);", str_val)[0])
+                m["AV_" + s + "_Value"] = float(re.findall("Value=(.*?);", str_val)[0])
+                m["AV_" + s + "_Valid"] = int(re.findall("Valid=(.*?)$", str_val)[0])
 
             #  WORK section:__________________________________________________________
             str_val = re.findall(r"WORK=\[(.*?)\]", self.data)[0]
 
-            m["WORK_ID"] = np.int(re.findall("ID=(.*?);", str_val)[0])
+            m["WORK_ID"] = int(re.findall("ID=(.*?);", str_val)[0])
             m["WORK_Name"] = re.findall("Name=(.*?)$", str_val)[0]
 
             #  TASK section:__________________________________________________________
             str_val = re.findall(r"TASK=\[(.*?)\];MV", self.data)[0]
-            m["TASK_ID"] = np.int(re.findall(r"ID=(.*?);", str_val)[0])
+            m["TASK_ID"] = int(re.findall(r"ID=(.*?);", str_val)[0])
             m["TASK_TUnit"] = re.findall(r"TUnit=(.*?);", str_val)[0]
-            m["TASK_En"] = np.int(re.findall(r"En=(.*?);", str_val)[0])
+            m["TASK_En"] = int(re.findall(r"En=(.*?);", str_val)[0])
             m["TASK_Mod"] = re.findall(r"Mod=(.*?);", str_val)[0]
             m["TASK_Fs"] = re.findall(r"Fs=(.*?);", str_val)[0]
-            m["TASK_SSD"] = np.int(re.findall(r"SDD=(.*?);", str_val)[0])
-            m["TASK_Ga"] = np.int(re.findall(r"Ga=(.*?);", str_val)[0])
-            m["TASK_We"] = np.int(re.findall(r"We=(.*?);", str_val)[0])
-            m["TASK_MU"] = np.int(re.findall(r"MU=(.*?);", str_val)[0])
-            m["TASK_My"] = np.float(re.findall(r"My=(.*?);", str_val)[0])
+            m["TASK_SSD"] = int(re.findall(r"SDD=(.*?);", str_val)[0])
+            m["TASK_Ga"] = int(re.findall(r"Ga=(.*?);", str_val)[0])
+            m["TASK_We"] = int(re.findall(r"We=(.*?);", str_val)[0])
+            m["TASK_MU"] = int(re.findall(r"MU=(.*?);", str_val)[0])
+            m["TASK_My"] = float(re.findall(r"My=(.*?);", str_val)[0])
             m["TASK_Info"] = re.findall(r"Info=(.*?)$", str_val)[0]
 
             str_val = re.findall(r"Prot=\[(.*?)\];", str_val)[0]
             m["TASK_Prot_Name"] = re.findall(r"Name=(.*?);", str_val)[0]
-            m["TASK_Prot_Flat"] = np.int(re.findall(r"Flat=(.*?);", str_val)[0])
-            m["TASK_Prot_Sym"] = np.int(re.findall(r"Sym=(.*?)$", str_val)[0])
+            m["TASK_Prot_Flat"] = int(re.findall(r"Flat=(.*?);", str_val)[0])
+            m["TASK_Prot_Sym"] = int(re.findall(r"Sym=(.*?)$", str_val)[0])
         elif data_split[0] == "MEASCNT":
-            m[data_split[0]] = np.int(data_split[1:][0])
+            m[data_split[0]] = int(data_split[1:][0])
         elif data_split[0] in ("PTW", "SER", "KEY"):
             m[data_split[0]] = data_split[1:]
         return m
