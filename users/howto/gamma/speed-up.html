@@ -213,6 +213,7 @@ const thebe_selector_output = ".output, .cell_output"
 <li class="toctree-l3"><a class="reference internal" href="../../ref/cli/trf.html">Elekta Binary Logfiles</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/cli/icom.html">iCom listener</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/cli/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../ref/cli/pseudonymisation.html">Pseudonymisation Tool</a></li>
 </ul>
 </li>
 </ul>
@@ -737,8 +738,8 @@ Dose threshold: 0.0195 Gy
 <div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Complete!
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 2.59 s, sys: 805 ms, total: 3.4 s
-Wall time: 3.28 s
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 2.18 s, sys: 712 ms, total: 2.89 s
+Wall time: 2.76 s
 </pre></div>
 </div>
 </div>
@@ -875,8 +876,8 @@ Wall time: 3.28 s
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 557 ms, sys: 64.2 ms, total: 622 ms
-Wall time: 621 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 474 ms, sys: 75.7 ms, total: 550 ms
+Wall time: 550 ms
 </pre></div>
 </div>
 </div>
@@ -913,8 +914,8 @@ Wall time: 621 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 361 ms, sys: 8.1 ms, total: 369 ms
-Wall time: 369 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 315 ms, sys: 7.84 ms, total: 322 ms
+Wall time: 323 ms
 </pre></div>
 </div>
 </div>
@@ -952,8 +953,8 @@ Wall time: 369 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 307 ms, sys: 238 µs, total: 307 ms
-Wall time: 307 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 273 ms, sys: 7.91 ms, total: 281 ms
+Wall time: 281 ms
 </pre></div>
 </div>
 </div>
@@ -971,7 +972,7 @@ Wall time: 307 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/7dec1fbeb2a8123d2e3ce43bd1ea7e6076851aed0a515860da504cd716de4db5.png" src="../../../_images/7dec1fbeb2a8123d2e3ce43bd1ea7e6076851aed0a515860da504cd716de4db5.png" />
+<img alt="../../../_images/d259e175ac91d37bced450fc73096429a084acb8c03b876f4ea49305600823dc.png" src="../../../_images/d259e175ac91d37bced450fc73096429a084acb8c03b876f4ea49305600823dc.png" />
 </div>
 </div>
 <p>As you can see, the computation time decreased and, despite the the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> function sampled one 10th of the points, the pass rate deviates by less than 1% from the true value. Therefore, you can use <code>random_subset</code> to get a sense of what could be the pass rate of the dose distributions you are assessing.</p>

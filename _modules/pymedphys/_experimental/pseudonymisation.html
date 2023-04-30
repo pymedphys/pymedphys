@@ -210,6 +210,7 @@ const thebe_selector_output = ".output, .cell_output"
 <li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/trf.html">Elekta Binary Logfiles</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/icom.html">iCom listener</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/pseudonymisation.html">Pseudonymisation Tool</a></li>
 </ul>
 </li>
 </ul>
@@ -474,12 +475,11 @@ document.write(`
     <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="n">anon_strategy</span><span class="o">.</span><span class="n">ANONYMISATION_HARDCODE_DISPATCH</span>
     <span class="n">identifying_keywords_for_pseudo</span> <span class="o">=</span> <span class="n">get_default_identifying_keywords</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pseudo</span><span class="p">:</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Was run with pseudo!&quot;</span><span class="p">)</span>
-        <span class="n">identifying_keywords_for_pseudo</span> <span class="o">=</span> <span class="n">get_default_pseudonymisation_keywords</span><span class="p">()</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using pseudonymisation keywords&quot;</span><span class="p">)</span>
-        <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">pseudonymisation_dispatch</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using pseudonymisation strategy&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Pseudonymisation called!&quot;</span><span class="p">)</span>
+    <span class="n">identifying_keywords_for_pseudo</span> <span class="o">=</span> <span class="n">get_default_pseudonymisation_keywords</span><span class="p">()</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using pseudonymisation keywords&quot;</span><span class="p">)</span>
+    <span class="n">replacement_strategy</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">pseudonymisation_dispatch</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using pseudonymisation strategy&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">isfile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input_path</span><span class="p">):</span>
         <span class="n">anonymise_file</span><span class="p">(</span>

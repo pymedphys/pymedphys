@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
-    <title>Tunnels &#8212; PyMedPhys</title>
+    <title>Pseudonymisation Tool &#8212; PyMedPhys</title>
   
   
   
@@ -70,13 +70,13 @@ const thebe_selector_input = "pre"
 const thebe_selector_output = ".output, .cell_output"
 </script>
     <script async="async" src="../../../_static/sphinx-thebe.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'users/howto/tunnels/index';</script>
-    <link rel="canonical" href="https://docs.pymedphys.com/users/howto/tunnels/index.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = 'users/ref/cli/pseudonymisation';</script>
+    <link rel="canonical" href="https://docs.pymedphys.com/users/ref/cli/pseudonymisation.html" />
     <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
-    <link rel="next" title="SAMBA SSH Tunnelling" href="samba.html" />
-    <link rel="prev" title="Adding a Linac" href="../add-a-linac.html" />
+    <link rel="next" title="Overview" href="../../../contrib/index.html" />
+    <link rel="prev" title="Pinnacle Export Tool" href="pinnacle.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -171,18 +171,18 @@ const thebe_selector_output = ".output, .cell_output"
 <li class="toctree-l2"><a class="reference internal" href="../../get-started/cli.html">Using the CLI</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">How-to Guides</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
-<li class="toctree-l2 has-children"><a class="reference internal" href="../gamma/index.html">Gamma</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../gamma/speed-up.html">Speeding up gamma calculations</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../gamma/1D-from-csv.html">Gamma from 1D ASCII data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../gamma/effect-of-noise.html">The Effects of Noise on Gamma</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../gamma/from-dicom.html">Gamma from DICOM</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../howto/index.html">How-to Guides</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../howto/gamma/index.html">Gamma</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/speed-up.html">Speeding up gamma calculations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/1D-from-csv.html">Gamma from 1D ASCII data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/effect-of-noise.html">The Effects of Noise on Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/from-dicom.html">Gamma from DICOM</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../add-a-linac.html">Adding a Linac</a></li>
-<li class="toctree-l2 current active has-children"><a class="current reference internal" href="#">Tunnels</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="samba.html">SAMBA SSH Tunnelling</a></li>
-<li class="toctree-l3"><a class="reference internal" href="rsync.html">Backups using rsync</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/add-a-linac.html">Adding a Linac</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../howto/tunnels/index.html">Tunnels</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/tunnels/samba.html">SAMBA SSH Tunnelling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/tunnels/rsync.html">Backups using rsync</a></li>
 </ul>
 </li>
 </ul>
@@ -192,28 +192,28 @@ const thebe_selector_output = ".output, .cell_output"
 <li class="toctree-l2"><a class="reference internal" href="../../background/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../ref/index.html">Technical Reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../ref/lib/index.html">Library Reference</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">Technical Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../lib/index.html">Library Reference</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Alphabetical Index</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/dicom.html">DICOM</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/gamma.html">Gamma</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/mosaiq.html">Mosaiq</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/metersetmap.html">MetersetMap</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/trf.html">TRF</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/electronfactors.html">Electron Cutout Factors</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../ref/lib/experimental/index.html">Experimental Modules</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../ref/lib/experimental/pinnacle.html">Pinnacle Export Tool</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../ref/lib/experimental/pseudonymisation.html">Pseudonymisation Tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../lib/dicom.html">DICOM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../lib/gamma.html">Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../lib/mosaiq.html">Mosaiq</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../lib/metersetmap.html">MetersetMap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../lib/trf.html">TRF</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../lib/electronfactors.html">Electron Cutout Factors</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../lib/experimental/index.html">Experimental Modules</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../lib/experimental/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lib/experimental/pseudonymisation.html">Pseudonymisation Tool</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../ref/cli/index.html">CLI Reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/cli/dicom.html">DICOM Files</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/cli/trf.html">Elekta Binary Logfiles</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/cli/icom.html">iCom listener</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/cli/pinnacle.html">Pinnacle Export Tool</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../ref/cli/pseudonymisation.html">Pseudonymisation Tool</a></li>
+<li class="toctree-l2 current active has-children"><a class="reference internal" href="index.html">CLI Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="dicom.html">DICOM Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="trf.html">Elekta Binary Logfiles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="icom.html">iCom listener</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l3 current active"><a class="current reference internal" href="#">Pseudonymisation Tool</a></li>
 </ul>
 </li>
 </ul>
@@ -315,7 +315,7 @@ const thebe_selector_output = ".output, .cell_output"
       
       
       
-      <li><a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/users/howto/tunnels/index.md" target="_blank"
+      <li><a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/users/ref/cli/pseudonymisation.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -332,7 +332,7 @@ const thebe_selector_output = ".output, .cell_output"
       
       
       
-      <li><a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fusers/howto/tunnels/index.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fusers/ref/cli/pseudonymisation.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -362,7 +362,7 @@ const thebe_selector_output = ".output, .cell_output"
       
       
       
-      <li><a href="../../../_sources/users/howto/tunnels/index.md" target="_blank"
+      <li><a href="../../../_sources/users/ref/cli/pseudonymisation.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -372,7 +372,7 @@ const thebe_selector_output = ".output, .cell_output"
 <span class="btn__icon-container">
   <i class="fas fa-file"></i>
   </span>
-<span class="btn__text-container">.md</span>
+<span class="btn__text-container">.rst</span>
 </a>
 </li>
       
@@ -444,7 +444,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Tunnels</h1>
+    <h1>Pseudonymisation Tool</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -454,9 +454,8 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#background">Background</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#index">Index</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#positional-arguments">Positional Arguments</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#named-arguments">Named Arguments</a></li>
 </ul>
             </nav>
         </div>
@@ -468,33 +467,59 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article" role="main">
                   
-  <section id="tunnels">
-<h1>Tunnels<a class="headerlink" href="#tunnels" title="Permalink to this heading">#</a></h1>
-<section id="background">
-<h2>Background<a class="headerlink" href="#background" title="Permalink to this heading">#</a></h2>
-<p>At Cancer Care Associates PyMedPhys is deployed for use across multiple sites.
-These sites need to all have access to the PyMedPhys Streamlit web server, and
-in return data from each site needs to be able to be accessible to that very
-same server. All of these communications between sites is handled via the
-encrypted port forwarding capacity afforded by SSH tunnelling.</p>
-</section>
-<section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">#</a></h2>
-<p>These tunnel documents detail various how-to guides on how to achieve
-individual components of this set up. These documents are not strictly
-PyMedPhys specific, but they do detail how this multi-site deployment has been
-achieved. As such, they are published here in the hope that they may be useful
-to other system administrators who wish to deploy either PyMedPhys or similar
-across their own network of centres.</p>
-</section>
-<section id="index">
-<h2>Index<a class="headerlink" href="#index" title="Permalink to this heading">#</a></h2>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="samba.html">SAMBA SSH Tunnelling</a></li>
-<li class="toctree-l1"><a class="reference internal" href="rsync.html">Backups using rsync</a></li>
-</ul>
+  <section id="module-pymedphys.cli.experimental.dicom">
+<span id="pseudonymisation-tool"></span><h1>Pseudonymisation Tool<a class="headerlink" href="#module-pymedphys.cli.experimental.dicom" title="Permalink to this heading">#</a></h1>
+<p>Experimental command line DICOM tools.</p>
+<p>If you wish to utilise standard anonymisation, please instead use <cite>pymedphys dicom anonymise</cite>
+as opposed to <cite>pymedphys experimental dicom pseudonymise</cite>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pymedphys</span> <span class="n">experimental</span> <span class="n">dicom</span> <span class="n">pseudonymise</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT_PATH</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span>
+                                                 <span class="p">[</span><span class="o">-</span><span class="n">f</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">c</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">k</span> <span class="p">[</span><span class="n">KEYWORD</span> <span class="o">...</span><span class="p">]]</span>
+                                                 <span class="p">[</span><span class="o">-</span><span class="n">p</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">u</span> <span class="o">|</span> <span class="o">-</span><span class="n">i</span><span class="p">]</span>
+                                                 <span class="n">input_path</span>
+</pre></div>
 </div>
+<section id="positional-arguments">
+<h2>Positional Arguments<a class="headerlink" href="#positional-arguments" title="Permalink to this heading">#</a></h2>
+<dl class="option-list">
+<dt><kbd>input_path</kbd></dt>
+<dd><p>Input file or directory path. If a directory is supplied, all DICOM files within the directory and its subdirectories will be pseudonymised</p>
+</dd>
+</dl>
+</section>
+<section id="named-arguments">
+<h2>Named Arguments<a class="headerlink" href="#named-arguments" title="Permalink to this heading">#</a></h2>
+<dl class="option-list">
+<dt><kbd>-o, --output_path</kbd></dt>
+<dd><p>Output file or directory path.</p>
+</dd>
+<dt><kbd>-d, --delete_original_files</kbd></dt>
+<dd><p>Use this flag to delete the original, non-pseudonymised files in the processed directory. Each original file will only be deleted if pseudonymisation completed successfully for that file.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-f, --preserve_filenames</kbd></dt>
+<dd><p>Use this flag to preserve the original filenames in the pseudonymised DICOM filenames. Note that ‘_Anonymised.dcm’ will still be appended. Use with caution, since DICOM filenames may contain identifying information</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-c, --clear_values</kbd></dt>
+<dd><p>Use this flag to simply clear the values of all of the identifying elements in the pseudonymised DICOM files, as opposed to replacing them with ‘dummy’ values.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-k, --keywords_to_leave_unchanged</kbd></dt>
+<dd><p>A space-separated list of DICOM keywords (e.g. ‘PatientName’) to exclude from pseudonymisation and error checking.</p>
+</dd>
+<dt><kbd>-p, --keep_private_tags</kbd></dt>
+<dd><p>Use this flag to preserve private tags in the pseudonymised DICOM files.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-u, --delete_unknown_tags</kbd></dt>
+<dd><p>Use this flag to delete any unrecognised tags from the pseudonymised DICOM files.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-i, --ignore_unknown_tags</kbd></dt>
+<dd><p>Use this flag to ignore any unrecognised tags in the pseudonymised DICOM files.</p>
+<p>Default: False</p>
+</dd>
+</dl>
 </section>
 </section>
 
@@ -511,7 +536,7 @@ across their own network of centres.</p>
         },
         kernelOptions: {
             name: "python3",
-            path: "./users/howto/tunnels"
+            path: "./users/ref/cli"
         },
         predefinedOutput: true
     }
@@ -530,20 +555,20 @@ across their own network of centres.</p>
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../add-a-linac.html"
+       href="pinnacle.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Adding a Linac</p>
+        <p class="prev-next-title">Pinnacle Export Tool</p>
       </div>
     </a>
     <a class="right-next"
-       href="samba.html"
+       href="../../../contrib/index.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">SAMBA SSH Tunnelling</p>
+        <p class="prev-next-title">Overview</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -565,9 +590,8 @@ across their own network of centres.</p>
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#background">Background</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#index">Index</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#positional-arguments">Positional Arguments</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#named-arguments">Named Arguments</a></li>
 </ul>
   </nav></div>
 
