@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from .dicom import dicom_cli
 from .pinnacle import pinnacle_cli
 
 
@@ -22,6 +23,7 @@ def experimental_cli(subparsers):
     )
     experimental_subparsers = experimental_parser.add_subparsers(dest="experimental")
 
+    dicom_cli(experimental_subparsers)
     pinnacle_cli(experimental_subparsers)
 
     return experimental_parser

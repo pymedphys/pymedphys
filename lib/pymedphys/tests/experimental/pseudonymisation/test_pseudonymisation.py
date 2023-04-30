@@ -264,16 +264,14 @@ def _test_pseudonymise_file_at_path(
         assert ds_pseudo["PatientID"].value not in ["", "Anonymous"]
 
 
-# Pseudonymise CLI is currently not being exposed. See https://github.com/pymedphys/pymedphys/issues/1793
-
-# @pytest.mark.slow
-# @pytest.mark.pydicom
-# @pytest.mark.skipif(
-#     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
-# )
-# def test_pseudonymise_cli(tmp_path):
-#     for test_file_path in get_test_filepaths():
-#         _test_pseudonymise_cli_for_file(tmp_path, test_file_path)
+@pytest.mark.slow
+@pytest.mark.pydicom
+@pytest.mark.skipif(
+    "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
+)
+def test_pseudonymise_cli(tmp_path):
+    for test_file_path in get_test_filepaths():
+        _test_pseudonymise_cli_for_file(tmp_path, test_file_path)
 
 
 def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
@@ -309,7 +307,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
 
         anon_file_command = (
             [pmp_test_utils.get_executable_even_when_embedded(), "-m"]
-            + "pymedphys --verbose experimental dicom anonymise --pseudo".split()
+            + "pymedphys --verbose experimental dicom pseudonymise".split()
             + [temp_filepath]
         )
         logging.info("Command line: %s", anon_file_command)
@@ -330,7 +328,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
 
         anon_dir_command = (
             [pmp_test_utils.get_executable_even_when_embedded(), "-m"]
-            + "pymedphys --verbose experimental dicom anonymise --pseudo".split()
+            + "pymedphys --verbose experimental dicom pseudonymise".split()
             + [str(tmp_path)]
         )
         try:
@@ -340,21 +338,8 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         finally:
             remove_file(temp_anon_filepath)
 
-        # Confirm "experimental" anonymisation without --pseudo doesn't fail badly
-        assert not is_anonymised_directory(tmp_path)
-        assert not exists(temp_anon_filepath)
-
-        anon_dir_command = (
-            [pmp_test_utils.get_executable_even_when_embedded(), "-m"]
-            + "pymedphys --verbose experimental dicom anonymise".split()
-            + [str(tmp_path)]
-        )
-        try:
-            subprocess.check_call(anon_dir_command)
-            # assert is_anonymised_file(temp_anon_filepath)
-            assert exists(temp_filepath)
-        finally:
-            remove_file(temp_anon_filepath)
+        # anonymisation is no longer experimental, and we are no longer using an argument to it
+        # So we longer need to confirm "experimental" anonymisation without --pseudo doesn't fail badly
 
     finally:
         remove_file(temp_filepath)
