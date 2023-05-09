@@ -77,7 +77,7 @@ def test_pinnacle_cli_output(data):
 
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
-            + "pymedphys experimental pinnacle export".split()
+            + "pymedphys pinnacle export".split()
             + [
                 "-o",
                 output_path,
@@ -109,7 +109,7 @@ def test_pinnacle_cli_list(data):
 
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
-            + "pymedphys experimental pinnacle export".split()
+            + "pymedphys pinnacle export".split()
             + ["-l", pinn_dir.as_posix()]
         )
 
@@ -134,7 +134,7 @@ def test_pinnacle_cli_missing_trial(data):
 
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
-            + "pymedphys experimental pinnacle export".split()
+            + "pymedphys pinnacle export".split()
             + ["-o", output_path, "-t", "nonexistenttrial", pinn_dir.as_posix()]
         )
 
@@ -154,7 +154,7 @@ def test_pinnacle_cli_skip_roi(data):
 
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
-            + "pymedphys experimental pinnacle export".split()
+            + "pymedphys pinnacle export".split()
             + [
                 "-o",
                 output_path,
