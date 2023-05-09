@@ -23,6 +23,7 @@ from .dev import dev_cli
 from .dicom import dicom_cli
 from .experimental import experimental_cli
 from .icom import icom_cli
+from .pinnacle import pinnacle_cli
 from .trf import trf_cli
 from .zenodo import zenodo_cli
 
@@ -40,6 +41,7 @@ def define_parser():
 
     dicom_cli(subparsers)
     experimental_cli(subparsers)
+    pinnacle_cli(subparsers)
     trf_cli(subparsers)
     dev_cli(subparsers)
     zenodo_cli(subparsers)
