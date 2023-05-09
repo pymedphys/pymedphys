@@ -41,6 +41,7 @@
 import logging
 import os
 import sys
+import warnings
 
 from .image import convert_image
 from .pinn_yaml import pinn_to_dict
@@ -66,6 +67,14 @@ class PinnacleExport:
     """
 
     def __init__(self, path, logger=None):
+
+        # Show a warning to ensure that this module is used with caution
+        warnings.warn(
+            "The Pinnacle Export Module is intended for research purposes only, "
+            "use with caution.",
+            category=UserWarning,
+            stacklevel=2,
+        )
 
         self._logger = logger  # Logger to use for all logging
 
