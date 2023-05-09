@@ -7,4 +7,4 @@ Pinnacle Export Tool
 .. argparse::
    :ref: pymedphys.cli.define_parser
    :prog: pymedphys
-   :path: experimental pinnacle
+   :path: pinnacle
