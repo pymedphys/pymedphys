@@ -1,7 +1,7 @@
 Pinnacle Export Tool
 ====================
 
-.. automodule:: pymedphys.cli.experimental.pinnacle
+.. automodule:: pymedphys.cli.pinnacle
     :no-members:
 
 .. argparse::
