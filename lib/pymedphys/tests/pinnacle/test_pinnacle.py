@@ -47,7 +47,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._data import download
-from pymedphys.experimental.pinnacle import PinnacleExport
+from pymedphys.pinnacle import PinnacleExport
 
 working_path = tempfile.mkdtemp()
 data_path = os.path.join(working_path, "data")

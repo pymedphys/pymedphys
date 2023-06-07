@@ -1,25 +1,25 @@
-# Copyright (C) 2019 South Western Sydney Local Health District,
-# University of New South Wales
+from pymedphys._vendor.deprecated import deprecated as _deprecated
+from pymedphys.pinnacle import PinnacleExport as _PinnacleExport
+from pymedphys.pinnacle import PinnacleImage as _PinnacleImage
+from pymedphys.pinnacle import PinnaclePlan as _PinnaclePlan
+from pymedphys.pinnacle import export_cli as _export_cli
 
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+_PinnacleExport.__name__ = "pymedphys.experimental.pinnacle.PinnacleExport"
+PinnacleExport = _deprecated(
+    reason="This has been replaced with `pymedphys.pinnacle.PinnacleExport`"
+)(_PinnacleExport)
 
-#     http://www.apache.org/licenses/LICENSE-2.0
+_export_cli.__name__ = "pymedphys.experimental.pinnacle.export_cli"
+export_cli = _deprecated(
+    reason="This has been replaced with `pymedphys.pinnacle.export_cli`"
+)(_export_cli)
 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+_PinnacleImage.__name__ = "pymedphys.experimental.pinnacle.PinnacleImage"
+PinnacleImage = _deprecated(
+    reason="This has been replaced with `pymedphys.pinnacle.PinnacleImage`"
+)(_PinnacleImage)
 
-
-"""A tool to export DICOM objects from raw Pinnacle data:
-
-.. include:: /messages/warning-pinnacle.rst
-
-"""
-
-# pylint: disable = unused-import
-
-from pymedphys._experimental.pinnacle import PinnacleExport, PinnacleImage, PinnaclePlan
+_PinnaclePlan.__name__ = "pymedphys.experimental.pinnacle.PinnaclePlan"
+PinnaclePlan = _deprecated(
+    reason="This has been replaced with `pymedphys.pinnacle.PinnaclePlan`"
+)(_PinnaclePlan)
