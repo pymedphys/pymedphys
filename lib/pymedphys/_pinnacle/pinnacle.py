@@ -70,8 +70,10 @@ class PinnacleExport:
 
         # Show a warning to ensure that this module is used with caution
         warnings.warn(
-            "The Pinnacle Export Module is intended for research purposes only, "
-            "use with caution.",
+            "The Pinnacle Export Module is intended for research purposes only. Parts "
+            "of the DICOM conversion are hard-coded and completely ignore your data. "
+            "This has proven useful for research applications but is not appropriate "
+            "for clinical use.",
             category=UserWarning,
             stacklevel=2,
         )
