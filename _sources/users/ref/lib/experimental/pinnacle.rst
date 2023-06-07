@@ -6,7 +6,7 @@ Pinnacle Export Tool
 Summary
 *******
 
-.. automodule:: pymedphys.experimental.pinnacle
+.. automodule:: pymedphys.pinnacle
     :no-members:
 
 
@@ -14,11 +14,11 @@ Summary
 API
 ***
 
-.. autoclass:: pymedphys.experimental.pinnacle.PinnacleExport
+.. autoclass:: pymedphys.pinnacle.PinnacleExport
    :members:
 
-.. autoclass:: pymedphys.experimental.pinnacle.PinnaclePlan
+.. autoclass:: pymedphys.pinnacle.PinnaclePlan
    :members:
 
-.. autoclass:: pymedphys.experimental.pinnacle.PinnacleImage
+.. autoclass:: pymedphys.pinnacle.PinnacleImage
    :members:
