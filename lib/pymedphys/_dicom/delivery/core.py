@@ -339,7 +339,7 @@ class DeliveryDicom(DeliveryBase):
             initial_cp, subsequent_cp, data_converted
         )
 
-        beam_meterset = "{0:.6f}".format(data_converted["monitor_units"][-1])
+        beam_meterset = "{:.6f}".format(data_converted["monitor_units"][-1])
         _pmp_rtplan.replace_fraction_group(
             created_dicom, beam_meterset, beam_index, fraction_index
         )

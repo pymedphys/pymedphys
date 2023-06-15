@@ -20,7 +20,8 @@ from pymedphys._imports import pydicom
 from pymedphys._dicom.uid import PYMEDPHYS_ROOT_UID
 
 REPLACEMENT_TO_VR_MAP = {
-    "Anonymous": ["AE", "LO", "LT", "PN", "SH", "ST"],
+    "ANONYMOUS^PATIENT": ["PN"],
+    "Anonymous": ["AE", "LO", "LT", "SH", "ST"],
     "100Y": ["AS"],
     "ANON": ["CS"],
     "20190303": ["DA"],

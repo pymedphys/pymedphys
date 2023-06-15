@@ -11,8 +11,8 @@ and open source distribution. Open code is better science.**
 
 |build| |pypi| |python| |license|
 
-.. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/Library
-    :target: https://github.com/pymedphys/pymedphys/actions
+.. |build| image:: https://img.shields.io/github/actions/workflow/status/pymedphys/pymedphys/library.yml?branch=main
+    :target: https://github.com/pymedphys/pymedphys/actions?query=branch%3Amain
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
     :target: https://pypi.org/project/pymedphys/
@@ -32,6 +32,17 @@ community that values and prioritises code sharing, review, improvement, and
 learning from each other. It is inspired by the collaborative work of our
 physics peers in astronomy and the `Astropy Project`_. PyMedPhys is available
 on `PyPI`_ and `GitHub`_.
+
+PyMedPhys first paper in the Journal of Open Source Software contains more
+background information, including a statement of need. You can access the paper
+`here <https://joss.theoj.org/papers/10.21105/joss.04555>`_. When referencing
+PyMedPhys, please cite this paper as follows:
+
+*Biggs, S., Jennings, M., Swerdloff, S., Chlap, P., Lane, D., Rembish, J.,
+McAloney, J., King, P., Ayala, R., Guan, F., Lambri, N., Crewson, C., Sobolewski, M. (2022).
+PyMedPhys: A community effort to develop an open, Python-based standard
+library for medical physics applications. Journal of Open Source Software,
+7(78), 4555, https://doi.org/10.21105/joss.04555*
 
 .. _`Astropy Project`: http://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
@@ -67,22 +78,37 @@ PyMedPhys can be installed with:
 
     pip install pymedphys[user]
 
-If you'd like more details around installing PyMedPhys go to the
-`getting started`_ page within the docs.
+Further user installation instructions can be found in the `Quick Start Guide`_.
 
-..
-    TODO: reword:
+The PyMedPhys documentation contains two overarching guides:
 
-The PyMedPhys documentation is split into four categories:
+1. **The Users Guide**: where you can find instructions to `get started`_ with
+   the library and the CLI, in-depth `how-to guides`_ (examples for users) on PyMedPhys' various
+   tools, some `background information`_ on individual PyMedPhys projects as
+   well as the `Technical Reference`_.
 
-1. `Library Users Guide`_: for those building their own Python apps, scripts
-   and other tools who wish to incorporate elements of the PyMedPhys library.
-2. `CLI Users Guide`_: for those who wish to use PyMedPhys' ready-made command
-   line interface (e.g. to help automate existing workflows with minimal
-   programming).
-3. `Contributors Guide`_: for those who wish to make new contributions to
-   either the PyMedPhys library or the PyMedPhys app.
-4. `General`_: Material that may apply to any visitor to PyMedPhys.
+2. **The Contributors Guide**: for those who wish to make new contributions
+   to the PyMedPhys library, CLI or app. Here you'll find detailed `workstation
+   setup guides`_ to enable contributions, important `repository information`_,
+   and some `tips & tricks`_ to overcome common issues.
+
+Development
+=============
+
+The PyMedPhys project is managed using `Poetry`_.
+
+After cloning the repository, install the PyMedPhys dependencies and set up pre-commit by running:
+
+.. code:: bash
+
+    poetry install -E all
+    poetry run pre-commit install
+
+Run automated tests with:
+
+.. code:: bash
+
+    poetry run pymedphys dev tests
 
 
 Our Team
@@ -116,7 +142,7 @@ Maintainers
 .. _`Phillip Chlap`: https://github.com/pchlap
 
 
-|sjs| |rah|
+|rai| |sjs| |rah|
 
 Active contributors
 ****************************
@@ -137,6 +163,11 @@ Active contributors
 
 .. _`Nicola Lambri`: https://github.com/nlambriICH
 
+* `Cody Crewson`_
+    * `Saskatchewan Cancer Agency`_, Canada
+
+.. _`Cody Crewson`: https://github.com/crcrewso
+
 * `Fada Guan`_
     * `Yale University School of Medicine`_, USA
 
@@ -154,6 +185,8 @@ Past contributors
 * `Paul King <https://github.com/kingrpaul>`_
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
+.. |rai| image:: https://github.com/pymedphys/pymedphys/raw/286deacdea2b3af9322796d413d0da6e1d8935a9/logos/rai.png
+    :target: `Radiotherapy AI`_
 
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
@@ -194,17 +227,23 @@ Past contributors
 
 .. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
 
+.. _`Saskatchewan Cancer Agency`: http://www.saskcancer.ca/
+
 .. _`Humanitas University`: https://www.hunimed.eu/
 
 .. _`Yale University School of Medicine`: https://medicine.yale.edu/
 
 .. END_OF_DOCS_IMPORT
 
-.. _`getting started`: https://docs.pymedphys.com/lib/howto/get-started.html
-
 .. _`Release Notes`: ./CHANGELOG.md
 
-.. _`Library Users Guide`: https://docs.pymedphys.com/lib/index.html
-.. _`CLI Users Guide`: https://docs.pymedphys.com/cli/index.html
-.. _`Contributors Guide`: https://docs.pymedphys.com/contrib/index.html
-.. _`General`: https://docs.pymedphys.com/general/index.html
+.. _`Statement of Need`: https://docs.pymedphys.com/en/latest/statement-of-need.html
+.. _`Quick Start Guide`: https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html
+.. _`get started`: https://docs.pymedphys.com/en/latest/users/get-started/index.html
+.. _`how-to guides`: https://docs.pymedphys.com/en/latest/users/howto/index.html
+.. _`background information`: https://docs.pymedphys.com/en/latest/users/background/index.html
+.. _`Technical Reference`: https://docs.pymedphys.com/en/latest/users/ref/index.html
+.. _`workstation setup guides`: https://docs.pymedphys.com/en/latest/contrib/setups/index.html
+.. _`repository information`: https://docs.pymedphys.com/en/latest/contrib/info/index.html
+.. _`tips & tricks`: https://docs.pymedphys.com/en/latest/contrib/tips/index.html
+.. _`Poetry`: https://python-poetry.org/

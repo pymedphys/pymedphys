@@ -156,7 +156,7 @@ def gamma_filter_brute_force(
         if counter // 30 == counter / 30:
             percent_pass = str(np.round(calculate_pass_rate(gamma_array), decimals=1))
             sys.stdout.write(
-                "\rPercent Pass: {0}% | Percent Complete: {1:.2f}%".format(
+                "\rPercent Pass: {}% | Percent Complete: {:.2f}%".format(
                     percent_pass, counter / np.shape(eval_index)[1] * 100
                 )
             )

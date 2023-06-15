@@ -1,3 +1,4 @@
+# Copyright (C) 2022 Matthew Jennings
 # Copyright (C) 2015-2018 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,9 +18,10 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 from warnings import warn
 
+from pymedphys._imports import interpolation
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
@@ -199,12 +201,13 @@ def expand_dims_to_1d(array):
 
 @dataclass(frozen=True)
 class GammaInternalFixedOptions:
+    axes_evaluation: Any
+    dose_evaluation: Any
     flat_mesh_axes_reference: Any
     flat_dose_reference: Any
     reference_points_to_calc: Any
     dose_percent_threshold: Any
     distance_mm_threshold: Any
-    evaluation_interpolation: Callable
     interp_fraction: int
     max_gamma: float
     lower_dose_cutoff: float = 0
@@ -268,13 +271,6 @@ class GammaInternalFixedOptions:
 
         maximum_test_distance = np.max(distance_mm_threshold) * max_gamma
 
-        evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
-            axes_evaluation,
-            np.array(dose_evaluation),
-            bounds_error=False,
-            fill_value=np.inf,
-        )
-
         dose_reference = np.array(dose_reference)
         reference_dose_above_threshold = dose_reference >= lower_dose_cutoff
 
@@ -302,12 +298,13 @@ class GammaInternalFixedOptions:
         flat_dose_reference = np.ravel(dose_reference)
 
         return cls(
+            axes_evaluation,
+            np.array(dose_evaluation),
             flat_mesh_axes_reference,
             flat_dose_reference,
             reference_points_to_calc,
             dose_percent_threshold,
             distance_mm_threshold,
-            evaluation_interpolation,
             interp_fraction,
             max_gamma,
             lower_dose_cutoff,
@@ -486,7 +483,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
         ]
 
         evaluation_dose = interpolate_evaluation_dose_at_distance(
-            options.evaluation_interpolation,
+            options,
             axes_reference_to_be_checked,
             coordinates_at_distance_shell,
         )
@@ -511,7 +508,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
 
 def interpolate_evaluation_dose_at_distance(
-    evaluation_interpolation,
+    options,
     axes_reference_to_be_checked,
     coordinates_at_distance_shell,
 ):
@@ -520,6 +517,40 @@ def interpolate_evaluation_dose_at_distance(
     """
     all_points = add_shells_to_ref_coords(
         axes_reference_to_be_checked, coordinates_at_distance_shell
+    )
+
+    try:
+        evaluation_dose = _run_interp_with_econforge(options, all_points)
+    except ImportError:
+        evaluation_dose = _run_interp_with_scipy(options, all_points)
+
+    return evaluation_dose
+
+
+def _run_interp_with_econforge(options, all_points):
+    grids = []
+    for i in range(all_points.shape[-1]):
+        grids.append(all_points[:, :, i])
+
+    points_interp = np.column_stack([np.ravel(mgrid) for mgrid in grids]).astype(float)
+
+    coords_evaluation_grid = interpolation.splines.CGrid(*options.axes_evaluation)
+
+    evaluation_dose = interpolation.splines.eval_linear(
+        coords_evaluation_grid,
+        np.array(options.dose_evaluation),
+        points_interp,
+    ).reshape(np.shape(all_points)[:-1])
+
+    return evaluation_dose
+
+
+def _run_interp_with_scipy(options, all_points):
+    evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
+        options.axes_evaluation,
+        np.array(options.dose_evaluation),
+        bounds_error=False,
+        fill_value=np.inf,
     )
 
     evaluation_dose = evaluation_interpolation(all_points)

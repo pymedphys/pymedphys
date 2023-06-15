@@ -128,5 +128,5 @@ def get_baseline_dict_entry(tag):
             if mask_x:
                 return get_baseline_dicom_repeaters_dict()[mask_x]
         raise NotInBaselineError(
-            "pydicom.tag.Tag {0} not found in DICOM dictionary".format(tag)
+            "pydicom.tag.Tag {} not found in DICOM dictionary".format(tag)
         )

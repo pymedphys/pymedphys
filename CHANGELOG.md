@@ -7,12 +7,55 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [unreleased]
+
+### New features and enhancements
+
+- The gamma tool now utilises [Econforge's `interpolation`](https://github.com/EconForge/interpolation.py)
+  package by default. Initial testing shows improvements in gamma calculation
+  times by an approximate factor of 4. [PR #1761](https://github.com/pymedphys/pymedphys/pull/1761)
+
+## [0.39.3]
+
+### News around this release
+
+- This is the version of PyMedPhys reviewed for PyMedPhys' first publication
+  within the [Journal of Open Source Software (JOSS)](https://joss.theoj.org/).
+  The paper can be accessed [here](https://joss.theoj.org/papers/10.21105/joss.04555)
+
+## [0.39.2]
+
+### Bug Fixes
+
+- Utilise pylibjpeg-libjpeg 1.3.2 or greater (Current libjpeg version for Apple
+  M1 compatibility)
+- `pymedphys dicom anonymise` now produces DICOM conformant patient names in
+  the anonymised result.
+  - Shout out to
+    [Rebecca Moylan](https://www.linkedin.com/in/rebecca-moylan-9a4721a3/) and
+    [Stephen Smith](https://www.linkedin.com/in/stephen-smith-b17686147/) for
+    the bug report! Thank you!
+
+## [0.39.1]
+
+### Release Notes
+
+- A release intended for use by JOSS, however, a subsequent release was
+  utilised instead.
+
+## [0.39.0]
 
 ### New features and enhancements
 
 - The Gamma tool now utilises the `logging` module. The `quiet` parameter for
   `pymedphys.gamma` is deprecated but its use is non-breaking (for now).
+- The `pymedphys.electronfactors` has been added back in to the public API in
+  [Pull Request](https://github.com/pymedphys/pymedphys/pull/1719).
+
+### Non-API changing enhancements
+
+- The `dev` extra has been reduced and an additional extra `all` has been added:
+  [Pull Request](https://github.com/pymedphys/pymedphys/pull/1710)
 
 ## [0.38.0]
 
@@ -1335,7 +1378,11 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 - Began keeping record of changes in `changelog.md`
 
-[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.38.0...main
+[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.39.3...main
+[0.39.2]: https://github.com/pymedphys/pymedphys/compare/v0.39.2...v0.39.3
+[0.39.2]: https://github.com/pymedphys/pymedphys/compare/v0.39.1...v0.39.2
+[0.39.1]: https://github.com/pymedphys/pymedphys/compare/v0.39.0...v0.39.1
+[0.39.0]: https://github.com/pymedphys/pymedphys/compare/v0.38.0...v0.39.0
 [0.38.0]: https://github.com/pymedphys/pymedphys/compare/v0.37.1...v0.38.0
 [0.37.1]: https://github.com/pymedphys/pymedphys/compare/v0.37.0...v0.37.1
 [0.37.0]: https://github.com/pymedphys/pymedphys/compare/v0.36.1...v0.37.0

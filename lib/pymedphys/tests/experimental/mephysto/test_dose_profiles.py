@@ -134,7 +134,7 @@ def test_baseline_profiles(loaded_doses, loaded_plan):
             json.dump(baselines, a_file)
 
     else:
-        with open(BASELINE_FILEPATH, "r") as a_file:
+        with open(BASELINE_FILEPATH) as a_file:
             baseline_result = json.load(a_file)
 
         assert baseline_result == baselines

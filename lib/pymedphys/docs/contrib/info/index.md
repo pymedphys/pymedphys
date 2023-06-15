@@ -6,4 +6,5 @@
 
 file-structure
 docs-guide
+release-guide
 ```

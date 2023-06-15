@@ -47,7 +47,7 @@ def test_copy():
 @pytest.mark.pydicom
 def test_anonymise():
     expected_dataset = dicom_dataset_from_dict(
-        {"Manufacturer": "PyMedPhys", "PatientName": "Anonymous"}
+        {"Manufacturer": "PyMedPhys", "PatientName": "ANONYMOUS^PATIENT"}
     )
 
     dicom = DicomBase.from_dict(

@@ -298,7 +298,7 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
     ]
 
     try:
-        with open(index_filepath, "r") as json_data_file:
+        with open(index_filepath) as json_data_file:
             index = json.load(json_data_file)
     except FileNotFoundError:
         index = {}

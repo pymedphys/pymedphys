@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Fri Mar 13 14:29:35 2020
 
@@ -67,9 +66,9 @@ def getMLCdata(ds):
         leafPositions = {}  # empty dictionary to place leaf positions into
         jawPositions = {}
         segWeight = {}
-        maxA = np.zeros((60))
-        maxB = np.zeros((60))
-        maxJaws = np.zeros((4))
+        maxA = np.zeros(60)
+        maxB = np.zeros(60)
+        maxJaws = np.zeros(4)
         maxPos = []
         for i in range(0, cp - 1):  # looping through control points
             if len(cps[i].BeamLimitingDevicePositionSequence) == 3:  # assymm jaws

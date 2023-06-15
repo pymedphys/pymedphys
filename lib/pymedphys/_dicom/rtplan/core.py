@@ -26,7 +26,7 @@ class DICOMEntryMissing(ValueError):
 
 def require_gantries_be_zero(plan):
     gantry_angles = set(get_gantry_angles_from_dicom(plan))
-    if gantry_angles != set([0.0]):
+    if gantry_angles != {0.0}:
         raise ValueError("Only Gantry angles equal to 0.0 are currently supported")
 
 

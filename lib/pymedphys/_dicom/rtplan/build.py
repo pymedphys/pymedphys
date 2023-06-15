@@ -74,7 +74,7 @@ def restore_trailing_zeros(created_dicom):
     for beam_sequence in created_dicom.BeamSequence:
         for control_point in beam_sequence.ControlPointSequence:
             current_value = float(control_point.CumulativeMetersetWeight)
-            new_value = "{0:.6f}".format(current_value)
+            new_value = "{:.6f}".format(current_value)
 
             control_point.CumulativeMetersetWeight = new_value
 

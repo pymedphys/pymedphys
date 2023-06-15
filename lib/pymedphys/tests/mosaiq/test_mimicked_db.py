@@ -90,7 +90,10 @@ def test_get_treatments(connection):
     end = np.datetime64(A_TREATMENT_DATETIME) + time_delta
 
     treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
-    assert np.datetime64(A_TREATMENT_DATETIME) in treatments["start"].tolist()
+    assert (
+        np.datetime64(A_TREATMENT_DATETIME)
+        in treatments["start"].tolist()  # pylint: disable=unsubscriptable-object
+    )
 
 
 @pytest.mark.mosaiqdb
@@ -127,7 +130,7 @@ def test_get_incomplete_qcls(connection: pymedphys.mosaiq.Connection):
     incomplete_qcls = helpers.get_incomplete_qcls(connection, QCL_LOCATION)
     assert (
         np.datetime64(AN_UNCOMPLETED_QCL_DUE_DATETIME)
-        in incomplete_qcls["due"].tolist()
+        in incomplete_qcls["due"].tolist()  # pylint: disable=unsubscriptable-object
     )
 
 
@@ -141,10 +144,16 @@ def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
     qcls_by_date = helpers.get_qcls_by_date(connection, QCL_LOCATION, start, end)
     assert (
         np.datetime64(AN_UNCOMPLETED_QCL_DUE_DATETIME)
+        # pylint: disable=unsubscriptable-object
         not in qcls_by_date["due"].tolist()
     )
     for dt in QCL_COMPLETED_DATETIMES:
-        assert np.datetime64(dt) in qcls_by_date["actual_completed_time"].tolist()
+
+        assert (
+            np.datetime64(dt)
+            # pylint: disable=unsubscriptable-object
+            in qcls_by_date["actual_completed_time"].tolist()
+        )
 
     small_time_delta = np.timedelta64(3, "s")
     start = np.datetime64(a_completion_datetime) - small_time_delta
@@ -153,7 +162,9 @@ def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
 
     assert (
         np.datetime64(a_completion_datetime)
+        # pylint: disable=unsubscriptable-object
         in qcls_by_date["actual_completed_time"].tolist()
     )
     for dt in list(set(QCL_COMPLETED_DATETIMES).difference({a_completion_datetime})):
+        # pylint: disable=unsubscriptable-object
         assert np.datetime64(dt) not in qcls_by_date["actual_completed_time"].tolist()
