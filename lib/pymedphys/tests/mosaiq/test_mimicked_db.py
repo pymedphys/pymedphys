@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pytest
+from pymedphys._imports import pytest, toml
 
 import pymedphys
 from pymedphys._mosaiq import helpers
@@ -168,3 +169,16 @@ def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
     for dt in list(set(QCL_COMPLETED_DATETIMES).difference({a_completion_datetime})):
         # pylint: disable=unsubscriptable-object
         assert np.datetime64(dt) not in qcls_by_date["actual_completed_time"].tolist()
+
+
+@pytest.mark.mosaiqdb
+def test_mosaiq_table_to_type_map_dict(connection: pymedphys.mosaiq.Connection):
+    table_name = "TxField"
+    mosaiq_table_type_map_dict = helpers.mosaiq_table_to_type_map_dict(
+        connection, table_name
+    )
+    HERE = pathlib.Path(__file__).parent
+    toml_path = HERE.joinpath("data/types_map.toml")
+    with open(toml_path) as f:
+        types_map = toml.load(f)
+    assert mosaiq_table_type_map_dict == types_map[table_name]
