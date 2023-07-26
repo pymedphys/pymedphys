@@ -357,7 +357,7 @@ def get_column_data_types(connection, table_name):
             TABLE_NAME = %(table_name)s
         """,
         {
-            "table": str(table_name),
+            "table_name": str(table_name),
         },
     )
 
