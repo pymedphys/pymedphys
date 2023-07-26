@@ -173,12 +173,11 @@ def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
 
 @pytest.mark.mosaiqdb
 def test_mosaiq_table_to_type_map_dict(connection: pymedphys.mosaiq.Connection):
-    table_name = "TxField"
     mosaiq_table_type_map_dict = helpers.mosaiq_table_to_type_map_dict(
-        connection, table_name
+        connection, table_name="TxField"
     )
     HERE = pathlib.Path(__file__).parent
     toml_path = HERE.joinpath("data/types_map.toml")
     with open(toml_path) as f:
         types_map = toml.load(f)
-    assert mosaiq_table_type_map_dict == types_map[table_name]
+    assert mosaiq_table_type_map_dict == types_map["TxField"]
