@@ -370,3 +370,14 @@ def get_column_data_types(connection, table_name):
     )
 
     return results
+
+
+def mosaiq_table_to_type_map_dict(connection, table_name):
+
+    column_types = get_column_data_types(connection, table_name)
+
+    return {
+        table_name: pd.Series(
+            column_types["data type"].values, index=column_types["column name"]
+        ).to_dict()
+    }
