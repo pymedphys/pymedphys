@@ -180,4 +180,4 @@ def test_mosaiq_table_to_type_map_dict(connection: pymedphys.mosaiq.Connection):
     toml_path = HERE.joinpath("data/types_map.toml")
     with open(toml_path) as f:
         types_map = toml.load(f)
-    assert mosaiq_table_type_map_dict == types_map["TxField"]
+    assert mosaiq_table_type_map_dict["TxField"] == types_map["TxField"]
