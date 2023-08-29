@@ -182,7 +182,7 @@ def test_mosaiq_table_to_type_map_dict(connection: pymedphys.mosaiq.Connection):
         types_map = toml.load(f)
     for key, value in types_map["TxField"].items():
         if value in mimics.TYPE_CASTING:
-            types_map[key] = mimics.TYPE_CASTING[
+            types_map["TxField"][key] = mimics.TYPE_CASTING[
                 value
             ]  # needed for TYPE_CASTING workaround in mimics.py
     assert mosaiq_table_type_map_dict["TxField"] == types_map["TxField"]
