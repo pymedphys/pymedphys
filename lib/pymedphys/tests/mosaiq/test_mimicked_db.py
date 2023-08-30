@@ -185,5 +185,9 @@ def test_mosaiq_table_to_type_map_dict(connection: pymedphys.mosaiq.Connection):
             types_map["TxField"][key] = mimics.TYPE_CASTING[
                 value
             ]  # needed for TYPE_CASTING workaround in mimics.py
-    types_map["TxField"]["RowVers"] = "varbinary"
+    # For some reason, the "timestamp" type of RowVers becomes
+    # "varbinary" in the mimicked database, and not "largebinary" as
+    # expected by the TYPE_CASTING in mimics.py.
+    # The only workaround I could get properly working is the one below.
+    types_map["TxField"]["RowVers"] = "varbinary"  # workaround
     assert mosaiq_table_type_map_dict["TxField"] == types_map["TxField"]
