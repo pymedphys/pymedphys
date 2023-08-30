@@ -91,8 +91,9 @@ def create_mimic_tables(database):
                 table = table.drop(columns=[column_name])
                 continue
 
-            if (a_type == sql_types_map["largebinary"]) or (
-                a_type == sql_types_map["varbinary"]
+            if a_type in (
+                sql_types_map["largebinary"],
+                a_type == sql_types_map["varbinary"],
             ):
                 table[column_name] = table[column_name].apply(
                     lambda x: base64.decodebytes(x.encode("utf-8"))
