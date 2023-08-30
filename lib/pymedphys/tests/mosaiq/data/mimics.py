@@ -43,6 +43,7 @@ COLUMN_TYPES_TO_USE = {
     "decimal",
     "binary",
     "largebinary",
+    "varbinary",
     "bit",
 }
 
