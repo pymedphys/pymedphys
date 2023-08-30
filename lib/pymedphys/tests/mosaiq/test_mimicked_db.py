@@ -185,4 +185,5 @@ def test_mosaiq_table_to_type_map_dict(connection: pymedphys.mosaiq.Connection):
             types_map["TxField"][key] = mimics.TYPE_CASTING[
                 value
             ]  # needed for TYPE_CASTING workaround in mimics.py
+    types_map["TxField"]["RowVers"] = "varbinary"
     assert mosaiq_table_type_map_dict["TxField"] == types_map["TxField"]
