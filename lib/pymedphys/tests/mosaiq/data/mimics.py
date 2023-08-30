@@ -51,7 +51,7 @@ COLUMN_TYPES_TO_USE = {
 # something else for now.
 TYPE_CASTING = {
     "char": "varchar",
-    "timestamp": "largebinary",
+    "timestamp": "varbinary",
     "binary": "largebinary",
 }
 
