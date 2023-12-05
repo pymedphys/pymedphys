@@ -73,7 +73,7 @@ def dicom_file_loader(
         )
 
     if not files:
-        raise st.stop()
+        st.stop()
 
     assumed_sequence = cast(Files, files)
 
