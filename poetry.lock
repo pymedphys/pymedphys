@@ -4501,4 +4501,4 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "imageio", "k
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.9.7 || >3.9.7,<3.12"
-content-hash = "1adf2cdd4c27c9045c0bc6b2a440340122c7b4d697e8dca53f79eb44d7cd585e"
+content-hash = "e6e16c8200ca7c84bb3b81fb3e17fca1022d19bb4d974595025763e7ad2ad1bf"

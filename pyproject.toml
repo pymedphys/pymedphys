@@ -139,7 +139,6 @@ all = [
     "dbfread",
     "dicompyler-core",
     "doc8",
-    "hypothesis",
     "imageio",
     "ipython",
     "jupyter-book",
@@ -206,7 +205,6 @@ propagate = ["black", "tomlkit"]
 speedups = ["interpolation"]
 tests = [
     "astroid",
-    "hypothesis",
     "psutil",
     "pylint",
     "pytest",
