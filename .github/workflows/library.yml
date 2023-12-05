@@ -64,7 +64,7 @@ jobs:
 
   Tests:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu", "macos", "windows"]
         task:
