@@ -67,7 +67,7 @@ def main():
         st.write(FileExistsError("This zip file already exists."))
         if st.button("Delete zip file"):
             zip_path.unlink()
-            st.experimental_rerun()
+            st.rerun()
 
         st.stop()
 

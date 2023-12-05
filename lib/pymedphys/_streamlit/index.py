@@ -42,13 +42,13 @@ def get_url_app():
 def swap_app(app):
     st.experimental_set_query_params(app=app)
 
-    session_state = utilities.session_state()
+    session_state = st.session_state
     session_state.app = app
 
     # Not sure why this is needed. The `set_query_params` doesn't
     # appear to work if a rerun is undergone immediately afterwards.
     time.sleep(0.01)
-    st.experimental_rerun()
+    st.rerun()
 
 
 def index(application_options):
@@ -119,7 +119,10 @@ def _get_apps_from_module(module):
 
 
 def main():
-    session_state = utilities.session_state(app=get_url_app())
+    if "app" not in st.session_state:
+        st.session_state["app"] = get_url_app()
+
+    session_state = st.session_state
 
     stable_apps = _get_apps_from_module(_stable_apps)
     experimental_apps = _get_apps_from_module(_experimental_apps)

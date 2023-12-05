@@ -63,7 +63,7 @@ def main():
     }
 
     if st.button("Refresh"):
-        st.experimental_rerun()
+        st.rerun()
 
     for centre in centres:
         st.write(f"## {centre.upper()}")

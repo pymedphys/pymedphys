@@ -73,7 +73,6 @@ import sklearn
 import sklearn.cluster
 
 import streamlit
-import streamlit.bootstrap
 import streamlit.caching
 import streamlit.cli
 import streamlit.config

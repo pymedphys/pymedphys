@@ -13,14 +13,10 @@
 
 # pylint: disable = protected-access
 
-import json
 import pathlib
 import shutil
+import subprocess
 import sys
-
-from pymedphys._imports import streamlit as st
-
-from pymedphys._streamlit.server import start
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -37,26 +33,9 @@ def main(args):
     if args.port:
         config["server.port"] = args.port
 
-    if args.electron:
-        _patch_streamlit_print_url()
-        config["server.headless"] = True
-
-    start.start_streamlit_server(streamlit_script_path, config)
-
-
-def _patch_streamlit_print_url():
-    _original_print_url = st.bootstrap._print_url
-
-    def _new_print_url(is_running_hello: bool) -> None:
-        port = int(st.config.get_option("browser.serverPort"))
-
-        sys.stdout.flush()
-        print(json.dumps({"port": port}))
-        sys.stdout.flush()
-
-        _original_print_url(is_running_hello)
-
-    st.bootstrap._print_url = _new_print_url
+    subprocess.check_call(
+        [sys.executable, "-m", "streamlit", "run", streamlit_script_path]
+    )
 
 
 def _fill_streamlit_credentials():
