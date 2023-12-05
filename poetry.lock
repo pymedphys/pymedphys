@@ -4492,7 +4492,7 @@ dicom = ["pydicom", "pynetdicom"]
 docs = ["ipython", "jupyter-book", "matplotlib", "networkx", "numpy", "pydicom", "scipy", "sphinx-argparse", "sphinx-book-theme", "toml", "tqdm"]
 doctests = ["black", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
-mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
+mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["black", "tomlkit"]
 speedups = ["interpolation"]
 tests = ["astroid", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
@@ -4501,4 +4501,4 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "imageio", "k
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.9.7 || >3.9.7,<3.12"
-content-hash = "e6e16c8200ca7c84bb3b81fb3e17fca1022d19bb4d974595025763e7ad2ad1bf"
+content-hash = "9a2a03ee5bbcdc59f65eefa31829d10f2da3a35c3a24c013a57d559badd12bbe"

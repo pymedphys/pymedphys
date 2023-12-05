@@ -32,7 +32,7 @@ setuptools = "*"
 # ------- #
 
 tqdm = { version = "*", optional = true }     # groups = ["user", "all", "tests", "docs"]
-attrs = { version = "*", optional = true }    # groups = ["user", "all"]
+attrs = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 watchdog = { version = "*", optional = true } # groups = ["user", "all"]
 
 keyring = { version = "*", optional = true }         # groups = ["user", "all"]
@@ -200,7 +200,7 @@ docs = [
 ]
 doctests = ["black", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
-mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
+mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["black", "tomlkit"]
 speedups = ["interpolation"]
 tests = [
