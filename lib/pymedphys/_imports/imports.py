@@ -97,8 +97,6 @@ import pydicom.filereader
 import pydicom.sequence
 import pydicom.tag
 import pydicom.uid
-import pylinac
-import pylinac.winston_lutz
 import pynetdicom
 import pynetdicom.sop_class
 import pynetdicom.status
