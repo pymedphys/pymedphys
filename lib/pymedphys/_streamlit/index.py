@@ -21,7 +21,6 @@ import time
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import apps as _stable_apps
-from pymedphys._streamlit import utilities
 
 from pymedphys._experimental.streamlit import apps as _experimental_apps
 
