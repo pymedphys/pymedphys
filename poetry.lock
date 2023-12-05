@@ -262,18 +262,6 @@ files = [
 ]
 
 [[package]]
-name = "cached-property"
-version = "1.5.2"
-description = "A decorator for caching properties in classes."
-category = "main"
-optional = true
-python-versions = "*"
-files = [
-    {file = "cached-property-1.5.2.tar.gz", hash = "sha256:9fa5755838eecbb2d234c3aa390bd80fbd3ac6b6869109bfc1b499f7bd89a130"},
-    {file = "cached_property-1.5.2-py2.py3-none-any.whl", hash = "sha256:df4f613cf7ad9a588cc381aaf4a512d26265ecebd5eb9e1ba12f1319eb85a6a0"},
-]
-
-[[package]]
 name = "cachetools"
 version = "5.3.2"
 description = "Extensible memoizing collections and decorators"
@@ -2378,9 +2366,9 @@ files = [
 
 [package.dependencies]
 numpy = [
+    {version = ">=1.20.3", markers = "python_version < \"3.10\""},
     {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
     {version = ">=1.23.2", markers = "python_version >= \"3.11\""},
-    {version = ">=1.20.3", markers = "python_version < \"3.10\""},
 ]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
@@ -2936,25 +2924,24 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.23.2", markers = "python_version >= \"3.11\""},
     {version = ">=1.22", markers = "python_version >= \"3.8\" and python_version < \"3.11\""},
+    {version = ">=1.23.2", markers = "python_version >= \"3.11\""},
 ]
 
 [[package]]
 name = "pylinac"
-version = "3.13.0"
+version = "3.17.0"
 description = "A toolkit for performing TG-142 QA-related tasks on a linear accelerator"
 category = "main"
 optional = true
-python-versions = ">=3.7.20,<4.0.0"
+python-versions = ">=3.8.10,<4.0.0"
 files = [
-    {file = "pylinac-3.13.0-py3-none-any.whl", hash = "sha256:b7adf066eda74446945b8eb9acfd4202521b2d9824686e9664846b37e7fe4840"},
-    {file = "pylinac-3.13.0.tar.gz", hash = "sha256:0fbece6034af8228b0a31aa16eca967d2830c0137c62e608408dd43952ee4910"},
+    {file = "pylinac-3.17.0-py3-none-any.whl", hash = "sha256:2bed0f7994e3af42ff4500c63bf7ccbf8c134cdd8a204962b3f0072d295676cb"},
+    {file = "pylinac-3.17.0.tar.gz", hash = "sha256:529398f8284dfff54faa4b3604fc06c862f09b72c489247bd8844fe25ce0bc88"},
 ]
 
 [package.dependencies]
 argue = ">=0.3.1,<0.4.0"
-cached-property = ">=1.5.2,<1.6.0"
 matplotlib = ">=2.0"
 numpy = ">=0.16"
 Pillow = ">=4.0"
@@ -2982,8 +2969,8 @@ files = [
 astroid = ">=3.0.1,<=3.1.0-dev0"
 colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
 dill = [
-    {version = ">=0.3.6", markers = "python_version >= \"3.11\""},
     {version = ">=0.2", markers = "python_version < \"3.11\""},
+    {version = ">=0.3.6", markers = "python_version >= \"3.11\""},
 ]
 isort = ">=4.2.5,<6"
 mccabe = ">=0.6,<0.8"
@@ -4957,5 +4944,5 @@ user = ["Pillow", "PyYAML", "attrs", "dbfread", "dicompyler-core", "imageio", "k
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.8,!=3.9.7,<3.12"
-content-hash = "653b9d27db16e920d49c221e832f40a527f5a06d66ec66b3932c4fc51e76d4c8"
+python-versions = ">=3.8.10,<3.9.7 || >3.9.7,<3.12"
+content-hash = "6609897a90d476957be12f7edd6ab6a7a797b4f85875b009d64e2479b61e1e9b"

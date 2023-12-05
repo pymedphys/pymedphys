@@ -22,7 +22,7 @@ packages = [{ include = "pymedphys", from = "lib" }]
 include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.poetry.dependencies]
-python = ">=3.8,!=3.9.7,<3.12"
+python = ">=3.8.10,<3.9.7 || >3.9.7,<3.12"
 typing-extensions = "*"
 setuptools = "*"
 
