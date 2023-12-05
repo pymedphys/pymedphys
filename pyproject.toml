@@ -113,7 +113,6 @@ networkx = { version = "*", optional = true }            # groups = ["all", "doc
 # ----- #
 pytest = { version = "*", optional = true }               # groups = ["all", "tests"]
 pytest-sugar = { version = "*", optional = true }         # groups = ["all", "tests"]
-hypothesis = { version = "*", optional = true }          # groups = ["all", "tests"]
 astroid = { version = "*", optional = true }              # groups = ["all", "tests"]
 psutil = { version = "*", optional = true }               # groups = ["all", "tests"]
 pylint = { version = "*", optional = true }               # groups = ["all", "tests"]

@@ -170,9 +170,9 @@ jobs:
           pip install --upgrade pip setuptools
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1.3.3
+        uses: snok/install-poetry@v1.3.4
         with:
-          version: 1.5.0
+          version: 1.7.1
           virtualenvs-create: true
 
       - name: Update PATH in Windows
