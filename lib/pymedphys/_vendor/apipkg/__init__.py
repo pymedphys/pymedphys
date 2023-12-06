@@ -248,6 +248,7 @@ def AliasModule(modname, modpath, attrname=None):
                 from pymedphys._dev.paths import DEPENDENCY_EXTRA_PATH
                 from pymedphys._version import __version__
 
+                extra = "user"
                 with open(DEPENDENCY_EXTRA_PATH) as f:
                     dep_extra_contents = tomlkit.loads(f.read())
                     # Suggest extra with minimal num of dependencies
