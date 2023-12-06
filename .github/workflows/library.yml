@@ -318,7 +318,8 @@ jobs:
           git config --local user.name "PyMedPhys Propagate Bot"
 
           git add poetry.lock
-          git commit -m "commit changes to poetry.lock" || true
+          git add lib/pymedphys/dependency-extra.txt
+          git commit -m "commit propagate changes" || true
 
           git status
           git diff-index --quiet HEAD --
