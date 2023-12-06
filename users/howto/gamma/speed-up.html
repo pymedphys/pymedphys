@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html lang="en" data-content_root="" >
 
   <head>
     <meta charset="utf-8" />
@@ -19,12 +19,12 @@
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
-<link href="../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
 
   
-  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
@@ -40,8 +40,9 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
     <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
@@ -87,6 +88,15 @@ const thebe_selector_output = ".output, .cell_output"
   
   
   <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
   
   <input type="checkbox"
           class="sidebar-toggle"
@@ -140,9 +150,11 @@ const thebe_selector_output = ".output, .cell_output"
   
     <div class="sidebar-primary-items__start sidebar-primary__section">
         <div class="sidebar-primary-item">
+
   
 
 <a class="navbar-brand logo" href="../../../index.html">
+  
   
   
   
@@ -152,8 +164,8 @@ const thebe_selector_output = ".output, .cell_output"
       
     
     
-    <img src="../../../_static/pymedphys.svg" class="logo__image only-light" alt="Logo image"/>
-    <script>document.write(`<img src="../../../_static/pymedphys.svg" class="logo__image only-dark" alt="Logo image"/>`);</script>
+    <img src="../../../_static/pymedphys.svg" class="logo__image only-light" alt="PyMedPhys - Home"/>
+    <script>document.write(`<img src="../../../_static/pymedphys.svg" class="logo__image only-dark" alt="PyMedPhys - Home"/>`);</script>
   
   
 </a></div>
@@ -481,20 +493,22 @@ const thebe_selector_output = ".output, .cell_output"
 </button>
 
 
+
 <script>
 document.write(`
-  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
-    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
-    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
   </button>
 `);
 </script>
 
+
 <script>
 document.write(`
   <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <i class="fa-solid fa-magnifying-glass"></i>
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
   </button>
 `);
 </script>
@@ -632,7 +646,7 @@ document.write(`
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/c1ee8bb34fa5fc810a06a6fd124391edd22c398f2e0034be0fcf3591773f6495.png" src="../../../_images/c1ee8bb34fa5fc810a06a6fd124391edd22c398f2e0034be0fcf3591773f6495.png" />
+<img alt="../../../_images/3ed30782e6f3b9659c1c341621823335e8f3e18991990f0d0c173b0ae9ae2185.png" src="../../../_images/3ed30782e6f3b9659c1c341621823335e8f3e18991990f0d0c173b0ae9ae2185.png" />
 </div>
 </div>
 <p>As you can see, the largest dose differences are concentrated in small regions of the slices, which will end up in a fast gamma evaluation, as the computation will be immediate for those points where the dose difference is zero.</p>
@@ -738,8 +752,8 @@ Dose threshold: 0.0195 Gy
 <div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Complete!
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 2.19 s, sys: 607 ms, total: 2.8 s
-Wall time: 2.7 s
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 1.24 s, sys: 533 ms, total: 1.77 s
+Wall time: 1.48 s
 </pre></div>
 </div>
 </div>
@@ -791,7 +805,7 @@ Wall time: 2.7 s
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/6c1febe16543e78380b0d91a554aacca62c16d6cd038f6680aa25a0347838510.png" src="../../../_images/6c1febe16543e78380b0d91a554aacca62c16d6cd038f6680aa25a0347838510.png" />
+<img alt="../../../_images/ab068985ec546c713c7acb082b22097951ded84ec02fe23c78fe3c23556edd31.png" src="../../../_images/ab068985ec546c713c7acb082b22097951ded84ec02fe23c78fe3c23556edd31.png" />
 </div>
 </div>
 <p>Once the gamma index distribution has been computed, one can consider the gamma pass rate, defined as the fraction of points having $\gamma\le 1$, to assess the agreement between the reference and evaluated dose distributions.</p>
@@ -876,8 +890,8 @@ Wall time: 2.7 s
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 435 ms, sys: 79.9 ms, total: 515 ms
-Wall time: 515 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 315 ms, sys: 43.8 ms, total: 359 ms
+Wall time: 358 ms
 </pre></div>
 </div>
 </div>
@@ -894,7 +908,7 @@ Wall time: 515 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/f2e04e6c4e8f8d2b99aa54e0710eab56d2eb525109c7110aab6fb617f340e1aa.png" src="../../../_images/f2e04e6c4e8f8d2b99aa54e0710eab56d2eb525109c7110aab6fb617f340e1aa.png" />
+<img alt="../../../_images/1965cf503dfc6f9f4fbfe76fce961d3cfe37bd07fa6c959915799d6f781e8e94.png" src="../../../_images/1965cf503dfc6f9f4fbfe76fce961d3cfe37bd07fa6c959915799d6f781e8e94.png" />
 </div>
 </div>
 <p>If we want to evaluate the gamma pass rate, we are uninterested in accurate gamma index values for $\gamma &gt; 1$.</p>
@@ -914,8 +928,8 @@ Wall time: 515 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 294 ms, sys: 3.81 ms, total: 298 ms
-Wall time: 298 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 207 ms, sys: 0 ns, total: 207 ms
+Wall time: 206 ms
 </pre></div>
 </div>
 </div>
@@ -932,7 +946,7 @@ Wall time: 298 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/74cfe7b9e209539a84f4422fae0c52e4a61cf5e36728048fde5a353c9734cba9.png" src="../../../_images/74cfe7b9e209539a84f4422fae0c52e4a61cf5e36728048fde5a353c9734cba9.png" />
+<img alt="../../../_images/7abaecdeb0ee0da1182bf920223e1a899fa5367781cd5cc77bf851b13b7959c7.png" src="../../../_images/7abaecdeb0ee0da1182bf920223e1a899fa5367781cd5cc77bf851b13b7959c7.png" />
 </div>
 </div>
 <p>Notice how the gamma passing rate value (shown in the plot title) did not change. Of course now all the points with $\gamma &gt; 1.1$ are collapsed to the 1.1 bin.</p>
@@ -953,8 +967,8 @@ Wall time: 298 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 246 ms, sys: 8.26 ms, total: 254 ms
-Wall time: 254 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 179 ms, sys: 642 µs, total: 180 ms
+Wall time: 179 ms
 </pre></div>
 </div>
 </div>
@@ -972,7 +986,7 @@ Wall time: 254 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/85413d89ae481205788cc7daae705ca86dd1ee7e9ecc1b34adc6f1f3016fa2ee.png" src="../../../_images/85413d89ae481205788cc7daae705ca86dd1ee7e9ecc1b34adc6f1f3016fa2ee.png" />
+<img alt="../../../_images/35ba78580327b1ce5f639afd43d6a24c92c6e4687ab9a0c407a6726c9e04ace9.png" src="../../../_images/35ba78580327b1ce5f639afd43d6a24c92c6e4687ab9a0c407a6726c9e04ace9.png" />
 </div>
 </div>
 <p>As you can see, the computation time decreased and, despite the the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> function sampled one 10th of the points, the pass rate deviates by less than 1% from the true value. Therefore, you can use <code>random_subset</code> to get a sense of what could be the pass rate of the dose distributions you are assessing.</p>
@@ -1006,11 +1020,10 @@ Wall time: 254 ms
 
               
               
-                <footer class="bd-footer-article">
+              
+              
+                <footer class="prev-next-footer">
                   
-<div class="footer-article-items footer-article__inner">
-  
-    <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
        href="index.html"
@@ -1030,10 +1043,7 @@ Wall time: 254 ms
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
-</div></div>
-  
 </div>
-
                 </footer>
               
             </div>
@@ -1056,6 +1066,7 @@ By the PyMedPhys community
   
   <div class="footer-item">
     
+
   <p class="copyright">
     
       © Copyright 2018-2021.
@@ -1082,8 +1093,8 @@ By the PyMedPhys community
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
-<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
 
   <footer class="bd-footer">
   </footer>

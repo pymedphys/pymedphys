@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html lang="en" data-content_root="" >
 
   <head>
     <meta charset="utf-8" />
@@ -19,12 +19,12 @@
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
-<link href="../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
 
   
-  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
@@ -40,8 +40,9 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
     <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
@@ -87,6 +88,15 @@ const thebe_selector_output = ".output, .cell_output"
   
   
   <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
   
   <input type="checkbox"
           class="sidebar-toggle"
@@ -140,9 +150,11 @@ const thebe_selector_output = ".output, .cell_output"
   
     <div class="sidebar-primary-items__start sidebar-primary__section">
         <div class="sidebar-primary-item">
+
   
 
 <a class="navbar-brand logo" href="../../../index.html">
+  
   
   
   
@@ -152,8 +164,8 @@ const thebe_selector_output = ".output, .cell_output"
       
     
     
-    <img src="../../../_static/pymedphys.svg" class="logo__image only-light" alt="Logo image"/>
-    <script>document.write(`<img src="../../../_static/pymedphys.svg" class="logo__image only-dark" alt="Logo image"/>`);</script>
+    <img src="../../../_static/pymedphys.svg" class="logo__image only-light" alt="PyMedPhys - Home"/>
+    <script>document.write(`<img src="../../../_static/pymedphys.svg" class="logo__image only-dark" alt="PyMedPhys - Home"/>`);</script>
   
   
 </a></div>
@@ -481,20 +493,22 @@ const thebe_selector_output = ".output, .cell_output"
 </button>
 
 
+
 <script>
 document.write(`
-  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
-    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
-    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
   </button>
 `);
 </script>
 
+
 <script>
 document.write(`
   <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <i class="fa-solid fa-magnifying-glass"></i>
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
   </button>
 `);
 </script>
@@ -560,11 +574,11 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (0.40.0.dev2)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (0.40.0.dev3)
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: setuptools in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (67.8.0)
-Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (4.6.2)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: setuptools in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (69.0.2)
+Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (4.8.0)
 </pre></div>
 </div>
 </div>
@@ -630,7 +644,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/f1d2c40c6f2f81c53e20b944fa0e702b43aa7b20b033b878a59160af2d8652ea.png" src="../../../_images/f1d2c40c6f2f81c53e20b944fa0e702b43aa7b20b033b878a59160af2d8652ea.png" />
+<img alt="../../../_images/78c3dee976a0f999dbb8bd3f8ae8a0990d0210310774d9e2736629fa4ceae228.png" src="../../../_images/78c3dee976a0f999dbb8bd3f8ae8a0990d0210310774d9e2736629fa4ceae228.png" />
 </div>
 </div>
 <p>Of importance the length of the first coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the first dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>, and the length of the second coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the second dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>. This is required because <code class="docutils literal notranslate"><span class="pre">pymedphys.gamma</span></code> internally uses <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.RegularGridInterpolator.html"><code class="docutils literal notranslate"><span class="pre">scipy.interpolate.RegularGridInterpolator</span></code></a> and the gamma implimentation has been chosen to align with this scipy coordinate convention uses here.</p>
@@ -697,7 +711,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/45aa2600f25948a060acad630adc7309392674ca244b44c6a4cea96f24f75eb5.png" src="../../../_images/45aa2600f25948a060acad630adc7309392674ca244b44c6a4cea96f24f75eb5.png" />
+<img alt="../../../_images/ff76b6211d63687dc6a4467c2153cd4f6d597d3262921a49e22b6348995f7f20.png" src="../../../_images/ff76b6211d63687dc6a4467c2153cd4f6d597d3262921a49e22b6348995f7f20.png" />
 </div>
 </div>
 </section>
@@ -720,7 +734,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/4621edf83a0bd6c13a9f9a28d85d2e612b66b4326a32d42e4562b49615e0fc6a.png" src="../../../_images/4621edf83a0bd6c13a9f9a28d85d2e612b66b4326a32d42e4562b49615e0fc6a.png" />
+<img alt="../../../_images/4137704da93a1e2122d0ea6f223fe0401adbd10df838c330703a409c05b88160.png" src="../../../_images/4137704da93a1e2122d0ea6f223fe0401adbd10df838c330703a409c05b88160.png" />
 </div>
 </div>
 </section>
@@ -756,12 +770,12 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2053/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2091/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_no_noise = pymedphys.gamma(
 </pre></div>
 </div>
-<img alt="../../../_images/e0071e95901ec107d8138cd147371cc7fca8151a9c5cb9a004a2d8490789fa74.png" src="../../../_images/e0071e95901ec107d8138cd147371cc7fca8151a9c5cb9a004a2d8490789fa74.png" />
-<img alt="../../../_images/70ef4bd9f1da9156a73832c07c2176a73b3e95beecf3ec7dd0357ff804c6f44d.png" src="../../../_images/70ef4bd9f1da9156a73832c07c2176a73b3e95beecf3ec7dd0357ff804c6f44d.png" />
+<img alt="../../../_images/f2cdb3d5ae632e8f3a72c7fa2a052326e39a4c665c59ef568b4c427dc82fd570.png" src="../../../_images/f2cdb3d5ae632e8f3a72c7fa2a052326e39a4c665c59ef568b4c427dc82fd570.png" />
+<img alt="../../../_images/ef85f2a605bf65122b02ae5e3d4ae82c5448fa56c88a317642c6edd4abe1b86c.png" src="../../../_images/ef85f2a605bf65122b02ae5e3d4ae82c5448fa56c88a317642c6edd4abe1b86c.png" />
 </div>
 </div>
 </section>
@@ -786,7 +800,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/0a1bfe885e08b3116b1453118af22a9450a120458a7bd301a41b7264a17dd40a.png" src="../../../_images/0a1bfe885e08b3116b1453118af22a9450a120458a7bd301a41b7264a17dd40a.png" />
+<img alt="../../../_images/95cfc7894a6cda2ea7b8189f267de77589cbb444a2ff52dd5b9b34b76f2e99ea.png" src="../../../_images/95cfc7894a6cda2ea7b8189f267de77589cbb444a2ff52dd5b9b34b76f2e99ea.png" />
 </div>
 </div>
 <p>Let’s see what our dise difference looks like with this noise</p>
@@ -807,7 +821,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/2b2339e397e6d0efbe2146163816834db8b122aa428edc7e5c7f8026265cc9a7.png" src="../../../_images/2b2339e397e6d0efbe2146163816834db8b122aa428edc7e5c7f8026265cc9a7.png" />
+<img alt="../../../_images/4206f24111af9ff5dbabd74372f5f3b9d93f15b3ecc443bc6237ccb3d589adc8.png" src="../../../_images/4206f24111af9ff5dbabd74372f5f3b9d93f15b3ecc443bc6237ccb3d589adc8.png" />
 </div>
 </div>
 <p>But what about our gamma?</p>
@@ -840,12 +854,12 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2053/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2091/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_with_noise = pymedphys.gamma(
 </pre></div>
 </div>
-<img alt="../../../_images/a1e0d9b53844a2768617586c6c2fdda80c6ee3cf17be873a4c440a018263e0ff.png" src="../../../_images/a1e0d9b53844a2768617586c6c2fdda80c6ee3cf17be873a4c440a018263e0ff.png" />
-<img alt="../../../_images/9260c389a8e14df9efd980adab3ea2b72e55c84a6245afdc31954e44fad6c146.png" src="../../../_images/9260c389a8e14df9efd980adab3ea2b72e55c84a6245afdc31954e44fad6c146.png" />
+<img alt="../../../_images/f5088034c6141b822726fdf68423acc6289a7a450b377759c44c6403d5074837.png" src="../../../_images/f5088034c6141b822726fdf68423acc6289a7a450b377759c44c6403d5074837.png" />
+<img alt="../../../_images/d06b6fae5fa8d0208834c6df51216be1973bee8b46724cd9aaf657d73b19e7cf.png" src="../../../_images/d06b6fae5fa8d0208834c6df51216be1973bee8b46724cd9aaf657d73b19e7cf.png" />
 </div>
 </div>
 </section>
@@ -895,11 +909,10 @@ partners.</p>
 
               
               
-                <footer class="bd-footer-article">
+              
+              
+                <footer class="prev-next-footer">
                   
-<div class="footer-article-items footer-article__inner">
-  
-    <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
        href="1D-from-csv.html"
@@ -919,10 +932,7 @@ partners.</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
-</div></div>
-  
 </div>
-
                 </footer>
               
             </div>
@@ -964,6 +974,7 @@ By the PyMedPhys community
   
   <div class="footer-item">
     
+
   <p class="copyright">
     
       © Copyright 2018-2021.
@@ -990,8 +1001,8 @@ By the PyMedPhys community
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
-<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
 
   <footer class="bd-footer">
   </footer>
