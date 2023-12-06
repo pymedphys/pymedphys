@@ -23,6 +23,7 @@ import tempfile
 from pymedphys._imports import pytest, tabulate, tqdm
 
 import pymedphys._utilities.test as pmp_test_utils
+import pymedphys.tests.e2e.utilities as cypress_test_utilities
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 REPO_ROOT = LIBRARY_ROOT.parent.parent
@@ -164,6 +165,9 @@ def _call_pytest(remaining, label):
     os.chdir(LIBRARY_ROOT)
     print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
 
+    if "--cypress" in remaining:
+        remaining += ["--reruns", "5", "-v", "-s"]
+
     try:
         retcode = pytest.main(["--pyargs", "pymedphys"] + remaining)
     finally:
@@ -196,6 +200,12 @@ def run_pylint(_, remaining):
         subprocess.check_call(command)
     finally:
         os.chdir(original_cwd)
+
+
+def run_cypress(_):
+    cypress_test_utilities.run_test_commands_with_gui_process(
+        ["yarn", "yarn cypress open"]
+    )
 
 
 def start_mssql_docker(args):

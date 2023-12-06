@@ -12,6 +12,12 @@ SKIPPING_CONFIG = {
         "description": "mark test as slow to run",
         "skip_otherwise": True,
     },
+    "cypress": {
+        "options": ["--run-only-yarn", "--cypress"],
+        "help": "run the cypress tests",
+        "description": "mark test as using cypress",
+        "skip_otherwise": True,
+    },
     "pydicom": {
         "options": ["--run-only-pydicom", "--pydicom"],
         "help": "run only the tests that use pydicom",

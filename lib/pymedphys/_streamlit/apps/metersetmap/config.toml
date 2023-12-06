@@ -1,0 +1,25 @@
+# This is a bare-bones config designed to support file upload/download only
+
+version = 1
+
+[data_methods]
+available = ["dicom", "trf"]
+default_reference = "dicom"
+default_evaluation = "trf"
+
+[[site]]
+name = "a-demo-site-name"
+
+    [site.export-directories]
+    escan = '~/pymedphys-gui-metersetmap'
+
+[output]
+png_directory = '~/pymedphys-gui-metersetmap'
+
+[gamma]
+dose_percent_threshold = 2
+distance_mm_threshold = 0.5
+local_gamma = true
+quiet = true
+max_gamma = 5
+lower_percent_dose_cutoff = 20

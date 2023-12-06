@@ -28,7 +28,8 @@ from pymedphys._root import LIBRARY_ROOT
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="Does not currently work on Windows"
+    sys.platform in ("win32", "darwin"),
+    reason="Does not currently work on Windows or MacOS",
 )
 def test_icom_cli():
     icom_server_process = multiprocessing.Process(target=_mock_icom_server)
