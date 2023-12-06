@@ -20,7 +20,7 @@ from typing import List, Optional
 
 from pymedphys._imports import black, tomlkit
 
-from .paths import LIBRARY_PATH, REPO_ROOT
+from .paths import DEPENDENCY_EXTRA_PATH, LIBRARY_PATH, REPO_ROOT
 
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 
@@ -218,6 +218,9 @@ def propagate_extras():
 
         with open(PYPROJECT_TOML_PATH, "w") as f:
             f.write(tomlkit.dumps(pyproject_contents))
+
+    with open(DEPENDENCY_EXTRA_PATH, "w") as f:
+        f.write(tomlkit.dumps(extras))
 
 
 def _propagate_pyproject_hash():

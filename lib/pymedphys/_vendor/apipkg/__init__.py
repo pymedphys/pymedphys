@@ -236,24 +236,36 @@ def AliasModule(modname, modpath, attrname=None):
             # return getattr(getmod(), name)
             try:
                 return getattr(getmod(), name)
-            except (ImportError, ModuleNotFoundError):
+            except (ImportError, ModuleNotFoundError) as exc:
                 # Support inspection rejection
                 if name in ["__file__", "__spec__", "__path__"]:
                     return None
 
                 no_scope_modname = modname.replace("pymedphys._imports.", "")
 
+                from pymedphys._imports import tomlkit
+
+                from pymedphys._dev.paths import DEPENDENCY_EXTRA_PATH
                 from pymedphys._version import __version__
+
+                with open(DEPENDENCY_EXTRA_PATH) as f:
+                    dep_extra_contents = tomlkit.loads(f.read())
+                    # Suggest extra with minimal num of dependencies
+                    for sorted_extra in sorted(
+                        dep_extra_contents, key=lambda k: len(dep_extra_contents[k])
+                    ):
+                        if no_scope_modname in dep_extra_contents[sorted_extra]:
+                            extra = sorted_extra
+                            break
 
                 raise ModuleNotFoundError(
                     f"""
                     PyMedPhys was unable to import "{no_scope_modname}.{name}".
-                    The easiest way to fix this issue is to use the "[user]"
-                    option when installing PyMedPhys. For example,
-                    with pip this can be done by calling
-                    "pip install pymedphys[user]=={__version__}".
+                    The easiest way to fix this issue is to use the "[extra]"
+                    option when installing PyMedPhys. Please run
+                    "pip install pymedphys[{extra}]=={__version__}".
                     """
-                )
+                ) from exc
 
         def __setattr__(self, name, value):
             setattr(getmod(), name, value)
