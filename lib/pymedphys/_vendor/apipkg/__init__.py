@@ -251,11 +251,11 @@ def AliasModule(modname, modpath, attrname=None):
                     try:
                         import tomllib
 
-                        dep_extra_contents = tomllib.load(f)
+                        dep_extra_contents = tomllib.loads(f.read())
                     except ImportError:
                         from pymedphys._imports import tomlkit
 
-                        dep_extra_contents = tomlkit.load(f)
+                        dep_extra_contents = tomlkit.loads(f.read())
 
                     # Suggest extra with minimal num of dependencies
                     for sorted_extra in sorted(
