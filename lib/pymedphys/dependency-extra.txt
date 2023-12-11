@@ -7,7 +7,6 @@ all = [
     "dbfread",
     "dicompyler-core",
     "doc8",
-    "hypothesis",
     "imageio",
     "ipython",
     "jupyter-book",
@@ -40,10 +39,11 @@ all = [
     "sphinx-argparse",
     "sphinx-book-theme",
     "sqlalchemy",
+    "streamlit",
+    "streamlit-ace",
     "tabulate",
     "timeago",
     "toml",
-    "tomlkit",
     "tqdm",
     "watchdog",
     "xmltodict",
@@ -67,12 +67,11 @@ docs = [
 ]
 doctests = ["black", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
-mosaiq = ["pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
-propagate = ["black", "tomlkit"]
+mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
+propagate = ["black"]
 speedups = ["interpolation"]
 tests = [
     "astroid",
-    "hypothesis",
     "psutil",
     "pylint",
     "pytest",
@@ -105,9 +104,10 @@ user = [
     "scipy",
     "shapely",
     "sqlalchemy",
+    "streamlit",
+    "streamlit-ace",
     "timeago",
     "toml",
-    "tomlkit",
     "tqdm",
     "watchdog",
     "xmltodict",

@@ -243,14 +243,20 @@ def AliasModule(modname, modpath, attrname=None):
 
                 no_scope_modname = modname.replace("pymedphys._imports.", "")
 
-                from pymedphys._imports import tomlkit
-
                 from pymedphys._dev.paths import DEPENDENCY_EXTRA_PATH
                 from pymedphys._version import __version__
 
                 extra = "user"
                 with open(DEPENDENCY_EXTRA_PATH) as f:
-                    dep_extra_contents = tomlkit.loads(f.read())
+                    try:
+                        import tomllib
+
+                        dep_extra_contents = tomllib.load(f)
+                    except ImportError:
+                        from pymedphys._imports import tomlkit
+
+                        dep_extra_contents = tomlkit.load(f)
+
                     # Suggest extra with minimal num of dependencies
                     for sorted_extra in sorted(
                         dep_extra_contents, key=lambda k: len(dep_extra_contents[k])

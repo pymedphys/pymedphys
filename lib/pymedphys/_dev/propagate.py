@@ -15,6 +15,7 @@
 import json
 import re
 import subprocess
+import sys
 import textwrap
 from typing import List, Optional
 
@@ -189,7 +190,20 @@ def propagate_extras():
 
     for key in deps:
         value = deps[key]
-        comment = value.trivia.comment
+
+        if isinstance(value, List):
+            comment = ""
+            ver = sys.version_info
+            for v in value:
+                if (
+                    "optional" in v
+                    and v["optional"]
+                    and eval(f"{ver[0]}.{ver[1]}" + f"{v['python']}")
+                ):
+                    comment = value.trivia.comment
+                    break
+        else:
+            comment = value.trivia.comment
 
         if comment.startswith("# groups"):
             split = comment.split("=")
