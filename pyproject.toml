@@ -25,6 +25,7 @@ include = ["lib/pymedphys/docs/_build/html/**/*"]
 python = ">=3.8,<3.9.7 || >3.9.7,<3.12"
 typing-extensions = "*"
 setuptools = "*"
+tomlkit = "*"
 
 
 # ------- #
@@ -47,7 +48,6 @@ scipy = { version = "*", optional = true }      # groups = ["user", "all", "docs
 pymssql = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 sqlalchemy = { version = "*", optional = true } # groups = ["user", "all", "mosaiq"]
 natsort = { version = "*", optional = true }    # groups = ["user", "all"]
-tomlkit = { version = "*", optional = true }    # groups = ["user", "all", "propagate"]
 toml = { version = "*", optional = true }       # groups = ["user", "cli", "all", "mosaiq", "docs"]
 
 pynetdicom = { version = "*", optional = true } # groups = ["user", "all", "dicom"]
@@ -176,7 +176,6 @@ all = [
     "tabulate",
     "timeago",
     "toml",
-    "tomlkit",
     "tqdm",
     "watchdog",
     "xmltodict",
@@ -201,7 +200,7 @@ docs = [
 doctests = ["black", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
-propagate = ["black", "tomlkit"]
+propagate = ["black"]
 speedups = ["interpolation"]
 tests = [
     "astroid",
@@ -241,7 +240,6 @@ user = [
     "streamlit-ace",
     "timeago",
     "toml",
-    "tomlkit",
     "tqdm",
     "watchdog",
     "xmltodict",
