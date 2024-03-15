@@ -19,6 +19,7 @@ import pathlib
 import socket
 import subprocess
 import sys
+import time
 import tempfile
 
 import pytest
@@ -45,6 +46,8 @@ def test_icom_cli():
             ["pymedphys", "icom", "listen", "127.0.0.1", temp_dir], env=env
         )
         icom_server_process.join()
+        # leave some time for the icom listener to parse data stream and create txt files after the socket is closed 
+        time.sleep(1)
         icom_listen_cli.terminate()
 
         live_files = list(pathlib.Path(temp_dir).glob("**/*.txt"))
