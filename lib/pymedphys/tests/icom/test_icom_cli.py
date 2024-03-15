@@ -19,8 +19,8 @@ import pathlib
 import socket
 import subprocess
 import sys
-import time
 import tempfile
+import time
 
 import pytest
 
@@ -33,7 +33,9 @@ from pymedphys._root import LIBRARY_ROOT
     reason="Does not currently work on Windows or MacOS",
 )
 def test_icom_cli():
-    icom_server_process = multiprocessing.Process(target=_mock_icom_server)
+    data = download_files()
+    icom_server_process = multiprocessing.Process(target=_mock_icom_server,
+                                                  args=(data,))
     icom_server_process.start()
 
     env = os.environ.copy()
@@ -46,7 +48,6 @@ def test_icom_cli():
             ["pymedphys", "icom", "listen", "127.0.0.1", temp_dir], env=env
         )
         icom_server_process.join()
-        # leave some time for the icom listener to parse data stream and create txt files after the socket is closed 
         time.sleep(1)
         icom_listen_cli.terminate()
 
@@ -54,7 +55,7 @@ def test_icom_cli():
         assert len(live_files) == 256
 
 
-def _mock_icom_server():
+def download_files():
     paths = download.zip_data_paths("metersetmap-gui-e2e-data.zip")
     icom_paths = [path for path in paths if path.suffix == ".xz"]
 
@@ -65,6 +66,10 @@ def _mock_icom_server():
         return contents
 
     data = load_icom_stream(icom_paths[0])
+    return data
+
+
+def _mock_icom_server(data):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 1706))
