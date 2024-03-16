@@ -34,8 +34,9 @@ from pymedphys._root import LIBRARY_ROOT
 )
 def test_icom_cli():
     data = download_files()
-    icom_server_process = multiprocessing.Process(target=_mock_icom_server,
-                                                  args=(data,))
+    icom_server_process = multiprocessing.Process(
+        target=_mock_icom_server, args=(data,)
+    )
     icom_server_process.start()
 
     env = os.environ.copy()
@@ -62,7 +63,6 @@ def download_files():
     def load_icom_stream(icom_path):
         with lzma.open(icom_path, "r") as f:
             contents = f.read()
-
         return contents
 
     data = load_icom_stream(icom_paths[0])
