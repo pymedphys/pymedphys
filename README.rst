@@ -136,8 +136,8 @@ Maintainers
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 * `Phillip Chlap`_
+    * `Radformation Inc.`_, USA
     * `University of New South Wales`_, Australia
-    * `Ingham Institute`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
@@ -223,7 +223,7 @@ Past contributors
 
 .. _`Swerdloff Family`: https://github.com/sjswerdloff
 
-.. _`Ingham Institute`: https://inghaminstitute.org.au/
+.. _`Radformation Inc.`: https://radformation.com/
 
 .. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
 
