@@ -1,8 +1,8 @@
 {
     "time_increment": 0.04,
     "linac_state_codes": {
-        "16": "Closed State",
-        "34": "Preparatory",
+        "16": "Closed",
+        "34": "State Code Unknown",
         "39": "Move Only",
         "40": "Pause",
         "41": "Intersegment",
