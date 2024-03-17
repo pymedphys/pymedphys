@@ -17,7 +17,7 @@ This project adheres to
 
 - The gamma tool now utilises [EconForge's `interpolation`](https://github.com/EconForge/interpolation.py)
   package by default. Initial testing shows improvements in gamma calculation
-  times by an approximate factor of 4. [PR #1761](https://github.com/pymedphys/pymedphys/pull/1761)
+  times by approximately a factor of 4. [PR #1761](https://github.com/pymedphys/pymedphys/pull/1761)
 - Improvements to Elekta TRF decoding. [PR #1773](https://github.com/pymedphys/pymedphys/pull/1773)
 - The Pinnacle Export Tool has been added to the stable API and is no longer considered experimental.
   [PR #1803](https://github.com/pymedphys/pymedphys/pull/1803)
