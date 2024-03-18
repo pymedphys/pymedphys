@@ -178,6 +178,11 @@ Active contributors
 
 .. _`Fada Guan`: https://github.com/guanfada
 
+* `Marcus Fisk`_
+    * `Cancer Care Riverina`_, Australia
+
+.. _`Marcus Fisk`: https://github.com/laser47-hue
+
 |uth|
 
 Past contributors
@@ -234,6 +239,8 @@ Past contributors
 .. _`Humanitas University`: https://www.hunimed.eu/
 
 .. _`Yale University School of Medicine`: https://medicine.yale.edu/
+
+.. _`Cancer Care Riverina`: https://cancercare.com.au/clinics/cancer-care-riverina/
 
 .. END_OF_DOCS_IMPORT
 
