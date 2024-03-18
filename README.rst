@@ -121,7 +121,7 @@ Maintainers
 ***********
 
 * `Simon Biggs`_
-    * `Radiotherapy AI`_, Australia
+    * `Anthropic PBC`_
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
@@ -142,7 +142,7 @@ Maintainers
 .. _`Phillip Chlap`: https://github.com/pchlap
 
 
-|rai| |sjs| |rah|
+|sjs| |rah|
 
 Active contributors
 ****************************
@@ -190,9 +190,6 @@ Past contributors
 * `Paul King <https://github.com/kingrpaul>`_
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
-.. |rai| image:: https://github.com/pymedphys/pymedphys/raw/286deacdea2b3af9322796d413d0da6e1d8935a9/logos/rai.png
-    :target: `Radiotherapy AI`_
-
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
 
@@ -202,7 +199,7 @@ Past contributors
 .. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
 
-.. _`Radiotherapy AI`: https://radiotherapy.ai/
+.. _`Anthropic PBC`: https://www.anthropic.com/
 
 .. _`ELEKTA Pty Ltd`: https://www.elekta.com/
 
