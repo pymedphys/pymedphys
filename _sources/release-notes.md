@@ -7,13 +7,29 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [unreleased]
+## [Unreleased]
+
+- None
+
+## [0.40.0]
 
 ### New features and enhancements
 
-- The gamma tool now utilises [Econforge's `interpolation`](https://github.com/EconForge/interpolation.py)
+- The gamma tool now utilises [EconForge's `interpolation`](https://github.com/EconForge/interpolation.py)
   package by default. Initial testing shows improvements in gamma calculation
-  times by an approximate factor of 4. [PR #1761](https://github.com/pymedphys/pymedphys/pull/1761)
+  times by approximately a factor of 4. [PR #1761](https://github.com/pymedphys/pymedphys/pull/1761)
+- Improvements to Elekta TRF decoding. [PR #1773](https://github.com/pymedphys/pymedphys/pull/1773)
+- The Pinnacle Export Tool has been added to the stable API and is no longer considered experimental.
+  [PR #1803](https://github.com/pymedphys/pymedphys/pull/1803)
+
+### Bug fixes
+
+- The Pinnacle Export Tool now supports the `inverse_grey` ROI display colour. [PR #1784](https://github.com/pymedphys/pymedphys/pull/1784)
+
+### Experimental API changes
+
+- To simplify maintenance, all experimental modules other than `pseudonymise`, `quickcheck` and `streamlit` have been
+  removed. These may be added back upon request.
 
 ## [0.39.3]
 
@@ -25,7 +41,7 @@ This project adheres to
 
 ## [0.39.2]
 
-### Bug Fixes
+### Bug fixes
 
 - Utilise pylibjpeg-libjpeg 1.3.2 or greater (Current libjpeg version for Apple
   M1 compatibility)
@@ -118,7 +134,7 @@ This project adheres to
 
 ### New features and enhancements
 
-- A range of application have been added to and improved on within the
+- A range of applications have been added to and improved on within the
   PyMedPhys GUI.
   - A Daily WLutz application was added which utilises the air cavity within
     an iso-cube, combined with morning run-up beams (as arcs) to record the
@@ -1379,7 +1395,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 - Began keeping record of changes in `changelog.md`
 
 [unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.39.3...main
-[0.39.2]: https://github.com/pymedphys/pymedphys/compare/v0.39.2...v0.39.3
+[0.40.0]: https://github.com/pymedphys/pymedphys/compare/v0.39.3...v0.40.0
+[0.39.3]: https://github.com/pymedphys/pymedphys/compare/v0.39.2...v0.39.3
 [0.39.2]: https://github.com/pymedphys/pymedphys/compare/v0.39.1...v0.39.2
 [0.39.1]: https://github.com/pymedphys/pymedphys/compare/v0.39.0...v0.39.1
 [0.39.0]: https://github.com/pymedphys/pymedphys/compare/v0.38.0...v0.39.0

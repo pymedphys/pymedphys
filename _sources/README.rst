@@ -152,6 +152,11 @@ Active contributors
 
 .. _`Derek Lane`: https://github.com/dg1an3
 
+* `Marcelo Jordao`_
+    * `ELEKTA AB`_, Hong Kong SAR
+
+.. _`Marcelo Jordao`: https://github.com/mguerrajordao
+
 * `Jake Rembish`_
     * `UT Health San Antonio`_, USA
 

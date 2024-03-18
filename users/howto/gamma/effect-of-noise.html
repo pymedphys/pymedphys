@@ -574,12 +574,12 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (0.40.0.dev3)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (0.40.0)
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: setuptools in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (69.0.2)
-Requirement already satisfied: tomlkit in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (0.12.3)
-Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (4.8.0)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: setuptools in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (69.2.0)
+Requirement already satisfied: tomlkit in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (0.12.4)
+Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.11/site-packages (from pymedphys) (4.10.0)
 </pre></div>
 </div>
 </div>
@@ -645,7 +645,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/78c3dee976a0f999dbb8bd3f8ae8a0990d0210310774d9e2736629fa4ceae228.png" src="../../../_images/78c3dee976a0f999dbb8bd3f8ae8a0990d0210310774d9e2736629fa4ceae228.png" />
+<img alt="../../../_images/6f698b7d3fe17591702240264decce8016219ca7769c9eeb4c113aa8bb3e78dc.png" src="../../../_images/6f698b7d3fe17591702240264decce8016219ca7769c9eeb4c113aa8bb3e78dc.png" />
 </div>
 </div>
 <p>Of importance the length of the first coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the first dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>, and the length of the second coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the second dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>. This is required because <code class="docutils literal notranslate"><span class="pre">pymedphys.gamma</span></code> internally uses <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.RegularGridInterpolator.html"><code class="docutils literal notranslate"><span class="pre">scipy.interpolate.RegularGridInterpolator</span></code></a> and the gamma implimentation has been chosen to align with this scipy coordinate convention uses here.</p>
@@ -712,7 +712,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/ff76b6211d63687dc6a4467c2153cd4f6d597d3262921a49e22b6348995f7f20.png" src="../../../_images/ff76b6211d63687dc6a4467c2153cd4f6d597d3262921a49e22b6348995f7f20.png" />
+<img alt="../../../_images/3bb03fc9b072b1cdc6211d2fe41e14888513e9787f3d70b70da091b430ab545e.png" src="../../../_images/3bb03fc9b072b1cdc6211d2fe41e14888513e9787f3d70b70da091b430ab545e.png" />
 </div>
 </div>
 </section>
@@ -735,7 +735,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/4137704da93a1e2122d0ea6f223fe0401adbd10df838c330703a409c05b88160.png" src="../../../_images/4137704da93a1e2122d0ea6f223fe0401adbd10df838c330703a409c05b88160.png" />
+<img alt="../../../_images/7cbf9dba5b7d84e009a6ba51fb6eeb63e17cdeb278471dc12ada5152caaf90b2.png" src="../../../_images/7cbf9dba5b7d84e009a6ba51fb6eeb63e17cdeb278471dc12ada5152caaf90b2.png" />
 </div>
 </div>
 </section>
@@ -771,12 +771,12 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_1929/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_1930/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_no_noise = pymedphys.gamma(
 </pre></div>
 </div>
-<img alt="../../../_images/f2cdb3d5ae632e8f3a72c7fa2a052326e39a4c665c59ef568b4c427dc82fd570.png" src="../../../_images/f2cdb3d5ae632e8f3a72c7fa2a052326e39a4c665c59ef568b4c427dc82fd570.png" />
-<img alt="../../../_images/ef85f2a605bf65122b02ae5e3d4ae82c5448fa56c88a317642c6edd4abe1b86c.png" src="../../../_images/ef85f2a605bf65122b02ae5e3d4ae82c5448fa56c88a317642c6edd4abe1b86c.png" />
+<img alt="../../../_images/455d452a88e01ad65f9a6ecbbb27df3b3929b88cdbb91f5cc9dae2a1cd071a77.png" src="../../../_images/455d452a88e01ad65f9a6ecbbb27df3b3929b88cdbb91f5cc9dae2a1cd071a77.png" />
+<img alt="../../../_images/74d3ed480d1f6841f51dcdefe6cab15c8470587285c94af935bb2b2603040379.png" src="../../../_images/74d3ed480d1f6841f51dcdefe6cab15c8470587285c94af935bb2b2603040379.png" />
 </div>
 </div>
 </section>
@@ -801,7 +801,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/95cfc7894a6cda2ea7b8189f267de77589cbb444a2ff52dd5b9b34b76f2e99ea.png" src="../../../_images/95cfc7894a6cda2ea7b8189f267de77589cbb444a2ff52dd5b9b34b76f2e99ea.png" />
+<img alt="../../../_images/956dfd776681f2fb5ed6d1018c9324b3c90a2cfc0e09dbdbad81d07a1d0ba6c3.png" src="../../../_images/956dfd776681f2fb5ed6d1018c9324b3c90a2cfc0e09dbdbad81d07a1d0ba6c3.png" />
 </div>
 </div>
 <p>Let’s see what our dise difference looks like with this noise</p>
@@ -822,7 +822,7 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/4206f24111af9ff5dbabd74372f5f3b9d93f15b3ecc443bc6237ccb3d589adc8.png" src="../../../_images/4206f24111af9ff5dbabd74372f5f3b9d93f15b3ecc443bc6237ccb3d589adc8.png" />
+<img alt="../../../_images/d2d3faedb9dccc9afa502315440e64139bf01d8a640ced622de030e7944c348a.png" src="../../../_images/d2d3faedb9dccc9afa502315440e64139bf01d8a640ced622de030e7944c348a.png" />
 </div>
 </div>
 <p>But what about our gamma?</p>
@@ -855,12 +855,12 @@ Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_1929/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_1930/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_with_noise = pymedphys.gamma(
 </pre></div>
 </div>
-<img alt="../../../_images/f5088034c6141b822726fdf68423acc6289a7a450b377759c44c6403d5074837.png" src="../../../_images/f5088034c6141b822726fdf68423acc6289a7a450b377759c44c6403d5074837.png" />
-<img alt="../../../_images/d06b6fae5fa8d0208834c6df51216be1973bee8b46724cd9aaf657d73b19e7cf.png" src="../../../_images/d06b6fae5fa8d0208834c6df51216be1973bee8b46724cd9aaf657d73b19e7cf.png" />
+<img alt="../../../_images/925c1af7f5a2e2701f3f37caf9d45f629bfad2c04bd2268074c4c91a50a2536b.png" src="../../../_images/925c1af7f5a2e2701f3f37caf9d45f629bfad2c04bd2268074c4c91a50a2536b.png" />
+<img alt="../../../_images/89e2c082688d6da73e40526930136419e04467dd72d6987948f6175852d795c1.png" src="../../../_images/89e2c082688d6da73e40526930136419e04467dd72d6987948f6175852d795c1.png" />
 </div>
 </div>
 </section>
