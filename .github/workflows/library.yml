@@ -158,8 +158,8 @@ jobs:
       - name: Pip Cache
         uses: actions/cache@v2
         with:
-          path: "$dir"
-          key: pip-${{ matrix.task }}-${{ runner.os }}-"$version"
+          path: ${{ env.dir }}
+          key: pip-${{ matrix.task }}-${{ runner.os }}-${{ env.version }}
 
       # -----------------------------------------------------------------------------
 
@@ -299,7 +299,7 @@ jobs:
         if: matrix.task != 'pyright'
         uses: actions/cache@v2
         with:
-          path: "$dir"
+          path: ${{ env.dir }}
           key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
 
       # -----------------------------------------------------------------------------
