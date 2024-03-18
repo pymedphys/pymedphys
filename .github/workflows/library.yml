@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: 3.8
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-cache
@@ -156,7 +156,7 @@ jobs:
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Pip Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
@@ -223,7 +223,7 @@ jobs:
           poetry config virtualenvs.in-project true
 
       - name: Poetry Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         id: poetry-cache
         with:
           path: .venv
@@ -297,7 +297,7 @@ jobs:
       - name: PyMedPhys Cache
         id: pymedphys-cache
         if: matrix.task != 'pyright'
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
           key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
