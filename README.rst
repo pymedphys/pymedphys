@@ -121,7 +121,7 @@ Maintainers
 ***********
 
 * `Simon Biggs`_
-    * `Radiotherapy AI`_, Australia
+    * `Anthropic PBC`_
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
@@ -136,13 +136,13 @@ Maintainers
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 * `Phillip Chlap`_
+    * `Radformation Inc.`_, USA
     * `University of New South Wales`_, Australia
-    * `Ingham Institute`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
 
-|rai| |sjs| |rah|
+|sjs| |rah|
 
 Active contributors
 ****************************
@@ -151,6 +151,11 @@ Active contributors
     * `ELEKTA AB`_, Houston TX
 
 .. _`Derek Lane`: https://github.com/dg1an3
+
+* `Marcelo Jordao`_
+    * `ELEKTA AB`_, Hong Kong SAR
+
+.. _`Marcelo Jordao`: https://github.com/mguerrajordao
 
 * `Jake Rembish`_
     * `UT Health San Antonio`_, USA
@@ -185,9 +190,6 @@ Past contributors
 * `Paul King <https://github.com/kingrpaul>`_
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
-.. |rai| image:: https://github.com/pymedphys/pymedphys/raw/286deacdea2b3af9322796d413d0da6e1d8935a9/logos/rai.png
-    :target: `Radiotherapy AI`_
-
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
 
@@ -197,7 +199,7 @@ Past contributors
 .. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
 
-.. _`Radiotherapy AI`: https://radiotherapy.ai/
+.. _`Anthropic PBC`: https://www.anthropic.com/
 
 .. _`ELEKTA Pty Ltd`: https://www.elekta.com/
 
@@ -223,7 +225,7 @@ Past contributors
 
 .. _`Swerdloff Family`: https://github.com/sjswerdloff
 
-.. _`Ingham Institute`: https://inghaminstitute.org.au/
+.. _`Radformation Inc.`: https://radformation.com/
 
 .. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
 
