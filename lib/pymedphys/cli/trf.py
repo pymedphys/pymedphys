@@ -60,7 +60,7 @@ def trf_detect(trf_subparsers):
         "detect", help="Attempts to detect trf encoding method."
     )
 
-    parser.add_argument("filepath", type=str, help=("The filepath of a trf file."))
+    parser.add_argument("filepath", type=str, help="The filepath of a trf file.")
 
     parser.set_defaults(func=detect_cli)
 

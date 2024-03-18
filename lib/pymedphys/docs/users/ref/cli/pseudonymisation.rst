@@ -7,4 +7,4 @@ Pseudonymisation Tool
 .. argparse::
    :ref: pymedphys.cli.define_parser
    :prog: pymedphys
-   :path: experimental dicom anonymise
+   :path: experimental dicom pseudonymise

@@ -37,7 +37,7 @@ def read_mapcheck_txt(file_name):
 
     Mapcheck = namedtuple("Mapcheck", ["x", "y", "dose"])
 
-    with open(file_name, "r") as mapcheck_file:
+    with open(file_name) as mapcheck_file:
         m_chk = "\n".join(mapcheck_file.readlines())
         m_chk = m_chk.split("Dose Interpolated")[-1]
         m_chk = m_chk.split("\n")[2:]

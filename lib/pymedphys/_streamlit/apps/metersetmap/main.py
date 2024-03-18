@@ -227,7 +227,7 @@ def plot_gamma_hist(gamma, percent, dist):
     pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
 
     plt.title(
-        "Local Gamma ({0}%/{1}mm) | Percent Pass: {2:.2f} % | Mean Gamma: {3:.2f} | Max Gamma: {4:.2f}".format(
+        "Local Gamma ({}%/{}mm) | Percent Pass: {:.2f} % | Mean Gamma: {:.2f} | Max Gamma: {:.2f}".format(
             percent, dist, pass_ratio * 100, np.mean(valid_gamma), np.max(valid_gamma)
         )
     )

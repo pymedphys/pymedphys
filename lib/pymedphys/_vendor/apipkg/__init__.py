@@ -37,6 +37,7 @@ see https://pypi.python.org/pypi/apipkg
 
 (c) holger krekel, 2009 - MIT license
 """
+
 import os
 import sys
 from types import ModuleType
@@ -137,7 +138,7 @@ class ApiModule(ModuleType):
                 setattr(self, name, val)
         for name, importspec in importspec.items():
             if isinstance(importspec, dict):
-                subname = "%s.%s" % (self.__name__, name)
+                subname = "{}.{}".format(self.__name__, name)
                 apimod = ApiModule(subname, importspec, implprefix)
                 sys.modules[subname] = apimod
                 setattr(self, name, apimod)
@@ -149,7 +150,7 @@ class ApiModule(ModuleType):
                     modpath = implprefix + modpath
 
                 if not attrname:
-                    subname = "%s.%s" % (self.__name__, name)
+                    subname = "{}.{}".format(self.__name__, name)
                     apimod = AliasModule(subname, modpath)
                     sys.modules[subname] = apimod
                     if "." not in name:
@@ -164,8 +165,8 @@ class ApiModule(ModuleType):
         if hasattr(self, "__file__"):
             repr_list.append("from " + repr(self.__file__))
         if repr_list:
-            return "<ApiModule %r %s>" % (self.__name__, " ".join(repr_list))
-        return "<ApiModule %r>" % (self.__name__,)
+            return "<ApiModule {!r} {}>".format(self.__name__, " ".join(repr_list))
+        return "<ApiModule {!r}>".format(self.__name__)
 
     def __makeattr(self, name):
         """lazily compute value for name or raise AttributeError if unknown."""
@@ -181,14 +182,14 @@ class ApiModule(ModuleType):
                 # retry, onfirstaccess might have set attrs
                 return getattr(self, name)
             raise AttributeError(name)
-        else:
-            result = importobj(modpath, attrname)
-            setattr(self, name, result)
-            try:
-                del self.__map__[name]
-            except KeyError:
-                pass  # in a recursive-import situation a double-del can happen
-            return result
+
+        result = importobj(modpath, attrname)
+        setattr(self, name, result)
+        try:
+            del self.__map__[name]
+        except KeyError:
+            pass  # in a recursive-import situation a double-del can happen
+        return result
 
     __getattr__ = __makeattr
 
@@ -224,10 +225,9 @@ def AliasModule(modname, modpath, attrname=None):
             x = modpath
             if attrname:
                 x += "." + attrname
-            return "<AliasModule %r for %r>" % (modname, x)
+            return "<AliasModule {!r} for {!r}>".format(modname, x)
 
         def __getattribute__(self, name):
-
             attribute_call = f"{modname}.{name}"
             if attribute_call in sys.modules.keys():
                 return sys.modules[attribute_call]
@@ -236,24 +236,38 @@ def AliasModule(modname, modpath, attrname=None):
             # return getattr(getmod(), name)
             try:
                 return getattr(getmod(), name)
-            except (ImportError, ModuleNotFoundError):
+            except (ImportError, ModuleNotFoundError) as exc:
                 # Support inspection rejection
                 if name in ["__file__", "__spec__", "__path__"]:
                     return None
 
                 no_scope_modname = modname.replace("pymedphys._imports.", "")
 
+                from pymedphys._imports import tomlkit
+
+                from pymedphys._dev.paths import DEPENDENCY_EXTRA_PATH
                 from pymedphys._version import __version__
+
+                extra = "user"
+                with open(DEPENDENCY_EXTRA_PATH) as f:
+                    dep_extra_contents = tomlkit.loads(f.read())
+
+                # Suggest extra with minimal num of dependencies
+                for sorted_extra in sorted(
+                    dep_extra_contents, key=lambda k: len(dep_extra_contents[k])
+                ):
+                    if no_scope_modname in dep_extra_contents[sorted_extra]:
+                        extra = sorted_extra
+                        break
 
                 raise ModuleNotFoundError(
                     f"""
                     PyMedPhys was unable to import "{no_scope_modname}.{name}".
-                    The easiest way to fix this issue is to use the "[user]"
-                    option when installing PyMedPhys. For example,
-                    with pip this can be done by calling
-                    "pip install pymedphys[user]=={__version__}".
+                    The easiest way to fix this issue is to use the "[extra]"
+                    option when installing PyMedPhys. Please run
+                    "pip install pymedphys[{extra}]=={__version__}".
                     """
-                )
+                ) from exc
 
         def __setattr__(self, name, value):
             setattr(getmod(), name, value)

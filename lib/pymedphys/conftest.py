@@ -24,17 +24,17 @@ SKIPPING_CONFIG = {
         "description": "mark test as using pydicom",
         "skip_otherwise": False,
     },
-    "pylinac": {
-        "options": ["--run-only-pylinac", "--pylinac"],
-        "help": "run only the tests that use pylinac",
-        "description": "mark test as using pylinac",
-        "skip_otherwise": False,
-    },
     "mosaiqdb": {
         "options": ["--run-only-mosaiqdb", "--mosaiqdb"],
         "help": "run only the tests that use mosaiq db",
         "description": "mark test as using mosaiq db",
         "skip_otherwise": True,
+    },
+    "all": {
+        "options": ["--run-all-tests", "--all"],
+        "help": "run all tests",
+        "description": "run all tests that would normally be skipped due to a configuration flag",
+        "skip_otherwise": False,
     },
 }
 
@@ -54,6 +54,10 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
+    for option in SKIPPING_CONFIG["all"]["options"]:
+        if config.getoption(option):
+            return
+
     for key, skip_item in SKIPPING_CONFIG.items():
         this_option_set = False
         provided_option = ""
@@ -99,7 +103,7 @@ def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
         or (
             config.getoption("--doctest-modules")
             and (
-                "_streamlit" in relative_path_list
+                "_gamma" in relative_path_list
                 or "tests" in relative_path_list
                 or "_imports" in relative_path_list
                 or "_experimental" in relative_path_list

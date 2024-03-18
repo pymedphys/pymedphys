@@ -46,16 +46,14 @@ def determine_output_filepaths(output_directory, scan_curvetype, scan_depth):
     for i, curvetype in enumerate(scan_curvetype):
         if curvetype == "PDD":
             # Create the filename to be pdd_[number].csv
-            filepaths.append(
-                os.path.join(output_directory, "pdd_[{0:d}].csv".format(i))
-            )
+            filepaths.append(os.path.join(output_directory, "pdd_[{:d}].csv".format(i)))
 
         elif curvetype == "INPLANE_PROFILE":
             # Create the filename to be inplaneprofile_depth_[number].csv
             filepaths.append(
                 os.path.join(
                     output_directory,
-                    "inplaneprofile_{0:d}mm_[{1:d}].csv".format(int(scan_depth[i]), i),
+                    "inplaneprofile_{:d}mm_[{:d}].csv".format(int(scan_depth[i]), i),
                 )
             )
 
@@ -64,9 +62,7 @@ def determine_output_filepaths(output_directory, scan_curvetype, scan_depth):
             filepaths.append(
                 os.path.join(
                     output_directory,
-                    "crossplaneprofile_{0:d}mm_[{1:d}].csv".format(
-                        int(scan_depth[i]), i
-                    ),
+                    "crossplaneprofile_{:d}mm_[{:d}].csv".format(int(scan_depth[i]), i),
                 )
             )
 

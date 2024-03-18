@@ -51,7 +51,7 @@ def _get_pepper():
     Bytes representing the pepper (which were stored as ASCII)
 
     """
-    pepper = "mynotveryprotectivepeppertest".encode("ASCII")
+    pepper = b"mynotveryprotectivepeppertest"
 
     _config = None
     try:
@@ -421,7 +421,7 @@ def _pseudonymise_PN(
     if strip_name_suffix:
         suffix = ""
 
-    pseudonym = "{0}^{1}^{2}^{3}^{4}".format(
+    pseudonym = "{}^{}^{}^{}^{}".format(
         pseudo_family, pseudo_given, pseudo_middle, prefix, suffix
     )
     return pseudonym

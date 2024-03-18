@@ -119,7 +119,7 @@ def get_coords_from_polygon(polygon):
 
 
 def get_coords_from_multipolygon(multipolygon):
-    return [get_coords_from_polygon(item) for item in multipolygon]
+    return [get_coords_from_polygon(item) for item in multipolygon.geoms]
 
 
 def get_coords_from_polygon_or_multipolygon(polygon_or_multipolygon):

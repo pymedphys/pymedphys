@@ -133,7 +133,7 @@ def adjust_RED_by_structure_name(dicom_subparsers):
 
 
 def anonymise(dicom_subparsers):
-    parser = dicom_subparsers.add_parser("anonymise", help=("Anonymise DICOM files."))
+    parser = dicom_subparsers.add_parser("anonymise", help="Anonymise DICOM files.")
 
     parser.add_argument(
         "input_path",

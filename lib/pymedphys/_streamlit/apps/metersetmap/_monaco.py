@@ -38,7 +38,7 @@ def monaco_input_method(
     )
 
     try:
-        monaco_site, patient_id, patient_name, selected_monaco_plan, tel_paths = [
+        monaco_site, patient_id, patient_name, selected_monaco_plan, tel_paths = (
             telfile_picker_results[key]
             for key in (
                 "monaco_site",
@@ -47,7 +47,7 @@ def monaco_input_method(
                 "selected_monaco_plan",
                 "tel_paths",
             )
-        ]
+        )
     except KeyError:
         st.stop()
 

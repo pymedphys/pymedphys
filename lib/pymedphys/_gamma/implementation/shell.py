@@ -41,7 +41,6 @@ def gamma_shell(
     distance_mm_threshold,
     lower_percent_dose_cutoff=20,
     interp_fraction=10,
-    interpolator="econforge",
     max_gamma=None,
     local_gamma=False,
     global_normalisation=None,
@@ -134,7 +133,6 @@ def gamma_shell(
         distance_mm_threshold,
         lower_percent_dose_cutoff,
         interp_fraction,
-        interpolator,
         max_gamma,
         local_gamma,
         global_normalisation,
@@ -211,7 +209,6 @@ class GammaInternalFixedOptions:
     dose_percent_threshold: Any
     distance_mm_threshold: Any
     interp_fraction: int
-    interpolator: str
     max_gamma: float
     lower_dose_cutoff: float = 0
     maximum_test_distance: float = -1
@@ -248,7 +245,6 @@ class GammaInternalFixedOptions:
         distance_mm_threshold,
         lower_percent_dose_cutoff=20,
         interp_fraction=10,
-        interpolator="scipy",
         max_gamma=None,
         local_gamma=False,
         global_normalisation=None,
@@ -310,7 +306,6 @@ class GammaInternalFixedOptions:
             dose_percent_threshold,
             distance_mm_threshold,
             interp_fraction,
-            interpolator,
             max_gamma,
             lower_dose_cutoff,
             maximum_test_distance,
@@ -524,33 +519,41 @@ def interpolate_evaluation_dose_at_distance(
         axes_reference_to_be_checked, coordinates_at_distance_shell
     )
 
-    if options.interpolator.lower() == "scipy":
-        evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
-            options.axes_evaluation,
-            np.array(options.dose_evaluation),
-            bounds_error=False,
-            fill_value=np.inf,
-        )
+    try:
+        evaluation_dose = _run_interp_with_econforge(options, all_points)
+    except ImportError:
+        evaluation_dose = _run_interp_with_scipy(options, all_points)
 
-        evaluation_dose = evaluation_interpolation(all_points)
+    return evaluation_dose
 
-    elif options.interpolator.lower() == "econforge":
 
-        grids = []
-        for i in range(all_points.shape[-1]):
-            grids.append(all_points[:, :, i])
+def _run_interp_with_econforge(options, all_points):
+    grids = []
+    for i in range(all_points.shape[-1]):
+        grids.append(all_points[:, :, i])
 
-        points_interp = np.column_stack([np.ravel(mgrid) for mgrid in grids]).astype(
-            float
-        )
+    points_interp = np.column_stack([np.ravel(mgrid) for mgrid in grids]).astype(float)
 
-        coords_evaluation_grid = interpolation.splines.CGrid(*options.axes_evaluation)
+    coords_evaluation_grid = interpolation.splines.CGrid(*options.axes_evaluation)
 
-        evaluation_dose = interpolation.splines.eval_linear(
-            coords_evaluation_grid,
-            np.array(options.dose_evaluation),
-            points_interp,
-        ).reshape(np.shape(all_points)[:-1])
+    evaluation_dose = interpolation.splines.eval_linear(
+        coords_evaluation_grid,
+        np.array(options.dose_evaluation),
+        points_interp,
+    ).reshape(np.shape(all_points)[:-1])
+
+    return evaluation_dose
+
+
+def _run_interp_with_scipy(options, all_points):
+    evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
+        options.axes_evaluation,
+        np.array(options.dose_evaluation),
+        bounds_error=False,
+        fill_value=np.inf,
+    )
+
+    evaluation_dose = evaluation_interpolation(all_points)
 
     return evaluation_dose
 

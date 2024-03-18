@@ -1,10 +1,10 @@
 Pinnacle Export Tool
 ====================
 
-.. automodule:: pymedphys.cli.experimental.pinnacle
+.. automodule:: pymedphys.cli.pinnacle
     :no-members:
 
 .. argparse::
    :ref: pymedphys.cli.define_parser
    :prog: pymedphys
-   :path: experimental pinnacle
+   :path: pinnacle

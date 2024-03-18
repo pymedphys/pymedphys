@@ -84,12 +84,11 @@ def anonymise_with_pseudo_cli(args):
     replacement_strategy = anon_strategy.ANONYMISATION_HARDCODE_DISPATCH
     identifying_keywords_for_pseudo = get_default_identifying_keywords()
 
-    if args.pseudo:
-        logging.info("Was run with pseudo!")
-        identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
-        logging.info("Using pseudonymisation keywords")
-        replacement_strategy = strategy.pseudonymisation_dispatch
-        logging.info("Using pseudonymisation strategy")
+    logging.info("Pseudonymisation called!")
+    identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
+    logging.info("Using pseudonymisation keywords")
+    replacement_strategy = strategy.pseudonymisation_dispatch
+    logging.info("Using pseudonymisation strategy")
 
     if isfile(args.input_path):
         anonymise_file(

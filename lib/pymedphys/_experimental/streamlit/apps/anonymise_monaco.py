@@ -67,7 +67,7 @@ def main():
         st.write(FileExistsError("This zip file already exists."))
         if st.button("Delete zip file"):
             zip_path.unlink()
-            st.experimental_rerun()
+            st.rerun()
 
         st.stop()
 
@@ -91,7 +91,7 @@ def main():
             )
 
             shutil.copy2(ANON_DEMOGRAPHIC_FILE, new_demographic_file)
-            with open(new_demographic_file, "r") as f:
+            with open(new_demographic_file) as f:
                 demographic_data = f.readlines()
 
             demographic_data[3] = demographic_data[3].replace("000000", patient_id)

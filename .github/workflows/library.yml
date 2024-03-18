@@ -64,7 +64,7 @@ jobs:
 
   Tests:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu", "macos", "windows"]
         task:
@@ -75,7 +75,6 @@ jobs:
             "updates",
             "cypress",
             "slow",
-            "build",
             "pyright",
             "propagate",
           ]
@@ -116,7 +115,7 @@ jobs:
           # work for the docs build. 3.9 and 3.8 are divied up between Ubuntu
           # and macOS arbitrarily.
           - os: "ubuntu"
-            python-version: "3.9"
+            python-version: "3.11"
           - os: "windows"
             python-version: "3.10"
           - os: "macos"
@@ -171,9 +170,9 @@ jobs:
           pip install --upgrade pip setuptools
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1.2.1
+        uses: snok/install-poetry@v1.3.4
         with:
-          version: 1.2.1
+          version: 1.7.1
           virtualenvs-create: true
 
       - name: Update PATH in Windows
@@ -181,10 +180,6 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.local\bin"
           Get-Content -Path $env:GITHUB_PATH
-
-      - name: Configure Poetry to not use experimental installer
-        run: |
-          poetry config experimental.new-installer false
 
       # -----------------------------------------------------------------------------
 
@@ -251,23 +246,6 @@ jobs:
 
       # -----------------------------------------------------------------------------
 
-      # System installs
-
-      - name: Install Pandoc on Ubuntu
-        if: ( matrix.task == 'docs' || matrix.task == 'updates' ) && matrix.os == 'ubuntu'
-        run: |
-          sudo apt-get install -y pandoc
-
-      - name: Install Pandoc on MacOS
-        if: matrix.task == 'docs' && matrix.os == 'macos'
-        run: |
-          brew install pandoc
-
-      - name: Install Pandoc on Windows
-        if: matrix.task == 'docs' && matrix.os == 'windows'
-        run: |
-          choco install pandoc
-
       ## Plain install
 
       - name: Install a plain environment
@@ -297,13 +275,6 @@ jobs:
         run: |
           poetry install -E propagate || poetry lock --no-update && poetry install -E propagate
 
-      ## Install with Binary Build Environment
-
-      - name: Install a binary build environment
-        if: matrix.task == 'build'
-        run: |
-          poetry install -E build -E cli
-
       ## Update all packages and then install with tests environment
 
       - name: Update all packages then install with tests and user environment
@@ -319,42 +290,17 @@ jobs:
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
-        if: matrix.task != 'build' && matrix.task != 'pyright'
+        if: matrix.task != 'pyright'
         run: |
           echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
       - name: PyMedPhys Cache
         id: pymedphys-cache
-        if: matrix.task != 'build' && matrix.task != 'pyright'
+        if: matrix.task != 'pyright'
         uses: actions/cache@v2
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
           key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
-
-      # -----------------------------------------------------------------------------
-
-      # Binary building
-
-      - name: Build Binary
-        if: matrix.task == 'build'
-        run: |
-          poetry run pymedphys dev build --install
-
-      - uses: actions/upload-artifact@v3
-        if: matrix.task == 'build'
-        with:
-          name: PyMedPhysApp-${{ runner.os }}
-          path: |
-            js/app/dist/*.dmg
-            js/app/dist/*.exe
-            js/app/dist/*.snap
-            js/app/dist/*.AppImage
-            !js/app/dist/*unpacked/
-
-      # TODO:
-      # - name: Test Binary
-      #   if: matrix.task == 'build'
-      #   run: |
 
       # -----------------------------------------------------------------------------
 
@@ -451,123 +397,8 @@ jobs:
         if: matrix.task == 'cypress'
         run: |
           poetry run pymedphys dev tests --cypress
-
       - uses: actions/upload-artifact@v2
         if: failure() && matrix.task == 'cypress'
         with:
           name: cypress-videos
           path: pymedphys/tests/e2e/cypress/videos
-
-  # --------------------------------------------------------------------------- #
-  #                                  DEPLOYMENT                                 #
-  # --------------------------------------------------------------------------- #
-
-  ValidateVersionReleaseMatch:
-    if: false # Skip for now
-    # if: github.event_name == 'release' && github.event.action == 'created'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    steps:
-      - name: Get the tag version number
-        # https://github.community/t/how-to-get-just-the-tag-name/16241/7
-        id: tag_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
-
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install base PyMedPhys
-        run: |
-          pip install .
-      - name: Verify that version matches
-        run: |
-          python -c "import pymedphys; assert pymedphys.__version__ == '${{ steps.tag_version.outputs.VERSION }}'"
-
-  PyPI:
-    if: false # Skip for now
-    needs:
-      - ValidateVersionReleaseMatch
-      # - PreCommit
-      # - Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install Poetry
-        uses: snok/install-poetry@v1.1.1
-      - name: Build and publish
-        run: |
-          poetry build
-
-          # poetry config repositories.test-pypi https://test.pypi.org/legacy/
-          # poetry config pypi-token.test-pypi ${{ secrets.TEST_PYPI_API_TOKEN }}
-          # poetry publish -r test-pypi
-
-          poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
-          poetry publish
-
-  OfflineInstallBundles:
-    if: false # Skip for now
-    # needs:
-    # - PyPI
-    # - ValidateVersionReleaseMatch
-    runs-on: ${{ matrix.os }}-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        os: ["ubuntu", "macos", "windows"]
-        python-version: [3.8, 3.9, 3.10]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      # - name: Get pip cache dir
-      #   id: pip-cache
-      #   run: |
-      #     python -m pip install -U pip # to ensure version > 20 to have cache dir
-      #     echo "::set-output name=dir::$(pip cache dir)"
-      # - name: Pip Cache
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: ${{ steps.pip-cache.outputs.dir }}
-      #     key: pip-offline-install-bundles-${{ runner.os }}-${{ matrix.python-version }}-${{ steps.full-python-version.outputs.version }}
-
-      - name: Download Source Files and Build PyMedPhys Wheel
-        run: |
-          pip install wheel
-          pip wheel . -w offline --no-deps
-          pip download -r requirements-dev.txt -d offline
-      - name: Get Wheel Types
-        id: wheel_label
-        run: |
-          python -c "import pathlib; path = str(next(pathlib.Path('offline').glob('pyarrow*.whl'))); print(f\"::set-output name=NAMING::{'-'.join(path.split('-')[2::])[:-4]}\")"
-        shell: bash
-      - uses: actions/upload-artifact@v2
-        with:
-          name: offline-install-bundle-${{ steps.wheel_label.outputs.NAMING }}
-          path: offline/*
-
-  UpdateRelease:
-    if: false # Skip for now
-    needs:
-      # - Tests
-      - OfflineInstallBundles
-      # - ValidateVersionReleaseMatch
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    steps:
-      - name: Hello World
-        run: |
-          echo Hello World

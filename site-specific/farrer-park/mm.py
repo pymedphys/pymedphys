@@ -125,7 +125,7 @@ if len(patient_folders) == len(dcm_files) and len(patient_folders) > 0:
             print("PatientID:", patient_id)
             print("Started:", start)
             print(
-                "Local Gamma ({0}%/{1}mm) | Percent Pass: {2:.2f} % | Mean Gamma: {3:.2f} | Max Gamma: {4:.2f}".format(
+                "Local Gamma ({}%/{}mm) | Percent Pass: {:.2f} % | Mean Gamma: {:.2f} | Max Gamma: {:.2f}".format(
                     percent,
                     dist,
                     pass_ratio * 100,
@@ -149,7 +149,7 @@ if len(patient_folders) == len(dcm_files) and len(patient_folders) > 0:
                 file.write("\n")
 
             plt.title(
-                "Local Gamma ({0}%/{1}mm) | Percent Pass: {2:.2f} % | Mean Gamma: {3:.2f} | Max Gamma: {4:.2f}".format(
+                "Local Gamma ({}%/{}mm) | Percent Pass: {:.2f} % | Mean Gamma: {:.2f} | Max Gamma: {:.2f}".format(
                     percent,
                     dist,
                     pass_ratio * 100,

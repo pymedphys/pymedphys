@@ -142,7 +142,7 @@ def get_uncached_mosaiq_connection(
         )
 
     if st.button("Connect"):
-        st.experimental_rerun()
+        st.rerun()
 
     st.stop()
 

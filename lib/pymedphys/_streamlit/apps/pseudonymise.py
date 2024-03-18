@@ -130,7 +130,7 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
                 in_memory_temp_file = io.BytesIO()
                 anon_filename = pathlib.Path(temp_anon_filepath).name
                 pydicom.dcmwrite(in_memory_temp_file, ds_input)
-            except (KeyError, IOError, ValueError) as e_info:
+            except (KeyError, OSError, ValueError) as e_info:
                 print(e_info)
                 print(f"While processing {original_file_name}")
                 bad_data = True

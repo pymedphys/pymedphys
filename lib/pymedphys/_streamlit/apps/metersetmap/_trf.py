@@ -296,6 +296,6 @@ def _read_trf(path_or_binary):
     header = _header.decode_header(trf_header_contents)
     header_dataframe = pd.DataFrame([header], columns=_header.Header._fields)
 
-    table_dataframe = _table.decode_trf_table(trf_table_contents)
+    table_dataframe = _table.decode_trf_table(trf_table_contents, header)
 
     return header_dataframe, table_dataframe

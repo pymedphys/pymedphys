@@ -39,13 +39,13 @@ def main():
     telfile_picker_results = st_monaco.monaco_tel_files_picker(config)
 
     try:
-        monaco_directory, tel_paths = [
+        monaco_directory, tel_paths = (
             telfile_picker_results[key]
             for key in (
                 "monaco_directory",
                 "tel_paths",
             )
-        ]
+        )
     except KeyError:
         st.stop()
 
@@ -93,7 +93,7 @@ def _get_config(demo_mode):
 
 
 def _logic_per_telfile(config, filepath):
-    with open(filepath, "r") as file:
+    with open(filepath) as file:
         tel_contents = np.array(file.read().splitlines())
 
     model_name_pattern = _get_beam_model_name_pattern(config)
