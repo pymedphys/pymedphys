@@ -38,8 +38,10 @@ jobs:
           pip install pre-commit
           pre-commit run --all-files
       - name: Fix any issues
+        id: fix_issues
         if: failure()
         run: |
+          echo "complete=false" >> GITHUB_OUTPUT
           git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
           git add -A
@@ -48,10 +50,7 @@ jobs:
           git pull
           pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
-
-          echo "##[complete; >> $GITHUB_OUTPUT]$(echo 1)"
-
-        id: fix_issues
+          echo "complete=true" >> GITHUB_OUTPUT
 
       - name: Push changes
         if: failure() && steps.fix_issues.outputs.complete
