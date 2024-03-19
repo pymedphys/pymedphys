@@ -16,10 +16,13 @@ jobs:
     # if: false
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -52,9 +55,9 @@ jobs:
 
       - name: Push changes
         if: failure() && steps.fix_issues.outcome == 'success'
-        uses: ad-m/github-push-action@057a6ba835d986bfe495dd476a6c4db1d5f9503c
+        uses: ad-m/github-push-action@v0.8.0
         with:
-          github_token: ${{ secrets.PYMEDPHYS_BOT_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.event.pull_request.head.ref }}
 
   # =============================================================================
@@ -122,10 +125,10 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         if: matrix.task != 'propagate'
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         if: matrix.task == 'propagate'
         with:
           persist-credentials: false
