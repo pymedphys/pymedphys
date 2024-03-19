@@ -151,6 +151,7 @@ jobs:
 
       - name: Get pip cache dir
         id: pip-cache
+        shell: bash
         run: |
           python -m pip install -U pip # to ensure version > 20 to have cache dir
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
@@ -290,30 +291,17 @@ jobs:
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
-        if: matrix.task != 'pyright' && matrix.os != 'windows'
+        if: matrix.task != 'pyright'
+        shell: bash
         run: |
           echo "dir=$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')" >> $GITHUB_OUTPUT
 
-      - name: Get PyMedPhys cache directory
-        id: pymedphys-cache-location-windows
-        if: matrix.task != 'pyright' && matrix.os == 'windows'
-        run: |
-          echo "dir=$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')" >> $env:GITHUB_OUTPUT
-
       - name: PyMedPhys Cache
         id: pymedphys-cache
-        if: matrix.task != 'pyright' && matrix.os != 'windows'
+        if: matrix.task != 'pyright'
         uses: actions/cache@v3
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
-          key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
-
-      - name: PyMedPhys Cache
-        id: pymedphys-cache-windows
-        if: matrix.task != 'pyright' && matrix.os == 'windows'
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.pymedphys-cache-location-windows.outputs.dir }}
           key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
 
       # -----------------------------------------------------------------------------
@@ -324,6 +312,7 @@ jobs:
       - name: See if propagate is needed
         if: matrix.task == 'propagate'
         id: propagate-test
+        shell: bash
         run: |
           echo "status=before" >> $GITHUB_OUTPUT
           poetry check
