@@ -183,7 +183,7 @@ Active contributors
 
 .. _`Marcus Fisk`: https://github.com/laser47-hue
 
-|uth|
+|uth| |ccr|
 
 Past contributors
 ****************************
@@ -203,6 +203,9 @@ Past contributors
 
 .. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
+
+.. |ccr| image:: https://github.com/pymedphys/pymedphys/raw/ec61e4e63a8624f4df44a8e90931bd0bca748e20/logos/cancercareriverina_200x200.png
+    :target: `Cancer Care Riverina`_
 
 .. _`Anthropic PBC`: https://www.anthropic.com/
 
