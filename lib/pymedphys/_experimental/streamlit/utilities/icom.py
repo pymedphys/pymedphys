@@ -27,6 +27,7 @@ import pymedphys._icom.extract as pmp_icom_extract
 
 
 def read_icom_log(filepath):
+
     with lzma.open(filepath, "r") as f:
         icom_stream = f.read()
 
@@ -74,7 +75,7 @@ def plot_relevant_times(relevant_times, step=5, title=None):
 
 
 def get_relevant_times_for_filepaths(filepaths):
-    all_relevant_times_list = collections.defaultdict(lambda: [])
+    all_relevant_times_list = collections.defaultdict(list)
     for f in filepaths:
         machine_id, relevant_times = _get_relevant_times(f)
         filepath_series = pd.Series([f] * len(relevant_times), name="filepath")
