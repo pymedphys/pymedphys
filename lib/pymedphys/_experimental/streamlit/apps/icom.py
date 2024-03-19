@@ -48,8 +48,7 @@ def main():
 
     selected_path_by_time = selected_paths_by_date.loc[selected_time == times]
 
-    if len(selected_path_by_time["filepath"]) != 1:
-        raise ValueError("Only one filepath per time supported")
+    if len(selected_path_by_time["filepath"]) != 1: raise ValueError("Only one filepath per time supported")
 
     filepath = selected_path_by_time["filepath"].iloc[0]
 
