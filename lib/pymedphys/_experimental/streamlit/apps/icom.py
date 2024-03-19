@@ -38,7 +38,9 @@ def main():
 
     st.write("## Service mode beam utilisation")
 
-    all_relevant_times = _icom.get_relevant_times_for_filepaths(selected_paths_by_date["filepath"])
+    all_relevant_times = _icom.get_relevant_times_for_filepaths(
+        selected_paths_by_date["filepath"]
+    )
     _icom.plot_all_relevant_times(all_relevant_times)
 
     st.write("## Select a time to view specific iCom data")
@@ -48,7 +50,8 @@ def main():
 
     selected_path_by_time = selected_paths_by_date.loc[selected_time == times]
 
-    if len(selected_path_by_time["filepath"]) != 1: raise ValueError("Only one filepath per time supported")
+    if len(selected_path_by_time["filepath"]) != 1:
+        raise ValueError("Only one filepath per time supported")
 
     filepath = selected_path_by_time["filepath"].iloc[0]
 
