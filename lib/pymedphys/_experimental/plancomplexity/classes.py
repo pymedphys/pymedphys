@@ -30,6 +30,7 @@ BeamComplexity - Has methods which calculate:
     - beam modulation (BM)
 *******************************************************************************
 """
+
 import math
 from math import pi
 

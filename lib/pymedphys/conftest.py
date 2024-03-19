@@ -1,6 +1,5 @@
 """PyTest local plugins."""
 
-
 import os
 
 import pytest
