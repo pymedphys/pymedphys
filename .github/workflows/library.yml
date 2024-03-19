@@ -290,16 +290,30 @@ jobs:
 
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
-        if: matrix.task != 'pyright'
+        if: matrix.task != 'pyright' && matrix.os != 'windows'
         run: |
           echo "dir=$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')" >> $GITHUB_OUTPUT
 
+      - name: Get PyMedPhys cache directory
+        id: pymedphys-cache-location-windows
+        if: matrix.task != 'pyright' && matrix.os == 'windows'
+        run: |
+          echo "dir=$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')" >> $env:GITHUB_OUTPUT
+
       - name: PyMedPhys Cache
         id: pymedphys-cache
-        if: matrix.task != 'pyright'
+        if: matrix.task != 'pyright' && matrix.os != 'windows'
         uses: actions/cache@v3
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
+          key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
+
+      - name: PyMedPhys Cache
+        id: pymedphys-cache-windows
+        if: matrix.task != 'pyright' && matrix.os == 'windows'
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pymedphys-cache-location-windows.outputs.dir }}
           key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
 
       # -----------------------------------------------------------------------------
