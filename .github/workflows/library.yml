@@ -52,9 +52,9 @@ jobs:
           git pull
           pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
-                   
+
       - name: Get GitHub App token for installation
-        id: generate-token              
+        id: generate-token
         if: failure() && steps.fix_issues.outcome == 'success'
         uses: tibdex/github-app-token@v2.1.0
         with:

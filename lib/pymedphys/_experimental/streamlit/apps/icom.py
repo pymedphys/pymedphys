@@ -30,7 +30,7 @@ def main():
 
     site_directories = _config.get_site_directories(config)
     chosen_site = misc.site_picker(config, "Site")
-    icom_directory = site_directories[chosen_site]["icom"] 
+    icom_directory = site_directories[chosen_site]["icom"]
     icom_patients_directory = icom_directory.joinpath("patients")
     st.write(icom_patients_directory)
 
@@ -38,7 +38,9 @@ def main():
 
     st.write("## Service mode beam utilisation")
 
-    all_relevant_times = _icom.get_relevant_times_for_filepaths(selected_paths_by_date["filepath"])
+    all_relevant_times = _icom.get_relevant_times_for_filepaths(
+        selected_paths_by_date["filepath"]
+    )
     _icom.plot_all_relevant_times(all_relevant_times)
 
     st.write("## Select a time to view specific iCom data")
