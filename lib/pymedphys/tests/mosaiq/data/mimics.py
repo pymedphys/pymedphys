@@ -32,6 +32,8 @@ DATABASE = "MosaiqMimicsTest002"
 # the column types can be selectively added and removed here with the
 # aim to troubleshoot what conversions may be needed.
 # eg 'binary' has been stored as b64 strings so that it is reproducible.
+# I've tried adding the "varbinary" type here (see comment for
+# TYPE_CASTING below), but things broke in non-obvious ways.
 COLUMN_TYPES_TO_USE = {
     "int",
     "smallint",
@@ -49,6 +51,11 @@ COLUMN_TYPES_TO_USE = {
 # Not knowing particularly why, I was unable to load values in as "char"
 # or "timestamp". This is a work-a-round to just map those types to
 # something else for now.
+# Confusingly, "timestamp" eventually becomes "varbinary" within the
+# mimicked database. No idea why. Changing its type casting
+# directly to "varbinary" instead of "largebinary in this dictionary
+# breaks tests in non-obvious ways, i.e., the error log is not
+#  immediately easy to parse.
 TYPE_CASTING = {
     "char": "varchar",
     "timestamp": "largebinary",
@@ -90,6 +97,8 @@ def create_mimic_tables(database):
                 table = table.drop(columns=[column_name])
                 continue
 
+            # I tried to account for the "varbinary" type here (see
+            # comments around TYPE_CASTING above), but things broke.
             if a_type == sql_types_map["largebinary"]:
                 table[column_name] = table[column_name].apply(
                     lambda x: base64.decodebytes(x.encode("utf-8"))
