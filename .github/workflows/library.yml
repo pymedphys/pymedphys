@@ -55,22 +55,18 @@ jobs:
                    
       - name: Get GitHub App token for installation
         id: generate-token              
-        uses: tibdex/github-app-token@v2.1.0
         if: failure() && steps.fix_issues.outcome == 'success'
+        uses: actions/create-github-app-token@v1
         with:
-          app_id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
-          installation_retrieval_mode: repository
-          private_key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
-          repositories: >-
-            ["pymedphys"]
+          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+          private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+          github-api-url: "https://github.acme-inc.com/api/v3"
 
       - name: Push changes
         if: failure() && steps.fix_issues.outcome == 'success'
         uses: ad-m/github-push-action@v0.8.0
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.generate-token.outputs.token }}
           branch: ${{ github.event.pull_request.head.ref }}
 
   # =============================================================================
