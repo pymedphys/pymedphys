@@ -52,10 +52,23 @@ jobs:
           git pull
           pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
+                   
+      - name: Get GitHub App token for installation
+        id: generate-token              
+        uses: tibdex/github-app-token@v2.1.0
+        if: failure() && steps.fix_issues.outcome == 'success'
+        with:
+          app_id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+          installation_retrieval_mode: repository
+          private_key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+          repositories: >-
+            ["pymedphys"]
 
       - name: Push changes
         if: failure() && steps.fix_issues.outcome == 'success'
         uses: ad-m/github-push-action@v0.8.0
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.event.pull_request.head.ref }}
