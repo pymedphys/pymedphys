@@ -56,11 +56,10 @@ jobs:
       - name: Get GitHub App token for installation
         id: generate-token              
         if: failure() && steps.fix_issues.outcome == 'success'
-        uses: actions/create-github-app-token@v1
+        uses: tibdex/github-app-token@v2.1.0
         with:
-          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
-          private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
-          github-api-url: "https://github.acme-inc.com/api/v3"
+          app_id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+          private_key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
 
       - name: Push changes
         if: failure() && steps.fix_issues.outcome == 'success'
