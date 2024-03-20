@@ -312,16 +312,7 @@ jobs:
         id: propagate-test
         run: |
           echo "::set-output name=status::before"
-          poetry run pymedphys dev propagate
-
-          git config --local user.email "propagate-bot@pymedphys.com"
-          git config --local user.name "PyMedPhys Propagate Bot"
-
-          git add poetry.lock
-          git commit -m "commit changes to poetry.lock" || true
-
-          git status
-          git diff-index --quiet HEAD --
+          poetry check
 
       ## Pyright
 
