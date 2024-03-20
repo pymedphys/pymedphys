@@ -30,7 +30,7 @@ def main():
 
     site_directories = _config.get_site_directories(config)
     chosen_site = misc.site_picker(config, "Site")
-    icom_directory = site_directories[chosen_site]["icom"]
+    icom_directory = site_directories[chosen_site]["icom"] 
     icom_patients_directory = icom_directory.joinpath("patients")
     st.write(icom_patients_directory)
 
