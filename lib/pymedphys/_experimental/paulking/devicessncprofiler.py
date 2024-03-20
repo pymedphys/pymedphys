@@ -123,7 +123,6 @@ def write_prs(
     spacing="0.4",
     concat="false",
 ):
-
     """
     Write dose profiles to a file in the native Profiler data format.
 

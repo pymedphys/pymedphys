@@ -325,9 +325,9 @@ def read_roi(ds, plan, skip_pattern):
                 ds.StructureSetROISequence.append(roi_contour)
                 rt_roi_observations = pydicom.dataset.Dataset()
                 ds.RTROIObservationsSequence.append(rt_roi_observations)
-                ds.StructureSetROISequence[
-                    plan.roi_count - 1
-                ].ROINumber = plan.roi_count
+                ds.StructureSetROISequence[plan.roi_count - 1].ROINumber = (
+                    plan.roi_count
+                )
                 ds.StructureSetROISequence[plan.roi_count - 1].ROIName = ROIName
                 ds.StructureSetROISequence[
                     plan.roi_count - 1
@@ -337,9 +337,9 @@ def read_roi(ds, plan, skip_pattern):
                 ].ReferencedFrameOfReferenceUID = plan.primary_image.image_info[0][
                     "FrameUID"
                 ]
-                ds.ROIContourSequence[
-                    plan.roi_count - 1
-                ].ContourSequence = pydicom.sequence.Sequence()
+                ds.ROIContourSequence[plan.roi_count - 1].ContourSequence = (
+                    pydicom.sequence.Sequence()
+                )
                 roiinterpretedtype = "ORGAN"
                 plan.logger.info("Exporting ROI: %s", ROIName)
             if "roiinterpretedtype:" in line:
@@ -360,12 +360,12 @@ def read_roi(ds, plan, skip_pattern):
                     ]
 
             if "}; // End of ROI" in line:  # end of ROI found
-                ds.RTROIObservationsSequence[
-                    plan.roi_count - 1
-                ].ObservationNumber = plan.roi_count
-                ds.RTROIObservationsSequence[
-                    plan.roi_count - 1
-                ].ReferencedROINumber = plan.roi_count
+                ds.RTROIObservationsSequence[plan.roi_count - 1].ObservationNumber = (
+                    plan.roi_count
+                )
+                ds.RTROIObservationsSequence[plan.roi_count - 1].ReferencedROINumber = (
+                    plan.roi_count
+                )
                 ds.RTROIObservationsSequence[
                     plan.roi_count - 1
                 ].RTROIInterpretedType = roiinterpretedtype
@@ -446,9 +446,9 @@ def convert_struct(plan, export_path, skip_pattern):
     ds.ReferencedStudySequence.append(ReferencedStudy1)
     # Study Component Management SOP Class (chosen from template)
     ds.ReferencedStudySequence[0].ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.2"
-    ds.ReferencedStudySequence[
-        0
-    ].ReferencedSOPInstanceUID = plan.primary_image.image_info[0]["StudyInstanceUID"]
+    ds.ReferencedStudySequence[0].ReferencedSOPInstanceUID = (
+        plan.primary_image.image_info[0]["StudyInstanceUID"]
+    )
     ds.StudyInstanceUID = plan.primary_image.image_info[0]["StudyInstanceUID"]
     ds.SeriesInstanceUID = struct_series_instuid
 
@@ -483,12 +483,12 @@ def convert_struct(plan, export_path, skip_pattern):
     ds.ReferencedFrameOfReferenceSequence = pydicom.sequence.Sequence()
     ReferencedFrameofReference = pydicom.dataset.Dataset()
     ds.ReferencedFrameOfReferenceSequence.append(ReferencedFrameofReference)
-    ds.ReferencedFrameOfReferenceSequence[
-        0
-    ].FrameOfReferenceUID = plan.primary_image.image_info[0]["FrameUID"]
-    ds.ReferencedFrameOfReferenceSequence[
-        0
-    ].RTReferencedStudySequence = pydicom.sequence.Sequence()
+    ds.ReferencedFrameOfReferenceSequence[0].FrameOfReferenceUID = (
+        plan.primary_image.image_info[0]["FrameUID"]
+    )
+    ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence = (
+        pydicom.sequence.Sequence()
+    )
 
     RTReferencedStudy = pydicom.dataset.Dataset()
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence.append(

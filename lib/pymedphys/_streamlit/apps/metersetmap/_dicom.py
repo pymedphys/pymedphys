@@ -172,9 +172,9 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         for fraction, delivery in deliveries_all_fractions.items():
             rounded_mu = round(delivery.mu[-1], 1)
 
-            fraction_group_choices[
-                f"Perscription {fraction} with {rounded_mu} MU"
-            ] = fraction
+            fraction_group_choices[f"Perscription {fraction} with {rounded_mu} MU"] = (
+                fraction
+            )
 
         fraction_group_selection = st.radio(
             "Select relevant perscription",

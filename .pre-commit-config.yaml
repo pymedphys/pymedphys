@@ -17,16 +17,20 @@ repos:
         args: ["--maxkb", "500"]
         exclude: ^.*yarn-.*cjs$
   - repo: https://github.com/timothycrosley/isort
-    rev: 5.12.0
+    rev: 5.13.2
     hooks:
       - id: isort
         additional_dependencies: ["toml"]
         files: ^lib/pymedphys/.*\.py$
   - repo: https://github.com/ambv/black
-    rev: 22.12.0
+    rev: 24.3.0
     hooks:
       - id: black
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
+    rev: v3.15.1
     hooks:
       - id: pyupgrade
+  - repo: https://github.com/python-poetry/poetry
+    rev: "1.8"
+    hooks:
+      - id: poetry-check

@@ -9,6 +9,7 @@ This gives detail on where these have been described in the literature as well
 as some detail on how they are calculated
 
 """
+
 mcsInfo = """
 Modulation Complexity Score (MCS):
 For further information refer to the references provided.
