@@ -12,11 +12,11 @@ jobs:
     steps:
     - name: Get stripped comment body
       id: get-comment-body
-      run: echo content=$(echo ${{github.event.comment.body}} | sed 's/@!claude//g') >> $GITHUB_OUTPUT
+      run: echo comment=$(echo ${{github.event.comment.body}} | sed 's/@!claude//g') >> $GITHUB_OUTPUT
 
     - name: Get Claude's response to issue comment
       id: claude-response
-      if: steps.get-comment-body.outputs.content != ''
+      if: steps.get-comment-body.outputs.comment != ''
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
@@ -29,18 +29,18 @@ jobs:
                 "model": "claude-3-haiku-20240307",
                 "max_tokens": 1024,
                 "messages": [
-                    {"role": "user", "content": "${{ steps.get-comment-body.outputs.content }}"}
+                    {"role": "user", "content": "${{ steps.get-comment-body.outputs.comment }}"}
                 ]
             }') >> $GITHUB_OUTPUT
 
     - name: Create comment
-      if: steps.get-comment-body.outputs.content != '' && steps.claude-response.outcome == 'success'
+      if: steps.get-comment-body.outputs.comment != '' && steps.claude-response.outcome == 'success'
       uses: peter-evans/create-or-update-comment@v4
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
             @!claude_response
 
-            > ${{ steps.get-comment-body.outputs.content }}
+            > ${{ steps.get-comment-body.outputs.comment }}
 
-            ${{ steps.claude-response.outputs.response }}
+            ${{ fromJson(steps.claude-response.outputs.response).content.text }}
