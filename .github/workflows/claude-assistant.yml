@@ -43,4 +43,4 @@ jobs:
 
             > ${{ steps.get-comment-body.outputs.comment }}
 
-            ${{ fromJson(steps.claude-response.outputs.response).content.text }}
+            ${{ fromJson(steps.claude-response.outputs.response).content[0].text }}
