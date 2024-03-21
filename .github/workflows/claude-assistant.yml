@@ -17,19 +17,21 @@ jobs:
     - name: Get Claude's response to issue comment
       id: claude-response
       if: steps.get-comment-body.outputs.content != ''
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
         echo response=$(curl https://api.anthropic.com/v1/messages \
-            --header "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
+            --header "x-api-key: $ANTHROPIC_API_KEY" \
             --header "anthropic-version: 2023-06-01" \
             --header "content-type: application/json" \
             --data \
-            '{
-                "model": "claude-3-haiku-20240307",
-                "max_tokens": 1024,
-                "messages": [
-                    {"role": "user", "content": ${{ steps.get-comment-body.outputs.content }}}
+            "{
+                'model': 'claude-3-haiku-20240307',
+                'max_tokens': 1024,
+                'messages': [
+                    {'role': 'user', 'content': ${{ steps.get-comment-body.outputs.content }}}
                 ]
-            }') >> $GITHUB_OUTPUT
+            }") >> $GITHUB_OUTPUT
 
     - name: Create comment
       if: steps.get-comment-body.outputs.content != '' && steps.claude-response.outcome == 'success'
