@@ -12,11 +12,11 @@ jobs:
     steps:
     - name: Get stripped and trimmed comment body
       id: get-comment-body
-      run: echo content=$(echo "$comment_body" | sed 's/@!claude//g' | tr -d '[:space:]') >> $GITHUB_OUTPUT
+      run: echo content=$(echo ${{github.event.comment.body}} | sed 's/@!claude//g' | tr -d '[:space:]') >> $GITHUB_OUTPUT
 
     - name: Get Claude's response to issue comment
       id: claude-response
-      if: ${{ steps.get-comment-body.outputs.content != '' }}
+      if: steps.get-comment-body.outputs.content != ''
       run: |
         echo response=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
@@ -32,11 +32,12 @@ jobs:
             }') >> $GITHUB_OUTPUT
 
     - name: Create comment
+      if: steps.get-comment-body.outputs.content != '' && steps.claude-response.outcome == 'success'
       uses: peter-evans/create-or-update-comment@v4
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
-            "@claude_response
+            "@!claude_response
 
             > ${{ steps.get-comment-body.outputs.content }}
 
