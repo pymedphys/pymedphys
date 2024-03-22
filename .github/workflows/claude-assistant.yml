@@ -57,17 +57,15 @@ jobs:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
 
-        printf "A"
-
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
 
-        printf "B"
-
-        RESPONSE=$(curl https://api.anthropic.com/v1/messages \
+        {
+          echo 'response<<EOF'
+          curl https://api.anthropic.com/v1/messages \
             -H "x-api-key: $ANTHROPIC_API_KEY" \
             -H "anthropic-version: 2023-06-01" \
             -H "content-type: application/json" \
-            -d  @- << EOF
+            -d  \
             {
               "model": "claude-3-opus-20240229",
               "max_tokens": 1024,
@@ -75,8 +73,8 @@ jobs:
                 {"role": "user", "content": "${{ steps.generate-message.outputs.message-content }}"}
               ]
             }
-            EOF
-          )
+          echo EOF
+        } >> $GITHUB_OUTPUT
 
         printf "C"
 
