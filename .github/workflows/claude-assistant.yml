@@ -51,14 +51,8 @@ jobs:
             <calling-comment>
             "$CALLING_COMMENT"
             </calling-comment>'
-          echo "$EOF"
+          "$EOF"
         } >> $GITHUB_OUTPUT
-
-
-
-        echo "message-content<<$EOF" >> $GITHUB_OUTPUT
-        echo "$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
-        echo "$EOF" >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
       id: claude-response
