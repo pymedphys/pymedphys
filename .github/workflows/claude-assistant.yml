@@ -30,6 +30,10 @@ jobs:
 
     - name: Generate message to send to Claude
       id: generate-message
+      env:
+        ISSUE_DETAILS: ${{ steps.get-issue-details.outputs.issue-details }}
+        ISSUE_COMMENTS: ${{ steps.get-issue-details.outputs.issue-comments }}
+        CALLING_COMMENT: ${{ github.event.comment.body }}
       run: |
         echo message-content=$("You are the AI assistant, 'Claude', providing support on the PyMedPhys GitHub issue
         tracker. Please be helpful and supportive. Please respond directly to the calling comment while using the
@@ -37,15 +41,15 @@ jobs:
         calling comment) below.
 
         <github-issue-details>
-        '${{ steps.get-issue-details.outputs.issue-details }}'
+        $ISSUE_DETAILS
         </github-issue-details>
 
         <github-issue-comments>
-        '${{ steps.get-issue-details.outputs.issue-comments }}'
+        $ISSUE_COMMENTS
         </github-issue-comments>
 
         <calling-comment>
-        '${{ github.event.comment.body }}'
+        $CALLING_COMMENT
         </calling-comment>
         ") >> $GITHUB_OUTPUT
 
