@@ -57,6 +57,8 @@ jobs:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
 
+        printf "A"
+
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         CURL_DATA=$(cat  << "$EOF"
           {
@@ -69,11 +71,15 @@ jobs:
           "$EOF"
         )
 
+        printf "B"
+
         RESPONSE=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: $ANTHROPIC_API_KEY" \
             --header "anthropic-version: 2023-06-01" \
             --header "content-type: application/json" \
             --data "$CURL_DATA")
+
+        printf "C"
 
         # EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         # echo "response<<$EOF" >> $GITHUB_OUTPUT
