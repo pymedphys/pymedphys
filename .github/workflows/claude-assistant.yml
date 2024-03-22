@@ -49,7 +49,7 @@ jobs:
         printf "$MESSAGE_CONTENT"
         {
           echo "message-content<<EOF"
-          $MESSAGE_CONTENT"
+          "$MESSAGE_CONTENT"
           echo EOF
         } >> $GITHUB_OUTPUT
 
