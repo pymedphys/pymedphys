@@ -47,7 +47,7 @@ jobs:
           </calling-comment>
       run: |
         printf "$MESSAGE_CONTENT"
-        echo message-content="$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
+        echo "message-content=$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
       id: claude-response
