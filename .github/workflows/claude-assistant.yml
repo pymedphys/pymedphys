@@ -36,23 +36,25 @@ jobs:
         CALLING_COMMENT: "${{ github.event.comment.body }}"
       run: |
         EOF=$(openssl rand -hex 16)
-        {
-          echo 'message-content<<"$EOF"'
-          echo 'You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue tracker.
-            Please be helpful and supportive. Please respond directly to the calling comment while using
-            the GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the
-            latest, calling comment) below.
-            <github-issue-details>
-            "$ISSUE_DETAILS"
-            </github-issue-details>
-            <github-issue-comments>
-            "$ISSUE_COMMENTS"
-            </github-issue-comments>
-            <calling-comment>
-            "$CALLING_COMMENT"
-            </calling-comment>'
-        "$EOF"
-        } >> $GITHUB_OUTPUT
+
+        MESSAGE_CONTENT=$(cat <<EOF
+        You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue tracker.
+        Please be helpful and supportive. Please respond directly to the calling comment while using
+        the GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the
+        latest, calling comment) below.
+        <github-issue-details>
+        "$ISSUE_DETAILS"
+        </github-issue-details>
+        <github-issue-comments>
+        "$ISSUE_COMMENTS"
+        </github-issue-comments>
+        <calling-comment>
+        "$CALLING_COMMENT"
+        </calling-comment>'
+        EOF
+        )
+
+        echo "message-content=$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
       id: claude-response
