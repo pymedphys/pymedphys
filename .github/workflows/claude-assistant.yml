@@ -56,7 +56,7 @@ jobs:
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
-        echo response=$(curl https://api.anthropic.com/v1/messages \
+        RESPONSE=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: $ANTHROPIC_API_KEY" \
             --header "anthropic-version: 2023-06-01" \
             --header "content-type: application/json" \
@@ -67,7 +67,12 @@ jobs:
                 "messages": [
                     {"role": "user", "content": "${{ steps.generate-message.outputs.message-content }}"}
                 ]
-            }') >> $GITHUB_OUTPUT
+            }')
+
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "response<<$EOF" >> $GITHUB_OUTPUT
+        echo "$RESPONSE" >> $GITHUB_OUTPUT
+        echo "$EOF" >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
