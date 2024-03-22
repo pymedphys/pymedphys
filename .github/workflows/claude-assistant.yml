@@ -70,9 +70,8 @@ jobs:
                 "messages": [
                     {"role": "user", "content": "${{ steps.generate-message.outputs.message-content }}"}
                 ]
-            }
-            "$EOF"
-            ) >> $GITHUB_OUTPUT
+            })
+            "$EOF" >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
