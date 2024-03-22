@@ -75,10 +75,10 @@ jobs:
             --header "content-type: application/json" \
             --data "$CURL_DATA")
 
-        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-        echo "response<<$EOF" >> $GITHUB_OUTPUT
-        echo "$RESPONSE" >> $GITHUB_OUTPUT
-        echo "$EOF" >> $GITHUB_OUTPUT
+        # EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        # echo "response<<$EOF" >> $GITHUB_OUTPUT
+        # echo "$RESPONSE" >> $GITHUB_OUTPUT
+        # echo "$EOF" >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
