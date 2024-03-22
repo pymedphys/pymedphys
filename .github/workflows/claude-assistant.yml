@@ -33,7 +33,7 @@ jobs:
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
-        MESSAGE_CONTENT="You are the AI assistant, 'Claude', providing support on the PyMedPhys GitHub issue
+        echo MESSAGE_CONTENT="You are the AI assistant, 'Claude', providing support on the PyMedPhys GitHub issue
         tracker. Please be helpful and supportive. Please respond directly to the calling comment while using the
         GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the latest,
         calling comment) below.
@@ -49,31 +49,57 @@ jobs:
         <calling-comment>
         ${{ github.event.comment.body }}
         </calling-comment>
-        "
+        " >> $GITHUB_OUTPUT
 
-        printf "$MESSAGE_CONTENT"
+        echo response=$(curl https://api.anthropic.com/v1/messages \
+            --header "x-api-key: $ANTHROPIC_API_KEY" \
+            --header "anthropic-version: 2023-06-01" \
+            --header "content-type: application/json" \
+            --data \
+            '{
+                "model": "claude-3-haiku-20240307",
+                "max_tokens": 1024,
+                "messages": [
+                    {"role": "user", "content": "$MESSAGE_CONTENT"}
+                ]
+            }') >> $GITHUB_OUTPUT
 
-        # echo response=$(curl https://api.anthropic.com/v1/messages \
-        #     --header "x-api-key: $ANTHROPIC_API_KEY" \
-        #     --header "anthropic-version: 2023-06-01" \
-        #     --header "content-type: application/json" \
-        #     --data \
-        #     '{
-        #         "model": "claude-3-haiku-20240307",
-        #         "max_tokens": 1024,
-        #         "messages": [
-        #             {"role": "user", "content": "$MESSAGE_CONTENT"}
-        #         ]
-        #     }') >> $GITHUB_OUTPUT
-
-    - name: Create issue comment with Claude's response
+    - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
-      if: ${{ false }}
+      if: contains(fromJson(steps.claude-response.outputs.response), 'error')
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
-            *AI Assistant Claude*
+            **AI Assistant Claude**
 
+            ERROR
+
+            *Prompt sent to Claude:*
+            <details>
+            "${{steps.claude-response.outputs.MESSAGE_CONTENT}}"
+            </details>
+
+            *Comment that called Claude:*
             > ${{ github.event.comment.body }}
 
+            *Claude's error message:*
+            ${{ fromJson(steps.claude-response.outputs.response).error.message }}
+
+    - name: Create issue comment with Claude's response
+      uses: peter-evans/create-or-update-comment@v4
+      if: ! contains(fromJson(steps.claude-response.outputs.response), 'error')
+      with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            **AI Assistant Claude**
+
+            *Prompt sent to Claude:*
+            <details>
+            "${{steps.claude-response.outputs.MESSAGE_CONTENT}}"
+            </details>
+
+            *Comment that called Claude:*
+            > ${{ github.event.comment.body }}
+
+            *Claude's response:*
             ${{ fromJson(steps.claude-response.outputs.response).content[0].text }}
