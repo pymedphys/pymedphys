@@ -30,34 +30,29 @@ jobs:
 
     - name: Generate message to send to Claude
       id: generate-message
-      env:
-        ISSUE_DETAILS: ${{ steps.get-issue-details.outputs.issue-details }}
-        ISSUE_COMMENTS: ${{ steps.get-issue-details.outputs.issue-comments }}
-        CALLING_COMMENT: ${{ github.event.comment.body }}
       run: |
-        echo message-content=$("You are the AI assistant, 'Claude', providing support on the PyMedPhys GitHub issue
+        echo message-content=$('You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue
         tracker. Please be helpful and supportive. Please respond directly to the calling comment while using the
         GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the latest,
         calling comment) below.
 
         <github-issue-details>
-        $ISSUE_DETAILS
+        ${{ steps.get-issue-details.outputs.issue-details }}
         </github-issue-details>
 
         <github-issue-comments>
-        $ISSUE_COMMENTS
+        ${{ steps.get-issue-details.outputs.issue-comments }}
         </github-issue-comments>
 
         <calling-comment>
-        $CALLING_COMMENT
+        ${{ github.event.comment.body }}
         </calling-comment>
-        ") >> $GITHUB_OUTPUT
+        ') >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
       id: claude-response
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        MESSAGE_CONTENT: ${{steps.generate-message.outputs.message-content}}
       run: |
         printf "$MESSAGE_CONTENT"
 
@@ -70,17 +65,13 @@ jobs:
                 "model": "claude-3-haiku-20240307",
                 "max_tokens": 1024,
                 "messages": [
-                    {"role": "user", "content": "$MESSAGE_CONTENT"}
+                    {"role": "user", "content": "${{ steps.generate-message.outputs.message-content }}"}
                 ]
             }') >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
       if: ${{ fromJson(steps.claude-response.outputs.response).error != '' }}
-      env:
-        MESSAGE_CONTENT: ${{steps.generate-message.outputs.message-content}}
-        CALLING_COMMENT: ${{ github.event.comment.body }}
-        CLAUDE_RESPONSE: ${{steps.claude-response.outputs.response}}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -90,14 +81,14 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            "${{ env.MESSAGE_CONTENT }}"
+            ${{steps.generate-message.outputs.message-content}}
             </details>
 
             *Comment that called Claude:*
-            > "${{ env.CALLING_COMMENT }}"
+            > ${{ github.event.comment.body }}
 
             *Claude's error message:*
-            "${{ env.CLAUDE_RESPONSE }}"
+            ${{steps.claude-response.outputs.response}}
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
@@ -113,11 +104,11 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            "${{ env.MESSAGE_CONTENT }}"
+            ${{steps.generate-message.outputs.message-content}}
             </details>
 
             *Comment that called Claude:*
-            > "${{ env.CALLING_COMMENT }}"
+            > ${{ github.event.comment.body }}
 
             *Claude's response:*
-            "${{ env.CLAUDE_RESPONSE }}"
+            ${{steps.claude-response.outputs.response}}
