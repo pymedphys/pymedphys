@@ -93,10 +93,6 @@ jobs:
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
       if: ${{ fromJson(steps.claude-response.outputs.response).error == '' }}
-      env:
-        MESSAGE_CONTENT: ${{steps.generate-message.outputs.message-content}}
-        CALLING_COMMENT: ${{ github.event.comment.body }}
-        CLAUDE_RESPONSE: ${{steps.claude-response.outputs.response}}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
