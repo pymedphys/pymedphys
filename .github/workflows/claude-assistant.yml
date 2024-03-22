@@ -30,7 +30,6 @@ jobs:
 
     - name: Get Claude's response
       id: claude-response
-      if: ${{ false }}
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
@@ -54,21 +53,22 @@ jobs:
 
         printf "$MESSAGE_CONTENT"
 
-        echo response=$(curl https://api.anthropic.com/v1/messages \
-            --header "x-api-key: $ANTHROPIC_API_KEY" \
-            --header "anthropic-version: 2023-06-01" \
-            --header "content-type: application/json" \
-            --data \
-            '{
-                "model": "claude-3-haiku-20240307",
-                "max_tokens": 1024,
-                "messages": [
-                    {"role": "user", "content": "$MESSAGE_CONTENT"}
-                ]
-            }') >> $GITHUB_OUTPUT
+        # echo response=$(curl https://api.anthropic.com/v1/messages \
+        #     --header "x-api-key: $ANTHROPIC_API_KEY" \
+        #     --header "anthropic-version: 2023-06-01" \
+        #     --header "content-type: application/json" \
+        #     --data \
+        #     '{
+        #         "model": "claude-3-haiku-20240307",
+        #         "max_tokens": 1024,
+        #         "messages": [
+        #             {"role": "user", "content": "$MESSAGE_CONTENT"}
+        #         ]
+        #     }') >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
+      if: ${{ false }}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
