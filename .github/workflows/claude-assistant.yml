@@ -59,9 +59,6 @@ jobs:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         MESSAGE_CONTENT: ${{steps.generate-message.outputs.message-content}}
       run: |
-
-        printf "${{steps.generate-message.outputs.message-content}}"
-
         echo response=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: $ANTHROPIC_API_KEY" \
             --header "anthropic-version: 2023-06-01" \
