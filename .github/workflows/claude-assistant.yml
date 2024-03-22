@@ -13,8 +13,8 @@ jobs:
     - name: Get issue details and comments
       id: get-issue-details
       env:
-        ISSUE_NUMBER: "${{github.event.issue.number}}"
-        OWNER_REPO: "${{github.repository}}"
+        ISSUE_NUMBER: ${{github.event.issue.number}}
+        OWNER_REPO: ${{github.repository}}
       run: |
         echo issue-details=$(curl -L \
         -H "Accept: application/vnd.github+json" \
