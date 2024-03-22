@@ -68,7 +68,7 @@ jobs:
           "model": "claude-3-opus-20240229",
           "max_tokens": 1024,
           "messages": [
-            {"role": "user", "content": "${{ fromJson(steps.generate-message.outputs.message-content) }}"}
+            {"role": "user", "content": "${{ toJson(fromJson(steps.generate-message.outputs.message-content)) }}"}
           ]
         }
         "$EOF"
