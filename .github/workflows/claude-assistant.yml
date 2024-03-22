@@ -30,26 +30,24 @@ jobs:
 
     - name: Generate message to send to Claude
       id: generate-message
+      env:
+        MESSAGE_CONTENT: |
+          You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue tracker.
+          Please be helpful and supportive. Please respond directly to the calling comment while using
+          the GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the
+          latest, calling comment) below.
+          <github-issue-details>
+          ${{ steps.get-issue-details.outputs.issue-details }}
+          </github-issue-details>
+          <github-issue-comments>
+          ${{ steps.get-issue-details.outputs.issue-comments }}
+          </github-issue-comments>
+          <calling-comment>
+          ${{ github.event.comment.body }}
+          </calling-comment>
       run: |
-        MESSAGE_CONTENT='You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue
-        tracker. Please be helpful and supportive. Please respond directly to the calling comment while using the
-        GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the latest,
-        calling comment) below.
-
-        <github-issue-details>
-        ${{ steps.get-issue-details.outputs.issue-details }}
-        </github-issue-details>
-
-        <github-issue-comments>
-        ${{ steps.get-issue-details.outputs.issue-comments }}
-        </github-issue-comments>
-
-        <calling-comment>
-        ${{ github.event.comment.body }}
-        </calling-comment>
-        '
-
         printf "$MESSAGE_CONTENT"
+        echo message-content="$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
       id: claude-response
