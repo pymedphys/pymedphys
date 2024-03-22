@@ -57,7 +57,8 @@ jobs:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
 
-        CURL_DATA=$(cat  << EOF
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        CURL_DATA=$(cat  << "$EOF"
           {
             "model": "claude-3-opus-20240229",
             "max_tokens": 1024,
@@ -65,14 +66,19 @@ jobs:
               {"role": "user", "content": "${{ steps.generate-message.outputs.message-content }}"}
             ]
           }
-          EOF
+          "$EOF"
         )
 
         RESPONSE=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: $ANTHROPIC_API_KEY" \
             --header "anthropic-version: 2023-06-01" \
             --header "content-type: application/json" \
-            --data "$CURL_DATA") >> $GITHUB_OUTPUT
+            --data "$CURL_DATA")
+
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "response<<$EOF" >> $GITHUB_OUTPUT
+        echo "$RESPONSE" >> $GITHUB_OUTPUT
+        echo "$EOF" >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
