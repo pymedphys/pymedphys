@@ -65,7 +65,7 @@ jobs:
             -H "x-api-key: $ANTHROPIC_API_KEY" \
             -H "anthropic-version: 2023-06-01" \
             -H "content-type: application/json" \
-            -d  \
+            -d @- <<-EOF
             {
               "model": "claude-3-opus-20240229",
               "max_tokens": 1024,
@@ -73,6 +73,7 @@ jobs:
                 {"role": "user", "content": "${{ steps.generate-message.outputs.message-content }}"}
               ]
             }
+            -EOF
           echo EOF
         } >> $GITHUB_OUTPUT
 
