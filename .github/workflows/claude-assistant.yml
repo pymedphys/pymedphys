@@ -37,15 +37,15 @@ jobs:
         calling comment) below.
 
         <github-issue-details>
-        ${{ steps.get-issue-details.outputs.issue-details }}
+        '${{ steps.get-issue-details.outputs.issue-details }}'
         </github-issue-details>
 
         <github-issue-comments>
-        ${{ steps.get-issue-details.outputs.issue-comments }}
+        '${{ steps.get-issue-details.outputs.issue-comments }}'
         </github-issue-comments>
 
         <calling-comment>
-        ${{ github.event.comment.body }}
+        '${{ github.event.comment.body }}'
         </calling-comment>
         ") >> $GITHUB_OUTPUT
 
