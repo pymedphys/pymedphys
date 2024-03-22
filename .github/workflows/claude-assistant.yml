@@ -114,4 +114,4 @@ jobs:
             > ${{ github.event.comment.body }}
 
             *Claude's response:*
-            ${{ steps.claude-response.outputs.response }}
+            ${{ steps.claude-response.outputs.response.content[0].text }}
