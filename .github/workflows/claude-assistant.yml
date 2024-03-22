@@ -57,8 +57,7 @@ jobs:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
 
-        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-        CURL_DATA=$(cat  << "$EOF"
+        CURL_DATA=$(cat  << EOF
           {
             "model": "claude-3-opus-20240229",
             "max_tokens": 1024,
@@ -66,7 +65,7 @@ jobs:
               {"role": "user", "content": "${{ steps.generate-message.outputs.message-content }}"}
             ]
           }
-          "$EOF"
+          EOF
         )
 
         RESPONSE=$(curl https://api.anthropic.com/v1/messages \
