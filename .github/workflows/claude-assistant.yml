@@ -55,6 +55,7 @@ jobs:
       id: claude-response
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        MESSAGE_CONTENT: "${{ steps.generate-message.outputs.message-content }}"
       run: |
 
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
@@ -68,7 +69,7 @@ jobs:
           "model": "claude-3-opus-20240229",
           "max_tokens": 1024,
           "messages": [
-            {"role": "user", "content": "${{ toJson(fromJson(steps.generate-message.outputs.message-content)) }}"}
+            {"role": "user", "content": "$MESSAGE_CONTENT"}
           ]
         }
         "$EOF"
