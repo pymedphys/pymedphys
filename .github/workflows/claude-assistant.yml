@@ -50,7 +50,7 @@ jobs:
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "message-content<<$EOF" >> $GITHUB_OUTPUT
         echo "$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
-        echo EOF >> $GITHUB_OUTPUT
+        echo "$EOF" >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
       id: claude-response
