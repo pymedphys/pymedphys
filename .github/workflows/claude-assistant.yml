@@ -68,7 +68,7 @@ jobs:
           "model": "claude-3-opus-20240229",
           "max_tokens": 1024,
           "messages": [
-            {"role": "user", "content": "${{ toJson(steps.generate-message.outputs.message-content) }}"}
+            {"role": "user", "content": "${{ fromJson(steps.generate-message.outputs.message-content) }}"}
           ]
         }
         "$EOF"
@@ -94,7 +94,7 @@ jobs:
             > ${{ github.event.comment.body }}
 
             *Claude's error message:*
-            ${{ steps.claude-response.outputs.response }}
+            ${{ steps.claude-response.outputs.response.error.message }}
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
