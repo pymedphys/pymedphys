@@ -46,7 +46,6 @@ jobs:
           ${{ github.event.comment.body }}
           </calling-comment>
       run: |
-        printf "$MESSAGE_CONTENT"
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "message-content<<$EOF" >> $GITHUB_OUTPUT
         echo "$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
@@ -54,7 +53,6 @@ jobs:
 
     - name: Get Claude's response
       id: claude-response
-      if: ${{ false }}
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
@@ -85,14 +83,14 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            ${{steps.generate-message.outputs.message-content}}
+            ${{ steps.generate-message.outputs.message-content }}
             </details>
 
             *Comment that called Claude:*
             > ${{ github.event.comment.body }}
 
             *Claude's error message:*
-            ${{steps.claude-response.outputs.response}}
+            ${{ steps.claude-response.outputs.response }}
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
@@ -104,11 +102,11 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            ${{steps.generate-message.outputs.message-content}}
+            ${{ steps.generate-message.outputs.message-content }}
             </details>
 
             *Comment that called Claude:*
             > ${{ github.event.comment.body }}
 
             *Claude's response:*
-            ${{steps.claude-response.outputs.response}}
+            ${{ steps.claude-response.outputs.response }}
