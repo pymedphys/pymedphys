@@ -57,7 +57,10 @@ jobs:
       id: claude-response
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        MESSAGE_CONTENT: ${{steps.generate-message.outputs.message-content}}
       run: |
+
+        printf "${{steps.generate-message.outputs.message-content}}"
 
         echo response=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: $ANTHROPIC_API_KEY" \
@@ -68,13 +71,17 @@ jobs:
                 "model": "claude-3-haiku-20240307",
                 "max_tokens": 1024,
                 "messages": [
-                    {"role": "user", "content": "${{steps.generate-message.outputs.message-content}}"}
+                    {"role": "user", "content": "$MESSAGE_CONTENT"}
                 ]
             }') >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
       if: ${{ fromJson(steps.claude-response.outputs.response).error != '' }}
+      env:
+        MESSAGE_CONTENT: ${{steps.generate-message.outputs.message-content}}
+        CALLING_COMMENT: ${{ github.event.comment.body }}
+        CLAUDE_RESPONSE: ${{steps.claude-response.outputs.response}}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -84,18 +91,22 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            "${{steps.generate-message.outputs.message-content}}"
+            "$MESSAGE_CONTENT"
             </details>
 
             *Comment that called Claude:*
-            > ${{ github.event.comment.body }}
+            > $CALLING_COMMENT
 
             *Claude's error message:*
-            ${{ fromJson(steps.claude-response.outputs.response).error.message }}
+            $CLAUDE_RESPONSE
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
       if: ${{ fromJson(steps.claude-response.outputs.response).error == '' }}
+      env:
+        MESSAGE_CONTENT: ${{steps.generate-message.outputs.message-content}}
+        CALLING_COMMENT: ${{ github.event.comment.body }}
+        CLAUDE_RESPONSE: ${{steps.claude-response.outputs.response}}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -103,11 +114,11 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            "${{steps.generate-message.outputs.message-content}}"
+            "$MESSAGE_CONTENT"
             </details>
 
             *Comment that called Claude:*
-            > ${{ github.event.comment.body }}
+            > $CALLING_COMMENT
 
             *Claude's response:*
-            ${{ fromJson(steps.claude-response.outputs.response).content[0].text }}
+            $CLAUDE_RESPONSE
