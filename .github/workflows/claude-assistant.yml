@@ -35,7 +35,7 @@ jobs:
         ISSUE_COMMENTS: "${{ steps.get-issue-details.outputs.issue-comments }}"
         CALLING_COMMENT: "${{ github.event.comment.body }}"
       run: |
-        EOF=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16; echo)
+        EOF=$(openssl rand -hex 16)
         {
           echo 'message-content<<"$EOF"'
           echo 'You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue tracker.
