@@ -10,16 +10,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Get stripped comment body
-      id: get-comment-body
-      run: echo comment=$(echo ${{github.event.comment.body}}) >> $GITHUB_OUTPUT
+    - name: Get issue details and comments
+      id: get-issue-details
+      run: |
+        echo issue-details=$(curl -L \
+        -H "Accept: application/vnd.github+json" \
+        -H "Authorization: Bearer $GITHUB_TOKEN" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        https://api.github.com/repos/${{github.repository}}/issues/${{github.event.issue.number}}) | \
+        jq '. | {title, body, username: .user.login, created_at, updated_at}' >> $GITHUB_OUTPUT
 
-    - name: Get Claude's response to issue comment
+        echo issue-comments=$(curl -L \
+        -H "Accept: application/vnd.github+json" \
+        -H "Authorization: Bearer <YOUR-TOKEN>" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        https://api.github.com/repos/${{github.repository}}/issues/${{github.event.issue.number}}/comments) | \
+        jq '[.[]? | {id, body, username: .user.login, created_at, updated_at}]' | \
+        jq '.[0:-1]' >> $GITHUB_OUTPUT
+
+    - name: Get Claude's response
       id: claude-response
-      if: steps.get-comment-body.outputs.comment != ''
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
+        MESSAGE_CONTENT="You are the AI assistant, 'Claude', providing support on the PyMedPhys GitHub issue
+        tracker. Please be helpful and supportive. Please respond directly to the calling comment while using the
+        GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the latest,
+        calling comment) below:
+
+        <github-issue-details>
+        ${{steps.get-issue-details.outputs.issue-details}}
+        </github-issue-details>
+
+        <github-issue-comments>
+        ${{steps.get-issue-details.outputs.issue-comments}}
+        </github-issue-comments>
+
+        <calling-comment>
+        ${{github.event.comment.body}}
+        </calling-comment>
+        "
+
         echo response=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: $ANTHROPIC_API_KEY" \
             --header "anthropic-version: 2023-06-01" \
@@ -29,18 +60,17 @@ jobs:
                 "model": "claude-3-opus-20240229",
                 "max_tokens": 1024,
                 "messages": [
-                    {"role": "user", "content": "${{ steps.get-comment-body.outputs.comment }}"}
+                    {"role": "user", "content": "$MESSAGE_CONTENT"}
                 ]
             }') >> $GITHUB_OUTPUT
 
-    - name: Create comment
-      if: steps.get-comment-body.outputs.comment != '' && steps.claude-response.outcome == 'success'
+    - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
-            @!claude_response
+            *AI assistance Claude*
 
-            > ${{ steps.get-comment-body.outputs.comment }}
+            > ${{ github.event.comment.body }}
 
             ${{ fromJson(steps.claude-response.outputs.response).content[0].text }}
