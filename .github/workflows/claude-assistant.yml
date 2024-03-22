@@ -74,7 +74,7 @@ jobs:
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
-      if: contains(fromJson(steps.claude-response.outputs.response), 'error')
+      if: ${{ fromJson(steps.claude-response.outputs.response).error != '' }}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -95,7 +95,7 @@ jobs:
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
-      if: contains(fromJson(steps.claude-response.outputs.response), 'content')
+      if: ${{ fromJson(steps.claude-response.outputs.response).error == '' }}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
