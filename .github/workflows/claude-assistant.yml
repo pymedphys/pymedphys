@@ -84,7 +84,7 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            "${{steps.claude-response.outputs.MESSAGE_CONTENT}}"
+            "${{steps.generate-message.outputs.message-content}}"
             </details>
 
             *Comment that called Claude:*
@@ -103,7 +103,7 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            "${{steps.claude-response.outputs.MESSAGE_CONTENT}}"
+            "${{steps.generate-message.outputs.message-content}}"
             </details>
 
             *Comment that called Claude:*
