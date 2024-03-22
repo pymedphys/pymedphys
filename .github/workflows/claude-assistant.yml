@@ -51,7 +51,7 @@ jobs:
             <calling-comment>
             "$CALLING_COMMENT"
             </calling-comment>'
-          "$EOF"
+        "$EOF"
         } >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
