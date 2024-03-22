@@ -28,12 +28,10 @@ jobs:
         jq '[.[]? | {id, body, username: .user.login, created_at, updated_at}]' | \
         jq '.[0:-1]') >> $GITHUB_OUTPUT
 
-    - name: Get Claude's response
-      id: claude-response
-      env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    - name: Generate message to send to Claude
+      id: generate-message
       run: |
-        echo MESSAGE_CONTENT="You are the AI assistant, 'Claude', providing support on the PyMedPhys GitHub issue
+        echo message-content="You are the AI assistant, 'Claude', providing support on the PyMedPhys GitHub issue
         tracker. Please be helpful and supportive. Please respond directly to the calling comment while using the
         GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the latest,
         calling comment) below.
@@ -51,6 +49,12 @@ jobs:
         </calling-comment>
         " >> $GITHUB_OUTPUT
 
+    - name: Get Claude's response
+      id: claude-response
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      run: |
+
         echo response=$(curl https://api.anthropic.com/v1/messages \
             --header "x-api-key: $ANTHROPIC_API_KEY" \
             --header "anthropic-version: 2023-06-01" \
@@ -60,7 +64,7 @@ jobs:
                 "model": "claude-3-haiku-20240307",
                 "max_tokens": 1024,
                 "messages": [
-                    {"role": "user", "content": "$MESSAGE_CONTENT"}
+                    {"role": "user", "content": "${{steps.generate-message.outputs.message-content}}"}
                 ]
             }') >> $GITHUB_OUTPUT
 
