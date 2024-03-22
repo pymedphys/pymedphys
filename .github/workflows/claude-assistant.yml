@@ -13,6 +13,8 @@ jobs:
     - name: Get issue details and comments
       id: get-issue-details
       run: |
+        printf "https://api.github.com/repos/${{github.repository}}/issues/${{github.event.issue.number}}"
+
         echo issue-details=$(curl -L \
         -H "Accept: application/vnd.github+json" \
         -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -30,6 +32,7 @@ jobs:
 
     - name: Get Claude's response
       id: claude-response
+      if: ${{ false }}
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
@@ -40,15 +43,15 @@ jobs:
         Apache-2 licensed repository.
 
         <github-issue-details>
-        ${{steps.get-issue-details.outputs.issue-details}}
+        ${{ steps.get-issue-details.outputs.issue-details }}
         </github-issue-details>
 
         <github-issue-comments>
-        ${{steps.get-issue-details.outputs.issue-comments}}
+        ${{ steps.get-issue-details.outputs.issue-comments }}
         </github-issue-comments>
 
         <calling-comment>
-        ${{github.event.comment.body}}
+        ${{ github.event.comment.body }}
         </calling-comment>
         "
 
@@ -60,7 +63,7 @@ jobs:
             --header "content-type: application/json" \
             --data \
             '{
-                "model": "claude-3-opus-20240229",
+                "model": "claude-3-haiku-20240307",
                 "max_tokens": 1024,
                 "messages": [
                     {"role": "user", "content": "$MESSAGE_CONTENT"}
