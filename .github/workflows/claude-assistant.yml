@@ -13,20 +13,24 @@ jobs:
     - name: Get issue details and comments
       id: get-issue-details
       run: |
-        echo issue-details=$(curl -L \
-        -H "Accept: application/vnd.github+json" \
-        -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-        -H "X-GitHub-Api-Version: 2022-11-28" \
-        https://api.github.com/repos/${{github.repository}}/issues/${{github.event.issue.number}} | \
-        jq '. | {title, body, username: .user.login, created_at, updated_at}') >> $GITHUB_OUTPUT
+        echo issue-details=$(
+          curl -L \
+               -H "Accept: application/vnd.github+json" \
+               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+               -H "X-GitHub-Api-Version: 2022-11-28" \
+               "https://api.github.com/repos/${{github.repository}}/issues/${{github.event.issue.number}}" | \
+          jq '. | {title, body, username: .user.login, created_at, updated_at}'
+        ) >> $GITHUB_OUTPUT
 
-        echo issue-comments=$(curl -L \
-        -H "Accept: application/vnd.github+json" \
-        -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-        -H "X-GitHub-Api-Version: 2022-11-28" \
-        https://api.github.com/repos/${{github.repository}}/issues/${{github.event.issue.number}}/comments | \
-        jq '[.[]? | {id, body, username: .user.login, created_at, updated_at}]' | \
-        jq '.[0:-1]') >> $GITHUB_OUTPUT
+        echo issue-comments=$(
+          curl -L \
+               -H "Accept: application/vnd.github+json" \
+               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+               -H "X-GitHub-Api-Version: 2022-11-28" \
+               "https://api.github.com/repos/${{github.repository}}/issues/${{github.event.issue.number}}/comments" | \
+          jq '[.[]? | {id, body, username: .user.login, created_at, updated_at}]' | \
+          jq '.[0:-1]'
+        ) >> $GITHUB_OUTPUT
 
     - name: Generate message to send to Claude
       id: generate-message
@@ -35,8 +39,6 @@ jobs:
         ISSUE_COMMENTS: "${{ steps.get-issue-details.outputs.issue-comments }}"
         CALLING_COMMENT: "${{ github.event.comment.body }}"
       run: |
-        EOF=$(openssl rand -hex 16)
-
         MESSAGE_CONTENT=$(cat <<EOF
         You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue tracker.
         Please be helpful and supportive. Please respond directly to the calling comment while using
@@ -62,24 +64,28 @@ jobs:
         MESSAGE_CONTENT: "${{ steps.generate-message.outputs.message-content }}"
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
+        MESSAGES_JSON=$(
+          jq -n \
+            --arg role "user" \
+            --arg content "$MESSAGE_CONTENT" \
+            '$ARGS.named'
+        )
+        MAX_TOKENS=1024
+        DATA_JSON=$(
+            jq -nr \
+              --arg model "claude-3-opus-20240229" \
+              --argjson max_tokens "$MAX_TOKENS" \
+              --argjson messages "[$MESSAGES_JSON]" \
+              '$ARGS.named'
+        )
 
-        EOF=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16; echo)
-
-        echo response=$(curl https://api.anthropic.com/v1/messages \
-            -H "x-api-key: $ANTHROPIC_API_KEY" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
-            -d @- << '"$EOF"'
-        {
-          "model": "claude-3-opus-20240229",
-          "max_tokens": 1024,
-          "messages": [
-            {"role": "user", "content": "$MESSAGE_CONTENT"}
-          ]
-        }
-        "$EOF"
+        echo response=$(
+          curl https://api.anthropic.com/v1/messages \
+               -H "x-api-key: $ANTHROPIC_API_KEY_BIGGS" \
+               -H "anthropic-version: 2023-06-01" \
+               -H "content-type: application/json" \
+               -d "$DATA_JSON"
         ) >> $GITHUB_OUTPUT
-
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
