@@ -35,28 +35,25 @@ jobs:
     - name: Generate message to send to Claude
       id: generate-message
       env:
-        ISSUE_DETAILS: "${{ steps.get-issue-details.outputs.issue-details }}"
-        ISSUE_COMMENTS: "${{ steps.get-issue-details.outputs.issue-comments }}"
-        CALLING_COMMENT: "${{ github.event.comment.body }}"
+        MESSAGE_CONTENT: |
+          You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue tracker.
+          Please be helpful and supportive. Please respond directly to the calling comment while using
+          the GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the
+          latest, calling comment) below.
+          <github-issue-details>
+          ${{ steps.get-issue-details.outputs.issue-details }}
+          </github-issue-details>
+          <github-issue-comments>
+          ${{ steps.get-issue-details.outputs.issue-comments }}
+          </github-issue-comments>
+          <calling-comment>
+          ${{ github.event.comment.body }}
+          </calling-comment>
       run: |
-        MESSAGE_CONTENT=$(cat <<EOF
-        'You are the AI assistant, "Claude", providing support on the PyMedPhys GitHub issue tracker.
-        Please be helpful and supportive. Please respond directly to the calling comment while using
-        the GitHub issue details and corresponding GitHub issue comment history (non-inclusive of the
-        latest, calling comment) below.
-        <github-issue-details>
-        "$ISSUE_DETAILS"
-        </github-issue-details>
-        <github-issue-comments>
-        "$ISSUE_COMMENTS"
-        </github-issue-comments>
-        <calling-comment>
-        "$CALLING_COMMENT"
-        </calling-comment>'
-        EOF
-        )
-
-        echo "message-content=$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
+        EOF=$(openssl rand -hex 16)
+        echo "message-content<<$EOF" >> $GITHUB_OUTPUT
+        echo "$MESSAGE_CONTENT" >> $GITHUB_OUTPUT
+        echo "$EOF" >> $GITHUB_OUTPUT
 
     - name: Get Claude's response
       id: claude-response
