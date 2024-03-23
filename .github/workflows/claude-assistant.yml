@@ -84,7 +84,7 @@ jobs:
                -d "$DATA_JSON"
         )
 
-        echo "response=${{ fromJson('$RESPONSE') }}" >> $GITHUB_OUTPUT
+        echo 'response=${{ fromJson("$RESPONSE") }}' >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
