@@ -58,7 +58,7 @@ jobs:
     - name: Get Claude's response
       id: claude-response
       env:
-        MESSAGE_CONTENT: ${{ steps.generate-message.outputs.message-content }}
+        MESSAGE_CONTENT: "${{ steps.generate-message.outputs.message-content }}"
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
         MESSAGES_JSON=$(
