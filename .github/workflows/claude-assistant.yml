@@ -76,19 +76,17 @@ jobs:
               '$ARGS.named'
         )
 
-        RESPONSE=$(
+        echo response=$(
           curl https://api.anthropic.com/v1/messages \
                -H "x-api-key: $ANTHROPIC_API_KEY" \
                -H "anthropic-version: 2023-06-01" \
                -H "content-type: application/json" \
                -d "$DATA_JSON"
-        )
-
-        echo 'response=${{ fromJson("$RESPONSE") }}' >> $GITHUB_OUTPUT
+        ) >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
-      if: ${{ steps.claude-response.outputs.response.error != '' }}
+      if: ${{ fromJson(steps.claude-response.outputs.response).error != '' }}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -105,11 +103,11 @@ jobs:
             > ${{ github.event.comment.body }}
 
             *Claude's error message:*
-            ${{ steps.claude-response.outputs.response.error.message }}
+            ${{ fromJson(steps.claude-response.outputs.response).error.message }}
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
-      if: ${{ steps.claude-response.outputs.response.error == '' }}
+      if: ${{ fromJson(steps.claude-response.outputs.response).error == '' }}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -124,4 +122,4 @@ jobs:
             > ${{ github.event.comment.body }}
 
             *Claude's response:*
-            ${{ steps.claude-response.outputs.response.content[0].text }}
+            ${{ fromJson(steps.claude-response.outputs.response).content[0].text }}
