@@ -5,7 +5,7 @@ on:
     types: [created, edited]
 
 jobs:
-  post_claude_response:
+  claude_assist_comment:
     if: contains(github.event.comment.body, 'claude')
     runs-on: ubuntu-latest
 
@@ -122,4 +122,5 @@ jobs:
             > ${{ github.event.comment.body }}
 
             *Claude's response:*
+
             ${{ fromJson(steps.claude-response.outputs.response).content[0].text }}
