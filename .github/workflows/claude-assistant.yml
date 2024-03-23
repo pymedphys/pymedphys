@@ -52,7 +52,7 @@ jobs:
         </github-issue-comments>
         <calling-comment>
         "$CALLING_COMMENT"
-        </calling-comment>'
+        </calling-comment>
         EOF
         )
 
