@@ -58,13 +58,12 @@ jobs:
     - name: Get Claude's response
       id: claude-response
       env:
-        MESSAGE_CONTENT: "${{ steps.generate-message.outputs.message-content }}"
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
         MESSAGES_JSON=$(
           jq -n \
             --arg role "user" \
-            --arg content "$MESSAGE_CONTENT" \
+            --arg content "${{ steps.generate-message.outputs.message-content }}" \
             '$ARGS.named'
         )
         MAX_TOKENS=1024
@@ -76,19 +75,19 @@ jobs:
               '$ARGS.named'
         )
 
-        echo response=$(
+        RESPONSE=$(
           curl https://api.anthropic.com/v1/messages \
                -H "x-api-key: $ANTHROPIC_API_KEY" \
                -H "anthropic-version: 2023-06-01" \
                -H "content-type: application/json" \
                -d "$DATA_JSON"
-        ) >> $GITHUB_OUTPUT
+        )
+
+        echo "response=${{ fromJson('$RESPONSE') }}" >> $GITHUB_OUTPUT
 
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
-      if: ${{ fromJson(steps.claude-response.outputs.response).error != '' }}
-      env:
-        MESSAGE_CONTENT: "${{ steps.generate-message.outputs.message-content }}"
+      if: ${{ steps.claude-response.outputs.response.error != '' }}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -98,20 +97,18 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            "$MESSAGE_CONTENT"
+            ${{ steps.generate-message.outputs.message-content }}
             </details>
 
             *Comment that called Claude:*
             > ${{ github.event.comment.body }}
 
             *Claude's error message:*
-            ${{ fromJson(steps.claude-response.outputs.response).error.message }}
+            ${{ steps.claude-response.outputs.response.error.message }}
 
     - name: Create issue comment with Claude's response
       uses: peter-evans/create-or-update-comment@v4
-      if: ${{ fromJson(steps.claude-response.outputs.response).error == '' }}
-      env:
-        MESSAGE_CONTENT: "${{ steps.generate-message.outputs.message-content }}"
+      if: ${{ steps.claude-response.outputs.response.error == '' }}
       with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -119,11 +116,11 @@ jobs:
 
             *Prompt sent to Claude:*
             <details>
-            $MESSAGE_CONTENT
+            ${{ steps.generate-message.outputs.message-content }}
             </details>
 
             *Comment that called Claude:*
             > ${{ github.event.comment.body }}
 
             *Claude's response:*
-            ${{ fromJson(steps.claude-response.outputs.response).content[0].text }}
+            ${{ steps.claude-response.outputs.response.content[0].text }}
