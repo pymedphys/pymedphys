@@ -84,6 +84,13 @@ jobs:
                -d "$DATA_JSON"
         ) >> $GITHUB_OUTPUT
 
+    - name: Get URL to prompt log
+      uses: Tiryoh/gha-jobid-action@v1
+      id: job-info
+      with:
+        job_name: "${{ github.job }}"
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Create issue comment with Claude's error
       uses: peter-evans/create-or-update-comment@v4
       if: ${{ fromJson(steps.claude-response.outputs.response).error != '' }}
@@ -94,10 +101,7 @@ jobs:
 
             ERROR
 
-            *Prompt sent to Claude:*
-            <details>
-            ${{ steps.generate-message.outputs.message-content }}
-            </details>
+            *Prompt sent to Claude:* [link](${{ steps.job-info.outputs.html_url }}#step:3:8)
 
             *Comment that called Claude:*
             > ${{ github.event.comment.body }}
@@ -113,10 +117,7 @@ jobs:
           body: |
             **AI Assistant Claude**
 
-            *Prompt sent to Claude:*
-            <details>
-            ${{ steps.generate-message.outputs.message-content }}
-            </details>
+            *Prompt sent to Claude:* [link](${{ steps.job-info.outputs.html_url }}#step:3:8)
 
             *Comment that called Claude:*
             > ${{ github.event.comment.body }}
