@@ -52,14 +52,17 @@ def system_prompt_on_comment_mention(
         for comment in issue.get_comments()
     ]
 
-    system_prompt = f"""You are the AI assistant, "Claude", providing support on a
-    GitHub Issue in the {repo.name} repository. The issue title is '{issue.title}' and
-    the issue number is `{issue_number}`. The original issue description is enclosed
-    in the <issue_description> XML tags below. All subsequent comments are enclosed in
-    the <issue_comments> XML tags below. Please be helpful and supportive.
-
-    <issue_description>{issue.body}</issue_description>
-    <issue_comments>{comments}</issue_comments>"""
+    system_prompt = (
+        "You are the AI assistant, 'Claude', providing support on a "
+        f"GitHub Issue in the {repo.name} repository. The issue title "
+        f"'{issue.title}' and the issue number is {issue_number}. The "
+        "issue description is enclosed in the <issue_description> XML "
+        "tags below. All subsequent comments are enclosed in the "
+        "<issue_comments> XML tags below. Please be helpful and "
+        "supportive.\n"
+        f"<issue_description>{issue.body}</issue_description>\n"
+        f"<issue_comments>{comments}</issue_comments>"
+    )
 
     return system_prompt
 
@@ -74,15 +77,12 @@ def user_prompt_on_comment_mention(comment_mentioned: str) -> str:
         str: The user prompt for Claude.
     """
 
-    user_prompt = f"""
-    Please respond to the latest comment in the conversation that mentions you, Claude.
-    This comment is provided in the <comment> XML tags below.
-
-    <comment>
-    {comment_mentioned}
-    </comment>
-    """
-
+    user_prompt = (
+        "Please respond to the latest comment in the conversation that "
+        "mentions you, Claude. This comment is provided in the "
+        "<comment> XML tags below.\n"
+        f"<comment>{comment_mentioned}</comment>"
+    )
     return user_prompt
 
 
@@ -109,48 +109,38 @@ def create_issue_comment_with_claude_response_to_mention(
     else:
         claude_response_text = claude_response.content[0].text
 
-    comment_body_new = f"""
-**AI Assistant Clauude**
-
-*Prompt sent to Clauude:* [link]({claude_system_prompt_link})
-
-*Comment that called Clauude:*
-> {comment_mentioned}
-
-*Clauude's response:*
-
-{claude_response_text}"""
-
+    comment_body_new = (
+        "**AI Assistant Clauude**\n\n"
+        "*Prompt sent to Clauude:* "
+        f"[link]({claude_system_prompt_link})\n\n"
+        f"*Comment that called Clauude:*\n"
+        f"> {comment_mentioned}\n"
+        "*Clauude's response:*\n\n"
+        f"{claude_response_text}"
+    )
     return issue.create_comment(comment_body_new)
 
 
-if __name__ == "__main__":
-    OWNER_REPO_NAME = "Matthew-Jennings/pymedphys"
-    ISSUE_NUMBER = 2
-    GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-    CALLING_COMMENT = (
-        "Please summarise the issue so far and what you think the next steps should be."
-    )
-
-    logging.info("Initialising GitHub clients...")
-    g = github_client(token=GITHUB_TOKEN)
+def respond_to_issue_comment_cli(args):
+    logging.info("Initialising GitHub client...")
+    g = github_client(token=args.github_token)
 
     logging.info("Initialising Claude client...")
-    claude_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    claude_client = anthropic.Anthropic(api_key=args.anthropic_api_key)
 
-    logging.info("Getting repo %s", OWNER_REPO_NAME)
-    repo = g.get_repo(OWNER_REPO_NAME)
+    logging.info("Getting repo %s...", args.repo)
+    repo = g.get_repo(args.repo)
 
     logging.info("Creating system prompt for Claude...")
-    system_prompt = system_prompt_on_comment_mention(repo, ISSUE_NUMBER)
+    system_prompt = system_prompt_on_comment_mention(repo, args.issue_number)
 
     logging.info("Creating user prompt for Claude...")
-    user_prompt = user_prompt_on_comment_mention(CALLING_COMMENT)
+    user_prompt = user_prompt_on_comment_mention(args.user_comment)
 
-    logging.info("Calling Claude...")
+    logging.info("Sending message to Claude and obtaining response...")
     claude_response = claude_client.messages.create(
-        model="claude-3-opus-20240229",
-        max_tokens=1024,
+        model=args.claude_model,
+        max_tokens=args.max_tokens,
         system=system_prompt,
         messages=[
             {
@@ -160,9 +150,9 @@ if __name__ == "__main__":
         ],
     )
 
-    logging.info("Creating comment on issue %i", ISSUE_NUMBER)
+    logging.info("Creating comment on %s issue %i", args.repo, args.issue_number)
     create_issue_comment_with_claude_response_to_mention(
-        issue=repo.get_issue(ISSUE_NUMBER),
-        comment_mentioned=CALLING_COMMENT,
+        issue=repo.get_issue(args.issue_number),
+        comment_mentioned=args.user_comment,
         claude_response=claude_response,
     )

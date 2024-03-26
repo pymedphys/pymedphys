@@ -42,7 +42,7 @@ def test_system_prompt_on_comment_mention(repo, save_baseline=False):
         json_dict = {"system_prompt": system_prompt}
 
         with open(BASELINES_JSON, "w", encoding="UTF-8") as f:
-            json.dump(json_dict, f)
+            json.dump(json_dict, f, indent=2)
     else:
         with open(BASELINES_JSON, encoding="UTF-8") as f:
             json_dict = json.load(f)
