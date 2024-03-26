@@ -7,8 +7,8 @@ import pytest
 
 from pymedphys._claude import githubassist
 
-OWNER_REPO_NAME = "Matthew-Jennings/pymedphys"
-ISSUE_NUMER = 2
+OWNER_REPO_NAME = "pymedphys/pymedphys"
+ISSUE_NUMER = 1844
 HERE = pathlib.Path(__file__).parent.resolve()
 BASELINES_JSON = HERE / "baselines.json"
 
