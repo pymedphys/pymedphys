@@ -2,6 +2,7 @@ import json
 import pathlib
 
 import anthropic
+import github
 import pytest
 
 from pymedphys._claude import githubassist
@@ -17,17 +18,9 @@ def claude_connection():
     return anthropic.Anthropic()
 
 
-def test_claude_connection(claude_connection):
-    assert claude_connection is not None
-
-
 @pytest.fixture
 def github_connection():
     return githubassist.github_client()
-
-
-def test_github_connection(github_connection):
-    assert github_connection is not None
 
 
 @pytest.fixture
@@ -35,17 +28,9 @@ def repo(github_connection):
     return github_connection.get_repo(OWNER_REPO_NAME)
 
 
-def test_repo(repo):
-    assert repo is not None
-
-
 @pytest.fixture
 def issue(repo):
     return repo.get_issue(ISSUE_NUMER)
-
-
-def test_issue(issue):
-    assert issue is not None
 
 
 def test_system_prompt_on_comment_mention(repo, save_baseline=False):
@@ -68,7 +53,7 @@ def test_create_issue_comment_with_claude_response_to_mention(issue):
     comment_mentioned = "Please summarise"
 
     claude_response_mock = anthropic.types.message.Message(
-        id="msg_013Zva2CMHLNnXjNJJKqJ2EF",
+        id="1234",
         content=[
             anthropic.types.ContentBlock(
                 text="This is a\nmultiline\ntest\nresponse.", type="text"
@@ -85,6 +70,11 @@ def test_create_issue_comment_with_claude_response_to_mention(issue):
     )
 
     assert issue.get_comment(comment_new.id) == comment_new
+
+    comment_new.delete()
+
+    with pytest.raises(github.UnknownObjectException):
+        issue.get_comment(comment_new.id)
 
 
 # Add more tests as needed
