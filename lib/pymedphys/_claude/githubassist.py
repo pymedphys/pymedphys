@@ -30,10 +30,10 @@ def github_client(token=None) -> github.Github:
     return github.Github(auth=auth)
 
 
-def system_prompt_on_comment_mention(
+def system_prompt_github_issue_comment(
     repo: github.Repository.Repository, issue_number: int
 ) -> str:
-    """Construct a system prompt for Claude based on the details of an issue.
+    """Construct a system prompt for Claude based on the details of a GitHub issue.
 
     Args:
         repo (github.Repository.Repository): The repository containing the issue.
@@ -67,7 +67,7 @@ def system_prompt_on_comment_mention(
     return system_prompt
 
 
-def user_prompt_on_comment_mention(comment_mentioned: str) -> str:
+def user_prompt_from_issue_comment(username: str, user_comment: str) -> str:
     """Construct a user prompt for Claude based on the details of an issue.
 
     Args:
@@ -78,17 +78,17 @@ def user_prompt_on_comment_mention(comment_mentioned: str) -> str:
     """
 
     user_prompt = (
-        "Please respond to the latest comment in the conversation that "
-        "mentions you, Claude. This comment is provided in the "
-        "<comment> XML tags below.\n"
-        f"<comment>{comment_mentioned}</comment>"
+        f"Please respond to the comment by {username}. This comment is "
+        "provided in the <comment> XML tags below.\n"
+        f"<comment>{user_comment}</comment>"
     )
     return user_prompt
 
 
-def create_issue_comment_with_claude_response_to_mention(
+def create_issue_comment_with_claude_response_to_user_comment(
     issue: github.Issue.Issue,
-    comment_mentioned: str,
+    username: str,
+    user_comment: str,
     claude_response: anthropic.types.message.Message,
     claude_system_prompt_link=None,
 ) -> github.IssueComment.IssueComment:
@@ -96,9 +96,10 @@ def create_issue_comment_with_claude_response_to_mention(
 
     Args:
         issue (github.Issue.Issue): The issue to comment on.
-        comment_mentioned (str): The comment that mentioned Claude.
+        user_comment (str): The comment that mentioned Claude.
         claude_response (str): The response from Claude.
-
+        claude_system_prompt_link (str, optional): The link to the system prompt (e.g.,
+            in the CI). Defaults to None.
     """
     if claude_system_prompt_link is None:
         claude_system_prompt_link = "N/A"
@@ -114,7 +115,7 @@ def create_issue_comment_with_claude_response_to_mention(
         "*Prompt sent to Clauude:* "
         f"[link]({claude_system_prompt_link})\n\n"
         f"*Comment that called Clauude:*\n"
-        f"> {comment_mentioned}\n"
+        f"> **{username}**: {user_comment}\n"
         "*Clauude's response:*\n\n"
         f"{claude_response_text}"
     )
@@ -132,10 +133,10 @@ def respond_to_issue_comment_cli(args):
     repo = g.get_repo(args.repo)
 
     logging.info("Creating system prompt for Claude...")
-    system_prompt = system_prompt_on_comment_mention(repo, args.issue_number)
+    system_prompt = system_prompt_github_issue_comment(repo, args.issue_number)
 
     logging.info("Creating user prompt for Claude...")
-    user_prompt = user_prompt_on_comment_mention(args.user_comment)
+    user_prompt = user_prompt_from_issue_comment(args.username, args.user_comment)
 
     logging.info("Sending message to Claude and obtaining response...")
     claude_response = claude_client.messages.create(
@@ -151,8 +152,8 @@ def respond_to_issue_comment_cli(args):
     )
 
     logging.info("Creating comment on %s issue %i", args.repo, args.issue_number)
-    create_issue_comment_with_claude_response_to_mention(
+    create_issue_comment_with_claude_response_to_user_comment(
         issue=repo.get_issue(args.issue_number),
-        comment_mentioned=args.user_comment,
+        user_comment=args.user_comment,
         claude_response=claude_response,
     )

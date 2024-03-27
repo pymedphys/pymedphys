@@ -1,10 +1,12 @@
 import json
 import pathlib
+import subprocess
 
 import anthropic
 import github
 import pytest
 
+import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._claude import githubassist
 
 OWNER_REPO_NAME = "pymedphys/pymedphys"
@@ -33,9 +35,9 @@ def issue(repo):
     return repo.get_issue(ISSUE_NUMER)
 
 
-def test_system_prompt_on_comment_mention(repo, save_baseline=False):
+def test_system_prompt_github_issue_comment(repo, save_baseline=False):
 
-    system_prompt = githubassist.system_prompt_on_comment_mention(repo, ISSUE_NUMER)
+    system_prompt = githubassist.system_prompt_github_issue_comment(repo, ISSUE_NUMER)
     assert system_prompt != ""
 
     if save_baseline:
@@ -49,8 +51,9 @@ def test_system_prompt_on_comment_mention(repo, save_baseline=False):
         assert json_dict["system_prompt"] == system_prompt
 
 
-def test_create_issue_comment_with_claude_response_to_mention(issue):
-    comment_mentioned = "Please summarise"
+def test_create_issue_comment_with_claude_response_to_user_comment(issue):
+    username = "@!Claude_test"
+    user_comment = "Please summarise"
 
     claude_response_mock = anthropic.types.message.Message(
         id="1234",
@@ -65,16 +68,41 @@ def test_create_issue_comment_with_claude_response_to_mention(issue):
         usage=anthropic.types.Usage(input_tokens=10, output_tokens=25),
     )
 
-    comment_new = githubassist.create_issue_comment_with_claude_response_to_mention(
-        issue, comment_mentioned, claude_response_mock
+    comment_new = (
+        githubassist.create_issue_comment_with_claude_response_to_user_comment(
+            issue, username, user_comment, claude_response_mock
+        )
     )
+    try:
+        assert issue.get_comment(comment_new.id) == comment_new
+        with pytest.raises(github.UnknownObjectException):
+            comment_new.delete()
+            issue.get_comment(comment_new.id)
+    finally:
+        if comment_new is not None:
+            comment_new.delete()
 
-    assert issue.get_comment(comment_new.id) == comment_new
 
-    comment_new.delete()
+def test_response_to_github_issue_comment_cli(issue):
 
-    with pytest.raises(github.UnknownObjectException):
-        issue.get_comment(comment_new.id)
+    issue_comment_count_before = issue.comments
 
+    respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_dicom_cli() + [
+        "respond-to-issue-comment"
+    ]
 
-# Add more tests as needed
+    respond_to_issue_comment_cmd = (
+        f"{respond_to_issue_comment_cli} "
+        f"{ISSUE_NUMER} "
+        f"{OWNER_REPO_NAME} "
+        "@!Claude_test "
+        "'This is a test comment'"
+        "--repo 'pymedphys/pymedphys' "
+        "--claude_model claude-3-haiku-20240307"
+        "--max_tokens 10"
+    )
+    try:
+        subprocess.check_call(respond_to_issue_comment_cmd)
+        assert issue.comments == issue_comment_count_before + 1
+    finally:
+        remove_file(temp_anon_filepath)

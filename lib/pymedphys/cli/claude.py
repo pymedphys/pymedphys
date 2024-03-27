@@ -39,12 +39,18 @@ def claude_cli(subparsers):
 def respond_to_issue_comment(claude_subparsers):
     parser = claude_subparsers.add_parser(
         "respond-to-issue-comment",
-        help="Respond a  GitHub issue comment with a message from Claude.",
+        help="Respond to a GitHub issue comment with a message from Claude.",
     )
     parser.add_argument(
         "issue_number",
         type=int,
         help="The number of the issue on the Github repository. ",
+    )
+
+    parser.add_argument(
+        "username",
+        type=str,
+        help="The author of the text to include in the user prompt to Claude.",
     )
 
     parser.add_argument(
@@ -81,7 +87,7 @@ def respond_to_issue_comment(claude_subparsers):
         "-a",
         default=os.environ.get("ANTHROPIC_API_TOKEN"),
         type=str,
-        help="The access key to use the Anthropic API to Claude.",
+        help="The access key to use the Anthropic API.",
     )
 
     parser.add_argument(
@@ -89,7 +95,7 @@ def respond_to_issue_comment(claude_subparsers):
         "-m",
         default="claude-3-opus-20240229",
         type=str,
-        help="The access key to use the Anthropic API to Claude.",
+        help="The access key to use the Anthropic API.",
     )
 
     parser.add_argument(
@@ -97,7 +103,7 @@ def respond_to_issue_comment(claude_subparsers):
         "-t",
         default=1024,
         type=int,
-        help="The access key to use the Anthropic API to Claude.",
+        help="The access key to use the Anthropic API.",
     )
 
     parser.set_defaults(func=respond_to_issue_comment_cli)

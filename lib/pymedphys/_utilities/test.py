@@ -99,3 +99,8 @@ def get_executable_even_when_embedded():
 def get_pymedphys_dicom_cli():
     python_executable = get_executable_even_when_embedded()
     return [str(python_executable), "-m", "pymedphys", "dicom"]
+
+
+def get_pymedphys_claude_cli():
+    python_executable = get_executable_even_when_embedded()
+    return [str(python_executable), "-m", "pymedphys", "claude"]
