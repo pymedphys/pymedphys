@@ -1,4 +1,7 @@
 locale: en_US
+scripts:
+    before: 
+        - Update Ident set IDA=Pat_ID1 
 tables:
   Patient:
     columns:
@@ -119,22 +122,10 @@ tables:
       DirectMailAddress:
         type: fake_update
         fake_type: address
-        
 
-
-
-       
-      
-      
-        
-        
-        
-      
-        
   Ident:
     columns:
-      IDA: unique_login
-      IDB: unique_login
+      IDB: ( '' )
       IDC: ( '' )
       IDD: ( '' )
       IDE: ( '' )
