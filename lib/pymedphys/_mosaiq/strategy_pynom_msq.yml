@@ -1,7 +1,7 @@
 locale: en_US
 scripts:
-    before: 
-        - Update Ident set IDA=Pat_ID1 
+    before:
+        - Update Ident set IDA=Pat_ID1
 tables:
   Patient:
     columns:
@@ -22,7 +22,7 @@ tables:
       MIddle_Name:
         type: fake_update
         fake_type: first_name
-      Maiden_Name: 
+      Maiden_Name:
         type: fake_update
         fake_type: last_name
       Last_Name_Secondary:
@@ -49,13 +49,13 @@ tables:
       MotherMaidenName:
         type: fake_update
         fake_type: last_name
-        
+
   PatientFamilyHistory:
     columns:
-      Name: 
+      Name:
         type: fake_update
         fake_type: name
-        
+
   PatientName:
     columns:
       Last_Name:
@@ -105,7 +105,7 @@ tables:
       CellPhone:
         type: fake_update
         fake_type: phone_number
-      Email: unique_email 
+      Email: unique_email
       Home_Phone:
         type: fake_update
         fake_type: phone_number
@@ -119,9 +119,6 @@ tables:
         type: fake_update
         fake_type: first_name
       Mdl_Initial_SingleByte: ( '' )
-      DirectMailAddress:
-        type: fake_update
-        fake_type: address
 
   Ident:
     columns:
