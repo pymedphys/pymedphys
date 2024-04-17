@@ -1,10 +1,13 @@
 import re
 
+import trio
 from anthropic import AI_PROMPT, Anthropic, BadRequestError
 
 import streamlit as st
 
 from .messages import ASSISTANT, USER, PromptMap
+from .sql_agent._utilities import run_query
+from .sql_agent.pipeline import async_sql_tool_pipeline
 
 SYSTEM_PROMPT = """\
 You are MOSAIQ Claude Chat. Your goal is to be helpful, harmless and
@@ -136,7 +139,7 @@ within my response to them below.
         )
         try:
             result = anthropic.completions.create(
-                model="claude-2.1",
+                model="claude-3-opus-20240229",
                 max_tokens_to_sample=50_000,
                 prompt=prompt,
             )
@@ -177,7 +180,7 @@ def _get_prompt_from_messages():
 def _get_sql_query_and_result(debug_mode: bool):
     query_result_pairs = []
 
-    raw_queries = _get_sql_queries_from_messages()
+    raw_queries = trio.run(async_sql_tool_pipeline)
     if debug_mode:
         st.write(f"**Queries:** {raw_queries}")
 
@@ -191,7 +194,7 @@ def _get_sql_query_and_result(debug_mode: bool):
             st.write(f"**Query:** {query}")
 
         # TODO: Verify that user only has read-only access before running arbitrary query.
-        result = sql_tool.raw_query(query)
+        result = trio.run(run_query, query)
         result = re.sub(" +", " ", result)
         result = "\n".join([line for line in result.splitlines() if line])
 

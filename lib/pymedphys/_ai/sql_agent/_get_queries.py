@@ -1,8 +1,12 @@
+from anthropic import AI_PROMPT, AsyncAnthropic
+
+from pymedphys._ai.messages import Messages, PromptMap
+
 from . import _utilities
 
 SYSTEM_PROMPT = """\
 You are an MSSQL AI agent. You respond only with valid Microsoft SQL
-Queries encompassed within <query> tags. You always provide 10 unique
+Queries encompassed within <query> tags. You always provide 3 unique
 and diverse queries.
 
 Some queries that you request may not return a result, and some tables
@@ -19,13 +23,6 @@ returns a meaningful result. Be careful to not filter all of your
 queries using the same assumption about what columns may contain as a
 wrong assumption may make all of your queries return nothing.
 
-If certain tables or columns have been tried previously, err on the side
-of not repeating previous mistakes.
-
-ONLY ever output 1-3 columns per query.
-
-Make heavy use of SELECT DISTINCT.
-
 Do NOT use queries that include the TOP command as these will likely
 remove valuable information.
 
@@ -38,7 +35,7 @@ APPENDED_USER_PROMPT = """\
 You respond only with valid Microsoft SQL Queries encompassed within
 <query> tags. All queries assume that the database is designed according
 to the provided schema within the <database> tags that was provided
-within your system prompt. You are to provide exactly 10 unique and
+within your system prompt. You are to provide exactly 3 unique and
 diverse queries. Make sure that each of your queries targets different
 tables within the database.
 """
@@ -48,6 +45,7 @@ SELECT DISTINCT
 """
 
 
+@_utilities.async_cache
 async def get_system_prompt(tables_to_keep: list[str]):
     filtered_tables_schema = await _utilities.get_schema_formatted_for_prompt(
         tables_to_keep=tables_to_keep
@@ -56,5 +54,24 @@ async def get_system_prompt(tables_to_keep: list[str]):
     return SYSTEM_PROMPT.format(schema=filtered_tables_schema)
 
 
-async def get_queries(tables_to_keep: list[str]):
-    pass
+async def get_queries(anthropic_client: AsyncAnthropic, messages: Messages):
+    result = await anthropic_client.completions.create(
+        model="claude-3-haiku-20240307",
+        max_tokens_to_sample=50_000,
+        prompt=await _get_queries_prompt_from_messages(messages),
+    )
+
+    return START_OF_ASSISTANT_PROMPT + result.completion
+
+
+async def _get_queries_prompt_from_messages(messages: Messages):
+    prompt = await get_system_prompt()
+
+    for message in messages:
+        prompt += f"{PromptMap[message['role']]} {message['content']}"
+
+    prompt += f"{PromptMap['user']} {APPENDED_USER_PROMPT}"
+    prompt += AI_PROMPT
+    prompt += START_OF_ASSISTANT_PROMPT
+
+    return prompt

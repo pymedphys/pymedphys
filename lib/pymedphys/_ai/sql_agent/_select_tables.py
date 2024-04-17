@@ -71,6 +71,7 @@ async def get_selected_table_names(
         model="claude-3-haiku-20240307",
         max_tokens_to_sample=50_000,
         prompt=await _get_select_table_prompt_from_messages(messages),
+        stop_sequences=["</selection>"],
     )
 
     return '<table name="' + result.completion

@@ -10,6 +10,9 @@ import trio
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
+
+# TODO: Need to rework this to use PyMedPHys mosaiq connection logic
+
 QUERY_PREPEND = """\
 SET NOCOUNT ON;
 USE PRACTICE;
@@ -126,16 +129,3 @@ async def run_query_with_nested_list_output(query: str):
     return [
         [item.strip() for item in row.split(",")] for row in query_result.splitlines()
     ]
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    from belt.cli import run
-
-    run([get_schema_formatted_for_prompt])
-
-"""
-Make a schema dump file for browsing:
-
-python -m pymedphys._ai.sql_agent._utilities > ~/mosaiq-data/schema.xml
-"""
