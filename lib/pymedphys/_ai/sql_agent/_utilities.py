@@ -3,14 +3,10 @@ import os
 import pathlib
 import tempfile
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from collections.abc import (
-    Awaitable,
-    Callable,
-)
 
 import trio
-
 
 HERE = pathlib.Path(__file__).parent.resolve()
 

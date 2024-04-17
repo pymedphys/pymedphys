@@ -1,8 +1,8 @@
 import re
 
-import streamlit as st
-
 from anthropic import AI_PROMPT, Anthropic, BadRequestError
+
+import streamlit as st
 
 from .messages import ASSISTANT, USER, PromptMap
 
