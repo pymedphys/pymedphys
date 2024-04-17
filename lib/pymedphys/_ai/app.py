@@ -1,7 +1,7 @@
 import re
 
 import trio
-from anthropic import AI_PROMPT, Anthropic, BadRequestError
+from anthropic import AI_PROMPT, Anthropic, AsyncAnthropic, BadRequestError
 
 import streamlit as st
 
@@ -159,6 +159,11 @@ within my response to them below.
 @st.cache_resource
 def _anthropic():
     return Anthropic()
+
+
+@st.cache_resource
+def _async_anthropic():
+    return AsyncAnthropic()
 
 
 def _initialise_state():

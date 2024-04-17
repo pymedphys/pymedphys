@@ -54,18 +54,38 @@ async def get_system_prompt(tables_to_keep: list[str]):
     return SYSTEM_PROMPT.format(schema=filtered_tables_schema)
 
 
-async def get_queries(anthropic_client: AsyncAnthropic, messages: Messages):
+async def get_queries(
+    anthropic_client: AsyncAnthropic, messages: Messages, tables_to_keep: list[str]
+):
+    raw_queries = await _get_raw_queries(anthropic_client, messages, tables_to_keep)
+
+    queries = []
+    for query_with_close_tag in raw_queries.split("<query>"):
+        query = query_with_close_tag.split("</query>")[0].strip()
+        if query:
+            queries.append(query)
+
+    return queries
+
+
+async def _get_raw_queries(
+    anthropic_client: AsyncAnthropic, messages: Messages, tables_to_keep: list[str]
+):
     result = await anthropic_client.completions.create(
         model="claude-3-haiku-20240307",
         max_tokens_to_sample=50_000,
-        prompt=await _get_queries_prompt_from_messages(messages),
+        prompt=await _get_queries_prompt_from_messages(
+            messages, tables_to_keep=tables_to_keep
+        ),
     )
 
     return START_OF_ASSISTANT_PROMPT + result.completion
 
 
-async def _get_queries_prompt_from_messages(messages: Messages):
-    prompt = await get_system_prompt()
+async def _get_queries_prompt_from_messages(
+    messages: Messages, tables_to_keep: list[str]
+):
+    prompt = await get_system_prompt(tables_to_keep=tables_to_keep)
 
     for message in messages:
         prompt += f"{PromptMap[message['role']]} {message['content']}"

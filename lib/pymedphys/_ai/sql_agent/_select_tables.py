@@ -1,3 +1,5 @@
+import re
+
 from anthropic import AI_PROMPT, AsyncAnthropic
 
 from pymedphys._ai.messages import Messages, PromptMap
@@ -67,6 +69,19 @@ async def get_system_prompt():
 async def get_selected_table_names(
     anthropic_client: AsyncAnthropic, messages: Messages
 ):
+    raw_table_names = await _get_raw_selected_table_names(anthropic_client, messages)
+
+    table_names = []
+    for line in raw_table_names.split("\n"):
+        match = re.search(r'<table name="(.*)">', line)
+        table_names.append(match.group(1))
+
+    return table_names
+
+
+async def _get_raw_selected_table_names(
+    anthropic_client: AsyncAnthropic, messages: Messages
+) -> str:
     result = await anthropic_client.completions.create(
         model="claude-3-haiku-20240307",
         max_tokens_to_sample=50_000,
