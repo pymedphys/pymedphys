@@ -49,3 +49,7 @@ cursor.execute("SELECT TABLE_NAME FROM information_schema.tables")
 cursor.fetchall()
 # Prints out tables
 ```
+
+---
+
+Make sure to set ANTHROPIC_API_KEY as environment variable.

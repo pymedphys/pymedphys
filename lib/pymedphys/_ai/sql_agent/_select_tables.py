@@ -1,4 +1,4 @@
-from anthropic import AsyncAnthropic
+from anthropic import AI_PROMPT, AsyncAnthropic
 
 from pymedphys._ai.messages import Messages, PromptMap
 
@@ -26,8 +26,8 @@ You use the following xml tags to detail your chosen table names:
 <table name="Your last chosen table name">
 </selection>
 
-Another AI agent within the cluster will then take these table names and form
-subsequent queries. It is NOT your job to make these queries.
+Another AI agent within the cluster will then take these table names and
+form subsequent queries. It is NOT your job to make these queries.
 {table_name_only_schema}
 """
 # NOTE: The historical transcript of user/assistant will be included
@@ -64,26 +64,26 @@ async def get_system_prompt():
     return SYSTEM_PROMPT.format(table_name_only_schema=table_name_only_schema)
 
 
-async def _get_sql_queries_from_messages(
+async def get_selected_table_names(
     anthropic_client: AsyncAnthropic, messages: Messages
 ):
     result = await anthropic_client.completions.create(
-        model="claude-instant-1.2",
+        model="claude-3-haiku-20240307",
         max_tokens_to_sample=50_000,
-        prompt=_get_sql_tool_use_prompt_from_messages(),
+        prompt=await _get_select_table_prompt_from_messages(messages),
     )
 
-    return "<query>\n" + result.completion
+    return '<table name="' + result.completion
 
 
-async def _get_sql_tool_use_prompt_from_messages(messages: Messages):
+async def _get_select_table_prompt_from_messages(messages: Messages):
     prompt = await get_system_prompt()
 
     for message in messages:
         prompt += f"{PromptMap[message['role']]} {message['content']}"
 
-    prompt += f"{PromptMap['user']} {sql_tool.APPENDED_USER_PROMPT}"
+    prompt += f"{PromptMap['user']} {APPENDED_USER_PROMPT}"
     prompt += AI_PROMPT
-    prompt += sql_tool.START_OF_ASSISTANT_PROMPT
+    prompt += START_OF_ASSISTANT_PROMPT
 
     return prompt
