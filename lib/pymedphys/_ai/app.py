@@ -36,7 +36,7 @@ found within that database.
 
 Make sure to include within your response to the user any information
 that might be helpful for making follow up queries as you will not be
-able to revist your previous <scratchpad> notes.
+able to revisit your previous <scratchpad> notes.
 
 Importantly, from the user's perspective you are the one making the SQL
 queries. So if you'd like another attempt, make sure to let the user

@@ -30,8 +30,22 @@ MOVE 'PRACTICE' TO '/mosaiq-data/data.mdf',
 MOVE 'PRACTICE_log' TO '/mosaiq-data/log.ldf',
 NOUNLOAD, REPLACE, STATS = 1
 GO
+```
 
-USE PRACTICE
-SELECT TABLE_NAME FROM information_schema.tables
-GO
+Test connection:
+
+```python
+import os
+from pymedphys.mosaiq import connect
+
+connection = connect(
+    'localhost',
+    database='PRACTICE',
+    username='sa',
+    password=os.environ['MSSQL_SA_PASSWORD']
+)
+cursor = connection.cursor()
+cursor.execute("SELECT TABLE_NAME FROM information_schema.tables")
+cursor.fetchall()
+# Prints out tables
 ```
