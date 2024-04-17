@@ -22,6 +22,13 @@ async def async_sql_tool_pipeline(anthropic_client: AsyncAnthropic, messages: Me
         return await single_retrieval_chain(anthropic_client, messages)
 
     queries = await gather([retrieval_function] * NUM_PARALLEL_AGENTS)
+
+    # TODO: Pass all of the possible queries + messages through to an
+    # opus "query voter agent" that selects the best queries to run.
+
+    # Shuffle the queries and get 3 separate opus agents to vote in
+    # parallel. Select the best 10 queries of the lot.
+
     return list(chain.from_iterable(queries))
 
 

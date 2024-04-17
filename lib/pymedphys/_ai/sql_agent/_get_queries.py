@@ -6,7 +6,7 @@ from . import _utilities
 
 SYSTEM_PROMPT = """\
 You are an MSSQL AI agent. You respond only with valid Microsoft SQL
-Queries encompassed within <query> tags. You always provide 3 unique
+Queries encompassed within <query> tags. You always provide 10 unique
 and diverse queries.
 
 Some queries that you request may not return a result, and some tables
@@ -35,7 +35,7 @@ APPENDED_USER_PROMPT = """\
 You respond only with valid Microsoft SQL Queries encompassed within
 <query> tags. All queries assume that the database is designed according
 to the provided schema within the <database> tags that was provided
-within your system prompt. You are to provide exactly 3 unique and
+within your system prompt. You are to provide exactly 10 unique and
 diverse queries. Make sure that each of your queries targets different
 tables within the database.
 """
