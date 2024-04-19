@@ -3,8 +3,22 @@
 # pylint: disable = too-many-lines, redefined-outer-name
 
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import numpy as np
 
 from . import config as _config
+
+
+def normalize_and_convert_to_uint8(data):
+    # Normalize the data to the range [0, 1]
+    data = data.astype(np.float64) / np.max(data)
+
+    # Scale the data to the range [0, 255]
+    data = 255 * data
+
+    # Convert the data to uint8 format
+    img = data.astype(np.uint8)
+
+    return img
 
 
 def site_picker(config, radio_label, default=None, key=None):
