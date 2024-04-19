@@ -27,7 +27,7 @@ from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
 
-@st.cache
+@st.cache_data
 def _get_mosaiq_configuration(config, headers):
     machine_centre_map = _config.get_machine_centre_map(config)
     mosaiq_details = _config.get_mosaiq_details(config)
@@ -280,7 +280,7 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
     }
 
 
-@st.cache()
+@st.cache_data()
 def _read_trf(path_or_binary):
     try:
         path_or_binary.seek(0)
