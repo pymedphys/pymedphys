@@ -2,8 +2,8 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
-from pymedphys._imports import streamlit as st
 from pymedphys._imports import numpy as np
+from pymedphys._imports import streamlit as st
 
 from . import config as _config
 
