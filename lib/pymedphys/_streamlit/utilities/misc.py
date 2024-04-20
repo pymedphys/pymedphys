@@ -13,6 +13,8 @@ def normalize_and_convert_to_uint8(data, vmin, vmax):
     norm = (data - vmin) / (vmax - vmin)
     # Scale the data to suit a uint8 image
     img = 255 * norm
+    # make sure there are no out of bound values
+    img = np.clip(img, 0, 255)
 
     # Convert the data to uint8 format
     img = img.astype(np.uint8)
