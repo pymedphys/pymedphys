@@ -249,21 +249,33 @@ def plot_and_save_results(
 
     diff = evaluation_metersetmap - reference_metersetmap
 
-    imageio.imwrite(
-        reference_filepath,
-        st_misc.normalize_and_convert_to_uint8(reference_metersetmap),
-    )
-    imageio.imwrite(
-        evaluation_filepath,
-        st_misc.normalize_and_convert_to_uint8(evaluation_metersetmap),
-    )
-    imageio.imwrite(diff_filepath, st_misc.normalize_and_convert_to_uint8(diff))
-    imageio.imwrite(gamma_filepath, st_misc.normalize_and_convert_to_uint8(gamma))
-
     largest_metersetmap = np.max(
         [np.max(evaluation_metersetmap), np.max(reference_metersetmap)]
     )
     largest_diff = np.max(np.abs(diff))
+
+    imageio.imwrite(
+        reference_filepath,
+        st_misc.normalize_and_convert_to_uint8(
+            reference_metersetmap, vmin=0, vmax=largest_metersetmap
+        ),
+    )
+    imageio.imwrite(
+        evaluation_filepath,
+        st_misc.normalize_and_convert_to_uint8(
+            evaluation_metersetmap, vmin=0, vmax=largest_metersetmap
+        ),
+    )
+    imageio.imwrite(
+        diff_filepath,
+        st_misc.normalize_and_convert_to_uint8(
+            diff, vmin=-largest_diff, vmax=largest_diff
+        ),
+    )
+    imageio.imwrite(
+        gamma_filepath,
+        st_misc.normalize_and_convert_to_uint8(gamma, vmin=0, vmax=2),
+    )
 
     widths = [1, 1]
     heights = [0.5, 1, 1, 1, 0.4]
