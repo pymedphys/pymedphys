@@ -20,8 +20,8 @@ repos:
     rev: v0.4.1
     hooks:
       - id: ruff
-        args: [ --fix ]
-      - id: ruff-format
+        # args: [ --fix ]  # Run --fix in a separate PR
+      # - id: ruff-format  # Do the format in a separate PR
   - repo: https://github.com/python-poetry/poetry
     rev: "1.8"
     hooks:
