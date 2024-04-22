@@ -1,13 +1,12 @@
 
-
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="" >
+<html lang="en" data-content_root="../../../" >
 
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>Speeding up gamma calculations &#8212; PyMedPhys</title>
   
@@ -19,45 +18,43 @@
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
-<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
 
   
-  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+  <link href="../../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" href="../../../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=384b581d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css?v=4fa983c6" />
     <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/style.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css?v=055d366d" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
-  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
 
-    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-    <script src="../../../_static/jquery.js"></script>
-    <script src="../../../_static/underscore.js"></script>
-    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../../../_static/doctools.js"></script>
-    <script src="../../../_static/clipboard.min.js"></script>
-    <script src="../../../_static/copybutton.js"></script>
-    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script src="../../../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?v=efea14e4"></script>
     <script>let toggleHintShow = 'Click to show';</script>
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
-    <script src="../../../_static/togglebutton.js"></script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
-    <script src="../../../_static/design-tabs.js"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
     <script async="async" src="https://www.googletagmanager.com/gtag/js?id=UA-26591325-7"></script>
     <script>
                 window.dataLayer = window.dataLayer || [];
@@ -65,15 +62,19 @@
                 gtag('js', new Date());
                 gtag('config', 'UA-26591325-7');
             </script>
-    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
-const thebe_selector = ".thebe,.cell"
-const thebe_selector_input = "pre"
-const thebe_selector_output = ".output, .cell_output"
-</script>
-    <script async="async" src="../../../_static/sphinx-thebe.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script async="async" src="../../../_static/sphinx-thebe.js?v=c100c467"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'UA-26591325-7');
+            </script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'users/howto/gamma/speed-up';</script>
     <link rel="canonical" href="https://docs.pymedphys.com/users/howto/gamma/speed-up.html" />
-    <link rel="shortcut icon" href="../../../_static/pymedphys.svg"/>
+    <link rel="icon" href="../../../_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="next" title="Gamma from 1D ASCII data" href="1D-from-csv.html" />
@@ -87,10 +88,9 @@ const thebe_selector_output = ".output, .cell_output"
 
   
   
-  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
   
   <div id="pst-scroll-pixel-helper"></div>
-
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>
@@ -131,11 +131,14 @@ const thebe_selector_output = ".output, .cell_output"
 </form></div>
   </div>
   
-    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
-    </nav>
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+    </header>
   
+
   <div class="bd-container">
     <div class="bd-container__inner bd-page-width">
+      
+      
       
       <div class="bd-sidebar-primary bd-sidebar">
         
@@ -169,7 +172,18 @@ const thebe_selector_output = ".output, .cell_output"
   
   
 </a></div>
-        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
         <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Overview</a></li>
@@ -206,7 +220,7 @@ const thebe_selector_output = ".output, .cell_output"
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../ref/index.html">Technical Reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../ref/lib/index.html">Library Reference</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Alphabetical Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Index</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/dicom.html">DICOM</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/gamma.html">Gamma</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/mosaiq.html">Mosaiq</a></li>
@@ -535,10 +549,10 @@ document.write(`
               
                 
 <div id="searchbox"></div>
-                <article class="bd-article" role="main">
+                <article class="bd-article">
                   
   <section id="speeding-up-gamma-calculations">
-<h1>Speeding up gamma calculations<a class="headerlink" href="#speeding-up-gamma-calculations" title="Permalink to this heading">#</a></h1>
+<h1>Speeding up gamma calculations<a class="headerlink" href="#speeding-up-gamma-calculations" title="Link to this heading">#</a></h1>
 <p>The PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> function allows the user to compute gamma ($\gamma$) index distributions between a reference and an evaluation dose distribution in 1D, 2D and 3D, and obtain gamma pass rates for these distributions.</p>
 <p>In this tutorial, you will compute the gamma pass rate using the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> function. You will tweak its parameters to speed up the computation of the gamma index distribution.</p>
 <p>You will test the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> on two 3D (and 2D) dose distributions, and you will focus on two of the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> parameters, <code>max_gamma</code> and <code>random_subset</code>, which are particularly useful when performing pass rate calculations.</p>
@@ -646,7 +660,7 @@ document.write(`
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/66934f41f4c318c68043fcb404347aaa426e4abc1227b0735377195e0d4b7828.png" src="../../../_images/66934f41f4c318c68043fcb404347aaa426e4abc1227b0735377195e0d4b7828.png" />
+<img alt="../../../_images/29bf84d461dadba3f005109650ea2ca604952c6ad0a30287550bf461b830795e.png" src="../../../_images/29bf84d461dadba3f005109650ea2ca604952c6ad0a30287550bf461b830795e.png" />
 </div>
 </div>
 <p>As you can see, the largest dose differences are concentrated in small regions of the slices, which will end up in a fast gamma evaluation, as the computation will be immediate for those points where the dose difference is zero.</p>
@@ -752,8 +766,8 @@ Dose threshold: 0.0195 Gy
 <div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Complete!
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 1.17 s, sys: 538 ms, total: 1.71 s
-Wall time: 1.38 s
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 1.47 s, sys: 270 ms, total: 1.74 s
+Wall time: 1.42 s
 </pre></div>
 </div>
 </div>
@@ -805,7 +819,7 @@ Wall time: 1.38 s
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/10a63fc302e45345821c939570ca06af340e3f4d3f945c503017b048c62cbfe4.png" src="../../../_images/10a63fc302e45345821c939570ca06af340e3f4d3f945c503017b048c62cbfe4.png" />
+<img alt="../../../_images/ca238b1c496ee695f4ef61131d80e1539411a81f1dad804ddc3407d814d745ef.png" src="../../../_images/ca238b1c496ee695f4ef61131d80e1539411a81f1dad804ddc3407d814d745ef.png" />
 </div>
 </div>
 <p>Once the gamma index distribution has been computed, one can consider the gamma pass rate, defined as the fraction of points having $\gamma\le 1$, to assess the agreement between the reference and evaluated dose distributions.</p>
@@ -890,8 +904,8 @@ Wall time: 1.38 s
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 423 ms, sys: 39.8 ms, total: 462 ms
-Wall time: 462 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 467 ms, sys: 19.7 ms, total: 487 ms
+Wall time: 486 ms
 </pre></div>
 </div>
 </div>
@@ -908,7 +922,7 @@ Wall time: 462 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/9fa3ca8e75db45d02f6e933ce9d99c6afa7b036325f7757aa08b579b06f889ef.png" src="../../../_images/9fa3ca8e75db45d02f6e933ce9d99c6afa7b036325f7757aa08b579b06f889ef.png" />
+<img alt="../../../_images/3e9318edf42180e1055e8dd1a8d04bddc18785441d02c355707ea2ca2b2ccfdc.png" src="../../../_images/3e9318edf42180e1055e8dd1a8d04bddc18785441d02c355707ea2ca2b2ccfdc.png" />
 </div>
 </div>
 <p>If we want to evaluate the gamma pass rate, we are uninterested in accurate gamma index values for $\gamma &gt; 1$.</p>
@@ -928,8 +942,8 @@ Wall time: 462 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 285 ms, sys: 4.18 ms, total: 289 ms
-Wall time: 288 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 304 ms, sys: 0 ns, total: 304 ms
+Wall time: 304 ms
 </pre></div>
 </div>
 </div>
@@ -946,7 +960,7 @@ Wall time: 288 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/cec98ce9dd33a99a7feba4278d0dbf6f03a4206a78a32060227e26f5a7c590ef.png" src="../../../_images/cec98ce9dd33a99a7feba4278d0dbf6f03a4206a78a32060227e26f5a7c590ef.png" />
+<img alt="../../../_images/5a84957983e37bcd07ca73886fe3de03bb5a1fae815b3553c6f82fcba8adc0b6.png" src="../../../_images/5a84957983e37bcd07ca73886fe3de03bb5a1fae815b3553c6f82fcba8adc0b6.png" />
 </div>
 </div>
 <p>Notice how the gamma passing rate value (shown in the plot title) did not change. Of course now all the points with $\gamma &gt; 1.1$ are collapsed to the 1.1 bin.</p>
@@ -967,8 +981,8 @@ Wall time: 288 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 396 ms, sys: 4.23 ms, total: 401 ms
-Wall time: 400 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 298 ms, sys: 3.36 ms, total: 301 ms
+Wall time: 301 ms
 </pre></div>
 </div>
 </div>
@@ -986,7 +1000,7 @@ Wall time: 400 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/c26d0b2e627d066d1b070f5cc5196a59b6599a7b93d27c0413edb6fefb824a15.png" src="../../../_images/c26d0b2e627d066d1b070f5cc5196a59b6599a7b93d27c0413edb6fefb824a15.png" />
+<img alt="../../../_images/f27e86ce4fae9f09839a7549ce6a0bbd531880dc11a753726efd50ec6f660533.png" src="../../../_images/f27e86ce4fae9f09839a7549ce6a0bbd531880dc11a753726efd50ec6f660533.png" />
 </div>
 </div>
 <p>As you can see, the computation time decreased and, despite the the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> function sampled one 10th of the points, the pass rate deviates by less than 1% from the true value. Therefore, you can use <code>random_subset</code> to get a sense of what could be the pass rate of the dose distributions you are assessing.</p>
@@ -1050,6 +1064,8 @@ Wall time: 400 ms
             
             
               
+                <div class="bd-sidebar-secondary bd-toc"></div>
+              
             
           </div>
           <footer class="bd-footer-content">
@@ -1093,8 +1109,8 @@ By the PyMedPhys community
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
-<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+  <script src="../../../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
 
   <footer class="bd-footer">
   </footer>

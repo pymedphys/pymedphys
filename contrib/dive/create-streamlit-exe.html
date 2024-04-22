@@ -1,13 +1,12 @@
 
-
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="" >
+<html lang="en" data-content_root="../../" >
 
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>Creating a Streamlit Executable &#8212; PyMedPhys</title>
   
@@ -19,45 +18,43 @@
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
-<link href="../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
 
   
-  <link href="../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+  <link href="../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" href="../../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=384b581d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css?v=4fa983c6" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css?v=055d366d" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
-  <script src="../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
 
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../../_static/doctools.js"></script>
-    <script src="../../_static/clipboard.min.js"></script>
-    <script src="../../_static/copybutton.js"></script>
-    <script src="../../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script src="../../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?v=efea14e4"></script>
     <script>let toggleHintShow = 'Click to show';</script>
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
-    <script src="../../_static/togglebutton.js"></script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
-    <script src="../../_static/design-tabs.js"></script>
+    <script src="../../_static/design-tabs.js?v=36754332"></script>
     <script async="async" src="https://www.googletagmanager.com/gtag/js?id=UA-26591325-7"></script>
     <script>
                 window.dataLayer = window.dataLayer || [];
@@ -65,15 +62,19 @@
                 gtag('js', new Date());
                 gtag('config', 'UA-26591325-7');
             </script>
-    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
-const thebe_selector = ".thebe,.cell"
-const thebe_selector_input = "pre"
-const thebe_selector_output = ".output, .cell_output"
-</script>
-    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script async="async" src="../../_static/sphinx-thebe.js?v=c100c467"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'UA-26591325-7');
+            </script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'contrib/dive/create-streamlit-exe';</script>
     <link rel="canonical" href="https://docs.pymedphys.com/contrib/dive/create-streamlit-exe.html" />
-    <link rel="shortcut icon" href="../../_static/pymedphys.svg"/>
+    <link rel="icon" href="../../_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="prev" title="Why Open Source?" href="why-open-source.html" />
@@ -86,10 +87,9 @@ const thebe_selector_output = ".output, .cell_output"
 
   
   
-  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
   
   <div id="pst-scroll-pixel-helper"></div>
-
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>
@@ -130,11 +130,14 @@ const thebe_selector_output = ".output, .cell_output"
 </form></div>
   </div>
   
-    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
-    </nav>
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+    </header>
   
+
   <div class="bd-container">
     <div class="bd-container__inner bd-page-width">
+      
+      
       
       <div class="bd-sidebar-primary bd-sidebar">
         
@@ -168,7 +171,18 @@ const thebe_selector_output = ".output, .cell_output"
   
   
 </a></div>
-        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
         <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
@@ -205,7 +219,7 @@ const thebe_selector_output = ".output, .cell_output"
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../users/ref/index.html">Technical Reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../users/ref/lib/index.html">Library Reference</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../genindex.html">Alphabetical Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../genindex.html">Index</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../users/ref/lib/dicom.html">DICOM</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../users/ref/lib/gamma.html">Gamma</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../users/ref/lib/mosaiq.html">Mosaiq</a></li>
@@ -503,12 +517,12 @@ document.write(`
               
                 
 <div id="searchbox"></div>
-                <article class="bd-article" role="main">
+                <article class="bd-article">
                   
   <section id="creating-a-streamlit-executable">
-<h1>Creating a Streamlit Executable<a class="headerlink" href="#creating-a-streamlit-executable" title="Permalink to this heading">#</a></h1>
+<h1>Creating a Streamlit Executable<a class="headerlink" href="#creating-a-streamlit-executable" title="Link to this heading">#</a></h1>
 <section id="document-overview">
-<h2>Document overview<a class="headerlink" href="#document-overview" title="Permalink to this heading">#</a></h2>
+<h2>Document overview<a class="headerlink" href="#document-overview" title="Link to this heading">#</a></h2>
 <p>This document details the process undergone to create an Electron application
 that embeds streamlit. The result is an easily shareable binary built for each
 of the major operating systems.</p>
@@ -517,7 +531,7 @@ of the major operating systems.</p>
 All code links will be pointing to the code base at that commit hash.</p>
 </section>
 <section id="quick-version">
-<h2>Quick version<a class="headerlink" href="#quick-version" title="Permalink to this heading">#</a></h2>
+<h2>Quick version<a class="headerlink" href="#quick-version" title="Link to this heading">#</a></h2>
 <p>To actually build and create the PyMedPhys Streamlit binary all you actually
 need to do is the following:</p>
 <ul class="simple">
@@ -541,7 +555,7 @@ you would like to adapt PyMedPhys’ approach to your own Streamlit project, the
 read on.</p>
 </section>
 <section id="approach-overview">
-<h2>Approach overview<a class="headerlink" href="#approach-overview" title="Permalink to this heading">#</a></h2>
+<h2>Approach overview<a class="headerlink" href="#approach-overview" title="Link to this heading">#</a></h2>
 <p>To create this binary build four key steps were undergone:</p>
 <ul class="simple">
 <li><p>Create a completely system independent self contained Python environment</p></li>
@@ -556,9 +570,9 @@ given below. Also, if you’d like help achieving any of this, some details
 around that are provided at the end of this document.</p>
 </section>
 <section id="creating-a-self-contained-pymedphys-python-bundle">
-<h2>Creating a self contained PyMedPhys python bundle<a class="headerlink" href="#creating-a-self-contained-pymedphys-python-bundle" title="Permalink to this heading">#</a></h2>
+<h2>Creating a self contained PyMedPhys python bundle<a class="headerlink" href="#creating-a-self-contained-pymedphys-python-bundle" title="Link to this heading">#</a></h2>
 <section id="justification">
-<h3>Justification<a class="headerlink" href="#justification" title="Permalink to this heading">#</a></h3>
+<h3>Justification<a class="headerlink" href="#justification" title="Link to this heading">#</a></h3>
 <p>To create the self contained Python environment PyOxidizer was utilised. This
 tool contains a range of embeddable Python distributions for each OS. There are
 a range of issues with a standard Python install, venv or otherwise, that make
@@ -576,7 +590,7 @@ Python distribution that is as close to “standard” as possible. PyOxidizer c
 be configured to achieve that, so that was utilised.</p>
 </section>
 <section id="the-pyoxidizer-bzl-configuration-file">
-<h3>The <code class="docutils literal notranslate"><span class="pre">pyoxidizer.bzl</span></code> configuration file<a class="headerlink" href="#the-pyoxidizer-bzl-configuration-file" title="Permalink to this heading">#</a></h3>
+<h3>The <code class="docutils literal notranslate"><span class="pre">pyoxidizer.bzl</span></code> configuration file<a class="headerlink" href="#the-pyoxidizer-bzl-configuration-file" title="Link to this heading">#</a></h3>
 <p>The configuration file for building the binary can be found at
 <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl">pyoxidizer.bzl</a>.</p>
 <p>We’ll go into the key details that make this configuration file different here.
@@ -587,14 +601,14 @@ however will be mostly turning all of this amazing tooling off for maximum
 compatibility with a standard Python installation. The key steps are the
 following.</p>
 <section id="files-mode">
-<h4>Files mode<a class="headerlink" href="#files-mode" title="Permalink to this heading">#</a></h4>
+<h4>Files mode<a class="headerlink" href="#files-mode" title="Link to this heading">#</a></h4>
 <p>Make resource handling be set to “files” mode (needed for NumPy at least) <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L20">#L20</a></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">policy</span><span class="o">.</span><span class="n">set_resource_handling_mode</span><span class="p">(</span><span class="s2">&quot;files&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
 <section id="file-system-relative-resources-with-site-packages-name">
-<h4>File system relative resources with site-packages name<a class="headerlink" href="#file-system-relative-resources-with-site-packages-name" title="Permalink to this heading">#</a></h4>
+<h4>File system relative resources with site-packages name<a class="headerlink" href="#file-system-relative-resources-with-site-packages-name" title="Link to this heading">#</a></h4>
 <p>Use filesystem-relative for the resource location, and use a filename of “site-packages” <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L22-L24">#L22-L24</a></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">policy</span><span class="o">.</span><span class="n">resources_location</span> <span class="o">=</span> <span class="s2">&quot;filesystem-relative:site-packages&quot;</span>
 </pre></div>
@@ -606,7 +620,7 @@ This is due to Streamlit using <a class="reference external" href="https://githu
 that Streamlit is not running in developer mode.</p>
 </section>
 <section id="use-standard-importer">
-<h4>Use standard importer<a class="headerlink" href="#use-standard-importer" title="Permalink to this heading">#</a></h4>
+<h4>Use standard importer<a class="headerlink" href="#use-standard-importer" title="Link to this heading">#</a></h4>
 <p>Disable the PyOxidizer importer <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/pyoxidizer.bzl#L30-L31">#L30-L31</a></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python_config</span><span class="o">.</span><span class="n">filesystem_importer</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="n">python_config</span><span class="o">.</span><span class="n">oxidized_importer</span> <span class="o">=</span> <span class="kc">False</span>
@@ -615,16 +629,16 @@ that Streamlit is not running in developer mode.</p>
 </section>
 </section>
 <section id="running-the-build">
-<h3>Running the build<a class="headerlink" href="#running-the-build" title="Permalink to this heading">#</a></h3>
+<h3>Running the build<a class="headerlink" href="#running-the-build" title="Link to this heading">#</a></h3>
 <p>Once that configuration file is created, and once PyOxidizer is installed then
 running <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span> <span class="pre">pyoxidizer</span> <span class="pre">build</span> <span class="pre">install</span></code> will create a <code class="docutils literal notranslate"><span class="pre">pymedphys</span></code> binary
 within a <code class="docutils literal notranslate"><span class="pre">dist</span></code> directory within the repository root.</p>
 </section>
 </section>
 <section id="the-use-and-setting-up-of-electron">
-<h2>The use and setting up of Electron<a class="headerlink" href="#the-use-and-setting-up-of-electron" title="Permalink to this heading">#</a></h2>
+<h2>The use and setting up of Electron<a class="headerlink" href="#the-use-and-setting-up-of-electron" title="Link to this heading">#</a></h2>
 <section id="id1">
-<h3>Justification<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
+<h3>Justification<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
 <p>Now that we have a self contained PyMedPhys distribution, arguably we could be
 done. Also, arguably, bringing in the heavy beast of Electron potentially
 complicates things significantly. However, it does have a few benefits. The
@@ -642,7 +656,7 @@ created at the other side is a reasonable trade off in my opinion for
 significantly reduced maintenance burden on PyMedPhys.</p>
 </section>
 <section id="setting-up-electron">
-<h3>Setting up Electron<a class="headerlink" href="#setting-up-electron" title="Permalink to this heading">#</a></h3>
+<h3>Setting up Electron<a class="headerlink" href="#setting-up-electron" title="Link to this heading">#</a></h3>
 <p>To set up the Electron code base I began with the following boilerplate code:</p>
 <blockquote>
 <div><p><a class="github reference external" href="https://github.com/szwacz/electron-boilerplate">szwacz/electron-boilerplate</a></p>
@@ -657,11 +671,11 @@ and <a class="reference external" href="https://classic.yarnpkg.com/en/docs/inst
 installed to achieve this.</p>
 </section>
 <section id="the-key-components-of-the-electron-code-base">
-<h3>The key components of the Electron code base<a class="headerlink" href="#the-key-components-of-the-electron-code-base" title="Permalink to this heading">#</a></h3>
+<h3>The key components of the Electron code base<a class="headerlink" href="#the-key-components-of-the-electron-code-base" title="Link to this heading">#</a></h3>
 <p>Below is a short overview of the key components of the Electron application
 code base.</p>
 <section id="the-package-json-file">
-<h4>The <code class="docutils literal notranslate"><span class="pre">package.json</span></code> file<a class="headerlink" href="#the-package-json-file" title="Permalink to this heading">#</a></h4>
+<h4>The <code class="docutils literal notranslate"><span class="pre">package.json</span></code> file<a class="headerlink" href="#the-package-json-file" title="Link to this heading">#</a></h4>
 <p>A resources directory called <code class="docutils literal notranslate"><span class="pre">python</span></code> is selected and included within the
 build:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="nt">&quot;directories&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -704,7 +718,7 @@ to <code class="docutils literal notranslate"><span class="pre">js/app/python</s
 </div></blockquote>
 </section>
 <section id="the-main-ts-file">
-<h4>The <code class="docutils literal notranslate"><span class="pre">main.ts</span></code> file<a class="headerlink" href="#the-main-ts-file" title="Permalink to this heading">#</a></h4>
+<h4>The <code class="docutils literal notranslate"><span class="pre">main.ts</span></code> file<a class="headerlink" href="#the-main-ts-file" title="Link to this heading">#</a></h4>
 <p>Within <code class="docutils literal notranslate"><span class="pre">main.ts</span></code> the streamlit GUI itself is booted from within the above
 defined <code class="docutils literal notranslate"><span class="pre">python</span></code> resources directory:</p>
 <div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="nx">appStreamlitServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">spawn</span><span class="p">(</span><span class="s2">&quot;./pymedphys&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;gui&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--electron&quot;</span><span class="p">],</span><span class="w"> </span><span class="p">{</span>
@@ -749,7 +763,7 @@ ready:</p>
 </section>
 </section>
 <section id="booting-the-streamlit-app-and-syncing-the-port-with-electron">
-<h2>Booting the streamlit app and syncing the port with Electron<a class="headerlink" href="#booting-the-streamlit-app-and-syncing-the-port-with-electron" title="Permalink to this heading">#</a></h2>
+<h2>Booting the streamlit app and syncing the port with Electron<a class="headerlink" href="#booting-the-streamlit-app-and-syncing-the-port-with-electron" title="Link to this heading">#</a></h2>
 <p>When the user starts the application, first the Electron <code class="docutils literal notranslate"><span class="pre">main.ts</span></code> script
 starts. This
 <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/src/main.ts#L38-L40">spawns the Streamlit GUI</a>.
@@ -799,7 +813,7 @@ Streamlit URL at the given port (same as copied in from above):</p>
 </div></blockquote>
 </section>
 <section id="building-for-all-oss-within-github-actions">
-<h2>Building for all OSs within GitHub Actions<a class="headerlink" href="#building-for-all-oss-within-github-actions" title="Permalink to this heading">#</a></h2>
+<h2>Building for all OSs within GitHub Actions<a class="headerlink" href="#building-for-all-oss-within-github-actions" title="Link to this heading">#</a></h2>
 <p>Once the built Streamlit app was up and running on a given OS, then, given the
 cross platform nature of the tools utilised, all that was required to create
 cross platform installers was to run the binary build across the various
@@ -842,7 +856,7 @@ be uploaded. That was achieved with:</p>
 </div></blockquote>
 </section>
 <section id="getting-help">
-<h2>Getting help<a class="headerlink" href="#getting-help" title="Permalink to this heading">#</a></h2>
+<h2>Getting help<a class="headerlink" href="#getting-help" title="Link to this heading">#</a></h2>
 <p>If you’d like to get help with any of the above, or you’d like to use some of
 the above to make your own portable Streamlit executables and you’re running
 into trouble. Feel free to reach out over at the PyMedPhys discourse group
@@ -897,6 +911,7 @@ into trouble. Feel free to reach out over at the PyMedPhys discourse group
             
               
                 <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
 
   <div class="sidebar-secondary-item">
   <div class="page-toc tocsection onthispage">
@@ -979,8 +994,8 @@ By the PyMedPhys community
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
-<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+  <script src="../../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
 
   <footer class="bd-footer">
   </footer>
