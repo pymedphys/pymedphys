@@ -13,9 +13,7 @@
 # limitations under the License.
 
 
-"""Converts a trf file into a csv file.
-"""
-
+"""Converts a trf file into a csv file."""
 
 import logging
 import os

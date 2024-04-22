@@ -48,7 +48,6 @@ def mephysto_absolute_profiles(
     mephysto_pdd_depth,
     mephysto_pdd_dose,
 ):
-
     choose_mephysto = (scan_curvetype == curvetype) & (scan_depth == depth_test)
 
     if np.sum(choose_mephysto) != 1:

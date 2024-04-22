@@ -18,6 +18,7 @@
 .. include:: /messages/warning-pinnacle.rst
 
 """
+
 import warnings
 
 from pymedphys.experimental.pinnacle import export_cli
@@ -35,7 +36,6 @@ def pinnacle_cli(subparsers):
 
 
 def deprecated_export_cli(args):
-
     warnings.warn(
         "The Pinnacle Export Module via the experimental CLI has been deprecated. "
         "Access the Pinnacle CLI via: pymedphys pinnacle export",
@@ -47,7 +47,6 @@ def deprecated_export_cli(args):
 
 
 def export_pinnacle(pinnacle_subparsers):
-
     parser = pinnacle_subparsers.add_parser("export", help="Export a raw file to DICOM")
 
     parser.add_argument(

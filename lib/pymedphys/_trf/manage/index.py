@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-"""Index logfiles.
-"""
+"""Index logfiles."""
 
 import json
 import os
@@ -76,7 +75,6 @@ def create_logfile_directory_name(
 def create_index_entry(
     new_filepath, delivery_details, header: Header, mosaiq_string_time
 ):
-
     index_entry = {
         "filepath": new_filepath,
         "delivery_details": {**attr.asdict(delivery_details)},

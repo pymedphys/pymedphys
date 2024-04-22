@@ -190,7 +190,6 @@ def test_alternative_identifying_keywords():
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
-
     # Create dataset with one instance of every identifying keyword and
     # run basic anonymisation tests
     test_file_path = get_rtplan_test_file_path()
@@ -216,7 +215,6 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     # Test the anonymisation and check functions for each identifying
     # element individually.
     for elem in ds_anon.iterall():
-
         # TODO: AffectedSOPInstanceUID and RequestedSOPInstanceUID
         # are not writing to file. Investigate when UID anonymisation is
         # implemented.

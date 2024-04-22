@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Provides a various set of tools for DICOM header manipulation.
-"""
+"""Provides a various set of tools for DICOM header manipulation."""
 
 from pymedphys._dicom.anonymise import anonymise_cli
 from pymedphys._dicom.connect.listen import listen_cli

@@ -52,7 +52,6 @@ def _assert_values_changed_and_not_hardcoded(test_file_path, pseudonymised_file_
 
 @pytest.mark.pydicom
 def test_pseudonymise_convenience_api():
-
     for test_file_path in get_test_filepaths():
         output_file = pseudonymisation_api.pseudonymise(test_file_path)  # using facade
         assert exists(output_file)
@@ -275,7 +274,6 @@ def test_pseudonymise_cli(tmp_path):
 
 
 def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
-
     temp_filepath = pjoin(tmp_path, "test.dcm")
     try:
         logging.info("CLI test on %s", test_file_path)

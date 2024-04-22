@@ -65,7 +65,6 @@ def create_rectangular_field_function(centre, side_lengths, penumbra_width, rota
 
 
 def create_square_field_function(centre, side_length, penumbra_width, rotation=0):
-
     side_lengths = [side_length, side_length]
     return create_rectangular_field_function(
         centre, side_lengths, penumbra_width, rotation

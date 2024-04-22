@@ -33,8 +33,9 @@ def get_leaf_pair_widths(model):
         return model_map[model]
     except KeyError:
         raise ValueError(
-            "{} not implemented only the following are"
-            " implemented:\n{}".format(model, model_map.keys())
+            "{} not implemented only the following are" " implemented:\n{}".format(
+                model, model_map.keys()
+            )
         )
 
 

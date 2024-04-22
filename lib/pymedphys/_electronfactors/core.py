@@ -15,7 +15,6 @@
 
 """Model insert factors and parameterise inserts as equivalent ellipses."""
 
-
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy, shapely
 

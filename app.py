@@ -23,7 +23,6 @@ Then you can start this app by running:
     streamlit run app.py
 """
 
-
 from pymedphys._app import main
 
 

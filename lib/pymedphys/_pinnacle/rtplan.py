@@ -55,7 +55,6 @@ from .constants import (
 
 
 def convert_plan(plan, export_path):
-
     # Check that the plan has a primary image, as we can't create a meaningful RTPLAN without it:
     if not plan.primary_image:
         plan.logger.error("No primary image found for plan. Unable to generate RTPLAN.")
@@ -162,7 +161,6 @@ def convert_plan(plan, export_path):
         plan.logger.warning("No Beams found in Trial. Unable to generate RTPLAN.")
         return
     for beam in beam_list:
-
         beam_count = beam_count + 1
 
         plan.logger.info("Exporting Plan for beam: %s", beam["Name"])
@@ -186,9 +184,9 @@ def convert_plan(plan, export_path):
         ds.BeamSequence[beam_count - 1].SourceAxisDistance = "1000"
         ds.BeamSequence[beam_count - 1].FinalCumulativeMetersetWeight = "1"
         ds.BeamSequence[beam_count - 1].PrimaryDosimeterUnit = "MU"
-        ds.BeamSequence[beam_count - 1].PrimaryFluenceModeSequence = (
-            pydicom.sequence.Sequence()
-        )
+        ds.BeamSequence[
+            beam_count - 1
+        ].PrimaryFluenceModeSequence = pydicom.sequence.Sequence()
         ds.BeamSequence[beam_count - 1].PrimaryFluenceModeSequence.append(
             pydicom.dataset.Dataset()
         )
@@ -231,9 +229,9 @@ def convert_plan(plan, export_path):
             beam_count - 1
         ].BeamDoseSpecificationPoint = doserefpt
 
-        ds.BeamSequence[beam_count - 1].ControlPointSequence = (
-            pydicom.sequence.Sequence()
-        )
+        ds.BeamSequence[
+            beam_count - 1
+        ].ControlPointSequence = pydicom.sequence.Sequence()
 
         cp_manager = {}
         if "CPManagerObject" in beam["CPManager"]:
@@ -251,7 +249,6 @@ def convert_plan(plan, export_path):
         y2 = ""
         leafpositions = []
         for cp in cp_manager["ControlPointList"]:
-
             metersetweight.append(cp["Weight"])
 
             if x1 == "":
@@ -372,9 +369,7 @@ def convert_plan(plan, export_path):
             machine_info["Name"] == machinename
             and machine_info["VersionTimestamp"] == machineversion
         ):
-
             for energy in machine_info["PhotonEnergyList"]:
-
                 if energy["Name"] == machineenergyname:
                     dose_per_mu_at_cal = energy["PhysicsData"]["OutputFactor"][
                         "DosePerMuAtCalibration"
@@ -393,7 +388,7 @@ def convert_plan(plan, export_path):
         else:
             ds.FractionGroupSequence[0].ReferencedBeamSequence[
                 beam_count - 1
-            ].BeamDose = (prescripdose / 100)
+            ].BeamDose = prescripdose / 100
             ds.FractionGroupSequence[0].ReferencedBeamSequence[
                 beam_count - 1
             ].BeamMeterset = prescripdose / (normdose * dose_per_mu_at_cal)
@@ -429,9 +424,9 @@ def convert_plan(plan, export_path):
             ds.BeamSequence[beam_count - 1].SourceToSurfaceDistance = beam["SSD"] * 10
 
             if numwedges > 0:
-                ds.BeamSequence[beam_count - 1].WedgeSequence = (
-                    pydicom.sequence.Sequence()
-                )
+                ds.BeamSequence[
+                    beam_count - 1
+                ].WedgeSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].WedgeSequence.append(
                     pydicom.dataset.Dataset()
                 )  # I am assuming only one wedge per beam (which makes sense because you can't change it during beam)
@@ -503,7 +498,7 @@ def convert_plan(plan, export_path):
                     ].BeamLimitingDeviceRotationDirection = "NONE"
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
-                    ].SourceToSurfaceDistance = (beam["SSD"] * 10)
+                    ].SourceToSurfaceDistance = beam["SSD"] * 10
 
                     if numwedges > 0:
                         ds.BeamSequence[beam_count - 1].ControlPointSequence[
@@ -563,7 +558,7 @@ def convert_plan(plan, export_path):
                     ].LeafJawPositions = leafpositions
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
-                    ].SourceToSurfaceDistance = (beam["SSD"] * 10)
+                    ].SourceToSurfaceDistance = beam["SSD"] * 10
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDeviceRotationDirection = "NONE"
@@ -595,17 +590,19 @@ def convert_plan(plan, export_path):
                     ].BeamLimitingDevicePositionSequence[
                         0
                     ].LeafJawPositions = leafpositions
-                ds.BeamSequence[beam_count - 1].NumberOfWedges = (
+                ds.BeamSequence[
+                    beam_count - 1
+                ].NumberOfWedges = (
                     numwedges  # this is temporary value, will read in from file later
                 )
-                ds.BeamSequence[beam_count - 1].NumberOfCompensators = (
-                    "0"  # Also temporary
-                )
+                ds.BeamSequence[
+                    beam_count - 1
+                ].NumberOfCompensators = "0"  # Also temporary
                 ds.BeamSequence[beam_count - 1].NumberOfBoli = "0"
                 ds.BeamSequence[beam_count - 1].NumberOfBlocks = "0"  # Temp
-                ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence = (
-                    pydicom.sequence.Sequence()
-                )
+                ds.BeamSequence[
+                    beam_count - 1
+                ].BeamLimitingDeviceSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
                     pydicom.dataset.Dataset()
                 )
@@ -632,7 +629,7 @@ def convert_plan(plan, export_path):
                 ].NumberOfLeafJawPairs = "1"
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence[
                     2
-                ].NumberOfLeafJawPairs = (p_count / 2)
+                ].NumberOfLeafJawPairs = p_count / 2
                 bounds = [
                     "-200",
                     "-190",
@@ -704,9 +701,9 @@ def convert_plan(plan, export_path):
             ds.BeamSequence[beam_count - 1].NumberOfControlPoints = numctrlpts + 1
             ds.BeamSequence[beam_count - 1].SourceToSurfaceDistance = beam["SSD"] * 10
             if numwedges > 0:
-                ds.BeamSequence[beam_count - 1].WedgeSequence = (
-                    pydicom.sequence.Sequence()
-                )
+                ds.BeamSequence[
+                    beam_count - 1
+                ].WedgeSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].WedgeSequence.append(
                     pydicom.dataset.Dataset()
                 )
@@ -759,7 +756,7 @@ def convert_plan(plan, export_path):
                     ].BeamLimitingDeviceAngle = colangle
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
-                    ].SourceToSurfaceDistance = (beam["SSD"] * 10)
+                    ].SourceToSurfaceDistance = beam["SSD"] * 10
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].ReferencedDoseReferenceSequence[
@@ -827,7 +824,7 @@ def convert_plan(plan, export_path):
                     ].LeafJawPositions = leafpositions
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
-                    ].SourceToSurfaceDistance = (beam["SSD"] * 10)
+                    ].SourceToSurfaceDistance = beam["SSD"] * 10
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDeviceRotationDirection = "NONE"
@@ -845,7 +842,9 @@ def convert_plan(plan, export_path):
                     ].GantryRotationDirection = gantryrotdir
                     ds.BeamSequence[beam_count - 1].NumberOfWedges = numwedges
 
-                    ds.BeamSequence[beam_count - 1].NumberOfCompensators = (
+                    ds.BeamSequence[
+                        beam_count - 1
+                    ].NumberOfCompensators = (
                         "0"  # this is temporary value, will read in from file later
                     )
                     ds.BeamSequence[beam_count - 1].NumberOfBoli = "0"  # Also temporary
@@ -878,9 +877,9 @@ def convert_plan(plan, export_path):
                         0
                     ].ReferencedDoseReferenceNumber = "1"
 
-                ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence = (
-                    pydicom.sequence.Sequence()
-                )
+                ds.BeamSequence[
+                    beam_count - 1
+                ].BeamLimitingDeviceSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
                     pydicom.dataset.Dataset()
                 )
@@ -907,7 +906,7 @@ def convert_plan(plan, export_path):
                 ].NumberOfLeafJawPairs = "1"
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence[
                     2
-                ].NumberOfLeafJawPairs = (p_count / 2)
+                ].NumberOfLeafJawPairs = p_count / 2
                 bounds = [
                     "-200",
                     "-190",

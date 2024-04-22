@@ -50,7 +50,6 @@ from .constants import GImplementationClassUID, GTransferSyntaxUID
 
 
 def create_image_files(image, export_path):
-
     # TODO: Fix this function, output not working
     image.logger.warn("Creating image files: The output of these are not correct!")
 
@@ -74,9 +73,7 @@ def create_image_files(image, export_path):
         # will loop over every frame
         for i in range(0, int(image_header["z_dim"])):
             frame_array = pixel_array[
-                i
-                * int(image_header["x_dim"])
-                * int(image_header["y_dim"]) : (i + 1)
+                i * int(image_header["x_dim"]) * int(image_header["y_dim"]) : (i + 1)
                 * int(image_header["x_dim"])
                 * int(image_header["y_dim"])
             ]
@@ -188,7 +185,6 @@ def create_image_files(image, export_path):
 
 
 def convert_image(image, export_path):
-
     image.logger.debug(
         "Converting image patient name, birthdate and id to match pinnacle"
     )
@@ -206,7 +202,6 @@ def convert_image(image, export_path):
         return
 
     for file in os.listdir(dicom_directory):
-
         # try:
         imageds = pydicom.read_file(os.path.join(dicom_directory, file), force=True)
 

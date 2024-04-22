@@ -16,8 +16,7 @@
 # pylint: disable=C0103,C1801
 
 
-"""Regression testing of the single control point function.
-"""
+"""Regression testing of the single control point function."""
 
 from pymedphys._imports import numpy as np
 

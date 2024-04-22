@@ -35,7 +35,6 @@ This module aims to utilise knowledge about the maximum travel speed
 for the collimator and the gantry in order to correct this sign flip.
 """
 
-
 import warnings
 
 from pymedphys._imports import altair as alt
