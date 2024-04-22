@@ -198,7 +198,7 @@ def xml_frame_based_database(
     return _final_frame_column_adjustment(merged)
 
 
-@st.cache()
+@st.cache_data()
 def _calc_filepath_from_frames_dbid(dbid_series):
     return [f"img/{f'{dbid:0>8x}'.upper()}.jpg" for dbid in dbid_series]
 
@@ -232,7 +232,7 @@ def _final_frame_column_adjustment(table):
     ]
 
 
-@st.cache()
+@st.cache_data()
 def _load_xml(filepath):
     with open(filepath) as fd:
         doc = xmltodict.parse(fd.read())
@@ -240,7 +240,7 @@ def _load_xml(filepath):
     return doc
 
 
-@st.cache()
+@st.cache_data()
 def _data_from_doc(doc):
     table_rows = []
 
@@ -270,7 +270,7 @@ def _data_from_doc(doc):
     return table_rows
 
 
-@st.cache()
+@st.cache_data()
 def _calc_xml_filepaths(table):
     return (
         "patient_"
@@ -281,7 +281,7 @@ def _calc_xml_filepaths(table):
     )
 
 
-@st.cache()
+@st.cache_data()
 def _calc_xml_based_jpg_filepaths(table):
     return (
         "patient_"
