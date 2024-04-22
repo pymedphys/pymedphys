@@ -61,7 +61,7 @@ requests==2.31.0 ; python_version >= "3.9" and python_full_version != "3.9.7" an
 rich==13.7.1 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 rpds-py==0.18.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 scikit-learn==1.4.2 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
-scipy==1.12.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
+scipy==1.11.4 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 secretstorage==3.3.3 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13" and sys_platform == "linux"
 setuptools==69.5.1 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 shapely==2.0.4 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
