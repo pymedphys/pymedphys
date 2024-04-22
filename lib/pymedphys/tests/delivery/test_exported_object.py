@@ -34,4 +34,4 @@ def test_base_object():
 
     collection = {field: getattr(empty, field) for field in empty._fields}
 
-    dummy = Delivery(**collection)
+    Delivery(**collection)

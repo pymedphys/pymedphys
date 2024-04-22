@@ -97,7 +97,7 @@ def listen_cli(args):
             listen(args.ip, args.directory)
         except KeyboardInterrupt:
             raise
-        except:  # pylint: disable = bare-except
+        except:  # pylint: disable = bare-except  # noqa: E722
             traceback.print_exc()
 
         logging.warning(

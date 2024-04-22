@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# ruff: noqa
+
 # unused import required to allow 'eval' of date filters
 from bisect import bisect
 

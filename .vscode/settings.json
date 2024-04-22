@@ -185,6 +185,7 @@
     "flipud",
     "fluence",
     "freetds",
+    "frombuffer",
     "fstring",
     "funcs",
     "functools",
