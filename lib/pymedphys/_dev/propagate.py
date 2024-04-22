@@ -112,7 +112,7 @@ def propagate_version():
     with open(VERSION_PATH, "w") as f:
         f.write(version_contents)
 
-    subprocess.run(["ruff", "format", str(VERSION_PATH)])
+    subprocess.run(["ruff", "format", str(VERSION_PATH)], check=True)
 
 
 def _propagate_requirements():
