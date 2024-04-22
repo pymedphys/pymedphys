@@ -257,58 +257,15 @@ pymedphys = "pymedphys.__main__:main"
 # These were the existing issues when first migrating to ruff, we can feel
 # free to remove these an iteratively tighten the belt if so desired.
 extend-ignore = [
-    "F401", # imported but unused
-    "E402", # Module level import not at top of file
-    "E741", # Ambiguous variable name
-    "E722", # Do not use bare `except`
+    # "F401", # imported but unused
+    # "E741", # Ambiguous variable name
+    # "E722", # Do not use bare `except`
 ]
 
-[tool.isort]
-multi_line_output = 3
-line_length = 88
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
 
-known_third_party = ["pymedphys._imports"]
-known_general_scientific = [
-    "numpy",
-    "scipy",
-    "pandas",
-    "imageio",
-    "PIL",
-    "skimage",
-    "matplotlib",
-    "mpl_toolkits",
-    "shapely",
-    "altair",
-    "sklearn",
-    "plotly",
-]
-known_machine_learning = ["tensorflow", "pytorch"]
-known_streamlit = ["streamlit", "streamlit_ace", "streamlit_analytics"]
-known_medphys = [
-    "pydicom",
-    "pylinac",
-    "pynetdicom",
-    "libjpeg",
-    "dicompylercore",
-]
-known_first_party = ["pymedphys"]
-known_experimental = ["pymedphys._experimental"]
-sections = [
-    "FUTURE",
-    "STDLIB",
-    "THIRDPARTY",
-    "GENERAL_SCIENTIFIC",
-    "MACHINE_LEARNING",
-    "STREAMLIT",
-    "MEDPHYS",
-    "FIRSTPARTY",
-    "EXPERIMENTAL",
-    "LOCALFOLDER",
-]
+[tool.ruff.lint.isort]
+known-third-party = ["pymedphys._imports"]
+known-first-party = ["pymedphys"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1,5 +1,5 @@
 # pylint: disable = unused-import, reimported, import-error
-# ruff: noqa
+# ruff: noqa: F401
 
 import tkinter
 import tkinter.filedialog
@@ -65,11 +65,6 @@ import shapely
 import shapely.affinity
 import shapely.geometry
 import shapely.ops
-import skimage
-import skimage.color.adapt_rgb
-import skimage.draw
-import skimage.filters
-import skimage.measure
 import sklearn
 import sklearn.cluster
 
