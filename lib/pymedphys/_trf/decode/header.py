@@ -93,7 +93,6 @@ def determine_header_length(trf_contents: bytes) -> int:
 
 
 def _header_match(contents):
-
     regex_trf = (
         rb"[\x00-\x19]"  # start bit
         + rb"(\d\d[/|-]\d\d[/|-]\d\d \d\d:\d\d:\d\d Z)"  # date

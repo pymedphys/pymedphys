@@ -23,7 +23,6 @@ from pymedphys._utilities.transforms.affine import (
 
 
 def get_single_and_multi_test_coords():
-
     x_single = 1
     y_single = 2
     z_single = 3
@@ -39,7 +38,6 @@ def get_single_and_multi_test_coords():
 
 
 def test_rotate_about_vector():
-
     test_coords_single, test_coords_multi = get_single_and_multi_test_coords()
 
     rotation_vector = np.array((2, 2, 2))
@@ -120,7 +118,6 @@ def test_rotate_about_vector():
 
 
 def test_rotate_about_x():
-
     test_coords_single, test_coords_multi = get_single_and_multi_test_coords()
 
     x_s = test_coords_single[0]
@@ -182,7 +179,6 @@ def test_rotate_about_x():
 
 
 def test_rotate_about_y():
-
     test_coords_single, test_coords_multi = get_single_and_multi_test_coords()
     x_s = test_coords_single[0]
     y_s = test_coords_single[1]
@@ -243,7 +239,6 @@ def test_rotate_about_y():
 
 
 def test_rotate_about_z():
-
     test_coords_single, test_coords_multi = get_single_and_multi_test_coords()
 
     x_s = test_coords_single[0]
@@ -305,7 +300,6 @@ def test_rotate_about_z():
 
 
 def test_translate():
-
     test_coords_single, test_coords_multi = get_single_and_multi_test_coords()
 
     assert np.allclose(

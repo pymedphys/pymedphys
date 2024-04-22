@@ -59,7 +59,6 @@ def get_online_data(filename):
 
 @pytest.fixture(scope="session")
 def data():
-
     zip_ref = ZipFile(get_online_data("pinnacle_16.0_test_data.zip"), "r")
     zip_ref.extractall(data_path)
     zip_ref.close()
@@ -69,7 +68,6 @@ def data():
 
 @pytest.fixture
 def pinn(data):
-
     pinn_objs = []
 
     for d in os.listdir(data):
@@ -82,24 +80,19 @@ def pinn(data):
 
 @pytest.mark.slow
 def test_pinnacle(pinn):
-
     for p in pinn:
         plans = p.plans
         assert len(plans) == 1
 
 
 def find_corresponding_dicom(dcm):
-
     for root, _, files in os.walk(data_path):
-
         dicom_files = [f for f in files if f.endswith(".dcm")]
         for f in dicom_files:
-
             dcm_file = os.path.join(root, f)
             ds = pydicom.read_file(dcm_file)
 
             if ds.PatientID == dcm.PatientID and ds.Modality == dcm.Modality:
-
                 if ds.Modality == "CT":
                     # Also match the SliceLocation
                     if not ds.SliceLocation == dcm.SliceLocation:
@@ -112,7 +105,6 @@ def find_corresponding_dicom(dcm):
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_ct(pinn):
-
     for p in pinn:
         export_path = os.path.join(
             working_path, "output", p.patient_info["MedicalRecordNumber"], "CT"
@@ -151,7 +143,6 @@ def test_ct(pinn):
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_struct(pinn):
-
     for p in pinn:
         export_path = os.path.join(
             working_path, "output", p.patient_info["MedicalRecordNumber"], "RTSTRUCT"
@@ -185,7 +176,6 @@ def test_struct(pinn):
 
 
 def assert_same_dose(dose_a, dose_b):
-
     # Check the same patient orientation
     assert dose_a.ImageOrientationPatient == dose_b.ImageOrientationPatient
 
@@ -210,7 +200,6 @@ def assert_same_dose(dose_a, dose_b):
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_dose(pinn):
-
     for p in pinn:
         export_path = os.path.join(
             working_path, "output", p.patient_info["MedicalRecordNumber"], "RTDOSE"
@@ -238,7 +227,6 @@ def test_dose(pinn):
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_plan(pinn):
-
     for p in pinn:
         export_path = os.path.join(
             working_path, "output", p.patient_info["MedicalRecordNumber"], "RTPLAN"
@@ -269,7 +257,6 @@ def test_plan(pinn):
 
 @pytest.mark.slow
 def test_missing_image():
-
     zip_ref = ZipFile(get_online_data("pinnacle_test_data_no_image.zip"), "r")
     zip_ref.extractall(data_path)
     zip_ref.close()
@@ -284,7 +271,6 @@ def test_missing_image():
 
 @pytest.fixture(scope="session")
 def orientation_data():
-
     zip_ref = ZipFile(get_online_data("pinnacle_orientations_test_data.zip"), "r")
 
     zip_ref.extractall(data_path)
@@ -295,7 +281,6 @@ def orientation_data():
 
 @pytest.fixture
 def orientation_pinn(orientation_data):
-
     pinn_path = os.path.join(orientation_data, "pinnacle", "Patient_22902")
 
     pinn_obj = PinnacleExport(pinn_path, None)

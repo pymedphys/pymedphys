@@ -195,7 +195,6 @@ class PinnaclePlan:
 
     @active_trial.setter
     def active_trial(self, trial_name):
-
         if isinstance(trial_name, str):
             for trial in self.trials:
                 if trial["Name"] == trial_name:

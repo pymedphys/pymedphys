@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-"""Uses Mosaiq SQL to extract patient delivery details.
-"""
+"""Uses Mosaiq SQL to extract patient delivery details."""
 
 import functools
 import struct

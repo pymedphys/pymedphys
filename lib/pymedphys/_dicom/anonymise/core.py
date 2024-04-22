@@ -75,8 +75,7 @@ def non_private_tags_in_dicom_dataset(ds):
     for elem in ds:
         if not elem.tag.is_private and not (
             # Ignore retired Group Length elements
-            elem.tag.element == 0
-            and elem.tag.group > 6
+            elem.tag.element == 0 and elem.tag.group > 6
         ):
             non_private_tags.append(elem.tag)
     return non_private_tags

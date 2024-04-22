@@ -34,7 +34,6 @@ def model_and_display(x, y):
 
 
 def visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
-
     t = np.linspace(0, 2 * np.pi)
     circle = {
         "x": width / 2 * np.sin(t) + circle_centre[0],
@@ -81,7 +80,6 @@ def plot_insert(insert_x, insert_y, width, length, circle_centre):
 
 
 def plot_model(width_data, length_data, factor_data):
-
     i, j, k = create_transformed_mesh(width_data, length_data, factor_data)
     model_width, model_length, model_factor = i, j, k
 

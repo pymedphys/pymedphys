@@ -179,7 +179,6 @@ def get_cp_attribute_leaning_on_prior(control_point_sequence, attribute):
 
 
 def get_gantry_angles_from_dicom(dicom_dataset):
-
     beam_gantry_angles = []
 
     for beam_sequence in dicom_dataset.BeamSequence:

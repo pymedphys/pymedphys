@@ -400,7 +400,6 @@ def advanced_debugging(config):
         ]
 
         for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
-
             st.write(f"### {baseline.parent.name}/{baseline.name}")
 
             st.write(f"`{baseline}`\n\n**vs**\n\n`{evaluation}`")
@@ -770,7 +769,6 @@ def main():
     )
 
     if st.button("Run Calculation"):
-
         st.write(
             """
             ### MetersetMap usage warning

@@ -14,8 +14,7 @@
 # limitations under the License.
 
 
-"""A toolbox for connecting to Mosaiq SQL.
-"""
+"""A toolbox for connecting to Mosaiq SQL."""
 
 from typing import Dict, List, Tuple
 
