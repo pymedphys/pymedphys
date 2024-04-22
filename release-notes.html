@@ -862,7 +862,12 @@ document.write(`
 <section id="unreleased">
 <h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.39.3...main">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>None</p></li>
+<li><p>After updating scipy to the 1.11 series or higher the electron factors
+algorithm’s baselines have changed without any code changes.
+Changes in baseline have been observed to be on the order of ~0.5%,
+but this is no guarantee that changes are not higher than this. If you do use
+this algorithm please compare current results with previously known results
+and report any large deviations <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/1858">here</a></p></li>
 </ul>
 </section>
 <section id="id1">
