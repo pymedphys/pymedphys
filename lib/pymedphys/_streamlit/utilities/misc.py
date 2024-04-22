@@ -19,7 +19,7 @@ def site_picker(config, radio_label, default=None, key=None):
 
     try:
         chosen_site = st.experimental_get_query_params()["site"][0]
-        if not chosen_site in site_options:
+        if chosen_site not in site_options:
             st.error(
                 f"Site provided through URL `{chosen_site}`, doesn't "
                 "exist within `config.toml`. Please instead provide "

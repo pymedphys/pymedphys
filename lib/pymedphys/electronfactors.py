@@ -3,6 +3,7 @@ parameterising them as equivalent ellipses.
 """
 
 # pylint: disable = unused-import
+# ruff: noqa: F401
 
 from ._electronfactors import (
     calculate_deformability,

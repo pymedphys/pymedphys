@@ -94,7 +94,7 @@ def export_cli(args):
 
         for m in t.getmembers():
             # Need to filter out files containing ":" for Windows
-            if not ":" in m.name:
+            if ":" not in m.name:
                 t.extract(m, path=tmp_dir)
 
         input_path = tmp_dir

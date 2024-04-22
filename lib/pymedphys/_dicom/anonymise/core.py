@@ -248,7 +248,7 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     for elem in ds:
         if elem.keyword in get_default_identifying_keywords():
             dummy_value = get_anonymous_replacement_value(elem.keyword)
-            if not elem.value in ("", [], dummy_value, None):
+            if elem.value not in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
                     float(elem.value), float(dummy_value)
                 ):

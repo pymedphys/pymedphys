@@ -66,7 +66,7 @@ def _check_for_supported_collimation_device(
 
     supported_configurations = [{"MLCX", "ASYMY"}]
 
-    if not rt_beam_limiting_device_types in supported_configurations:
+    if rt_beam_limiting_device_types not in supported_configurations:
         raise ValueError(
             _pretty_print(
                 """\

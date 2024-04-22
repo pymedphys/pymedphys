@@ -13,11 +13,9 @@
 # limitations under the License.
 
 
-"""Some helper utility functions for accessing DICOM RT Plan info.
-"""
+"""Some helper utility functions for accessing DICOM RT Plan info."""
 
 import pandas as pd
-import streamlit as st
 import pydicom
 
 
@@ -35,9 +33,11 @@ def get_all_dicom_treatment_info(dicomFile):
             bn = (
                 beam.ReferencedBeamNumber
             )  # pull beam reference number for simplification
-            doseRef = fraction.ReferencedDoseReferenceSequence[
-                0
-            ].ReferencedDoseReferenceNumber  # pull dose reference number for simplification
+            doseRef = (
+                fraction.ReferencedDoseReferenceSequence[
+                    0
+                ].ReferencedDoseReferenceNumber
+            )  # pull dose reference number for simplification
             fn = fraction.FractionGroupNumber
 
             coll_x1 = (

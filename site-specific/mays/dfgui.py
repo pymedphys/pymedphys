@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 
-
 # unused import required to allow 'eval' of date filters
-import datetime  # pylint: disable = unused-import
 from bisect import bisect
-from datetime import date  # pylint: disable = unused-import
-
-import numpy as np
-import pandas as pd
 
 import matplotlib
+import numpy as np
+import pandas as pd
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -43,7 +39,6 @@ except ImportError:
 
 
 class ListCtrlDataFrame(wx.ListCtrl):
-
     # TODO: we could do something more sophisticated to come
     # TODO: up with a reasonable column width...
     DEFAULT_COLUMN_WIDTH = 100
@@ -291,7 +286,6 @@ class ListBoxDraggable(wx.ListBox):
     """
 
     def __init__(self, parent, size, data, *args, **kwargs):
-
         wx.ListBox.__init__(self, parent, size, **kwargs)
 
         if isinstance(data, (pd.RangeIndex, pd.Int64Index)):
