@@ -15,6 +15,8 @@
 
 """Model insert factors and parameterise inserts as equivalent ellipses."""
 
+import warnings
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy, shapely
 
@@ -55,6 +57,15 @@ def spline_model(
         ratio_perim_area_test.
 
     """
+
+    warnings.warn(
+        "Deviations within the electron factor algorithm have "
+        "been observed after upgrading scipy to versions 1.11 and "
+        "beyond. Please report any significant deviations to previously"
+        " observed baselines at "
+        "https://github.com/pymedphys/pymedphys/issues/1858."
+    )
+
     bbox = [
         np.min([np.min(width_data), np.min(width_test)]),
         np.max([np.max(width_data), np.max(width_test)]),
