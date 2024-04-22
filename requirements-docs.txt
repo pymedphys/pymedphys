@@ -74,7 +74,7 @@ pyzmq==26.0.2 ; python_version >= "3.9" and python_full_version != "3.9.7" and p
 referencing==0.34.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 requests==2.31.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 rpds-py==0.18.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
-scipy==1.13.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
+scipy==1.12.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 setuptools==69.5.1 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 six==1.16.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 snowballstemmer==2.2.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
