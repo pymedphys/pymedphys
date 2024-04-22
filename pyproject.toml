@@ -267,6 +267,28 @@ extend-ignore = [
 known-third-party = ["pymedphys._imports"]
 known-first-party = ["pymedphys"]
 
+[tool.pyright]
+include = ["lib/pymedphys"]
+
+# These have been set to False in order to be able to utilise pyright, but
+# future work would be to iteratively set these to true and fix the code base.
+reportMissingImports = false
+reportGeneralTypeIssues = false
+reportUnboundVariable = false
+reportOptionalMemberAccess = false
+reportOptionalSubscript = false
+reportOptionalOperand = false
+reportOptionalCall = false
+reportOptionalIterable = false
+reportPrivateImportUsage = false
+reportArgumentType = false
+reportCallIssue = false
+reportOperatorIssue = false
+reportAttributeAccessIssue = false
+reportAssignmentType = false
+reportIndexIssue = false
+reportReturnType = false
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
