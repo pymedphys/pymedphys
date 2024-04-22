@@ -291,10 +291,10 @@ def _get_all_columns(connection, table):
 def _get_filtered_table(connection, table, column_name, column_value):
     """Get the rows from an MSSQL table where the column_value matches
     within the given column_name."""
-    if not table in ALLOWLIST_TABLE_NAMES:
+    if table not in ALLOWLIST_TABLE_NAMES:
         raise ValueError(f"{table} must be within the allowlist")
 
-    if not column_name in ALLOWLIST_COLUMN_NAMES:
+    if column_name not in ALLOWLIST_COLUMN_NAMES:
         raise ValueError(f"{column_name} must be within the allowlist")
 
     column_value = str(column_value)

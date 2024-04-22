@@ -1,3 +1,5 @@
+# ruff: noqa: E741
+
 """
 Created on Fri Mar 13 14:16:40 2020
 
