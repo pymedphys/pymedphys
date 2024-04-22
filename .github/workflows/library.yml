@@ -337,6 +337,8 @@ jobs:
 
       - name: Run basic pytest tests
         if: matrix.task == 'tests' || matrix.task == 'updates'
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
           poetry run pymedphys dev tests -v
 
