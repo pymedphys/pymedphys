@@ -195,17 +195,22 @@ Past contributors
 * `Paul King <https://github.com/kingrpaul>`_
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
+..
+   Unfortunately :target: being a variable name is no longer supported by
+   GitHub within README.rst files. So... unfortunately we have some duplication
+   below.
+
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
-    :target: `Royal Adelaide Hospital`_
+    :target: https://www.rah.sa.gov.au/
 
 .. |uth| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/UTHSA_logo.png
-    :target: `UT Health San Antonio`_
+    :target: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
 .. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
-    :target: `Swerdloff Family`_
+    :target: https://github.com/sjswerdloff
 
 .. |ccr| image:: https://github.com/pymedphys/pymedphys/raw/ec61e4e63a8624f4df44a8e90931bd0bca748e20/logos/cancercareriverina_200x200.png
-    :target: `Cancer Care Riverina`_
+    :target: https://cancercare.com.au/clinics/cancer-care-riverina/
 
 .. _`Anthropic PBC`: https://www.anthropic.com/
 
