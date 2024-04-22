@@ -18,7 +18,7 @@ import subprocess
 import textwrap
 from typing import List, Optional
 
-from pymedphys._imports import ruff, tomlkit
+from pymedphys._imports import tomlkit
 
 from .paths import DEPENDENCY_EXTRA_PATH, LIBRARY_PATH, REPO_ROOT
 
@@ -109,10 +109,10 @@ def propagate_version():
         """
     )
 
-    version_contents = ruff.format_str(version_contents, mode=ruff.FileMode())
-
     with open(VERSION_PATH, "w") as f:
         f.write(version_contents)
+
+    subprocess.run(["ruff", "format", str(VERSION_PATH)])
 
 
 def _propagate_requirements():

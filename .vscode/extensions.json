@@ -3,6 +3,7 @@
         "ms-python.python",
         "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml",
-        "njpwerner.autodocstring"
+        "njpwerner.autodocstring",
+        "charliermarsh.ruff"
     ]
 }

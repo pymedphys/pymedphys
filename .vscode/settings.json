@@ -1,6 +1,6 @@
 {
   "editor.detectIndentation": true,
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
   "editor.insertSpaces": true,
   "editor.rulers": [
     79,
@@ -11,8 +11,6 @@
   "autoDocstring.guessTypes": true,
   "autoDocstring.includeExtendedSummary": false,
   "autoDocstring.generateDocstringOnEnter": false,
-  "python.formatting.provider": "black",
-  "python.sortImports.path": "isort",
   "python.linting.enabled": true,
   "python.linting.lintOnSave": true,
   "python.linting.pylintEnabled": true,
@@ -20,17 +18,24 @@
     "--rcfile",
     "./lib/pymedphys/.pylintrc"
   ],
-  "python.linting.mypyEnabled": true,
   "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
     "editor.rulers": [
       72,
       88
-    ]
+    ],
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
   },
-  "python.testing.unittestEnabled": false,
-  "python.testing.nosetestsEnabled": false,
-  "python.testing.pytestEnabled": true,
+  "notebook.formatOnSave.enabled": true,
+  "notebook.codeActionsOnSave": {
+    "notebook.source.fixAll": "explicit",
+    "notebook.source.organizeImports": "explicit"
+  },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
@@ -73,6 +78,7 @@
     "atol",
     "authbind",
     "autofunction",
+    "AUTOGEN",
     "automodule",
     "autossh",
     "Ayala",
