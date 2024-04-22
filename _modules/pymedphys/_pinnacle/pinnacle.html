@@ -490,7 +490,6 @@ document.write(`
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-
         <span class="c1"># Show a warning to ensure that this module is used with caution</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
             <span class="s2">&quot;The Pinnacle Export Module is intended for research purposes only. Parts &quot;</span>
@@ -589,7 +588,6 @@ document.write(`
 
         <span class="c1"># Read patient info to populate patients plans</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plans</span><span class="p">:</span>
-
             <span class="bp">self</span><span class="o">.</span><span class="n">_plans</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">plan</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_info</span><span class="p">[</span><span class="s2">&quot;PlanList&quot;</span><span class="p">]:</span>
                 <span class="n">path_plan</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Plan_</span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;PlanID&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
