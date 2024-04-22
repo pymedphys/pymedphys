@@ -1,3 +1,5 @@
+# ruff: noqa: F401
+
 """Module docstring."""
 
 from . import dicom, electronfactors, metersetmap, mosaiq, mudensity, pinnacle, trf

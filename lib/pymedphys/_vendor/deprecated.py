@@ -37,7 +37,6 @@ def deprecated(reason):
     """
 
     if isinstance(reason, string_types):
-
         # The @deprecated is used with a 'reason'.
         #
         # .. code-block:: python
@@ -47,7 +46,6 @@ def deprecated(reason):
         #        pass
 
         def decorator(func1):
-
             if inspect.isclass(func1):
                 fmt1 = "Call to deprecated class `{name}` ({reason})."
             else:
@@ -67,7 +65,6 @@ def deprecated(reason):
         return decorator
 
     elif inspect.isclass(reason) or inspect.isfunction(reason):
-
         # The @deprecated is used without any 'reason'.
         #
         # .. code-block:: python

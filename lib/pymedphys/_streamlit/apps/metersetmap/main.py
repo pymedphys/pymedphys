@@ -215,7 +215,7 @@ def get_input_data_ui(
     return results
 
 
-@st.cache
+@st.cache_data
 def to_tuple(array):
     return tuple(map(tuple, array))
 
@@ -249,15 +249,33 @@ def plot_and_save_results(
 
     diff = evaluation_metersetmap - reference_metersetmap
 
-    imageio.imwrite(reference_filepath, reference_metersetmap)
-    imageio.imwrite(evaluation_filepath, evaluation_metersetmap)
-    imageio.imwrite(diff_filepath, diff)
-    imageio.imwrite(gamma_filepath, gamma)
-
     largest_metersetmap = np.max(
         [np.max(evaluation_metersetmap), np.max(reference_metersetmap)]
     )
     largest_diff = np.max(np.abs(diff))
+
+    imageio.imwrite(
+        reference_filepath,
+        st_misc.normalize_and_convert_to_uint8(
+            reference_metersetmap, vmin=0, vmax=largest_metersetmap
+        ),
+    )
+    imageio.imwrite(
+        evaluation_filepath,
+        st_misc.normalize_and_convert_to_uint8(
+            evaluation_metersetmap, vmin=0, vmax=largest_metersetmap
+        ),
+    )
+    imageio.imwrite(
+        diff_filepath,
+        st_misc.normalize_and_convert_to_uint8(
+            diff, vmin=-largest_diff, vmax=largest_diff
+        ),
+    )
+    imageio.imwrite(
+        gamma_filepath,
+        st_misc.normalize_and_convert_to_uint8(gamma, vmin=0, vmax=2),
+    )
 
     widths = [1, 1]
     heights = [0.5, 1, 1, 1, 0.4]
@@ -321,7 +339,7 @@ def plot_and_save_results(
     return fig
 
 
-@st.cache(hash_funcs={pymedphys.Delivery: hash})
+@st.cache_data(hash_funcs={pymedphys.Delivery: hash})
 def calculate_metersetmap(delivery):
     return delivery.metersetmap(
         max_leaf_gap=MAX_LEAF_GAP,
@@ -339,7 +357,7 @@ def calculate_batch_metersetmap(deliveries):
     return metersetmap
 
 
-@st.cache
+@st.cache_data
 def calculate_gamma(reference_metersetmap, evaluation_metersetmap, gamma_options):
     gamma = pymedphys.gamma(
         COORDS,
@@ -382,7 +400,6 @@ def advanced_debugging(config):
         ]
 
         for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
-
             st.write(f"### {baseline.parent.name}/{baseline.name}")
 
             st.write(f"`{baseline}`\n\n**vs**\n\n`{evaluation}`")
@@ -752,7 +769,6 @@ def main():
     )
 
     if st.button("Run Calculation"):
-
         st.write(
             """
             ### MetersetMap usage warning

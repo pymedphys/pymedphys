@@ -4,7 +4,6 @@ all = [
     "anthropic",
     "astroid",
     "attrs",
-    "black",
     "dbfread",
     "dicompyler-core",
     "doc8",
@@ -13,7 +12,6 @@ all = [
     "jupyter-book",
     "keyring",
     "matplotlib",
-    "mypy",
     "natsort",
     "networkx",
     "numpy",
@@ -26,6 +24,7 @@ all = [
     "pylint",
     "pymssql",
     "pynetdicom",
+    "pyright",
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
@@ -34,6 +33,7 @@ all = [
     "readme-renderer",
     "requests",
     "rope",
+    "ruff",
     "scikit-learn",
     "scipy",
     "shapely",
@@ -52,7 +52,7 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["black", "doc8", "mypy", "pre-commit", "readme-renderer", "rope", "tabulate"]
+dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
@@ -67,10 +67,10 @@ docs = [
     "toml",
     "tqdm",
 ]
-doctests = ["black", "sphinx-book-theme", "tabulate"]
+doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
-propagate = ["black"]
+propagate = ["ruff"]
 speedups = ["interpolation"]
 tests = [
     "astroid",

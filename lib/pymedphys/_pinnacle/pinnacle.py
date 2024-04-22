@@ -67,7 +67,6 @@ class PinnacleExport:
     """
 
     def __init__(self, path, logger=None):
-
         # Show a warning to ensure that this module is used with caution
         warnings.warn(
             "The Pinnacle Export Module is intended for research purposes only. Parts "
@@ -166,7 +165,6 @@ class PinnacleExport:
 
         # Read patient info to populate patients plans
         if not self._plans:
-
             self._plans = []
             for plan in self.patient_info["PlanList"]:
                 path_plan = os.path.join(self._path, f"Plan_{plan['PlanID']}")

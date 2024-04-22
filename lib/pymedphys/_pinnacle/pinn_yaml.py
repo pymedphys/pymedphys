@@ -44,7 +44,6 @@ from pymedphys._imports import yaml
 
 
 def pinn_to_dict(filename):
-
     result = None
     with open(filename, encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
@@ -55,7 +54,6 @@ def pinn_to_dict(filename):
         indices = [i for i, line in enumerate(data) if line == first_line]
 
         for i, _ in enumerate(indices):
-
             next_index = -1
 
             if i + 1 < len(indices):
@@ -77,13 +75,11 @@ def pinn_to_dict(filename):
 
 
 def convert_to_yaml(data):
-
     out = ""
     listIndents = []
     in_comment = False
     c = 0
     for _, line in enumerate(data, 0):
-
         # Remove comment lines
         if re.search(r"^\/\*", line) or in_comment:
             in_comment = True
@@ -129,7 +125,6 @@ def convert_to_yaml(data):
 
 
 def pinn_to_yaml(filename):
-
     with open(filename, encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
         return convert_to_yaml(data)

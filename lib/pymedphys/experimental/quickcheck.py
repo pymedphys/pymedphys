@@ -13,4 +13,6 @@
 # limitations under the License.
 
 # pylint: disable = unused-import
+# ruff: noqa: F401
+
 from pymedphys._experimental.quickcheck.qcheck import QuickCheck

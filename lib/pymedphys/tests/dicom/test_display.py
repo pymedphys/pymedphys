@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" A test suite for DICOM display functions. """
+"""A test suite for DICOM display functions."""
 
 from pymedphys._imports import pydicom, pytest
 
@@ -21,7 +21,6 @@ from pymedphys._dicom.utilities import pretty_patient_name
 
 @pytest.mark.pydicom
 def test_pretty_patient_name_all_params():
-
     ds = pydicom.Dataset()
     ds.PatientName = "last^first^middle^^hon"
 
@@ -98,7 +97,6 @@ def test_pretty_patient_name_all_params():
 
 @pytest.mark.pydicom
 def test_pretty_patient_name_inputs():
-
     ds = pydicom.Dataset()
 
     ds.PatientName = "last^first^middle"

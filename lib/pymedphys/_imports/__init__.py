@@ -15,6 +15,6 @@ IMPORTABLES = dir(THIS)
 
 # This will never actually run, but it helps pylint know what's going on
 if "numpy" not in IMPORTABLES:
-    from .imports import *
+    from .imports import *  # noqa: F403
 
     raise ValueError("This section of code should never run")

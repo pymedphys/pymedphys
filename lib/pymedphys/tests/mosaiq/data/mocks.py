@@ -91,7 +91,6 @@ def check_create_test_db(database=_connect.TEST_DB_NAME):
         user=_connect.SA_USER,
         password=_connect.SA_PASSWORD,
     ) as sql_sa_connection:
-
         sql_sa_connection.autocommit(True)
 
         # create the test db

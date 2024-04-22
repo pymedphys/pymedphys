@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: F401
 
-"""A Mephysto toolbox.
-"""
+"""A Mephysto toolbox."""
 
 from .api import load_mephysto, load_single_item
 from .directory import load_mephysto_directory

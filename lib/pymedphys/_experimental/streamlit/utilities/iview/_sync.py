@@ -263,7 +263,7 @@ def _get_time_diffs(iview_datetimes, icom_datetimes):
     return alignment_time_diffs
 
 
-@st.cache
+@st.cache_data
 def _estimated_initial_deviation_to_apply(iview_datetimes, icom_datetimes):
     alignment_time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
 
@@ -273,7 +273,7 @@ def _estimated_initial_deviation_to_apply(iview_datetimes, icom_datetimes):
     return datetime.timedelta(seconds=deviation_to_apply)
 
 
-@st.cache
+@st.cache_data
 def _determine_basinhopping_offset(iview_datetimes, icom_datetimes):
     initial_deviation_to_apply = _estimated_initial_deviation_to_apply(
         iview_datetimes, icom_datetimes
@@ -295,7 +295,7 @@ def _determine_basinhopping_offset(iview_datetimes, icom_datetimes):
     return basinhopping_offset, basinhopping_minimise_f
 
 
-@st.cache
+@st.cache_data
 def _determine_loop_offset(iview_datetimes, icom_datetimes):
     to_minimise = _create_icom_timestamp_minimiser(iview_datetimes, icom_datetimes)
     total_offset = datetime.timedelta(seconds=0)

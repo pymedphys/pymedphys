@@ -60,7 +60,6 @@ def get_online_data(filename):
 
 @pytest.fixture(scope="session")
 def data():
-
     zip_ref = ZipFile(get_online_data("pinnacle_16.0_test_data.zip"), "r")
     zip_ref.extractall(data_path)
     zip_ref.close()
@@ -70,11 +69,9 @@ def data():
 
 @pytest.mark.slow
 def test_pinnacle_cli_output(data):
-
     output_path = tempfile.mkdtemp()
 
     for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
-
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
             + "pymedphys pinnacle export".split()
@@ -104,9 +101,7 @@ def test_pinnacle_cli_output(data):
 
 @pytest.mark.slow
 def test_pinnacle_cli_list(data):
-
     for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
-
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
             + "pymedphys pinnacle export".split()
@@ -127,11 +122,9 @@ def test_pinnacle_cli_list(data):
 
 @pytest.mark.slow
 def test_pinnacle_cli_missing_trial(data):
-
     output_path = tempfile.mkdtemp()
 
     for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
-
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
             + "pymedphys pinnacle export".split()
@@ -145,13 +138,11 @@ def test_pinnacle_cli_missing_trial(data):
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_pinnacle_cli_skip_roi(data):
-
     output_path = tempfile.mkdtemp()
 
     skip_roi_name = "Target"
 
     for pinn_dir in data.joinpath("Pt1").joinpath("Pinnacle").iterdir():
-
         command = (
             [str(pmp_test_utils.get_executable_even_when_embedded()), "-m"]
             + "pymedphys pinnacle export".split()
