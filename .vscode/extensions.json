@@ -2,7 +2,7 @@
     "recommendations": [
         "ms-python.python",
         "streetsidesoftware.code-spell-checker",
-        "bungcip.better-toml",
+        "tamasfe.even-better-toml",
         "njpwerner.autodocstring"
     ]
 }
