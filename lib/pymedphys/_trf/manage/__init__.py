@@ -13,9 +13,7 @@
 # limitations under the License.
 
 
-"""A logfile toolbox.
-"""
-
+"""A logfile toolbox."""
 
 from .diagnostics_zips import already_indexed_path
 from .identify import identify_logfile

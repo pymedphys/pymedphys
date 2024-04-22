@@ -86,7 +86,7 @@ def create_mimic_tables(database):
         table = table.set_index(index_label)
 
         for column_name, a_type in column_types.items():
-            if not a_type in column_types_to_use:
+            if a_type not in column_types_to_use:
                 table = table.drop(columns=[column_name])
                 continue
 

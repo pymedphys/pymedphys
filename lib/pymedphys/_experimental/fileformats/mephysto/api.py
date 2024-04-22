@@ -79,7 +79,6 @@ def load_mephysto(filepath, output_to_file=False, output_directory=None, sort=Tr
 
     # Output csv's if "output_to_file" is True
     if output_to_file:
-
         # If user didn't define an output_directory use a default one
         if output_directory is None:
             # Define output directory as a mephysto folder

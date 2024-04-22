@@ -18,7 +18,6 @@ No interpolation is undergone with these at the moment. Interpolation is
 planned for the future.
 """
 
-
 import sys
 
 from pymedphys._imports import numpy as np
@@ -38,9 +37,8 @@ def gamma_filter_numpy(
     distance_mm_threshold,
     dose_threshold,
     lower_dose_cutoff=0,
-    **_
+    **_,
 ):
-
     coord_diffs = [
         coord_ref[:, None] - coord_eval[None, :]
         for coord_ref, coord_eval in zip(axes_reference, axes_evaluation)
@@ -113,9 +111,8 @@ def gamma_filter_brute_force(
     distance_mm_threshold,
     dose_threshold,
     lower_dose_cutoff=0,
-    **_
+    **_,
 ):
-
     xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing="ij")
     gamma_array = np.ones_like(dose_evaluation).astype(np.float) * np.nan
 

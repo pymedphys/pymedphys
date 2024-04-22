@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-"""Uses Mosaiq SQL to extract patient sessions and offsets.
-"""
+"""Uses Mosaiq SQL to extract patient sessions and offsets."""
 
 from datetime import datetime, timedelta
 from typing import Iterator, List, Optional, Tuple
@@ -174,7 +173,6 @@ def session_offsets_for_site(
     for session_num, start_session, end_session in sessions_for_site(
         connection, sit_set_id
     ):
-
         # calculate the time window within which the offset may occur
         window_start, window_end = (start_session - interval, end_session)
 

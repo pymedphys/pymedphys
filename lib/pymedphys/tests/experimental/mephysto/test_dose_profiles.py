@@ -48,7 +48,6 @@ def loaded_doses():
     doses = {}
 
     for key, filepath in DICOM_DOSE_FILEPATHS.items():
-
         resolved_filepath = str(
             download.get_file_within_data_zip("tps_compare_dicom_files.zip", filepath)
         )

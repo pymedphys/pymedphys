@@ -21,7 +21,6 @@ from .constants import CONFIG
 
 
 def decode_trf_table(trf_table_contents, header_table_contents):
-
     version = header_table_contents["version"].values[0].astype(int)
     item_parts_length = header_table_contents["item_parts_length"].values[0].astype(int)
     item_parts = header_table_contents["item_parts"].values[0]
@@ -42,7 +41,6 @@ def decode_trf_table(trf_table_contents, header_table_contents):
 
 
 def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
-
     column_names_from_dict = CONFIG["item_part_names"]
     column_names_from_data = [
         str(item_parts[i]) + "_" + str(item_parts[i + 1])
@@ -55,7 +53,6 @@ def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
     line_grouping = lg_scale * item_parts_length + offset
 
     if version == 1:
-
         decoded_rows = [
             np.frombuffer(
                 trf_table_contents[i : i + line_grouping],
@@ -67,7 +64,6 @@ def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
         column_names = [column_names_from_dict[c] for c in column_names_from_data]
 
     else:
-
         timestamps = [
             np.frombuffer(trf_table_contents[i : i + 8], offset=0, dtype=np.int64)
             for i in range(0, len(trf_table_contents), line_grouping)

@@ -27,7 +27,6 @@ import pymedphys._icom.extract as pmp_icom_extract
 
 
 def read_icom_log(filepath):
-
     with lzma.open(filepath, "r") as f:
         icom_stream = f.read()
 

@@ -49,7 +49,6 @@ def _py_abspath(path):
     that will leave paths from jython jars alone
     """
     if path.startswith("__pyclasspath__"):
-
         return path
     else:
         return os.path.abspath(path)

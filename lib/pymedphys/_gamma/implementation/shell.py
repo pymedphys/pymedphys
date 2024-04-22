@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-"""Compare two dose grids with the gamma index.
-"""
+"""Compare two dose grids with the gamma index."""
 
 import logging
 from dataclasses import dataclass
@@ -253,7 +252,6 @@ class GammaInternalFixedOptions:
         ram_available=None,
         quiet=None,
     ):
-
         if max_gamma is None:
             max_gamma = np.inf
 
@@ -318,7 +316,6 @@ class GammaInternalFixedOptions:
 
 
 def gamma_loop(options: GammaInternalFixedOptions):
-
     still_searching_for_gamma = np.full_like(
         options.flat_dose_reference, True, dtype=bool
     )
@@ -399,7 +396,6 @@ def multi_thresholds_gamma_calc(
     distance,
     to_be_checked,
 ):
-
     gamma_at_distance = np.sqrt(
         (
             min_relative_dose_difference[:, None, None]
@@ -442,8 +438,10 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     num_dimensions = np.shape(options.flat_mesh_axes_reference)[0]
 
-    coordinates_at_distance_shell = pymedphys._utilities.createshells.calculate_coordinates_shell(  # pylint: disable = protected-access
-        distance, num_dimensions, distance_step_size
+    coordinates_at_distance_shell = (
+        pymedphys._utilities.createshells.calculate_coordinates_shell(  # pylint: disable = protected-access
+            distance, num_dimensions, distance_step_size
+        )
     )
 
     num_points_in_shell = np.shape(coordinates_at_distance_shell)[1]
@@ -568,7 +566,6 @@ def add_shells_to_ref_coords(
     for shell_coord, ref_coord in zip(
         coordinates_at_distance_shell, axes_reference_to_be_checked
     ):
-
         coordinates_at_distance.append(
             np.array(ref_coord[None, :] + shell_coord[:, None])[:, :, None]
         )

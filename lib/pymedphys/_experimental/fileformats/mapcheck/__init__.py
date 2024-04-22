@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-"""
-"""
+""" """
 
 from .core import read_mapcheck_txt

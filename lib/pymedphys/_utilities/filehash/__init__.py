@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-"""
-"""
-
+""" """
 
 from .core import hash_file

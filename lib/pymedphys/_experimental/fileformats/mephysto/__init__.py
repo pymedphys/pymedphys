@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-"""A Mephysto toolbox.
-"""
+"""A Mephysto toolbox."""
 
 from .api import load_mephysto, load_single_item
 from .directory import load_mephysto_directory

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-"""Matplotlib toolbox.
-"""
-
+"""Matplotlib toolbox."""
 
 from .helpers import pcolormesh_grid

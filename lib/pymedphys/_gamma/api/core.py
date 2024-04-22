@@ -22,9 +22,8 @@ def gamma_dicom(
     dicom_dataset_eval,
     dose_percent_threshold,
     distance_mm_threshold,
-    **kwargs
+    **kwargs,
 ):
-
     axes_reference, dose_reference = zyx_and_dose_from_dataset(dicom_dataset_ref)
     axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(dicom_dataset_eval)
 
@@ -35,7 +34,7 @@ def gamma_dicom(
         dose_evaluation,
         dose_percent_threshold,
         distance_mm_threshold,
-        **kwargs
+        **kwargs,
     )
 
     return gamma
@@ -47,9 +46,8 @@ def gamma_percent_pass(
     dose_percent_threshold,
     distance_mm_threshold,
     method="shell",
-    **kwargs
+    **kwargs,
 ):
-
     axes_reference, dose_reference = zyx_and_dose_from_dataset(dcm_ref_filepath)
     axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(dcm_eval_filepath)
 
@@ -61,7 +59,7 @@ def gamma_percent_pass(
             dose_evaluation,
             dose_percent_threshold,
             distance_mm_threshold,
-            **kwargs
+            **kwargs,
         )
 
         percent_pass = calculate_pass_rate(gamma)
@@ -74,7 +72,7 @@ def gamma_percent_pass(
             dose_evaluation,
             dose_percent_threshold,
             distance_mm_threshold,
-            **kwargs
+            **kwargs,
         )
     else:
         raise ValueError("method should be either `shell` or `filter`")

@@ -274,7 +274,6 @@ def table_transfer_via_interpolation(source, location, key):
 def _angle_filtering(
     database_table: "pd.DataFrame", advanced_mode: bool
 ) -> "pd.DataFrame":
-
     st.write(
         """
         ### Angle filtering definitions

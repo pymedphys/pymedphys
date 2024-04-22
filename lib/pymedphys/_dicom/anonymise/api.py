@@ -392,7 +392,7 @@ def anonymise_directory(
     # these Exceptions from interrupting the batch anonymisation.
     if delete_original_files:
         for dicom_filepath in dicom_filepaths:
-            if not dicom_filepath in failing_filepaths:
+            if dicom_filepath not in failing_filepaths:
                 remove_file(dicom_filepath)
 
     if len(errors) > 0:

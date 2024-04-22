@@ -68,7 +68,6 @@ def get_default_pseudonymisation_keywords():
 
 
 def anonymise_with_pseudo_cli(args):
-
     if args.delete_unknown_tags:
         handle_unknown_tags = True
     elif args.ignore_unknown_tags:

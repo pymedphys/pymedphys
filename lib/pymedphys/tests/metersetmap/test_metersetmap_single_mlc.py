@@ -16,8 +16,7 @@
 # pylint: disable=C0103,C1801
 
 
-"""Testing of a single mlc pair.
-"""
+"""Testing of a single mlc pair."""
 
 from pymedphys._imports import numpy as np
 

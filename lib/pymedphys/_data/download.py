@@ -183,10 +183,8 @@ def data_file_hash_check(filename, hash_filepath=None):
     filename = str(filename).replace(os.sep, "/")
 
     filepath = get_data_dir().joinpath(filename)
-    calculated_filehash = (
-        pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
-            filepath
-        )
+    calculated_filehash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
+        filepath
     )
 
     logging.debug("Calculated filehash is %s", calculated_filehash)

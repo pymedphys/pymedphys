@@ -91,8 +91,7 @@ def test_get_treatments(connection):
 
     treatments = helpers.get_treatments(connection, start, end, MACHINE_ID)
     assert (
-        np.datetime64(A_TREATMENT_DATETIME)
-        in treatments["start"].tolist()  # pylint: disable=unsubscriptable-object
+        np.datetime64(A_TREATMENT_DATETIME) in treatments["start"].tolist()  # pylint: disable=unsubscriptable-object
     )
 
 
@@ -148,7 +147,6 @@ def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
         not in qcls_by_date["due"].tolist()
     )
     for dt in QCL_COMPLETED_DATETIMES:
-
         assert (
             np.datetime64(dt)
             # pylint: disable=unsubscriptable-object

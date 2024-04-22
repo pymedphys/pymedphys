@@ -16,8 +16,7 @@
 # pylint: disable=C0103,C1801
 
 
-"""End to end regression testing.
-"""
+"""End to end regression testing."""
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest

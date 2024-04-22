@@ -59,7 +59,6 @@ def read_csv_file(file_name):
     """
 
     with open(file_name) as csvfile:
-
         pat_name, pat_num = csvfile.readline().split("ID:")
         pat_name = pat_name.replace("Patient name:", "")
 

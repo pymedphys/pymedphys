@@ -16,9 +16,7 @@
 # pylint: skip-file
 
 
-""" Test profile. """
-
-import os
+"""Test profile."""
 
 from pymedphys._imports import numpy as np
 

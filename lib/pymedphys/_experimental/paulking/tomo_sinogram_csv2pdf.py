@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""@author: king.r.paul@gmail.com
-"""
-
+"""@author: king.r.paul@gmail.com"""
 
 import csv
 from os.path import dirname, join
@@ -63,7 +61,6 @@ def tomo_sinogram_csv2pdf(file_name="./sinogram.csv", show=True, save=True):
     )
 
     with open(file_name) as csvfile:
-
         # PATIENT NAME & ID
         pat_name, pat_num = csvfile.readline().split("ID:")
         pat_name = pat_name.replace("Patient name:", "")

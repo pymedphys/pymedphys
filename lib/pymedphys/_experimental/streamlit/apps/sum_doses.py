@@ -50,7 +50,6 @@ def main():
         st.stop()
 
     if st.button("Click to Sum Doses"):
-
         with right_column:
             st.write(
                 f"""
@@ -84,7 +83,6 @@ def main():
 def _load_and_check_files_valid(
     files: Sequence[BinaryIO],
 ) -> List["pydicom.dataset.Dataset"]:
-
     ds0 = _load_dicom_file(files[0])
     datasets = [ds0]
 
