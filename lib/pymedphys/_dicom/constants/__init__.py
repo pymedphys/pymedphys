@@ -1,3 +1,5 @@
+# ruff: noqa: F401
+
 from .core import (
     BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,

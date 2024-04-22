@@ -20,6 +20,7 @@ formats
 """
 
 # pylint: disable = unused-import
+# ruff: noqa: F401
 
 import textwrap as _textwrap
 

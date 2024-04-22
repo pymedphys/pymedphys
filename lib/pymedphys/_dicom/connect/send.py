@@ -16,9 +16,8 @@
 import logging
 import pathlib
 
-from pymedphys._imports import pydicom, pynetdicom
-
 from pymedphys._dicom.connect.base import DicomConnectBase
+from pymedphys._imports import pydicom, pynetdicom
 
 
 class DicomSender(DicomConnectBase):
@@ -50,7 +49,7 @@ class DicomSender(DicomConnectBase):
             # Release the association
             assoc.release()
 
-        return not result is None
+        return result is not None
 
     def send(self, dcm_files):
         """Send each DICOM object to the configured DICOM location
@@ -82,9 +81,7 @@ class DicomSender(DicomConnectBase):
 
         statuses = []
         if assoc.is_established:
-
             for dataset in dcm_files:
-
                 if not isinstance(dataset, (pydicom.Dataset, pathlib.Path, str)):
                     raise TypeError(
                         "dcm_files must be  str, pathlib.Path or pydicom.Dataset"

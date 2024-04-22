@@ -192,7 +192,7 @@ def icom_input_method(
             patient_name = utl_patient.convert_patient_name_from_split(
                 *patient_name.split(", ")
             )
-        except:  # pylint: disable = bare-except
+        except:  # pylint: disable = bare-except  # noqa: E722
             pass
 
         patient_names.add(patient_name)

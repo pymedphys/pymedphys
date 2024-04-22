@@ -1,7 +1,7 @@
-"""A DICOM toolbox.
-"""
+"""A DICOM toolbox."""
 
 # pylint: disable = unused-import
+# ruff: noqa: F401
 
 from ._dicom.anonymise import anonymise_dataset as anonymise
 from ._dicom.dose import (

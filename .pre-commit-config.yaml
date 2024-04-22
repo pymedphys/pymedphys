@@ -16,20 +16,12 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb", "500"]
         exclude: ^.*yarn-.*cjs$
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.13.2
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.1
     hooks:
-      - id: isort
-        additional_dependencies: ["toml"]
-        files: ^lib/pymedphys/.*\.py$
-  - repo: https://github.com/ambv/black
-    rev: 24.3.0
-    hooks:
-      - id: black
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.1
-    hooks:
-      - id: pyupgrade
+      - id: ruff
+        args: [ --fix ]
+      # - id: ruff-format  # Do the format in a separate PR
   - repo: https://github.com/python-poetry/poetry
     rev: "1.8"
     hooks:

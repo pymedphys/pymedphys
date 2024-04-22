@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: F401
+
 from .core import (
     calculate_pass_rate,
     convert_to_ravel_index,

@@ -9,8 +9,9 @@ access. To achieve this choose "Install for my user only" when prompted.
 Overview
 ========
 
-* `Install Python`_ (3.7, 3.8 or 3.9)
-* `Install Poetry`_
+* `Install Python`_ 3.12.3
+* Install `pipx` with ``pip install pipx``
+* Install ``poetry`` with ``pipx install poetry``
 * `Install git`_
 * Clone the PyMedPhys git repo
 
@@ -22,7 +23,6 @@ Overview
 You're good to go.
 
 .. _`Install Python`: https://www.python.org/downloads/
-.. _`Install Poetry`: https://poetry.eustace.io/docs/#installation
 .. _`Install git`: https://git-scm.com/download/win
 .. _`Install pandoc`: https://pandoc.org/installing.html
 .. _`raising an issue`: https://github.com/pymedphys/pymedphys/issues/new

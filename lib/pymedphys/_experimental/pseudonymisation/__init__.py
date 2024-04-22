@@ -15,10 +15,8 @@ import functools
 import json
 import logging
 import pathlib
-from os.path import abspath, basename, dirname, isdir, isfile
+from os.path import abspath, dirname, isdir, isfile
 from os.path import join as pjoin
-
-from pymedphys._imports import pydicom
 
 from pymedphys._dicom.anonymise import (
     anonymise_dataset,
@@ -28,6 +26,7 @@ from pymedphys._dicom.anonymise import (
     get_default_identifying_keywords,
 )
 from pymedphys._dicom.anonymise import strategy as anon_strategy
+from pymedphys._imports import pydicom
 
 from . import strategy
 
@@ -68,7 +67,6 @@ def get_default_pseudonymisation_keywords():
 
 
 def anonymise_with_pseudo_cli(args):
-
     if args.delete_unknown_tags:
         handle_unknown_tags = True
     elif args.ignore_unknown_tags:

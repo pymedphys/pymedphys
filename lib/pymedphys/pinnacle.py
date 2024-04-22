@@ -1,4 +1,5 @@
 # pylint: disable = unused-import, missing-docstring
+# ruff: noqa: F401
 
 from pymedphys._pinnacle.pinnacle import PinnacleExport
 from pymedphys._pinnacle.pinnacle_cli import export_cli

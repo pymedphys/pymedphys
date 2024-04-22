@@ -101,7 +101,7 @@ def convert_dose(plan, export_path):
 
     patient_position = plan.patient_position
 
-    if not patient_position in supported_orientations:
+    if patient_position not in supported_orientations:
         raise NotImplementedError(
             f"{patient_position} orientation not supported. Only: "
             f"{supported_orientations}"

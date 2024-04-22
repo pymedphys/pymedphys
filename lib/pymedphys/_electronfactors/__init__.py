@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: F401
+
 from .core import (
     calculate_deformability,
     calculate_percent_prediction_differences,

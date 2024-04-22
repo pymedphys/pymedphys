@@ -214,7 +214,7 @@ def convert_image(image, export_path):
         imageds.PatientID = image.pinnacle.patient_info["MedicalRecordNumber"]
         imageds.PatientBirthDate = image.pinnacle.patient_info["DOB"]
 
-        if not "SOPInstanceUID" in imageds:
+        if "SOPInstanceUID" not in imageds:
             image.logger.warn("Unable to process image: %s", file)
             continue
 
