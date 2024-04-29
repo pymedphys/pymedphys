@@ -1,5 +1,6 @@
 from anthropic import AI_PROMPT, AsyncAnthropic
 
+import pymedphys
 from pymedphys._ai.messages import Messages, PromptMap
 
 from . import _utilities
@@ -48,9 +49,11 @@ SELECT DISTINCT
 
 
 @_utilities.async_cache
-async def get_system_prompt(tables_to_keep: list[str]):
+async def get_system_prompt(
+    connection: pymedphys.mosaiq.Connection, tables_to_keep: list[str]
+):
     filtered_tables_schema = await _utilities.get_schema_formatted_for_prompt(
-        tables_to_keep=tables_to_keep
+        connection=connection, tables_to_keep=tables_to_keep
     )
 
     return SYSTEM_PROMPT.format(schema=filtered_tables_schema)

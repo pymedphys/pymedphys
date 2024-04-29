@@ -2,6 +2,7 @@ import re
 
 from anthropic import AI_PROMPT, AsyncAnthropic
 
+import pymedphys
 from pymedphys._ai.messages import Messages, PromptMap
 
 from . import _utilities
@@ -59,18 +60,22 @@ START_OF_ASSISTANT_PROMPT = """\
 
 
 @_utilities.async_cache
-async def get_system_prompt():
+async def get_system_prompt(connection: pymedphys.mosaiq.Connection):
     table_name_only_schema = await _utilities.get_schema_formatted_for_prompt(
-        include_columns=False
+        connection=connection, include_columns=False
     )
 
     return SYSTEM_PROMPT.format(table_name_only_schema=table_name_only_schema)
 
 
 async def get_selected_table_names(
-    anthropic_client: AsyncAnthropic, messages: Messages
+    anthropic_client: AsyncAnthropic,
+    connection: pymedphys.mosaiq.Connection,
+    messages: Messages,
 ):
-    raw_table_names = await _get_raw_selected_table_names(anthropic_client, messages)
+    raw_table_names = await _get_raw_selected_table_names(
+        anthropic_client=anthropic_client, connection=connection, messages=messages
+    )
 
     table_names = []
     for line in raw_table_names.split("\n"):
@@ -81,20 +86,26 @@ async def get_selected_table_names(
 
 
 async def _get_raw_selected_table_names(
-    anthropic_client: AsyncAnthropic, messages: Messages
+    anthropic_client: AsyncAnthropic,
+    connection: pymedphys.mosaiq.Connection,
+    messages: Messages,
 ) -> str:
     result = await anthropic_client.completions.create(
         model="claude-3-haiku-20240307",
         max_tokens_to_sample=50_000,
-        prompt=await _get_select_table_prompt_from_messages(messages),
+        prompt=await _get_select_table_prompt_from_messages(
+            connection=connection, messages=messages
+        ),
         stop_sequences=["</selection>"],
     )
 
     return '<table name="' + result.completion
 
 
-async def _get_select_table_prompt_from_messages(messages: Messages):
-    prompt = await get_system_prompt()
+async def _get_select_table_prompt_from_messages(
+    connection: pymedphys.mosaiq.Connection, messages: Messages
+):
+    prompt = await get_system_prompt(connection=connection)
 
     for message in messages:
         prompt += f"{PromptMap[message['role']]} {message['content']}"

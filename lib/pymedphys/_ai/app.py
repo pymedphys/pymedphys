@@ -1,12 +1,15 @@
+import os
 import re
 
 import streamlit as st
 import trio
 from anthropic import AI_PROMPT, Anthropic, AsyncAnthropic, BadRequestError
 
+import pymedphys
+
 from .messages import ASSISTANT, USER, PromptMap
 from .sql_agent._utilities import execute_query
-from .sql_agent.pipeline import async_sql_tool_pipeline
+from .sql_agent.pipeline import sql_tool_pipeline
 
 SYSTEM_PROMPT = """\
 You are MOSAIQ Claude Chat. Your goal is to be helpful, harmless and
@@ -160,6 +163,18 @@ def _async_anthropic():
     return AsyncAnthropic()
 
 
+@st.cache_resource
+def _mosaiq_connection():
+    connection = pymedphys.mosaiq.connect(
+        "localhost",
+        database="PRACTICE",
+        username="sa",
+        password=os.environ["MSSQL_SA_PASSWORD"],
+    )
+
+    return connection
+
+
 def _initialise_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -179,7 +194,11 @@ def _get_prompt_from_messages():
 def _get_sql_query_and_result(debug_mode: bool):
     query_result_pairs = []
 
-    raw_queries = trio.run(async_sql_tool_pipeline)
+    connection = _mosaiq_connection()
+
+    raw_queries = trio.run(
+        sql_tool_pipeline, _async_anthropic(), connection, st.session_state.messages
+    )
     if debug_mode:
         st.write(f"**Queries:** {raw_queries}")
 
@@ -193,7 +212,7 @@ def _get_sql_query_and_result(debug_mode: bool):
             st.write(f"**Query:** {query}")
 
         # TODO: Verify that user only has read-only access before running arbitrary query.
-        result = trio.run(execute_query, query)
+        result = trio.run(execute_query, connection, query)
         result = re.sub(" +", " ", result)
         result = "\n".join([line for line in result.splitlines() if line])
 
