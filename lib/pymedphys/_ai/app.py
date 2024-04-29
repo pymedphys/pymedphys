@@ -67,12 +67,7 @@ DO NOT refer the user to the scratchpad contents. They can't see it.
 
 
 def main():
-    st.set_page_config(
-        page_title="MOSAIQ Claude Chat", initial_sidebar_state="collapsed"
-    )
-
     _initialise_state()
-    st.title("MOSAIQ Claude Chat")
 
     with st.sidebar:
         st.write("# Debug information")
