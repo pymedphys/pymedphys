@@ -32,6 +32,7 @@ Another AI agent within the cluster will then take these table names and
 form subsequent queries. It is NOT your job to make these queries.
 {table_name_only_schema}
 """
+
 # NOTE: The historical transcript of user/assistant will be included
 # before the final user prompt where the below will be appended.
 APPENDED_USER_PROMPT = """\

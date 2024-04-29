@@ -43,7 +43,7 @@ connection.close()
 
 # Test that backup worked with standard PyMedPhys tooling
 
-from pymedphys.mosaiq import connect
+from pymedphys.mosaiq import connect, execute
 
 connection = connect(
     'localhost',
@@ -51,11 +51,8 @@ connection = connect(
     username='sa',
     password=os.environ['MSSQL_SA_PASSWORD']
 )
-cursor = connection.cursor()
-cursor.execute("SELECT TABLE_NAME FROM information_schema.tables")
-cursor.fetchall()
-# Prints out tables
 
+execute(connection, "SELECT TABLE_NAME FROM information_schema.tables")
 connection.close()
 ```
 

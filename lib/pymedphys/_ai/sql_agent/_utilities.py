@@ -1,36 +1,29 @@
-import os
 import pathlib
-import tempfile
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from functools import wraps
 
 import trio
 
+import pymedphys
+
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
 # TODO: Need to rework this to use PyMedPhys mosaiq connection logic
 
-QUERY_PREPEND = """\
-SET NOCOUNT ON;
-USE PRACTICE;
-"""
 GET_ALL_COLUMNS_BY_TABLE_NAME = """\
 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
 FROM INFORMATION_SCHEMA.COLUMNS
-GO
 """
 
 
-# Used Claude to see what XML format it would prefer:
-# https://claude.ai/share/00f9529a-e30c-46a5-9344-2237b5435bcc
-
-
 async def get_schema_formatted_for_prompt(
-    include_columns: bool = True, tables_to_keep: list[str] | None = None
+    connection: pymedphys.mosaiq.Connection,
+    include_columns: bool = True,
+    tables_to_keep: list[str] | None = None,
 ):
-    columns_by_table_name = await _get_columns_by_table_name()
+    columns_by_table_name = await _get_columns_by_table_name(connection)
 
     exported_schema: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for table_name, column_name, data_type in columns_by_table_name:
@@ -74,57 +67,11 @@ def async_cache(f: Callable[..., Awaitable]):
 
 
 @async_cache
-async def _get_columns_by_table_name():
-    return await run_query_with_nested_list_output(GET_ALL_COLUMNS_BY_TABLE_NAME)
+async def _get_columns_by_table_name(connection):
+    return await execute_query(connection, GET_ALL_COLUMNS_BY_TABLE_NAME)
 
 
-async def run_query(query: str, extra_cmd_args: list[str] | None = None):
-    password = os.environ["MSSQL_SA_PASSWORD"]
+async def execute_query(connection: pymedphys.mosaiq.Connection, query: str):
+    result = await trio.to_thread.run_sync(pymedphys.mosaiq.execute, connection, query)
 
-    with tempfile.TemporaryDirectory() as d:
-        file_path = f"{d}/query.sql"
-
-        async with await trio.open_file(file_path, "w") as f:
-            await f.write(QUERY_PREPEND + query)
-
-        cmd = [
-            "sqlcmd",
-            "-S",
-            "localhost",
-            "-U",
-            "sa",
-            "-P",
-            password,
-            "-i",
-            file_path,
-        ]
-
-        if extra_cmd_args:
-            cmd += extra_cmd_args
-
-        proc = await trio.run_process(cmd, capture_stdout=True, capture_stderr=True)
-
-    # strips out the first item which is the result from the QUERY_PREPEND
-    output_with_first_line_removed = proc.stdout.decode().splitlines()[1:]
-    output_with_empty_lines_removed = [
-        row.strip() for row in output_with_first_line_removed if row.strip()
-    ]
-
-    return "\n".join(output_with_empty_lines_removed)
-
-
-async def run_query_with_nested_list_output(query: str):
-    query_result = await run_query(
-        query,
-        extra_cmd_args=[
-            "-b",
-            "-s",
-            ",",
-            "-h",
-            "-1",
-        ],
-    )
-
-    return [
-        [item.strip() for item in row.split(",")] for row in query_result.splitlines()
-    ]
+    return result

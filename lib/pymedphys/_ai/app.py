@@ -1,12 +1,11 @@
 import re
 
+import streamlit as st
 import trio
 from anthropic import AI_PROMPT, Anthropic, AsyncAnthropic, BadRequestError
 
-import streamlit as st
-
 from .messages import ASSISTANT, USER, PromptMap
-from .sql_agent._utilities import run_query
+from .sql_agent._utilities import execute_query
 from .sql_agent.pipeline import async_sql_tool_pipeline
 
 SYSTEM_PROMPT = """\
@@ -199,7 +198,7 @@ def _get_sql_query_and_result(debug_mode: bool):
             st.write(f"**Query:** {query}")
 
         # TODO: Verify that user only has read-only access before running arbitrary query.
-        result = trio.run(run_query, query)
+        result = trio.run(execute_query, query)
         result = re.sub(" +", " ", result)
         result = "\n".join([line for line in result.splitlines() if line])
 
