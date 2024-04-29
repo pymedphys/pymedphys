@@ -38,7 +38,7 @@ All queries assume the following database schema:
 
 # NOTE: The historical transcript of user/assistant will be included
 # before the final user prompt where the below will be appended.
-APPENDED_USER_PROMPT = """\
+APPENDED_USER_PROMPT = """
 You respond only with valid Microsoft SQL Queries encompassed within
 <query> tags. All queries assume that the database is designed according
 to the provided schema within the <database> tags that was provided
@@ -47,7 +47,7 @@ diverse queries. Make sure that each of your queries targets different
 tables within the database.
 """
 
-START_OF_ASSISTANT_PROMPT = """\
+START_OF_ASSISTANT_PROMPT = """
 <query>
 SELECT DISTINCT
 """

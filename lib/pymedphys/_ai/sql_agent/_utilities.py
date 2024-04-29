@@ -88,10 +88,13 @@ async def words_in_mouth_prompting(
     start_of_assistant_prompt: str,
     messages: Messages,
 ):
+    start_of_assistant_prompt = start_of_assistant_prompt.strip()
+    appended_user_prompt = appended_user_prompt.strip()
+
     messages_to_submit = deepcopy(messages)
 
     assert messages_to_submit[-1]["role"] == "user"
-    messages_to_submit[-1]["content"] += appended_user_prompt
+    messages_to_submit[-1]["content"] += f"\n\n{appended_user_prompt}"
 
     messages_to_submit.append(
         {"role": "assistant", "content": start_of_assistant_prompt}
@@ -105,7 +108,7 @@ async def words_in_mouth_prompting(
     content_response = api_response.content[0]
     assert content_response.type == "text"
 
-    result = start_of_assistant_prompt + content_response.text.strip()
+    result = start_of_assistant_prompt + content_response.text
     print(result)
 
     return result

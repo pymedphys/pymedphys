@@ -41,7 +41,7 @@ form subsequent queries. It is NOT your job to make these queries.
 
 # NOTE: The historical transcript of user/assistant will be included
 # before the final user prompt where the below will be appended.
-APPENDED_USER_PROMPT = """\
+APPENDED_USER_PROMPT = """
 You respond only with table name xml tags using the following format:
 
 <selection>
@@ -58,9 +58,10 @@ within the <database> tags that was provided above within your system
 prompt. You are to provide approximately 20 table names that may be
 relevant to search within in order to answer the user's question.
 """
-START_OF_ASSISTANT_PROMPT = """\
+
+START_OF_ASSISTANT_PROMPT = """
 <selection>
-<table name="\
+<table name="
 """
 
 
@@ -77,7 +78,7 @@ async def get_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
-):
+) -> tuple[str, ...]:
     raw_table_names = await _get_raw_selected_table_names(
         anthropic_client=anthropic_client, connection=connection, messages=messages
     )
@@ -90,7 +91,7 @@ async def get_selected_table_names(
         match = re.search(r'<table name="(.*)">', line)
         table_names.append(match.group(1))
 
-    return table_names
+    return tuple(table_names)
 
 
 async def _get_raw_selected_table_names(

@@ -45,7 +45,12 @@ async def single_retrieval_chain(
     table_names = await get_selected_table_names(
         anthropic_client=anthropic_client, connection=connection, messages=messages
     )
-    queries = await get_queries(anthropic_client, messages, table_names)
+    queries = await get_queries(
+        anthropic_client=anthropic_client,
+        connection=connection,
+        messages=messages,
+        tables_to_keep=table_names,
+    )
 
     return queries
 

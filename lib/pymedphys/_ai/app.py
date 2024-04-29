@@ -1,5 +1,4 @@
 import os
-import re
 
 import streamlit as st
 import trio
@@ -202,15 +201,13 @@ def _get_sql_query_and_result(debug_mode: bool):
 
     connection = _mosaiq_connection()
 
-    raw_queries = trio.run(
+    queries = trio.run(
         sql_tool_pipeline, _async_anthropic(), connection, st.session_state.messages
     )
     if debug_mode:
-        st.write(f"**Queries:** {raw_queries}")
+        st.write(f"**Queries:** {queries}")
 
-    for query_with_close_tag in raw_queries.split("<query>"):
-        query = query_with_close_tag.split("</query>")[0].strip()
-
+    for query in queries:
         if not query.strip():
             continue
 
@@ -218,14 +215,18 @@ def _get_sql_query_and_result(debug_mode: bool):
             st.write(f"**Query:** {query}")
 
         # TODO: Verify that user only has read-only access before running arbitrary query.
-        result = trio.run(execute_query, connection, query)
-        result = re.sub(" +", " ", result)
-        result = "\n".join([line for line in result.splitlines() if line])
+        try:
+            result = trio.run(execute_query, connection, query)
+            string_result = repr(result)
+        except Exception as e:
+            string_result = str(e)
+
+        print(string_result)
 
         if debug_mode:
-            st.write(f"**Response:** {result}")
+            st.write(f"**Response:** {string_result}")
 
-        if not result.strip():
+        if not result:
             # result = "<no-result-for-this-query />"
             continue  # This will mean these queries won't be talked about in the response.
 
@@ -235,7 +236,7 @@ def _get_sql_query_and_result(debug_mode: bool):
 {query}
 </query>
 <result>
-{result}
+{string_result}
 </result>
 """
         )
