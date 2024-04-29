@@ -1,12 +1,16 @@
 import re
-from copy import deepcopy
 
 from anthropic import AsyncAnthropic
 
 import pymedphys
+from pymedphys._ai import model_versions
 from pymedphys._ai.messages import Messages
 
-from . import _utilities
+from ._utilities import (
+    async_cache,
+    get_schema_formatted_for_prompt,
+    words_in_mouth_prompting,
+)
 
 SYSTEM_PROMPT = """\
 You are an MSSQL SQL table selector agent.
@@ -60,9 +64,9 @@ START_OF_ASSISTANT_PROMPT = """\
 """
 
 
-@_utilities.async_cache
+@async_cache
 async def get_system_prompt(connection: pymedphys.mosaiq.Connection):
-    table_name_only_schema = await _utilities.get_schema_formatted_for_prompt(
+    table_name_only_schema = await get_schema_formatted_for_prompt(
         connection=connection, include_columns=False
     )
 
@@ -80,6 +84,9 @@ async def get_selected_table_names(
 
     table_names = []
     for line in raw_table_names.split("\n"):
+        if not line.startswith('<table name="'):
+            continue
+
         match = re.search(r'<table name="(.*)">', line)
         table_names.append(match.group(1))
 
@@ -91,32 +98,11 @@ async def _get_raw_selected_table_names(
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
 ) -> str:
-    result = await anthropic_client.messages.create(
-        system=await get_system_prompt(connection=connection),
-        model="claude-3-haiku-20240307",
-        max_tokens=4096,
-        messages=await _get_select_table_prompt_from_messages(messages=messages),
-        stop_sequences=["</selection>"],
+    return await words_in_mouth_prompting(
+        anthropic_client=anthropic_client,
+        model=model_versions.FAST,
+        system_prompt=await get_system_prompt(connection=connection),
+        appended_user_prompt=APPENDED_USER_PROMPT,
+        start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,
+        messages=messages,
     )
-
-    assert len(result.content) == 1
-    response = result.content[0]
-
-    assert response.type == "text"
-
-    content = response.text
-
-    return '<table name="' + content
-
-
-async def _get_select_table_prompt_from_messages(messages: Messages):
-    messages_to_submit = deepcopy(messages)
-
-    assert messages_to_submit[-1]["role"] == "user"
-    messages_to_submit[-1]["content"] += APPENDED_USER_PROMPT
-
-    messages_to_submit.append(
-        {"role": "assistant", "content": START_OF_ASSISTANT_PROMPT}
-    )
-
-    return messages_to_submit

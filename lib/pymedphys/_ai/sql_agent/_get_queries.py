@@ -1,9 +1,14 @@
-from anthropic import AI_PROMPT, AsyncAnthropic
+from anthropic import AsyncAnthropic
 
 import pymedphys
-from pymedphys._ai.messages import Messages, PromptMap
+from pymedphys._ai import model_versions
+from pymedphys._ai.messages import Messages
 
-from . import _utilities
+from ._utilities import (
+    async_cache,
+    get_schema_formatted_for_prompt,
+    words_in_mouth_prompting,
+)
 
 SYSTEM_PROMPT = """\
 You are an MSSQL AI agent. You respond only with valid Microsoft SQL
@@ -48,11 +53,11 @@ SELECT DISTINCT
 """
 
 
-@_utilities.async_cache
+@async_cache
 async def get_system_prompt(
-    connection: pymedphys.mosaiq.Connection, tables_to_keep: list[str]
+    connection: pymedphys.mosaiq.Connection, tables_to_keep: tuple[str]
 ):
-    filtered_tables_schema = await _utilities.get_schema_formatted_for_prompt(
+    filtered_tables_schema = await get_schema_formatted_for_prompt(
         connection=connection, tables_to_keep=tables_to_keep
     )
 
@@ -60,9 +65,17 @@ async def get_system_prompt(
 
 
 async def get_queries(
-    anthropic_client: AsyncAnthropic, messages: Messages, tables_to_keep: list[str]
+    anthropic_client: AsyncAnthropic,
+    connection: pymedphys.mosaiq.Connection,
+    messages: Messages,
+    tables_to_keep: tuple[str],
 ):
-    raw_queries = await _get_raw_queries(anthropic_client, messages, tables_to_keep)
+    raw_queries = await _get_raw_queries(
+        anthropic_client=anthropic_client,
+        connection=connection,
+        messages=messages,
+        tables_to_keep=tables_to_keep,
+    )
 
     queries = []
     for query_with_close_tag in raw_queries.split("<query>"):
@@ -74,29 +87,18 @@ async def get_queries(
 
 
 async def _get_raw_queries(
-    anthropic_client: AsyncAnthropic, messages: Messages, tables_to_keep: list[str]
+    anthropic_client: AsyncAnthropic,
+    connection: pymedphys.mosaiq.Connection,
+    messages: Messages,
+    tables_to_keep: tuple[str],
 ):
-    result = await anthropic_client.messages.create(
-        model="claude-3-haiku-20240307",
-        max_tokens_to_sample=50_000,
-        prompt=await _get_queries_prompt_from_messages(
-            messages, tables_to_keep=tables_to_keep
+    return await words_in_mouth_prompting(
+        anthropic_client=anthropic_client,
+        model=model_versions.FAST,
+        system_prompt=await get_system_prompt(
+            connection=connection, tables_to_keep=tables_to_keep
         ),
+        appended_user_prompt=APPENDED_USER_PROMPT,
+        start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,
+        messages=messages,
     )
-
-    return START_OF_ASSISTANT_PROMPT + result.completion
-
-
-async def _get_queries_prompt_from_messages(
-    messages: Messages, tables_to_keep: list[str]
-):
-    prompt = await get_system_prompt(tables_to_keep=tables_to_keep)
-
-    for message in messages:
-        prompt += f"{PromptMap[message['role']]} {message['content']}"
-
-    prompt += f"{PromptMap['user']} {APPENDED_USER_PROMPT}"
-    prompt += AI_PROMPT
-    prompt += START_OF_ASSISTANT_PROMPT
-
-    return prompt

@@ -1,11 +1,14 @@
 import pathlib
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
+from copy import deepcopy
 from functools import wraps
 
 import trio
+from anthropic import AsyncAnthropic
 
 import pymedphys
+from pymedphys._ai.messages import Messages
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
@@ -73,5 +76,36 @@ async def _get_columns_by_table_name(connection):
 
 async def execute_query(connection: pymedphys.mosaiq.Connection, query: str):
     result = await trio.to_thread.run_sync(pymedphys.mosaiq.execute, connection, query)
+
+    return result
+
+
+async def words_in_mouth_prompting(
+    anthropic_client: AsyncAnthropic,
+    model: str,
+    system_prompt: str,
+    appended_user_prompt: str,
+    start_of_assistant_prompt: str,
+    messages: Messages,
+):
+    messages_to_submit = deepcopy(messages)
+
+    assert messages_to_submit[-1]["role"] == "user"
+    messages_to_submit[-1]["content"] += appended_user_prompt
+
+    messages_to_submit.append(
+        {"role": "assistant", "content": start_of_assistant_prompt}
+    )
+
+    api_response = await anthropic_client.messages.create(
+        system=system_prompt, model=model, max_tokens=4096, messages=messages_to_submit
+    )
+
+    assert len(api_response.content) == 1
+    content_response = api_response.content[0]
+    assert content_response.type == "text"
+
+    result = start_of_assistant_prompt + content_response.text.strip()
+    print(result)
 
     return result
