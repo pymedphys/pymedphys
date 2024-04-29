@@ -10,7 +10,8 @@ from ..messages import Messages
 from ._get_queries import get_queries
 from ._select_tables import get_selected_table_names
 
-NUM_PARALLEL_AGENTS = 10
+# NUM_PARALLEL_AGENTS = 10
+NUM_PARALLEL_AGENTS = 1
 
 
 async def sql_tool_pipeline(
