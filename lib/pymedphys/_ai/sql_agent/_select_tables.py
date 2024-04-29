@@ -1,9 +1,10 @@
 import re
+from copy import deepcopy
 
-from anthropic import AI_PROMPT, AsyncAnthropic
+from anthropic import AsyncAnthropic
 
 import pymedphys
-from pymedphys._ai.messages import Messages, PromptMap
+from pymedphys._ai.messages import Messages
 
 from . import _utilities
 
@@ -55,7 +56,7 @@ relevant to search within in order to answer the user's question.
 """
 START_OF_ASSISTANT_PROMPT = """\
 <selection>
-<table name="
+<table name="\
 """
 
 
@@ -90,28 +91,32 @@ async def _get_raw_selected_table_names(
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
 ) -> str:
-    result = await anthropic_client.completions.create(
+    result = await anthropic_client.messages.create(
+        system=await get_system_prompt(connection=connection),
         model="claude-3-haiku-20240307",
-        max_tokens_to_sample=50_000,
-        prompt=await _get_select_table_prompt_from_messages(
-            connection=connection, messages=messages
-        ),
+        max_tokens=4096,
+        messages=await _get_select_table_prompt_from_messages(messages=messages),
         stop_sequences=["</selection>"],
     )
 
-    return '<table name="' + result.completion
+    assert len(result.content) == 1
+    response = result.content[0]
+
+    assert response.type == "text"
+
+    content = response.text
+
+    return '<table name="' + content
 
 
-async def _get_select_table_prompt_from_messages(
-    connection: pymedphys.mosaiq.Connection, messages: Messages
-):
-    prompt = await get_system_prompt(connection=connection)
+async def _get_select_table_prompt_from_messages(messages: Messages):
+    messages_to_submit = deepcopy(messages)
 
-    for message in messages:
-        prompt += f"{PromptMap[message['role']]} {message['content']}"
+    assert messages_to_submit[-1]["role"] == "user"
+    messages_to_submit[-1]["content"] += APPENDED_USER_PROMPT
 
-    prompt += f"{PromptMap['user']} {APPENDED_USER_PROMPT}"
-    prompt += AI_PROMPT
-    prompt += START_OF_ASSISTANT_PROMPT
+    messages_to_submit.append(
+        {"role": "assistant", "content": START_OF_ASSISTANT_PROMPT}
+    )
 
-    return prompt
+    return messages_to_submit

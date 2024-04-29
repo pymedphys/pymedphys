@@ -76,7 +76,7 @@ async def get_queries(
 async def _get_raw_queries(
     anthropic_client: AsyncAnthropic, messages: Messages, tables_to_keep: list[str]
 ):
-    result = await anthropic_client.completions.create(
+    result = await anthropic_client.messages.create(
         model="claude-3-haiku-20240307",
         max_tokens_to_sample=50_000,
         prompt=await _get_queries_prompt_from_messages(
