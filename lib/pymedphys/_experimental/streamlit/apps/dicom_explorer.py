@@ -16,11 +16,10 @@ import textwrap
 
 from pymedphys._imports import streamlit as st
 
+from pymedphys._experimental.streamlit.utilities.dicom import loader as _loader
 from pymedphys._streamlit import categories
 
-from pymedphys._experimental.streamlit.utilities.dicom import loader as _loader
-
-CATEGORY = categories.PLANNING
+CATEGORY = categories.DRAFT
 TITLE = "DICOM Explorer"
 
 

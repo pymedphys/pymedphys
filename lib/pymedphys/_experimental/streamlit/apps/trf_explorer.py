@@ -16,7 +16,7 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit.apps.metersetmap import _trf
 from pymedphys._streamlit.utilities import config as st_config
 
-CATEGORY = categories.PLANNING
+CATEGORY = categories.DRAFT
 TITLE = "TRF Explorer"
 
 
