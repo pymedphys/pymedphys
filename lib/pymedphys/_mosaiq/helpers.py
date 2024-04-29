@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Some helper utility functions for accessing Mosaiq SQL.
-"""
+"""Some helper utility functions for accessing Mosaiq SQL."""
 
 from pymedphys._imports import pandas as pd
 

@@ -19,7 +19,6 @@ python path.
 
 
 def create_dummy_data(size):
-
     user_ids = np.random.randint(1, 1000000, 10)
     product_ids = np.random.randint(1, 1000000, 100)
 

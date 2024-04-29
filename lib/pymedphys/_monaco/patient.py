@@ -36,7 +36,7 @@ def read_patient_name(patient_directory):
 
     try:
         patient_name = pmp_util_patient.convert_patient_name(patient_name)
-    except:  # pylint: disable = bare-except
+    except:  # pylint: disable = bare-except  # noqa: E722
         pass
 
     return patient_name

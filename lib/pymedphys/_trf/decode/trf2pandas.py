@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-"""Decodes trf file.
-"""
+"""Decodes trf file."""
 
 import os  # pylint: disable = unused-import
 from typing import Any, BinaryIO, Tuple, Union, cast  # pylint: disable = unused-import

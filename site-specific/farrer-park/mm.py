@@ -1,3 +1,5 @@
+# ruff: noqa
+
 # -----
 # Uploaded by lipteck 10-Feb-2022, credit of Simon Biggs.
 # -----

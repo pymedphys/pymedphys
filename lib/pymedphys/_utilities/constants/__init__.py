@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Constants.
-"""
+# ruff: noqa: F401
+
+"""Constants."""
 
 from .mlctypes import A_LEAF_TYPE, AGILITY

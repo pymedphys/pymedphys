@@ -70,7 +70,6 @@ def download_files():
 
 
 def _mock_icom_server(data):
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 1706))
         s.listen()

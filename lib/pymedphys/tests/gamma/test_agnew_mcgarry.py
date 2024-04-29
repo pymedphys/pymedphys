@@ -64,7 +64,6 @@ def run_gamma(
     dose_threshold=1,
     distance_threshold=1,
 ):
-
     if random_subset is not None:
         np.random.seed(42)
 
@@ -104,7 +103,6 @@ def local_gamma(
     dose_threshold=1,
     distance_threshold=1,
 ):
-
     gamma = run_gamma(
         filepath_ref,
         filepath_eval,

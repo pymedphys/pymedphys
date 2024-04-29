@@ -141,7 +141,7 @@ def main():
 
     if (
         session_state.app != "index"
-        and not session_state.app in application_options.keys()
+        and session_state.app not in application_options.keys()
     ):
         swap_app("index")
 

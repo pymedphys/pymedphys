@@ -24,7 +24,7 @@ from typing_extensions import Literal
 from pymedphys import _config as pmp_config
 
 
-@st.cache
+@st.cache_data
 def get_config(path=None):
     result = pmp_config.get_config(path=path)
 
@@ -50,7 +50,7 @@ DirectoryConfigOptions = Literal[
 DirectoriesForSite = Dict[DirectoryConfigOptions, pathlib.Path]
 
 
-@st.cache
+@st.cache_data
 def get_site_directories(config) -> Dict[str, DirectoriesForSite]:
     """A config wrapper that retrieves a dictionary that maps site to directories.
 

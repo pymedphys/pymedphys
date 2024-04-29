@@ -161,7 +161,6 @@ def xyz_axes_from_dataset(
         z = -np.flip(y_dicom_fixed)
 
     elif coord_system.upper() in ("DICOM", "D", "PATIENT", "IEC PATIENT", "P"):
-
         if orientation[0] == 1:
             x = x_dicom_fixed
         elif orientation[0] == -1:

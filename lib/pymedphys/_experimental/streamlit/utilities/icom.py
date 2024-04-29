@@ -27,7 +27,6 @@ import pymedphys._icom.extract as pmp_icom_extract
 
 
 def read_icom_log(filepath):
-
     with lzma.open(filepath, "r") as f:
         icom_stream = f.read()
 
@@ -127,7 +126,7 @@ def _get_file_datetimes(icom_paths):
     return timestamps
 
 
-@st.cache(show_spinner=False, suppress_st_warning=True)
+@st.cache_data(show_spinner=False)
 def _get_relevant_times(filepath):
     icom_datetime, meterset, machine_id = get_icom_datetimes_meterset_machine(filepath)
 
@@ -154,7 +153,7 @@ def _get_relevant_times(filepath):
     return machine_id, pd.Series(relevant_times, name="datetime")
 
 
-@st.cache(show_spinner=False)
+@st.cache_data(show_spinner=False)
 def get_icom_datetimes_meterset_machine(filepath):
     icom_stream = read_icom_log(filepath)
 
@@ -194,7 +193,7 @@ def _adjust_icom_datetime_to_remove_duplicates(icom_datetime):
 
 # TODO: Remove "allow_output_mutation" once determine what is causing
 # the issue here.
-@st.cache(show_spinner=False, allow_output_mutation=True)
+@st.cache_data(show_spinner=False)
 def get_icom_dataset(filepath):
     icom_stream = read_icom_log(filepath)
     icom_data_points = pmp_icom_extract.get_data_points(icom_stream)

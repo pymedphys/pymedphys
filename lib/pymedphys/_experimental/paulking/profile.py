@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" For importing, analyzing, and comparing dose or intensity profiles
-    from different sources."""
+"""For importing, analyzing, and comparing dose or intensity profiles
+from different sources."""
 # The following needs to be removed before leaving the experimental module
 # pylint: skip-file
 
 import copy
 import os
-from typing import Callable
 
-from pymedphys._imports import PIL, matplotlib
+from pymedphys._imports import PIL, matplotlib, plt, scipy
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, scipy
 
 # from .._level1.coreobjects import _PyMedPhysBase
 

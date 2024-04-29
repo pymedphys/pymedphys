@@ -1,7 +1,6 @@
 # Posted at https://stackoverflow.com/a/32978931/3912576
 
 if __name__ == "__main__":
-
     import os
 
     os.system("pip install numpy scipy pydicom")
@@ -38,5 +37,5 @@ if __name__ == "__main__":
         dose_reference,
         axes_evaluation,
         dose_evaluation,
-        **gamma_options
+        **gamma_options,
     )
