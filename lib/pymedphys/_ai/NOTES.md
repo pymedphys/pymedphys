@@ -16,26 +16,33 @@ docker run --platform linux/amd64 \
 -d mcr.microsoft.com/mssql/server:2017-latest
 ```
 
-```bash
-brew install sqlcmd
+Restoring the practice database from within Python
 
-sqlcmd -S localhost -U "sa" -P $MSSQL_SA_PASSWORD
-```
+```python
+import os
+import pymssql
 
-```sql
+connection = pymssql.connect(
+    'localhost', 'sa', password=os.environ['MSSQL_SA_PASSWORD'], port=1433)
+cursor = connection.cursor()
+
+# Enables restoring from backups with pymssql
+connection.autocommit(True)
+
+sql = """\
 RESTORE DATABASE PRACTICE
 FROM DISK = '/mosaiq-data/db-dump.bak'
 WITH FILE = 1,
 MOVE 'PRACTICE' TO '/mosaiq-data/data.mdf',
 MOVE 'PRACTICE_log' TO '/mosaiq-data/log.ldf',
-NOUNLOAD, REPLACE, STATS = 1
-GO
-```
+NOUNLOAD, REPLACE, STATS = 1\
+"""
 
-Test connection:
+cursor.execute(sql)
+connection.close()
 
-```python
-import os
+# Test that backup worked with standard PyMedPhys tooling
+
 from pymedphys.mosaiq import connect
 
 connection = connect(
@@ -48,8 +55,10 @@ cursor = connection.cursor()
 cursor.execute("SELECT TABLE_NAME FROM information_schema.tables")
 cursor.fetchall()
 # Prints out tables
+
+connection.close()
 ```
 
----
+## Usage of Anthropic API
 
-Make sure to set ANTHROPIC_API_KEY as environment variable.
+Make sure to set `ANTHROPIC_API_KEY` as environment variable.

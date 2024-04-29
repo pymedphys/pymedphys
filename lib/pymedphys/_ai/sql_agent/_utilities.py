@@ -10,7 +10,7 @@ import trio
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-# TODO: Need to rework this to use PyMedPHys mosaiq connection logic
+# TODO: Need to rework this to use PyMedPhys mosaiq connection logic
 
 QUERY_PREPEND = """\
 SET NOCOUNT ON;

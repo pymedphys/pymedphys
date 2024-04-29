@@ -29,6 +29,7 @@ remove valuable information.
 All queries assume the following database schema:
 {schema}
 """
+
 # NOTE: The historical transcript of user/assistant will be included
 # before the final user prompt where the below will be appended.
 APPENDED_USER_PROMPT = """\
@@ -39,6 +40,7 @@ within your system prompt. You are to provide exactly 10 unique and
 diverse queries. Make sure that each of your queries targets different
 tables within the database.
 """
+
 START_OF_ASSISTANT_PROMPT = """\
 <query>
 SELECT DISTINCT
