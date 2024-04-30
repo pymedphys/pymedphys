@@ -12,6 +12,9 @@ from ._utilities import (
     words_in_mouth_prompting,
 )
 
+# TODO: When using subagents, need to pass transcript in all in one
+# message as opposed to using standard transcript format.
+
 SYSTEM_PROMPT = """\
 You are an MSSQL SQL table selector agent.
 

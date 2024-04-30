@@ -13,8 +13,6 @@ import pymedphys
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-# TODO: Need to rework this to use PyMedPhys mosaiq connection logic
-
 GET_ALL_COLUMNS_BY_TABLE_NAME = """\
 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
 FROM INFORMATION_SCHEMA.COLUMNS
@@ -99,8 +97,10 @@ async def words_in_mouth_prompting(
 
     print(messages_to_submit)
 
-    assert messages_to_submit[-1]["role"] == "user"
-    messages_to_submit[-1]["content"] += f"\n\n{appended_user_prompt}"
+    if messages_to_submit[-1]["role"] == "user":
+        messages_to_submit[-1]["content"] += f"\n\n{appended_user_prompt}"
+    else:
+        messages_to_submit.append({"role": "user", "content": appended_user_prompt})
 
     messages_to_submit.append(
         {"role": "assistant", "content": start_of_assistant_prompt}
