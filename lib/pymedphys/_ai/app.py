@@ -71,12 +71,6 @@ DO NOT refer the user to the scratchpad contents. They can't see it.
 def main():
     _initialise_state()
 
-    # test = pymedphys.mosaiq.execute(
-    #     _mosaiq_connection(), "SELECT TABLE_NAME FROM information_schema.tables"
-    # )
-
-    # st.write(test)
-
     with st.sidebar:
         st.write("# Debug information")
         debug_mode = st.checkbox("Debug Mode")

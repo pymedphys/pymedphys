@@ -18,12 +18,16 @@ async def sql_tool_pipeline(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
+    sub_agent_prompt: str,
 ):
     """Receives a message transcript and returns SQL queries in MSSQL format"""
 
     async def retrieval_function():
         return await single_retrieval_chain(
-            anthropic_client=anthropic_client, connection=connection, messages=messages
+            anthropic_client=anthropic_client,
+            connection=connection,
+            messages=messages,
+            sub_agent_prompt=sub_agent_prompt,
         )
 
     queries = await gather([retrieval_function] * NUM_PARALLEL_AGENTS)
@@ -41,15 +45,20 @@ async def single_retrieval_chain(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
+    sub_agent_prompt: str,
 ):
     table_names = await get_selected_table_names(
-        anthropic_client=anthropic_client, connection=connection, messages=messages
+        anthropic_client=anthropic_client,
+        connection=connection,
+        messages=messages,
+        sub_agent_prompt=sub_agent_prompt,
     )
     queries = await get_queries(
         anthropic_client=anthropic_client,
         connection=connection,
         messages=messages,
         tables_to_keep=table_names,
+        sub_agent_prompt=sub_agent_prompt,
     )
 
     return queries

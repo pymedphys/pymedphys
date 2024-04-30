@@ -15,6 +15,13 @@ You are an MSSQL AI agent. You respond only with valid Microsoft SQL
 Queries encompassed within <query> tags. You always provide 10 unique
 and diverse queries.
 
+The top level AI agent has provided the following prompt / request to
+your agent cluster, of which you are fulfilling the component of
+"write valid MSSQL queries":
+<sub_agent_prompt>
+{sub_agent_prompt}
+</sub_agent_prompt>
+
 Some queries that you request may not return a result, and some tables
 within the schema may just be empty. So make sure that each of your
 queries targets different tables within the database so that you get
@@ -55,25 +62,31 @@ SELECT DISTINCT
 
 @async_cache
 async def get_system_prompt(
-    connection: pymedphys.mosaiq.Connection, tables_to_keep: tuple[str]
+    connection: pymedphys.mosaiq.Connection,
+    sub_agent_prompt: str,
+    tables_to_keep: tuple[str],
 ):
     filtered_tables_schema = await get_schema_formatted_for_prompt(
         connection=connection, tables_to_keep=tables_to_keep
     )
 
-    return SYSTEM_PROMPT.format(schema=filtered_tables_schema)
+    return SYSTEM_PROMPT.format(
+        schema=filtered_tables_schema, sub_agent_prompt=sub_agent_prompt
+    )
 
 
 async def get_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
+    sub_agent_prompt: str,
     tables_to_keep: tuple[str],
 ):
     raw_queries = await _get_raw_queries(
         anthropic_client=anthropic_client,
         connection=connection,
         messages=messages,
+        sub_agent_prompt=sub_agent_prompt,
         tables_to_keep=tables_to_keep,
     )
 
@@ -90,13 +103,16 @@ async def _get_raw_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
+    sub_agent_prompt: str,
     tables_to_keep: tuple[str],
 ):
     return await words_in_mouth_prompting(
         anthropic_client=anthropic_client,
         model=model_versions.FAST,
         system_prompt=await get_system_prompt(
-            connection=connection, tables_to_keep=tables_to_keep
+            connection=connection,
+            sub_agent_prompt=sub_agent_prompt,
+            tables_to_keep=tables_to_keep,
         ),
         appended_user_prompt=APPENDED_USER_PROMPT,
         start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,

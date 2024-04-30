@@ -18,6 +18,13 @@ You are an MSSQL SQL table selector agent.
 You are a part of a wider AI cluster that is trying to be helpful,
 harmless and honest while conversing with a user.
 
+The top level AI agent has provided the following prompt / request to
+your agent cluster, of which you are fulfilling the component of
+"selecting relevant tables from the MOSAIQ MSSQL database":
+<sub_agent_prompt>
+{sub_agent_prompt}
+</sub_agent_prompt>
+
 You are just one component of the cluster. It is NOT your job to respond
 to the user, instead it is JUST your job to select the top 20 tables
 from a database schema that might be helpful to search within in order
@@ -66,21 +73,29 @@ START_OF_ASSISTANT_PROMPT = """
 
 
 @async_cache
-async def get_system_prompt(connection: pymedphys.mosaiq.Connection):
+async def get_system_prompt(
+    connection: pymedphys.mosaiq.Connection, sub_agent_prompt: str
+):
     table_name_only_schema = await get_schema_formatted_for_prompt(
         connection=connection, include_columns=False
     )
 
-    return SYSTEM_PROMPT.format(table_name_only_schema=table_name_only_schema)
+    return SYSTEM_PROMPT.format(
+        table_name_only_schema=table_name_only_schema, sub_agent_prompt=sub_agent_prompt
+    )
 
 
 async def get_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
+    sub_agent_prompt: str,
 ) -> tuple[str, ...]:
     raw_table_names = await _get_raw_selected_table_names(
-        anthropic_client=anthropic_client, connection=connection, messages=messages
+        anthropic_client=anthropic_client,
+        connection=connection,
+        messages=messages,
+        sub_agent_prompt=sub_agent_prompt,
     )
 
     table_names = []
@@ -98,11 +113,14 @@ async def _get_raw_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: Messages,
+    sub_agent_prompt: str,
 ) -> str:
     return await words_in_mouth_prompting(
         anthropic_client=anthropic_client,
         model=model_versions.FAST,
-        system_prompt=await get_system_prompt(connection=connection),
+        system_prompt=await get_system_prompt(
+            connection=connection, sub_agent_prompt=sub_agent_prompt
+        ),
         appended_user_prompt=APPENDED_USER_PROMPT,
         start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,
         messages=messages,
