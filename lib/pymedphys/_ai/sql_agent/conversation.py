@@ -104,7 +104,8 @@ async def _conversation_with_tool_use(
     tools: list[ToolParam],
     messages: list[ToolsBetaMessage],
 ):
-    """Mutates messages in-place recursively"""
+    """Mutates messages in-place recursively. NOTE: This is probably not a good idea,
+    likely worth refactoring."""
 
     tools_mappings = create_tools_mappings(
         anthropic_client=anthropic_client, connection=connection, messages=messages
