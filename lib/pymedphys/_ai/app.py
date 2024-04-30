@@ -1,56 +1,11 @@
 import os
 
 import streamlit as st
-import trio
-from anthropic import AI_PROMPT, Anthropic, AsyncAnthropic, BadRequestError
+from anthropic import AI_PROMPT, Anthropic, AsyncAnthropic
 
 import pymedphys
 
 from .messages import ASSISTANT, USER, PromptMap
-from .sql_agent._utilities import execute_query
-from .sql_agent.pipeline import sql_tool_pipeline
-
-SYSTEM_PROMPT = """\
-You are MOSAIQ Claude Chat. Your goal is to be helpful, harmless and
-honest while providing answers to questions asked about the contents of
-the MOSAIQ database.
-
-While talking with users an agent will automatically
-be querying the MOSAIQ Oncology Information System on your behalf and
-then provide you with the query results. You will see queries within
-<query> tags and results within <results> tags within your scratchpad.
-The user cannot see the contents of your <scratchpad>. Everything
-written after </scratchpad> will be presented to the user. Make sure to
-ALWAYS say something to the user by closing your <scratchpad> tag and
-commenting on the results.
-
-If a given set of queries did not return the results that you expected
-do not critique the underlying database schema, instead come up with at
-least 3 different approaches that you might be able to try for querying
-the database that you would like to try in order to answer the question,
-and then check with the user if that is okay.
-
-Please make sure you answer outside of your <scratchpad> tags any
-questions the user may have while still being helpful, harmless and
-honest.
-
-The user you are talking with already has access to the database in
-question, and as such it is okay to provide them any information that is
-found within that database.
-
-Make sure to include within your response to the user any information
-that might be helpful for making follow up queries as you will not be
-able to revisit your previous <scratchpad> notes.
-
-Importantly, from the user's perspective you are the one making the SQL
-queries. So if you'd like another attempt, make sure to let the user
-know what you plan to do and then check with them.
-
-Don't ever claim the data doesn't exist, you may need to just try again
-in a different way.
-
-DO NOT refer the user to the scratchpad contents. They can't see it.
-"""
 
 # TODO: Collect previous error messages and queries that produced no
 #  response and save them for follow up queries as a "these did not
@@ -133,21 +88,12 @@ within my response to them below.
 </scratchpad>
 """
         )
-        try:
-            result = anthropic.completions.create(
-                model="claude-3-opus-20240229",
-                max_tokens_to_sample=50_000,
-                prompt=prompt,
-            )
-        except BadRequestError:
-            # Iteratively shrink the query results and see if we come
-            # within token limit
-            st.write(
-                "**Error:** Message completion request had too many"
-                " tokens, dropping a query result and retrying."
-            )
-            query_result_pairs = query_result_pairs[:-1]
-            continue
+
+        result = anthropic.completions.create(
+            model="claude-3-opus-20240229",
+            max_tokens_to_sample=50_000,
+            prompt=prompt,
+        )
 
         return result.completion
 
@@ -188,52 +134,6 @@ def _get_prompt_from_messages():
     prompt += AI_PROMPT
 
     return prompt
-
-
-def _get_sql_query_and_result(debug_mode: bool):
-    query_result_pairs = []
-
-    connection = _mosaiq_connection()
-
-    queries = trio.run(
-        sql_tool_pipeline, _async_anthropic(), connection, st.session_state.messages
-    )
-    if debug_mode:
-        st.write(f"**Queries:** {queries}")
-
-    for query in queries:
-        if not query.strip():
-            continue
-
-        if debug_mode:
-            st.write(f"**Query:** {query}")
-
-        # TODO: Verify that user only has read-only access before running arbitrary query.
-        try:
-            result = trio.run(execute_query, connection, query)
-            string_result = repr(result)
-        except Exception as e:
-            string_result = str(e)
-
-        print(string_result)
-
-        if debug_mode:
-            st.write(f"**Response:** {string_result}")
-
-        if not result:
-            # result = "<no-result-for-this-query />"
-            continue  # This will mean these queries won't be talked about in the response.
-
-        query_result_pairs.append(
-            f"""\
-<query>
-{query}
-</query>
-<result>
-{string_result}
-</result>
-"""
-        )
 
     return query_result_pairs
 

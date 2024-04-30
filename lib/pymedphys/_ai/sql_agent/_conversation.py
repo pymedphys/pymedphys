@@ -2,9 +2,10 @@ from anthropic import AsyncAnthropic
 from anthropic.types.beta.tools import ToolParam, ToolsBetaMessage
 
 import pymedphys
+from pymedphys._ai import model_versions
 from pymedphys._ai.messages import Messages
 
-from .pipeline import sql_tool_pipeline
+from ._pipeline import sql_tool_pipeline
 
 SYSTEM_PROMPT = """\
 You are MOSAIQ Claude Chat. Your goal is to be helpful, harmless and
@@ -62,6 +63,21 @@ to intended to be used to guide the subagent tool request.""",
 ]
 
 
+async def recursively_append_message_responses(
+    anthropic_client: AsyncAnthropic,
+    connection: pymedphys.mosaiq.Connection,
+    messages: list[ToolsBetaMessage],
+):
+    await _conversation_with_tool_use(
+        anthropic_client=anthropic_client,
+        connection=connection,
+        model=model_versions.INTELLIGENT,
+        system_prompt=SYSTEM_PROMPT,
+        tools=TOOLS_PROMPT,
+        messages=messages,
+    )
+
+
 def create_tools_mappings(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
@@ -80,7 +96,7 @@ def create_tools_mappings(
     return tools_mapping
 
 
-async def conversation_with_tool_use(
+async def _conversation_with_tool_use(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     model: str,
@@ -127,7 +143,7 @@ async def conversation_with_tool_use(
 
                 messages += response_message
 
-        await conversation_with_tool_use(
+        await _conversation_with_tool_use(
             anthropic_client=anthropic_client,
             connection=connection,
             model=model,

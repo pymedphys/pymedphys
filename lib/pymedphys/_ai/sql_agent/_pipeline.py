@@ -1,14 +1,16 @@
+from functools import partial
 from itertools import chain
 from typing import Callable
 
 import trio
 from anthropic import AsyncAnthropic
+from anthropic.types.beta.tools import ToolsBetaMessage
 
 import pymedphys
 
-from ..messages import Messages
 from ._get_queries import get_queries
 from ._select_tables import get_selected_table_names
+from ._utilities import execute_query
 
 # NUM_PARALLEL_AGENTS = 10
 NUM_PARALLEL_AGENTS = 1
@@ -17,7 +19,7 @@ NUM_PARALLEL_AGENTS = 1
 async def sql_tool_pipeline(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
 ):
     """Receives a message transcript and returns SQL queries in MSSQL format"""
@@ -38,13 +40,46 @@ async def sql_tool_pipeline(
     # Shuffle the queries and get 3 separate opus agents to vote in
     # parallel. Select the best 10 queries of the lot.
 
-    return list(chain.from_iterable(queries))
+    coroutines = []
+    flattened_queries = list(chain.from_iterable(queries))
+
+    for query in flattened_queries:
+        coroutines.append(
+            partial(_execute_query_with_forced_string_result, connection, query)
+        )
+
+    results = await gather(coroutines)
+
+    xml_output = "<mosaiq_sql_agent_result>"
+
+    for query, result in zip(flattened_queries, results):
+        xml_output += f"""\
+<query>
+{query}
+</query>
+<result>
+{result}
+</result>
+"""
+    xml_output += "</mosaiq_sql_agent_result>"
+
+
+async def _execute_query_with_forced_string_result(
+    connection: pymedphys.mosaiq.Connection, query: str
+):
+    try:
+        result = trio.run(execute_query, connection, query)
+        string_result = repr(result)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        string_result = str(e)
+
+    return string_result
 
 
 async def single_retrieval_chain(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
 ):
     table_names = await get_selected_table_names(

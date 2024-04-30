@@ -1,8 +1,8 @@
 from anthropic import AsyncAnthropic
+from anthropic.types.beta.tools import ToolsBetaMessage
 
 import pymedphys
 from pymedphys._ai import model_versions
-from pymedphys._ai.messages import Messages
 
 from ._utilities import (
     async_cache,
@@ -78,7 +78,7 @@ async def get_system_prompt(
 async def get_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
     tables_to_keep: tuple[str],
 ):
@@ -102,7 +102,7 @@ async def get_queries(
 async def _get_raw_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
     tables_to_keep: tuple[str],
 ):
