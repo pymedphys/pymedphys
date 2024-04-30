@@ -110,15 +110,19 @@ async def _conversation_with_tool_use(
         anthropic_client=anthropic_client, connection=connection, messages=messages
     )
 
+    messages_to_submit = [
+        {"role": item["role"], "content": item["content"]} for item in messages
+    ]
+
     api_response = await anthropic_client.beta.tools.messages.create(
         system=system_prompt,
         model=model,
         max_tokens=4096,
         tools=tools,
-        messages=messages,
+        messages=messages_to_submit,
     )
 
-    messages += api_response
+    messages.append(api_response.to_dict())
 
     if api_response.stop_reason == "tool_use":
         for item in api_response.content:
@@ -141,7 +145,7 @@ async def _conversation_with_tool_use(
                     ],
                 }
 
-                messages += response_message
+                messages.append(response_message)
 
         await _conversation_with_tool_use(
             anthropic_client=anthropic_client,

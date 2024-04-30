@@ -96,8 +96,8 @@ def _write_message(role, content: str | list[ToolsBetaContentBlock]):
             return
 
         for item in content:
-            if item.type == "text":
-                st.markdown(item.text)
+            if item["type"] == "text":
+                st.markdown(item["text"])
 
 
 def _append_message(role, content):

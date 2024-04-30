@@ -92,6 +92,12 @@ async def words_in_mouth_prompting(
     appended_user_prompt = appended_user_prompt.strip()
 
     messages_to_submit = deepcopy(messages)
+    messages_to_submit = [
+        {"role": item["role"], "content": item["content"]}
+        for item in messages_to_submit
+    ]
+
+    print(messages_to_submit)
 
     assert messages_to_submit[-1]["role"] == "user"
     messages_to_submit[-1]["content"] += f"\n\n{appended_user_prompt}"
@@ -100,7 +106,7 @@ async def words_in_mouth_prompting(
         {"role": "assistant", "content": start_of_assistant_prompt}
     )
 
-    api_response = await anthropic_client.messages.create(
+    api_response = await anthropic_client.beta.tools.messages.create(
         system=system_prompt, model=model, max_tokens=4096, messages=messages_to_submit
     )
 
