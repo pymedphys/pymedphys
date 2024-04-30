@@ -7,6 +7,7 @@ from anthropic.types.beta.tools import ToolsBetaContentBlock
 
 import pymedphys
 
+# from pymedphys.mosaiq import execute
 from .sql_agent.conversation import recursively_append_message_responses
 
 USER = "user"
@@ -15,12 +16,20 @@ USER = "user"
 def main():
     _initialise_state()
 
+    # print(
+    #     execute(
+    #         _mosaiq_connection(), "SELECT TABLE_NAME FROM information_schema.tables"
+    #     )
+    # )
+
     with st.sidebar:
         if st.button("Remove last message"):
             st.session_state.messages = st.session_state.messages[:-1]
 
         if st.button("Remove last two messages"):
             st.session_state.messages = st.session_state.messages[:-2]
+
+    print(st.session_state.messages)
 
     for message in st.session_state.messages:
         _write_message(message["role"], message["content"])

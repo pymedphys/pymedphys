@@ -3,7 +3,6 @@ from anthropic.types.beta.tools import ToolParam, ToolsBetaMessage
 
 import pymedphys
 from pymedphys._ai import model_versions
-from pymedphys._ai.messages import Messages
 
 from ._pipeline import sql_tool_pipeline
 
@@ -81,7 +80,7 @@ async def recursively_append_message_responses(
 def create_tools_mappings(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
 ):
     async def mosaiq_sql_agent(sub_agent_prompt: str):
         return await sql_tool_pipeline(

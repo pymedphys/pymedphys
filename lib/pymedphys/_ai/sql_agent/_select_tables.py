@@ -1,10 +1,10 @@
 import re
 
 from anthropic import AsyncAnthropic
+from anthropic.types.beta.tools import ToolsBetaMessage
 
 import pymedphys
 from pymedphys._ai import model_versions
-from pymedphys._ai.messages import Messages
 
 from ._utilities import (
     async_cache,
@@ -88,7 +88,7 @@ async def get_system_prompt(
 async def get_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
 ) -> tuple[str, ...]:
     raw_table_names = await _get_raw_selected_table_names(
@@ -112,7 +112,7 @@ async def get_selected_table_names(
 async def _get_raw_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
 ) -> str:
     return await words_in_mouth_prompting(
