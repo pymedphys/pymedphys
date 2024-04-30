@@ -1,5 +1,5 @@
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolParam
+from anthropic.types.beta.tools import ToolParam, ToolsBetaMessage
 
 import pymedphys
 from pymedphys._ai.messages import Messages
@@ -82,11 +82,18 @@ def create_tools_mappings(
 
 async def conversation_with_tool_use(
     anthropic_client: AsyncAnthropic,
+    connection: pymedphys.mosaiq.Connection,
     model: str,
     system_prompt: str,
     tools: list[ToolParam],
-    messages: Messages,
+    messages: list[ToolsBetaMessage],
 ):
+    """Mutates messages in-place recursively"""
+
+    tools_mappings = create_tools_mappings(
+        anthropic_client=anthropic_client, connection=connection, messages=messages
+    )
+
     api_response = await anthropic_client.beta.tools.messages.create(
         system=system_prompt,
         model=model,
@@ -95,11 +102,36 @@ async def conversation_with_tool_use(
         messages=messages,
     )
 
-    assert len(api_response.content) == 1
-    content_response = api_response.content[0]
-    assert content_response.type == "text"
+    messages += api_response
 
-    # result = start_of_assistant_prompt + content_response.text
-    # print(result)
+    if api_response.stop_reason == "tool_use":
+        for item in api_response.content:
+            print(item)
 
-    # return result
+            if item.type == "tool_use":
+                tool = tools_mappings[item.name]
+
+                # TODO: Make this run in parallel
+                result = await tool(**item.input)
+
+                response_message = {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": item.id,
+                            "content": result,
+                        }
+                    ],
+                }
+
+                messages += response_message
+
+        await conversation_with_tool_use(
+            anthropic_client=anthropic_client,
+            connection=connection,
+            model=model,
+            system_prompt=system_prompt,
+            tools=tools,
+            messages=messages,
+        )
