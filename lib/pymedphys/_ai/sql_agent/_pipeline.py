@@ -41,7 +41,7 @@ async def sql_tool_pipeline(
         [retrieval_function] * NUM_PARALLEL_QUERY_CREATION_AGENTS
     )
 
-    query_result_pairs = list(chain.from_iterable(nested_query_result_pairs))
+    query_result_pairs = list(set(chain.from_iterable(nested_query_result_pairs)))
 
     async def voting_function():
         return await get_top_k_query_ids(
