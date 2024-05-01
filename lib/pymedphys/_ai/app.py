@@ -116,7 +116,7 @@ def _initialise_state():
 def _async_anthropic(anthropic_api_limit: int):
     limits = httpx.Limits(max_connections=anthropic_api_limit)
 
-    return AsyncAnthropic(connection_pool_limits=limits)
+    return AsyncAnthropic(connection_pool_limits=limits, max_retries=10)
 
 
 @st.cache_resource
