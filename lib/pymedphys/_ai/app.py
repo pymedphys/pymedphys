@@ -1,6 +1,7 @@
 import json
 import os
 
+import httpx
 import streamlit as st
 import trio
 from anthropic import AsyncAnthropic
@@ -32,6 +33,10 @@ def main():
 
         _transcript_downloads()
 
+        anthropic_api_limit = int(
+            st.number_input("Anthropic API concurrency limit", value=2)
+        )
+
     print(st.session_state.messages)
 
     for message in st.session_state.messages:
@@ -61,7 +66,7 @@ def main():
 
     trio.run(
         recursively_append_message_responses,
-        _async_anthropic(),
+        _async_anthropic(anthropic_api_limit),
         _mosaiq_connection(),
         st.session_state.messages,
     )
@@ -75,8 +80,10 @@ def _initialise_state():
 
 
 @st.cache_resource
-def _async_anthropic():
-    return AsyncAnthropic()
+def _async_anthropic(anthropic_api_limit: int):
+    limits = httpx.Limits(max_connections=anthropic_api_limit)
+
+    return AsyncAnthropic(connection_pool_limits=limits)
 
 
 @st.cache_resource
@@ -122,10 +129,10 @@ def _transcript_downloads():
     st.download_button(
         "Download plain text transcript",
         plain_text_transcript,
-        file_name="transcript.txt",
+        file_name="plain_text_transcript.txt",
     )
     st.download_button(
-        "Download raw transcript", raw_transcript, file_name="transcript.json"
+        "Download raw transcript", raw_transcript, file_name="raw_api_transcript.json"
     )
 
 

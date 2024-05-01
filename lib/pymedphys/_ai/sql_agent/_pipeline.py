@@ -12,8 +12,7 @@ from ._get_queries import get_queries
 from ._select_tables import get_selected_table_names
 from ._utilities import execute_query
 
-# NUM_PARALLEL_AGENTS = 10
-NUM_PARALLEL_AGENTS = 1
+NUM_PARALLEL_AGENTS = 10
 
 
 async def sql_tool_pipeline(

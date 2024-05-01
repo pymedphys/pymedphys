@@ -26,7 +26,10 @@ queries, however it is in fact your sub agent MOSAIQ tool that will do
 this for you.
 
 Don't ever claim the data doesn't exist, you may need to just try again
-in a different way."""
+in a different way.
+
+Your conversation with the user is occurring in markdown format, so
+please format your responses to the user with this in mind."""
 
 TOOLS_PROMPT: list[ToolParam] = [
     {
