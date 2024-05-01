@@ -50,6 +50,17 @@ The subagent will be provided with the following information:
 The only input component that you are required to provide to the \
 subagent is the `sub_agent_prompt`.
 
+In your first call to this tool for any given user enquiry try to \
+create a prompt that "surveys" the database giving you an overview of \
+what is available, helping you to plan how to most effectively make \
+subsequent follow up prompts to this tool in order to answer the \
+enquiry.
+
+This `mosaiq_sql_agent` is not able to undergo multiple steps in \
+response to its result. That's your job. So, first make a plan \
+regarding what you are going to do, and then ask just one step at a \
+time for each call to the `mosaiq_sql_agent`.
+
 If you have any uncertainty around whether or not you should call this \
 tool, err on the side of calling it. It is better to collect information \
 and improve the likelihood of a correct response than to answer with \

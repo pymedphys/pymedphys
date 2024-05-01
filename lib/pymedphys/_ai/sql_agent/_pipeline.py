@@ -19,6 +19,8 @@ from ._utilities import execute_query
 NUM_PARALLEL_QUERY_CREATION_AGENTS = 6
 NUM_PARALLEL_QUERY_VOTER_AGENTS = 4
 
+MAX_QUERY_STRING_LENGTH = 16352
+
 
 async def sql_tool_pipeline(
     anthropic_client: AsyncAnthropic,
@@ -74,7 +76,7 @@ async def sql_tool_pipeline(
     return xml_output
 
 
-async def _execute_query_with_forced_string_result(
+async def _execute_query_with_truncated_string_result(
     connection: pymedphys.mosaiq.Connection, query: str
 ):
     try:
@@ -82,6 +84,12 @@ async def _execute_query_with_forced_string_result(
         string_result = repr(result)
     except Exception as e:  # pylint: disable=broad-exception-caught
         string_result = str(e)
+
+    if len(string_result) > MAX_QUERY_STRING_LENGTH:
+        string_result = (
+            string_result[0:MAX_QUERY_STRING_LENGTH]
+            + "\n\n... (query result exceeded maximum length)"
+        )
 
     return string_result
 
@@ -110,7 +118,7 @@ async def get_single_set_of_query_result_pairs(
 
     for query in queries:
         coroutines.append(
-            partial(_execute_query_with_forced_string_result, connection, query)
+            partial(_execute_query_with_truncated_string_result, connection, query)
         )
 
     results = await gather(coroutines)

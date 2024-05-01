@@ -38,8 +38,13 @@ returns a meaningful result. Be careful to not filter all of your
 queries using the same assumption about what columns may contain as a
 wrong assumption may make all of your queries return nothing.
 
-Do NOT use queries that include the TOP command as these will likely
-remove valuable information.
+Try to make the results of your queries have a reasonable amount of
+verbosity to them as the top level AI agent is able to rapidly parse
+large amounts information.
+
+Try to avoid queries that utilise "FETCH FIRST 1 ROW ONLY" and "TOP 1".
+Instead err on the side of choosing queries that will return at least 5
+rows.
 
 All queries assume the following database schema:
 {schema}
@@ -62,7 +67,7 @@ tables within the database.
 
 START_OF_ASSISTANT_PROMPT = """
 <query>
-SELECT DISTINCT
+SELECT
 """
 
 
