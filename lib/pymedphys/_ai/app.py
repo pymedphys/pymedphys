@@ -84,6 +84,11 @@ def _mosaiq_connection():
         username="sa",
         password=os.environ["MSSQL_SA_PASSWORD"],
     )
+    # Needed for multi-threading?
+    # https://stackoverflow.com/a/41912528
+    # connection._connection.autocommit(True)
+
+    # For now just restrict to one database call at a time.
 
     return connection
 

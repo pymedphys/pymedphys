@@ -18,6 +18,8 @@ SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
 FROM INFORMATION_SCHEMA.COLUMNS
 """
 
+DATABASE_EXECUTION_LOCK = trio.Lock()
+
 
 async def get_schema_formatted_for_prompt(
     connection: pymedphys.mosaiq.Connection,
@@ -73,7 +75,10 @@ async def _get_columns_by_table_name(connection):
 
 
 async def execute_query(connection: pymedphys.mosaiq.Connection, query: str):
-    result = await trio.to_thread.run_sync(pymedphys.mosaiq.execute, connection, query)
+    async with DATABASE_EXECUTION_LOCK:
+        result = await trio.to_thread.run_sync(
+            pymedphys.mosaiq.execute, connection, query
+        )
 
     return result
 
