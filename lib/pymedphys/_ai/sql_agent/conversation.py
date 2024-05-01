@@ -47,10 +47,23 @@ The subagent will be provided with the following information:
 - The underlying MOSAIQ SQL database schema
 - The current conversation transcript
 
-The only input component that you are required to provide to the subagent is the
-`sub_agent_prompt`.
+The only input component that you are required to provide to the \
+subagent is the `sub_agent_prompt`.
 
-The results from the subagent will be returned to you as a series of
+If you have any uncertainty around whether or not you should call this \
+tool, err on the side of calling it. It is better to collect information \
+and improve the likelihood of a correct response than to answer with \
+insufficient information.
+
+For each user query you should expect to call this approximately three \
+times, each time using the results from the previous call to improve \
+your subsequent requests to this tool.
+
+If you see any inconsistency in your results err on the side of \
+collecting more information from the database before providing your \
+final answer to the user.
+
+The results from the subagent will be returned to you as a series of \
 queries and their raw results in the format:
 <query></query><result></result>
 """,
