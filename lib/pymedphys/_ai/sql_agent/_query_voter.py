@@ -76,15 +76,15 @@ START_OF_ASSISTANT_PROMPT = """
 
 @async_cache
 async def get_system_prompt(
-    transcript: str, sub_agent_prompt: str, queries: list[str], results: list[str]
+    transcript: str, sub_agent_prompt: str, query_result_pairs: list[tuple[str, str]]
 ):
-    query_result_pairs = list(zip(queries, results))
-    random.shuffle(query_result_pairs)
+    shuffled_query_result_pairs = query_result_pairs.copy()
+    random.shuffle(shuffled_query_result_pairs)
 
-    shuffled_queries_and_results = ""
+    queries_and_results_prompt = ""
 
-    for i, (query, result) in enumerate(query_result_pairs):
-        shuffled_queries_and_results += f"""\
+    for i, (query, result) in enumerate(shuffled_query_result_pairs):
+        queries_and_results_prompt += f"""\
 <query id="{i}">
 {query}
 </query>
@@ -96,7 +96,7 @@ async def get_system_prompt(
     return SYSTEM_PROMPT.format(
         sub_agent_prompt=sub_agent_prompt,
         transcript=transcript,
-        shuffled_queries_and_results=shuffled_queries_and_results,
+        shuffled_queries_and_results=queries_and_results_prompt,
     )
 
 
@@ -104,15 +104,13 @@ async def get_top_k_query_ids(
     anthropic_client: AsyncAnthropic,
     messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
-    queries: list[str],
-    results: list[str],
+    query_result_pairs: list[tuple[str, str]],
 ) -> tuple[str, ...]:
     raw_table_names = await _get_raw_selected_table_names(
         anthropic_client=anthropic_client,
         messages=messages,
         sub_agent_prompt=sub_agent_prompt,
-        queries=queries,
-        results=results,
+        query_result_pairs=query_result_pairs,
     )
 
     selected_query_ids = []
@@ -130,8 +128,7 @@ async def _get_raw_selected_table_names(
     anthropic_client: AsyncAnthropic,
     messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
-    queries: list[str],
-    results: list[str],
+    query_result_pairs: list[tuple[str, str]],
 ) -> str:
     return await words_in_mouth_prompting(
         anthropic_client=anthropic_client,
@@ -139,8 +136,7 @@ async def _get_raw_selected_table_names(
         system_prompt=await get_system_prompt(
             sub_agent_prompt=sub_agent_prompt,
             transcript=json.dumps(messages),
-            queries=queries,
-            results=results,
+            query_result_pairs=query_result_pairs,
         ),
         appended_user_prompt=USER_PROMPT,
         start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,

@@ -9,10 +9,12 @@ from anthropic.types.beta.tools import ToolsBetaMessage
 import pymedphys
 
 from ._get_queries import get_queries
+from ._query_voter import get_top_k_query_ids
 from ._select_tables import get_selected_table_names
 from ._utilities import execute_query
 
-NUM_PARALLEL_AGENTS = 10
+NUM_PARALLEL_QUERY_CREATION_AGENTS = 10
+NUM_PARALLEL_QUERY_VOTER_AGENTS = 4
 
 
 async def sql_tool_pipeline(
@@ -21,37 +23,41 @@ async def sql_tool_pipeline(
     messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
 ):
-    """Receives a message transcript and returns SQL queries in MSSQL format"""
+    """Receives a message transcript and sub agent prompt and returns
+    SQL queries and their corresponding results"""
 
     async def retrieval_function():
-        return await single_retrieval_chain(
+        return await get_single_set_of_query_result_pairs(
             anthropic_client=anthropic_client,
             connection=connection,
             messages=messages,
             sub_agent_prompt=sub_agent_prompt,
         )
 
-    queries = await gather([retrieval_function] * NUM_PARALLEL_AGENTS)
+    nested_query_result_pairs = await gather(
+        [retrieval_function] * NUM_PARALLEL_QUERY_CREATION_AGENTS
+    )
 
-    # TODO: Pass all of the possible queries + messages through to an
-    # opus "query voter agent" that selects the best queries to run.
+    query_result_pairs = list(chain.from_iterable(nested_query_result_pairs))
 
-    # Shuffle the queries and get 3 separate opus agents to vote in
-    # parallel. Select the best 10 queries of the lot.
-
-    coroutines = []
-    flattened_queries = list(chain.from_iterable(queries))
-
-    for query in flattened_queries:
-        coroutines.append(
-            partial(_execute_query_with_forced_string_result, connection, query)
+    async def voting_function():
+        return await get_top_k_query_ids(
+            anthropic_client=anthropic_client,
+            messages=messages,
+            sub_agent_prompt=sub_agent_prompt,
+            query_result_pairs=query_result_pairs,
         )
 
-    results = await gather(coroutines)
+    nested_selected_query_ids = await gather(
+        [voting_function] * NUM_PARALLEL_QUERY_VOTER_AGENTS
+    )
+
+    selected_query_ids = set(chain.from_iterable(nested_selected_query_ids))
+    filtered_query_result_pairs = [query_result_pairs[id] for id in selected_query_ids]
 
     xml_output = "<mosaiq_sql_agent_result>"
 
-    for query, result in zip(flattened_queries, results):
+    for query, result in filtered_query_result_pairs:
         xml_output += f"""\
 <query>
 {query}
@@ -77,7 +83,7 @@ async def _execute_query_with_forced_string_result(
     return string_result
 
 
-async def single_retrieval_chain(
+async def get_single_set_of_query_result_pairs(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     messages: list[ToolsBetaMessage],
@@ -97,7 +103,16 @@ async def single_retrieval_chain(
         sub_agent_prompt=sub_agent_prompt,
     )
 
-    return queries
+    coroutines = []
+
+    for query in queries:
+        coroutines.append(
+            partial(_execute_query_with_forced_string_result, connection, query)
+        )
+
+    results = await gather(coroutines)
+
+    return list(zip(queries, results))
 
 
 async def gather(funcs: list[Callable]):
