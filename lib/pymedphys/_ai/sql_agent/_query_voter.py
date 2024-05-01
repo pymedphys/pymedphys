@@ -78,12 +78,9 @@ START_OF_ASSISTANT_PROMPT = """
 async def get_system_prompt(
     transcript: str, sub_agent_prompt: str, query_result_pairs: list[tuple[str, str]]
 ):
-    shuffled_query_result_pairs = query_result_pairs.copy()
-    random.shuffle(shuffled_query_result_pairs)
-
     queries_and_results_prompt = ""
 
-    for i, (query, result) in enumerate(shuffled_query_result_pairs):
+    for i, (query, result) in enumerate(query_result_pairs):
         queries_and_results_prompt += f"""\
 <query id="{i}">
 {query}
@@ -106,25 +103,32 @@ async def get_top_k_query_ids(
     sub_agent_prompt: str,
     query_result_pairs: list[tuple[str, str]],
 ) -> tuple[str, ...]:
-    raw_table_names = await _get_raw_selected_table_names(
+    shuffled_index = list(range(len(query_result_pairs)))
+    random.shuffle(shuffled_index)
+
+    shuffled_query_result_pairs = [query_result_pairs[i] for i in shuffled_index]
+
+    raw_selected_shuffled_indices = await _get_raw_top_k_query_ids(
         anthropic_client=anthropic_client,
         messages=messages,
         sub_agent_prompt=sub_agent_prompt,
-        query_result_pairs=query_result_pairs,
+        query_result_pairs=shuffled_query_result_pairs,
     )
 
-    selected_query_ids = []
-    for line in raw_table_names.split("\n"):
+    selected_shuffled_query_ids = []
+    for line in raw_selected_shuffled_indices.split("\n"):
         if not line.startswith("<query_id>"):
             continue
 
         match = re.search(r"<query_id>(.*)</query_id>", line)
-        selected_query_ids.append(int(match.group(1)))
+        selected_shuffled_query_ids.append(int(match.group(1)))
 
-    return selected_query_ids
+    unshuffled_query_ids = [shuffled_index[i] for i in selected_shuffled_query_ids]
+
+    return unshuffled_query_ids
 
 
-async def _get_raw_selected_table_names(
+async def _get_raw_top_k_query_ids(
     anthropic_client: AsyncAnthropic,
     messages: list[ToolsBetaMessage],
     sub_agent_prompt: str,
