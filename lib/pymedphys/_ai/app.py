@@ -11,7 +11,6 @@ from anthropic.types.beta.tools import ToolsBetaContentBlock
 import pymedphys
 from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
 
-# from pymedphys.mosaiq import execute
 from .sql_agent.conversation import recursively_append_message_responses
 
 USER = "user"
@@ -37,12 +36,6 @@ def main():
         st.stop()
 
     _initialise_state()
-
-    # print(
-    #     execute(
-    #         _mosaiq_connection(), "SELECT TABLE_NAME FROM information_schema.tables"
-    #     )
-    # )
 
     with st.sidebar:
         if st.button("Remove last message"):
