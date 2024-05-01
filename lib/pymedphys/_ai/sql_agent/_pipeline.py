@@ -63,12 +63,14 @@ async def sql_tool_pipeline(
 """
     xml_output += "</mosaiq_sql_agent_result>"
 
+    return xml_output
+
 
 async def _execute_query_with_forced_string_result(
     connection: pymedphys.mosaiq.Connection, query: str
 ):
     try:
-        result = trio.run(execute_query, connection, query)
+        result = await execute_query(connection, query)
         string_result = repr(result)
     except Exception as e:  # pylint: disable=broad-exception-caught
         string_result = str(e)

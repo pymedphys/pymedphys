@@ -45,7 +45,12 @@ The subagent will be provided with the following information:
 - The current conversation transcript
 
 The only input component that you are required to provide to the subagent is the
-`sub_agent_prompt`.""",
+`sub_agent_prompt`.
+
+The results from the subagent will be returned to you as a series of
+queries and their raw results in the format:
+<query></query><result></result>
+""",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -146,6 +151,8 @@ async def _conversation_with_tool_use(
                 }
 
                 messages.append(response_message)
+
+                print(response_message)
 
         await _conversation_with_tool_use(
             anthropic_client=anthropic_client,

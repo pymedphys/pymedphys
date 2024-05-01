@@ -84,20 +84,22 @@ async def words_in_mouth_prompting(
     system_prompt: str,
     appended_user_prompt: str,
     start_of_assistant_prompt: str,
-    messages: list[ToolsBetaMessage],
+    messages: list[ToolsBetaMessage] | None = None,
 ):
     start_of_assistant_prompt = start_of_assistant_prompt.strip()
     appended_user_prompt = appended_user_prompt.strip()
 
-    messages_to_submit = deepcopy(messages)
-    messages_to_submit = [
-        {"role": item["role"], "content": item["content"]}
-        for item in messages_to_submit
-    ]
+    if messages:
+        messages_to_submit = [
+            {"role": item["role"], "content": deepcopy(item["content"])}
+            for item in messages
+        ]
+    else:
+        messages_to_submit = []
 
     print(messages_to_submit)
 
-    if messages_to_submit[-1]["role"] == "user":
+    if messages_to_submit and messages_to_submit[-1]["role"] == "user":
         messages_to_submit[-1]["content"] += f"\n\n{appended_user_prompt}"
     else:
         messages_to_submit.append({"role": "user", "content": appended_user_prompt})

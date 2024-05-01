@@ -1,3 +1,5 @@
+import json
+
 from anthropic import AsyncAnthropic
 from anthropic.types.beta.tools import ToolsBetaMessage
 
@@ -41,11 +43,15 @@ remove valuable information.
 
 All queries assume the following database schema:
 {schema}
+
+The transcript of the conversation thus far between the top level AI
+agent and the user is the following:
+<transcript>
+{transcript}
+</transcript>
 """
 
-# NOTE: The historical transcript of user/assistant will be included
-# before the final user prompt where the below will be appended.
-APPENDED_USER_PROMPT = """
+USER_PROMPT = """
 You respond only with valid Microsoft SQL Queries encompassed within
 <query> tags. All queries assume that the database is designed according
 to the provided schema within the <database> tags that was provided
@@ -63,6 +69,7 @@ SELECT DISTINCT
 @async_cache
 async def get_system_prompt(
     connection: pymedphys.mosaiq.Connection,
+    transcript: str,
     sub_agent_prompt: str,
     tables_to_keep: tuple[str],
 ):
@@ -71,7 +78,9 @@ async def get_system_prompt(
     )
 
     return SYSTEM_PROMPT.format(
-        schema=filtered_tables_schema, sub_agent_prompt=sub_agent_prompt
+        schema=filtered_tables_schema,
+        sub_agent_prompt=sub_agent_prompt,
+        transcript=transcript,
     )
 
 
@@ -113,8 +122,8 @@ async def _get_raw_queries(
             connection=connection,
             sub_agent_prompt=sub_agent_prompt,
             tables_to_keep=tables_to_keep,
+            transcript=json.dumps(messages),
         ),
-        appended_user_prompt=APPENDED_USER_PROMPT,
+        appended_user_prompt=USER_PROMPT,
         start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,
-        messages=messages,
     )

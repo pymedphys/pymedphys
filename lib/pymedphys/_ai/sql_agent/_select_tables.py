@@ -1,3 +1,4 @@
+import json
 import re
 
 from anthropic import AsyncAnthropic
@@ -47,11 +48,15 @@ You use the following xml tags to detail your chosen table names:
 Another AI agent within the cluster will then take these table names and
 form subsequent queries. It is NOT your job to make these queries.
 {table_name_only_schema}
+
+The transcript of the conversation thus far between the top level AI
+agent and the user is the following:
+<transcript>
+{transcript}
+</transcript>
 """
 
-# NOTE: The historical transcript of user/assistant will be included
-# before the final user prompt where the below will be appended.
-APPENDED_USER_PROMPT = """
+USER_PROMPT = """
 You respond only with table name xml tags using the following format:
 
 <selection>
@@ -77,14 +82,16 @@ START_OF_ASSISTANT_PROMPT = """
 
 @async_cache
 async def get_system_prompt(
-    connection: pymedphys.mosaiq.Connection, sub_agent_prompt: str
+    connection: pymedphys.mosaiq.Connection, transcript: str, sub_agent_prompt: str
 ):
     table_name_only_schema = await get_schema_formatted_for_prompt(
         connection=connection, include_columns=False
     )
 
     return SYSTEM_PROMPT.format(
-        table_name_only_schema=table_name_only_schema, sub_agent_prompt=sub_agent_prompt
+        table_name_only_schema=table_name_only_schema,
+        sub_agent_prompt=sub_agent_prompt,
+        transcript=transcript,
     )
 
 
@@ -122,9 +129,10 @@ async def _get_raw_selected_table_names(
         anthropic_client=anthropic_client,
         model=model_versions.FAST,
         system_prompt=await get_system_prompt(
-            connection=connection, sub_agent_prompt=sub_agent_prompt
+            connection=connection,
+            sub_agent_prompt=sub_agent_prompt,
+            transcript=json.dumps(messages),
         ),
-        appended_user_prompt=APPENDED_USER_PROMPT,
+        appended_user_prompt=USER_PROMPT,
         start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,
-        messages=messages,
     )
