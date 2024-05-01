@@ -13,7 +13,10 @@ from ._query_voter import get_top_k_query_ids
 from ._select_tables import get_selected_table_names
 from ._utilities import execute_query
 
-NUM_PARALLEL_QUERY_CREATION_AGENTS = 10
+# More of these improves the overall quality, but also increases cost.
+# If you have a limited number of concurrents in the API, setting these
+# as a multiple of your limit makes sense.
+NUM_PARALLEL_QUERY_CREATION_AGENTS = 6
 NUM_PARALLEL_QUERY_VOTER_AGENTS = 4
 
 

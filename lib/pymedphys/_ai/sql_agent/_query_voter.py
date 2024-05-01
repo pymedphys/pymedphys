@@ -8,7 +8,6 @@ from anthropic.types.beta.tools import ToolsBetaMessage
 from pymedphys._ai import model_versions
 
 from ._utilities import (
-    async_cache,
     words_in_mouth_prompting,
 )
 
@@ -74,7 +73,6 @@ START_OF_ASSISTANT_PROMPT = """
 """
 
 
-@async_cache
 async def get_system_prompt(
     transcript: str, sub_agent_prompt: str, query_result_pairs: list[tuple[str, str]]
 ):
