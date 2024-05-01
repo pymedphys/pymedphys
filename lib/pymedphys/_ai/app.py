@@ -1,3 +1,4 @@
+import json
 import os
 
 import streamlit as st
@@ -28,6 +29,8 @@ def main():
 
         if st.button("Remove last two messages"):
             st.session_state.messages = st.session_state.messages[:-2]
+
+        _transcript_downloads()
 
     print(st.session_state.messages)
 
@@ -95,14 +98,35 @@ def _mosaiq_connection():
 
 def _write_message(role, content: str | list[ToolsBetaContentBlock]):
     with st.chat_message(role):
-        if isinstance(content, str):
-            st.markdown(content)
+        st.markdown(_message_content_as_plain_text(content))
 
-            return
 
-        for item in content:
-            if item["type"] == "text":
-                st.markdown(item["text"])
+def _message_content_as_plain_text(content: str | list[ToolsBetaContentBlock]):
+    if isinstance(content, str):
+        return content
+
+    results = [item["text"] for item in content if item["type"] == "text"]
+
+    return "\n\n".join(results)
+
+
+def _transcript_downloads():
+    transcript_items = [
+        f"{message['role']}: {_message_content_as_plain_text(message['content'])}"
+        for message in st.session_state.messages
+    ]
+
+    plain_text_transcript = "\n\n".join(transcript_items)
+    raw_transcript = json.dumps(st.session_state.messages, indent=2)
+
+    st.download_button(
+        "Download plain text transcript",
+        plain_text_transcript,
+        file_name="transcript.txt",
+    )
+    st.download_button(
+        "Download raw transcript", raw_transcript, file_name="transcript.json"
+    )
 
 
 def _append_message(role, content):
