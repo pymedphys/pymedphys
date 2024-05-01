@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 
 import httpx
 import streamlit as st
@@ -8,6 +9,7 @@ from anthropic import AsyncAnthropic
 from anthropic.types.beta.tools import ToolsBetaContentBlock
 
 import pymedphys
+from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
 
 # from pymedphys.mosaiq import execute
 from .sql_agent.conversation import recursively_append_message_responses
@@ -16,6 +18,24 @@ USER = "user"
 
 
 def main():
+    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
+
+    if not anthropic_api_key:
+        anthropic_api_key = st.text_input("Anthropic API key", type="password")
+        os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
+
+    if not mssql_sa_password:
+        mssql_sa_password = st.text_input("MSSQL SA Password", type="password")
+        os.environ["MSSQL_SA_PASSWORD"] = mssql_sa_password
+
+    if not anthropic_api_key or not mssql_sa_password:
+        st.write(
+            "To continue, please make sure both of the `ANTHROPIC_API_KEY`"
+            " and `MSSQL_SA_PASSWORD` environment variables are set"
+        )
+        st.stop()
+
     _initialise_state()
 
     # print(
@@ -36,6 +56,19 @@ def main():
         anthropic_api_limit = int(
             st.number_input("Anthropic API concurrency limit", value=2)
         )
+
+        bak_filepath = (
+            pathlib.Path(
+                st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
+            )
+            .expanduser()
+            .resolve()
+        )
+        if st.button("Start demo MOSAIQ server from .bak file"):
+            start_mssql_docker_image_with_bak_restore(
+                bak_filepath=bak_filepath,
+                mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
+            )
 
     print(st.session_state.messages)
 

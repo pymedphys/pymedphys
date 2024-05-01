@@ -37,7 +37,12 @@ class Connection:
     ):
         try:
             self._connection = pymssql.connect(
-                hostname, username, password, database=database, port=port
+                hostname,
+                username,
+                password,
+                database=database,
+                port=port,
+                read_only=True,
             )
         except pymssql.OperationalError as error:
             error_message = error.args[0][1]

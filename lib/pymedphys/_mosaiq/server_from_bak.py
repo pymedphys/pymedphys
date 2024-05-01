@@ -1,5 +1,6 @@
 import pathlib
 import subprocess
+import time
 
 import pymssql
 
@@ -9,7 +10,7 @@ DATA_DIR_IN_DOCKER_IMAGE = pathlib.Path("/mosaiq-data")
 def start_mssql_docker_image_with_bak_restore(
     bak_filepath: pathlib.Path, mssql_sa_password: str, database_name="PRACTICE"
 ):
-    volume_mount_string = f"{bak_filepath.parent()}:{DATA_DIR_IN_DOCKER_IMAGE}"
+    volume_mount_string = f"{bak_filepath.parent}:{DATA_DIR_IN_DOCKER_IMAGE}"
 
     subprocess.call(
         [
@@ -30,13 +31,22 @@ def start_mssql_docker_image_with_bak_restore(
         ]
     )
 
-    connection = pymssql.connect(
-        "localhost", "sa", password=mssql_sa_password, port=1433
-    )
-    cursor = connection.cursor()
+    for _ in range(5):
+        try:
+            connection = pymssql.connect(
+                "localhost",
+                "sa",
+                password=mssql_sa_password,
+                port=1433,
+                autocommit=True,
+            )
+        except pymssql.exceptions.OperationalError:
+            time.sleep(1)
+            continue
 
-    # Enables restoring from backups with pymssql
-    connection.autocommit(True)
+        break
+
+    cursor = connection.cursor()
 
     bak_path_in_docker_image = DATA_DIR_IN_DOCKER_IMAGE / bak_filepath.name
     mdf_path = DATA_DIR_IN_DOCKER_IMAGE / "data.mdf"
