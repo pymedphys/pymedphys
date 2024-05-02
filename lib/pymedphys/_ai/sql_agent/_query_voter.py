@@ -75,8 +75,8 @@ The queries to select from are below:
 """
 
 USER_PROMPT = """
-You respond only with the best 5 queries using xml tags in the following
-format:
+You respond with the 5 most relevant and diverse queries using xml tags
+in the following format:
 
 <final_selection>
 <query_id>the id of the best selected best query</query_id>

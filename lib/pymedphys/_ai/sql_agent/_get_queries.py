@@ -19,7 +19,7 @@ and diverse queries.
 
 The top level AI agent has provided the following prompt / request to
 your agent cluster, of which you are fulfilling the component of
-"write valid MSSQL queries":
+"write useful, diverse, and valid MSSQL queries":
 <sub_agent_prompt>
 {sub_agent_prompt}
 </sub_agent_prompt>
@@ -57,8 +57,40 @@ agent and the user is the following:
 """
 
 USER_PROMPT = """
-You respond only with valid Microsoft SQL Queries encompassed within
-<query> tags. All queries assume that the database is designed according
+You respond with useful, diverse, and valid Microsoft SQL queries
+encompassed within <query> tags. Using the following format:
+
+<final>
+<query>
+Your first SQL query
+</query>
+
+<query>
+Your second SQL query
+</query>
+
+...
+
+<query>
+Your 10th SQL query
+</query>
+</final>
+
+Prior to making your final choice you go through the following steps:
+
+1. Think through your answer inside <thinking> tags
+2. Provide drafts of your selection inside <draft> tags
+3. Undergo reflection and critique on your draft selection inside
+   <reflection> tags
+4. Provide a score between 0 and 10 within <score> tags for
+   how well the queries within the <draft> meet the requirements.
+4. Repeat steps 2, 3, and 4 multiple times until both at least 3 repeats
+   have been undergone as well as a score of at least 8 has
+   been achieved.
+5. Provide your final selection within <final> tags.
+6. Finished
+
+All queries assume that the database is designed according
 to the provided schema within the <database> tags that was provided
 within your system prompt. You are to provide exactly 10 unique and
 diverse queries. Make sure that each of your queries targets different
@@ -66,8 +98,7 @@ tables within the database.
 """
 
 START_OF_ASSISTANT_PROMPT = """
-<query>
-SELECT
+<thinking>
 """
 
 
@@ -104,8 +135,10 @@ async def get_queries(
         tables_to_keep=tables_to_keep,
     )
 
+    raw_queries_post_final = raw_queries.split("<final>")[1]
+
     queries = []
-    for query_with_close_tag in raw_queries.split("<query>"):
+    for query_with_close_tag in raw_queries_post_final.split("<query>"):
         query = query_with_close_tag.split("</query>")[0].strip()
         if query:
             queries.append(query)
