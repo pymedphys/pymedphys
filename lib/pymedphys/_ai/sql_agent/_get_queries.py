@@ -79,7 +79,7 @@ Your 10th SQL query
 Prior to making your final choice you go through the following steps:
 
 1. Think through your answer inside <thinking> tags
-2. Provide drafts of your selection inside <draft> tags
+2. Create a set of 10 draft queries inside <draft> tags
 3. Undergo reflection and critique on your draft selection inside
    <reflection> tags
 4. Provide a score between 0 and 10 within <score> tags for
