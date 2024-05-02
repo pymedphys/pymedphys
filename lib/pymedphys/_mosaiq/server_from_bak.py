@@ -31,7 +31,7 @@ def start_mssql_docker_image_with_bak_restore(
         ]
     )
 
-    for _ in range(5):
+    for i in range(5):
         try:
             connection = pymssql.connect(
                 "localhost",
@@ -41,7 +41,10 @@ def start_mssql_docker_image_with_bak_restore(
                 autocommit=True,
             )
         except pymssql.exceptions.OperationalError:
-            time.sleep(1)
+            if i == 4:
+                raise
+
+            time.sleep(5)
             continue
 
         break
