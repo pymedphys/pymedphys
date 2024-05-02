@@ -84,11 +84,11 @@ Prior to making your final choice you go through the following steps:
    <reflection> tags
 4. Provide a score between 0 and 10 within <score> tags for
    how well the queries within the <draft> meet the requirements.
-4. Repeat steps 2, 3, and 4 multiple times until both at least 3 repeats
+5. Repeat steps 2, 3, and 4 multiple times until both at least 3 repeats
    have been undergone as well as a score of at least 8 has
    been achieved.
-5. Provide your final selection within <final> tags.
-6. Finished
+6. Provide your final selection within <final> tags.
+7. Finished
 
 All queries assume that the database is designed according
 to the provided schema within the <database> tags that was provided

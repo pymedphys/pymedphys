@@ -56,11 +56,11 @@ Prior to making your final selection you go through the following steps:
 4. Provide a score between 0 and 10 within <selection_score> tags for
    how well the queries within the <draft_selection> meet the
    requirements.
-4. Repeat steps 2, 3, and 4 multiple times until both at least 3 repeats
+5. Repeat steps 2, 3, and 4 multiple times until both at least 3 repeats
    have been undergone as well as a selection_score of at least 8 has
    been achieved.
-5. Provide your final selection within <final_selection> tags.
-6. Finished
+6. Provide your final selection within <final_selection> tags.
+7. Finished
 
 The transcript of the conversation thus far between the top level AI
 agent and the user is the following:
