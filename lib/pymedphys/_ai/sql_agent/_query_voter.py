@@ -30,6 +30,12 @@ to the user, instead it is JUST your job to select the 5 most relevant
 query results that might be helpful for the top level AI agent to answer
 the enquiry.
 
+When choosing queries it is good for a query to return multiple rows of
+data as the top level AI agent is readily able to parse large amounts
+of data, and often more information being given to them is helpful.
+If however a query has than about 20 rows of results this is potentially
+overkill.
+
 When any of the queries provided give duplicate information to each
 other only select one of those queries in your choice. Make sure that
 each of the individual queries that you select provide diverse and
