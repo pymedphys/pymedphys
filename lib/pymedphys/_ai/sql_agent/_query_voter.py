@@ -32,14 +32,29 @@ the enquiry.
 
 You use the following xml tags to detail your chosen queries:
 
-<selection>
+<final_selection>
 <query_id>the id of the best selected best query</query_id>
 <query_id>second best</query_id>
 
 ...
 
 <query_id>fifth best</query_id>
-</selection>
+</final_selection>
+
+Prior to making your final selection you go through the following steps:
+
+1. Think through your answer inside <thinking> tags
+2. Provide drafts of your selection inside <draft_selection> tags
+3. Undergo reflection and critique on your draft selection inside
+   <reflection> tags
+4. Provide a score between 0 and 10 within <selection_score> tags for
+   how well the queries within the <draft_selection> meet the
+   requirements.
+4. Repeat steps 2, 3, and 4 multiple times until both at least 3 repeats
+   have been undergone as well as a selection_score of at least 8 has
+   been achieved.
+5. Provide your final selection within <final_selection> tags.
+6. Finished
 
 The transcript of the conversation thus far between the top level AI
 agent and the user is the following:
@@ -57,19 +72,33 @@ USER_PROMPT = """
 You respond only with the best 5 queries using xml tags in the following
 format:
 
-<selection>
-<query_id>the id of the selected best query</query_id>
-<query_id>id of second best</query_id>
+<final_selection>
+<query_id>the id of the best selected best query</query_id>
+<query_id>second best</query_id>
 
 ...
 
-<query_id>id of fifth best</query_id>
-</selection>
+<query_id>fifth best</query_id>
+</final_selection>
+
+Prior to making your final selection you go through the following steps:
+
+1. Think through your answer inside <thinking> tags
+2. Provide drafts of your selection inside <draft_selection> tags
+3. Undergo reflection and critique on your draft selection inside
+   <reflection> tags
+4. Provide a score between 0 and 10 within <selection_score> tags for
+   how well the queries within the <draft_selection> meet the
+   requirements.
+4. Repeat steps 2, 3, and 4 multiple times until both at least 3 repeats
+   have been undergone as well as a selection_score of at least 8 has
+   been achieved.
+5. Provide your final selection within <final_selection> tags.
+6. Finished
 """
 
 START_OF_ASSISTANT_PROMPT = """
-<selection>
-<query_id>
+<thinking>
 """
 
 
@@ -113,8 +142,10 @@ async def get_top_k_query_ids(
         query_result_pairs=shuffled_query_result_pairs,
     )
 
+    post_final_selection = raw_selected_shuffled_indices.split("<final_selection>")[1]
+
     selected_shuffled_query_ids = []
-    for line in raw_selected_shuffled_indices.split("\n"):
+    for line in post_final_selection.split("\n"):
         if not line.startswith("<query_id>"):
             continue
 
