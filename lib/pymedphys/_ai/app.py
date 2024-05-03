@@ -17,6 +17,10 @@ USER = "user"
 
 
 def main():
+    trio.run(_async_main)
+
+
+async def _async_main():
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
@@ -90,8 +94,7 @@ def main():
     if most_recent_message["role"] is not USER:
         return
 
-    trio.run(
-        recursively_append_message_responses,
+    await recursively_append_message_responses(
         _async_anthropic(anthropic_api_limit),
         _mosaiq_connection(),
         st.session_state.messages,

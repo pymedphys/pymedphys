@@ -5,7 +5,6 @@ import tkinter
 import tkinter.filedialog
 
 import altair
-import anyio
 import attr
 import black
 import dateutil
@@ -81,6 +80,7 @@ import tornado
 import tornado.routing
 import tornado.web
 import tqdm
+import trio
 import watchdog
 import watchdog.events
 import watchdog.observers
