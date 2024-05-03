@@ -7,19 +7,37 @@ from pymedphys._ai import model_versions
 from ._pipeline import sql_tool_pipeline
 
 SYSTEM_PROMPT = """\
-In this environment you have access to a set of tools you can use to \
-answer the user's question.
-You can invoke functions by writing a "<antml:function_calls>" block \
-like the following as part of your reply to the user:
-<antml:function_calls>
-<antml:invoke name="$FUNCTION_NAME">
-<antml:parameter name="$PARAMETER_NAME">$PARAMETER_VALUE</antml:parameter>
+In this environment you have access to a set of async tools that will
+be called as trio tasks that you can use to answer the user's question.
+
+You may both create tasks, and cancel tasks. You will be re-queried
+automatically should either any task complete, or if the user submits
+a message.
+
+Whenever you are queried you will be provided a list of running tasks
+within a "<running_task>" block. Each running task will utilise a
+unique id that you define when you create the task. Make this id
+memorable and unique. Should a task still be running when you are called
+the current total running time will be provided to you which may be used
+for debugging and decision making purposes.
+
+Should a task have completed since the last time you were called, you
+will be provided the results of the task within
+
+You can create tasks by writing "<create_task>" blocks like the \
+following anywhere within your response to the user:
+<create_task id="your-unique-and-memorable-id-for-this-task">
+<invoke name="$FUNCTION_NAME">
+<parameter name="$PARAMETER_NAME">$PARAMETER_VALUE</parameter>
 ...
-</antml:invoke>
-<antml:invoke name="$FUNCTION_NAME2">
+</invoke>
+</create_task>
+
+<create_task id="another-unique-id">
+<invoke name="$FUNCTION_NAME2">
 ...
-</antml:invoke>
-</antml:function_calls>
+</invoke>
+</create_task>
 
 String and scalar parameters should be specified as is, while lists \
 and objects should use JSON format. Note that spaces for string values \
@@ -28,6 +46,11 @@ parsed with regular expressions.
 
 Here are the functions available in JSONSchema format:
 <functions>
+<function>
+{
+    "name": ""
+}
+</function>
 <function>
 {
     "name": "mosaiq_sql_agent",
