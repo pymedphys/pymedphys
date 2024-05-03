@@ -5,6 +5,7 @@ import tkinter
 import tkinter.filedialog
 
 import altair
+import anyio
 import attr
 import black
 import dateutil
@@ -69,6 +70,8 @@ import sqlalchemy.dialects
 import sqlalchemy.dialects.mssql
 import streamlit
 import streamlit.config
+import streamlit.web
+import streamlit.web.bootstrap
 import streamlit_ace
 import tabulate
 import timeago

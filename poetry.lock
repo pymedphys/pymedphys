@@ -2247,20 +2247,6 @@ files = [
 ]
 
 [[package]]
-name = "outcome"
-version = "1.3.0.post0"
-description = "Capture the outcome of Python function calls."
-optional = true
-python-versions = ">=3.7"
-files = [
-    {file = "outcome-1.3.0.post0-py2.py3-none-any.whl", hash = "sha256:e771c5ce06d1415e356078d3bdd68523f284b4ce5419828922b6871e65eda82b"},
-    {file = "outcome-1.3.0.post0.tar.gz", hash = "sha256:9dcf02e65f2971b80047b377468e72a268e15c0af3cf1238e6ff14f7f91143b8"},
-]
-
-[package.dependencies]
-attrs = ">=19.2.0"
-
-[[package]]
 name = "packaging"
 version = "23.2"
 description = "Core utilities for Python packages"
@@ -3865,17 +3851,6 @@ files = [
 ]
 
 [[package]]
-name = "sortedcontainers"
-version = "2.4.0"
-description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
-optional = true
-python-versions = "*"
-files = [
-    {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
-    {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
-]
-
-[[package]]
 name = "soupsieve"
 version = "2.5"
 description = "A modern CSS selector implementation for Beautiful Soup."
@@ -4684,26 +4659,6 @@ docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,<8.2)", "pytest-mock", "pytest-mypy-testing"]
 
 [[package]]
-name = "trio"
-version = "0.25.0"
-description = "A friendly Python library for async concurrency and I/O"
-optional = true
-python-versions = ">=3.8"
-files = [
-    {file = "trio-0.25.0-py3-none-any.whl", hash = "sha256:e6458efe29cc543e557a91e614e2b51710eba2961669329ce9c862d50c6e8e81"},
-    {file = "trio-0.25.0.tar.gz", hash = "sha256:9b41f5993ad2c0e5f62d0acca320ec657fdb6b2a2c22b8c7aed6caf154475c4e"},
-]
-
-[package.dependencies]
-attrs = ">=23.2.0"
-cffi = {version = ">=1.14", markers = "os_name == \"nt\" and implementation_name != \"pypy\""}
-exceptiongroup = {version = "*", markers = "python_version < \"3.11\""}
-idna = "*"
-outcome = "*"
-sniffio = ">=1.3.0"
-sortedcontainers = "*"
-
-[[package]]
 name = "typing-extensions"
 version = "4.11.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -4897,7 +4852,7 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
-all = ["Pillow", "PyYAML", "anthropic", "astroid", "attrs", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "natsort", "networkx", "numpy", "packaging", "pandas", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylint", "pymssql", "pynetdicom", "pyright", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "requests", "rope", "ruff", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tqdm", "trio", "watchdog", "xmltodict"]
+all = ["Pillow", "PyYAML", "anthropic", "anyio", "astroid", "attrs", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "natsort", "networkx", "numpy", "packaging", "pandas", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylint", "pymssql", "pynetdicom", "pyright", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "requests", "rope", "ruff", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tqdm", "watchdog", "xmltodict"]
 cli = ["toml"]
 comparables = ["flashgamma"]
 dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
@@ -4909,9 +4864,9 @@ mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
 speedups = ["interpolation"]
 tests = ["astroid", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
-user = ["Pillow", "PyYAML", "anthropic", "attrs", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "pydicom", "pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "requests", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "timeago", "toml", "tqdm", "trio", "watchdog", "xmltodict"]
+user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "pydicom", "pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "requests", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "timeago", "toml", "tqdm", "watchdog", "xmltodict"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.9.7 || >3.9.7,<3.13"
-content-hash = "1de2ad5661e519b536771b7047eed5f687d1bae19a0a5b96ab141d4d5a05b524"
+content-hash = "9b00065292dbf598ab1eb8f838fbcba56cec39ce0310332752406fa59fc9a582"
