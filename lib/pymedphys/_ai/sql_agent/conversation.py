@@ -206,6 +206,7 @@ NEVER provide the results to any of the functions. Results will only \
 ever be written within your system prompt call.
 """
 
+# TODO: Make both of these TypedDicts
 Messages = list[Message | MessageParam]
 
 
@@ -323,6 +324,7 @@ async def _conversation_with_task_creation(
         messages=messages_to_submit,
     )
 
+    # TODO: Rework so that this 'tool check' can occur along with the streaming API
     for item in api_response.content:
         if not item.type == "text":
             continue

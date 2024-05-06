@@ -11,9 +11,11 @@ from anthropic.types.beta.tools import ToolsBetaContentBlock
 import pymedphys
 from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
 
-from .sql_agent.conversation import call_assistant_in_conversation
+from .sql_agent.messages import receive_user_messages_and_call_assistant_loop
 
 USER = "user"
+
+ANTHROPIC_API_LIMIT = 2
 
 
 def main():
@@ -50,10 +52,6 @@ async def _async_main():
 
         _transcript_downloads()
 
-        anthropic_api_limit = int(
-            st.number_input("Anthropic API concurrency limit", value=2)
-        )
-
         bak_filepath = (
             pathlib.Path(
                 st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
@@ -83,51 +81,44 @@ async def _async_main():
     new_message = st.chat_input(disabled=chat_input_disabled)
 
     if new_message:
-        _append_message(USER, new_message)
-        _write_message(USER, new_message)
-
-    try:
-        most_recent_message = st.session_state.messages[-1]
-    except IndexError:
-        return
-
-    if most_recent_message["role"] is not USER:
-        return
-
-    await call_assistant_in_conversation(
-        nursery=st.session_state.nursery,
-        tasks_record=st.session_state.tasks_record,
-        anthropic_client=_async_anthropic(anthropic_api_limit),
-        connection=_mosaiq_connection(),
-        messages=st.session_state.messages,
-    )
-
-    st.rerun()
+        st.session_state.message_send_channel.send(
+            {"role": USER, "content": new_message}
+        )
 
 
 async def _initialise_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    if "nursery" not in st.session_state:
-        st.session_state.nursery = await trio.open_nursery().__aenter__()
+    if "message_send_channel" not in st.session_state:
+        # NOTE: This is not the "trio way" but we need a nursery that
+        # encompasses the streamlit rerun loop. There is likely
+        # a better way to do this... but this "works" for now.
+        nursery = await trio.open_nursery().__aenter__()
 
-    if "tasks_record" not in st.session_state:
-        st.session_state.tasks_record = []
+        message_send_channel, message_receive_channel = trio.open_memory_channel()
 
-    if (
-        "message_send_channel" not in st.session_state
-        or "message_receive_channel" not in st.session_state
-    ):
-        (
-            st.session_state.message_send_channel,
-            st.session_state.message_receive_channel,
-        ) = trio.open_memory_channel()
+        async def runner():
+            await receive_user_messages_and_call_assistant_loop(
+                nursery=nursery,
+                tasks_record=[],
+                anthropic_client=_async_anthropic(),
+                connection=_mosaiq_connection(),
+                message_send_channel=message_send_channel,
+                message_receive_channel=message_receive_channel,
+                messages=st.session_state.messages,
+                reload_visuals_callback=st.rerun,
+            )
+
+        nursery.start_soon(runner)
+
+        st.session_state.message_send_channel = message_send_channel
 
 
 @st.cache_resource
-def _async_anthropic(anthropic_api_limit: int):
-    limits = httpx.Limits(max_connections=anthropic_api_limit)
+def _async_anthropic():
+    # TODO: Make this configurable
+    limits = httpx.Limits(max_connections=ANTHROPIC_API_LIMIT)
 
     return AsyncAnthropic(connection_pool_limits=limits, max_retries=10)
 

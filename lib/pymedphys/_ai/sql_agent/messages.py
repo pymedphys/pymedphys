@@ -29,10 +29,11 @@ async def receive_user_messages_and_call_assistant_loop(
         if messages:
             assert messages[-1]["role"] == ASSISTANT
 
+        assert item["role"] == USER
         messages.append(item)
         reload_visuals_callback()
 
-        await call_assistant_in_conversation(
+        assistant_message = await call_assistant_in_conversation(
             nursery=nursery,
             tasks_record=tasks_record,
             anthropic_client=anthropic_client,
@@ -40,3 +41,12 @@ async def receive_user_messages_and_call_assistant_loop(
             message_send_channel=message_send_channel,
             messages=messages,
         )
+
+        assert messages[-1]["role"] == USER
+        assert assistant_message["role"] == ASSISTANT
+
+        messages.append(assistant_message)
+
+        # TODO: Rework so that streamlit supports the streaming API with
+        # its visuals display
+        reload_visuals_callback()
