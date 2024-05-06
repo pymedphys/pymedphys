@@ -4,7 +4,7 @@ from typing import Any, Awaitable, Callable, TypedDict
 
 import trio
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolsBetaMessage
+from anthropic.types import Message, MessageParam
 
 import pymedphys
 from pymedphys._ai import model_versions
@@ -18,6 +18,11 @@ PARAMETER_PATTERN = r"""<parameter name="(.*)">((?:.|\n)*?)<\/parameter>"""
 
 # NOTE: It may be better to not have the LLM designate the IDs, and
 # instead just forcibly inject the ids in future prompt calls.
+
+# TODO: Also include cancel_task and clear_task_results options for the
+# LLM to utilise. Cancel task prematurely stops a given task by ID.
+# Clear task results "cleans up" excess result tokens that are no longer
+# needed and being included within every system prompt.
 
 SYSTEM_PROMPT = """\
 In this environment you have access to a set of async tools that will
@@ -201,25 +206,45 @@ NEVER provide the results to any of the functions. Results will only \
 ever be written within your system prompt call.
 """
 
+Messages = list[Message | MessageParam]
 
-async def recursively_append_message_responses(
+
+class TaskRecordItem(TypedDict):
+    id: str  # LLM defined id
+    start_time: int  # UNIX timestamp
+    function_name: str
+    results: Any | None
+    cancel_scope: trio.CancelScope
+
+
+TOP_LEVEL_ASSISTANT_CALL_LOCK = trio.Lock()
+
+
+async def call_assistant_in_conversation(
+    nursery: trio.Nursery,
+    tasks_record: list[TaskRecordItem],
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    message_send_channel: trio.MemorySendChannel[MessageParam],
+    messages: Messages,
 ):
-    await _conversation_with_task_creation(
-        anthropic_client=anthropic_client,
-        connection=connection,
-        model=model_versions.INTELLIGENT,
-        system_prompt=SYSTEM_PROMPT,
-        messages=messages,
-    )
+    async with TOP_LEVEL_ASSISTANT_CALL_LOCK:
+        return await _conversation_with_task_creation(
+            nursery=nursery,
+            tasks_record=tasks_record,
+            anthropic_client=anthropic_client,
+            connection=connection,
+            model=model_versions.INTELLIGENT,
+            system_prompt=SYSTEM_PROMPT,
+            message_send_channel=message_send_channel,
+            messages=messages,
+        )
 
 
 def create_tools_mappings(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    messages: Messages,
 ):
     async def mosaiq_sql_agent(sub_agent_prompt: str):
         return await sql_tool_pipeline(
@@ -234,14 +259,6 @@ def create_tools_mappings(
     return tools_mapping
 
 
-class TaskRecordItem(TypedDict):
-    id: str  # LLM defined id
-    start_time: int  # UNIX timestamp
-    function_name: str
-    results: Any | None
-    cancel_scope: trio.CancelScope
-
-
 async def _conversation_with_task_creation(
     nursery: trio.Nursery,
     tasks_record: list[TaskRecordItem],
@@ -249,16 +266,14 @@ async def _conversation_with_task_creation(
     connection: pymedphys.mosaiq.Connection,
     model: str,
     system_prompt: str,
-    messages: list[ToolsBetaMessage],
+    message_send_channel: trio.MemorySendChannel[MessageParam],
+    messages: Messages,
 ):
-    """Mutates messages in-place recursively. NOTE: This is probably not a good idea,
-    likely worth refactoring."""
-
     tools_mappings = create_tools_mappings(
         anthropic_client=anthropic_client, connection=connection, messages=messages
     )
 
-    messages_to_submit = [
+    messages_to_submit: list[MessageParam] = [
         {"role": item["role"], "content": item["content"]} for item in messages
     ]
 
@@ -279,8 +294,6 @@ async def _conversation_with_task_creation(
             if not isinstance(match, tuple):
                 continue
 
-            print(match)
-
             task_id = match[0]
             function_name = match[1]
             invoke_contents = match[2]
@@ -294,13 +307,14 @@ async def _conversation_with_task_creation(
             _create_task(
                 nursery=nursery,
                 tasks_record=tasks_record,
+                message_send_channel=message_send_channel,
                 tools_mappings=tools_mappings,
                 task_id=task_id,
                 function_name=function_name,
                 parameters=parameters,
             )
 
-    messages.append(api_response.to_dict())
+    return api_response.to_dict()
 
 
 def _extract_parameters_from_invoke(
@@ -321,6 +335,7 @@ def _extract_parameters_from_invoke(
 def _create_task(
     nursery: trio.Nursery,
     tasks_record: list[TaskRecordItem],
+    message_send_channel: trio.MemorySendChannel[MessageParam],
     tools_mappings: dict[str, AsyncCallable],
     task_id: str,
     function_name: str,
@@ -331,7 +346,11 @@ def _create_task(
 
     async def runner():
         with cancel_scope:
-            await func(**parameters)
+            result = await func(**parameters)
+
+            # TODO: Results don't go in the message
+            new_message = {"role": "user", "content": result}
+            await message_send_channel.send(new_message)
 
     nursery.start_soon(runner)
 

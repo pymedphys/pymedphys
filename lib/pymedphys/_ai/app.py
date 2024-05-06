@@ -11,7 +11,7 @@ from anthropic.types.beta.tools import ToolsBetaContentBlock
 import pymedphys
 from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
 
-from .sql_agent.conversation import recursively_append_message_responses
+from .sql_agent.conversation import call_assistant_in_conversation
 
 USER = "user"
 
@@ -94,18 +94,35 @@ async def _async_main():
     if most_recent_message["role"] is not USER:
         return
 
-    await recursively_append_message_responses(
-        _async_anthropic(anthropic_api_limit),
-        _mosaiq_connection(),
-        st.session_state.messages,
+    await call_assistant_in_conversation(
+        nursery=st.session_state.nursery,
+        tasks_record=st.session_state.tasks_record,
+        anthropic_client=_async_anthropic(anthropic_api_limit),
+        connection=_mosaiq_connection(),
+        messages=st.session_state.messages,
     )
 
     st.rerun()
 
 
-def _initialise_state():
+async def _initialise_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
+
+    if "nursery" not in st.session_state:
+        st.session_state.nursery = await trio.open_nursery().__aenter__()
+
+    if "tasks_record" not in st.session_state:
+        st.session_state.tasks_record = []
+
+    if (
+        "message_send_channel" not in st.session_state
+        or "message_receive_channel" not in st.session_state
+    ):
+        (
+            st.session_state.message_send_channel,
+            st.session_state.message_receive_channel,
+        ) = trio.open_memory_channel()
 
 
 @st.cache_resource
