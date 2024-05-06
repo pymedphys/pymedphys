@@ -22,12 +22,15 @@ async def receive_user_messages_and_call_assistant_loop(
     messages: Messages,
     reload_visuals_callback: Callable,
 ):
+    print("boo")
     async for item in message_receive_channel:
         # Messages should only be added to the messages object from
         # within this loop. User messages can only be appended after
         # assistant messages.
         if messages:
             assert messages[-1]["role"] == ASSISTANT
+
+        print(item)
 
         assert item["role"] == USER
         messages.append(item)

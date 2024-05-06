@@ -41,7 +41,7 @@ async def _async_main():
         )
         st.stop()
 
-    _initialise_state()
+    await _initialise_state()
 
     with st.sidebar:
         if st.button("Remove last message"):
@@ -81,7 +81,7 @@ async def _async_main():
     new_message = st.chat_input(disabled=chat_input_disabled)
 
     if new_message:
-        st.session_state.message_send_channel.send(
+        await st.session_state.message_send_channel.send(
             {"role": USER, "content": new_message}
         )
 
@@ -91,12 +91,13 @@ async def _initialise_state():
         st.session_state.messages = []
 
     if "message_send_channel" not in st.session_state:
-        # NOTE: This is not the "trio way" but we need a nursery that
-        # encompasses the streamlit rerun loop. There is likely
-        # a better way to do this... but this "works" for now.
-        nursery = await trio.open_nursery().__aenter__()
+        message_send_channel, message_receive_channel = trio.open_memory_channel(10)
 
-        message_send_channel, message_receive_channel = trio.open_memory_channel()
+        # NOTE: This is not the "trio way" but we need a nursery that
+        # encompasses the streamlit rerun loop.
+
+        # TODO: This actually is broken.
+        nursery = await trio.open_nursery().__aenter__()
 
         async def runner():
             await receive_user_messages_and_call_assistant_loop(
