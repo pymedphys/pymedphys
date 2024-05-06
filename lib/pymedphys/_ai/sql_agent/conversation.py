@@ -1,5 +1,5 @@
+import datetime
 import re
-import time
 from typing import Any, Awaitable, Callable, TypedDict
 
 import trio
@@ -43,18 +43,18 @@ Results to tasks will only ever be provided within this system prompt.
 NO results are ever to be written into ANY response either by yourself
 or by the user. Here are the results of previously run tasks:
 <results>
-No results from tasks have yet been provided.
+{results}
 </results
 
 All currently running tasks are displayed below with their id and their
 current running time in seconds:
 <tasks_status>
-No tasks are currently running.
+{tasks_status}
 </tasks_status>
 
 Here is the current timestamp:
 <timestamp>
-Mon, 06 May 2024 01:32:15 GMT
+{timestamp}
 </timestamp>
 
 You can create tasks by writing "<create_task>" blocks like the \
@@ -211,13 +211,52 @@ Messages = list[Message | MessageParam]
 
 class TaskRecordItem(TypedDict):
     id: str  # LLM defined id
-    start_time: int  # UNIX timestamp
+    start_time: datetime.datetime
     function_name: str
-    results: Any | None
+    result: str | None
     cancel_scope: trio.CancelScope
 
 
 TOP_LEVEL_ASSISTANT_CALL_LOCK = trio.Lock()
+
+
+def get_system_prompt(tasks_record: list[TaskRecordItem]):
+    results = []
+    tasks_status = []
+
+    now = datetime.datetime.now()
+
+    # TODO: Get client timezone from browser via javascript
+    timestamp = now.isoformat()
+
+    for item in tasks_record:
+        task_id = item["id"]
+        function_name = item["function_name"]
+        result = item["result"]
+        if result is not None:
+            results.append(
+                f'<{function_name}_result id="{task_id}">{result}</{function_name}_result>'
+            )
+            continue
+
+        running_time_seconds = (now - item["start_time"]).total_seconds()
+        tasks_status.append(
+            f'<{function_name}_status id="{task_id}"><is_running>True</is_running><seconds_since_start>{running_time_seconds}</seconds_since_start></{function_name}_status>'
+        )
+
+    if results:
+        results_prompt = "\n".join(results)
+    else:
+        results_prompt = "No results from tasks have yet been provided."
+
+    if tasks_status:
+        tasks_status_prompt = "\n".join(tasks_status)
+    else:
+        tasks_status_prompt = "No tasks are currently running."
+
+    return SYSTEM_PROMPT.format(
+        results=results_prompt, tasks_status=tasks_status_prompt, timestamp=timestamp
+    )
 
 
 async def call_assistant_in_conversation(
@@ -235,7 +274,7 @@ async def call_assistant_in_conversation(
             anthropic_client=anthropic_client,
             connection=connection,
             model=model_versions.INTELLIGENT,
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=get_system_prompt(tasks_record),
             message_send_channel=message_send_channel,
             messages=messages,
         )
@@ -343,23 +382,22 @@ def _create_task(
 ):
     cancel_scope = trio.CancelScope()
     func = tools_mappings[function_name]
+    task_record = {
+        "id": task_id,
+        "start_time": datetime.datetime.now(),
+        "function_name": function_name,
+        "result": None,
+        "cancel_scope": cancel_scope,
+    }
 
     async def runner():
         with cancel_scope:
-            result = await func(**parameters)
+            task_record["result"] = await func(**parameters)
 
-            # TODO: Results don't go in the message
-            new_message = {"role": "user", "content": result}
+            # TODO: Also include total running time and potentially other statistics
+            new_message = {"role": "user", "content": f"Task complete: {task_id}"}
             await message_send_channel.send(new_message)
 
     nursery.start_soon(runner)
 
-    tasks_record.append(
-        {
-            "id": task_id,
-            "start_time": time.time(),
-            "function_name": function_name,
-            "results": None,
-            "cancel_scope": cancel_scope,
-        }
-    )
+    tasks_record.append(task_record)
