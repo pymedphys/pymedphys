@@ -113,7 +113,7 @@ async def words_in_mouth_prompting(
         {"role": "assistant", "content": start_of_assistant_prompt}
     )
 
-    api_response = await anthropic_client.beta.tools.messages.create(
+    api_response = await anthropic_client.messages.create(
         system=system_prompt, model=model, max_tokens=4096, messages=messages_to_submit
     )
 

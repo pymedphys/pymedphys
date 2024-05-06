@@ -1,10 +1,14 @@
+import re
+
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolParam, ToolsBetaMessage
+from anthropic.types.beta.tools import ToolsBetaMessage
 
 import pymedphys
 from pymedphys._ai import model_versions
 
 from ._pipeline import sql_tool_pipeline
+
+CREATE_TASK_PATTERN = r"""<create_task id="(.*)">(.|\n)*?<invoke name="(.*)">((.|\n)*?)<\/invoke>(.|\n)*?<\/create_task>"""
 
 # NOTE: It may be better to not have the LLM designate the IDs, and
 # instead just forcibly inject the ids in future prompt calls.
@@ -24,11 +28,31 @@ memorable and unique. Should a task still be running when you are called
 the current total running time will be provided to you which may be used
 for debugging and decision making purposes.
 
-Should a task have completed since the last time you were called, you
-will be provided the results of the task within
+Results to tasks will only ever be provided within this system prompt.
+NO results are ever to be written into ANY response either by yourself
+or by the user. Here are the results of previously run tasks:
+<results>
+No results from tasks have yet been provided.
+</results
+
+All currently running tasks are displayed below with their id and their
+current running time in seconds:
+<task_status>
+No tasks are currently running.
+</task_status>
+
+Here is the current timestamp:
+<timestamp>
+Mon, 06 May 2024 01:32:15 GMT
+</timestamp>
 
 You can create tasks by writing "<create_task>" blocks like the \
 following anywhere within your response to the user:
+
+<examples>
+<example>
+
+<thinking>Always use thinking tags prior to calling any create_task block</thinking>
 <create_task id="your-unique-and-memorable-id-for-this-task">
 <invoke name="$FUNCTION_NAME">
 <parameter name="$PARAMETER_NAME">$PARAMETER_VALUE</parameter>
@@ -36,11 +60,21 @@ following anywhere within your response to the user:
 </invoke>
 </create_task>
 
+</example>
+
+<example>
+
+<thinking>Some thinking</thinking>
 <create_task id="another-unique-id">
 <invoke name="$FUNCTION_NAME2">
 ...
 </invoke>
 </create_task>
+
+</example>
+</examples>
+
+Feel free to call multiple create_task blocks within any one response.
 
 String and scalar parameters should be specified as is, while lists \
 and objects should use JSON format. Note that spaces for string values \
@@ -141,7 +175,8 @@ in a different way.
 Your conversation with the user is occurring in markdown format, so \
 please format your responses to the user with this in mind.
 
-Answer the user's request using relevant tools (if they are available). \
+Answer the user's request using relevant tools via the <create_task> \
+block (if they are available). \
 Before calling a tool, do some analysis within <thinking></thinking> \
 tags. First, think about which of the provided tools is the relevant \
 tool to answer the user's request. Second, go through each of the \
@@ -155,6 +190,9 @@ the values for a required parameter is missing, DO NOT invoke the \
 function (not even with fillers for the missing params) and instead, \
 ask the user to provide the missing parameters. DO NOT ask for more \
 information on optional parameters if it is not provided.
+
+NEVER provide the results to any of the functions. Results will only \
+ever be written within your system prompt call.
 """
 
 
@@ -163,12 +201,11 @@ async def recursively_append_message_responses(
     connection: pymedphys.mosaiq.Connection,
     messages: list[ToolsBetaMessage],
 ):
-    await _conversation_with_tool_use(
+    await _conversation_with_task_creation(
         anthropic_client=anthropic_client,
         connection=connection,
         model=model_versions.INTELLIGENT,
         system_prompt=SYSTEM_PROMPT,
-        tools=TOOLS_PROMPT,
         messages=messages,
     )
 
@@ -191,65 +228,41 @@ def create_tools_mappings(
     return tools_mapping
 
 
-async def _conversation_with_tool_use(
+async def _conversation_with_task_creation(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     model: str,
     system_prompt: str,
-    tools: list[ToolParam],
     messages: list[ToolsBetaMessage],
 ):
     """Mutates messages in-place recursively. NOTE: This is probably not a good idea,
     likely worth refactoring."""
 
-    tools_mappings = create_tools_mappings(
-        anthropic_client=anthropic_client, connection=connection, messages=messages
-    )
+    # tools_mappings = create_tools_mappings(
+    #     anthropic_client=anthropic_client, connection=connection, messages=messages
+    # )
 
     messages_to_submit = [
         {"role": item["role"], "content": item["content"]} for item in messages
     ]
 
-    api_response = await anthropic_client.beta.tools.messages.create(
+    api_response = await anthropic_client.messages.create(
         system=system_prompt,
         model=model,
         max_tokens=4096,
-        tools=tools,
         messages=messages_to_submit,
     )
 
+    for item in api_response.content:
+        if not item.type == "text":
+            continue
+
+        matches = re.findall(CREATE_TASK_PATTERN, item.text)
+
+        for match in matches:
+            if not isinstance(match, tuple):
+                continue
+
+            print(match)
+
     messages.append(api_response.to_dict())
-
-    if api_response.stop_reason == "tool_use":
-        for item in api_response.content:
-            print(item)
-
-            if item.type == "tool_use":
-                tool = tools_mappings[item.name]
-
-                # TODO: Make this run in parallel
-                result = await tool(**item.input)
-
-                response_message = {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": item.id,
-                            "content": result,
-                        }
-                    ],
-                }
-
-                messages.append(response_message)
-
-                print(response_message)
-
-        await _conversation_with_tool_use(
-            anthropic_client=anthropic_client,
-            connection=connection,
-            model=model,
-            system_prompt=system_prompt,
-            tools=tools,
-            messages=messages,
-        )
