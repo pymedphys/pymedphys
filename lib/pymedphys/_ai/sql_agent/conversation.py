@@ -6,6 +6,9 @@ from pymedphys._ai import model_versions
 
 from ._pipeline import sql_tool_pipeline
 
+# NOTE: It may be better to not have the LLM designate the IDs, and
+# instead just forcibly inject the ids in future prompt calls.
+
 SYSTEM_PROMPT = """\
 In this environment you have access to a set of async tools that will
 be called as trio tasks that you can use to answer the user's question.
