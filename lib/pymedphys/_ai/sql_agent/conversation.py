@@ -1,5 +1,8 @@
 import re
+import time
+from typing import Any, Awaitable, Callable, TypedDict
 
+import trio
 from anthropic import AsyncAnthropic
 from anthropic.types.beta.tools import ToolsBetaMessage
 
@@ -8,7 +11,10 @@ from pymedphys._ai import model_versions
 
 from ._pipeline import sql_tool_pipeline
 
-CREATE_TASK_PATTERN = r"""<create_task id="(.*)">(.|\n)*?<invoke name="(.*)">((.|\n)*?)<\/invoke>(.|\n)*?<\/create_task>"""
+AsyncCallable = Callable[[Any, Any], Awaitable[Any]]
+
+CREATE_TASK_PATTERN = r"""<create_task id="(.*)">(?:.|\n)*?<invoke name="(.*)">((?:.|\n)*?)<\/invoke>(?:.|\n)*?<\/create_task>"""
+PARAMETER_PATTERN = r"""<parameter name="(.*)">((?:.|\n)*?)<\/parameter>"""
 
 # NOTE: It may be better to not have the LLM designate the IDs, and
 # instead just forcibly inject the ids in future prompt calls.
@@ -37,9 +43,9 @@ No results from tasks have yet been provided.
 
 All currently running tasks are displayed below with their id and their
 current running time in seconds:
-<task_status>
+<tasks_status>
 No tasks are currently running.
-</task_status>
+</tasks_status>
 
 Here is the current timestamp:
 <timestamp>
@@ -228,7 +234,17 @@ def create_tools_mappings(
     return tools_mapping
 
 
+class TaskRecordItem(TypedDict):
+    id: str  # LLM defined id
+    start_time: int  # UNIX timestamp
+    function_name: str
+    results: Any | None
+    cancel_scope: trio.CancelScope
+
+
 async def _conversation_with_task_creation(
+    nursery: trio.Nursery,
+    tasks_record: list[TaskRecordItem],
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
     model: str,
@@ -238,9 +254,9 @@ async def _conversation_with_task_creation(
     """Mutates messages in-place recursively. NOTE: This is probably not a good idea,
     likely worth refactoring."""
 
-    # tools_mappings = create_tools_mappings(
-    #     anthropic_client=anthropic_client, connection=connection, messages=messages
-    # )
+    tools_mappings = create_tools_mappings(
+        anthropic_client=anthropic_client, connection=connection, messages=messages
+    )
 
     messages_to_submit = [
         {"role": item["role"], "content": item["content"]} for item in messages
@@ -265,4 +281,66 @@ async def _conversation_with_task_creation(
 
             print(match)
 
+            task_id = match[0]
+            function_name = match[1]
+            invoke_contents = match[2]
+
+            parameters = _extract_parameters_from_invoke(
+                invoke_contents,
+                # TODO: Don't hardcode this
+                parameter_types={"sub_agent_prompt": "string"},
+            )
+
+            _create_task(
+                nursery=nursery,
+                tasks_record=tasks_record,
+                tools_mappings=tools_mappings,
+                task_id=task_id,
+                function_name=function_name,
+                parameters=parameters,
+            )
+
     messages.append(api_response.to_dict())
+
+
+def _extract_parameters_from_invoke(
+    invoke_contents: str, parameter_types: dict[str, str]
+):
+    parameters = {}
+
+    for name, value in re.findall(PARAMETER_PATTERN, invoke_contents):
+        parameter_type = parameter_types[name]
+        # TODO: Handle more than the string type
+        assert parameter_type == "string"
+
+        parameters[name] = value
+
+    return parameters
+
+
+def _create_task(
+    nursery: trio.Nursery,
+    tasks_record: list[TaskRecordItem],
+    tools_mappings: dict[str, AsyncCallable],
+    task_id: str,
+    function_name: str,
+    parameters: dict[str, Any],
+):
+    cancel_scope = trio.CancelScope()
+    func = tools_mappings[function_name]
+
+    async def runner():
+        with cancel_scope:
+            await func(**parameters)
+
+    nursery.start_soon(runner)
+
+    tasks_record.append(
+        {
+            "id": task_id,
+            "start_time": time.time(),
+            "function_name": function_name,
+            "results": None,
+            "cancel_scope": cancel_scope,
+        }
+    )
