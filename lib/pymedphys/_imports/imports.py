@@ -68,6 +68,8 @@ import sqlalchemy
 import sqlalchemy.dialects
 import sqlalchemy.dialects.mssql
 import streamlit
+import streamlit.components
+import streamlit.components.v1
 import streamlit.config
 import streamlit.web
 import streamlit.web.bootstrap

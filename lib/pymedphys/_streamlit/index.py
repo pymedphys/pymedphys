@@ -32,13 +32,13 @@ TITLE_LOGO = str(HERE.joinpath("pymedphys-title.svg"))
 
 def get_url_app():
     try:
-        return st.query_params["app"][0]
+        return st.query_params["app"]
     except KeyError:
         return "index"
 
 
 def swap_app(app):
-    st.experimental_set_query_params(app=app)
+    st.query_params["app"] = app
 
     session_state = st.session_state
     session_state.app = app

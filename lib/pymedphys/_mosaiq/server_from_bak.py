@@ -40,9 +40,11 @@ def start_mssql_docker_image_with_bak_restore(
                 port=1433,
                 autocommit=True,
             )
-        except pymssql.exceptions.OperationalError:
+        except pymssql.exceptions.OperationalError as e:
             if i == 4:
                 raise
+
+            print(e)
 
             time.sleep(5)
             continue

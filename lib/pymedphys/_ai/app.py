@@ -6,12 +6,15 @@ import httpx
 import streamlit as st
 import trio
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolsBetaContentBlock
 
 import pymedphys
 from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
 
-from .sql_agent.messages import receive_user_messages_and_call_assistant_loop
+from .sql_agent.messages import (
+    message_content_as_plain_text,
+    receive_user_messages_and_call_assistant_loop,
+    write_message,
+)
 
 USER = "user"
 
@@ -23,31 +26,6 @@ def main():
 
 
 async def _app_container():
-    message_send_channel, message_receive_channel = trio.open_memory_channel(10)
-
-    async with trio.open_nursery() as nursery:
-
-        async def assistant_calling_loop():
-            await receive_user_messages_and_call_assistant_loop(
-                nursery=nursery,
-                tasks_record=[],
-                anthropic_client=_async_anthropic(),
-                connection=_mosaiq_connection(),
-                message_send_channel=message_send_channel,
-                message_receive_channel=message_receive_channel,
-                messages=st.session_state.messages,
-                reload_visuals_callback=st.rerun,
-            )
-
-        nursery.start_soon(_app, nursery, message_send_channel)
-        nursery.start_soon(assistant_calling_loop)
-
-
-@st.experimental_fragment
-def _app(
-    nursery: trio.Nursery,
-    message_send_channel: trio.MemorySendChannel,
-):
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
@@ -68,32 +46,57 @@ def _app(
 
     _initialise_state()
 
-    with st.sidebar:
-        if st.button("Remove last message"):
-            st.session_state.messages = st.session_state.messages[:-1]
+    message_send_channel, message_receive_channel = trio.open_memory_channel(10)
 
-        if st.button("Remove last two messages"):
-            st.session_state.messages = st.session_state.messages[:-2]
+    async with trio.open_nursery() as nursery:
+        with st.sidebar:
+            if st.button("Remove last message"):
+                st.session_state.messages = st.session_state.messages[:-1]
 
-        _transcript_downloads()
+            if st.button("Remove last two messages"):
+                st.session_state.messages = st.session_state.messages[:-2]
 
-        bak_filepath = (
-            pathlib.Path(
-                st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
+            _transcript_downloads()
+
+            bak_filepath = (
+                pathlib.Path(
+                    st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
+                )
+                .expanduser()
+                .resolve()
             )
-            .expanduser()
-            .resolve()
-        )
-        if st.button("Start demo MOSAIQ server from .bak file"):
-            start_mssql_docker_image_with_bak_restore(
-                bak_filepath=bak_filepath,
-                mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
+            if st.button("Start demo MOSAIQ server from .bak file"):
+                start_mssql_docker_image_with_bak_restore(
+                    bak_filepath=bak_filepath,
+                    mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
+                )
+
+        async def assistant_calling_loop():
+            await receive_user_messages_and_call_assistant_loop(
+                nursery=nursery,
+                tasks_record=[],
+                anthropic_client=_async_anthropic(),
+                connection=_mosaiq_connection(),
+                message_send_channel=message_send_channel,
+                message_receive_channel=message_receive_channel,
+                messages=st.session_state.messages,
             )
 
+        # nursery.start_soon(assistant_calling_loop)
+        # nursery.start_soon(_app, nursery, message_send_channel)
+
+    await _app()
+
+
+# @st.experimental_fragment
+async def _app(
+    # nursery: trio.Nursery,
+    # message_send_channel: trio.MemorySendChannel,
+):
     print(st.session_state.messages)
 
     for message in st.session_state.messages:
-        _write_message(message["role"], message["content"])
+        write_message(message["role"], message["content"])
 
     chat_input_disabled = False
     try:
@@ -106,7 +109,8 @@ def _app(
     new_message = st.chat_input(disabled=chat_input_disabled)
 
     if new_message:
-        nursery.start(message_send_channel.send, {"role": USER, "content": new_message})
+        write_message(role=USER, content=new_message)
+    #     nursery.start(message_send_channel.send, {"role": USER, "content": new_message})
 
 
 def _initialise_state():
@@ -139,23 +143,9 @@ def _mosaiq_connection():
     return connection
 
 
-def _write_message(role, content: str | list[ToolsBetaContentBlock]):
-    with st.chat_message(role):
-        st.markdown(_message_content_as_plain_text(content))
-
-
-def _message_content_as_plain_text(content: str | list[ToolsBetaContentBlock]):
-    if isinstance(content, str):
-        return content
-
-    results = [item["text"] for item in content if item["type"] == "text"]
-
-    return "\n\n".join(results)
-
-
 def _transcript_downloads():
     transcript_items = [
-        f"{message['role']}: {_message_content_as_plain_text(message['content'])}"
+        f"{message['role']}: {message_content_as_plain_text(message['content'])}"
         for message in st.session_state.messages
     ]
 

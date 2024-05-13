@@ -33,7 +33,7 @@ def site_picker(config, radio_label, default=None, key=None):
         default_index = site_options.index(default)
 
     try:
-        chosen_site = st.experimental_get_query_params()["site"][0]
+        chosen_site = st.query_params["site"]
         if chosen_site not in site_options:
             st.error(
                 f"Site provided through URL `{chosen_site}`, doesn't "

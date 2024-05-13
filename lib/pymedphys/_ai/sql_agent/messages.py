@@ -1,5 +1,4 @@
-from typing import Callable
-
+import streamlit as st
 import trio
 from anthropic import AsyncAnthropic
 from anthropic.types import MessageParam
@@ -20,9 +19,7 @@ async def receive_user_messages_and_call_assistant_loop(
     message_send_channel: trio.MemorySendChannel[MessageParam],
     message_receive_channel: trio.MemoryReceiveChannel[MessageParam],
     messages: Messages,
-    reload_visuals_callback: Callable,
 ):
-    print("boo")
     async for item in message_receive_channel:
         # Messages should only be added to the messages object from
         # within this loop. User messages can only be appended after
@@ -34,7 +31,7 @@ async def receive_user_messages_and_call_assistant_loop(
 
         assert item["role"] == USER
         messages.append(item)
-        reload_visuals_callback()
+        write_message(role=USER, content=item["content"])
 
         assistant_message = await call_assistant_in_conversation(
             nursery=nursery,
@@ -49,7 +46,18 @@ async def receive_user_messages_and_call_assistant_loop(
         assert assistant_message["role"] == ASSISTANT
 
         messages.append(assistant_message)
+        write_message(role=ASSISTANT, content=assistant_message["content"])
 
-        # TODO: Rework so that streamlit supports the streaming API with
-        # its visuals display
-        reload_visuals_callback()
+
+def write_message(role, content: str | list):
+    with st.chat_message(role):
+        st.markdown(message_content_as_plain_text(content))
+
+
+def message_content_as_plain_text(content: str | list):
+    if isinstance(content, str):
+        return content
+
+    results = [item["text"] for item in content if item["type"] == "text"]
+
+    return "\n\n".join(results)
