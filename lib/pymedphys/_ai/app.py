@@ -23,12 +23,31 @@ def main():
 
 
 async def _app_container():
+    message_send_channel, message_receive_channel = trio.open_memory_channel(10)
+
     async with trio.open_nursery() as nursery:
-        nursery.start_soon(_app, nursery)
+
+        async def assistant_calling_loop():
+            await receive_user_messages_and_call_assistant_loop(
+                nursery=nursery,
+                tasks_record=[],
+                anthropic_client=_async_anthropic(),
+                connection=_mosaiq_connection(),
+                message_send_channel=message_send_channel,
+                message_receive_channel=message_receive_channel,
+                messages=st.session_state.messages,
+                reload_visuals_callback=st.rerun,
+            )
+
+        nursery.start_soon(_app, nursery, message_send_channel)
+        nursery.start_soon(assistant_calling_loop)
 
 
 @st.experimental_fragment
-async def _app(nursery: trio.Nursery):
+def _app(
+    nursery: trio.Nursery,
+    message_send_channel: trio.MemorySendChannel,
+):
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
@@ -47,7 +66,7 @@ async def _app(nursery: trio.Nursery):
         )
         st.stop()
 
-    await _initialise_state()
+    _initialise_state()
 
     with st.sidebar:
         if st.button("Remove last message"):
@@ -87,39 +106,12 @@ async def _app(nursery: trio.Nursery):
     new_message = st.chat_input(disabled=chat_input_disabled)
 
     if new_message:
-        await st.session_state.message_send_channel.send(
-            {"role": USER, "content": new_message}
-        )
+        nursery.start(message_send_channel.send, {"role": USER, "content": new_message})
 
 
-async def _initialise_state():
+def _initialise_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
-
-    if "message_send_channel" not in st.session_state:
-        message_send_channel, message_receive_channel = trio.open_memory_channel(10)
-
-        # NOTE: This is not the "trio way" but we need a nursery that
-        # encompasses the streamlit rerun loop.
-
-        # TODO: This actually is broken.
-        nursery = await trio.open_nursery().__aenter__()
-
-        async def runner():
-            await receive_user_messages_and_call_assistant_loop(
-                nursery=nursery,
-                tasks_record=[],
-                anthropic_client=_async_anthropic(),
-                connection=_mosaiq_connection(),
-                message_send_channel=message_send_channel,
-                message_receive_channel=message_receive_channel,
-                messages=st.session_state.messages,
-                reload_visuals_callback=st.rerun,
-            )
-
-        nursery.start_soon(runner)
-
-        st.session_state.message_send_channel = message_send_channel
 
 
 @st.cache_resource
