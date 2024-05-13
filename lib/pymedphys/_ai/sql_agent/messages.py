@@ -20,33 +20,40 @@ async def receive_user_messages_and_call_assistant_loop(
     message_receive_channel: trio.MemoryReceiveChannel[MessageParam],
     messages: Messages,
 ):
-    async for item in message_receive_channel:
-        # Messages should only be added to the messages object from
-        # within this loop. User messages can only be appended after
-        # assistant messages.
-        if messages:
-            assert messages[-1]["role"] == ASSISTANT
+    try:
+        print("Starting message receive loop...")
 
-        print(item)
+        async for item in message_receive_channel:
+            print(f"User message received: {item}")
 
-        assert item["role"] == USER
-        messages.append(item)
-        write_message(role=USER, content=item["content"])
+            # Messages should only be added to the messages object from
+            # within this loop. User messages can only be appended after
+            # assistant messages.
+            if messages:
+                assert messages[-1]["role"] == ASSISTANT
 
-        assistant_message = await call_assistant_in_conversation(
-            nursery=nursery,
-            tasks_record=tasks_record,
-            anthropic_client=anthropic_client,
-            connection=connection,
-            message_send_channel=message_send_channel,
-            messages=messages,
-        )
+            assert item["role"] == USER
+            messages.append(item)
+            write_message(role=USER, content=item["content"])
 
-        assert messages[-1]["role"] == USER
-        assert assistant_message["role"] == ASSISTANT
+            assistant_message = await call_assistant_in_conversation(
+                nursery=nursery,
+                tasks_record=tasks_record,
+                anthropic_client=anthropic_client,
+                connection=connection,
+                message_send_channel=message_send_channel,
+                messages=messages,
+            )
 
-        messages.append(assistant_message)
-        write_message(role=ASSISTANT, content=assistant_message["content"])
+            print(f"Assistant message received: {assistant_message}")
+
+            assert messages[-1]["role"] == USER
+            assert assistant_message["role"] == ASSISTANT
+
+            messages.append(assistant_message)
+            write_message(role=ASSISTANT, content=assistant_message["content"])
+    finally:
+        print("Closing message receive loop...")
 
 
 def write_message(role, content: str | list):

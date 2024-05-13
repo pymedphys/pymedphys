@@ -95,12 +95,12 @@ parsed with regular expressions.
 Here are the functions available in JSONSchema format:
 <functions>
 <function>
-{
+{{
     "name": ""
-}
+}}
 </function>
 <function>
-{
+{{
     "name": "mosaiq_sql_agent",
     "description": "\
 Instantiate an Elekta MOSAIQ sub agent with a request to \
@@ -146,19 +146,19 @@ The results from the subagent will be returned to you as a series of \
 queries and their raw results in the format:
 <query></query><result></result>\
 ",
-    "input_schema": {
+    "input_schema": {{
         "type": "object",
-        "properties": {
-            "sub_agent_prompt": {
+        "properties": {{
+            "sub_agent_prompt": {{
                 "type": "string",
                 "description": "\
 Your plain text sub agent prompt that will be provided to the MOSAIQ subagent. This is
 to intended to be used to guide the subagent tool request.",
-            }
-        },
+            }}
+        }},
         "required": ["sub_agent_prompt"],
-    },
-}
+    }},
+}}
 <function>
 </functions>
 

@@ -22,6 +22,8 @@ ANTHROPIC_API_LIMIT = 2
 
 
 def main():
+    print("App starting")
+    print(list(st.session_state.keys()))
     trio.run(_app_container)
 
 
@@ -44,78 +46,75 @@ async def _app_container():
         )
         st.stop()
 
-    _initialise_state()
-
-    message_send_channel, message_receive_channel = trio.open_memory_channel(10)
-
-    async with trio.open_nursery() as nursery:
-        with st.sidebar:
-            if st.button("Remove last message"):
-                st.session_state.messages = st.session_state.messages[:-1]
-
-            if st.button("Remove last two messages"):
-                st.session_state.messages = st.session_state.messages[:-2]
-
-            _transcript_downloads()
-
-            bak_filepath = (
-                pathlib.Path(
-                    st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
-                )
-                .expanduser()
-                .resolve()
-            )
-            if st.button("Start demo MOSAIQ server from .bak file"):
-                start_mssql_docker_image_with_bak_restore(
-                    bak_filepath=bak_filepath,
-                    mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
-                )
-
-        async def assistant_calling_loop():
-            await receive_user_messages_and_call_assistant_loop(
-                nursery=nursery,
-                tasks_record=[],
-                anthropic_client=_async_anthropic(),
-                connection=_mosaiq_connection(),
-                message_send_channel=message_send_channel,
-                message_receive_channel=message_receive_channel,
-                messages=st.session_state.messages,
-            )
-
-        # nursery.start_soon(assistant_calling_loop)
-        # nursery.start_soon(_app, nursery, message_send_channel)
-
-    await _app()
-
-
-# @st.experimental_fragment
-async def _app(
-    # nursery: trio.Nursery,
-    # message_send_channel: trio.MemorySendChannel,
-):
-    print(st.session_state.messages)
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
     for message in st.session_state.messages:
         write_message(message["role"], message["content"])
 
-    chat_input_disabled = False
-    try:
-        previous_message = st.session_state.messages[-1]
-        if previous_message["role"] is USER:
-            chat_input_disabled = True
-    except IndexError:
-        pass
+    with st.sidebar:
+        if st.button("Remove last message"):
+            st.session_state.messages = st.session_state.messages[:-1]
 
-    new_message = st.chat_input(disabled=chat_input_disabled)
+        if st.button("Remove last two messages"):
+            st.session_state.messages = st.session_state.messages[:-2]
+
+        _transcript_downloads()
+
+        bak_filepath = (
+            pathlib.Path(
+                st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
+            )
+            .expanduser()
+            .resolve()
+        )
+        if st.button("Start demo MOSAIQ server from .bak file"):
+            start_mssql_docker_image_with_bak_restore(
+                bak_filepath=bak_filepath,
+                mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
+            )
+
+    async with trio.open_nursery() as nursery:
+        if (
+            "message_send_channel" not in st.session_state
+            or "nursery" not in st.session_state
+        ):
+            message_send_channel, message_receive_channel = trio.open_memory_channel(10)
+
+            async def assistant_calling_loop():
+                await receive_user_messages_and_call_assistant_loop(
+                    nursery=nursery,
+                    tasks_record=[],
+                    anthropic_client=_async_anthropic(),
+                    connection=_mosaiq_connection(),
+                    message_send_channel=message_send_channel,
+                    message_receive_channel=message_receive_channel,
+                    messages=st.session_state.messages,
+                )
+
+            nursery.start_soon(assistant_calling_loop)
+
+            st.session_state.nursery = nursery
+            st.session_state.message_send_channel = message_send_channel
+
+        _app(st.session_state.nursery, st.session_state.message_send_channel)
+
+
+@st.experimental_fragment
+def _app(
+    nursery: trio.Nursery,
+    message_send_channel: trio.MemorySendChannel,
+):
+    print("boo")
+
+    new_message = st.chat_input()
+
+    print(f"Message seen in fragment: {new_message}")
 
     if new_message:
-        write_message(role=USER, content=new_message)
-    #     nursery.start(message_send_channel.send, {"role": USER, "content": new_message})
-
-
-def _initialise_state():
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+        nursery.start_soon(
+            message_send_channel.send, {"role": USER, "content": new_message}
+        )
 
 
 @st.cache_resource
