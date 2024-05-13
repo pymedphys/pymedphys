@@ -19,10 +19,16 @@ ANTHROPIC_API_LIMIT = 2
 
 
 def main():
-    trio.run(_async_main)
+    trio.run(_app_container)
 
 
-async def _async_main():
+async def _app_container():
+    async with trio.open_nursery() as nursery:
+        nursery.start_soon(_app, nursery)
+
+
+@st.experimental_fragment
+async def _app(nursery: trio.Nursery):
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
@@ -172,10 +178,6 @@ def _transcript_downloads():
     st.download_button(
         "Download raw transcript", raw_transcript, file_name="raw_api_transcript.json"
     )
-
-
-def _append_message(role, content):
-    st.session_state.messages.append({"role": role, "content": content})
 
 
 if __name__ == "__main__":
