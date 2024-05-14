@@ -3,9 +3,9 @@ import os
 import pathlib
 
 import httpx
-import streamlit as st
 import trio
 from anthropic import AsyncAnthropic
+from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
@@ -22,9 +22,10 @@ ANTHROPIC_API_LIMIT = 2
 
 
 def main():
+    portal = st.web.bootstrap._portal  # pylint: disable=W0212
     print("App starting")
     print(list(st.session_state.keys()))
-    trio.run(_app_container)
+    portal.call(_app_container)
 
 
 async def _app_container():
@@ -74,45 +75,41 @@ async def _app_container():
                 mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
             )
 
-    async with trio.open_nursery() as nursery:
-        if (
-            "message_send_channel" not in st.session_state
-            or "nursery" not in st.session_state
-        ):
-            message_send_channel, message_receive_channel = trio.open_memory_channel(10)
+    if "message_send_channel" not in st.session_state:
+        portal = st.web.bootstrap._portal  # pylint: disable=W0212
 
-            async def assistant_calling_loop():
-                await receive_user_messages_and_call_assistant_loop(
-                    nursery=nursery,
-                    tasks_record=[],
-                    anthropic_client=_async_anthropic(),
-                    connection=_mosaiq_connection(),
-                    message_send_channel=message_send_channel,
-                    message_receive_channel=message_receive_channel,
-                    messages=st.session_state.messages,
-                )
+        message_send_channel, message_receive_channel = portal.call(
+            trio.open_memory_channel, 10
+        )
 
-            nursery.start_soon(assistant_calling_loop)
+        async def assistant_calling_loop():
+            await receive_user_messages_and_call_assistant_loop(
+                tasks_record=[],
+                anthropic_client=_async_anthropic(),
+                connection=_mosaiq_connection(),
+                message_send_channel=message_send_channel,
+                message_receive_channel=message_receive_channel,
+                messages=st.session_state.messages,
+            )
 
-            st.session_state.nursery = nursery
-            st.session_state.message_send_channel = message_send_channel
+        portal.start_task_soon(assistant_calling_loop)
 
-        _app(st.session_state.nursery, st.session_state.message_send_channel)
+        st.session_state.message_send_channel = message_send_channel
+
+    _app()
 
 
 @st.experimental_fragment
-def _app(
-    nursery: trio.Nursery,
-    message_send_channel: trio.MemorySendChannel,
-):
-    print("boo")
+def _app():
+    portal = st.web.bootstrap._portal  # pylint: disable=W0212
+    message_send_channel: trio.MemorySendChannel = st.session_state.message_send_channel
 
     new_message = st.chat_input()
 
     print(f"Message seen in fragment: {new_message}")
 
     if new_message:
-        nursery.start_soon(
+        portal.start_task_soon(
             message_send_channel.send, {"role": USER, "content": new_message}
         )
 
