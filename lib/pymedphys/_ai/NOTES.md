@@ -1,5 +1,9 @@
 # Creating the local Elekta MOSAIQ database
 
+NOTE: All of the below is implemented within the MOSAIQ Claude Chat streamlit
+app, and should be able to be undergone by clicking the "Start demo MOSAIQ
+server from .bak file" button.
+
 ## Create the MSSQL database for MOSAIQ
 
 Move the `db-dump.bak` file into `~/mosaiq-data`
