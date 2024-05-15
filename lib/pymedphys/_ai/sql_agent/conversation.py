@@ -210,6 +210,18 @@ Results will NEVER be provided within a user or assistant message. \
 Instead, results will always appear within the system message ONLY.
 """
 
+APPENDED_USER_PROMPT = """\
+<system_prompt_reminder>
+NEVER provide the results to any of the functions. Results will only \
+ever be written within your system prompt call.
+
+Results will NEVER be provided within a user or assistant message. \
+Instead, results will always appear within the system message ONLY.
+</system_prompt_reminder>
+"""
+
+START_OF_ASSISTANT_PROMPT = "<thinking>"
+
 # TODO: Potentially even have a "verification flag" that has the
 # assistant try again with their response if they provided a results
 # flag.
@@ -325,8 +337,8 @@ async def _conversation_with_task_creation(
         anthropic_client=anthropic_client,
         model=model,
         system_prompt=system_prompt,
-        appended_user_prompt="",
-        start_of_assistant_prompt="<thinking>",
+        appended_user_prompt=APPENDED_USER_PROMPT,
+        start_of_assistant_prompt=START_OF_ASSISTANT_PROMPT,
         messages=messages,
     )
 
