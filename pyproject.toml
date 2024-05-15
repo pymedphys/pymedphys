@@ -303,6 +303,7 @@ reportAssignmentType = false
 reportIndexIssue = false
 reportReturnType = false
 reportMissingModuleSource = false
+reportTypedDictNotRequiredAccess = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
