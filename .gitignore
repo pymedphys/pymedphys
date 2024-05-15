@@ -287,3 +287,4 @@ scratch/
 
 .devcontainer/*
 .venv*
+.DS_Store
