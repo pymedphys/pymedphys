@@ -55,7 +55,7 @@ packaging==24.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and
 parso==0.8.4 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 pexpect==4.9.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13" and sys_platform != "win32"
 pillow==10.3.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
-platformdirs==4.2.1 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
+platformdirs==4.2.2 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 prompt-toolkit==3.0.43 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 psutil==5.9.8 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13"
 ptyprocess==0.7.0 ; python_version >= "3.9" and python_full_version != "3.9.7" and python_version < "3.13" and sys_platform != "win32"

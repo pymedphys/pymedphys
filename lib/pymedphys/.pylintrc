@@ -39,8 +39,8 @@ disable =
     unnecessary-dunder-call,
     unnecessary-list-index-lookup,
     superfluous-parens,
-    useless-import-alias,  # Needed to be able to re-expose imports
-    unused-import,  # Handled with ruff
+    used-before-assignment,
+    possibly-used-before-assignment,
 
 [FORMAT]
 max-line-length=88
