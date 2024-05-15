@@ -1,11 +1,18 @@
 import json
 import os
 import pathlib
+import threading
+import time
 
 import httpx
 import trio
 from anthropic import AsyncAnthropic
+from anyio.from_thread import BlockingPortal
 from pymedphys._imports import streamlit as st
+from streamlit.runtime.scriptrunner.script_run_context import (
+    add_script_run_ctx,
+    get_script_run_ctx,
+)
 
 import pymedphys
 from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
@@ -22,10 +29,43 @@ ANTHROPIC_API_LIMIT = 2
 
 
 def main():
-    trio.run(_main)
+    ctx = get_script_run_ctx()
+
+    if "portal" not in st.session_state or "thread" not in st.session_state:
+        thread = threading.Thread(target=create_event_loop_with_portal)
+
+        st.session_state.thread = thread
+        add_script_run_ctx(thread=st.session_state.thread, ctx=ctx)
+
+        thread.start()
+
+        while True:
+            if "portal" not in st.session_state:
+                time.sleep(0.1)
+                continue
+
+            break
+
+    add_script_run_ctx(thread=st.session_state.thread, ctx=ctx)
+
+    _main()
 
 
-async def _main():
+def create_event_loop_with_portal():
+    trio.run(create_portal)
+
+
+async def create_portal():
+    async with BlockingPortal() as portal:
+        st.session_state.portal = portal
+        await portal.sleep_until_stopped()
+
+    del st.session_state.portal
+
+
+def _main():
+    portal: BlockingPortal = st.session_state.portal
+
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
@@ -72,25 +112,35 @@ async def _main():
                 mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
             )
 
-    message_send_channel, message_receive_channel = trio.open_memory_channel(10)
+    if "message_send_channel" not in st.session_state:
+        message_send_channel, message_receive_channel = portal.call(
+            trio.open_memory_channel, 10
+        )
 
-    if "tasks_record" not in st.session_state:
-        st.session_state.tasks_record = []
+        async def assistant_calling_loop():
+            await receive_user_messages_and_call_assistant_loop(
+                tasks_record=[],
+                anthropic_client=_async_anthropic(),
+                connection=_mosaiq_connection(),
+                message_send_channel=message_send_channel,
+                message_receive_channel=message_receive_channel,
+                messages=st.session_state.messages,
+            )
+
+        portal.start_task_soon(assistant_calling_loop)
+
+        st.session_state.message_send_channel = message_send_channel
 
     new_message = st.chat_input()
 
     if new_message:
-        await message_send_channel.send({"role": USER, "content": new_message})
-
-    with st.spinner("Running AI and tool use response loop"):
-        await receive_user_messages_and_call_assistant_loop(
-            tasks_record=st.session_state.tasks_record,
-            anthropic_client=_async_anthropic(),
-            connection=_mosaiq_connection(),
-            message_send_channel=message_send_channel,
-            message_receive_channel=message_receive_channel,
-            messages=st.session_state.messages,
+        portal.start_task_soon(
+            st.session_state.message_send_channel.send,
+            {"role": USER, "content": new_message},
         )
+
+    with st.spinner("Waiting forever for potential AI and tool use responses"):
+        portal.call(trio.sleep_forever)
 
 
 @st.cache_resource
