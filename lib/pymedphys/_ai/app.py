@@ -31,7 +31,21 @@ ANTHROPIC_API_LIMIT = 2
 def main():
     ctx = get_script_run_ctx()
 
+    # session_storage: st.runtime.memory_session_storage.MemorySessionStorage = (
+    #     st.web.server.Server._runtime.session_storage  # pylint: disable-all
+    # )
+
+    # # Need to attach directly to the session object as we don't want
+    # # clear cache to remove this list.
+    # session = session_storage.get(ctx.session_id).session
+    # if "recorded_portals" not in session:
+    #     session.recorded_portals = []
+
     if "portal" not in st.session_state or "thread" not in st.session_state:
+        # Close old portals (freeing up unattached threads)
+        # for old_portal in session.recorded_portals:
+        #     old_portal.stop(cancel_remaining=True)
+
         thread = threading.Thread(target=create_event_loop_with_portal)
 
         st.session_state.thread = thread
@@ -46,6 +60,8 @@ def main():
 
             break
 
+        # session.recorded_portals.append(st.session_state.portal)
+
     add_script_run_ctx(thread=st.session_state.thread, ctx=ctx)
 
     _main()
@@ -59,8 +75,6 @@ async def create_portal():
     async with BlockingPortal() as portal:
         st.session_state.portal = portal
         await portal.sleep_until_stopped()
-
-    del st.session_state.portal
 
 
 def _main():
