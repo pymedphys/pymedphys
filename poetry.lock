@@ -158,7 +158,7 @@ test = ["astroid (>=1,<2)", "astroid (>=2,<4)", "pytest"]
 name = "attrs"
 version = "23.2.0"
 description = "Classes Without Boilerplate"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "attrs-23.2.0-py3-none-any.whl", hash = "sha256:99b87a485a5820b23b879f04c2305b44b951b502fd64be915879d77a7e8fc6f1"},
@@ -260,7 +260,7 @@ files = [
 name = "cffi"
 version = "1.16.0"
 description = "Foreign Function Interface for Python calling C code."
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "cffi-1.16.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:6b3d6606d369fc1da4fd8c357d026317fbb9c9b75d36dc16e90e84c26854b088"},
@@ -750,7 +750,7 @@ files = [
 name = "exceptiongroup"
 version = "1.2.1"
 description = "Backport of PEP 654 (exception groups)"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "exceptiongroup-1.2.1-py3-none-any.whl", hash = "sha256:5258b9ed329c5bbdd31a309f53cbfb0b155341807f6ff7606a1e801a891b29ad"},
@@ -954,7 +954,7 @@ test = ["coverage[toml]", "ddt (>=1.1.1,!=1.4.3)", "mock", "mypy", "pre-commit",
 name = "greenlet"
 version = "3.0.3"
 description = "Lightweight in-process concurrent programming"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "greenlet-3.0.3-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:9da2bd29ed9e4f15955dd1595ad7bc9320308a3b766ef7f837e23ad4b4aac31a"},
@@ -1129,7 +1129,7 @@ license = ["ukkonen"]
 name = "idna"
 version = "3.7"
 description = "Internationalized Domain Names in Applications (IDNA)"
-optional = false
+optional = true
 python-versions = ">=3.5"
 files = [
     {file = "idna-3.7-py3-none-any.whl", hash = "sha256:82fee1fc78add43492d3a1898bfa6d8a904cc97d8427f683ed8e798d07761aa0"},
@@ -2696,7 +2696,7 @@ pybtex = ">=0.16"
 name = "pycparser"
 version = "2.22"
 description = "C parser in Python"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "pycparser-2.22-py3-none-any.whl", hash = "sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc"},
