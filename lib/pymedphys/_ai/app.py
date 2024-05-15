@@ -1,18 +1,11 @@
 import json
 import os
 import pathlib
-import threading
-import time
 
 import httpx
 import trio
 from anthropic import AsyncAnthropic
-from anyio.from_thread import BlockingPortal
 from pymedphys._imports import streamlit as st
-from streamlit.runtime.scriptrunner.script_run_context import (
-    add_script_run_ctx,
-    get_script_run_ctx,
-)
 
 import pymedphys
 from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
@@ -29,57 +22,10 @@ ANTHROPIC_API_LIMIT = 2
 
 
 def main():
-    ctx = get_script_run_ctx()
-
-    # session_storage: st.runtime.memory_session_storage.MemorySessionStorage = (
-    #     st.web.server.Server._runtime.session_storage  # pylint: disable-all
-    # )
-
-    # # Need to attach directly to the session object as we don't want
-    # # clear cache to remove this list.
-    # session = session_storage.get(ctx.session_id).session
-    # if "recorded_portals" not in session:
-    #     session.recorded_portals = []
-
-    if "portal" not in st.session_state or "thread" not in st.session_state:
-        # Close old portals (freeing up unattached threads)
-        # for old_portal in session.recorded_portals:
-        #     old_portal.stop(cancel_remaining=True)
-
-        thread = threading.Thread(target=create_event_loop_with_portal)
-
-        st.session_state.thread = thread
-        add_script_run_ctx(thread=st.session_state.thread, ctx=ctx)
-
-        thread.start()
-
-        while True:
-            if "portal" not in st.session_state:
-                time.sleep(0.1)
-                continue
-
-            break
-
-        # session.recorded_portals.append(st.session_state.portal)
-
-    add_script_run_ctx(thread=st.session_state.thread, ctx=ctx)
-
-    _main()
+    trio.run(_main)
 
 
-def create_event_loop_with_portal():
-    trio.run(create_portal)
-
-
-async def create_portal():
-    async with BlockingPortal() as portal:
-        st.session_state.portal = portal
-        await portal.sleep_until_stopped()
-
-
-def _main():
-    portal: BlockingPortal = st.session_state.portal
-
+async def _main():
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
@@ -126,37 +72,25 @@ def _main():
                 mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
             )
 
-    if "message_send_channel" not in st.session_state:
-        message_send_channel, message_receive_channel = portal.call(
-            trio.open_memory_channel, 10
-        )
+    message_send_channel, message_receive_channel = trio.open_memory_channel(10)
 
-        async def assistant_calling_loop():
-            await receive_user_messages_and_call_assistant_loop(
-                tasks_record=[],
-                anthropic_client=_async_anthropic(),
-                connection=_mosaiq_connection(),
-                message_send_channel=message_send_channel,
-                message_receive_channel=message_receive_channel,
-                messages=st.session_state.messages,
-            )
-
-        portal.start_task_soon(assistant_calling_loop)
-
-        st.session_state.message_send_channel = message_send_channel
+    if "tasks_record" not in st.session_state:
+        st.session_state.tasks_record = []
 
     new_message = st.chat_input()
 
     if new_message:
-        portal.start_task_soon(
-            st.session_state.message_send_channel.send,
-            {"role": USER, "content": new_message},
-        )
+        await message_send_channel.send({"role": USER, "content": new_message})
 
-    with st.spinner("Waiting for AI or tool responses"):
-        # TODO: Have this wait only while there is either an AI or tool
-        # task currently running.
-        portal.call(trio.sleep_forever)
+    with st.spinner("Running AI and tool use response loop"):
+        await receive_user_messages_and_call_assistant_loop(
+            tasks_record=st.session_state.tasks_record,
+            anthropic_client=_async_anthropic(),
+            connection=_mosaiq_connection(),
+            message_send_channel=message_send_channel,
+            message_receive_channel=message_receive_channel,
+            messages=st.session_state.messages,
+        )
 
 
 @st.cache_resource
