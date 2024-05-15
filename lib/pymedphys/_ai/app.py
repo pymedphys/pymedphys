@@ -88,11 +88,12 @@ def _main():
         st.session_state.messages = []
 
     with st.sidebar:
-        if st.button("Remove last message"):
-            st.session_state.messages = st.session_state.messages[:-1]
+        # TODO: These need to be re-implemented with the async message channel
+        # if st.button("Remove last message"):
+        #     st.session_state.messages = st.session_state.messages[:-1]
 
-        if st.button("Remove last two messages"):
-            st.session_state.messages = st.session_state.messages[:-2]
+        # if st.button("Remove last two messages"):
+        #     st.session_state.messages = st.session_state.messages[:-2]
 
         _transcript_downloads()
 
