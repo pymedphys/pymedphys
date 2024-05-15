@@ -121,8 +121,6 @@ def main():
     experimental_apps = _get_apps_from_module(_experimental_apps)
     application_options = {**stable_apps, **experimental_apps}
 
-    application_options = {**stable_apps, **experimental_apps}
-
     if "app" not in st.session_state:
         st.session_state["app"] = get_url_app()
 
