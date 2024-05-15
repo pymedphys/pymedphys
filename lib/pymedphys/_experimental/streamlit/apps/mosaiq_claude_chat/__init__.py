@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-from pymedphys._ai.app import main as main
 from pymedphys._streamlit import categories
+
+from .app import main as main
 
 CATEGORY = categories.DRAFT
 TITLE = "MOSAIQ Claude Chat"
