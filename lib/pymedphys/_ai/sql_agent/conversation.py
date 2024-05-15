@@ -10,6 +10,7 @@ import pymedphys
 from pymedphys._ai import model_versions
 
 from ._pipeline import sql_tool_pipeline
+from ._utilities import words_in_mouth_prompting
 
 AsyncCallable = Callable[[Any, Any], Awaitable[Any]]
 
@@ -204,7 +205,14 @@ information on optional parameters if it is not provided.
 
 NEVER provide the results to any of the functions. Results will only \
 ever be written within your system prompt call.
+
+Results will NEVER be provided within a user or assistant message. \
+Instead, results will always appear within the system message ONLY.
 """
+
+# TODO: Potentially even have a "verification flag" that has the
+# assistant try again with their response if they provided a results
+# flag.
 
 # TODO: Make both of these TypedDicts
 Messages = list[Message | MessageParam]
@@ -313,49 +321,42 @@ async def _conversation_with_task_creation(
         anthropic_client=anthropic_client, connection=connection, messages=messages
     )
 
-    messages_to_submit: list[MessageParam] = [
-        {"role": item["role"], "content": item["content"]} for item in messages
-    ]
-
-    api_response = await anthropic_client.messages.create(
-        system=system_prompt,
+    response = await words_in_mouth_prompting(
+        anthropic_client=anthropic_client,
         model=model,
-        max_tokens=4096,
-        messages=messages_to_submit,
+        system_prompt=system_prompt,
+        appended_user_prompt="",
+        start_of_assistant_prompt="<thinking>",
+        messages=messages,
     )
 
-    # TODO: Rework so that this 'tool check' can occur along with the streaming API
-    for item in api_response.content:
-        if not item.type == "text":
+    matches = re.findall(CREATE_TASK_PATTERN, response)
+
+    for match in matches:
+        if not isinstance(match, tuple):
             continue
 
-        matches = re.findall(CREATE_TASK_PATTERN, item.text)
+        task_id = match[0]
+        function_name = match[1]
+        invoke_contents = match[2]
 
-        for match in matches:
-            if not isinstance(match, tuple):
-                continue
+        parameters = _extract_parameters_from_invoke(
+            invoke_contents,
+            # TODO: Don't hardcode this
+            parameter_types={"sub_agent_prompt": "string"},
+        )
 
-            task_id = match[0]
-            function_name = match[1]
-            invoke_contents = match[2]
+        _create_task(
+            nursery=nursery,
+            tasks_record=tasks_record,
+            message_send_channel=message_send_channel,
+            tools_mappings=tools_mappings,
+            task_id=task_id,
+            function_name=function_name,
+            parameters=parameters,
+        )
 
-            parameters = _extract_parameters_from_invoke(
-                invoke_contents,
-                # TODO: Don't hardcode this
-                parameter_types={"sub_agent_prompt": "string"},
-            )
-
-            _create_task(
-                nursery=nursery,
-                tasks_record=tasks_record,
-                message_send_channel=message_send_channel,
-                tools_mappings=tools_mappings,
-                task_id=task_id,
-                function_name=function_name,
-                parameters=parameters,
-            )
-
-    return api_response.to_dict()
+    return response
 
 
 def _extract_parameters_from_invoke(

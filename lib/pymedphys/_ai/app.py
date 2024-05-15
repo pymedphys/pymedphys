@@ -87,9 +87,6 @@ def _main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    for message in st.session_state.messages:
-        write_message(message["role"], message["content"])
-
     with st.sidebar:
         if st.button("Remove last message"):
             st.session_state.messages = st.session_state.messages[:-1]
@@ -111,6 +108,9 @@ def _main():
                 bak_filepath=bak_filepath,
                 mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
             )
+
+    for message in st.session_state.messages:
+        write_message(message["role"], message["content"])
 
     if "message_send_channel" not in st.session_state:
         message_send_channel, message_receive_channel = portal.call(
@@ -139,8 +139,10 @@ def _main():
             {"role": USER, "content": new_message},
         )
 
-    with st.spinner("Waiting forever for potential AI and tool use responses"):
-        portal.call(trio.sleep_forever)
+    with st.sidebar:
+        st.write("---")
+        with st.spinner("Waiting forever for potential AI and tool use responses"):
+            portal.call(trio.sleep_forever)
 
 
 @st.cache_resource

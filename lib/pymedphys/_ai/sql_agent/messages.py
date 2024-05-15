@@ -36,7 +36,7 @@ async def receive_user_messages_and_call_assistant_loop(
                 messages.append(item)
                 write_message(role=USER, content=item["content"])
 
-                assistant_message = await call_assistant_in_conversation(
+                assistant_response = await call_assistant_in_conversation(
                     nursery=nursery,
                     tasks_record=tasks_record,
                     anthropic_client=anthropic_client,
@@ -45,13 +45,12 @@ async def receive_user_messages_and_call_assistant_loop(
                     messages=messages,
                 )
 
-                print(f"Assistant message received: {assistant_message}")
-
+                print(f"Assistant response: {assistant_response}")
                 assert messages[-1]["role"] == USER
-                assert assistant_message["role"] == ASSISTANT
 
+                assistant_message = {"role": ASSISTANT, "content": assistant_response}
                 messages.append(assistant_message)
-                write_message(role=ASSISTANT, content=assistant_message["content"])
+                write_message(**assistant_message)
         finally:
             print("Closing message receive loop...")
 
