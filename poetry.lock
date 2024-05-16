@@ -4883,4 +4883,4 @@ user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dbfread", "dicompyle
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "37a031da277f7ad09766a28dba7278a98cefc1697709bee3199aa78a48524e94"
+content-hash = "1fe23d55a9a7c22303ee30defcb76120888e06ae499eed23ccd487f9139ecade"
