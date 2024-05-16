@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Cancer Care Associates
+# Copyright (C) 2024 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymedphys._streamlit import categories
-from pymedphys._streamlit.apps.metersetmap import _trf
-from pymedphys._streamlit.utilities import config as st_config
 
-CATEGORY = categories.DRAFT
-TITLE = "TRF Explorer"
-
-
-def main():
-    config = st_config.get_config()
-
-    _trf.trf_input_method(config)
+FAST = "claude-3-haiku-20240307"
+BALANCED = "claude-3-sonnet-20240229"
+INTELLIGENT = "claude-3-opus-20240229"

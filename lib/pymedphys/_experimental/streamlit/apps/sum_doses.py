@@ -23,7 +23,7 @@ from pymedphys._dicom.dose import sum_doses_in_datasets
 from pymedphys._dicom.utilities import pretty_patient_name
 from pymedphys._streamlit import categories
 
-CATEGORY = categories.PRE_ALPHA
+CATEGORY = categories.DRAFT
 TITLE = "Sum Coincident DICOM Doses"
 
 

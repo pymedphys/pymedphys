@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Cancer Care Associates
+# Copyright (C) 2024 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,29 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import textwrap
 
-from pymedphys._imports import streamlit as st
-
-from pymedphys._experimental.streamlit.utilities.dicom import loader as _loader
 from pymedphys._streamlit import categories
 
+from .app import main as main
+
 CATEGORY = categories.DRAFT
-TITLE = "DICOM Explorer"
-
-
-def main():
-    dicom_datasets = _loader.dicom_file_loader(
-        accept_multiple_files=False, stop_before_pixels=True
-    )
-    dicom_header = dicom_datasets[0]
-
-    st.markdown(
-        textwrap.dedent(
-            """\
-            ```
-            {}
-            ```
-            """
-        ).format(dicom_header.__repr__())
-    )
+TITLE = "MOSAIQ Claude Chat"

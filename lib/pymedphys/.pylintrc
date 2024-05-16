@@ -41,6 +41,7 @@ disable =
     superfluous-parens,
     used-before-assignment,
     possibly-used-before-assignment,
+    useless-import-alias,
 
 [FORMAT]
 max-line-length=88

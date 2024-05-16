@@ -25,7 +25,7 @@ from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import monaco as st_monaco
 
-CATEGORY = categories.PRE_ALPHA
+CATEGORY = categories.DRAFT
 TITLE = "Anonymising Monaco Backend Files"
 
 HERE = pathlib.Path(__file__).parent.resolve()
