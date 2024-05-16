@@ -1,6 +1,8 @@
 all = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "astroid",
     "attrs",
     "dbfread",
@@ -45,6 +47,8 @@ all = [
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]
@@ -83,6 +87,8 @@ tests = [
 user = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "attrs",
     "dbfread",
     "dicompyler-core",
@@ -109,6 +115,8 @@ user = [
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]
