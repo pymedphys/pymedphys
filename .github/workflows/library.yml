@@ -50,6 +50,7 @@ jobs:
           git stash
           git checkout $GITHUB_HEAD_REF
           git pull
+          poetry lock --no-update
           pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
 
