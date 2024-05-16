@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Optional, Tuple
-
 from . import connect as _connect
 from . import credentials as _credentials
 
@@ -26,9 +24,9 @@ def connect(
     hostname: str,
     port: int = 1433,
     database: str = "MOSAIQ",
-    alias: Optional[str] = None,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
+    alias: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
 ) -> Connection:
     """Connect to a Mosaiq SQL server.
 
@@ -93,8 +91,8 @@ def connect(
 
 
 def execute(
-    connection: Connection, query: str, parameters: Dict = None
-) -> List[Tuple[str, ...]]:
+    connection: Connection, query: str, parameters: dict | None = None
+) -> list[tuple[str, ...]]:
     """Execute SQL queries on a Mosaiq database.
 
     Parameters
@@ -189,6 +187,6 @@ def execute(
 
     with connection.cursor() as cursor:
         cursor.execute(query=query, parameters=parameters)
-        results: List[Tuple[str, ...]] = cursor.fetchall()
+        results: list[tuple[str, ...]] = cursor.fetchall()
 
     return results
