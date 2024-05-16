@@ -41,11 +41,6 @@ USER = "user"
 # constant is utilised to make it so that client side the API is only ever called 2 times at once. This limiter
 # is not needed if your Anthropic plan does not have a max number of concurrent limit in place, and
 # if your plan is not limited this application will run and work much faster without this limiter in place.
-# The default Anthropic plan limits API keys to only being able to call the API twice at the same time.
-# Even this Mosaiq chat application tries to call the API up to 6 times concurrently (at least). This limiter
-# constant is utilised to make it so that client side the API is only ever called 2 times at once. This limiter
-# is not needed if your Anthropic plan does not have a max number of concurrent limit in place, and
-# if your plan is not limited this application will run and work much faster without this limiter in place.
 ANTHROPIC_API_LIMIT = 2
 
 
