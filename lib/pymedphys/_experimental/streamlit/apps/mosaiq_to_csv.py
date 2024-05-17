@@ -26,7 +26,7 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as _mosaiq
 
-CATEGORY = categories.PLANNING
+CATEGORY = categories.DRAFT
 TITLE = "Mosaiq to CSV"
 
 LIB_ROOT = pathlib.Path(__file__).parents[3]

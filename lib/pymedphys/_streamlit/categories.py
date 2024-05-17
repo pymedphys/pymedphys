@@ -1,12 +1,10 @@
-MATURE = "Mature"
-PRODUCTION_STABLE = "Production/Stable"
+PRODUCTION = "Production"
 BETA = "Beta"
 ALPHA = "Alpha"
-PRE_ALPHA = "Pre-Alpha"
-PLANNING = "Planning"
+DRAFT = "Draft"
 
 APPLICATION_CATEGORIES_BY_COLUMN = {
-    0: [MATURE, PRODUCTION_STABLE],
+    0: [PRODUCTION],
     1: [BETA, ALPHA],
-    2: [PRE_ALPHA, PLANNING],
+    2: [DRAFT],
 }

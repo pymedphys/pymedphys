@@ -7,6 +7,7 @@ from . import (
     electrons,
     icom,
     iviewdb,
+    mosaiq_claude_chat,
     mosaiq_to_csv,
     sum_doses,
     trf_explorer,

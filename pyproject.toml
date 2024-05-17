@@ -20,7 +20,7 @@ packages = [{ include = "pymedphys", from = "lib" }]
 include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.9.7 || >3.9.7,<3.13"
+python = ">=3.10,<3.13"
 typing-extensions = "*"
 setuptools = "*"
 tomlkit = "*"
@@ -57,8 +57,8 @@ dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
 scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
-streamlit = { version = "~1.29.0", optional = true } # groups = ["user", "all"]
-streamlit-ace = { version = "*", optional = true }   # groups = ["user", "all"]
+streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
+streamlit-ace = { version = "*", optional = true }    # groups = ["user", "all"]
 
 numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
 
@@ -71,6 +71,12 @@ pydicom = { version = ">=2.0.0", optional = true } # groups = ["user", "all", "d
 shapely = { version = ">=1.7.0", optional = true } # groups = ["user", "all"]
 
 pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user", "all"]
+
+# AI
+anthropic = { version = ">=0.25.3", optional = true } # groups = ["user", "all"]
+trio = { version = ">=0.25.0", optional = true }      # groups = ["user", "all"]
+trio-asyncio = { version = "*", optional = true }     # groups = ["user", "all"]
+anyio = { version = "*", optional = true }            # groups = ["user", "all"]
 
 # ---- #
 # CVEs #
@@ -130,6 +136,8 @@ tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "
 all = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "astroid",
     "attrs",
     "dbfread",
@@ -174,6 +182,8 @@ all = [
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]
@@ -220,6 +230,8 @@ tests = [
 user = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "attrs",
     "dbfread",
     "dicompyler-core",
@@ -246,6 +258,8 @@ user = [
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]
@@ -288,6 +302,8 @@ reportAttributeAccessIssue = false
 reportAssignmentType = false
 reportIndexIssue = false
 reportReturnType = false
+reportMissingModuleSource = false
+reportTypedDictNotRequiredAccess = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

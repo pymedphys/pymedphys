@@ -50,6 +50,9 @@ jobs:
           git stash
           git checkout $GITHUB_HEAD_REF
           git pull
+          pip install pipx
+          pipx install poetry
+          poetry lock --no-update
           pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
 
@@ -117,11 +120,11 @@ jobs:
         include:
           # Spread the below across the range of supported Python versions.
           - os: "ubuntu"
-            python-version: "3.11" # TODO: Upgrade this to 3.12
+            python-version: "3.12"
           - os: "windows"
             python-version: "3.10"
           - os: "macos"
-            python-version: "3.9"
+            python-version: "3.12"
 
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 60

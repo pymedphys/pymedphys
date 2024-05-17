@@ -20,9 +20,8 @@ import time
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit import apps as _stable_apps
-
 from pymedphys._experimental.streamlit import apps as _experimental_apps
+from pymedphys._streamlit import apps as _stable_apps
 
 from . import categories as _categories
 
@@ -33,13 +32,13 @@ TITLE_LOGO = str(HERE.joinpath("pymedphys-title.svg"))
 
 def get_url_app():
     try:
-        return st.experimental_get_query_params()["app"][0]
+        return st.query_params["app"]
     except KeyError:
         return "index"
 
 
 def swap_app(app):
-    st.experimental_set_query_params(app=app)
+    st.query_params["app"] = app
 
     session_state = st.session_state
     session_state.app = app
@@ -118,14 +117,14 @@ def _get_apps_from_module(module):
 
 
 def main():
+    stable_apps = _get_apps_from_module(_stable_apps)
+    experimental_apps = _get_apps_from_module(_experimental_apps)
+    application_options = {**stable_apps, **experimental_apps}
+
     if "app" not in st.session_state:
         st.session_state["app"] = get_url_app()
 
     session_state = st.session_state
-
-    stable_apps = _get_apps_from_module(_stable_apps)
-    experimental_apps = _get_apps_from_module(_experimental_apps)
-    application_options = {**stable_apps, **experimental_apps}
 
     try:
         simple = application_options[session_state.app].SIMPLE
@@ -136,8 +135,6 @@ def main():
         st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="centered")
     else:
         st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON, layout="wide")
-
-    application_options = {**stable_apps, **experimental_apps}
 
     if (
         session_state.app != "index"
