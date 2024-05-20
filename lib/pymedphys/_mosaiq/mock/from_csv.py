@@ -20,7 +20,7 @@ from pymedphys._imports import pymssql
 
 from . import generate, utilities
 
-DATABASE = "MosaiqMimicsTest002"
+DATABASE_NAME = "MosaiqFromCsv"
 
 # The following set is so that table types can be added and removed. In
 # the case where the CSV format can't be input into the MSSQL database
@@ -55,8 +55,8 @@ def create_db_with_tables_from_csv():
     """Creates testing database if it doesn't exist, and then loads in
     the Mosaiq mimic tables.
     """
-    generate.create_test_db(database=DATABASE)
-    create_tables_from_csv(DATABASE)
+    generate.create_test_db(database=DATABASE_NAME)
+    create_tables_from_csv(DATABASE_NAME)
 
 
 def create_tables_from_csv(database):

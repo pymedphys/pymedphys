@@ -39,7 +39,7 @@ QCL_COMPLETED_DATETIMES = ["2021-04-14 09:11:30.387", "2021-04-14 09:11:35.383"]
 def connection_base():
     """will create the test database, if it does not already exist on the instance"""
     from_csv.create_db_with_tables_from_csv()
-    return utilities.connect(database=from_csv.DATABASE)
+    return utilities.connect(database=from_csv.DATABASE_NAME)
 
 
 @pytest.fixture(name="trf_filepath")
