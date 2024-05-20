@@ -14,18 +14,13 @@
 
 
 import base64
-import functools
 import logging
-import pathlib
-from typing import Dict, Tuple, cast
 
-from pymedphys._imports import pandas as pd
-from pymedphys._imports import pymssql, sqlalchemy, toml
+from pymedphys._imports import pymssql
 
-from . import mocks
+from . import generate, utilities
 
-HERE = pathlib.Path(__file__).parent
-DATABASE = "MosaiqMimicsTest002"
+DATABASE_NAME = "MosaiqFromCsv"
 
 # The following set is so that table types can be added and removed. In
 # the case where the CSV format can't be input into the MSSQL database
@@ -56,7 +51,15 @@ TYPE_CASTING = {
 }
 
 
-def create_mimic_tables(database):
+def create_db_with_tables_from_csv():
+    """Creates testing database if it doesn't exist, and then loads in
+    the Mosaiq mimic tables.
+    """
+    generate.create_test_db(database=DATABASE_NAME)
+    create_tables_from_csv(DATABASE_NAME)
+
+
+def create_tables_from_csv(database):
     """Creates MSSQL tables for testing that mimic a Mosaiq DB.
 
     Pulls data from the *.csv files and types_map.toml file within this
@@ -65,8 +68,8 @@ def create_mimic_tables(database):
     # https://github.com/pymssql/pymssql/issues/504#issuecomment-449746112
     pymssql.Binary = bytearray
 
-    sql_types_map = _get_sqlalchemy_types_map()
-    tables, types_map = _load_csv_and_toml()
+    sql_types_map = utilities.get_sqlalchemy_types_map()
+    tables, types_map = utilities.load_csv_and_toml()
     column_types_to_use = [sql_types_map[item] for item in COLUMN_TYPES_TO_USE]
     type_casting = {
         sql_types_map[key]: sql_types_map[item] for key, item in TYPE_CASTING.items()
@@ -96,7 +99,7 @@ def create_mimic_tables(database):
                 )
                 continue
 
-        mocks.dataframe_to_sql(
+        generate.dataframe_to_sql(
             table,
             table_name,
             index_label=index_label,
@@ -104,82 +107,3 @@ def create_mimic_tables(database):
             database=database,
             if_exists="replace",
         )
-
-
-def create_db_with_tables():
-    """Creates testing database if it doesn't exist, and then loads in
-    the Mosaiq mimic tables.
-    """
-    mocks.check_create_test_db(database=DATABASE)
-    create_mimic_tables(DATABASE)
-
-
-@functools.lru_cache()
-def _load_csv_and_toml() -> Tuple[Dict[str, "pd.DataFrame"], Dict[str, Dict[str, str]]]:
-    """Loads the *.csv files and types_map.toml file that are within
-    this directory.
-    """
-    csv_paths = HERE.glob("*.csv")
-    toml_path = HERE.joinpath("types_map.toml")
-
-    with open(toml_path) as f:
-        types_map = toml.load(f)
-
-    for table, column_type_map in types_map.items():
-        for column, type_repr in column_type_map.items():
-            types_map[table][column] = _get_sql_type(type_repr)
-
-    types_map = cast(Dict[str, Dict[str, str]], types_map)
-
-    tables: Dict[str, "pd.DataFrame"] = {}
-    for path in csv_paths:
-        table_name = path.stem
-        # column_types = types_map[table_name]
-        tables[table_name] = pd.read_csv(
-            path,
-            index_col=0,
-            # dtype=column_types,
-        )
-
-    return tables, types_map
-
-
-@functools.lru_cache()
-def _get_sqlalchemy_types_map():
-    """Load up a map that converts string representations of SQLAlchemy
-    types and maps them to their SQLAlchemy instance.
-    """
-    mssql_types = sqlalchemy.dialects.mssql
-    mssql_types_map = _create_types_map(mssql_types)
-
-    pymssql_types = sqlalchemy.dialects.mssql.pymssql.sqltypes
-    pymssql_types_map = _create_types_map(pymssql_types)
-
-    sqlalchemy_types_map = {
-        **mssql_types_map,
-        **pymssql_types_map,
-    }
-    return sqlalchemy_types_map
-
-
-def _create_types_map(sqltypes):
-    """Take a types module and utilising the `dir` function create a
-    mapping from the string value of that attribute to the SQLAlchemy
-    type instance.
-    """
-    sql_types_map = {
-        item.lower(): getattr(sqltypes, item)
-        for item in dir(sqltypes)
-        if item[0].isupper()
-    }
-
-    return sql_types_map
-
-
-def _get_sql_type(sql_type: str):
-    """Convert an SQL type labelled as a string to an SQLAlchemy type
-    instance."""
-    sql_type = str(sql_type).lower()
-    sqlalchemy_types_map = _get_sqlalchemy_types_map()
-
-    return sqlalchemy_types_map[sql_type]
