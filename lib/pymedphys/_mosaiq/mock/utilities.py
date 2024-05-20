@@ -15,7 +15,7 @@
 
 
 import functools
-from typing import Dict, Tuple, cast
+from typing import cast
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import sqlalchemy, toml
@@ -46,11 +46,10 @@ def connect(database=TEST_DB_NAME) -> pymedphys.mosaiq.Connection:
 
 
 @functools.lru_cache()
-def load_csv_and_toml() -> Tuple[Dict[str, "pd.DataFrame"], Dict[str, Dict[str, str]]]:
+def load_csv_and_toml() -> tuple[dict[str, "pd.DataFrame"], dict[str, dict[str, str]]]:
     """Loads the *.csv files and types_map.toml file that are within
     this directory.
     """
-    csv_paths = paths.DATA.glob("*.csv")
 
     with open(paths.TYPES_MAP) as f:
         types_map = toml.load(f)
@@ -59,19 +58,24 @@ def load_csv_and_toml() -> Tuple[Dict[str, "pd.DataFrame"], Dict[str, Dict[str, 
         for column, type_repr in column_type_map.items():
             types_map[table][column] = _get_sql_type(type_repr)
 
-    types_map = cast(Dict[str, Dict[str, str]], types_map)
+    types_map = cast(dict[str, dict[str, str]], types_map)
+    tables = load_tables()
 
-    tables: Dict[str, "pd.DataFrame"] = {}
+    return tables, types_map
+
+
+def load_tables():
+    csv_paths = paths.DATA.glob("*.csv")
+    tables: dict[str, "pd.DataFrame"] = {}
+
     for path in csv_paths:
         table_name = path.stem
-        # column_types = types_map[table_name]
         tables[table_name] = pd.read_csv(
             path,
             index_col=0,
-            # dtype=column_types,
         )
 
-    return tables, types_map
+    return tables
 
 
 def _get_sql_type(sql_type: str):
