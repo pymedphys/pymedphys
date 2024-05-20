@@ -28,7 +28,6 @@ MSQ_SERVER = "localhost"
 MSQ_PORT = 1433
 
 TEST_DB_NAME = "MosaiqTest77008"
-MIMIC_DB_NAME = "MosaiqMimicTest"
 
 SA_USER = "sa"
 SA_PASSWORD = "sqlServerPassw0rd"
