@@ -15,7 +15,7 @@
 
 from pymedphys._imports import pytest
 
-from pymedphys._mosaiq.mock import connect, mocks
+from pymedphys._mosaiq.mock import generate, utilities
 from pymedphys._mosaiq.sessions import (
     localization_offset_for_site,
     mean_session_offset_for_site,
@@ -27,9 +27,9 @@ from pymedphys._mosaiq.sessions import (
 @pytest.fixture(name="connection")
 def fixture_check_create_test_db():
     """will create the test database, if it does not already exist on the instance"""
-    mocks.check_create_test_db()
+    generate.create_test_db()
 
-    return connect.connect()
+    return utilities.connect()
 
 
 @pytest.mark.mosaiqdb
@@ -37,10 +37,10 @@ def test_sessions_for_site(connection):
     """creates basic tx field and site metadata for the mock patients"""
 
     # the create_mock_patients output is the patient_ident dataframe
-    mock_patient_ident_df = mocks.create_mock_patients()
-    mock_site_df = mocks.create_mock_treatment_sites(mock_patient_ident_df)
-    mock_txfield_df = mocks.create_mock_treatment_fields(mock_site_df)
-    mocks.create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
+    mock_patient_ident_df = generate.create_mock_patients()
+    mock_site_df = generate.create_mock_treatment_sites(mock_patient_ident_df)
+    mock_txfield_df = generate.create_mock_treatment_fields(mock_site_df)
+    generate.create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
 
     # sit_set_id = 1 should be a NAL site
     sit_set_id = 1
@@ -78,10 +78,10 @@ def test_session_offsets_for_site(connection):  # pylint: disable = unused-argum
     """creates basic tx field and site metadata for the mock patients"""
 
     # the create_mock_patients output is the patient_ident dataframe
-    mock_patient_ident_df = mocks.create_mock_patients()
-    mock_site_df = mocks.create_mock_treatment_sites(mock_patient_ident_df)
-    mock_txfield_df = mocks.create_mock_treatment_fields(mock_site_df)
-    mocks.create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
+    mock_patient_ident_df = generate.create_mock_patients()
+    mock_site_df = generate.create_mock_treatment_sites(mock_patient_ident_df)
+    mock_txfield_df = generate.create_mock_treatment_fields(mock_site_df)
+    generate.create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
 
     # should be a NAL site
     sit_set_id = 1

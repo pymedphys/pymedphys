@@ -81,7 +81,7 @@ def dataframe_to_sql(
     engine.dispose()
 
 
-def check_create_test_db(database=connect.TEST_DB_NAME):
+def create_test_db(database=connect.TEST_DB_NAME):
     """Will create the test database, if it does not already exist on the instance"""
 
     # sa connection to create the test database
