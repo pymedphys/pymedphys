@@ -15,6 +15,7 @@
 
 from pymedphys._imports import pytest
 
+from pymedphys._mosaiq.mock import connect, mocks
 from pymedphys._mosaiq.sessions import (
     localization_offset_for_site,
     mean_session_offset_for_site,
@@ -22,16 +23,13 @@ from pymedphys._mosaiq.sessions import (
     sessions_for_site,
 )
 
-from . import _connect
-from .data import mocks
-
 
 @pytest.fixture(name="connection")
 def fixture_check_create_test_db():
     """will create the test database, if it does not already exist on the instance"""
     mocks.check_create_test_db()
 
-    return _connect.connect()
+    return connect.connect()
 
 
 @pytest.mark.mosaiqdb

@@ -22,7 +22,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql, sqlalchemy
 
-from .. import _connect
+from . import connect
 
 # vary the number of fractions a bit
 NUMBER_OF_FRACTIONS = (20, 25, 30)
@@ -44,7 +44,7 @@ def dataframe_to_sql(
     tablename,
     index_label,
     dtype=None,
-    database=_connect.TEST_DB_NAME,
+    database=connect.TEST_DB_NAME,
     if_exists="replace",
 ):
     """using a pd.DataFrame, populate a table in the configured database
@@ -62,8 +62,8 @@ def dataframe_to_sql(
     """
 
     connection_str = (
-        f"mssql+pymssql://{_connect.SA_USER}:{_connect.SA_PASSWORD}@"
-        f"{_connect.MSQ_SERVER}:{_connect.MSQ_PORT}/{database}"
+        f"mssql+pymssql://{connect.SA_USER}:{connect.SA_PASSWORD}@"
+        f"{connect.MSQ_SERVER}:{connect.MSQ_PORT}/{database}"
     )
     engine = sqlalchemy.create_engine(connection_str, echo=False)
 
@@ -81,15 +81,15 @@ def dataframe_to_sql(
     engine.dispose()
 
 
-def check_create_test_db(database=_connect.TEST_DB_NAME):
+def check_create_test_db(database=connect.TEST_DB_NAME):
     """Will create the test database, if it does not already exist on the instance"""
 
     # sa connection to create the test database
     with pymssql.connect(
-        _connect.MSQ_SERVER,
-        port=_connect.MSQ_PORT,
-        user=_connect.SA_USER,
-        password=_connect.SA_PASSWORD,
+        connect.MSQ_SERVER,
+        port=connect.MSQ_PORT,
+        user=connect.SA_USER,
+        password=connect.SA_PASSWORD,
     ) as sql_sa_connection:
         sql_sa_connection.autocommit(True)
 

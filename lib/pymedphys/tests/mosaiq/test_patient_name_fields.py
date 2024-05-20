@@ -17,9 +17,7 @@ from pymedphys._imports import pytest
 
 import pymedphys
 from pymedphys._mosaiq import delivery, helpers
-
-from . import _connect
-from .data import mocks
+from pymedphys._mosaiq.mock import connect, mocks
 
 
 @pytest.fixture(name="connection")
@@ -27,7 +25,7 @@ def fixture_check_create_test_db() -> pymedphys.mosaiq.Connection:
     """will create the test database, if it does not already exist on the instance"""
     mocks.check_create_test_db()
 
-    return _connect.connect()
+    return connect.connect()
 
 
 @pytest.mark.mosaiqdb

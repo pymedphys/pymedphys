@@ -30,7 +30,9 @@ from pymedphys._ai.sql_agent.messages import (
     receive_user_messages_and_call_assistant_loop,
     write_message,
 )
-from pymedphys._mosaiq.server_from_bak import start_mssql_docker_image_with_bak_restore
+from pymedphys._mosaiq.mock.server_from_bak import (
+    start_mssql_docker_image_with_bak_restore,
+)
 
 from ._trio import get_streamlit_trio_portal
 

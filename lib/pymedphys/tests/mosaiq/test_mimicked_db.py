@@ -18,9 +18,7 @@ from pymedphys._imports import pytest
 
 import pymedphys
 from pymedphys._mosaiq import helpers
-
-from . import _connect
-from .data import mimics
+from pymedphys._mosaiq.mock import connect, mimics
 
 PATIENT_ID = 989898
 FIELD_ID = 88043
@@ -41,7 +39,7 @@ QCL_COMPLETED_DATETIMES = ["2021-04-14 09:11:30.387", "2021-04-14 09:11:35.383"]
 def connection_base():
     """will create the test database, if it does not already exist on the instance"""
     mimics.create_db_with_tables()
-    return _connect.connect(database=mimics.DATABASE)
+    return connect.connect(database=mimics.DATABASE)
 
 
 @pytest.fixture(name="trf_filepath")

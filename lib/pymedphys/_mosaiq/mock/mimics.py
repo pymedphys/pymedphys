@@ -24,7 +24,7 @@ from pymedphys._imports import pymssql, sqlalchemy, toml
 
 from . import mocks
 
-HERE = pathlib.Path(__file__).parent
+DATA = pathlib.Path(__file__).parent / "data"
 DATABASE = "MosaiqMimicsTest002"
 
 # The following set is so that table types can be added and removed. In
@@ -119,8 +119,8 @@ def _load_csv_and_toml() -> Tuple[Dict[str, "pd.DataFrame"], Dict[str, Dict[str,
     """Loads the *.csv files and types_map.toml file that are within
     this directory.
     """
-    csv_paths = HERE.glob("*.csv")
-    toml_path = HERE.joinpath("types_map.toml")
+    csv_paths = DATA.glob("*.csv")
+    toml_path = DATA.joinpath("types_map.toml")
 
     with open(toml_path) as f:
         types_map = toml.load(f)
@@ -162,14 +162,14 @@ def _get_sqlalchemy_types_map():
     return sqlalchemy_types_map
 
 
-def _create_types_map(sqltypes):
+def _create_types_map(sql_types):
     """Take a types module and utilising the `dir` function create a
     mapping from the string value of that attribute to the SQLAlchemy
     type instance.
     """
     sql_types_map = {
-        item.lower(): getattr(sqltypes, item)
-        for item in dir(sqltypes)
+        item.lower(): getattr(sql_types, item)
+        for item in dir(sql_types)
         if item[0].isupper()
     }
 
