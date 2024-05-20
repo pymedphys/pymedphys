@@ -87,7 +87,17 @@ def extract(
             for column_name in df.columns:
                 if types_map[table_name][column_name] == sql_types_map["largebinary"]:
                     df_with_new_rows[column_name] = df_with_new_rows[column_name].apply(
-                        lambda x: base64.encodebytes(x).decode()
+                        lambda x: base64.urlsafe_b64encode(x).decode()
+                    )
+
+            # TODO: Remove this component, this is just to convert from the previous
+            # approach to the new approach of using urlsafe base64.
+            for column_name in df.columns:
+                if types_map[table_name][column_name] == sql_types_map["largebinary"]:
+                    df[column_name] = df[column_name].apply(
+                        lambda x: base64.urlsafe_b64encode(
+                            base64.decodebytes(x.encode("utf-8"))
+                        ).decode()
                     )
 
             updated_df = pd.concat([df, df_with_new_rows], ignore_index=True)
