@@ -33,6 +33,16 @@ SA_USER = "sa"
 SA_PASSWORD = "sqlServerPassw0rd"
 
 
+# Not knowing particularly why, I was unable to load values in as "char"
+# or "timestamp". This is a work-a-round to just map those types to
+# something else for now.
+TYPE_CASTING = {
+    "char": "varchar",
+    "timestamp": "largebinary",
+    "binary": "largebinary",
+}
+
+
 def connect(database=TEST_DB_NAME) -> pymedphys.mosaiq.Connection:
     connection = pymedphys.mosaiq.connect(
         MSQ_SERVER,
@@ -59,12 +69,24 @@ def load_csv_and_toml() -> tuple[dict[str, "pd.DataFrame"], dict[str, dict[str, 
             types_map[table][column] = _get_sql_type(type_repr)
 
     types_map = cast(dict[str, dict[str, str]], types_map)
-    tables = load_tables()
+    tables = _load_tables()
+
+    sql_types_map = get_sqlalchemy_types_map()
+    type_casting = {
+        sql_types_map[key]: sql_types_map[item] for key, item in TYPE_CASTING.items()
+    }
+
+    for table_name, table in tables.items():
+        for column_name, a_type in types_map[table_name].items():
+            try:
+                types_map[table_name][column_name] = type_casting[a_type]
+            except KeyError:
+                pass
 
     return tables, types_map
 
 
-def load_tables():
+def _load_tables():
     csv_paths = paths.DATA.glob("*.csv")
     tables: dict[str, "pd.DataFrame"] = {}
 

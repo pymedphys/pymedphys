@@ -41,15 +41,6 @@ COLUMN_TYPES_TO_USE = {
     "bit",
 }
 
-# Not knowing particularly why, I was unable to load values in as "char"
-# or "timestamp". This is a work-a-round to just map those types to
-# something else for now.
-TYPE_CASTING = {
-    "char": "varchar",
-    "timestamp": "largebinary",
-    "binary": "largebinary",
-}
-
 
 def create_db_with_tables_from_csv():
     """Creates testing database if it doesn't exist, and then loads in
@@ -71,24 +62,14 @@ def create_tables_from_csv(database):
     sql_types_map = utilities.get_sqlalchemy_types_map()
     tables, types_map = utilities.load_csv_and_toml()
     column_types_to_use = [sql_types_map[item] for item in COLUMN_TYPES_TO_USE]
-    type_casting = {
-        sql_types_map[key]: sql_types_map[item] for key, item in TYPE_CASTING.items()
-    }
 
     for table_name, table in tables.items():
         logging.debug("Creating mimic table for %s", table_name)
 
-        column_types = types_map[table_name]
-        for column_name, a_type in column_types.items():
-            try:
-                column_types[column_name] = type_casting[a_type]
-            except KeyError:
-                pass
-
         index_label = table.columns[0]
         table = table.set_index(index_label)
 
-        for column_name, a_type in column_types.items():
+        for column_name, a_type in types_map[table_name].items():
             if a_type not in column_types_to_use:
                 table = table.drop(columns=[column_name])
                 continue
@@ -103,7 +84,7 @@ def create_tables_from_csv(database):
             table,
             table_name,
             index_label=index_label,
-            dtype=column_types,
+            dtype=types_map[table_name],
             database=database,
             if_exists="replace",
         )

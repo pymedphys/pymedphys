@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import pathlib
 import subprocess
 import time
@@ -23,7 +22,7 @@ DATA_DIR_IN_DOCKER_IMAGE = pathlib.Path("/mosaiq-data")
 
 
 def start_mssql_docker_image_with_bak_restore(
-    bak_filepath: pathlib.Path, mssql_sa_password: str, database_name="PRACTICE"
+    bak_filepath: pathlib.Path, sa_password: str, database_name="PRACTICE"
 ):
     volume_mount_string = f"{bak_filepath.parent}:{DATA_DIR_IN_DOCKER_IMAGE}"
 
@@ -38,7 +37,7 @@ def start_mssql_docker_image_with_bak_restore(
             "-e",
             "ACCEPT_EULA=Y",
             "-e",
-            f"MSSQL_SA_PASSWORD={mssql_sa_password}",
+            f"MSSQL_SA_PASSWORD={sa_password}",
             "-p",
             "1433:1433",
             "-d",
@@ -51,7 +50,7 @@ def start_mssql_docker_image_with_bak_restore(
             connection = pymssql.connect(
                 "localhost",
                 "sa",
-                password=mssql_sa_password,
+                password=sa_password,
                 port=1433,
                 autocommit=True,
             )

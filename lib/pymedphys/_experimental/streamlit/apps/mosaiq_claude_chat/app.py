@@ -66,7 +66,7 @@ def main():
         if st.button("Start demo MOSAIQ server from .bak file"):
             start_mssql_docker_image_with_bak_restore(
                 bak_filepath=bak_filepath,
-                mssql_sa_password=os.getenv("MSSQL_SA_PASSWORD"),
+                sa_password=os.getenv("MSSQL_SA_PASSWORD"),
             )
 
     for message in messages:
