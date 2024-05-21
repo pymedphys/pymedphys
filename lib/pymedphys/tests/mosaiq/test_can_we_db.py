@@ -15,16 +15,16 @@
 
 from pymedphys._imports import pymssql, pytest
 
-from . import _connect
+from pymedphys._mosaiq.mock import utilities
 
 
 @pytest.mark.mosaiqdb
 def test_can_we_db():
     conn = pymssql.connect(
-        _connect.MSQ_SERVER,
-        port=_connect.MSQ_PORT,
-        user=_connect.SA_USER,
-        password=_connect.SA_PASSWORD,
+        utilities.MSQ_SERVER,
+        port=utilities.MSQ_PORT,
+        user=utilities.SA_USER,
+        password=utilities.SA_PASSWORD,
     )
     cursor = conn.cursor()
     cursor.execute("select * from sys.databases")

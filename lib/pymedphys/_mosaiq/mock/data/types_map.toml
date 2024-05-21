@@ -525,11 +525,13 @@ WobblingRadius_X = "decimal"
 WobblingRadius_Y = "decimal"
 LayercGrayPerMeterset = "decimal"
 RowVers = "timestamp"
+
 [PatientFamilyHistory]
 PFH_ID = "int"
 Pat_ID1 = "int"
 Name = "varchar"
 RowVers = "timestamp"
+
 [PatientName]
 PatientNameId = "int"
 Pat_ID1 = "int"

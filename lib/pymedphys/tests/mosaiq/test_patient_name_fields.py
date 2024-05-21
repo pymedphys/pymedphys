@@ -17,23 +17,21 @@ from pymedphys._imports import pytest
 
 import pymedphys
 from pymedphys._mosaiq import delivery, helpers
-
-from . import _connect
-from .data import mocks
+from pymedphys._mosaiq.mock import generate, utilities
 
 
 @pytest.fixture(name="connection")
 def fixture_check_create_test_db() -> pymedphys.mosaiq.Connection:
     """will create the test database, if it does not already exist on the instance"""
-    mocks.check_create_test_db()
+    generate.create_test_db()
 
-    return _connect.connect()
+    return utilities.connect()
 
 
 @pytest.mark.mosaiqdb
 def test_get_patient_name(connection: pymedphys.mosaiq.Connection):
     """tests the get_patient_name helper function"""
-    mocks.create_mock_patients()
+    generate.create_mock_patients()
 
     # test a generic query for patient info
     result_all = pymedphys.mosaiq.execute(
@@ -67,9 +65,9 @@ def test_get_patient_fields(connection: pymedphys.mosaiq.Connection):
     """creates basic tx field and site metadata for the mock patients"""
 
     # the create_mock_patients output is the patient_ident dataframe
-    mock_patient_ident_df = mocks.create_mock_patients()
-    mock_site_df = mocks.create_mock_treatment_sites(mock_patient_ident_df)
-    mocks.create_mock_treatment_fields(mock_site_df)
+    mock_patient_ident_df = generate.create_mock_patients()
+    mock_site_df = generate.create_mock_treatment_sites(mock_patient_ident_df)
+    generate.create_mock_treatment_fields(mock_site_df)
 
     # test the get_patient_fields helper function
     fields_for_moe_df = helpers.get_patient_fields(connection, "MR8002")
