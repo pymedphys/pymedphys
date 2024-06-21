@@ -1,6 +1,6 @@
-=====
-Gamma
-=====
+=============
+Interpolation
+=============
 
 .. toctree::
     :maxdepth: 2

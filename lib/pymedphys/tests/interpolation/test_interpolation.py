@@ -19,7 +19,7 @@ from pymedphys._interp import interp
 
 
 # pylint: disable=invalid-name
-def test_interpolation():
+def test_interpolation(plot=False):
     x_size = 11
     y_size = 6
     z_size = 31
@@ -34,12 +34,13 @@ def test_interpolation():
 
     X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
-    values = X**2 + Y**2
+    values = X**2 + Y**2 + Z**2
     values_interp = interp.multilinear_interp(
         (x, y, z), values, axes_interp=(xi, yi, zi)
     ).reshape((xi.size, yi.size, zi.size))
 
-    interp.plot_interp_comparison_heatmap(values, values_interp, 2, 0, 0)
+    if plot:
+        interp.plot_interp_comparison_heatmap(values, values_interp, 2, 0, 0)
 
     assert np.isclose(values.min(), values_interp.min())
     assert np.isclose(values.max(), values_interp.max())
