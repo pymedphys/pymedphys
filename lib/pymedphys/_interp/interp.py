@@ -296,9 +296,6 @@ def multilinear_interp(
                 extrap_fill_value,
             )
 
-        # elif algo.lower() == "no_numba":
-        #     return run_trilinear_interpolation_no_numba(axes_known, values, axes_interp)
-
         elif algo.lower() == "scipy":
             values_interp = interp3d_scipy(axes_known, values, points_interp)
 
