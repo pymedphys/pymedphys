@@ -23,6 +23,7 @@ from warnings import warn
 from pymedphys._imports import interpolation
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
+from pymedphys._interp import interp
 
 import pymedphys._utilities.createshells
 
@@ -518,11 +519,39 @@ def interpolate_evaluation_dose_at_distance(
     )
 
     try:
-        evaluation_dose = _run_interp_with_econforge(options, all_points)
+        evaluation_dose = _run_custom_interp(options, all_points)
     except ImportError:
+        evaluation_dose = _run_interp_with_scipy(options, all_points)
+    except NameError:
         evaluation_dose = _run_interp_with_scipy(options, all_points)
 
     return evaluation_dose
+
+
+def _run_custom_interp(options, all_points):
+    axes_evaluation = [axis.squeeze() for axis in options.axes_evaluation]
+
+    print(f"all_points shape: {all_points.shape}")
+
+    points = np.column_stack(
+        [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
+    )
+    print(f"points shape: {points.shape}")
+
+    values_interp = interp.multilinear_interp(
+        axes_known=axes_evaluation,
+        values=np.array(options.dose_evaluation),
+        points_interp=points,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+    )
+
+    print(f"values_interp shape: {values_interp.shape}")
+
+    values_interp_reshaped = values_interp.reshape(all_points.shape[:-1])
+    print(f"values_interp_reshaped shape: {values_interp_reshaped.shape}")
+
+    return values_interp_reshaped
 
 
 def _run_interp_with_econforge(options, all_points):

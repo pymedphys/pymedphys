@@ -180,7 +180,7 @@ class ApiModule(ModuleType):
             if target is not None and name != "__onfirstaccess__":
                 # retry, onfirstaccess might have set attrs
                 return getattr(self, name)
-            raise AttributeError(name)
+            raise AttributeError(f"{target} is missing {name}")
 
         result = importobj(modpath, attrname)
         setattr(self, name, result)
