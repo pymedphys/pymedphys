@@ -20,7 +20,7 @@ from pymedphys._imports import nb, plt, scipy, interpolation
 
 
 def _plot_interp_comparison_heatmap(
-    values, values_interp, slice_number: int, slice_number_interp
+    values, values_interp, slice_axis:int, slice_number: int, slice_number_interp: int
 ):
     _, (ax1, ax2) = plt.subplots(1, 2)
 
@@ -28,10 +28,10 @@ def _plot_interp_comparison_heatmap(
     plot_max = max(values.max(), values_interp.max())
     print(values.min(), values.max(), values_interp.min(), values_interp.max())
 
-    ax1.imshow(values[slice_number, :, :], vmin=plot_min, vmax=plot_max)
+    ax1.imshow(values.take(axis=slice_axis, indices=slice_number), vmin=plot_min, vmax=plot_max)
 
     im2 = ax2.imshow(
-        values_interp[slice_number_interp, :, :], vmin=plot_min, vmax=plot_max
+        values_interp.take(axis=slice_axis, indices=slice_number_interp), vmin=plot_min, vmax=plot_max
     )
     plt.colorbar(im2, ax=(ax1, ax2), orientation="vertical")
     plt.show()
@@ -129,10 +129,10 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value):
         if y1_idx >= y.size:
             y1_idx = y.size - 1
 
-        c00 = values[y0_idx, x0_idx]
-        c10 = values[y0_idx, x1_idx]
-        c01 = values[y1_idx, x0_idx]
-        c11 = values[y1_idx, x1_idx]
+        c00 = values[x0_idx, y0_idx]
+        c01 = values[x0_idx, y1_idx]
+        c10 = values[x1_idx, y0_idx]
+        c11 = values[x1_idx, y1_idx]
 
         wx = (xpi - x[x0_idx]) / diffs[0]
         wy = (ypi - y[y0_idx]) / diffs[1]
@@ -206,12 +206,12 @@ def interp3d(axes_known, values, points_interp, extrap_fill_value):
 
         # Extract values values at corner points
         c000 = values[x0_idx, y0_idx, z0_idx]
-        c100 = values[x0_idx, y0_idx, z1_idx]
+        c001 = values[x0_idx, y0_idx, z1_idx]
         c010 = values[x0_idx, y1_idx, z0_idx]
-        c110 = values[x0_idx, y1_idx, z1_idx]
-        c001 = values[x1_idx, y0_idx, z0_idx]
+        c011 = values[x0_idx, y1_idx, z1_idx]
+        c100 = values[x1_idx, y0_idx, z0_idx]
         c101 = values[x1_idx, y0_idx, z1_idx]
-        c011 = values[x1_idx, y1_idx, z0_idx]
+        c110 = values[x1_idx, y1_idx, z0_idx]
         c111 = values[x1_idx, y1_idx, z1_idx]
 
         # Perform trilinear interpolation
@@ -254,7 +254,7 @@ def multilinear_interp(
 ) -> np.ndarray:
     if axes_interp is not None and points_interp is None:
         mgrids = np.meshgrid(*axes_interp, indexing="ij")
-        points_interp = np.column_stack([mgrid.ravel() for mgrid in mgrids])
+        points_interp = np.vstack([mgrid.ravel() for mgrid in mgrids]).T
     elif axes_interp is None and points_interp is not None:
         pass
     else:

@@ -39,7 +39,7 @@ def test_interpolation():
         (x, y, z), values, axes_interp=(xi, yi, zi)
     ).reshape((xi.size, yi.size, zi.size))
 
-    interp._plot_interp_comparison_heatmap(values, values_interp, 0, 0)
+    interp._plot_interp_comparison_heatmap(values, values_interp, 2, 0, 0)
 
     assert np.isclose(values.min(), values_interp.min())
     assert np.isclose(values.max(), values_interp.max())
