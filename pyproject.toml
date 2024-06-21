@@ -101,6 +101,7 @@ flashgamma = { version = "*", optional = true } # groups = ["comparables"]
 # Many environments have issue with installing llvmlite, so, until it is more
 # reliable, don't include this dependency in the standard install.
 interpolation = { version = ">=2.1.0", optional = true } # groups = ["speedups"]
+numba = { version = "*", optional = true } # groups = ["user", "all", "speedups"]
 
 # ------------- #
 # Documentation #
@@ -131,7 +132,6 @@ rope = { version = "*", optional = true }            # groups = ["dev", "all"]
 doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "doctests"]
-numba = "<0.60.0"
 
 [tool.poetry.extras]
 all = [
