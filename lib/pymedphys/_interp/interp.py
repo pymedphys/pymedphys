@@ -19,19 +19,22 @@ import numpy as np
 from pymedphys._imports import nb, plt, scipy, interpolation
 
 
-def _plot_interp_comparison_heatmap(
-    values, values_interp, slice_axis:int, slice_number: int, slice_number_interp: int
+def plot_interp_comparison_heatmap(
+    values, values_interp, slice_axis: int, slice_number: int, slice_number_interp: int
 ):
     _, (ax1, ax2) = plt.subplots(1, 2)
 
     plot_min = min(values.min(), values_interp.min())
     plot_max = max(values.max(), values_interp.max())
-    print(values.min(), values.max(), values_interp.min(), values_interp.max())
 
-    ax1.imshow(values.take(axis=slice_axis, indices=slice_number), vmin=plot_min, vmax=plot_max)
+    ax1.imshow(
+        values.take(axis=slice_axis, indices=slice_number), vmin=plot_min, vmax=plot_max
+    )
 
     im2 = ax2.imshow(
-        values_interp.take(axis=slice_axis, indices=slice_number_interp), vmin=plot_min, vmax=plot_max
+        values_interp.take(axis=slice_axis, indices=slice_number_interp),
+        vmin=plot_min,
+        vmax=plot_max,
     )
     plt.colorbar(im2, ax=(ax1, ax2), orientation="vertical")
     plt.show()
@@ -248,13 +251,13 @@ def multilinear_interp(
     values: np.ndarray,
     axes_interp: Sequence[np.ndarray] = None,
     points_interp: np.ndarray = None,
-    algo: str = "numba",
+    algo: str = "pymedphys",
     bounds_error=True,
     extrap_fill_value=np.nan,
 ) -> np.ndarray:
     if axes_interp is not None and points_interp is None:
         mgrids = np.meshgrid(*axes_interp, indexing="ij")
-        points_interp = np.vstack([mgrid.ravel() for mgrid in mgrids]).T
+        points_interp = np.column_stack([mgrid.ravel() for mgrid in mgrids])
     elif axes_interp is None and points_interp is not None:
         pass
     else:
@@ -290,7 +293,7 @@ def multilinear_interp(
             extrap_fill_value,
         )
     else:
-        if algo.lower() == "numba":
+        if algo.lower() == "pymedphys":
             values_interp = interp3d(
                 axes_known,
                 values,
@@ -302,16 +305,14 @@ def multilinear_interp(
         #     return run_trilinear_interpolation_no_numba(axes_known, values, axes_interp)
 
         elif algo.lower() == "scipy":
-            Zi, Yi, Xi = np.meshgrid(*axes_interp, indexing="ij")
-            positions_interp = np.vstack([Zi.ravel(), Yi.ravel(), Xi.ravel()]).T
-            values_interp = interp3d_scipy(axes_known, values, positions_interp)
+            values_interp = interp3d_scipy(axes_known, values, points_interp)
 
         elif algo.lower() == "econforge":
             grid = interpolation.splines.CGrid(*axes_known)
-            mgrids_interp = np.meshgrid(*axes_interp, indexing="ij")
-            positions = np.column_stack(
-                [mgrid.ravel() for mgrid in mgrids_interp]
-            ).astype(float)
-            values_interp = interp3d_econforge(grid, values, positions)
+            # mgrids_interp = np.meshgrid(*axes_interp, indexing="ij")
+            # positions = np.column_stack(
+            #     [mgrid.ravel() for mgrid in mgrids_interp]
+            # ).astype(float)
+            values_interp = interp3d_econforge(grid, values, points_interp)
 
     return values_interp
