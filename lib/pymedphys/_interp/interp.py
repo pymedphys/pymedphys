@@ -237,11 +237,6 @@ def interp3d_scipy(axes_known, values, positions):
 
 
 def interp3d_econforge(grid, values, positions):
-    # grid = interpolation.splines.CGrid(z, y, x)
-    # mgrids_interp = np.meshgrid(zi, yi, xi, indexing="ij")
-    # positions = np.column_stack([mgrid.ravel() for mgrid in mgrids_interp]).astype(
-    #     float
-    # )
     return interpolation.splines.eval_linear(grid, values, positions)
 
 
@@ -309,10 +304,6 @@ def multilinear_interp(
 
         elif algo.lower() == "econforge":
             grid = interpolation.splines.CGrid(*axes_known)
-            # mgrids_interp = np.meshgrid(*axes_interp, indexing="ij")
-            # positions = np.column_stack(
-            #     [mgrid.ravel() for mgrid in mgrids_interp]
-            # ).astype(float)
             values_interp = interp3d_econforge(grid, values, points_interp)
 
     return values_interp
