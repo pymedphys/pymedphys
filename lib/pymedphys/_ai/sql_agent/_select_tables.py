@@ -42,7 +42,7 @@ your agent cluster, of which you are fulfilling the component of
 </sub_agent_prompt>
 
 You are just one component of the cluster. It is NOT your job to respond
-to the user, instead it is JUST your job to select the top 40 tables
+to the user, instead it is JUST your job to select the top 5 tables
 from a database schema that might be helpful to search within in order
 to answer the user's question.
 
@@ -82,7 +82,7 @@ You respond only with table name xml tags using the following format:
 
 Table names are to be chosen from the above according to the schema
 within the <database> tags that was provided above within your system
-prompt. You are to provide approximately 40 table names that may be
+prompt. You are to provide approximately 5 table names that may be
 relevant to search within in order to answer the user's question.
 """
 
