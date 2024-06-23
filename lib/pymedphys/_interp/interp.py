@@ -39,9 +39,9 @@ def plot_interp_comparison_heatmap(
 
 
 def __check_inputs(
-    axes_known: Sequence[np.ndarray],
-    values: np.ndarray,
-    points_interp: np.ndarray,
+    axes_known: Sequence["np.ndarray"],
+    values: "np.ndarray",
+    points_interp: "np.ndarray",
     bounds_error=False,
 ) -> None:
     if not 1 <= len(axes_known) == points_interp.shape[-1] <= 3:
@@ -240,14 +240,14 @@ def interp3d_econforge(grid, values, positions):
 
 # pylint: disable=invalid-name
 def multilinear_interp(
-    axes_known: Sequence[np.ndarray],
-    values: np.ndarray,
-    axes_interp: Sequence[np.ndarray] = None,
-    points_interp: np.ndarray = None,
+    axes_known: Sequence["np.ndarray"],
+    values: "np.ndarray",
+    axes_interp: Sequence["np.ndarray"] = None,
+    points_interp: "np.ndarray" = None,
     algo: str = "pymedphys",
     bounds_error=True,
     extrap_fill_value=np.nan,
-) -> np.ndarray:
+) -> "np.ndarray":
     if axes_interp is not None and points_interp is None:
         mgrids = np.meshgrid(*axes_interp, indexing="ij")
         points_interp = np.column_stack([mgrid.ravel() for mgrid in mgrids])
