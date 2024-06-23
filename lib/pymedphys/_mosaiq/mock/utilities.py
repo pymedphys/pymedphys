@@ -15,7 +15,7 @@
 
 
 import functools
-from typing import Dict, Tuple, cast
+from typing import cast
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import sqlalchemy, toml
@@ -33,6 +33,16 @@ SA_USER = "sa"
 SA_PASSWORD = "sqlServerPassw0rd"
 
 
+# Not knowing particularly why, I was unable to load values in as "char"
+# or "timestamp". This is a work-a-round to just map those types to
+# something else for now.
+TYPE_CASTING = {
+    "char": "varchar",
+    "timestamp": "largebinary",
+    "binary": "largebinary",
+}
+
+
 def connect(database=TEST_DB_NAME) -> pymedphys.mosaiq.Connection:
     connection = pymedphys.mosaiq.connect(
         MSQ_SERVER,
@@ -46,11 +56,10 @@ def connect(database=TEST_DB_NAME) -> pymedphys.mosaiq.Connection:
 
 
 @functools.lru_cache()
-def load_csv_and_toml() -> Tuple[Dict[str, "pd.DataFrame"], Dict[str, Dict[str, str]]]:
+def load_csv_and_toml() -> tuple[dict[str, "pd.DataFrame"], dict[str, dict[str, str]]]:
     """Loads the *.csv files and types_map.toml file that are within
     this directory.
     """
-    csv_paths = paths.DATA.glob("*.csv")
 
     with open(paths.TYPES_MAP) as f:
         types_map = toml.load(f)
@@ -59,19 +68,36 @@ def load_csv_and_toml() -> Tuple[Dict[str, "pd.DataFrame"], Dict[str, Dict[str, 
         for column, type_repr in column_type_map.items():
             types_map[table][column] = _get_sql_type(type_repr)
 
-    types_map = cast(Dict[str, Dict[str, str]], types_map)
+    types_map = cast(dict[str, dict[str, str]], types_map)
+    tables = _load_tables()
 
-    tables: Dict[str, "pd.DataFrame"] = {}
+    sql_types_map = get_sqlalchemy_types_map()
+    type_casting = {
+        sql_types_map[key]: sql_types_map[item] for key, item in TYPE_CASTING.items()
+    }
+
+    for table_name, table in tables.items():
+        for column_name, a_type in types_map[table_name].items():
+            try:
+                types_map[table_name][column_name] = type_casting[a_type]
+            except KeyError:
+                pass
+
+    return tables, types_map
+
+
+def _load_tables():
+    csv_paths = paths.DATA.glob("*.csv")
+    tables: dict[str, "pd.DataFrame"] = {}
+
     for path in csv_paths:
         table_name = path.stem
-        # column_types = types_map[table_name]
         tables[table_name] = pd.read_csv(
             path,
             index_col=0,
-            # dtype=column_types,
         )
 
-    return tables, types_map
+    return tables
 
 
 def _get_sql_type(sql_type: str):
