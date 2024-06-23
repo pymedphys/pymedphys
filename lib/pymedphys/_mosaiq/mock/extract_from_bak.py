@@ -31,7 +31,7 @@ import pymedphys
 
 from . import paths, utilities
 
-# from .server_from_bak import start_mssql_docker_image_with_bak_restore
+from .server_from_bak import start_mssql_docker_image_with_bak_restore
 from .utilities import load_csv_and_toml
 
 DEFAULT_BAK_FILEPATH = Path().home() / "mosaiq-data" / "db-dump.bak"
@@ -49,11 +49,11 @@ def extract(
     if sa_password is None:
         sa_password = os.getenv("MSSQL_SA_PASSWORD", default=secrets.token_urlsafe())
 
-    # start_mssql_docker_image_with_bak_restore(
-    #     bak_filepath=bak_filepath,
-    #     sa_password=sa_password,
-    #     database_name=database_name,
-    # )
+    start_mssql_docker_image_with_bak_restore(
+        bak_filepath=bak_filepath,
+        sa_password=sa_password,
+        database_name=database_name,
+    )
 
     current_tables, types_map = load_csv_and_toml()
     sql_types_map = utilities.get_sqlalchemy_types_map()
@@ -88,16 +88,6 @@ def extract(
                 if types_map[table_name][column_name] == sql_types_map["largebinary"]:
                     df_with_new_rows[column_name] = df_with_new_rows[column_name].apply(
                         lambda x: base64.urlsafe_b64encode(x).decode()
-                    )
-
-            # TODO: Remove this component, this is just to convert from the previous
-            # approach to the new approach of using urlsafe base64.
-            for column_name in df.columns:
-                if types_map[table_name][column_name] == sql_types_map["largebinary"]:
-                    df[column_name] = df[column_name].apply(
-                        lambda x: base64.urlsafe_b64encode(
-                            base64.decodebytes(x.encode("utf-8"))
-                        ).decode()
                     )
 
             updated_df = pd.concat([df, df_with_new_rows], ignore_index=True)
