@@ -19,14 +19,11 @@ import os
 import httpx
 import trio
 from anthropic import AsyncAnthropic
-from anyio.from_thread import BlockingPortal
 from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys._ai.sql_agent.messages import (
-    Messages,
     message_content_as_plain_text,
-    receive_user_messages_and_call_assistant_loop,
     write_message,
 )
 from pymedphys._mosaiq.mock.from_csv import (
@@ -34,8 +31,6 @@ from pymedphys._mosaiq.mock.from_csv import (
     create_db_with_tables_from_csv,
 )
 from pymedphys._mosaiq.mock.utilities import SA_PASSWORD, SA_USER
-
-from ._trio import get_streamlit_trio_portal
 
 USER = "user"
 
@@ -50,25 +45,40 @@ ANTHROPIC_API_LIMIT = 2
 def main():
     _key_handling()
 
-    portal = get_streamlit_trio_portal()
-    messages = _get_messages()
-    message_send_channel = _get_message_send_channel(portal=portal, messages=messages)
+    _initialise_state()
 
     with st.sidebar:
-        _transcript_downloads(messages)
-
         if st.button("Fill database with CSV records"):
             create_db_with_tables_from_csv()
 
-    for message in messages:
+        anthropic_api_limit = int(
+            st.number_input("Anthropic API concurrency limit", value=2)
+        )
+
+        if st.button("Remove last message"):
+            st.session_state.messages = st.session_state.messages[:-1]
+
+        if st.button("Remove last two messages"):
+            st.session_state.messages = st.session_state.messages[:-2]
+
+        _transcript_downloads()
+
+    for message in st.session_state.messages:
         write_message(message["role"], message["content"])
 
-    new_message = st.chat_input()
+    chat_input_disabled = False
+    try:
+        previous_message = st.session_state.messages[-1]
+        if previous_message["role"] is USER:
+            chat_input_disabled = True
+    except IndexError:
+        pass
+
+    new_message = st.chat_input(disabled=chat_input_disabled)
 
     if new_message:
-        portal.start_task_soon(
-            message_send_channel.send, {"role": USER, "content": new_message}
-        )
+        _append_message(USER, new_message)
+        _write_message(USER, new_message)
 
     with st.sidebar:
         st.write("---")
@@ -77,9 +87,8 @@ def main():
 
 
 @st.cache_resource
-def _async_anthropic():
-    # TODO: Make this configurable
-    limits = httpx.Limits(max_connections=ANTHROPIC_API_LIMIT)
+def _async_anthropic(anthropic_api_limit: int):
+    limits = httpx.Limits(max_connections=anthropic_api_limit)
 
     return AsyncAnthropic(connection_pool_limits=limits, max_retries=10)
 
@@ -101,36 +110,9 @@ def _mosaiq_connection():
     return connection
 
 
-def _get_messages() -> Messages:
+def _initialise_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
-
-    return st.session_state.messages
-
-
-def _get_message_send_channel(
-    portal: BlockingPortal, messages: Messages
-) -> trio.MemorySendChannel:
-    if "message_send_channel" not in st.session_state:
-        message_send_channel, message_receive_channel = portal.call(
-            trio.open_memory_channel, 10
-        )
-
-        async def assistant_calling_loop():
-            await receive_user_messages_and_call_assistant_loop(
-                tasks_record=[],
-                anthropic_client=_async_anthropic(),
-                connection=_mosaiq_connection(),
-                message_send_channel=message_send_channel,
-                message_receive_channel=message_receive_channel,
-                messages=messages,
-            )
-
-        portal.start_task_soon(assistant_calling_loop)
-
-        st.session_state.message_send_channel = message_send_channel
-
-    return st.session_state.message_send_channel
 
 
 def _key_handling():
@@ -147,14 +129,14 @@ def _key_handling():
         st.stop()
 
 
-def _transcript_downloads(messages: Messages):
+def _transcript_downloads():
     transcript_items = [
         f"{message['role']}: {message_content_as_plain_text(message['content'])}"
-        for message in messages
+        for message in st.session_state.messages
     ]
 
     plain_text_transcript = "\n\n".join(transcript_items)
-    raw_transcript = json.dumps(messages, indent=2)
+    raw_transcript = json.dumps(st.session_state.messages, indent=2)
 
     st.download_button(
         "Download plain text transcript",
@@ -164,6 +146,24 @@ def _transcript_downloads(messages: Messages):
     st.download_button(
         "Download raw transcript", raw_transcript, file_name="raw_api_transcript.json"
     )
+
+
+def _append_message(role, content):
+    st.session_state.messages.append({"role": role, "content": content})
+
+
+def _write_message(role, content: str | list):
+    with st.chat_message(role):
+        st.markdown(_message_content_as_plain_text(content))
+
+
+def _message_content_as_plain_text(content: str | list):
+    if isinstance(content, str):
+        return content
+
+    results = [item["text"] for item in content if item["type"] == "text"]
+
+    return "\n\n".join(results)
 
 
 if __name__ == "__main__":
