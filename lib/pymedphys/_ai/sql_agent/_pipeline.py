@@ -19,7 +19,7 @@ from typing import Callable
 
 import trio
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolsBetaMessage
+from anthropic.types import Message
 
 import pymedphys
 
@@ -40,7 +40,7 @@ MAX_QUERY_STRING_LENGTH = 16352
 async def sql_tool_pipeline(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    messages: list[Message],
     sub_agent_prompt: str,
 ):
     """Receives a message transcript and sub agent prompt and returns
@@ -112,7 +112,7 @@ async def _execute_query_with_truncated_string_result(
 async def get_single_set_of_query_result_pairs(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    messages: list[Message],
     sub_agent_prompt: str,
 ):
     table_names = await get_selected_table_names(

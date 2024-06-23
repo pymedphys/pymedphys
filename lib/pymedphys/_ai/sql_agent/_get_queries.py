@@ -16,7 +16,7 @@
 import json
 
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolsBetaMessage
+from anthropic.types import Message
 
 import pymedphys
 from pymedphys._ai import model_versions
@@ -138,7 +138,7 @@ async def get_system_prompt(
 async def get_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    messages: list[Message],
     sub_agent_prompt: str,
     tables_to_keep: tuple[str],
 ):
@@ -164,7 +164,7 @@ async def get_queries(
 async def _get_raw_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    messages: list[Message],
     sub_agent_prompt: str,
     tables_to_keep: tuple[str],
 ):

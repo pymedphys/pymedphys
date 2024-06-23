@@ -22,10 +22,7 @@ from anthropic import AsyncAnthropic
 from pymedphys._imports import streamlit as st
 
 import pymedphys
-from pymedphys._ai.sql_agent.messages import (
-    message_content_as_plain_text,
-    write_message,
-)
+from pymedphys._ai.sql_agent.conversation import recursively_append_message_responses
 from pymedphys._mosaiq.mock.from_csv import (
     DATABASE_NAME,
     create_db_with_tables_from_csv,
@@ -64,7 +61,7 @@ def main():
         _transcript_downloads()
 
     for message in st.session_state.messages:
-        write_message(message["role"], message["content"])
+        _write_message(message["role"], message["content"])
 
     chat_input_disabled = False
     try:
@@ -80,10 +77,22 @@ def main():
         _append_message(USER, new_message)
         _write_message(USER, new_message)
 
-    with st.sidebar:
-        st.write("---")
-        with st.spinner("Waiting forever for potential AI and tool use responses"):
-            portal.call(trio.sleep_forever)
+    try:
+        most_recent_message = st.session_state.messages[-1]
+    except IndexError:
+        return
+
+    if most_recent_message["role"] is not USER:
+        return
+
+    trio.run(
+        recursively_append_message_responses,
+        _async_anthropic(anthropic_api_limit),
+        _mosaiq_connection(),
+        st.session_state.messages,
+    )
+
+    st.rerun()
 
 
 @st.cache_resource
@@ -131,7 +140,7 @@ def _key_handling():
 
 def _transcript_downloads():
     transcript_items = [
-        f"{message['role']}: {message_content_as_plain_text(message['content'])}"
+        f"{message['role']}: {_message_content_as_plain_text(message['content'])}"
         for message in st.session_state.messages
     ]
 
