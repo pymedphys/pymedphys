@@ -67,15 +67,16 @@ def dataframe_to_sql(
     )
     engine = sqlalchemy.create_engine(connection_str, echo=False)
 
-    # now SQLAlchemy to populate table
-    df.to_sql(
-        tablename,
-        engine,
-        if_exists=if_exists,
-        index=True,
-        index_label=index_label,
-        dtype=dtype,
-    )
+    with engine.connect() as con:
+        # now SQLAlchemy to populate table
+        df.to_sql(
+            tablename,
+            con=con,
+            if_exists=if_exists,
+            index=True,
+            index_label=index_label,
+            dtype=dtype,
+        )
 
     # now get rid of the engine, to close it's connections
     engine.dispose()

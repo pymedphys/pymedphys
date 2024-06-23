@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import pandas as pd
 import base64
 import logging
 
@@ -26,7 +26,8 @@ DATABASE_NAME = "MosaiqFromCsv"
 # the case where the CSV format can't be input into the MSSQL database
 # the column types can be selectively added and removed here with the
 # aim to troubleshoot what conversions may be needed.
-# eg 'binary' has been stored as b64 strings so that it is reproducible.
+# eg 'binary' has been stored as urlsafe b64 strings so that it is
+# reproducible.
 COLUMN_TYPES_TO_USE = {
     "int",
     "smallint",
@@ -77,6 +78,9 @@ def create_tables_from_csv(database):
             if a_type == sql_types_map["largebinary"]:
                 table[column_name] = table[column_name].apply(base64.urlsafe_b64decode)
                 continue
+
+            if a_type == sql_types_map["datetime"]:
+                table[column_name] = pd.to_datetime(table[column_name], format="mixed")
 
         generate.dataframe_to_sql(
             table,
