@@ -4369,20 +4369,6 @@ watchdog = {version = ">=2.1.5", markers = "platform_system != \"Darwin\""}
 snowflake = ["snowflake-connector-python (>=2.8.0)", "snowflake-snowpark-python (>=0.9.0)"]
 
 [[package]]
-name = "streamlit-ace"
-version = "0.1.1"
-description = "Ace editor component for Streamlit."
-optional = true
-python-versions = ">=3.6"
-files = [
-    {file = "streamlit_ace-0.1.1-py3-none-any.whl", hash = "sha256:cdf908a90058fa831fb720d29e2aef35a0f5799eac33e2b2e58ba9f3631b1aa5"},
-    {file = "streamlit_ace-0.1.1.tar.gz", hash = "sha256:1852fa19707685fd4241be9256c1ab1a89da4a3b8c28ab286e3bff122d3a1686"},
-]
-
-[package.dependencies]
-streamlit = ">=0.63"
-
-[[package]]
 name = "tabulate"
 version = "0.9.0"
 description = "Pretty-print tabular data"
@@ -4866,7 +4852,7 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
-all = ["Pillow", "PyYAML", "anthropic", "anyio", "astroid", "attrs", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "natsort", "networkx", "numpy", "packaging", "pandas", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylint", "pymssql", "pynetdicom", "pyright", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "requests", "rope", "ruff", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "streamlit-ace", "tabulate", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
+all = ["Pillow", "PyYAML", "anthropic", "anyio", "astroid", "attrs", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "natsort", "networkx", "numpy", "packaging", "pandas", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylint", "pymssql", "pynetdicom", "pyright", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "requests", "rope", "ruff", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "tabulate", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
 cli = ["toml"]
 comparables = ["flashgamma"]
 dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
@@ -4878,9 +4864,9 @@ mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
 speedups = ["interpolation"]
 tests = ["astroid", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
-user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "pydicom", "pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "requests", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "streamlit-ace", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
+user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numpy", "packaging", "pandas", "pydicom", "pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "requests", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "1fe23d55a9a7c22303ee30defcb76120888e06ae499eed23ccd487f9139ecade"
+content-hash = "7c9777fae9baab22b7bca199aad7d78d3fde4b3a57165fb49c88d00cd0311be4"
