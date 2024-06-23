@@ -76,7 +76,7 @@ def create_tables_from_csv(database):
 
             if a_type == sql_types_map["largebinary"]:
                 table[column_name] = table[column_name].apply(
-                    lambda x: base64.urlsafe_b64decode(x)
+                    base64.urlsafe_b64decode
                 )
                 continue
 
