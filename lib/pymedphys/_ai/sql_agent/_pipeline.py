@@ -34,7 +34,7 @@ from ._utilities import execute_query
 NUM_PARALLEL_QUERY_CREATION_AGENTS = 6
 NUM_PARALLEL_QUERY_VOTER_AGENTS = 4
 
-MAX_QUERY_STRING_LENGTH = 16352
+MAX_QUERY_STRING_LENGTH = 2048
 
 
 async def sql_tool_pipeline(
