@@ -61,7 +61,7 @@ streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
 streamlit-ace = { version = "*", optional = true }   # groups = ["user", "all"]
 
 # Upper pin for Econforge `interpolation` compatibility. Plan to remove.
-numba = { version = "<0.60.0", optional = true } # groups = ["user", "all"]
+numba = { version = "<0.60.0", optional = true } # groups = ["user", "all", "docs"]
 
 numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
 
@@ -193,7 +193,15 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
+dev = [
+    "doc8",
+    "pre-commit",
+    "pyright",
+    "readme-renderer",
+    "rope",
+    "ruff",
+    "tabulate",
+]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
