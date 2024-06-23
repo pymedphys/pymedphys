@@ -176,7 +176,6 @@ all = [
     "sphinx-book-theme",
     "sqlalchemy",
     "streamlit",
-    "streamlit-ace",
     "tabulate",
     "timeago",
     "toml",
@@ -188,15 +187,7 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = [
-    "doc8",
-    "pre-commit",
-    "pyright",
-    "readme-renderer",
-    "rope",
-    "ruff",
-    "tabulate",
-]
+dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
@@ -253,7 +244,6 @@ user = [
     "shapely",
     "sqlalchemy",
     "streamlit",
-    "streamlit-ace",
     "timeago",
     "toml",
     "tqdm",
