@@ -15,7 +15,6 @@
 
 import json
 import os
-import pathlib
 
 import httpx
 import trio
@@ -30,9 +29,11 @@ from pymedphys._ai.sql_agent.messages import (
     receive_user_messages_and_call_assistant_loop,
     write_message,
 )
-from pymedphys._mosaiq.mock.server_from_bak import (
-    start_mssql_docker_image_with_bak_restore,
+from pymedphys._mosaiq.mock.from_csv import (
+    DATABASE_NAME,
+    create_db_with_tables_from_csv,
 )
+from pymedphys._mosaiq.mock.utilities import SA_PASSWORD, SA_USER
 
 from ._trio import get_streamlit_trio_portal
 
@@ -56,18 +57,8 @@ def main():
     with st.sidebar:
         _transcript_downloads(messages)
 
-        bak_filepath = (
-            pathlib.Path(
-                st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
-            )
-            .expanduser()
-            .resolve()
-        )
-        if st.button("Start demo MOSAIQ server from .bak file"):
-            start_mssql_docker_image_with_bak_restore(
-                bak_filepath=bak_filepath,
-                sa_password=os.getenv("MSSQL_SA_PASSWORD"),
-            )
+        if st.button("Fill database with CSV records"):
+            create_db_with_tables_from_csv()
 
     for message in messages:
         write_message(message["role"], message["content"])
@@ -97,9 +88,9 @@ def _async_anthropic():
 def _mosaiq_connection():
     connection = pymedphys.mosaiq.connect(
         "localhost",
-        database="PRACTICE",
-        username="sa",
-        password=os.environ["MSSQL_SA_PASSWORD"],
+        database=DATABASE_NAME,
+        username=SA_USER,
+        password=SA_PASSWORD,
     )
     # Needed for multi-threading?
     # https://stackoverflow.com/a/41912528
@@ -144,20 +135,14 @@ def _get_message_send_channel(
 
 def _key_handling():
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-    mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
     if not anthropic_api_key:
         anthropic_api_key = st.text_input("Anthropic API key", type="password")
         os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
-
-    if not mssql_sa_password:
-        mssql_sa_password = st.text_input("MSSQL SA Password", type="password")
-        os.environ["MSSQL_SA_PASSWORD"] = mssql_sa_password
-
-    if not anthropic_api_key or not mssql_sa_password:
+    if not anthropic_api_key:
         st.write(
-            "To continue, please make sure both of the `ANTHROPIC_API_KEY`"
-            " and `MSSQL_SA_PASSWORD` environment variables are set"
+            "To continue, please make sure the `ANTHROPIC_API_KEY`"
+            " environment variable is set"
         )
         st.stop()
 
