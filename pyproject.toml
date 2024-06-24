@@ -40,8 +40,8 @@ PyYAML = { version = "*", optional = true }          # groups = ["user", "all"]
 requests = { version = "*", optional = true }        # groups = ["user", "all"]
 python-dateutil = { version = "*", optional = true } # groups = ["user", "all", "tests"]
 
-matplotlib = { version = "*", optional = true } # groups = ["user", "all", "docs"]
-scipy = { version = "*", optional = true }      # groups = ["user", "all", "docs"]
+matplotlib = { version = "<3.8.0", optional = true } # groups = ["user", "all", "docs"]
+scipy = { version = "*", optional = true }           # groups = ["user", "all", "docs"]
 
 pymssql = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 sqlalchemy = { version = "*", optional = true } # groups = ["user", "all", "mosaiq"]
@@ -59,6 +59,9 @@ imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
 streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
 
+# Upper pin for Econforge `interpolation` compatibility. Plan to remove.
+numba = { version = "<0.60.0", optional = true } # groups = ["user", "all", "docs", "tests"]
+
 numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
 
 # The following lower bounded packages are due to certain APIs utilised
@@ -73,9 +76,9 @@ pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user",
 
 # AI
 anthropic = { version = "0.25.9", optional = true } # groups = ["user", "all"]
-trio = { version = ">=0.25.0", optional = true }      # groups = ["user", "all"]
-trio-asyncio = { version = "*", optional = true }     # groups = ["user", "all"]
-anyio = { version = "*", optional = true }            # groups = ["user", "all"]
+trio = { version = ">=0.25.0", optional = true }    # groups = ["user", "all"]
+trio-asyncio = { version = "*", optional = true }   # groups = ["user", "all"]
+anyio = { version = "*", optional = true }          # groups = ["user", "all"]
 
 # ---- #
 # CVEs #
@@ -149,6 +152,7 @@ all = [
     "matplotlib",
     "natsort",
     "networkx",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
@@ -187,13 +191,22 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
+dev = [
+    "doc8",
+    "pre-commit",
+    "pyright",
+    "readme-renderer",
+    "rope",
+    "ruff",
+    "tabulate",
+]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
     "jupyter-book",
     "matplotlib",
     "networkx",
+    "numba",
     "numpy",
     "pydicom",
     "scipy",
@@ -229,6 +242,7 @@ user = [
     "keyring",
     "matplotlib",
     "natsort",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
