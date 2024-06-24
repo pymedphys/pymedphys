@@ -191,15 +191,7 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = [
-    "doc8",
-    "pre-commit",
-    "pyright",
-    "readme-renderer",
-    "rope",
-    "ruff",
-    "tabulate",
-]
+dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
@@ -222,6 +214,7 @@ propagate = ["ruff"]
 speedups = ["interpolation"]
 tests = [
     "astroid",
+    "numba",
     "psutil",
     "pylint",
     "pytest",
