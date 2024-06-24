@@ -78,6 +78,7 @@ def interp1d(axis_known, values, points_interp, extrap_fill_value):
     interpolated_values = np.zeros(points_interp.shape[0], dtype=np.float64)
     diff = axis_known[1] - axis_known[0]
 
+    # pylint: disable=not-an-iterable
     for i in nb.prange(points_interp.shape[0]):
         xpi = points_interp[i, 0]
 
@@ -108,6 +109,7 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value):
         diffs[i] = axis[1] - axis[0]
     x, y = axes_known
 
+    # pylint: disable=not-an-iterable
     for i in nb.prange(points_interp.shape[0]):
         xpi, ypi = points_interp[i, 0], points_interp[i, 1]
 
@@ -169,12 +171,9 @@ def interp3d(axes_known, values, points_interp, extrap_fill_value):
         )
 
         if (
-            xpi < x[0]
-            or xpi > x[-1]
-            or ypi < y[0]
-            or ypi > y[-1]
-            or zpi < z[0]
-            or zpi > z[-1]
+            not x[0] <= xpi <= x[-1]
+            or not y[0] <= ypi <= y[-1]
+            or not z[0] <= zpi <= z[-1]
         ):
             interpolated_values[i] = extrap_fill_value
             continue
