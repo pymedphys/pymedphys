@@ -194,7 +194,7 @@ def _apply_table_type_conversions_inplace(tables, types_map):
         for column_name, column_type in column_types.items():
             if column_type in ["binary", "timestamp"]:
                 table[column_name] = table[column_name].apply(
-                    lambda x: base64.b64encode(x).decode()
+                    lambda x: base64.urlsafe_b64encode(x).decode()
                 )
                 continue
             if column_type == "datetime":
