@@ -20,10 +20,8 @@ from dataclasses import dataclass
 from typing import Any, Optional
 from warnings import warn
 
-from pymedphys._imports import interpolation
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
-from pymedphys._interp import interp
 
 import pymedphys._utilities.createshells
 
@@ -542,6 +540,8 @@ def interpolate_evaluation_dose_at_distance(
 
 
 def _run_custom_interp(options, all_points):
+    from pymedphys._interp import interp
+
     points = np.column_stack(
         [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
     )
@@ -556,6 +556,8 @@ def _run_custom_interp(options, all_points):
 
 
 def _run_interp_with_econforge(options, all_points):
+    from pymedphys._imports import interpolation
+
     coords_evaluation_grid = interpolation.splines.CGrid(*options.axes_evaluation)
 
     points_interp = np.column_stack(
