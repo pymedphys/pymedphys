@@ -139,6 +139,7 @@ def gamma_shell(
         random_subset,
         ram_available,
         quiet,
+        interp_algo,
     )
 
     if options.local_gamma:
