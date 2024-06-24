@@ -14,7 +14,7 @@
 
 from typing import Sequence
 
-from pymedphys._imports import nb, numpy as np, plt, scipy, interpolation
+from pymedphys._imports import numba as nb, numpy as np, plt, scipy, interpolation
 
 
 def plot_interp_comparison_heatmap(
