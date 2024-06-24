@@ -340,7 +340,7 @@ jobs:
       ## Doctest
 
       - name: Run doctest tests
-        if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+        if: (matrix.os == 'ubuntu' || matrix.os == 'windows') && matrix.task == 'tests'
         run: |
           poetry run pymedphys dev doctests -v
 
