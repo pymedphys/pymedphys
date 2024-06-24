@@ -549,7 +549,7 @@ def _run_custom_interp(options, all_points):
 
     return interp.multilinear_interp(
         axes_known=options.axes_evaluation,
-        values=np.array(options.dose_evaluation),
+        values=options.dose_evaluation,
         points_interp=points,
         bounds_error=False,
         extrap_fill_value=np.inf,
