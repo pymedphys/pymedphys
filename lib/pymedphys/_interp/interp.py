@@ -14,7 +14,7 @@
 
 from typing import Sequence
 
-from pymedphys._imports import numba as nb, numpy as np, plt, scipy, interpolation
+from pymedphys._imports import numba as nb, numpy as np, plt, scipy
 
 
 def plot_interp_comparison_heatmap(
@@ -235,6 +235,8 @@ def interp3d_scipy(axes_known, values, positions):
 
 
 def interp3d_econforge(grid, values, positions):
+    from pymedphys._imports import interpolation
+
     return interpolation.splines.eval_linear(grid, values, positions)
 
 
