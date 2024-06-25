@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cache
 from typing import Sequence
 
 from pymedphys._imports import numba as nb, numpy as np, plt, scipy
@@ -73,159 +74,207 @@ def __check_inputs(
     return axes_known, values
 
 
-@nb.njit(parallel=True, fastmath=True, cache=True)
-def interp1d(axis_known, values, points_interp, extrap_fill_value=np.nan):
-    values_interp = np.zeros(points_interp.shape[0], dtype=np.float64)
-    diff = axis_known[1] - axis_known[0]
+@cache
+def _get_interp1d():
+    @nb.njit(parallel=True, fastmath=True, cache=True)
+    def _interp1d(axis_known, values, points_interp, extrap_fill_value=np.nan):
+        values_interp = np.zeros(points_interp.shape[0], dtype=np.float64)
+        diff = axis_known[1] - axis_known[0]
 
-    # pylint: disable=not-an-iterable
-    for i in nb.prange(points_interp.shape[0]):
-        xpi = points_interp[i, 0]
+        # pylint: disable=not-an-iterable
+        for i in nb.prange(points_interp.shape[0]):
+            xpi = points_interp[i, 0]
 
-        if not axis_known[0] <= xpi <= axis_known[-1]:
-            values_interp[i] = extrap_fill_value
-            continue
+            if not axis_known[0] <= xpi <= axis_known[-1]:
+                values_interp[i] = extrap_fill_value
+                continue
 
-        x1_idx = np.searchsorted(axis_known, xpi)
-        x0_idx = x1_idx - 1
+            x1_idx = np.searchsorted(axis_known, xpi)
+            x0_idx = x1_idx - 1
 
-        if x0_idx < 0:
-            x0_idx = 0
-        if x1_idx >= axis_known.size:
-            x1_idx = axis_known.size - 1
+            if x0_idx < 0:
+                x0_idx = 0
+            if x1_idx >= axis_known.size:
+                x1_idx = axis_known.size - 1
 
-        wx = (xpi - axis_known[x0_idx]) / diff
+            wx = (xpi - axis_known[x0_idx]) / diff
 
-        values_interp[i] = values[x0_idx] * (1 - wx) + values[x1_idx] * wx
+            values_interp[i] = values[x0_idx] * (1 - wx) + values[x1_idx] * wx
 
-    return values_interp
+        return values_interp
 
-
-@nb.njit(parallel=True, fastmath=True, cache=True)
-def interp2d(axes_known, values, points_interp, extrap_fill_value=np.nan):
-    values_interp = np.zeros((points_interp.shape[0]), dtype=np.float64)
-    diffs = np.zeros(2)
-    for i, axis in enumerate(axes_known):
-        diffs[i] = axis[1] - axis[0]
-    x, y = axes_known
-
-    # pylint: disable=not-an-iterable
-    for i in nb.prange(points_interp.shape[0]):
-        xpi, ypi = points_interp[i, 0], points_interp[i, 1]
-
-        if not x[0] <= xpi <= x[-1] or not y[0] <= ypi <= y[-1]:
-            values_interp[i] = extrap_fill_value
-            continue
-
-        # Find the indices of the surrounding grid points
-        x1_idx = np.searchsorted(x, xpi)
-        x0_idx = x1_idx - 1
-        y1_idx = np.searchsorted(y, ypi)
-        y0_idx = y1_idx - 1
-
-        if x0_idx < 0:
-            x0_idx = 0
-        if y0_idx < 0:
-            y0_idx = 0
-        if x1_idx >= x.size:
-            x1_idx = x.size - 1
-        if y1_idx >= y.size:
-            y1_idx = y.size - 1
-
-        c00 = values[x0_idx, y0_idx]
-        c01 = values[x0_idx, y1_idx]
-        c10 = values[x1_idx, y0_idx]
-        c11 = values[x1_idx, y1_idx]
-
-        wx = (xpi - x[x0_idx]) / diffs[0]
-        wy = (ypi - y[y0_idx]) / diffs[1]
-
-        c0 = c00 * (1 - wx) + c10 * wx
-        c1 = c01 * (1 - wx) + c11 * wx
-
-        values_interp[i] = c0 * (1 - wy) + c1 * wy
-
-    return values_interp
+    return _interp1d
 
 
-@nb.njit(parallel=True, fastmath=True, cache=True)
-# pylint: disable=invalid-name
-def interp3d(axes_known, values, points_interp, extrap_fill_value=np.nan):
-    x, y, z = axes_known[0], axes_known[1], axes_known[2]
-
-    values_interp = np.zeros(
-        points_interp.shape[0],
-        dtype=np.float64,
+def interp1d(axis_known, values, points_interp, extrap_fill_value=None):
+    _interp1d = _get_interp1d()
+    if extrap_fill_value is None:
+        extrap_fill_value = np.nan
+    return _interp1d(
+        axis_known=axis_known,
+        values=values,
+        points_interp=points_interp,
+        extrap_fill_value=extrap_fill_value,
     )
 
-    diffs = np.zeros(3)
-    for i, axis in enumerate(axes_known):
-        diffs[i] = axis[1] - axis[0]
 
-    # pylint: disable=not-an-iterable
-    for i in nb.prange(points_interp.shape[0]):
-        xpi, ypi, zpi = (
-            points_interp[i, 0],
-            points_interp[i, 1],
-            points_interp[i, 2],
+@cache
+def _get_interp2d():
+    @nb.njit(parallel=True, fastmath=True, cache=True)
+    def _interp2d(axes_known, values, points_interp, extrap_fill_value=np.nan):
+        values_interp = np.zeros((points_interp.shape[0]), dtype=np.float64)
+        diffs = np.zeros(2)
+        for i, axis in enumerate(axes_known):
+            diffs[i] = axis[1] - axis[0]
+        x, y = axes_known
+
+        # pylint: disable=not-an-iterable
+        for i in nb.prange(points_interp.shape[0]):
+            xpi, ypi = points_interp[i, 0], points_interp[i, 1]
+
+            if not x[0] <= xpi <= x[-1] or not y[0] <= ypi <= y[-1]:
+                values_interp[i] = extrap_fill_value
+                continue
+
+            # Find the indices of the surrounding grid points
+            x1_idx = np.searchsorted(x, xpi)
+            x0_idx = x1_idx - 1
+            y1_idx = np.searchsorted(y, ypi)
+            y0_idx = y1_idx - 1
+
+            if x0_idx < 0:
+                x0_idx = 0
+            if y0_idx < 0:
+                y0_idx = 0
+            if x1_idx >= x.size:
+                x1_idx = x.size - 1
+            if y1_idx >= y.size:
+                y1_idx = y.size - 1
+
+            c00 = values[x0_idx, y0_idx]
+            c01 = values[x0_idx, y1_idx]
+            c10 = values[x1_idx, y0_idx]
+            c11 = values[x1_idx, y1_idx]
+
+            wx = (xpi - x[x0_idx]) / diffs[0]
+            wy = (ypi - y[y0_idx]) / diffs[1]
+
+            c0 = c00 * (1 - wx) + c10 * wx
+            c1 = c01 * (1 - wx) + c11 * wx
+
+            values_interp[i] = c0 * (1 - wy) + c1 * wy
+
+        return values_interp
+
+    return _interp2d
+
+
+def interp2d(axes_known, values, points_interp, extrap_fill_value=None):
+    _interp2d = _get_interp2d()
+    if extrap_fill_value is None:
+        extrap_fill_value = np.nan
+    return _interp2d(
+        axes_known=axes_known,
+        values=values,
+        points_interp=points_interp,
+        extrap_fill_value=extrap_fill_value,
+    )
+
+
+@cache
+def _get_interp3d():
+    @nb.njit(parallel=True, fastmath=True, cache=True)
+    # pylint: disable=invalid-name
+    def _interp3d(axes_known, values, points_interp, extrap_fill_value=np.nan):
+        x, y, z = axes_known[0], axes_known[1], axes_known[2]
+
+        values_interp = np.zeros(
+            points_interp.shape[0],
+            dtype=np.float64,
         )
 
-        if (
-            not x[0] <= xpi <= x[-1]
-            or not y[0] <= ypi <= y[-1]
-            or not z[0] <= zpi <= z[-1]
-        ):
-            values_interp[i] = extrap_fill_value
-            continue
+        diffs = np.zeros(3)
+        for i, axis in enumerate(axes_known):
+            diffs[i] = axis[1] - axis[0]
 
-        # Find the indices of the surrounding grid points
-        x1_idx = np.searchsorted(x, xpi)
-        x0_idx = x1_idx - 1
-        y1_idx = np.searchsorted(y, ypi)
-        y0_idx = y1_idx - 1
-        z1_idx = np.searchsorted(z, zpi)
-        z0_idx = z1_idx - 1
+        # pylint: disable=not-an-iterable
+        for i in nb.prange(points_interp.shape[0]):
+            xpi, ypi, zpi = (
+                points_interp[i, 0],
+                points_interp[i, 1],
+                points_interp[i, 2],
+            )
 
-        if x0_idx < 0:
-            x0_idx = 0
-        if y0_idx < 0:
-            y0_idx = 0
-        if z0_idx < 0:
-            z0_idx = 0
-        if x1_idx >= x.size:
-            x1_idx = x.size - 1
-        if y1_idx >= y.size:
-            y1_idx = y.size - 1
-        if z1_idx >= z.size:
-            z1_idx = z.size - 1
+            if (
+                not x[0] <= xpi <= x[-1]
+                or not y[0] <= ypi <= y[-1]
+                or not z[0] <= zpi <= z[-1]
+            ):
+                values_interp[i] = extrap_fill_value
+                continue
 
-        # Compute interpolation weights
-        wx = (xpi - x[x0_idx]) / diffs[0]
-        wy = (ypi - y[y0_idx]) / diffs[1]
-        wz = (zpi - z[z0_idx]) / diffs[2]
+            # Find the indices of the surrounding grid points
+            x1_idx = np.searchsorted(x, xpi)
+            x0_idx = x1_idx - 1
+            y1_idx = np.searchsorted(y, ypi)
+            y0_idx = y1_idx - 1
+            z1_idx = np.searchsorted(z, zpi)
+            z0_idx = z1_idx - 1
 
-        # Extract values values at corner points
-        c000 = values[x0_idx, y0_idx, z0_idx]
-        c001 = values[x0_idx, y0_idx, z1_idx]
-        c010 = values[x0_idx, y1_idx, z0_idx]
-        c011 = values[x0_idx, y1_idx, z1_idx]
-        c100 = values[x1_idx, y0_idx, z0_idx]
-        c101 = values[x1_idx, y0_idx, z1_idx]
-        c110 = values[x1_idx, y1_idx, z0_idx]
-        c111 = values[x1_idx, y1_idx, z1_idx]
+            if x0_idx < 0:
+                x0_idx = 0
+            if y0_idx < 0:
+                y0_idx = 0
+            if z0_idx < 0:
+                z0_idx = 0
+            if x1_idx >= x.size:
+                x1_idx = x.size - 1
+            if y1_idx >= y.size:
+                y1_idx = y.size - 1
+            if z1_idx >= z.size:
+                z1_idx = z.size - 1
 
-        # Perform trilinear interpolation
-        c00 = c000 * (1 - wx) + c100 * wx
-        c01 = c001 * (1 - wx) + c101 * wx
-        c10 = c010 * (1 - wx) + c110 * wx
-        c11 = c011 * (1 - wx) + c111 * wx
+            # Compute interpolation weights
+            wx = (xpi - x[x0_idx]) / diffs[0]
+            wy = (ypi - y[y0_idx]) / diffs[1]
+            wz = (zpi - z[z0_idx]) / diffs[2]
 
-        c0 = c00 * (1 - wy) + c10 * wy
-        c1 = c01 * (1 - wy) + c11 * wy
+            # Extract values values at corner points
+            c000 = values[x0_idx, y0_idx, z0_idx]
+            c001 = values[x0_idx, y0_idx, z1_idx]
+            c010 = values[x0_idx, y1_idx, z0_idx]
+            c011 = values[x0_idx, y1_idx, z1_idx]
+            c100 = values[x1_idx, y0_idx, z0_idx]
+            c101 = values[x1_idx, y0_idx, z1_idx]
+            c110 = values[x1_idx, y1_idx, z0_idx]
+            c111 = values[x1_idx, y1_idx, z1_idx]
 
-        values_interp[i] = c0 * (1 - wz) + c1 * wz
+            # Perform trilinear interpolation
+            c00 = c000 * (1 - wx) + c100 * wx
+            c01 = c001 * (1 - wx) + c101 * wx
+            c10 = c010 * (1 - wx) + c110 * wx
+            c11 = c011 * (1 - wx) + c111 * wx
 
-    return values_interp
+            c0 = c00 * (1 - wy) + c10 * wy
+            c1 = c01 * (1 - wy) + c11 * wy
+
+            values_interp[i] = c0 * (1 - wz) + c1 * wz
+
+        return values_interp
+
+    return _interp3d
+
+
+def interp3d(axes_known, values, points_interp, extrap_fill_value=None):
+    _interp3d = _get_interp3d()
+    if extrap_fill_value is None:
+        extrap_fill_value = np.nan
+    return _interp3d(
+        axes_known=axes_known,
+        values=values,
+        points_interp=points_interp,
+        extrap_fill_value=extrap_fill_value,
+    )
 
 
 def interp_scipy(
@@ -235,7 +284,7 @@ def interp_scipy(
     points_interp: "np.ndarray" = None,
     keep_dims=False,
     bounds_error=True,
-    extrap_fill_value=np.nan,
+    extrap_fill_value=None,
 ):
     if axes_interp is not None and points_interp is None:
         mgrids = np.meshgrid(*axes_interp, indexing="ij")
@@ -246,6 +295,9 @@ def interp_scipy(
         raise ValueError(
             "Exactly one of either `axes_interp` or `points_interp` must be specified"
         )
+
+    if extrap_fill_value is None:
+        extrap_fill_value = np.nan
 
     f = scipy.interpolate.RegularGridInterpolator(
         axes_known, values, bounds_error=bounds_error, fill_value=extrap_fill_value
@@ -270,7 +322,7 @@ def multilinear_interp(
     points_interp: "np.ndarray" = None,
     keep_dims=False,
     bounds_error=True,
-    extrap_fill_value=np.nan,
+    extrap_fill_value=None,
     skip_checks=False,
 ) -> "np.ndarray":
     if axes_interp is not None and points_interp is None:
@@ -300,6 +352,9 @@ def multilinear_interp(
                 )
             if not np.allclose(diff, diff[0]):
                 raise ValueError(f"axis_known[{i}] must be evenly spaced")
+
+    if extrap_fill_value is None:
+        extrap_fill_value = np.nan
 
     if len(axes_known) == 1:
         # keep_dims has no effect for 1D interpolation
