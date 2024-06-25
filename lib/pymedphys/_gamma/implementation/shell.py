@@ -523,20 +523,12 @@ def interpolate_evaluation_dose_at_distance(
 
     if options.interp_algo.lower() == "pymedphys":
         evaluation_dose = _run_custom_interp(options, all_points)
-
     elif options.interp_algo.lower() == "scipy":
         evaluation_dose = _run_interp_with_scipy(options, all_points)
-
-    elif options.interp_algo.lower() == "econforge":
-        try:
-            evaluation_dose = _run_interp_with_econforge(options, all_points)
-        except ImportError:
-            evaluation_dose = _run_interp_with_scipy(options, all_points)
     else:
         raise ValueError(
             f"Interpolation algorithm '{options.interp_algo}' not recognised"
         )
-
     return evaluation_dose
 
 
@@ -554,24 +546,6 @@ def _run_custom_interp(options, all_points):
         bounds_error=False,
         extrap_fill_value=np.inf,
     ).reshape(all_points.shape[:-1])
-
-
-def _run_interp_with_econforge(options, all_points):
-    from pymedphys._imports import interpolation
-
-    coords_evaluation_grid = interpolation.splines.CGrid(*options.axes_evaluation)
-
-    points_interp = np.column_stack(
-        [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
-    )
-
-    evaluation_dose = interpolation.splines.eval_linear(
-        coords_evaluation_grid,
-        options.dose_evaluation,
-        points_interp,
-    ).reshape(all_points.shape[:-1])
-
-    return evaluation_dose
 
 
 def _run_interp_with_scipy(options, all_points):

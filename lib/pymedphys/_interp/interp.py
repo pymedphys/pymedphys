@@ -233,14 +233,6 @@ def interp3d_scipy(axes_known, values, positions):
     return interp(positions)
 
 
-def interp3d_econforge(axes_known, values, positions):
-    from pymedphys._imports import interpolation
-
-    grid = interpolation.splines.CGrid(*axes_known)
-
-    return interpolation.splines.eval_linear(grid, values, positions)
-
-
 # pylint: disable=invalid-name
 def multilinear_interp(
     axes_known: Sequence["np.ndarray"],
@@ -296,11 +288,9 @@ def multilinear_interp(
                 points_interp,
                 extrap_fill_value,
             )
-
         elif algo.lower() == "scipy":
             values_interp = interp3d_scipy(axes_known, values, points_interp)
-
-        elif algo.lower() == "econforge":
-            values_interp = interp3d_econforge(axes_known, values, points_interp)
+        else:
+            raise ValueError(f"Invalid algorithm: '{algo}'")
 
     return values_interp
