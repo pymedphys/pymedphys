@@ -56,7 +56,7 @@ def test_3d_minmax(setup_3d_interp):
     assert np.isclose(values.max(), values_interp.max())
 
 
-def test_3d_vs_scipy_independent(setup_3d_interp):
+def test_3d_vs_scipy(setup_3d_interp):
     axes_known, values, axes_interp, values_interp = setup_3d_interp
 
     mgrids = np.meshgrid(*axes_interp, indexing="ij")
@@ -64,18 +64,6 @@ def test_3d_vs_scipy_independent(setup_3d_interp):
 
     f = scipy.interpolate.RegularGridInterpolator(axes_known, values)
     values_interp_scipy = f(points_interp).reshape(values_interp.shape)
-
-    assert np.allclose(values_interp, values_interp_scipy)
-
-
-def test_3d_vs_scipy(setup_3d_interp):
-    axes_known, values, axes_interp, values_interp = setup_3d_interp
-
-    expected_shape = (axes_interp[0].size, axes_interp[1].size, axes_interp[2].size)
-
-    values_interp_scipy = interp.multilinear_interp(
-        axes_known, values, axes_interp, algo="scipy"
-    ).reshape(expected_shape)
 
     assert np.allclose(values_interp, values_interp_scipy)
 

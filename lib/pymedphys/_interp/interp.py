@@ -82,7 +82,7 @@ def interp1d(axis_known, values, points_interp, extrap_fill_value):
     for i in nb.prange(points_interp.shape[0]):
         xpi = points_interp[i, 0]
 
-        if xpi < axis_known[0] or xpi > axis_known[-1]:
+        if not axis_known[0] <= xpi <= axis_known[-1]:
             interpolated_values[i] = extrap_fill_value
             continue
 
@@ -113,7 +113,7 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value):
     for i in nb.prange(points_interp.shape[0]):
         xpi, ypi = points_interp[i, 0], points_interp[i, 1]
 
-        if xpi < x[0] or xpi > x[-1] or ypi < y[0] or ypi > y[-1]:
+        if not x[0] <= xpi <= x[-1] or not y[0] <= ypi <= y[-1]:
             interpolated_values[i] = extrap_fill_value
             continue
 
@@ -228,18 +228,12 @@ def interp3d(axes_known, values, points_interp, extrap_fill_value):
     return interpolated_values
 
 
-def interp3d_scipy(axes_known, values, positions):
-    interp = scipy.interpolate.RegularGridInterpolator(axes_known, values)
-    return interp(positions)
-
-
 # pylint: disable=invalid-name
 def multilinear_interp(
     axes_known: Sequence["np.ndarray"],
     values: "np.ndarray",
     axes_interp: Sequence["np.ndarray"] = None,
     points_interp: "np.ndarray" = None,
-    algo: str = "pymedphys",
     bounds_error=True,
     extrap_fill_value=np.nan,
 ) -> "np.ndarray":
@@ -250,7 +244,7 @@ def multilinear_interp(
         pass
     else:
         raise ValueError(
-            "Exactly one of either axes_interp or points_interp must be specified"
+            "Exactly one of either `axes_interp` or `points_interp` must be specified"
         )
     axes_known, values = __check_inputs(axes_known, values, points_interp, bounds_error)
 
@@ -266,7 +260,7 @@ def multilinear_interp(
             raise ValueError(f"axis_known[{i}] must be evenly spaced")
 
     if len(axes_known) == 1:
-        values_interp = interp1d(
+        return interp1d(
             axes_known[0],
             values,
             points_interp,
@@ -274,23 +268,16 @@ def multilinear_interp(
         )
 
     elif len(axes_known) == 2:
-        values_interp = interp2d(
+        return interp2d(
             axes_known,
             values,
             points_interp,
             extrap_fill_value,
         )
     else:
-        if algo.lower() == "pymedphys":
-            values_interp = interp3d(
-                axes_known,
-                values,
-                points_interp,
-                extrap_fill_value,
-            )
-        elif algo.lower() == "scipy":
-            values_interp = interp3d_scipy(axes_known, values, points_interp)
-        else:
-            raise ValueError(f"Invalid algorithm: '{algo}'")
-
-    return values_interp
+        return interp3d(
+            axes_known,
+            values,
+            points_interp,
+            extrap_fill_value,
+        )
