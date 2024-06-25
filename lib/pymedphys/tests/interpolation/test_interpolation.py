@@ -80,7 +80,7 @@ def test_3d_vs_scipy(setup_3d_interp):
     assert np.allclose(values_interp, values_interp_scipy)
 
 
-def test_2d_vs_scipy(setup_3d_interp):
+def test_2d_vs_scipy():
     x = np.linspace(0, 10, 11)
     y = np.linspace(10, 20, 6)
     xi = np.linspace(0, 10, 11 * INTERP_MULTIPLE - 1)
@@ -102,7 +102,7 @@ def test_2d_vs_scipy(setup_3d_interp):
     assert np.allclose(values_interp, values_interp_scipy)
 
 
-def test_1d_vs_scipy(setup_3d_interp):
+def test_1d_vs_scipy():
     x = np.linspace(0, 10, 11)
     xi = np.linspace(0, 10, 11 * INTERP_MULTIPLE - 1)
 
