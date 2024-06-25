@@ -19,6 +19,8 @@ from pymedphys._imports import numpy as np, pytest, scipy
 # from pymedphys._imports import pyplot as plt
 from pymedphys._interp import interp
 
+INTERP_MULTIPLE = 5
+
 
 @pytest.fixture
 def setup_3d_interp(plot=False):
@@ -30,9 +32,9 @@ def setup_3d_interp(plot=False):
     y = np.linspace(10, 20, y_size)
     z = np.linspace(-20, 10, z_size)
 
-    xi = np.linspace(0, 10, x_size * 5 - 1)
-    yi = np.linspace(10, 20, y_size * 5 - 1)
-    zi = np.linspace(-20, 10, z_size * 5 - 1)
+    xi = np.linspace(0, 10, x_size * INTERP_MULTIPLE - 1)
+    yi = np.linspace(10, 20, y_size * INTERP_MULTIPLE - 1)
+    zi = np.linspace(-20, 10, z_size * INTERP_MULTIPLE - 1)
 
     X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
@@ -73,6 +75,47 @@ def test_3d_vs_scipy(setup_3d_interp):
 
     values_interp_scipy = interp.multilinear_interp(
         axes_known, values, axes_interp, algo="scipy"
+    ).reshape(expected_shape)
+
+    assert np.allclose(values_interp, values_interp_scipy)
+
+
+def test_2d_vs_scipy(setup_3d_interp):
+    x = np.linspace(0, 10, 11)
+    y = np.linspace(10, 20, 6)
+    xi = np.linspace(0, 10, 11 * INTERP_MULTIPLE - 1)
+    yi = np.linspace(10, 20, 6 * INTERP_MULTIPLE - 1)
+
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    values = X**2 + Y**2
+
+    values_interp = interp.multilinear_interp(
+        (x, y), values, axes_interp=(xi, yi)
+    ).reshape((xi.size, yi.size))
+
+    expected_shape = (xi.size, yi.size)
+
+    values_interp_scipy = interp.multilinear_interp(
+        (x, y), values, axes_interp=(xi, yi), algo="scipy"
+    ).reshape(expected_shape)
+
+    assert np.allclose(values_interp, values_interp_scipy)
+
+
+def test_1d_vs_scipy(setup_3d_interp):
+    x = np.linspace(0, 10, 11)
+    xi = np.linspace(0, 10, 11 * INTERP_MULTIPLE - 1)
+
+    values = x**2
+
+    values_interp = interp.multilinear_interp((x,), values, axes_interp=(xi,)).reshape(
+        (xi.size,)
+    )
+
+    expected_shape = (xi.size,)
+
+    values_interp_scipy = interp.multilinear_interp(
+        (x,), values, axes_interp=(xi,), algo="scipy"
     ).reshape(expected_shape)
 
     assert np.allclose(values_interp, values_interp_scipy)
