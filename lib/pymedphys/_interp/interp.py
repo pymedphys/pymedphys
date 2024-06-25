@@ -74,7 +74,7 @@ def __check_inputs(
 
 
 @nb.njit(parallel=True, fastmath=True, cache=True)
-def interp1d(axis_known, values, points_interp, extrap_fill_value):
+def interp1d(axis_known, values, points_interp, extrap_fill_value=np.nan):
     values_interp = np.zeros(points_interp.shape[0], dtype=np.float64)
     diff = axis_known[1] - axis_known[0]
 
@@ -102,7 +102,7 @@ def interp1d(axis_known, values, points_interp, extrap_fill_value):
 
 
 @nb.njit(parallel=True, fastmath=True, cache=True)
-def interp2d(axes_known, values, points_interp, extrap_fill_value):
+def interp2d(axes_known, values, points_interp, extrap_fill_value=np.nan):
     values_interp = np.zeros((points_interp.shape[0]), dtype=np.float64)
     diffs = np.zeros(2)
     for i, axis in enumerate(axes_known):
@@ -150,7 +150,7 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value):
 
 @nb.njit(parallel=True, fastmath=True, cache=True)
 # pylint: disable=invalid-name
-def interp3d(axes_known, values, points_interp, extrap_fill_value):
+def interp3d(axes_known, values, points_interp, extrap_fill_value=np.nan):
     x, y, z = axes_known[0], axes_known[1], axes_known[2]
 
     values_interp = np.zeros(
