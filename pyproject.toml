@@ -40,8 +40,8 @@ PyYAML = { version = "*", optional = true }          # groups = ["user", "all"]
 requests = { version = "*", optional = true }        # groups = ["user", "all"]
 python-dateutil = { version = "*", optional = true } # groups = ["user", "all", "tests"]
 
-matplotlib = { version = "<3.8.0", optional = true } # groups = ["user", "all", "docs"]
-scipy = { version = "*", optional = true }           # groups = ["user", "all", "docs"]
+matplotlib = { version = "*", optional = true } # groups = ["user", "all", "docs"]
+scipy = { version = "*", optional = true }      # groups = ["user", "all", "docs"]
 
 pymssql = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 sqlalchemy = { version = "*", optional = true } # groups = ["user", "all", "mosaiq"]

@@ -74,7 +74,6 @@ doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
-speedups = ["interpolation"]
 tests = [
     "astroid",
     "numba",
