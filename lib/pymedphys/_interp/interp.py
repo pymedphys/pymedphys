@@ -75,7 +75,7 @@ def __check_inputs(
 
 @nb.njit(parallel=True, fastmath=True, cache=True)
 def interp1d(axis_known, values, points_interp, extrap_fill_value):
-    interpolated_values = np.zeros(points_interp.shape[0], dtype=np.float64)
+    values_interp = np.zeros(points_interp.shape[0], dtype=np.float64)
     diff = axis_known[1] - axis_known[0]
 
     # pylint: disable=not-an-iterable
@@ -83,7 +83,7 @@ def interp1d(axis_known, values, points_interp, extrap_fill_value):
         xpi = points_interp[i, 0]
 
         if not axis_known[0] <= xpi <= axis_known[-1]:
-            interpolated_values[i] = extrap_fill_value
+            values_interp[i] = extrap_fill_value
             continue
 
         x1_idx = np.searchsorted(axis_known, xpi)
@@ -96,14 +96,14 @@ def interp1d(axis_known, values, points_interp, extrap_fill_value):
 
         wx = (xpi - axis_known[x0_idx]) / diff
 
-        interpolated_values[i] = values[x0_idx] * (1 - wx) + values[x1_idx] * wx
+        values_interp[i] = values[x0_idx] * (1 - wx) + values[x1_idx] * wx
 
-    return interpolated_values
+    return values_interp
 
 
 @nb.njit(parallel=True, fastmath=True, cache=True)
 def interp2d(axes_known, values, points_interp, extrap_fill_value):
-    interpolated_values = np.zeros((points_interp.shape[0]), dtype=np.float64)
+    values_interp = np.zeros((points_interp.shape[0]), dtype=np.float64)
     diffs = np.zeros(2)
     for i, axis in enumerate(axes_known):
         diffs[i] = axis[1] - axis[0]
@@ -114,7 +114,7 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value):
         xpi, ypi = points_interp[i, 0], points_interp[i, 1]
 
         if not x[0] <= xpi <= x[-1] or not y[0] <= ypi <= y[-1]:
-            interpolated_values[i] = extrap_fill_value
+            values_interp[i] = extrap_fill_value
             continue
 
         # Find the indices of the surrounding grid points
@@ -143,9 +143,9 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value):
         c0 = c00 * (1 - wx) + c10 * wx
         c1 = c01 * (1 - wx) + c11 * wx
 
-        interpolated_values[i] = c0 * (1 - wy) + c1 * wy
+        values_interp[i] = c0 * (1 - wy) + c1 * wy
 
-    return interpolated_values
+    return values_interp
 
 
 @nb.njit(parallel=True, fastmath=True, cache=True)
@@ -153,7 +153,7 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value):
 def interp3d(axes_known, values, points_interp, extrap_fill_value):
     x, y, z = axes_known[0], axes_known[1], axes_known[2]
 
-    interpolated_values = np.zeros(
+    values_interp = np.zeros(
         points_interp.shape[0],
         dtype=np.float64,
     )
@@ -175,7 +175,7 @@ def interp3d(axes_known, values, points_interp, extrap_fill_value):
             or not y[0] <= ypi <= y[-1]
             or not z[0] <= zpi <= z[-1]
         ):
-            interpolated_values[i] = extrap_fill_value
+            values_interp[i] = extrap_fill_value
             continue
 
         # Find the indices of the surrounding grid points
@@ -223,9 +223,43 @@ def interp3d(axes_known, values, points_interp, extrap_fill_value):
         c0 = c00 * (1 - wy) + c10 * wy
         c1 = c01 * (1 - wy) + c11 * wy
 
-        interpolated_values[i] = c0 * (1 - wz) + c1 * wz
+        values_interp[i] = c0 * (1 - wz) + c1 * wz
 
-    return interpolated_values
+    return values_interp
+
+
+def interp_scipy(
+    axes_known,
+    values,
+    axes_interp: Sequence["np.ndarray"] = None,
+    points_interp: "np.ndarray" = None,
+    keep_dims=False,
+    bounds_error=True,
+    extrap_fill_value=np.nan,
+):
+    if axes_interp is not None and points_interp is None:
+        mgrids = np.meshgrid(*axes_interp, indexing="ij")
+        points_interp = np.column_stack([mgrid.ravel() for mgrid in mgrids])
+    elif axes_interp is None and points_interp is not None:
+        pass
+    else:
+        raise ValueError(
+            "Exactly one of either `axes_interp` or `points_interp` must be specified"
+        )
+
+    f = scipy.interpolate.RegularGridInterpolator(
+        axes_known, values, bounds_error=bounds_error, fill_value=extrap_fill_value
+    )
+
+    if keep_dims:
+        if axes_interp is not None:
+            return f(points_interp).reshape(axis.size for axis in axes_interp)
+        else:
+            raise ValueError(
+                "If `keep_dims` is True, `axes_interp` must be specified to determine the shape of the output"
+            )
+    else:
+        return f(points_interp)
 
 
 # pylint: disable=invalid-name
@@ -234,6 +268,7 @@ def multilinear_interp(
     values: "np.ndarray",
     axes_interp: Sequence["np.ndarray"] = None,
     points_interp: "np.ndarray" = None,
+    keep_dims=False,
     bounds_error=True,
     extrap_fill_value=np.nan,
 ) -> "np.ndarray":
@@ -241,7 +276,10 @@ def multilinear_interp(
         mgrids = np.meshgrid(*axes_interp, indexing="ij")
         points_interp = np.column_stack([mgrid.ravel() for mgrid in mgrids])
     elif axes_interp is None and points_interp is not None:
-        pass
+        if keep_dims:
+            raise ValueError(
+                "If `keep_dims` is True, `axes_interp` must be specified to determine the shape of the output"
+            )
     else:
         raise ValueError(
             "Exactly one of either `axes_interp` or `points_interp` must be specified"
@@ -260,6 +298,7 @@ def multilinear_interp(
             raise ValueError(f"axis_known[{i}] must be evenly spaced")
 
     if len(axes_known) == 1:
+        # keep_dims has no effect for 1D interpolation
         return interp1d(
             axes_known[0],
             values,
@@ -268,16 +307,21 @@ def multilinear_interp(
         )
 
     elif len(axes_known) == 2:
-        return interp2d(
+        values_interp = interp2d(
             axes_known,
             values,
             points_interp,
             extrap_fill_value,
         )
     else:
-        return interp3d(
+        values_interp = interp3d(
             axes_known,
             values,
             points_interp,
             extrap_fill_value,
         )
+
+    if keep_dims:
+        values_interp = values_interp.reshape([axis.size for axis in axes_interp])
+
+    return values_interp

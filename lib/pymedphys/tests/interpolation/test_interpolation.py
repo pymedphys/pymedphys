@@ -14,16 +14,15 @@
 
 # pylint: disable=invalid-name, redefined-outer-name
 
-from pymedphys._imports import numpy as np, pytest, scipy
+from pymedphys._imports import numpy as np, pytest
 
-# from pymedphys._imports import pyplot as plt
 from pymedphys._interp import interp
 
-INTERP_MULTIPLE = 5
+INTERP_MULTIPLE_TEST = 5
 
 
 @pytest.fixture
-def setup_3d_interp(plot=False):
+def setup_interp(plot=False):
     x_size = 11
     y_size = 6
     z_size = 31
@@ -32,16 +31,16 @@ def setup_3d_interp(plot=False):
     y = np.linspace(10, 20, y_size)
     z = np.linspace(-20, 10, z_size)
 
-    xi = np.linspace(0, 10, x_size * INTERP_MULTIPLE - 1)
-    yi = np.linspace(10, 20, y_size * INTERP_MULTIPLE - 1)
-    zi = np.linspace(-20, 10, z_size * INTERP_MULTIPLE - 1)
+    xi = np.linspace(0, 10, x_size * INTERP_MULTIPLE_TEST - 1)
+    yi = np.linspace(10, 20, y_size * INTERP_MULTIPLE_TEST - 1)
+    zi = np.linspace(-20, 10, z_size * INTERP_MULTIPLE_TEST - 1)
 
     X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
     values = X**2 + Y**2 + Z**2
     values_interp = interp.multilinear_interp(
         (x, y, z), values, axes_interp=(xi, yi, zi)
-    ).reshape((xi.size, yi.size, zi.size))
+    )
 
     if plot:
         interp.plot_interp_comparison_heatmap(values, values_interp, 2, 0, 0)
@@ -49,61 +48,169 @@ def setup_3d_interp(plot=False):
     return (x, y, z), values, (xi, yi, zi), values_interp
 
 
-def test_3d_minmax(setup_3d_interp):
-    _, values, _, values_interp = setup_3d_interp
+def test_3d_minmax(setup_interp):
+    _, values, _, values_interp = setup_interp
 
     assert np.isclose(values.min(), values_interp.min())
     assert np.isclose(values.max(), values_interp.max())
 
 
-def test_3d_vs_scipy(setup_3d_interp):
-    axes_known, values, axes_interp, values_interp = setup_3d_interp
+def test_3d_vs_scipy(setup_interp):
+    axes_known, values, axes_interp, values_interp = setup_interp
 
-    mgrids = np.meshgrid(*axes_interp, indexing="ij")
-    points_interp = np.column_stack([mgrid.ravel() for mgrid in mgrids])
-
-    f = scipy.interpolate.RegularGridInterpolator(axes_known, values)
-    values_interp_scipy = f(points_interp).reshape(values_interp.shape)
-
-    assert np.allclose(values_interp, values_interp_scipy)
-
-
-def test_2d_vs_scipy():
-    x = np.linspace(0, 10, 11)
-    y = np.linspace(10, 20, 6)
-    xi = np.linspace(0, 10, 11 * INTERP_MULTIPLE - 1)
-    yi = np.linspace(10, 20, 6 * INTERP_MULTIPLE - 1)
-
-    X, Y = np.meshgrid(x, y, indexing="ij")
-    values = X**2 + Y**2
-
-    values_interp = interp.multilinear_interp(
-        (x, y), values, axes_interp=(xi, yi)
-    ).reshape((xi.size, yi.size))
-
-    expected_shape = (xi.size, yi.size)
-
-    values_interp_scipy = interp.multilinear_interp(
-        (x, y), values, axes_interp=(xi, yi), algo="scipy"
-    ).reshape(expected_shape)
-
-    assert np.allclose(values_interp, values_interp_scipy)
-
-
-def test_1d_vs_scipy():
-    x = np.linspace(0, 10, 11)
-    xi = np.linspace(0, 10, 11 * INTERP_MULTIPLE - 1)
-
-    values = x**2
-
-    values_interp = interp.multilinear_interp((x,), values, axes_interp=(xi,)).reshape(
-        (xi.size,)
+    values_interp_scipy = interp.interp_scipy(
+        axes_known, values, axes_interp=axes_interp
     )
 
-    expected_shape = (xi.size,)
+    assert np.allclose(values_interp, values_interp_scipy)
 
-    values_interp_scipy = interp.multilinear_interp(
-        (x,), values, axes_interp=(xi,), algo="scipy"
-    ).reshape(expected_shape)
+
+def test_keepdims(setup_interp):
+    (x, y, z), values, (xi, yi, zi), values_interp = setup_interp
+
+    # 3D
+    values_interp_keepdims = interp.multilinear_interp(
+        (x, y, z), values, axes_interp=(xi, yi, zi), keep_dims=True
+    )
+    shape_expected = (xi.size, yi.size, zi.size)
+    values_interp_reshaped_expected = values_interp.reshape(shape_expected)
+
+    assert np.allclose(values_interp_keepdims, values_interp_reshaped_expected)
+
+    # 2D
+    values_interp_keepdims = interp.multilinear_interp(
+        (x, y), values[:, :, 0], axes_interp=(xi, yi), keep_dims=True
+    )
+
+    assert np.allclose(values_interp_keepdims, values_interp_reshaped_expected[:, :, 0])
+
+    # 1D
+    values_interp_keepdims = interp.multilinear_interp(
+        (x,), values[:, 0, 0], axes_interp=(xi,), keep_dims=True
+    )
+
+    assert np.allclose(values_interp_keepdims, values_interp_reshaped_expected[:, 0, 0])
+
+
+def test_extrap(setup_interp):
+    (x, y, z), values, (xi, yi, zi), _ = setup_interp
+
+    # x_start
+    xi = np.concatenate([[xi[0] - 1], xi])
+    with pytest.raises(ValueError):
+        interp.multilinear_interp(
+            (x, y, z), values, axes_interp=(xi, yi, zi), bounds_error=True
+        )
+    values_interp = interp.multilinear_interp(
+        (x, y, z),
+        values,
+        axes_interp=(xi, yi, zi),
+        keep_dims=True,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+    )
+    assert np.all(values_interp[0, :, :] == np.inf)
+
+    # x_end
+    xi = np.concatenate([xi, [xi[-1] + 1]])
+    with pytest.raises(ValueError):
+        interp.multilinear_interp(
+            (x, y, z), values, axes_interp=(xi, yi, zi), bounds_error=True
+        )
+    values_interp = interp.multilinear_interp(
+        (x, y, z),
+        values,
+        axes_interp=(xi, yi, zi),
+        keep_dims=True,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+    )
+    assert np.all(values_interp[-1, :, :] == np.inf)
+
+    # y_start
+    yi = np.concatenate([[yi[0] - 1], yi])
+    with pytest.raises(ValueError):
+        interp.multilinear_interp(
+            (x, y, z), values, axes_interp=(xi, yi, zi), bounds_error=True
+        )
+    values_interp = interp.multilinear_interp(
+        (x, y, z),
+        values,
+        axes_interp=(xi, yi, zi),
+        keep_dims=True,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+    )
+    assert np.all(values_interp[:, 0, :] == np.inf)
+
+    # y_end
+    yi = np.concatenate([yi, [yi[-1] + 1]])
+    with pytest.raises(ValueError):
+        interp.multilinear_interp(
+            (x, y, z), values, axes_interp=(xi, yi, zi), bounds_error=True
+        )
+    values_interp = interp.multilinear_interp(
+        (x, y, z),
+        values,
+        axes_interp=(xi, yi, zi),
+        keep_dims=True,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+    )
+    assert np.all(values_interp[:, -1, :] == np.inf)
+
+    # z_start
+    zi = np.concatenate([[zi[0] - 1], zi])
+    with pytest.raises(ValueError):
+        interp.multilinear_interp(
+            (x, y, z), values, axes_interp=(xi, yi, zi), bounds_error=True
+        )
+    values_interp = interp.multilinear_interp(
+        (x, y, z),
+        values,
+        axes_interp=(xi, yi, zi),
+        keep_dims=True,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+    )
+    assert np.all(values_interp[:, :, 0] == np.inf)
+
+    # z_end
+    zi = np.concatenate([zi, [zi[-1] + 1]])
+    with pytest.raises(ValueError):
+        interp.multilinear_interp(
+            (x, y, z), values, axes_interp=(xi, yi, zi), bounds_error=True
+        )
+    values_interp = interp.multilinear_interp(
+        (x, y, z),
+        values,
+        axes_interp=(xi, yi, zi),
+        keep_dims=True,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+    )
+    assert np.all(values_interp[:, :, -1] == np.inf)
+
+
+def test_2d_vs_scipy(setup_interp):
+    (x, y, _), values, (xi, yi, _), _ = setup_interp
+
+    values_interp = interp.multilinear_interp(
+        (x, y), values[:, :, 0], axes_interp=(xi, yi)
+    )
+
+    values_interp_scipy = interp.interp_scipy(
+        (x, y), values[:, :, 0], axes_interp=(xi, yi)
+    )
+
+    assert np.allclose(values_interp, values_interp_scipy)
+
+
+def test_1d_vs_scipy(setup_interp):
+    (x, _, _), values, (xi, _, _), _ = setup_interp
+
+    values_interp = interp.multilinear_interp((x,), values[:, 0, 0], axes_interp=(xi,))
+
+    values_interp_scipy = interp.interp_scipy((x,), values[:, 0, 0], axes_interp=(xi,))
 
     assert np.allclose(values_interp, values_interp_scipy)
