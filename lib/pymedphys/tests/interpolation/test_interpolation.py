@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=invalid-name, redefined-outer-name
+
 from pymedphys._imports import numpy as np, pytest, scipy
 
 # from pymedphys._imports import pyplot as plt
@@ -45,7 +47,6 @@ def setup_3d_interp(plot=False):
     return (x, y, z), values, (xi, yi, zi), values_interp
 
 
-# pylint: disable=invalid-name
 def test_3d_minmax(setup_3d_interp):
     _, values, _, values_interp = setup_3d_interp
 
