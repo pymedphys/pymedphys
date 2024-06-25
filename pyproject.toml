@@ -59,9 +59,7 @@ imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
 streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
 
-# Upper pin for Econforge `interpolation` compatibility. Plan to remove.
-numba = { version = "<0.60.0", optional = true } # groups = ["user", "all", "docs", "tests"]
-
+numba = { version = "*", optional = true }      # groups = ["user", "all", "docs", "tests"]
 numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
 
 # The following lower bounded packages are due to certain APIs utilised
@@ -95,14 +93,6 @@ Pillow = { version = ">=9.0.0", optional = true } # groups = ["user", "all"]
 # Comparables #
 # ----------- #
 flashgamma = { version = "*", optional = true } # groups = ["comparables"]
-
-# -------- #
-# Speedups #
-# -------- #
-
-# Many environments have issue with installing llvmlite, so, until it is more
-# reliable, don't include this dependency in the standard install.
-interpolation = { version = ">=2.1.0", optional = true } # groups = ["speedups"]
 
 # ------------- #
 # Documentation #
@@ -191,7 +181,15 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
+dev = [
+    "doc8",
+    "pre-commit",
+    "pyright",
+    "readme-renderer",
+    "rope",
+    "ruff",
+    "tabulate",
+]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
@@ -211,7 +209,6 @@ doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
-speedups = ["interpolation"]
 tests = [
     "astroid",
     "numba",
