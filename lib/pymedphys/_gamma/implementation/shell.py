@@ -545,6 +545,7 @@ def _run_custom_interp(options, all_points):
         points_interp=points,
         bounds_error=False,
         extrap_fill_value=np.inf,
+        skip_checks=True,
     ).reshape(all_points.shape[:-1])
 
 

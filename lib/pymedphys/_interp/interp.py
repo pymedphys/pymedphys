@@ -271,6 +271,7 @@ def multilinear_interp(
     keep_dims=False,
     bounds_error=True,
     extrap_fill_value=np.nan,
+    skip_checks=False,
 ) -> "np.ndarray":
     if axes_interp is not None and points_interp is None:
         mgrids = np.meshgrid(*axes_interp, indexing="ij")
@@ -284,18 +285,21 @@ def multilinear_interp(
         raise ValueError(
             "Exactly one of either `axes_interp` or `points_interp` must be specified"
         )
-    axes_known, values = __check_inputs(axes_known, values, points_interp, bounds_error)
+    if not skip_checks:
+        axes_known, values = __check_inputs(
+            axes_known, values, points_interp, bounds_error
+        )
 
-    axes_known_diffs = [np.diff(axis) for axis in axes_known]
+        axes_known_diffs = [np.diff(axis) for axis in axes_known]
 
-    # Handle ascending vs. descending vs. bad order.
-    for i, diff in enumerate(axes_known_diffs):
-        if not np.all(diff > 0):
-            raise ValueError(
-                f"axes_known[{i}] is not monotonically ascending or descending"
-            )
-        if not np.allclose(diff, diff[0]):
-            raise ValueError(f"axis_known[{i}] must be evenly spaced")
+        # Handle ascending vs. descending vs. bad order.
+        for i, diff in enumerate(axes_known_diffs):
+            if not np.all(diff > 0):
+                raise ValueError(
+                    f"axes_known[{i}] is not monotonically ascending or descending"
+                )
+            if not np.allclose(diff, diff[0]):
+                raise ValueError(f"axis_known[{i}] must be evenly spaced")
 
     if len(axes_known) == 1:
         # keep_dims has no effect for 1D interpolation
