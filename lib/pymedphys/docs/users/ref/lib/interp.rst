@@ -9,6 +9,7 @@ Summary
 .. automodule:: pymedphys.interpolate
     :no-members:
 
+.. _Performance Comparison Between Implementations:
 Performance Comparison Between Implementations
 ----------------------------------------------
 .. image:: ../../../img/interp_comparison.png
@@ -28,7 +29,8 @@ Interpolation - Low Level Interfaces
 ------------------------------------
 It generally shouldn't be necessary to use these in lieu of
 `pymedphys.interpolate.interp()`, since running `interp()` with
-`skip_checks=True` will produce similar speed performance.
+`skip_checks=True` will produce similar speed performance. See
+`Performance Comparison Between Implementations`_
 
 .. autofunction:: pymedphys.interpolate.interp_linear_1d
 
