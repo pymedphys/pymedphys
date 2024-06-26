@@ -15,6 +15,8 @@ Performance Comparison Between Implementations
 .. image:: ../../../img/interp_comparison.png
     :align: center
 
+(Right-click and open in a new tab for better viewing)
+
 ***
 API
 ***
