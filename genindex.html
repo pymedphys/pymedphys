@@ -203,6 +203,10 @@
 <li class="toctree-l3"><a class="reference internal" href="users/howto/gamma/from-dicom.html">Gamma from DICOM</a></li>
 </ul>
 </details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="users/howto/interp/index.html">Interpolation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="users/howto/interp/implementation_comparison.html">Multilinear Interpolation Comparison</a></li>
+</ul>
+</details></li>
 <li class="toctree-l2"><a class="reference internal" href="users/howto/add-a-linac.html">Adding a Linac</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="users/howto/tunnels/index.html">Tunnels</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="users/howto/tunnels/samba.html">SAMBA SSH Tunnelling</a></li>
@@ -221,6 +225,7 @@
 <li class="toctree-l3 current active"><a class="current reference internal" href="#">Index</a></li>
 <li class="toctree-l3"><a class="reference internal" href="users/ref/lib/dicom.html">DICOM</a></li>
 <li class="toctree-l3"><a class="reference internal" href="users/ref/lib/gamma.html">Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="users/ref/lib/interp.html">Interpolation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="users/ref/lib/mosaiq.html">Mosaiq</a></li>
 <li class="toctree-l3"><a class="reference internal" href="users/ref/lib/metersetmap.html">MetersetMap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="users/ref/lib/trf.html">TRF</a></li>
@@ -500,8 +505,16 @@ document.write(`
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="users/ref/lib/trf.html#pymedphys.trf.identify">identify() (in module pymedphys.trf)</a>
 </li>
+      <li><a href="users/ref/lib/interp.html#pymedphys.interpolate.interp">interp() (in module pymedphys.interpolate)</a>
+</li>
+      <li><a href="users/ref/lib/interp.html#pymedphys.interpolate.interp_linear_1d">interp_linear_1d() (in module pymedphys.interpolate)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="users/ref/lib/interp.html#pymedphys.interpolate.interp_linear_2d">interp_linear_2d() (in module pymedphys.interpolate)</a>
+</li>
+      <li><a href="users/ref/lib/interp.html#pymedphys.interpolate.interp_linear_3d">interp_linear_3d() (in module pymedphys.interpolate)</a>
+</li>
       <li><a href="users/ref/lib/experimental/pseudonymisation.html#pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords">is_valid_strategy_for_keywords() (in module pymedphys.experimental.pseudonymisation)</a>
 </li>
   </ul></td>
@@ -530,6 +543,8 @@ document.write(`
 </li>
         <li><a href="users/ref/lib/experimental/pseudonymisation.html#module-pymedphys.experimental.pseudonymisation">pymedphys.experimental.pseudonymisation</a>
 </li>
+        <li><a href="users/ref/lib/interp.html#module-pymedphys.interpolate">pymedphys.interpolate</a>
+</li>
         <li><a href="users/ref/lib/metersetmap.html#module-pymedphys.metersetmap">pymedphys.metersetmap</a>
 </li>
         <li><a href="users/ref/lib/mosaiq.html#module-pymedphys.mosaiq">pymedphys.mosaiq</a>
@@ -552,6 +567,8 @@ document.write(`
       <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.pinnacle.PinnacleImage">PinnacleImage (in module pymedphys.pinnacle)</a>
 </li>
       <li><a href="users/ref/lib/experimental/pinnacle.html#pymedphys.pinnacle.PinnaclePlan">PinnaclePlan (in module pymedphys.pinnacle)</a>
+</li>
+      <li><a href="users/ref/lib/interp.html#pymedphys.interpolate.plot_interp_comparison_heatmap">plot_interp_comparison_heatmap() (in module pymedphys.interpolate)</a>
 </li>
       <li><a href="users/ref/lib/dicom.html#pymedphys.dicom.profile">profile() (in module pymedphys.dicom)</a>
 </li>
@@ -587,8 +604,6 @@ document.write(`
         <li><a href="users/ref/cli/pinnacle.html#module-pymedphys.cli.pinnacle">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     pymedphys.cli.trf
 
@@ -596,6 +611,8 @@ document.write(`
         <li><a href="users/ref/cli/trf.html#module-pymedphys.cli.trf">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     pymedphys.dicom
 
@@ -615,6 +632,13 @@ document.write(`
 
       <ul>
         <li><a href="users/ref/lib/experimental/pseudonymisation.html#module-pymedphys.experimental.pseudonymisation">module</a>
+</li>
+      </ul></li>
+      <li>
+    pymedphys.interpolate
+
+      <ul>
+        <li><a href="users/ref/lib/interp.html#module-pymedphys.interpolate">module</a>
 </li>
       </ul></li>
       <li>

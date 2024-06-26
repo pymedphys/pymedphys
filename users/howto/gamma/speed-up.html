@@ -206,6 +206,10 @@
 <li class="toctree-l3"><a class="reference internal" href="from-dicom.html">Gamma from DICOM</a></li>
 </ul>
 </details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../interp/index.html">Interpolation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../interp/implementation_comparison.html">Multilinear Interpolation Comparison</a></li>
+</ul>
+</details></li>
 <li class="toctree-l2"><a class="reference internal" href="../add-a-linac.html">Adding a Linac</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../tunnels/index.html">Tunnels</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="../tunnels/samba.html">SAMBA SSH Tunnelling</a></li>
@@ -224,6 +228,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Index</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/dicom.html">DICOM</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/gamma.html">Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/interp.html">Interpolation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/mosaiq.html">Mosaiq</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/metersetmap.html">MetersetMap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/trf.html">TRF</a></li>
@@ -767,8 +772,8 @@ Dose threshold: 0.0195 Gy
 <div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:root:Complete!
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 1.48 s, sys: 331 ms, total: 1.81 s
-Wall time: 1.47 s
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 1.68 s, sys: 185 ms, total: 1.87 s
+Wall time: 1.03 s
 </pre></div>
 </div>
 </div>
@@ -905,8 +910,8 @@ Wall time: 1.47 s
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 544 ms, sys: 48.2 ms, total: 592 ms
-Wall time: 592 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 802 ms, sys: 7.31 ms, total: 809 ms
+Wall time: 212 ms
 </pre></div>
 </div>
 </div>
@@ -943,8 +948,8 @@ Wall time: 592 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 325 ms, sys: 4.33 ms, total: 329 ms
-Wall time: 329 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 504 ms, sys: 0 ns, total: 504 ms
+Wall time: 127 ms
 </pre></div>
 </div>
 </div>
@@ -982,8 +987,8 @@ Wall time: 329 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 340 ms, sys: 4.05 ms, total: 344 ms
-Wall time: 343 ms
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 452 ms, sys: 591 μs, total: 453 ms
+Wall time: 116 ms
 </pre></div>
 </div>
 </div>
@@ -1001,7 +1006,7 @@ Wall time: 343 ms
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/5df6cf5600336e2037bba606485f2bc3add82294454f842afed5770e08d437f2.png" src="../../../_images/5df6cf5600336e2037bba606485f2bc3add82294454f842afed5770e08d437f2.png" />
+<img alt="../../../_images/11ccc9601f08c5554450cac714dcf8a60e64aef6bf3cd3cd9e87927bc99714d3.png" src="../../../_images/11ccc9601f08c5554450cac714dcf8a60e64aef6bf3cd3cd9e87927bc99714d3.png" />
 </div>
 </div>
 <p>As you can see, the computation time decreased and, despite the the PyMedPhys <a class="reference external" href="https://docs.pymedphys.com/users/ref/lib/gamma.html">gamma</a> function sampled one 10th of the points, the pass rate deviates by less than 1% from the true value. Therefore, you can use <code>random_subset</code> to get a sense of what could be the pass rate of the dose distributions you are assessing.</p>

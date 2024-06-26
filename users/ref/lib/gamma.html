@@ -77,7 +77,7 @@
     <link rel="icon" href="../../../_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
-    <link rel="next" title="Mosaiq" href="mosaiq.html" />
+    <link rel="next" title="Interpolation" href="interp.html" />
     <link rel="prev" title="DICOM" href="dicom.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -206,6 +206,10 @@
 <li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/from-dicom.html">Gamma from DICOM</a></li>
 </ul>
 </details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../howto/interp/index.html">Interpolation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/interp/implementation_comparison.html">Multilinear Interpolation Comparison</a></li>
+</ul>
+</details></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/add-a-linac.html">Adding a Linac</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../howto/tunnels/index.html">Tunnels</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../howto/tunnels/samba.html">SAMBA SSH Tunnelling</a></li>
@@ -224,6 +228,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Index</a></li>
 <li class="toctree-l3"><a class="reference internal" href="dicom.html">DICOM</a></li>
 <li class="toctree-l3 current active"><a class="current reference internal" href="#">Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="interp.html">Interpolation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="mosaiq.html">Mosaiq</a></li>
 <li class="toctree-l3"><a class="reference internal" href="metersetmap.html">MetersetMap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="trf.html">TRF</a></li>
@@ -504,7 +509,7 @@ document.write(`
 <h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="pymedphys.gamma">
-<span class="sig-prename descclassname"><span class="pre">pymedphys.</span></span><span class="sig-name descname"><span class="pre">gamma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes_reference</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_reference</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes_evaluation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_evaluation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_percent_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_mm_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lower_percent_dose_cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interp_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_gamma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_gamma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_normalisation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_once_passed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_subset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ram_available</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1610612736</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quiet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys.gamma" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">pymedphys.</span></span><span class="sig-name descname"><span class="pre">gamma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes_reference</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_reference</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes_evaluation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_evaluation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose_percent_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_mm_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lower_percent_dose_cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interp_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_gamma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_gamma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_normalisation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_once_passed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_subset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ram_available</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1610612736</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quiet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interp_algo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pymedphys'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys.gamma" title="Link to this definition">#</a></dt>
 <dd><p>Compare two dose grids with the gamma index.</p>
 <p>It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
 interpolating on the fly. This function makes use of some of the ideas
@@ -602,11 +607,11 @@ given by the reference coordinates and dose.</p>
       </div>
     </a>
     <a class="right-next"
-       href="mosaiq.html"
+       href="interp.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Mosaiq</p>
+        <p class="prev-next-title">Interpolation</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

@@ -1,0 +1,841 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Interpolation &#8212; PyMedPhys</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css?v=4fa983c6" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css?v=055d366d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script async="async" src="https://www.googletagmanager.com/gtag/js?id=UA-26591325-7"></script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'UA-26591325-7');
+            </script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script async="async" src="../../../_static/sphinx-thebe.js?v=c100c467"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'UA-26591325-7');
+            </script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'users/ref/lib/interp';</script>
+    <link rel="canonical" href="https://docs.pymedphys.com/users/ref/lib/interp.html" />
+    <link rel="icon" href="../../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Mosaiq" href="mosaiq.html" />
+    <link rel="prev" title="Gamma" href="gamma.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/pymedphys.svg" class="logo__image only-light" alt="PyMedPhys - Home"/>
+    <script>document.write(`<img src="../../../_static/pymedphys.svg" class="logo__image only-dark" alt="PyMedPhys - Home"/>`);</script>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../statement-of-need.html">Statement of Need</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes.html">Release Notes</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Users Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../get-started/index.html">Getting Started</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/cli.html">Using the CLI</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../howto/index.html">How-to Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../howto/gamma/index.html">Gamma</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/speed-up.html">Speeding up gamma calculations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/1D-from-csv.html">Gamma from 1D ASCII data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/effect-of-noise.html">The Effects of Noise on Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/gamma/from-dicom.html">Gamma from DICOM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../howto/interp/index.html">Interpolation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/interp/implementation_comparison.html">Multilinear Interpolation Comparison</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/add-a-linac.html">Adding a Linac</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../howto/tunnels/index.html">Tunnels</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/tunnels/samba.html">SAMBA SSH Tunnelling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/tunnels/rsync.html">Backups using rsync</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../background/index.html">Background</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../background/autocontouring.html">Automatic Contouring Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../background/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">Technical Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active has-children"><a class="reference internal" href="index.html">Library Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dicom.html">DICOM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gamma.html">Gamma</a></li>
+<li class="toctree-l3 current active"><a class="current reference internal" href="#">Interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mosaiq.html">Mosaiq</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metersetmap.html">MetersetMap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="trf.html">TRF</a></li>
+<li class="toctree-l3"><a class="reference internal" href="electronfactors.html">Electron Cutout Factors</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="experimental/index.html">Experimental Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="experimental/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l4"><a class="reference internal" href="experimental/pseudonymisation.html">Pseudonymisation Tool</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/index.html">CLI Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/dicom.html">DICOM Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/trf.html">Elekta Binary Logfiles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/icom.html">iCom listener</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/pseudonymisation.html">Pseudonymisation Tool</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Contributors Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../contrib/index.html">Overview</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/info/index.html">Repository Information</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/info/file-structure.html">Repository File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/info/docs-guide.html">Documentation Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/info/release-guide.html">pymedphys Release Procedure</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/setups/index.html">Workstation Setup Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/setups/setup-win.html">Windows Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/setups/setup-linux.html">Linux Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/setups/setup-mac.html">MacOS Setup</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/tips/index.html">Tips &amp; Tricks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/tips/add-jupyter-kernel.html">Add Jupyter kernel with <em>poetry</em></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/tips/win-open-ssh.html">Setting up OpenSSH on Windows 10</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/dive/index.html">Deep Dive</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/dive/why-open-source.html">Why Open Source?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/dive/create-streamlit-exe.html">Creating a Streamlit Executable</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/users/ref/lib/interp.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button dropdown-item"
+   title="Suggest edit"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="btn__text-container">Suggest edit</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fusers/ref/lib/interp.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../../../_sources/users/ref/lib/interp.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Interpolation</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-pymedphys.interpolate">Summary</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#performance-comparison-between-implementations">Performance Comparison Between Implementations</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api">API</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interpolation-high-level-interface-recommended">Interpolation - High Level Interface (Recommended)</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp"><code class="docutils literal notranslate"><span class="pre">interp()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interpolation-low-level-interfaces">Interpolation - Low Level Interfaces</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp_linear_1d"><code class="docutils literal notranslate"><span class="pre">interp_linear_1d()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp_linear_2d"><code class="docutils literal notranslate"><span class="pre">interp_linear_2d()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp_linear_3d"><code class="docutils literal notranslate"><span class="pre">interp_linear_3d()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interpolation-visualisation">Interpolation - Visualisation</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.plot_interp_comparison_heatmap"><code class="docutils literal notranslate"><span class="pre">plot_interp_comparison_heatmap()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="interpolation">
+<h1>Interpolation<a class="headerlink" href="#interpolation" title="Link to this heading">#</a></h1>
+<section id="module-pymedphys.interpolate">
+<span id="summary"></span><h2>Summary<a class="headerlink" href="#module-pymedphys.interpolate" title="Link to this heading">#</a></h2>
+<p>Fast linear interpolation for 1D, 2D, and 3D data.</p>
+<p>This module provides functions for efficient linear interpolation of 1D, 2D, and 3D
+data using NumPy and Numba. It includes both a high-level interface (<a class="reference internal" href="#pymedphys.interpolate.interp" title="pymedphys.interpolate.interp"><code class="xref py py-func docutils literal notranslate"><span class="pre">interp()</span></code></a>) and
+lower-level functions for specific dimensionalities.</p>
+<dl class="simple">
+<dt>Key Features:</dt><dd><ul class="simple">
+<li><p>Fast linear interpolation for 1D, 2D, and 3D data</p></li>
+<li><p>Support for both grid-based and point-based interpolation</p></li>
+<li><p>Numba-accelerated core interpolation functions</p></li>
+<li><p>Input validation and error checking</p></li>
+<li><p>Visualization tool for comparing original and interpolated data</p></li>
+</ul>
+</dd>
+<dt>Main Functions:</dt><dd><ul class="simple">
+<li><p><a class="reference internal" href="#pymedphys.interpolate.interp" title="pymedphys.interpolate.interp"><code class="xref py py-func docutils literal notranslate"><span class="pre">interp()</span></code></a>: High-level interface for linear interpolation</p></li>
+<li><p><a class="reference internal" href="#pymedphys.interpolate.interp_linear_1d" title="pymedphys.interpolate.interp_linear_1d"><code class="xref py py-func docutils literal notranslate"><span class="pre">interp_linear_1d()</span></code></a>, <a class="reference internal" href="#pymedphys.interpolate.interp_linear_2d" title="pymedphys.interpolate.interp_linear_2d"><code class="xref py py-func docutils literal notranslate"><span class="pre">interp_linear_2d()</span></code></a>, <a class="reference internal" href="#pymedphys.interpolate.interp_linear_3d" title="pymedphys.interpolate.interp_linear_3d"><code class="xref py py-func docutils literal notranslate"><span class="pre">interp_linear_3d()</span></code></a>: Dimension-specific interpolation</p></li>
+<li><p><a class="reference internal" href="#pymedphys.interpolate.plot_interp_comparison_heatmap" title="pymedphys.interpolate.plot_interp_comparison_heatmap"><code class="xref py py-func docutils literal notranslate"><span class="pre">plot_interp_comparison_heatmap()</span></code></a>: Visualize original vs interpolated data</p></li>
+</ul>
+</dd>
+<dt>Dependencies:</dt><dd><ul class="simple">
+<li><p>NumPy</p></li>
+<li><p>Numba</p></li>
+<li><p>Matplotlib</p></li>
+<li><p>SciPy (for comparison function)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.interpolate</span> <span class="kn">import</span> <span class="n">interp</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Define known data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Define interpolation points</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">21</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">21</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">z_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">21</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Perform interpolation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">interpolated_values</span> <span class="o">=</span> <span class="n">interp</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">],</span> <span class="n">values</span><span class="p">,</span> <span class="n">axes_interp</span><span class="o">=</span><span class="p">[</span><span class="n">x_interp</span><span class="p">,</span> <span class="n">y_interp</span><span class="p">,</span> <span class="n">z_interp</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For more detailed information, refer to the individual function docstrings.</p>
+<section id="performance-comparison-between-implementations">
+<span id="id1"></span><h3>Performance Comparison Between Implementations<a class="headerlink" href="#performance-comparison-between-implementations" title="Link to this heading">#</a></h3>
+<img alt="../../../_images/interp_comparison.png" class="align-center" src="../../../_images/interp_comparison.png" />
+<p>(Right-click and open in a new tab for better viewing)</p>
+</section>
+</section>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
+<section id="interpolation-high-level-interface-recommended">
+<h3>Interpolation - High Level Interface (Recommended)<a class="headerlink" href="#interpolation-high-level-interface-recommended" title="Link to this heading">#</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.interpolate.interp">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.interpolate.</span></span><span class="sig-name descname"><span class="pre">interp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes_known</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes_interp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points_interp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrap_fill_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_checks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../../_modules/pymedphys/_interp/interp.html#interp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.interpolate.interp" title="Link to this definition">#</a></dt>
+<dd><p>Perform fast linear interpolation on 1D, 2D, or 3D data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>axes_known</strong> (<em>Sequence</em><em>[</em><em>np.ndarray</em><em>]</em>) – The coordinate vectors or axis coordinates of the known data points.</p></li>
+<li><p><strong>values</strong> (<em>np.ndarray</em>) – The known values at the points defined by <cite>axes_known</cite>. Its shape should match
+a tuple of the lengths of the axes in <cite>axes_known</cite> in the same order.</p></li>
+<li><p><strong>axes_interp</strong> (<em>Sequence</em><em>[</em><em>np.ndarray</em><em>]</em><em>, </em><em>optional</em>) – The coordinate vectors or axis coordinates for which to interpolate values.
+These axes will be expanded to flattened meshgrids and interpolation will occur
+for each point in these grids. Either <cite>axes_interp</cite> or <cite>points_interp</cite> must be
+provided, but not both.</p></li>
+<li><p><strong>points_interp</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – The exact coordinates of the points where interpolation is desired.
+Shape should be (n, d) where n is the number of points and d is the number of
+dimensions. Either <cite>axes_interp</cite> or <cite>points_interp</cite> must be provided, but not
+both.</p></li>
+<li><p><strong>keep_dims</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, return the interpolated values with the same shape as defined by
+<cite>axes_interp</cite>. Only applicable when <cite>axes_interp</cite> is provided. Default is False.</p></li>
+<li><p><strong>bounds_error</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, raise an error when interpolation is attempted outside the bounds of
+the input data. Default is True.</p></li>
+<li><p><strong>extrap_fill_value</strong> (<em>float</em><em>, </em><em>optional</em>) – The value to use for points outside the bounds of the input data when
+<cite>bounds_error</cite> is False. Default is None, which results in using np.nan.</p></li>
+<li><p><strong>skip_checks</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, skip input validation checks. Skipping these checks can produce a
+significant improve in performance for some applications. Default is False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The interpolated values. If <cite>keep_dims</cite> is True and <cite>axes_interp</cite> is provided,
+the output will have the same shape as defined by <cite>axes_interp</cite>.
+Otherwise, it will be a 1D array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If neither or both of <cite>axes_interp</cite> and <cite>points_interp</cite> are provided.
+    If <cite>keep_dims</cite> is True but <cite>axes_interp</cite> is not provided.
+    If the input axes are not monotonically increasing or evenly spaced.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This function performs linear interpolation for 1D, 2D, or 3D data.
+It supports both grid-based interpolation (using <cite>axes_interp</cite>) and
+point-based interpolation (using <cite>points_interp</cite>).</p>
+<p>The input axes must be monotonically increasing and evenly spaced.</p>
+</dd></dl>
+
+</section>
+<section id="interpolation-low-level-interfaces">
+<h3>Interpolation - Low Level Interfaces<a class="headerlink" href="#interpolation-low-level-interfaces" title="Link to this heading">#</a></h3>
+<p>It generally shouldn’t be necessary to use these in lieu of
+<cite>pymedphys.interpolate.interp()</cite>, since running <cite>interp()</cite> with
+<cite>skip_checks=True</cite> will produce similar speed performance. See
+<a class="reference internal" href="#performance-comparison-between-implementations">Performance Comparison Between Implementations</a></p>
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.interpolate.interp_linear_1d">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.interpolate.</span></span><span class="sig-name descname"><span class="pre">interp_linear_1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axis_known</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points_interp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrap_fill_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_interp/interp.html#interp_linear_1d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.interpolate.interp_linear_1d" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.interpolate.interp_linear_2d">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.interpolate.</span></span><span class="sig-name descname"><span class="pre">interp_linear_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes_known</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points_interp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrap_fill_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_interp/interp.html#interp_linear_2d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.interpolate.interp_linear_2d" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.interpolate.interp_linear_3d">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.interpolate.</span></span><span class="sig-name descname"><span class="pre">interp_linear_3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes_known</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points_interp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrap_fill_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_interp/interp.html#interp_linear_3d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.interpolate.interp_linear_3d" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="interpolation-visualisation">
+<h3>Interpolation - Visualisation<a class="headerlink" href="#interpolation-visualisation" title="Link to this heading">#</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="pymedphys.interpolate.plot_interp_comparison_heatmap">
+<span class="sig-prename descclassname"><span class="pre">pymedphys.interpolate.</span></span><span class="sig-name descname"><span class="pre">plot_interp_comparison_heatmap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values_interp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice_axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice_number_interp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_interp/interp.html#plot_interp_comparison_heatmap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pymedphys.interpolate.plot_interp_comparison_heatmap" title="Link to this definition">#</a></dt>
+<dd><p>Plot a comparison heatmap of original and interpolated 3D data slices.</p>
+<p>This function creates a side-by-side heatmap comparison of a slice from the
+original data and a corresponding slice from the interpolated data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>values</strong> (<em>array-like</em>) – The original 3D data array.</p></li>
+<li><p><strong>values_interp</strong> (<em>array-like</em>) – The interpolated 3D data array.</p></li>
+<li><p><strong>slice_axis</strong> (<em>int</em>) – The axis along which to take the slice (0, 1, or 2).</p></li>
+<li><p><strong>slice_number</strong> (<em>int</em>) – The index of the slice to display from the original data.</p></li>
+<li><p><strong>slice_number_interp</strong> (<em>int</em>) – The index of the slice to display from the interpolated data. Note that auto
+matching between the original and interpolated slices is not implemented. The
+user must ensure the slices correspond.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>This function displays the plot directly and does not return any value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>The function creates a figure with two subplots side by side.</p></li>
+<li><p>The left subplot shows the slice from the original data.</p></li>
+<li><p>The right subplot shows the slice from the interpolated data.</p></li>
+<li><p>It is up to the user to ensure that</p></li>
+<li><p>Both heatmaps use the same color scale, determined by the minimum and
+maximum values across both datasets.</p></li>
+<li><p>A shared colorbar is displayed on the right side of the figure.</p></li>
+<li><p>The plot is automatically displayed using plt.show().</p></li>
+</ul>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "pymedphys/pymedphys",
+            ref: "main",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./users/ref/lib"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="gamma.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Gamma</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="mosaiq.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Mosaiq</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-pymedphys.interpolate">Summary</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#performance-comparison-between-implementations">Performance Comparison Between Implementations</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api">API</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interpolation-high-level-interface-recommended">Interpolation - High Level Interface (Recommended)</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp"><code class="docutils literal notranslate"><span class="pre">interp()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interpolation-low-level-interfaces">Interpolation - Low Level Interfaces</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp_linear_1d"><code class="docutils literal notranslate"><span class="pre">interp_linear_1d()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp_linear_2d"><code class="docutils literal notranslate"><span class="pre">interp_linear_2d()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.interp_linear_3d"><code class="docutils literal notranslate"><span class="pre">interp_linear_3d()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interpolation-visualisation">Interpolation - Visualisation</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#pymedphys.interpolate.plot_interp_comparison_heatmap"><code class="docutils literal notranslate"><span class="pre">plot_interp_comparison_heatmap()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the PyMedPhys community
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2018-2021.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Create two 100 × 100 × 100 dose grids with corresponding axes: &#8212; PyMedPhys</title>
+    <title>Interpolation &#8212; PyMedPhys</title>
   
   
   
@@ -72,11 +72,13 @@
                 gtag('config', 'UA-26591325-7');
             </script>
     <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'users/howto/gamma/gamma_econforge';</script>
-    <link rel="canonical" href="https://docs.pymedphys.com/users/howto/gamma/gamma_econforge.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = 'users/howto/interp/index';</script>
+    <link rel="canonical" href="https://docs.pymedphys.com/users/howto/interp/index.html" />
     <link rel="icon" href="../../../_static/pymedphys.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Multilinear Interpolation Comparison" href="implementation_comparison.html" />
+    <link rel="prev" title="Gamma from DICOM" href="../gamma/from-dicom.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -139,8 +141,6 @@
       
       
       
-        
-      
       <div class="bd-sidebar-primary bd-sidebar">
         
 
@@ -192,18 +192,22 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../release-notes.html">Release Notes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Users Guide</span></p>
-<ul class="nav bd-sidenav">
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../get-started/index.html">Getting Started</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../get-started/quick-start.html">Quick Start Guide</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../get-started/cli.html">Using the CLI</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../index.html">How-to Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="index.html">Gamma</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="speed-up.html">Speeding up gamma calculations</a></li>
-<li class="toctree-l3"><a class="reference internal" href="1D-from-csv.html">Gamma from 1D ASCII data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="effect-of-noise.html">The Effects of Noise on Gamma</a></li>
-<li class="toctree-l3"><a class="reference internal" href="from-dicom.html">Gamma from DICOM</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">How-to Guides</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../gamma/index.html">Gamma</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gamma/speed-up.html">Speeding up gamma calculations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gamma/1D-from-csv.html">Gamma from 1D ASCII data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gamma/effect-of-noise.html">The Effects of Noise on Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gamma/from-dicom.html">Gamma from DICOM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 current active has-children"><a class="current reference internal" href="#">Interpolation</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="implementation_comparison.html">Multilinear Interpolation Comparison</a></li>
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="../add-a-linac.html">Adding a Linac</a></li>
@@ -224,6 +228,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Index</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/dicom.html">DICOM</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/gamma.html">Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../ref/lib/interp.html">Interpolation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/mosaiq.html">Mosaiq</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/metersetmap.html">MetersetMap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../ref/lib/trf.html">TRF</a></li>
@@ -317,73 +322,6 @@
 
 
 
-<div class="dropdown dropdown-launch-buttons">
-  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Launch interactive content">
-    <i class="fas fa-rocket"></i>
-  </button>
-  <ul class="dropdown-menu">
-      
-      
-      
-      <li><a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/main?urlpath=lab/tree/lib/pymedphys/docs/users/howto/gamma/gamma_econforge.ipynb" target="_blank"
-   class="btn btn-sm dropdown-item"
-   title="Launch on Binder"
-   data-bs-placement="left" data-bs-toggle="tooltip"
->
-  
-
-<span class="btn__icon-container">
-  
-    <img alt="Binder logo" src="../../../_static/images/logo_binder.svg">
-  </span>
-<span class="btn__text-container">Binder</span>
-</a>
-</li>
-      
-      
-      
-      
-      <li><a href="https://colab.research.google.com/github/pymedphys/pymedphys/blob/main/lib/pymedphys/docs/users/howto/gamma/gamma_econforge.ipynb" target="_blank"
-   class="btn btn-sm dropdown-item"
-   title="Launch on Colab"
-   data-bs-placement="left" data-bs-toggle="tooltip"
->
-  
-
-<span class="btn__icon-container">
-  
-    <img alt="Colab logo" src="../../../_static/images/logo_colab.png">
-  </span>
-<span class="btn__text-container">Colab</span>
-</a>
-</li>
-      
-      
-      
-      
-      <li>
-<button onclick="initThebeSBT()"
-  class="btn btn-sm btn-launch-thebe dropdown-item"
-  title="Launch Thebe"
-  data-bs-placement="left" data-bs-toggle="tooltip"
->
-  
-
-<span class="btn__icon-container">
-  <i class="fas fa-play"></i>
-  </span>
-<span class="btn__text-container">Live Code</span>
-</button>
-</li>
-      
-  </ul>
-</div>
-
-
-
-
-
-
 <div class="dropdown dropdown-source-buttons">
   <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
     <i class="fab fa-github"></i>
@@ -409,7 +347,7 @@
       
       
       
-      <li><a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/users/howto/gamma/gamma_econforge.ipynb" target="_blank"
+      <li><a href="https://github.com/pymedphys/pymedphys/edit/main/lib/pymedphys/docs/users/howto/interp/index.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -426,7 +364,7 @@
       
       
       
-      <li><a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fusers/howto/gamma/gamma_econforge.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2Fusers/howto/interp/index.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -456,7 +394,7 @@
       
       
       
-      <li><a href="../../../_sources/users/howto/gamma/gamma_econforge.ipynb" target="_blank"
+      <li><a href="../../../_sources/users/howto/interp/index.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -466,7 +404,7 @@
 <span class="btn__icon-container">
   <i class="fas fa-file"></i>
   </span>
-<span class="btn__text-container">.ipynb</span>
+<span class="btn__text-container">.rst</span>
 </a>
 </li>
       
@@ -527,9 +465,7 @@ document.write(`
   </button>
 `);
 </script>
-<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <span class="fa-solid fa-list"></span>
-</button>
+
 </div></div>
       
     </div>
@@ -540,21 +476,11 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Create two 100 × 100 × 100 dose grids with corresponding axes:</h1>
+    <h1>Interpolation</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
             
-            <div>
-                <h2> Contents </h2>
-            </div>
-            <nav aria-label="Page">
-                <ul class="visible nav section-nav flex-column">
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Create two 100 × 100 × 100 dose grids with corresponding axes:</a></li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#gamma">Gamma</a></li>
-</ul>
-
-            </nav>
         </div>
     </div>
 </div>
@@ -564,96 +490,15 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">copy</span>
-<span class="kn">import</span> <span class="nn">sys</span>
-
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">default_rng</span>
-<span class="kn">import</span> <span class="nn">pydicom</span>
-
-<span class="kn">import</span> <span class="nn">pymedphys</span>
-<span class="kn">from</span> <span class="nn">pymedphys._dicom</span> <span class="kn">import</span> <span class="n">create</span>
-</pre></div>
-</div>
-</div>
-</div>
-<section id="create-two-100-100-100-dose-grids-with-corresponding-axes">
-<h1>Create two 100 × 100 × 100 dose grids with corresponding axes:<a class="headerlink" href="#create-two-100-100-100-dose-grids-with-corresponding-axes" title="Link to this heading">#</a></h1>
-<div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">WIDTH</span><span class="o">=</span><span class="mi">100</span>
-
-<span class="n">DOSE_GRID_SHAPE</span> <span class="o">=</span> <span class="p">(</span><span class="n">WIDTH</span><span class="p">,</span> <span class="n">WIDTH</span><span class="p">,</span> <span class="n">WIDTH</span><span class="p">)</span>
-
-<span class="n">axes_ref</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">DOSE_GRID_SHAPE</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">DOSE_GRID_SHAPE</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">DOSE_GRID_SHAPE</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">DOSE_GRID_SHAPE</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">DOSE_GRID_SHAPE</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">DOSE_GRID_SHAPE</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
-<span class="p">)</span>
-<span class="n">axes_eval</span> <span class="o">=</span> <span class="n">axes_ref</span>
-
-<span class="n">rng</span> <span class="o">=</span> <span class="n">default_rng</span><span class="p">()</span>
-
-<span class="n">dose_ref</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DOSE_GRID_SHAPE</span><span class="p">)</span> <span class="c1"># 2% RSU</span>
-<span class="n">dose_eval</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DOSE_GRID_SHAPE</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</section>
-<section id="gamma">
-<h1>Gamma<a class="headerlink" href="#gamma" title="Link to this heading">#</a></h1>
-<div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dose_percent_thresh</span> <span class="o">=</span> <span class="mi">2</span>
-<span class="n">dist_mm_thresh</span> <span class="o">=</span> <span class="mi">2</span>
-</pre></div>
-</div>
-</div>
-</div>
-<div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-
-<span class="n">gamma</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">gamma</span><span class="p">(</span>
-    <span class="n">axes_ref</span><span class="p">,</span> <span class="n">dose_ref</span><span class="p">,</span> 
-    <span class="n">axes_eval</span><span class="p">,</span> <span class="n">dose_eval</span><span class="p">,</span> 
-    <span class="n">dose_percent_thresh</span><span class="p">,</span> <span class="n">dist_mm_thresh</span><span class="p">,</span> <span class="n">interpolator</span><span class="o">=</span><span class="s2">&quot;scipy&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
-<span class="ne">TypeError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
-<span class="n">File</span> <span class="o">&lt;</span><span class="n">timed</span> <span class="n">exec</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">1</span>
-
-<span class="ne">TypeError</span>: gamma_shell() got an unexpected keyword argument &#39;interpolator&#39;
-</pre></div>
-</div>
-</div>
-</div>
-<div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-
-<span class="n">gamma</span> <span class="o">=</span> <span class="n">pymedphys</span><span class="o">.</span><span class="n">gamma</span><span class="p">(</span>
-    <span class="n">axes_ref</span><span class="p">,</span> <span class="n">dose_ref</span><span class="p">,</span> 
-    <span class="n">axes_eval</span><span class="p">,</span> <span class="n">dose_eval</span><span class="p">,</span> 
-    <span class="n">dose_percent_thresh</span><span class="p">,</span> <span class="n">dist_mm_thresh</span><span class="p">,</span> <span class="n">interpolator</span><span class="o">=</span><span class="s2">&quot;econforge&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
-<span class="ne">TypeError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
-<span class="n">File</span> <span class="o">&lt;</span><span class="n">timed</span> <span class="n">exec</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">1</span>
-
-<span class="ne">TypeError</span>: gamma_shell() got an unexpected keyword argument &#39;interpolator&#39;
-</pre></div>
-</div>
-</div>
+  <section id="interpolation">
+<h1>Interpolation<a class="headerlink" href="#interpolation" title="Link to this heading">#</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="implementation_comparison.html">Multilinear Interpolation Comparison</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="implementation_comparison.html#imports">Imports</a></li>
+</ul>
+</li>
+</ul>
 </div>
 </section>
 
@@ -670,7 +515,7 @@ document.write(`
         },
         kernelOptions: {
             name: "python3",
-            path: "./users/howto/gamma"
+            path: "./users/howto/interp"
         },
         predefinedOutput: true
     }
@@ -687,29 +532,30 @@ document.write(`
                 <footer class="prev-next-footer d-print-none">
                   
 <div class="prev-next-area">
+    <a class="left-prev"
+       href="../gamma/from-dicom.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Gamma from DICOM</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="implementation_comparison.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Multilinear Interpolation Comparison</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
 </div>
                 </footer>
               
             </div>
             
             
-              
-                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
-
-
-  <div class="sidebar-secondary-item">
-  <div class="page-toc tocsection onthispage">
-    <i class="fa-solid fa-list"></i> Contents
-  </div>
-  <nav class="bd-toc-nav page-toc">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Create two 100 × 100 × 100 dose grids with corresponding axes:</a></li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#gamma">Gamma</a></li>
-</ul>
-
-  </nav></div>
-
-</div></div>
               
             
           </div>

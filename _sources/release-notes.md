@@ -9,6 +9,16 @@ This project adheres to
 
 ## [Unreleased]
 
+- PyMedPhys now includes its own custom, `numba`-accelerated implementation of
+  multilinear interpolation. You can find the technical reference [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  This was implemented for the following reasons:
+    - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
+     `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
+      the technical reference page for a performance comparison.
+    - At the time of writing, EconForge's `interplation` appears incompatible
+      with `numba>=0.60`.
+    - Removing an additional dependency (namely, EconForge's `interpolation`)
+      is generally better for maintenance, all else equal.
 - After updating scipy to the 1.11 series or higher the electron factors
   algorithm's baselines have changed without any code changes.
   Changes in baseline have been observed to be on the order of ~0.5%,
@@ -1399,7 +1409,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 - Began keeping record of changes in `changelog.md`
 
-[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.39.3...main
+[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.40.0...main
 [0.40.0]: https://github.com/pymedphys/pymedphys/compare/v0.39.3...v0.40.0
 [0.39.3]: https://github.com/pymedphys/pymedphys/compare/v0.39.2...v0.39.3
 [0.39.2]: https://github.com/pymedphys/pymedphys/compare/v0.39.1...v0.39.2

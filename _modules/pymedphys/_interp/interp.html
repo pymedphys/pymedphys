@@ -1,0 +1,989 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pymedphys._interp.interp &#8212; PyMedPhys</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css?v=4fa983c6" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/style.css?v=055d366d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script async="async" src="https://www.googletagmanager.com/gtag/js?id=UA-26591325-7"></script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'UA-26591325-7');
+            </script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script async="async" src="../../../_static/sphinx-thebe.js?v=c100c467"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'UA-26591325-7');
+            </script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pymedphys/_interp/interp';</script>
+    <link rel="canonical" href="https://docs.pymedphys.com/_modules/pymedphys/_interp/interp.html" />
+    <link rel="icon" href="../../../_static/pymedphys.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/pymedphys.svg" class="logo__image only-light" alt="PyMedPhys - Home"/>
+    <script>document.write(`<img src="../../../_static/pymedphys.svg" class="logo__image only-dark" alt="PyMedPhys - Home"/>`);</script>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../statement-of-need.html">Statement of Need</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes.html">Release Notes</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Users Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../users/get-started/index.html">Getting Started</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../users/get-started/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../users/get-started/cli.html">Using the CLI</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../users/howto/index.html">How-to Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../users/howto/gamma/index.html">Gamma</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/howto/gamma/speed-up.html">Speeding up gamma calculations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/howto/gamma/1D-from-csv.html">Gamma from 1D ASCII data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/howto/gamma/effect-of-noise.html">The Effects of Noise on Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/howto/gamma/from-dicom.html">Gamma from DICOM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../users/howto/interp/index.html">Interpolation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/howto/interp/implementation_comparison.html">Multilinear Interpolation Comparison</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../users/howto/add-a-linac.html">Adding a Linac</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../users/howto/tunnels/index.html">Tunnels</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/howto/tunnels/samba.html">SAMBA SSH Tunnelling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/howto/tunnels/rsync.html">Backups using rsync</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../users/background/index.html">Background</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../users/background/autocontouring.html">Automatic Contouring Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../users/background/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../users/ref/index.html">Technical Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../users/ref/lib/index.html">Library Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../genindex.html">Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/lib/dicom.html">DICOM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/lib/gamma.html">Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/lib/interp.html">Interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/lib/mosaiq.html">Mosaiq</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/lib/metersetmap.html">MetersetMap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/lib/trf.html">TRF</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/lib/electronfactors.html">Electron Cutout Factors</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../users/ref/lib/experimental/index.html">Experimental Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../users/ref/lib/experimental/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../users/ref/lib/experimental/pseudonymisation.html">Pseudonymisation Tool</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../users/ref/cli/index.html">CLI Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/dicom.html">DICOM Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/trf.html">Elekta Binary Logfiles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/icom.html">iCom listener</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/pinnacle.html">Pinnacle Export Tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../users/ref/cli/pseudonymisation.html">Pseudonymisation Tool</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Contributors Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../contrib/index.html">Overview</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/info/index.html">Repository Information</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/info/file-structure.html">Repository File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/info/docs-guide.html">Documentation Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/info/release-guide.html">pymedphys Release Procedure</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/setups/index.html">Workstation Setup Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/setups/setup-win.html">Windows Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/setups/setup-linux.html">Linux Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/setups/setup-mac.html">MacOS Setup</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/tips/index.html">Tips &amp; Tricks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/tips/add-jupyter-kernel.html">Add Jupyter kernel with <em>poetry</em></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/tips/win-open-ssh.html">Setting up OpenSSH on Windows 10</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contrib/dive/index.html">Deep Dive</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/dive/why-open-source.html">Why Open Source?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contrib/dive/create-streamlit-exe.html">Creating a Streamlit Executable</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/pymedphys/pymedphys/issues/new?title=Issue%20on%20page%20%2F_modules/pymedphys/_interp/interp.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pymedphys._interp.interp</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2024 Matthew Jennings</span>
+
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">cache</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span>
+
+<span class="kn">from</span> <span class="nn">pymedphys._imports</span> <span class="kn">import</span> <span class="n">numba</span> <span class="k">as</span> <span class="n">nb</span><span class="p">,</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span><span class="p">,</span> <span class="n">plt</span><span class="p">,</span> <span class="n">scipy</span>
+
+
+<div class="viewcode-block" id="plot_interp_comparison_heatmap">
+<a class="viewcode-back" href="../../../users/ref/lib/interp.html#pymedphys.interpolate.plot_interp_comparison_heatmap">[docs]</a>
+<span class="k">def</span> <span class="nf">plot_interp_comparison_heatmap</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">,</span> <span class="n">values_interp</span><span class="p">,</span> <span class="n">slice_axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slice_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slice_number_interp</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot a comparison heatmap of original and interpolated 3D data slices.</span>
+
+<span class="sd">    This function creates a side-by-side heatmap comparison of a slice from the</span>
+<span class="sd">    original data and a corresponding slice from the interpolated data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    values : array-like</span>
+<span class="sd">        The original 3D data array.</span>
+<span class="sd">    values_interp : array-like</span>
+<span class="sd">        The interpolated 3D data array.</span>
+<span class="sd">    slice_axis : int</span>
+<span class="sd">        The axis along which to take the slice (0, 1, or 2).</span>
+<span class="sd">    slice_number : int</span>
+<span class="sd">        The index of the slice to display from the original data.</span>
+<span class="sd">    slice_number_interp : int</span>
+<span class="sd">        The index of the slice to display from the interpolated data. Note that auto</span>
+<span class="sd">        matching between the original and interpolated slices is not implemented. The</span>
+<span class="sd">        user must ensure the slices correspond.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+<span class="sd">        This function displays the plot directly and does not return any value.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - The function creates a figure with two subplots side by side.</span>
+<span class="sd">    - The left subplot shows the slice from the original data.</span>
+<span class="sd">    - The right subplot shows the slice from the interpolated data.</span>
+<span class="sd">    - It is up to the user to ensure that</span>
+<span class="sd">    - Both heatmaps use the same color scale, determined by the minimum and</span>
+<span class="sd">      maximum values across both datasets.</span>
+<span class="sd">    - A shared colorbar is displayed on the right side of the figure.</span>
+<span class="sd">    - The plot is automatically displayed using plt.show().</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">plot_min</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">values_interp</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">plot_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">values_interp</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+    <span class="n">ax1</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+        <span class="n">values</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">slice_axis</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">slice_number</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="n">plot_min</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">plot_max</span>
+    <span class="p">)</span>
+
+    <span class="n">im2</span> <span class="o">=</span> <span class="n">ax2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+        <span class="n">values_interp</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">slice_axis</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">slice_number_interp</span><span class="p">),</span>
+        <span class="n">vmin</span><span class="o">=</span><span class="n">plot_min</span><span class="p">,</span>
+        <span class="n">vmax</span><span class="o">=</span><span class="n">plot_max</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im2</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">),</span> <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;vertical&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">__check_inputs</span><span class="p">(</span>
+    <span class="n">axes_known</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">],</span>
+    <span class="n">values</span><span class="p">:</span> <span class="s2">&quot;np.ndarray&quot;</span><span class="p">,</span>
+    <span class="n">points_interp</span><span class="p">:</span> <span class="s2">&quot;np.ndarray&quot;</span><span class="p">,</span>
+    <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes_known</span><span class="p">)</span> <span class="o">==</span> <span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;axes_known (len </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">axes_known</span><span class="p">)</span><span class="si">}</span><span class="s2">) and points_interp (len </span><span class="si">{</span><span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">) must have the same length; either 1, 2, or 3&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">axis_known</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes_known</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">axis_known</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;axes_known[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] (shape </span><span class="si">{</span><span class="p">[{</span><span class="n">axis_known</span><span class="o">.</span><span class="n">shape</span><span class="p">}]</span><span class="si">}</span><span class="s2">) and interp_structure[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] (shape </span><span class="si">{</span><span class="p">[{</span><span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">}]</span><span class="si">}</span><span class="s2">) must be 1D arrays&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">axis_known</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;axes_known[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] (size </span><span class="si">{</span><span class="n">axis_known</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">) must match the size of the corresponding dimension of values (</span><span class="si">{</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">bounds_error</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="n">points_interp</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">axis_known</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="ow">or</span> <span class="n">points_interp</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">axis_known</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&quot;&quot;points_interp[:, </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] must be within the range of axes_known[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]</span><span class="se">\n</span>
+<span class="s2">                (</span><span class="si">{</span><span class="n">points_interp</span><span class="p">[:,</span><span class="w"> </span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">points_interp</span><span class="p">[:,</span><span class="w"> </span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">) vs. (</span><span class="si">{</span><span class="n">axis_known</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">axis_known</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">)&quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+    <span class="n">axes_known</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes_known</span><span class="p">)</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span>
+
+
+<span class="nd">@cache</span>
+<span class="k">def</span> <span class="nf">_get_interp_linear_1d</span><span class="p">():</span>
+    <span class="nd">@nb</span><span class="o">.</span><span class="n">njit</span><span class="p">(</span><span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fastmath</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_interp_linear_1d</span><span class="p">(</span><span class="n">axis_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">points_interp</span><span class="p">,</span> <span class="n">extrap_fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">):</span>
+        <span class="n">values_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">axis_known</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">axis_known</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># pylint: disable=not-an-iterable</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">nb</span><span class="o">.</span><span class="n">prange</span><span class="p">(</span><span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">xpi</span> <span class="o">=</span> <span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">axis_known</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">xpi</span> <span class="o">&lt;=</span> <span class="n">axis_known</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">values_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">extrap_fill_value</span>
+                <span class="k">continue</span>
+
+            <span class="n">x1_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">axis_known</span><span class="p">,</span> <span class="n">xpi</span><span class="p">)</span>
+            <span class="n">x0_idx</span> <span class="o">=</span> <span class="n">x1_idx</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">x0_idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">x0_idx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">x1_idx</span> <span class="o">&gt;=</span> <span class="n">axis_known</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">x1_idx</span> <span class="o">=</span> <span class="n">axis_known</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="n">wx</span> <span class="o">=</span> <span class="p">(</span><span class="n">xpi</span> <span class="o">-</span> <span class="n">axis_known</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">])</span> <span class="o">/</span> <span class="n">diff</span>
+
+            <span class="n">values_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wx</span><span class="p">)</span> <span class="o">+</span> <span class="n">values</span><span class="p">[</span><span class="n">x1_idx</span><span class="p">]</span> <span class="o">*</span> <span class="n">wx</span>
+
+        <span class="k">return</span> <span class="n">values_interp</span>
+
+    <span class="k">return</span> <span class="n">_interp_linear_1d</span>
+
+
+<div class="viewcode-block" id="interp_linear_1d">
+<a class="viewcode-back" href="../../../users/ref/lib/interp.html#pymedphys.interpolate.interp_linear_1d">[docs]</a>
+<span class="k">def</span> <span class="nf">interp_linear_1d</span><span class="p">(</span><span class="n">axis_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">points_interp</span><span class="p">,</span> <span class="n">extrap_fill_value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">_interp_linear_1d</span> <span class="o">=</span> <span class="n">_get_interp_linear_1d</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">extrap_fill_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">extrap_fill_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">_interp_linear_1d</span><span class="p">(</span>
+        <span class="n">axis_known</span><span class="o">=</span><span class="n">axis_known</span><span class="p">,</span>
+        <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">points_interp</span><span class="o">=</span><span class="n">points_interp</span><span class="p">,</span>
+        <span class="n">extrap_fill_value</span><span class="o">=</span><span class="n">extrap_fill_value</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="nd">@cache</span>
+<span class="k">def</span> <span class="nf">_get_interp_linear_2d</span><span class="p">():</span>
+    <span class="nd">@nb</span><span class="o">.</span><span class="n">njit</span><span class="p">(</span><span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fastmath</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_interp_linear_2d</span><span class="p">(</span><span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">points_interp</span><span class="p">,</span> <span class="n">extrap_fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">):</span>
+        <span class="n">values_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">diffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">axis</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes_known</span><span class="p">):</span>
+            <span class="n">diffs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">axis</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">axis</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">axes_known</span>
+
+        <span class="c1"># pylint: disable=not-an-iterable</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">nb</span><span class="o">.</span><span class="n">prange</span><span class="p">(</span><span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">xpi</span><span class="p">,</span> <span class="n">ypi</span> <span class="o">=</span> <span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">xpi</span> <span class="o">&lt;=</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">ypi</span> <span class="o">&lt;=</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">values_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">extrap_fill_value</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Find the indices of the surrounding grid points</span>
+            <span class="n">x1_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">xpi</span><span class="p">)</span>
+            <span class="n">x0_idx</span> <span class="o">=</span> <span class="n">x1_idx</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">y1_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">ypi</span><span class="p">)</span>
+            <span class="n">y0_idx</span> <span class="o">=</span> <span class="n">y1_idx</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">x0_idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">x0_idx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">y0_idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">y0_idx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">x1_idx</span> <span class="o">&gt;=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">x1_idx</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">y1_idx</span> <span class="o">&gt;=</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">y1_idx</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="n">c00</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">,</span> <span class="n">y0_idx</span><span class="p">]</span>
+            <span class="n">c01</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">,</span> <span class="n">y1_idx</span><span class="p">]</span>
+            <span class="n">c10</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x1_idx</span><span class="p">,</span> <span class="n">y0_idx</span><span class="p">]</span>
+            <span class="n">c11</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x1_idx</span><span class="p">,</span> <span class="n">y1_idx</span><span class="p">]</span>
+
+            <span class="n">wx</span> <span class="o">=</span> <span class="p">(</span><span class="n">xpi</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">])</span> <span class="o">/</span> <span class="n">diffs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">wy</span> <span class="o">=</span> <span class="p">(</span><span class="n">ypi</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="n">y0_idx</span><span class="p">])</span> <span class="o">/</span> <span class="n">diffs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">c0</span> <span class="o">=</span> <span class="n">c00</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c10</span> <span class="o">*</span> <span class="n">wx</span>
+            <span class="n">c1</span> <span class="o">=</span> <span class="n">c01</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c11</span> <span class="o">*</span> <span class="n">wx</span>
+
+            <span class="n">values_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">c0</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wy</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span> <span class="o">*</span> <span class="n">wy</span>
+
+        <span class="k">return</span> <span class="n">values_interp</span>
+
+    <span class="k">return</span> <span class="n">_interp_linear_2d</span>
+
+
+<div class="viewcode-block" id="interp_linear_2d">
+<a class="viewcode-back" href="../../../users/ref/lib/interp.html#pymedphys.interpolate.interp_linear_2d">[docs]</a>
+<span class="k">def</span> <span class="nf">interp_linear_2d</span><span class="p">(</span><span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">points_interp</span><span class="p">,</span> <span class="n">extrap_fill_value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">_interp_linear_2d</span> <span class="o">=</span> <span class="n">_get_interp_linear_2d</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">extrap_fill_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">extrap_fill_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">_interp_linear_2d</span><span class="p">(</span>
+        <span class="n">axes_known</span><span class="o">=</span><span class="n">axes_known</span><span class="p">,</span>
+        <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">points_interp</span><span class="o">=</span><span class="n">points_interp</span><span class="p">,</span>
+        <span class="n">extrap_fill_value</span><span class="o">=</span><span class="n">extrap_fill_value</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="nd">@cache</span>
+<span class="k">def</span> <span class="nf">_get_interp_linear_3d</span><span class="p">():</span>
+    <span class="nd">@nb</span><span class="o">.</span><span class="n">njit</span><span class="p">(</span><span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fastmath</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># pylint: disable=invalid-name</span>
+    <span class="k">def</span> <span class="nf">_interp_linear_3d</span><span class="p">(</span><span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">points_interp</span><span class="p">,</span> <span class="n">extrap_fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">axes_known</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">axes_known</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">axes_known</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">values_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">diffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">axis</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes_known</span><span class="p">):</span>
+            <span class="n">diffs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">axis</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">axis</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># pylint: disable=not-an-iterable</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">nb</span><span class="o">.</span><span class="n">prange</span><span class="p">(</span><span class="n">points_interp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">xpi</span><span class="p">,</span> <span class="n">ypi</span><span class="p">,</span> <span class="n">zpi</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                <span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">points_interp</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">xpi</span> <span class="o">&lt;=</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="ow">or</span> <span class="ow">not</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">ypi</span> <span class="o">&lt;=</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="ow">or</span> <span class="ow">not</span> <span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">zpi</span> <span class="o">&lt;=</span> <span class="n">z</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="n">values_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">extrap_fill_value</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Find the indices of the surrounding grid points</span>
+            <span class="n">x1_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">xpi</span><span class="p">)</span>
+            <span class="n">x0_idx</span> <span class="o">=</span> <span class="n">x1_idx</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">y1_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">ypi</span><span class="p">)</span>
+            <span class="n">y0_idx</span> <span class="o">=</span> <span class="n">y1_idx</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">z1_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">zpi</span><span class="p">)</span>
+            <span class="n">z0_idx</span> <span class="o">=</span> <span class="n">z1_idx</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">x0_idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">x0_idx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">y0_idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">y0_idx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">z0_idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">z0_idx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">x1_idx</span> <span class="o">&gt;=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">x1_idx</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">y1_idx</span> <span class="o">&gt;=</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">y1_idx</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">z1_idx</span> <span class="o">&gt;=</span> <span class="n">z</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">z1_idx</span> <span class="o">=</span> <span class="n">z</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="c1"># Compute interpolation weights</span>
+            <span class="n">wx</span> <span class="o">=</span> <span class="p">(</span><span class="n">xpi</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">])</span> <span class="o">/</span> <span class="n">diffs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">wy</span> <span class="o">=</span> <span class="p">(</span><span class="n">ypi</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="n">y0_idx</span><span class="p">])</span> <span class="o">/</span> <span class="n">diffs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">wz</span> <span class="o">=</span> <span class="p">(</span><span class="n">zpi</span> <span class="o">-</span> <span class="n">z</span><span class="p">[</span><span class="n">z0_idx</span><span class="p">])</span> <span class="o">/</span> <span class="n">diffs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+            <span class="c1"># Extract values values at corner points</span>
+            <span class="n">c000</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">,</span> <span class="n">y0_idx</span><span class="p">,</span> <span class="n">z0_idx</span><span class="p">]</span>
+            <span class="n">c001</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">,</span> <span class="n">y0_idx</span><span class="p">,</span> <span class="n">z1_idx</span><span class="p">]</span>
+            <span class="n">c010</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">,</span> <span class="n">y1_idx</span><span class="p">,</span> <span class="n">z0_idx</span><span class="p">]</span>
+            <span class="n">c011</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x0_idx</span><span class="p">,</span> <span class="n">y1_idx</span><span class="p">,</span> <span class="n">z1_idx</span><span class="p">]</span>
+            <span class="n">c100</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x1_idx</span><span class="p">,</span> <span class="n">y0_idx</span><span class="p">,</span> <span class="n">z0_idx</span><span class="p">]</span>
+            <span class="n">c101</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x1_idx</span><span class="p">,</span> <span class="n">y0_idx</span><span class="p">,</span> <span class="n">z1_idx</span><span class="p">]</span>
+            <span class="n">c110</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x1_idx</span><span class="p">,</span> <span class="n">y1_idx</span><span class="p">,</span> <span class="n">z0_idx</span><span class="p">]</span>
+            <span class="n">c111</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">x1_idx</span><span class="p">,</span> <span class="n">y1_idx</span><span class="p">,</span> <span class="n">z1_idx</span><span class="p">]</span>
+
+            <span class="c1"># Perform trilinear interpolation</span>
+            <span class="n">c00</span> <span class="o">=</span> <span class="n">c000</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c100</span> <span class="o">*</span> <span class="n">wx</span>
+            <span class="n">c01</span> <span class="o">=</span> <span class="n">c001</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c101</span> <span class="o">*</span> <span class="n">wx</span>
+            <span class="n">c10</span> <span class="o">=</span> <span class="n">c010</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c110</span> <span class="o">*</span> <span class="n">wx</span>
+            <span class="n">c11</span> <span class="o">=</span> <span class="n">c011</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c111</span> <span class="o">*</span> <span class="n">wx</span>
+
+            <span class="n">c0</span> <span class="o">=</span> <span class="n">c00</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wy</span><span class="p">)</span> <span class="o">+</span> <span class="n">c10</span> <span class="o">*</span> <span class="n">wy</span>
+            <span class="n">c1</span> <span class="o">=</span> <span class="n">c01</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wy</span><span class="p">)</span> <span class="o">+</span> <span class="n">c11</span> <span class="o">*</span> <span class="n">wy</span>
+
+            <span class="n">values_interp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">c0</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">wz</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span> <span class="o">*</span> <span class="n">wz</span>
+
+        <span class="k">return</span> <span class="n">values_interp</span>
+
+    <span class="k">return</span> <span class="n">_interp_linear_3d</span>
+
+
+<div class="viewcode-block" id="interp_linear_3d">
+<a class="viewcode-back" href="../../../users/ref/lib/interp.html#pymedphys.interpolate.interp_linear_3d">[docs]</a>
+<span class="k">def</span> <span class="nf">interp_linear_3d</span><span class="p">(</span><span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">points_interp</span><span class="p">,</span> <span class="n">extrap_fill_value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">_interp_linear_3d</span> <span class="o">=</span> <span class="n">_get_interp_linear_3d</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">extrap_fill_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">extrap_fill_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">_interp_linear_3d</span><span class="p">(</span>
+        <span class="n">axes_known</span><span class="o">=</span><span class="n">axes_known</span><span class="p">,</span>
+        <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">points_interp</span><span class="o">=</span><span class="n">points_interp</span><span class="p">,</span>
+        <span class="n">extrap_fill_value</span><span class="o">=</span><span class="n">extrap_fill_value</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">interp_linear_scipy</span><span class="p">(</span>
+    <span class="n">axes_known</span><span class="p">,</span>
+    <span class="n">values</span><span class="p">,</span>
+    <span class="n">axes_interp</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">points_interp</span><span class="p">:</span> <span class="s2">&quot;np.ndarray&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">keep_dims</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">bounds_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">extrap_fill_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">axes_interp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">points_interp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mgrids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="o">*</span><span class="n">axes_interp</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s2">&quot;ij&quot;</span><span class="p">)</span>
+        <span class="n">points_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">mgrid</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="k">for</span> <span class="n">mgrid</span> <span class="ow">in</span> <span class="n">mgrids</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">axes_interp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">points_interp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Exactly one of either `axes_interp` or `points_interp` must be specified&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">extrap_fill_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">extrap_fill_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">RegularGridInterpolator</span><span class="p">(</span>
+        <span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="n">bounds_error</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">extrap_fill_value</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">keep_dims</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">axes_interp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">points_interp</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">axis</span><span class="o">.</span><span class="n">size</span> <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes_interp</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;If `keep_dims` is True, `axes_interp` must be specified to determine the shape of the output&quot;</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">points_interp</span><span class="p">)</span>
+
+
+<span class="c1"># pylint: disable=invalid-name</span>
+<div class="viewcode-block" id="interp">
+<a class="viewcode-back" href="../../../users/ref/lib/interp.html#pymedphys.interpolate.interp">[docs]</a>
+<span class="k">def</span> <span class="nf">interp</span><span class="p">(</span>
+    <span class="n">axes_known</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">],</span>
+    <span class="n">values</span><span class="p">:</span> <span class="s2">&quot;np.ndarray&quot;</span><span class="p">,</span>
+    <span class="n">axes_interp</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">points_interp</span><span class="p">:</span> <span class="s2">&quot;np.ndarray&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">keep_dims</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">bounds_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">extrap_fill_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">skip_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;np.ndarray&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform fast linear interpolation on 1D, 2D, or 3D data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    axes_known : Sequence[np.ndarray]</span>
+<span class="sd">        The coordinate vectors or axis coordinates of the known data points.</span>
+<span class="sd">    values : np.ndarray</span>
+<span class="sd">        The known values at the points defined by `axes_known`. Its shape should match</span>
+<span class="sd">        a tuple of the lengths of the axes in `axes_known` in the same order.</span>
+<span class="sd">    axes_interp : Sequence[np.ndarray], optional</span>
+<span class="sd">        The coordinate vectors or axis coordinates for which to interpolate values.</span>
+<span class="sd">        These axes will be expanded to flattened meshgrids and interpolation will occur</span>
+<span class="sd">        for each point in these grids. Either `axes_interp` or `points_interp` must be</span>
+<span class="sd">        provided, but not both.</span>
+<span class="sd">    points_interp : np.ndarray, optional</span>
+<span class="sd">        The exact coordinates of the points where interpolation is desired.</span>
+<span class="sd">        Shape should be (n, d) where n is the number of points and d is the number of</span>
+<span class="sd">        dimensions. Either `axes_interp` or `points_interp` must be provided, but not</span>
+<span class="sd">        both.</span>
+<span class="sd">    keep_dims : bool, optional</span>
+<span class="sd">        If True, return the interpolated values with the same shape as defined by</span>
+<span class="sd">        `axes_interp`. Only applicable when `axes_interp` is provided. Default is False.</span>
+<span class="sd">    bounds_error : bool, optional</span>
+<span class="sd">        If True, raise an error when interpolation is attempted outside the bounds of</span>
+<span class="sd">        the input data. Default is True.</span>
+<span class="sd">    extrap_fill_value : float, optional</span>
+<span class="sd">        The value to use for points outside the bounds of the input data when</span>
+<span class="sd">        `bounds_error` is False. Default is None, which results in using np.nan.</span>
+<span class="sd">    skip_checks : bool, optional</span>
+<span class="sd">        If True, skip input validation checks. Skipping these checks can produce a</span>
+<span class="sd">        significant improve in performance for some applications. Default is False.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        The interpolated values. If `keep_dims` is True and `axes_interp` is provided,</span>
+<span class="sd">        the output will have the same shape as defined by `axes_interp`.</span>
+<span class="sd">        Otherwise, it will be a 1D array.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If neither or both of `axes_interp` and `points_interp` are provided.</span>
+<span class="sd">        If `keep_dims` is True but `axes_interp` is not provided.</span>
+<span class="sd">        If the input axes are not monotonically increasing or evenly spaced.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    This function performs linear interpolation for 1D, 2D, or 3D data.</span>
+<span class="sd">    It supports both grid-based interpolation (using `axes_interp`) and</span>
+<span class="sd">    point-based interpolation (using `points_interp`).</span>
+
+<span class="sd">    The input axes must be monotonically increasing and evenly spaced.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">axes_interp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">points_interp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mgrids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="o">*</span><span class="n">axes_interp</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s2">&quot;ij&quot;</span><span class="p">)</span>
+        <span class="n">points_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">mgrid</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="k">for</span> <span class="n">mgrid</span> <span class="ow">in</span> <span class="n">mgrids</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">axes_interp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">points_interp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">keep_dims</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;If `keep_dims` is True, `axes_interp` must be specified to determine the shape of the output&quot;</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Exactly one of either `axes_interp` or `points_interp` must be specified&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_checks</span><span class="p">:</span>
+        <span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">__check_inputs</span><span class="p">(</span>
+            <span class="n">axes_known</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">points_interp</span><span class="p">,</span> <span class="n">bounds_error</span>
+        <span class="p">)</span>
+
+        <span class="n">axes_known_diffs</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span> <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes_known</span><span class="p">]</span>
+
+        <span class="c1"># Handle ascending vs. descending vs. bad order.</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">diff</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes_known_diffs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">diff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;axes_known[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] is not monotonically ascending or descending&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">diff</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;axis_known[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] must be evenly spaced&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">extrap_fill_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">extrap_fill_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes_known</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># keep_dims has no effect for 1D interpolation</span>
+        <span class="k">return</span> <span class="n">interp_linear_1d</span><span class="p">(</span>
+            <span class="n">axes_known</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">points_interp</span><span class="p">,</span>
+            <span class="n">extrap_fill_value</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes_known</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">values_interp</span> <span class="o">=</span> <span class="n">interp_linear_2d</span><span class="p">(</span>
+            <span class="n">axes_known</span><span class="p">,</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">points_interp</span><span class="p">,</span>
+            <span class="n">extrap_fill_value</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">values_interp</span> <span class="o">=</span> <span class="n">interp_linear_3d</span><span class="p">(</span>
+            <span class="n">axes_known</span><span class="p">,</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">points_interp</span><span class="p">,</span>
+            <span class="n">extrap_fill_value</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">keep_dims</span><span class="p">:</span>
+        <span class="n">values_interp</span> <span class="o">=</span> <span class="n">values_interp</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">axis</span><span class="o">.</span><span class="n">size</span> <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes_interp</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">values_interp</span></div>
+
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the PyMedPhys community
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2018-2021.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
