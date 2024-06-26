@@ -23,6 +23,7 @@ from warnings import warn
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
+import pymedphys
 import pymedphys._utilities.createshells
 
 from ..utilities import run_input_checks
@@ -533,13 +534,11 @@ def interpolate_evaluation_dose_at_distance(
 
 
 def _run_custom_interp(options, all_points):
-    from pymedphys._interp import interp
-
     points = np.column_stack(
         [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
     )
 
-    return interp.multilinear_interp(
+    return pymedphys.interp(
         axes_known=options.axes_evaluation,
         values=options.dose_evaluation,
         points_interp=points,

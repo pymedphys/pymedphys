@@ -75,9 +75,9 @@ def __check_inputs(
 
 
 @cache
-def _get_interp1d():
+def _get_interp_linear_1d():
     @nb.njit(parallel=True, fastmath=True, cache=True)
-    def _interp1d(axis_known, values, points_interp, extrap_fill_value=np.nan):
+    def _interp_linear_1d(axis_known, values, points_interp, extrap_fill_value=np.nan):
         values_interp = np.zeros(points_interp.shape[0], dtype=np.float64)
         diff = axis_known[1] - axis_known[0]
 
@@ -103,14 +103,14 @@ def _get_interp1d():
 
         return values_interp
 
-    return _interp1d
+    return _interp_linear_1d
 
 
-def interp1d(axis_known, values, points_interp, extrap_fill_value=None):
-    _interp1d = _get_interp1d()
+def interp_linear_1d(axis_known, values, points_interp, extrap_fill_value=None):
+    _interp_linear_1d = _get_interp_linear_1d()
     if extrap_fill_value is None:
         extrap_fill_value = np.nan
-    return _interp1d(
+    return _interp_linear_1d(
         axis_known=axis_known,
         values=values,
         points_interp=points_interp,
@@ -119,9 +119,9 @@ def interp1d(axis_known, values, points_interp, extrap_fill_value=None):
 
 
 @cache
-def _get_interp2d():
+def _get_interp_linear_2d():
     @nb.njit(parallel=True, fastmath=True, cache=True)
-    def _interp2d(axes_known, values, points_interp, extrap_fill_value=np.nan):
+    def _interp_linear_2d(axes_known, values, points_interp, extrap_fill_value=np.nan):
         values_interp = np.zeros((points_interp.shape[0]), dtype=np.float64)
         diffs = np.zeros(2)
         for i, axis in enumerate(axes_known):
@@ -166,14 +166,14 @@ def _get_interp2d():
 
         return values_interp
 
-    return _interp2d
+    return _interp_linear_2d
 
 
-def interp2d(axes_known, values, points_interp, extrap_fill_value=None):
-    _interp2d = _get_interp2d()
+def interp_linear_2d(axes_known, values, points_interp, extrap_fill_value=None):
+    _interp_linear_2d = _get_interp_linear_2d()
     if extrap_fill_value is None:
         extrap_fill_value = np.nan
-    return _interp2d(
+    return _interp_linear_2d(
         axes_known=axes_known,
         values=values,
         points_interp=points_interp,
@@ -182,10 +182,10 @@ def interp2d(axes_known, values, points_interp, extrap_fill_value=None):
 
 
 @cache
-def _get_interp3d():
+def _get_interp_linear_3d():
     @nb.njit(parallel=True, fastmath=True, cache=True)
     # pylint: disable=invalid-name
-    def _interp3d(axes_known, values, points_interp, extrap_fill_value=np.nan):
+    def _interp_linear_3d(axes_known, values, points_interp, extrap_fill_value=np.nan):
         x, y, z = axes_known[0], axes_known[1], axes_known[2]
 
         values_interp = np.zeros(
@@ -262,14 +262,14 @@ def _get_interp3d():
 
         return values_interp
 
-    return _interp3d
+    return _interp_linear_3d
 
 
-def interp3d(axes_known, values, points_interp, extrap_fill_value=None):
-    _interp3d = _get_interp3d()
+def interp_linear_3d(axes_known, values, points_interp, extrap_fill_value=None):
+    _interp_linear_3d = _get_interp_linear_3d()
     if extrap_fill_value is None:
         extrap_fill_value = np.nan
-    return _interp3d(
+    return _interp_linear_3d(
         axes_known=axes_known,
         values=values,
         points_interp=points_interp,
@@ -277,7 +277,7 @@ def interp3d(axes_known, values, points_interp, extrap_fill_value=None):
     )
 
 
-def interp_scipy(
+def interp_linear_scipy(
     axes_known,
     values,
     axes_interp: Sequence["np.ndarray"] = None,
@@ -315,7 +315,7 @@ def interp_scipy(
 
 
 # pylint: disable=invalid-name
-def multilinear_interp(
+def interp(
     axes_known: Sequence["np.ndarray"],
     values: "np.ndarray",
     axes_interp: Sequence["np.ndarray"] = None,
@@ -358,7 +358,7 @@ def multilinear_interp(
 
     if len(axes_known) == 1:
         # keep_dims has no effect for 1D interpolation
-        return interp1d(
+        return interp_linear_1d(
             axes_known[0],
             values,
             points_interp,
@@ -366,14 +366,14 @@ def multilinear_interp(
         )
 
     elif len(axes_known) == 2:
-        values_interp = interp2d(
+        values_interp = interp_linear_2d(
             axes_known,
             values,
             points_interp,
             extrap_fill_value,
         )
     else:
-        values_interp = interp3d(
+        values_interp = interp_linear_3d(
             axes_known,
             values,
             points_interp,
