@@ -83,14 +83,14 @@ def pytest_collection_modifyitems(config, items):
                     item.add_marker(skip)
 
 
-def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
-    """return True to prevent considering this path for collection.
+def pytest_ignore_collect(collection_path, config):  # pylint: disable = unused-argument
+    """return True to prevent considering this collection_path for collection.
 
     This hook is consulted for all files and directories prior to
     calling more specific hooks.
     """
 
-    relative_path = os.path.relpath(str(path), os.path.dirname(__file__))
+    relative_path = os.path.relpath(str(collection_path), os.path.dirname(__file__))
     relative_path_list = relative_path.split(os.path.sep)
 
     return (

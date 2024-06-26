@@ -15,6 +15,7 @@ all = [
     "matplotlib",
     "natsort",
     "networkx",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
@@ -60,6 +61,7 @@ docs = [
     "jupyter-book",
     "matplotlib",
     "networkx",
+    "numba",
     "numpy",
     "pydicom",
     "scipy",
@@ -72,9 +74,9 @@ doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
-speedups = ["interpolation"]
 tests = [
     "astroid",
+    "numba",
     "psutil",
     "pylint",
     "pytest",
@@ -95,6 +97,7 @@ user = [
     "keyring",
     "matplotlib",
     "natsort",
+    "numba",
     "numpy",
     "packaging",
     "pandas",

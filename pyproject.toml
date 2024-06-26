@@ -59,6 +59,7 @@ imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
 streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
 
+numba = { version = "*", optional = true }      # groups = ["user", "all", "docs", "tests"]
 numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
 
 # The following lower bounded packages are due to certain APIs utilised
@@ -73,9 +74,9 @@ pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user",
 
 # AI
 anthropic = { version = "0.25.9", optional = true } # groups = ["user", "all"]
-trio = { version = ">=0.25.0", optional = true }      # groups = ["user", "all"]
-trio-asyncio = { version = "*", optional = true }     # groups = ["user", "all"]
-anyio = { version = "*", optional = true }            # groups = ["user", "all"]
+trio = { version = ">=0.25.0", optional = true }    # groups = ["user", "all"]
+trio-asyncio = { version = "*", optional = true }   # groups = ["user", "all"]
+anyio = { version = "*", optional = true }          # groups = ["user", "all"]
 
 # ---- #
 # CVEs #
@@ -92,14 +93,6 @@ Pillow = { version = ">=9.0.0", optional = true } # groups = ["user", "all"]
 # Comparables #
 # ----------- #
 flashgamma = { version = "*", optional = true } # groups = ["comparables"]
-
-# -------- #
-# Speedups #
-# -------- #
-
-# Many environments have issue with installing llvmlite, so, until it is more
-# reliable, don't include this dependency in the standard install.
-interpolation = { version = ">=2.1.0", optional = true } # groups = ["speedups"]
 
 # ------------- #
 # Documentation #
@@ -149,6 +142,7 @@ all = [
     "matplotlib",
     "natsort",
     "networkx",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
@@ -187,13 +181,22 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
+dev = [
+    "doc8",
+    "pre-commit",
+    "pyright",
+    "readme-renderer",
+    "rope",
+    "ruff",
+    "tabulate",
+]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
     "jupyter-book",
     "matplotlib",
     "networkx",
+    "numba",
     "numpy",
     "pydicom",
     "scipy",
@@ -206,9 +209,9 @@ doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
-speedups = ["interpolation"]
 tests = [
     "astroid",
+    "numba",
     "psutil",
     "pylint",
     "pytest",
@@ -229,6 +232,7 @@ user = [
     "keyring",
     "matplotlib",
     "natsort",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
