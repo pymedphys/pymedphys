@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Matthew Jennings
+# Copyright (C) 2022-2024 Matthew Jennings
 # Copyright (C) 2015-2018 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ from warnings import warn
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-import pymedphys
+from pymedphys import interpolate as pmp_interp
 import pymedphys._utilities.createshells
 
 from ..utilities import run_input_checks
@@ -538,7 +538,7 @@ def _run_custom_interp(options, all_points):
         [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
     )
 
-    return pymedphys.interp(
+    return pmp_interp.interp(
         axes_known=options.axes_evaluation,
         values=options.dose_evaluation,
         points_interp=points,

@@ -39,7 +39,7 @@ def plot_interp_comparison_heatmap(
         The index of the slice to display from the original data.
     slice_number_interp : int
         The index of the slice to display from the interpolated data. Note that auto
-        matching between the originl and interpolated slices is not implemented. The
+        matching between the original and interpolated slices is not implemented. The
         user must ensure the slices correspond.
 
     Returns
@@ -392,7 +392,8 @@ def interp(
         The value to use for points outside the bounds of the input data when
         `bounds_error` is False. Default is None, which results in using np.nan.
     skip_checks : bool, optional
-        If True, skip input validation checks. Default is False.
+        If True, skip input validation checks. Skipping these checks can produce a
+        significant improve in performance for some applications. Default is False.
 
     Returns
     -------
