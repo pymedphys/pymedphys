@@ -13,49 +13,49 @@
 # limitations under the License.
 
 """
-Fast linear interpolation for 1D, 2D, and 3D data. Available functions include:
+Fast linear interpolation for 1D, 2D, and 3D data.
 
 This module provides functions for efficient linear interpolation of 1D, 2D, and 3D
-data using NumPy and Numba. It includes both a high-level interface (`interp`) and
+data using NumPy and Numba. It includes both a high-level interface (:func:`interp`) and
 lower-level functions for specific dimensionalities.
 
 Key Features:
-- Fast linear interpolation for 1D, 2D, and 3D data
-- Support for both grid-based and point-based interpolation
-- Numba-accelerated core interpolation functions
-- Input validation and error checking
-- Visualization tool for comparing original and interpolated data
+    - Fast linear interpolation for 1D, 2D, and 3D data
+    - Support for both grid-based and point-based interpolation
+    - Numba-accelerated core interpolation functions
+    - Input validation and error checking
+    - Visualization tool for comparing original and interpolated data
 
 Main Functions:
-- interp: High-level interface for linear interpolation
-- interp_linear_1d, interp_linear_2d, interp_linear_3d: Dimension-specific interpolation
-- plot_interp_comparison_heatmap: Visualize original vs interpolated data
+    - :func:`interp`: High-level interface for linear interpolation
+    - :func:`interp_linear_1d`, :func:`interp_linear_2d`, :func:`interp_linear_3d`: Dimension-specific interpolation
+    - :func:`plot_interp_comparison_heatmap`: Visualize original vs interpolated data
 
 Dependencies:
-- NumPy
-- Numba
-- Matplotlib
-- SciPy (for comparison function)
+    - NumPy
+    - Numba
+    - Matplotlib
+    - SciPy (for comparison function)
 
 Example:
-    import numpy as np
-    from pymedphys import interp
-
-    # Define known data
-    x = np.linspace(0, 10, 11)
-    y = np.linspace(0, 10, 11)
-    z = np.linspace(0, 10, 11)
-    values = np.random.rand(11, 11, 11)
-
-    # Define interpolation points
-    x_interp = np.linspace(0, 10, 21)
-    y_interp = np.linspace(0, 10, 21)
-    z_interp = np.linspace(0, 10, 21)
-
-    # Perform interpolation
-    interpolated_values = interp(
-        [x, y, z], values, axes_interp=[x_interp, y_interp, z_interp]
-    )
+    >>> import numpy as np
+    >>> from pymedphys.interpolate import interp
+    >>>
+    >>> # Define known data
+    >>> x = np.linspace(0, 10, 11)
+    >>> y = np.linspace(0, 10, 11)
+    >>> z = np.linspace(0, 10, 11)
+    >>> values = np.random.rand(11, 11, 11)
+    >>>
+    >>> # Define interpolation points
+    >>> x_interp = np.linspace(0, 10, 21)
+    >>> y_interp = np.linspace(0, 10, 21)
+    >>> z_interp = np.linspace(0, 10, 21)
+    >>>
+    >>> # Perform interpolation
+    >>> interpolated_values = interp(
+    ...     [x, y, z], values, axes_interp=[x_interp, y_interp, z_interp]
+    ... )
 
 For more detailed information, refer to the individual function docstrings.
 """
