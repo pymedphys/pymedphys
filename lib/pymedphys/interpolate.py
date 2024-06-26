@@ -60,6 +60,7 @@ Example:
 For more detailed information, refer to the individual function docstrings.
 """
 
+# pylint: disable=unused-import
 # ruff: noqa: F401
 from ._interp.interp import (
     interp,
