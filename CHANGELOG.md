@@ -10,9 +10,11 @@ This project adheres to
 ## [Unreleased]
 
 - PyMedPhys now includes its own custom, `numba`-accelerated implementation of
-  multilinear interpolation. This was implemented for the following reasons:
+  multilinear interpolation. You can find the technical reference [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  This was implemented for the following reasons:
     - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
-     `interplation` and 10-70x over Scipy's `RegularGridInterpolator`
+     `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
+      the technical reference page for a performance comparison.
     - At the time of writing, EconForge's `interplation` appears incompatible
       with `numba>=0.60`.
     - Removing an additional dependency (namely, EconForge's `interpolation`)
