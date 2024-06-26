@@ -21,6 +21,43 @@ from pymedphys._imports import numba as nb, numpy as np, plt, scipy
 def plot_interp_comparison_heatmap(
     values, values_interp, slice_axis: int, slice_number: int, slice_number_interp: int
 ):
+    """
+    Plot a comparison heatmap of original and interpolated 3D data slices.
+
+    This function creates a side-by-side heatmap comparison of a slice from the
+    original data and a corresponding slice from the interpolated data.
+
+    Parameters
+    ----------
+    values : array-like
+        The original 3D data array.
+    values_interp : array-like
+        The interpolated 3D data array.
+    slice_axis : int
+        The axis along which to take the slice (0, 1, or 2).
+    slice_number : int
+        The index of the slice to display from the original data.
+    slice_number_interp : int
+        The index of the slice to display from the interpolated data. Note that auto
+        matching between the originl and interpolated slices is not implemented. The
+        user must ensure the slices correspond.
+
+    Returns
+    -------
+    None
+        This function displays the plot directly and does not return any value.
+
+    Notes
+    -----
+    - The function creates a figure with two subplots side by side.
+    - The left subplot shows the slice from the original data.
+    - The right subplot shows the slice from the interpolated data.
+    - It is up to the user to ensure that
+    - Both heatmaps use the same color scale, determined by the minimum and
+      maximum values across both datasets.
+    - A shared colorbar is displayed on the right side of the figure.
+    - The plot is automatically displayed using plt.show().
+    """
     _, (ax1, ax2) = plt.subplots(1, 2)
 
     plot_min = min(values.min(), values_interp.min())
@@ -325,6 +362,60 @@ def interp(
     extrap_fill_value=None,
     skip_checks=False,
 ) -> "np.ndarray":
+    """
+    Perform fast linear interpolation on 1D, 2D, or 3D data.
+
+    Parameters
+    ----------
+    axes_known : Sequence[np.ndarray]
+        The coordinate vectors or axis coordinates of the known data points.
+    values : np.ndarray
+        The known values at the points defined by `axes_known`. Its shape should match
+        a tuple of the lengths of the axes in `axes_known` in the same order.
+    axes_interp : Sequence[np.ndarray], optional
+        The coordinate vectors or axis coordinates for which to interpolate values.
+        These axes will be expanded to flattened meshgrids and interpolation will occur
+        for each point in these grids. Either `axes_interp` or `points_interp` must be
+        provided, but not both.
+    points_interp : np.ndarray, optional
+        The exact coordinates of the points where interpolation is desired.
+        Shape should be (n, d) where n is the number of points and d is the number of
+        dimensions. Either `axes_interp` or `points_interp` must be provided, but not
+        both.
+    keep_dims : bool, optional
+        If True, return the interpolated values with the same shape as defined by
+        `axes_interp`. Only applicable when `axes_interp` is provided. Default is False.
+    bounds_error : bool, optional
+        If True, raise an error when interpolation is attempted outside the bounds of
+        the input data. Default is True.
+    extrap_fill_value : float, optional
+        The value to use for points outside the bounds of the input data when
+        `bounds_error` is False. Default is None, which results in using np.nan.
+    skip_checks : bool, optional
+        If True, skip input validation checks. Default is False.
+
+    Returns
+    -------
+    np.ndarray
+        The interpolated values. If `keep_dims` is True and `axes_interp` is provided,
+        the output will have the same shape as defined by `axes_interp`.
+        Otherwise, it will be a 1D array.
+
+    Raises
+    ------
+    ValueError
+        If neither or both of `axes_interp` and `points_interp` are provided.
+        If `keep_dims` is True but `axes_interp` is not provided.
+        If the input axes are not monotonically increasing or evenly spaced.
+
+    Notes
+    -----
+    This function performs linear interpolation for 1D, 2D, or 3D data.
+    It supports both grid-based interpolation (using `axes_interp`) and
+    point-based interpolation (using `points_interp`).
+
+    The input axes must be monotonically increasing and evenly spaced.
+    """
     if axes_interp is not None and points_interp is None:
         mgrids = np.meshgrid(*axes_interp, indexing="ij")
         points_interp = np.column_stack([mgrid.ravel() for mgrid in mgrids])
