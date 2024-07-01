@@ -93,7 +93,7 @@ def dicom_file_loader(
             dataset = pydicom.dcmread(
                 a_file, force=True, stop_before_pixels=stop_before_pixels
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable = W0718
             st.warning(
                 f'Failed reading the file "`{a_file.name}`". The error was the following:'
             )
