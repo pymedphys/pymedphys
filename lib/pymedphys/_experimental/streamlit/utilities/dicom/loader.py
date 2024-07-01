@@ -99,7 +99,6 @@ def dicom_file_loader(
             )
             st.error(e)
             st.stop()
-            raise
 
         datasets.append(dataset)
 
