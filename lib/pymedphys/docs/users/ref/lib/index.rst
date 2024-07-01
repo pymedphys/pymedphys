@@ -11,6 +11,7 @@ itself. Below is the documentation for a range of these libraries.
     ../../../genindex
     dicom
     gamma
+    interp
     mosaiq
     metersetmap
     trf

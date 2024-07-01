@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Matthew Jennings
+# Copyright (C) 2022-2024 Matthew Jennings
 # Copyright (C) 2015-2018 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,10 +20,10 @@ from dataclasses import dataclass
 from typing import Any, Optional
 from warnings import warn
 
-from pymedphys._imports import interpolation
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
+from pymedphys import interpolate as pmp_interp
 import pymedphys._utilities.createshells
 
 from ..utilities import run_input_checks
@@ -47,6 +47,7 @@ def gamma_shell(
     random_subset=None,
     ram_available=DEFAULT_RAM,
     quiet=None,
+    interp_algo="pymedphys",
 ):
     """Compare two dose grids with the gamma index.
 
@@ -139,6 +140,7 @@ def gamma_shell(
         random_subset,
         ram_available,
         quiet,
+        interp_algo,
     )
 
     if options.local_gamma:
@@ -216,6 +218,7 @@ class GammaInternalFixedOptions:
     skip_once_passed: bool = False
     ram_available: Optional[int] = DEFAULT_RAM
     quiet: Any = None
+    interp_algo: str = "pymedphys"
 
     def __post_init__(self):
         self.set_defaults()
@@ -251,6 +254,7 @@ class GammaInternalFixedOptions:
         random_subset=None,
         ram_available=None,
         quiet=None,
+        interp_algo="pymedphys",
     ):
         if max_gamma is None:
             max_gamma = np.inf
@@ -312,6 +316,7 @@ class GammaInternalFixedOptions:
             skip_once_passed,
             ram_available,
             quiet,
+            interp_algo,
         )
 
 
@@ -517,36 +522,36 @@ def interpolate_evaluation_dose_at_distance(
         axes_reference_to_be_checked, coordinates_at_distance_shell
     )
 
-    try:
-        evaluation_dose = _run_interp_with_econforge(options, all_points)
-    except ImportError:
+    if options.interp_algo.lower() == "pymedphys":
+        evaluation_dose = _run_custom_interp(options, all_points)
+    elif options.interp_algo.lower() == "scipy":
         evaluation_dose = _run_interp_with_scipy(options, all_points)
-
+    else:
+        raise ValueError(
+            f"Interpolation algorithm '{options.interp_algo}' not recognised"
+        )
     return evaluation_dose
 
 
-def _run_interp_with_econforge(options, all_points):
-    grids = []
-    for i in range(all_points.shape[-1]):
-        grids.append(all_points[:, :, i])
+def _run_custom_interp(options, all_points):
+    points = np.column_stack(
+        [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
+    )
 
-    points_interp = np.column_stack([np.ravel(mgrid) for mgrid in grids]).astype(float)
-
-    coords_evaluation_grid = interpolation.splines.CGrid(*options.axes_evaluation)
-
-    evaluation_dose = interpolation.splines.eval_linear(
-        coords_evaluation_grid,
-        np.array(options.dose_evaluation),
-        points_interp,
-    ).reshape(np.shape(all_points)[:-1])
-
-    return evaluation_dose
+    return pmp_interp.interp(
+        axes_known=options.axes_evaluation,
+        values=options.dose_evaluation,
+        points_interp=points,
+        bounds_error=False,
+        extrap_fill_value=np.inf,
+        skip_checks=True,
+    ).reshape(all_points.shape[:-1])
 
 
 def _run_interp_with_scipy(options, all_points):
     evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
         options.axes_evaluation,
-        np.array(options.dose_evaluation),
+        options.dose_evaluation,
         bounds_error=False,
         fill_value=np.inf,
     )
