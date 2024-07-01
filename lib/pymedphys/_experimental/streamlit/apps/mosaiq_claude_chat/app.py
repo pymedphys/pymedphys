@@ -15,26 +15,19 @@
 
 import json
 import os
-import pathlib
 
 import httpx
 import trio
 from anthropic import AsyncAnthropic
-from anyio.from_thread import BlockingPortal
 from pymedphys._imports import streamlit as st
 
 import pymedphys
-from pymedphys._ai.sql_agent.messages import (
-    Messages,
-    message_content_as_plain_text,
-    receive_user_messages_and_call_assistant_loop,
-    write_message,
+from pymedphys._ai.sql_agent.conversation import recursively_append_message_responses
+from pymedphys._mosaiq.mock.from_csv import (
+    DATABASE_NAME,
+    create_db_with_tables_from_csv,
 )
-from pymedphys._mosaiq.mock.server_from_bak import (
-    start_mssql_docker_image_with_bak_restore,
-)
-
-from ._trio import get_streamlit_trio_portal
+from pymedphys._mosaiq.mock.utilities import SA_PASSWORD, SA_USER
 
 USER = "user"
 
@@ -49,46 +42,62 @@ ANTHROPIC_API_LIMIT = 2
 def main():
     _key_handling()
 
-    portal = get_streamlit_trio_portal()
-    messages = _get_messages()
-    message_send_channel = _get_message_send_channel(portal=portal, messages=messages)
+    _initialise_state()
 
     with st.sidebar:
-        _transcript_downloads(messages)
+        if st.button("Fill database with CSV records"):
+            create_db_with_tables_from_csv()
 
-        bak_filepath = (
-            pathlib.Path(
-                st.text_input(".bak file path", value="~/mosaiq-data/db-dump.bak")
-            )
-            .expanduser()
-            .resolve()
+        anthropic_api_limit = int(
+            st.number_input("Anthropic API concurrency limit", value=2)
         )
-        if st.button("Start demo MOSAIQ server from .bak file"):
-            start_mssql_docker_image_with_bak_restore(
-                bak_filepath=bak_filepath,
-                sa_password=os.getenv("MSSQL_SA_PASSWORD"),
-            )
 
-    for message in messages:
-        write_message(message["role"], message["content"])
+        if st.button("Remove last message"):
+            st.session_state.messages = st.session_state.messages[:-1]
 
-    new_message = st.chat_input()
+        if st.button("Remove last two messages"):
+            st.session_state.messages = st.session_state.messages[:-2]
+
+        _transcript_downloads()
+
+    for message in st.session_state.messages:
+        _write_message(message["role"], message["content"])
+
+    chat_input_disabled = False
+    try:
+        previous_message = st.session_state.messages[-1]
+        if previous_message["role"] is USER:
+            chat_input_disabled = True
+    except IndexError:
+        pass
+
+    new_message = st.chat_input(disabled=chat_input_disabled)
 
     if new_message:
-        portal.start_task_soon(
-            message_send_channel.send, {"role": USER, "content": new_message}
-        )
+        _append_message(USER, new_message)
+        _write_message(USER, new_message)
 
-    with st.sidebar:
-        st.write("---")
-        with st.spinner("Waiting forever for potential AI and tool use responses"):
-            portal.call(trio.sleep_forever)
+    try:
+        most_recent_message = st.session_state.messages[-1]
+    except IndexError:
+        return
+
+    if most_recent_message["role"] is not USER:
+        return
+
+    trio.run(
+        recursively_append_message_responses,
+        _async_anthropic(anthropic_api_limit),
+        _mosaiq_connection(),
+        st.session_state.messages,
+    )
+
+    st.rerun()
 
 
 @st.cache_resource
-def _async_anthropic():
-    # TODO: Make this configurable
-    limits = httpx.Limits(max_connections=ANTHROPIC_API_LIMIT)
+def _async_anthropic(anthropic_api_limit: int):
+    limits = httpx.Limits(max_connections=anthropic_api_limit)
 
     return AsyncAnthropic(connection_pool_limits=limits, max_retries=10)
 
@@ -97,9 +106,9 @@ def _async_anthropic():
 def _mosaiq_connection():
     connection = pymedphys.mosaiq.connect(
         "localhost",
-        database="PRACTICE",
-        username="sa",
-        password=os.environ["MSSQL_SA_PASSWORD"],
+        database=DATABASE_NAME,
+        username=SA_USER,
+        password=SA_PASSWORD,
     )
     # Needed for multi-threading?
     # https://stackoverflow.com/a/41912528
@@ -110,66 +119,33 @@ def _mosaiq_connection():
     return connection
 
 
-def _get_messages() -> Messages:
+def _initialise_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
-
-    return st.session_state.messages
-
-
-def _get_message_send_channel(
-    portal: BlockingPortal, messages: Messages
-) -> trio.MemorySendChannel:
-    if "message_send_channel" not in st.session_state:
-        message_send_channel, message_receive_channel = portal.call(
-            trio.open_memory_channel, 10
-        )
-
-        async def assistant_calling_loop():
-            await receive_user_messages_and_call_assistant_loop(
-                tasks_record=[],
-                anthropic_client=_async_anthropic(),
-                connection=_mosaiq_connection(),
-                message_send_channel=message_send_channel,
-                message_receive_channel=message_receive_channel,
-                messages=messages,
-            )
-
-        portal.start_task_soon(assistant_calling_loop)
-
-        st.session_state.message_send_channel = message_send_channel
-
-    return st.session_state.message_send_channel
 
 
 def _key_handling():
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-    mssql_sa_password = os.getenv("MSSQL_SA_PASSWORD")
 
     if not anthropic_api_key:
         anthropic_api_key = st.text_input("Anthropic API key", type="password")
         os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
-
-    if not mssql_sa_password:
-        mssql_sa_password = st.text_input("MSSQL SA Password", type="password")
-        os.environ["MSSQL_SA_PASSWORD"] = mssql_sa_password
-
-    if not anthropic_api_key or not mssql_sa_password:
+    if not anthropic_api_key:
         st.write(
-            "To continue, please make sure both of the `ANTHROPIC_API_KEY`"
-            " and `MSSQL_SA_PASSWORD` environment variables are set"
+            "To continue, please make sure the `ANTHROPIC_API_KEY`"
+            " environment variable is set"
         )
         st.stop()
 
 
-def _transcript_downloads(messages: Messages):
+def _transcript_downloads():
     transcript_items = [
-        f"{message['role']}: {message_content_as_plain_text(message['content'])}"
-        for message in messages
+        f"{message['role']}: {_message_content_as_plain_text(message['content'])}"
+        for message in st.session_state.messages
     ]
 
     plain_text_transcript = "\n\n".join(transcript_items)
-    raw_transcript = json.dumps(messages, indent=2)
+    raw_transcript = json.dumps(st.session_state.messages, indent=2)
 
     st.download_button(
         "Download plain text transcript",
@@ -179,6 +155,24 @@ def _transcript_downloads(messages: Messages):
     st.download_button(
         "Download raw transcript", raw_transcript, file_name="raw_api_transcript.json"
     )
+
+
+def _append_message(role, content):
+    st.session_state.messages.append({"role": role, "content": content})
+
+
+def _write_message(role, content: str | list):
+    with st.chat_message(role):
+        st.markdown(_message_content_as_plain_text(content))
+
+
+def _message_content_as_plain_text(content: str | list):
+    if isinstance(content, str):
+        return content
+
+    results = [item["text"] for item in content if item["type"] == "text"]
+
+    return "\n\n".join(results)
 
 
 if __name__ == "__main__":

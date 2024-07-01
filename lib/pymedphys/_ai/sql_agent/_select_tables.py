@@ -17,7 +17,7 @@ import json
 import re
 
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolsBetaMessage
+from anthropic.types import Message
 
 import pymedphys
 from pymedphys._ai import model_versions
@@ -42,7 +42,7 @@ your agent cluster, of which you are fulfilling the component of
 </sub_agent_prompt>
 
 You are just one component of the cluster. It is NOT your job to respond
-to the user, instead it is JUST your job to select the top 40 tables
+to the user, instead it is JUST your job to select the top 5 tables
 from a database schema that might be helpful to search within in order
 to answer the user's question.
 
@@ -82,7 +82,7 @@ You respond only with table name xml tags using the following format:
 
 Table names are to be chosen from the above according to the schema
 within the <database> tags that was provided above within your system
-prompt. You are to provide approximately 40 table names that may be
+prompt. You are to provide approximately 5 table names that may be
 relevant to search within in order to answer the user's question.
 """
 
@@ -110,7 +110,7 @@ async def get_system_prompt(
 async def get_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    messages: list[Message],
     sub_agent_prompt: str,
 ) -> tuple[str, ...]:
     raw_table_names = await _get_raw_selected_table_names(
@@ -134,7 +134,7 @@ async def get_selected_table_names(
 async def _get_raw_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[ToolsBetaMessage],
+    messages: list[Message],
     sub_agent_prompt: str,
 ) -> str:
     return await words_in_mouth_prompting(

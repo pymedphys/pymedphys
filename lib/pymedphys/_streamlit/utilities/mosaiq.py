@@ -146,8 +146,6 @@ def get_uncached_mosaiq_connection(
 
     st.stop()
 
-    raise ValueError("This should never be reached")
-
 
 @st.cache_resource()
 def get_cached_mosaiq_connection(

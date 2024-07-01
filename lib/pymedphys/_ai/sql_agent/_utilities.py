@@ -21,7 +21,7 @@ from functools import wraps
 
 import trio
 from anthropic import AsyncAnthropic
-from anthropic.types.beta.tools import ToolsBetaMessage
+from anthropic.types import Message
 
 import pymedphys
 
@@ -104,7 +104,7 @@ async def words_in_mouth_prompting(
     system_prompt: str,
     appended_user_prompt: str,
     start_of_assistant_prompt: str,
-    messages: list[ToolsBetaMessage] | None = None,
+    messages: list[Message] | None = None,
 ):
     start_of_assistant_prompt = start_of_assistant_prompt.strip()
     appended_user_prompt = appended_user_prompt.strip()
