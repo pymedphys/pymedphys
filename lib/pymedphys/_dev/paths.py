@@ -16,5 +16,5 @@
 import pathlib
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-LIBRARY_PATH = REPO_ROOT.joinpath("lib", "pymedphys")
+LIBRARY_PATH = pathlib.Path(__file__).resolve().parent.parent
 DEPENDENCY_EXTRA_PATH = LIBRARY_PATH.joinpath("dependency-extra.txt")
