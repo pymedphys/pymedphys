@@ -5,6 +5,7 @@ all = [
     "anyio",
     "astroid",
     "attrs",
+    "dash",
     "dbfread",
     "dicompyler-core",
     "doc8",
@@ -19,6 +20,7 @@ all = [
     "numpy",
     "packaging",
     "pandas",
+    "plotly",
     "pre-commit",
     "psutil",
     "pydicom",
@@ -54,7 +56,17 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
+dev = [
+    "dash",
+    "doc8",
+    "plotly",
+    "pre-commit",
+    "pyright",
+    "readme-renderer",
+    "rope",
+    "ruff",
+    "tabulate",
+]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
@@ -70,7 +82,7 @@ docs = [
     "toml",
     "tqdm",
 ]
-doctests = ["ruff", "sphinx-book-theme", "tabulate"]
+doctests = ["dash", "plotly", "ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
