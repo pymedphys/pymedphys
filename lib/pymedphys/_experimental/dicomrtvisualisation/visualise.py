@@ -4,7 +4,6 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
-
 st.set_page_config(layout="wide")
 
 st.title("Interactive CT Slice Viewer")
@@ -28,6 +27,8 @@ def preprocess_ct_slice_datasets(ct_slice_datasets):
                 "PixelArray": ds.pixel_array,
                 "RescaleSlope": ds.RescaleSlope,
                 "RescaleIntercept": ds.RescaleIntercept,
+                "WindowCenter": getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL),
+                "WindowWidth": getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH),
             }
         )
     return preprocessed_data
@@ -100,7 +101,7 @@ def load_ct_as_memmap(dirpath, memmap_file="ct_volume.dat"):
     dirpath = pathlib.Path(dirpath)
 
     ct_slice_datasets = []
-    for fpath in dirpath.glob("*.dcm"):
+    for fpath in sorted(dirpath.glob("*.dcm")):
         ds = pydicom.dcmread(fpath)
         if ds.Modality == "CT":
             ct_slice_datasets.append(ds)
@@ -113,6 +114,7 @@ def load_ct_as_memmap(dirpath, memmap_file="ct_volume.dat"):
     _check_only_one_ct_series(preprocessed_data)
     _check_all_slices_aligned(preprocessed_data)
 
+    # Sort slices based on ImagePositionPatient Z-coordinate
     preprocessed_data.sort(key=lambda data: data["ImagePositionPatient"][2])
 
     num_slices = len(preprocessed_data)
@@ -218,6 +220,83 @@ def preprocess_contours(structures):
     return contour_map
 
 
+@st.cache_data(show_spinner=True, persist=True)
+def load_rt_dose(fpath, _ct_headers):
+    """
+    Load RTDOSE data and map it to CT slices based on Z-coordinate.
+
+    Args:
+        fpath (Path): Path to the RTDOSE DICOM file.
+        _ct_headers (list): List of CT slice headers with 'ipp'.
+
+    Returns:
+        tuple: (dose_map, dose_units, dose_X, dose_Y)
+            dose_map (dict): Mapping of slice index to dose_array.
+            dose_units (str): Units of the dose ('GY' or 'CGY').
+            dose_X (dict): Mapping of slice index to X coordinates arrays.
+            dose_Y (dict): Mapping of slice index to Y coordinates arrays.
+    """
+    ds = pydicom.dcmread(fpath)
+    if ds.Modality != "RTDOSE":
+        raise ValueError("File is not an RTDOSE DICOM file")
+
+    dose_grid_scaling = getattr(ds, "DoseGridScaling", 1.0)
+    dose_units = getattr(ds, "DoseUnits", "UNKNOWN")  # Usually 'GY' or 'CGY'
+
+    dose_data = ds.pixel_array * dose_grid_scaling  # Convert to physical dose values
+
+    # Extract dose grid information
+    grid_frame_offset_vector = getattr(
+        ds, "GridFrameOffsetVector", [0.0]
+    )  # Z-offsets for each dose slice
+    dose_origin = np.array(ds.ImagePositionPatient)
+
+    # Compute dose slice positions based on grid_frame_offset_vector
+    dose_z_positions = dose_origin[2] + grid_frame_offset_vector
+
+    slice_z_positions = [header["ipp"][2] for header in _ct_headers]
+
+    dose_map = {}  # slice_idx: dose_array
+    dose_X = {}  # slice_idx: X coordinates array
+    dose_Y = {}  # slice_idx: Y coordinates array
+
+    for idx, dose_z in enumerate(dose_z_positions):
+        # Find the closest CT slice based on Z-coordinate
+        closest_slice_idx = np.argmin(np.abs(np.array(slice_z_positions) - dose_z))
+
+        # Check if this dose_z closely matches the CT slice's z-coordinate (within tolerance)
+        z_tolerance = 1e-3  # in mm
+        if np.abs(slice_z_positions[closest_slice_idx] - dose_z) > z_tolerance:
+            st.warning(
+                f"Dose slice at dose_z={dose_z} mm does not closely match any CT slice Z-coordinate. Skipping."
+            )
+            continue
+
+        # Store dose data without resampling
+        if closest_slice_idx not in dose_map:
+            dose_map[closest_slice_idx] = dose_data[idx]
+        else:
+            # If multiple dose slices map to the same CT slice, average them
+            dose_map[closest_slice_idx] = (
+                dose_map[closest_slice_idx] + dose_data[idx]
+            ) / 2
+
+        # Calculate spatial coordinates for the dose slice
+        # Using dose's ImagePositionPatient, ImageOrientationPatient, and PixelSpacing
+        dose_X_slice, dose_Y_slice = compute_patient_coordinates(
+            ds.Rows,
+            ds.Columns,
+            ds.ImagePositionPatient,
+            ds.ImageOrientationPatient,
+            ds.PixelSpacing,
+        )
+
+        dose_X[closest_slice_idx] = dose_X_slice
+        dose_Y[closest_slice_idx] = dose_Y_slice
+
+    return dose_map, dose_units, dose_X, dose_Y
+
+
 def window_image(img, ww, wl):
     img_min = wl - (ww / 2)
     img_max = wl + (ww / 2)
@@ -240,7 +319,7 @@ def create_structure_legend(structures):
 
 
 def initialize_base_figure(
-    ct_image, ct_headers, X, Y, initial_slice_idx, wl_default, ww_default, structures
+    ct_image, ct_headers, X, Y, initial_slice_idx, wl_default, ww_default
 ):
     """
     Initialize and cache the base figure for the CT viewer.
@@ -253,7 +332,6 @@ def initialize_base_figure(
         initial_slice_idx (int): Index of the initial slice.
         wl_default (int): Default window level.
         ww_default (int): Default window width.
-        structures (dict): RT structure data.
 
     Returns:
         go.Figure: The initialized Plotly figure.
@@ -331,6 +409,11 @@ def update_figure(
     structures,
     contour_map,
     selected_structures,
+    dose_map,
+    show_dose,
+    dose_units,
+    dose_X,
+    dose_Y,
 ):
     """
     Update the existing figure with new data based on user inputs.
@@ -345,6 +428,11 @@ def update_figure(
         structures (dict): RT structure data.
         contour_map (dict): Precomputed mapping of contours to Z-coordinates.
         selected_structures (list): List of structure names to display.
+        dose_map (dict): Mapping of slice indices to dose data.
+        show_dose (bool): Whether to show the dose overlay.
+        dose_units (str): Units of the dose ('GY' or 'CGY').
+        dose_X (dict): Mapping of slice index to X coordinates arrays for dose.
+        dose_Y (dict): Mapping of slice index to Y coordinates arrays for dose.
 
     Returns:
         go.Figure: The updated Plotly figure.
@@ -354,7 +442,7 @@ def update_figure(
     img_min = wl - (ww / 2)
     img_max = wl + (ww / 2)
 
-    # Update heatmap trace
+    # Update heatmap trace (CT image)
     fig.data[0].z = windowed_img
     fig.data[0].zmin = img_min
     fig.data[0].zmax = img_max
@@ -363,11 +451,14 @@ def update_figure(
     slice_z = ct_headers[slice_idx]["ipp"][2]
     fig.update_layout(title=f"Z = {slice_z:.2f} mm (Slice {slice_idx})")
 
-    # Remove existing contour traces
+    # Remove existing contour and dose overlay traces
     fig.data = tuple(
         trace
         for trace in fig.data
-        if not (isinstance(trace, go.Scatter) and trace.name in structures.keys())
+        if not (
+            (isinstance(trace, go.Scatter) and trace.name in structures.keys())
+            or (isinstance(trace, go.Heatmap) and trace.name == "Dose Overlay")
+        )
     )
 
     # Add new contour traces for the selected structures
@@ -388,12 +479,54 @@ def update_figure(
                     )
                 )
 
+    # Add RTDOSE overlay if enabled
+    if show_dose and slice_idx in dose_map:
+        dose_slice = dose_map[slice_idx]
+        dose_X_slice = dose_X.get(slice_idx)
+        dose_Y_slice = dose_Y.get(slice_idx)
+
+        if dose_X_slice is not None and dose_Y_slice is not None:
+            # Normalize dose for colorscale
+            dose_min = dose_slice.min()
+            dose_max = dose_slice.max()
+            normalized_dose = (
+                (dose_slice - dose_min) / (dose_max - dose_min)
+                if dose_max > dose_min
+                else dose_slice
+            )
+
+            # Create a semi-transparent colorwash using Heatmap
+            dose_heatmap = go.Heatmap(
+                z=normalized_dose,
+                colorscale="Jet",
+                opacity=0.5,
+                showscale=False,
+                x0=dose_X_slice[0, 0],
+                dx=dose_X_slice[0, 1] - dose_X_slice[0, 0],
+                y0=dose_Y_slice[0, 0],
+                dy=dose_Y_slice[1, 0] - dose_Y_slice[0, 0],
+                hovertemplate=f"Dose: %{{z:.2f}} {dose_units}<extra></extra>",
+                name="Dose Overlay",
+            )
+            fig.add_trace(dose_heatmap)
+        else:
+            st.warning(
+                f"No spatial coordinates found for dose slice at index {slice_idx}. "
+                "Cannot overlay dose data."
+            )
+
     return fig
 
 
-# Sidebar to upload DICOM directory and RTSTRUCT file
+# Sidebar to upload DICOM directory, RTSTRUCT file, and RTDOSE file
 dicom_dir = st.sidebar.text_input("Enter DICOM directory path")
 rtstruct_file = st.sidebar.text_input("Enter RTSTRUCT file path")
+rtdose_file = st.sidebar.text_input("Enter RTDOSE file path (optional)")
+
+# Checkbox to toggle RTDOSE colorwash
+show_dose = False
+if rtdose_file:
+    show_dose = st.sidebar.checkbox("Show Dose Colorwash", value=False)
 
 if pathlib.Path(dicom_dir).exists() and pathlib.Path(rtstruct_file).exists():
     ct_image, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default = (
@@ -401,8 +534,32 @@ if pathlib.Path(dicom_dir).exists() and pathlib.Path(rtstruct_file).exists():
     )
     structures = load_rt_structures(pathlib.Path(rtstruct_file))
     contour_map = preprocess_contours(structures)
+
+    # Extract Z-coordinates from CT headers
+    z_coords = [header["ipp"][2] for header in ct_headers]
+
+    # Load RTDOSE if provided and path exists
+    dose_map = {}
+    dose_units = ""
+    dose_X = {}
+    dose_Y = {}
+    if rtdose_file:
+        if pathlib.Path(rtdose_file).exists():
+            try:
+                dose_map, dose_units, dose_X, dose_Y = load_rt_dose(
+                    pathlib.Path(rtdose_file), _ct_headers=ct_headers
+                )
+                st.sidebar.success("RTDOSE loaded successfully.")
+            except Exception as e:
+                st.sidebar.error(f"Error loading RTDOSE: {e}")
+                dose_map = {}
+                dose_units = ""
+                dose_X = {}
+                dose_Y = {}
+        else:
+            st.sidebar.error("Invalid RTDOSE file path.")
 else:
-    st.error("Invalid directory or RTSTRUCT file path.")
+    st.error("Invalid DICOM directory or RTSTRUCT file path.")
     st.stop()
 
 num_slices, height, width = ct_image.shape
@@ -411,14 +568,18 @@ num_slices, height, width = ct_image.shape
 with st.sidebar:
     st.header("Controls")
 
-    # Slider to select Z coordinate
+    # Slider to select slice index
     slice_idx = st.slider(
         "Slice Index",
         min_value=0,
         max_value=num_slices - 1,
-        value=num_slices // 2,
+        value=st.session_state.get("slice_idx", num_slices // 2),
         step=1,
+        key="slice_slider",
     )
+
+    # Display Z-coordinate based on selected slice
+    st.write(f"**Z-Coordinate:** {z_coords[slice_idx]:.2f} mm (Slice {slice_idx})")
 
     # Sliders for window level and width
     wl = st.slider(
@@ -464,7 +625,6 @@ with st.sidebar:
     # Removed separate legend as colors are now integrated with checkboxes
     st.markdown("---")
 
-
 # Initialize the figure once
 if "base_figure" not in st.session_state:
     initial_slice_idx = ct_image.shape[0] // 2
@@ -476,10 +636,9 @@ if "base_figure" not in st.session_state:
         initial_slice_idx,
         wl_default,
         ww_default,
-        structures,
     )
 
-# Update the figure based on user inputs, including selected structures
+# Update the figure based on user inputs, including selected structures and dose
 updated_fig = update_figure(
     st.session_state.base_figure,
     ct_image,
@@ -490,6 +649,11 @@ updated_fig = update_figure(
     structures,
     contour_map,
     selected_structures,  # Pass the selected structures to the update function
+    dose_map,
+    show_dose,
+    dose_units,
+    dose_X,
+    dose_Y,
 )
 
 # Display the updated figure
