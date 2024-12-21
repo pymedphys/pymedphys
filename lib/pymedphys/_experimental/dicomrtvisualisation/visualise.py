@@ -4,144 +4,169 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
-# 1. Set Streamlit page configuration to 'wide' layout
+
 st.set_page_config(layout="wide")
 
-st.title("Interactive CT Slice Viewer (Optimized and Aligned)")
+st.title("Interactive CT Slice Viewer")
+
+DEFAULT_WINDOW_LEVEL = 0
+DEFAULT_WINDOW_WIDTH = 500
 
 
-def _check_only_one_ct_series(ct_slice_datasets):
-    if any(
-        ds.SeriesInstanceUID != ct_slice_datasets[0].SeriesInstanceUID
-        for ds in ct_slice_datasets[1:]
-    ):
+def preprocess_ct_slice_datasets(ct_slice_datasets):
+    """Preprocesses and caches common properties for CT slice datasets."""
+    preprocessed_data = []
+    for ds in ct_slice_datasets:
+        preprocessed_data.append(
+            {
+                "SeriesInstanceUID": ds.SeriesInstanceUID,
+                "ImagePositionPatient": ds.ImagePositionPatient,
+                "ImageOrientationPatient": ds.ImageOrientationPatient,
+                "PixelSpacing": ds.PixelSpacing,
+                "Rows": ds.Rows,
+                "Columns": ds.Columns,
+                "PixelArray": ds.pixel_array,
+                "RescaleSlope": ds.RescaleSlope,
+                "RescaleIntercept": ds.RescaleIntercept,
+            }
+        )
+    return preprocessed_data
+
+
+# Updated checks to use preprocessed data
+def _check_only_one_ct_series(preprocessed_data):
+    series_uid = preprocessed_data[0]["SeriesInstanceUID"]
+    if any(data["SeriesInstanceUID"] != series_uid for data in preprocessed_data[1:]):
         raise ValueError("At least one CT slice dataset is not from the same series")
 
 
-def _check_all_slices_aligned(ct_slice_datasets):
-    if any(
-        ds.ImagePositionPatient[:2] != ct_slice_datasets[0].ImagePositionPatient[:2]
-        for ds in ct_slice_datasets[1:]
-    ):
-        raise ValueError("At least one CT slice dataset has a different position")
+def _check_all_slices_aligned(preprocessed_data):
+    ref_position = preprocessed_data[0]["ImagePositionPatient"][:2]
+    ref_orientation = preprocessed_data[0]["ImageOrientationPatient"]
+    ref_spacing = preprocessed_data[0]["PixelSpacing"]
 
-    if any(
-        ds.ImageOrientationPatient != ct_slice_datasets[0].ImageOrientationPatient
-        for ds in ct_slice_datasets[1:]
-    ):
-        raise ValueError("At least one CT slice dataset has a different orientation")
-
-    if any(
-        ds.PixelSpacing != ct_slice_datasets[0].PixelSpacing
-        for ds in ct_slice_datasets[1:]
-    ):
-        raise ValueError("At least one CT slice dataset has a different pixel spacing")
+    for data in preprocessed_data[1:]:
+        if data["ImagePositionPatient"][:2] != ref_position:
+            raise ValueError("At least one CT slice dataset has a different position")
+        if data["ImageOrientationPatient"] != ref_orientation:
+            raise ValueError(
+                "At least one CT slice dataset has a different orientation"
+            )
+        if data["PixelSpacing"] != ref_spacing:
+            raise ValueError(
+                "At least one CT slice dataset has a different pixel spacing"
+            )
 
 
 def compute_patient_coordinates(height, width, ipp, iop, pixel_spacing):
+    """
+    Compute patient coordinates efficiently using matrix multiplication.
+
+    Args:
+        height (int): Number of rows in the image.
+        width (int): Number of columns in the image.
+        ipp (list or ndarray): Image Position Patient (3D coordinates of the first pixel).
+        iop (list or ndarray): Image Orientation Patient (cosines of row and column axes).
+        pixel_spacing (list or ndarray): Spacing between pixels (row spacing, column spacing).
+
+    Returns:
+        tuple: X, Y coordinate arrays of shape (height, width).
+    """
     ipp = np.array(ipp)
-    iop = np.array(iop)
+    iop = np.array(iop).reshape(2, 3)  # Reshape to 2x3 matrix (row_cosine, col_cosine)
     pixel_spacing = np.array(pixel_spacing)
 
-    row_cosine = np.array(iop[0:3])
-    col_cosine = np.array(iop[3:6])
+    # Scale row and column cosines by pixel spacing
+    iop_scaled = iop.T @ np.diag(pixel_spacing)  # Shape: (3, 2)
 
     # Create meshgrid of pixel indices
-    jj, ii = np.meshgrid(np.arange(width), np.arange(height))
+    jj, ii = np.meshgrid(np.arange(width), np.arange(height), indexing="xy")
 
-    # Calculate the physical coordinates
-    X = (
-        ipp[0]
-        + row_cosine[0] * jj * pixel_spacing[0]
-        + col_cosine[0] * ii * pixel_spacing[1]
-    )
-    Y = (
-        ipp[1]
-        + row_cosine[1] * jj * pixel_spacing[0]
-        + col_cosine[1] * ii * pixel_spacing[1]
-    )
+    # Stack the pixel indices and compute physical coordinates
+    indices = np.stack([jj.ravel(), ii.ravel()], axis=0)  # Shape: (2, height * width)
+    coordinates = ipp[:, None] + iop_scaled @ indices  # Shape: (3, height * width)
+
+    # Reshape coordinates to (height, width)
+    X, Y = coordinates[0].reshape(height, width), coordinates[1].reshape(height, width)
 
     return X, Y
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=True, persist=True)
 def load_ct_as_memmap(dirpath, memmap_file="ct_volume.dat"):
+    """
+    Load CT slices as a memory-mapped array and cache the operation.
+    """
     dirpath = pathlib.Path(dirpath)
 
     ct_slice_datasets = []
     for fpath in dirpath.glob("*.dcm"):
-        fullpath = dirpath / fpath
-        ds = pydicom.dcmread(fullpath)
+        ds = pydicom.dcmread(fpath)
         if ds.Modality == "CT":
             ct_slice_datasets.append(ds)
 
     if not ct_slice_datasets:
         raise ValueError("No CT slices found in the provided directory.")
 
-    _check_only_one_ct_series(ct_slice_datasets)
-    _check_all_slices_aligned(ct_slice_datasets)
+    preprocessed_data = preprocess_ct_slice_datasets(ct_slice_datasets)
 
-    ct_slice_datasets.sort(key=lambda ds: ds.ImagePositionPatient[2])
+    _check_only_one_ct_series(preprocessed_data)
+    _check_all_slices_aligned(preprocessed_data)
 
-    num_slices = len(ct_slice_datasets)
-    height = ct_slice_datasets[0].Rows
-    width = ct_slice_datasets[0].Columns
+    preprocessed_data.sort(key=lambda data: data["ImagePositionPatient"][2])
 
-    # Define the memmap file path relative to the directory
+    num_slices = len(preprocessed_data)
+    height = preprocessed_data[0]["Rows"]
+    width = preprocessed_data[0]["Columns"]
+
     memmap_path = dirpath / memmap_file
 
-    # If the memmap file doesn't exist, create it
     if not memmap_path.exists():
-        # Initialize the volume array
-        volume = np.zeros((num_slices, height, width), dtype=np.int16)
-        for i, ds in enumerate(ct_slice_datasets):
-            volume[i, :, :] = ds.pixel_array * ds.RescaleSlope + ds.RescaleIntercept
-        # Save to memmap file
-        volume.tofile(memmap_path)
-        del volume  # Ensure it's written to disk
+        memmap = np.memmap(
+            memmap_path, dtype=np.int16, mode="w+", shape=(num_slices, height, width)
+        )
+        for i, data in enumerate(preprocessed_data):
+            memmap[i, :, :] = (
+                data["PixelArray"] * data["RescaleSlope"] + data["RescaleIntercept"]
+            )
+        memmap.flush()
+    else:
+        memmap = np.memmap(
+            memmap_path, dtype=np.int16, mode="r", shape=(num_slices, height, width)
+        )
 
-    # Create a memory map of the file
-    memmap = np.memmap(
-        memmap_path, dtype=np.int16, mode="r", shape=(num_slices, height, width)
-    )
-
-    # Retrieve metadata from the first slice
-    first_ds = ct_slice_datasets[0]
+    first_data = preprocessed_data[0]
     pixel_min = memmap.min()
     pixel_max = memmap.max()
 
-    if hasattr(first_ds, "WindowCenter"):
-        wl_default = int(first_ds.WindowCenter)
-    else:
-        wl_default = int((pixel_min + pixel_max) / 2)
-
-    if hasattr(first_ds, "WindowWidth"):
-        ww_default = int(first_ds.WindowWidth)
-    else:
-        ww_default = int(pixel_max - pixel_min)
+    wl_default = int(first_data.get("WindowCenter", DEFAULT_WINDOW_LEVEL))
+    ww_default = int(first_data.get("WindowWidth", DEFAULT_WINDOW_WIDTH))
 
     X, Y = compute_patient_coordinates(
         height,
         width,
-        first_ds.ImagePositionPatient,
-        first_ds.ImageOrientationPatient,
-        first_ds.PixelSpacing,
+        first_data["ImagePositionPatient"],
+        first_data["ImageOrientationPatient"],
+        first_data["PixelSpacing"],
     )
 
     ct_headers = [
         {
-            "ipp": ds.ImagePositionPatient,
-            "iop": ds.ImageOrientationPatient,
-            "spacing": ds.PixelSpacing,
+            "ipp": data["ImagePositionPatient"],
+            "iop": data["ImageOrientationPatient"],
+            "spacing": data["PixelSpacing"],
         }
-        for ds in ct_slice_datasets
+        for data in preprocessed_data
     ]
 
     return memmap, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=True, persist=True)
 def load_rt_structures(fpath):
+    """
+    Load RT structures and cache based on the file path.
+    """
     ds = pydicom.dcmread(fpath)
     if ds.Modality != "RTSTRUCT":
         raise ValueError("File is not an RTSTRUCT DICOM file")
@@ -150,6 +175,7 @@ def load_rt_structures(fpath):
     roi_nums_to_names = {
         roi.ROINumber: roi.ROIName for roi in ds.StructureSetROISequence
     }
+
     for roi_contour in ds.ROIContourSequence:
         if not hasattr(roi_contour, "ContourSequence"):
             continue
@@ -168,6 +194,28 @@ def load_rt_structures(fpath):
                 "Number": roi_contour.ReferencedROINumber,
             }
     return structures
+
+
+def preprocess_contours(structures):
+    """
+    Precompute which contours belong to each Z-coordinate.
+
+    Args:
+        structures (dict): RT structure data.
+
+    Returns:
+        dict: Mapping of Z-coordinate to contours for each structure.
+    """
+    contour_map = {}
+    for structure_name, structure_data in structures.items():
+        for contour in structure_data["Contours"]:
+            contour_z = contour[:, 2]
+            unique_z = np.unique(contour_z)
+            for z in unique_z:
+                if z not in contour_map:
+                    contour_map[z] = []
+                contour_map[z].append((structure_name, contour))
+    return contour_map
 
 
 def window_image(img, ww, wl):
@@ -191,51 +239,45 @@ def create_structure_legend(structures):
     return legend_html
 
 
-# Define the directory containing DICOM files
-TEST_DIRPATH = pathlib.Path(
-    r"C:\Users\matth\Workspace\SlicerRtData\aria-phantom-contours-branching"
-)
-rtstruct_path = TEST_DIRPATH / "RS.PYTIM05_.dcm"
+def initialize_base_figure(
+    ct_image, ct_headers, X, Y, initial_slice_idx, wl_default, ww_default, structures
+):
+    """
+    Initialize and cache the base figure for the CT viewer.
 
-# Load data (memmapped volume)
-ct_image, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default = (
-    load_ct_as_memmap(TEST_DIRPATH)
-)
-structures = load_rt_structures(rtstruct_path)
+    Args:
+        ct_image (np.ndarray): The CT image data.
+        ct_headers (list): Headers containing metadata for each slice.
+        X (np.ndarray): X coordinates of the image grid.
+        Y (np.ndarray): Y coordinates of the image grid.
+        initial_slice_idx (int): Index of the initial slice.
+        wl_default (int): Default window level.
+        ww_default (int): Default window width.
+        structures (dict): RT structure data.
 
-num_slices, height, width = ct_image.shape
-
-# Extract all unique Z coordinates
-z_coords = np.array([header["ipp"][2] for header in ct_headers])
-
-# Compute Heatmap parameters based on the first slice
-x0 = X[0, 0]
-dx = X[0, 1] - X[0, 0]
-y0 = Y[0, 0]
-dy = Y[1, 0] - Y[0, 0]
-
-# Initialize the figure in session state if not already present
-if "base_figure" not in st.session_state:
-    # Default to the middle slice
-    initial_slice_idx = num_slices // 2
-    initial_wl = wl_default
-    initial_ww = ww_default
-
+    Returns:
+        go.Figure: The initialized Plotly figure.
+    """
+    height, width = ct_image.shape[1:]
     slice_image = ct_image[initial_slice_idx, :, :]
-    windowed_img = window_image(slice_image, initial_ww, initial_wl)
-    img_min = initial_wl - (initial_ww / 2)
-    img_max = initial_wl + (initial_ww / 2)
+    windowed_img = window_image(slice_image, ww_default, wl_default)
+    img_min = wl_default - (ww_default / 2)
+    img_max = wl_default + (ww_default / 2)
 
-    # Retrieve the corresponding Z coordinate
     slice_z = ct_headers[initial_slice_idx]["ipp"][2]
 
-    # Initialize the Heatmap with the first slice
+    # Compute heatmap parameters
+    x0 = X[0, 0]
+    dx = X[0, 1] - X[0, 0]
+    y0 = Y[0, 0]
+    dy = Y[1, 0] - Y[0, 0]
+
     fig = go.Figure()
     heatmap = go.Heatmap(
         z=windowed_img,
         colorscale="gray",
         hovertemplate="HU: %{z}<extra></extra>",
-        showscale=False,  # Hide the main color scale
+        showscale=False,
         x0=x0,
         dx=dx,
         y0=y0,
@@ -245,36 +287,17 @@ if "base_figure" not in st.session_state:
     )
     fig.add_trace(heatmap)
 
-    # Add initial contours
-    for structure_name, structure_data in structures.items():
-        contours = structure_data["Contours"]
-        colour = structure_data["Colour"]
-        for contour in contours:
-            contour_z = contour[:, 2]
-            if np.allclose(contour_z, slice_z, atol=0.1):
-                x = contour[:, 0]
-                y = contour[:, 1]
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=y,
-                        mode="lines",
-                        line=dict(color=colour, width=2),
-                        name=structure_name,
-                        showlegend=False,  # Disable legend in the main plot
-                        hoverinfo="skip",
-                    )
-                )
+    # Removed initial contour addition to allow dynamic toggling via checkboxes
 
     fig.update_layout(
         title=f"Z = {slice_z:.2f} mm (Slice {initial_slice_idx})",
-        margin=dict(l=10, r=10, b=10, t=40),  # Reduced margins
+        margin=dict(l=10, r=10, b=10, t=40),
         height=800,
-        plot_bgcolor="rgba(0,0,0,0)",  # Transparent plot background
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent paper background
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
     )
 
-    # Set axes based on patient coordinates (fixed scales)
+    # Set fixed aspect ratio for axes
     fig.update_xaxes(
         range=[x0, x0 + dx * width],
         scaleanchor="y",
@@ -284,8 +307,6 @@ if "base_figure" not in st.session_state:
         showline=True,
         linecolor="black",
         linewidth=1,
-        showticklabels=True,  # Enable tick labels if desired
-        ticks="inside",  # Place ticks inside for tightness
     )
     fig.update_yaxes(
         range=[y0 + dy * height, y0],
@@ -295,119 +316,181 @@ if "base_figure" not in st.session_state:
         showline=True,
         linecolor="black",
         linewidth=1,
-        showticklabels=True,  # Enable tick labels if desired
-        ticks="inside",  # Place ticks inside for tightness
     )
 
-    # Optionally, add axis titles as annotations to keep margins tight
-    fig.add_annotation(
-        x=x0 + dx * width / 2,
-        y=y0 - dy * 0.5,  # Adjust y position as needed
-        text="Patient X (mm)",
-        showarrow=False,
-        font=dict(size=12),
+    return fig
+
+
+def update_figure(
+    fig,
+    ct_image,
+    slice_idx,
+    wl,
+    ww,
+    ct_headers,
+    structures,
+    contour_map,
+    selected_structures,
+):
+    """
+    Update the existing figure with new data based on user inputs.
+
+    Args:
+        fig (go.Figure): The existing Plotly figure.
+        ct_image (np.ndarray): The CT image data.
+        slice_idx (int): Index of the selected slice.
+        wl (int): Window level.
+        ww (int): Window width.
+        ct_headers (list): Headers containing metadata for each slice.
+        structures (dict): RT structure data.
+        contour_map (dict): Precomputed mapping of contours to Z-coordinates.
+        selected_structures (list): List of structure names to display.
+
+    Returns:
+        go.Figure: The updated Plotly figure.
+    """
+    slice_image = ct_image[slice_idx, :, :]
+    windowed_img = window_image(slice_image, ww, wl)
+    img_min = wl - (ww / 2)
+    img_max = wl + (ww / 2)
+
+    # Update heatmap trace
+    fig.data[0].z = windowed_img
+    fig.data[0].zmin = img_min
+    fig.data[0].zmax = img_max
+
+    # Update the title
+    slice_z = ct_headers[slice_idx]["ipp"][2]
+    fig.update_layout(title=f"Z = {slice_z:.2f} mm (Slice {slice_idx})")
+
+    # Remove existing contour traces
+    fig.data = tuple(
+        trace
+        for trace in fig.data
+        if not (isinstance(trace, go.Scatter) and trace.name in structures.keys())
     )
 
-    fig.add_annotation(
-        x=x0 - dx * 0.5,  # Adjust x position as needed
-        y=y0 + dy * height / 2,
-        text="Patient Y (mm)",
-        showarrow=False,
-        font=dict(size=12),
-        textangle=-90,
-    )
+    # Add new contour traces for the selected structures
+    if slice_z in contour_map:
+        for structure_name, contour in contour_map[slice_z]:
+            if structure_name in selected_structures:
+                x, y = contour[:, 0], contour[:, 1]
+                colour = structures[structure_name]["Colour"]
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=y,
+                        mode="lines",
+                        line=dict(color=colour, width=2),
+                        name=structure_name,
+                        showlegend=False,  # Legend is handled within checkboxes
+                        hoverinfo="skip",
+                    )
+                )
 
-    st.session_state.base_figure = fig
+    return fig
+
+
+# Sidebar to upload DICOM directory and RTSTRUCT file
+dicom_dir = st.sidebar.text_input("Enter DICOM directory path")
+rtstruct_file = st.sidebar.text_input("Enter RTSTRUCT file path")
+
+if pathlib.Path(dicom_dir).exists() and pathlib.Path(rtstruct_file).exists():
+    ct_image, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default = (
+        load_ct_as_memmap(pathlib.Path(dicom_dir))
+    )
+    structures = load_rt_structures(pathlib.Path(rtstruct_file))
+    contour_map = preprocess_contours(structures)
 else:
-    fig = st.session_state.base_figure
+    st.error("Invalid directory or RTSTRUCT file path.")
+    st.stop()
 
-# User controls in the sidebar
+num_slices, height, width = ct_image.shape
+
+# Sidebar controls for dynamic updates
 with st.sidebar:
     st.header("Controls")
-    # Slider to select Z coordinate
-    min_z = z_coords.min()
-    max_z = z_coords.max()
-    step_z = np.abs(z_coords[1] - z_coords[0]) if num_slices > 1 else 1
 
-    selected_z = st.slider(
-        label="Select Z Coordinate (Slice Index: )",
-        min_value=float(min_z),
-        max_value=float(max_z),
-        value=float(z_coords[num_slices // 2]),
-        step=float(step_z),
+    # Slider to select Z coordinate
+    slice_idx = st.slider(
+        "Slice Index",
+        min_value=0,
+        max_value=num_slices - 1,
+        value=num_slices // 2,
+        step=1,
     )
 
-    # Find the closest slice index to the selected Z coordinate
-    slice_idx = np.argmin(np.abs(z_coords - selected_z))
-    closest_z = z_coords[slice_idx]
-
+    # Sliders for window level and width
     wl = st.slider(
         "Window Level (WL)",
         min_value=int(pixel_min),
         max_value=int(pixel_max),
-        value=int(wl_default),
-        step=1,
+        value=wl_default,
     )
-
     ww = st.slider(
         "Window Width (WW)",
         min_value=1,
         max_value=int(pixel_max - pixel_min),
-        value=int(ww_default),
-        step=1,
+        value=ww_default,
     )
 
-    st.markdown("---")  # Separator
-    # Display the structure legend
-    legend_html = create_structure_legend(structures)
-    st.markdown(legend_html, unsafe_allow_html=True)
+    # Add checkboxes for each structure to toggle visibility with color indicators
+    st.markdown("---")
+    st.subheader("Toggle Structures")
+    selected_structures = []
+    for structure_name, structure_data in structures.items():
+        # Create two columns: one for color box, one for checkbox
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            color = structure_data["Colour"]
+            # Create a colored square using HTML and CSS
+            st.markdown(
+                f"""
+                <div style="
+                    width: 20px;
+                    height: 20px;
+                    background-color: {color};
+                    border: 1px solid #000;
+                    border-radius: 3px;
+                "></div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col2:
+            # Checkbox with the structure name
+            if st.checkbox(structure_name, value=True, key=structure_name):
+                selected_structures.append(structure_name)
 
-    st.markdown("---")  # Separator
-    # Display current slice information
-    st.markdown(f"**Current Slice:** {slice_idx} (Z = {closest_z:.2f} mm)")
+    # Removed separate legend as colors are now integrated with checkboxes
+    st.markdown("---")
 
-# Update the Heatmap and Contours based on user input
-slice_image = ct_image[slice_idx, :, :]
-windowed_img = window_image(slice_image, ww, wl)
-img_min = wl - (ww / 2)
-img_max = wl + (ww / 2)
 
-# Update Heatmap data
-fig.data[0].z = windowed_img
-fig.data[0].zmin = img_min
-fig.data[0].zmax = img_max
+# Initialize the figure once
+if "base_figure" not in st.session_state:
+    initial_slice_idx = ct_image.shape[0] // 2
+    st.session_state.base_figure = initialize_base_figure(
+        ct_image,
+        ct_headers,
+        X,
+        Y,
+        initial_slice_idx,
+        wl_default,
+        ww_default,
+        structures,
+    )
 
-# Update the plot title to include Z coordinate and slice index
-fig.update_layout(title=f"Z = {closest_z:.2f} mm (Slice {slice_idx})")
-
-# Remove old contour traces
-fig.data = tuple(
-    trace
-    for trace in fig.data
-    if not (isinstance(trace, go.Scatter) and trace.name in structures.keys())
+# Update the figure based on user inputs, including selected structures
+updated_fig = update_figure(
+    st.session_state.base_figure,
+    ct_image,
+    slice_idx,
+    wl,
+    ww,
+    ct_headers,
+    structures,
+    contour_map,
+    selected_structures,  # Pass the selected structures to the update function
 )
 
-# Add new contour traces for the selected slice
-current_z = ct_headers[slice_idx]["ipp"][2]
-for structure_name, structure_data in structures.items():
-    contours = structure_data["Contours"]
-    colour = structure_data["Colour"]
-    for contour in contours:
-        contour_z = contour[:, 2]
-        if np.allclose(contour_z, current_z, atol=0.1):
-            x = contour[:, 0]
-            y = contour[:, 1]
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="lines",
-                    line=dict(color=colour, width=2),
-                    name=structure_name,
-                    showlegend=False,  # Disable legend in the main plot
-                    hoverinfo="skip",
-                )
-            )
-
-# Display the main figure
-st.plotly_chart(fig, use_container_width=True, height=800)
+# Display the updated figure
+st.plotly_chart(updated_fig, use_container_width=True, height=800)
