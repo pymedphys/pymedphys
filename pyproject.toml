@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.41.0-dev0"
+version = "0.41.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = ["PyMedPhys Contributors <developers@pymedphys.com>"]
@@ -101,8 +101,10 @@ flashgamma = { version = "*", optional = true } # groups = ["comparables"]
 sphinx-argparse = { version = "*", optional = true } # groups = ["all", "docs"]
 # sphinx-ext-napoleon = { version = "*", optional = true }  # groups = ["all", "docs"]
 sphinx-book-theme = { version = "*", optional = true }   # groups = ["all", "docs", "doctests"]
-jupyter-book = { version = ">=0.12.0", optional = true } # groups = ["all", "docs"]
 networkx = { version = "*", optional = true }            # groups = ["all", "docs"]
+
+# v2.x is in alpha, and breaks the docs build at time of writing.
+jupyter-book = { version = ">=0.12.0 <2.0.0", optional = true } # groups = ["all", "docs"]
 
 # ----- #
 # Tests #
@@ -266,6 +268,9 @@ user = [
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"
+
+[tool.poetry.group.dev.dependencies]
+sphinx-external-toc = "^1.0.1"
 
 [tool.ruff.lint]
 # These were the existing issues when first migrating to ruff, we can feel
