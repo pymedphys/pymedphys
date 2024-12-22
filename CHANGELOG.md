@@ -7,7 +7,9 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.41.0]
+
+### New features and enhancements
 
 - PyMedPhys now includes its own custom, `numba`-accelerated implementation of
   multilinear interpolation. You can find the technical reference [here](https://docs.pymedphys.com/lib/ref/interp.html).
@@ -18,13 +20,17 @@ This project adheres to
     - At the time of writing, EconForge's `interplation` appears incompatible
       with `numba>=0.60`.
     - Removing an additional dependency (namely, EconForge's `interpolation`)
-      is generally better for maintenance, all else equal.
-- After updating scipy to the 1.11 series or higher the electron factors
-  algorithm's baselines have changed without any code changes.
-  Changes in baseline have been observed to be on the order of ~0.5%,
-  but this is no guarantee that changes are not higher than this. If you do use
-  this algorithm please compare current results with previously known results
-  and report any large deviations [here](https://github.com/pymedphys/pymedphys/issues/1858)
+      is generally better for maintenance, holding all else equal.
+
+### (Potentially) breaking changes.
+
+- **WARNING**: Updating to `scipy >= 1.11` introduced changes to test baselines for the
+  electron factors algorithm. This occurred without any `pymedphys` code changes.
+  Changes in baseline on the order of ~0.5% have been observed to be, but we
+  cannot guarantee that changes in a given electron factor calculation do not
+  exceed 0.5%. If you do use this algorithm, we strongly recommend that you
+  compare current results with previously known results and report any large
+  deviations [here](https://github.com/pymedphys/pymedphys/issues/1858)
 
 ## [0.40.0]
 
