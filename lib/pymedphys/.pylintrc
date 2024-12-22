@@ -43,6 +43,9 @@ disable =
     possibly-used-before-assignment,
     useless-import-alias,
 
+[DESIGN]
+max-positional-arguments=20
+
 [FORMAT]
 max-line-length=88
 extension-pkg-whitelist =
