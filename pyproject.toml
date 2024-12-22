@@ -99,6 +99,7 @@ flashgamma = { version = "*", optional = true } # groups = ["comparables"]
 # Documentation #
 # ------------- #
 sphinx-argparse = { version = "*", optional = true } # groups = ["all", "docs"]
+sphinx-external-toc = { version = "^1.0.1", optional = true } # groups = ["all", "docs"]
 # sphinx-ext-napoleon = { version = "*", optional = true }  # groups = ["all", "docs"]
 sphinx-book-theme = { version = "*", optional = true }   # groups = ["all", "docs", "doctests"]
 networkx = { version = "*", optional = true }            # groups = ["all", "docs"]
@@ -269,8 +270,7 @@ user = [
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"
 
-[tool.poetry.group.dev.dependencies]
-sphinx-external-toc = "^1.0.1"
+
 
 [tool.ruff.lint]
 # These were the existing issues when first migrating to ruff, we can feel
