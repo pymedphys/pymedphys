@@ -6,6 +6,7 @@ import numpy as np
 import pydicom
 import plotly.graph_objects as go
 import streamlit as st
+from dataclasses import dataclass
 
 st.set_page_config(layout="wide")
 
@@ -15,9 +16,36 @@ DEFAULT_WINDOW_LEVEL: int = 0
 DEFAULT_WINDOW_WIDTH: int = 500
 
 
+@dataclass
+class CTSlice:
+    SeriesInstanceUID: str
+    ImagePositionPatient: Tuple[float, float, float]
+    ImageOrientationPatient: Tuple[float, float, float, float, float, float]
+    PixelSpacing: Tuple[float, float]
+    Rows: int
+    Columns: int
+    PixelArray: np.ndarray
+    RescaleSlope: float = 1.0
+    RescaleIntercept: float = 0.0
+    WindowCenter: int = 0
+    WindowWidth: int = 500
+    BitsStored: int = 16
+
+    def __post_init__(self):
+        assert self.Rows > 0, "Rows must be positive."
+        assert self.Columns > 0, "Columns must be positive."
+        assert (
+            len(self.ImagePositionPatient) == 3
+        ), "ImagePositionPatient must be a 3-tuple."
+        assert (
+            len(self.ImageOrientationPatient) == 6
+        ), "ImageOrientationPatient must be a 6-tuple."
+        assert len(self.PixelSpacing) == 2, "PixelSpacing must be a 2-tuple."
+
+
 def preprocess_ct_slice_datasets(
     ct_slice_datasets: Sequence[pydicom.dataset.FileDataset],
-) -> List[Dict[str, Any]]:
+) -> List[CTSlice]:
     """
     Preprocess and extract necessary attributes from CT slice datasets.
 
@@ -25,7 +53,7 @@ def preprocess_ct_slice_datasets(
         ct_slice_datasets (Sequence[pydicom.dataset.FileDataset]): Sequence of DICOM datasets representing CT slices.
 
     Returns:
-        List[Dict[str, Any]]: A list of dictionaries containing preprocessed CT slice data.
+        List[CTSlice]: A list of CTSlice dataclass instances containing preprocessed CT slice data.
 
     Raises:
         ValueError: If no valid CT slices are found after preprocessing.
@@ -33,22 +61,20 @@ def preprocess_ct_slice_datasets(
     preprocessed_data = []
     for idx, ds in enumerate(ct_slice_datasets):
         try:
-            preprocessed_slice = {
-                "SeriesInstanceUID": ds.SeriesInstanceUID,
-                "ImagePositionPatient": tuple(ds.ImagePositionPatient),
-                "ImageOrientationPatient": tuple(ds.ImageOrientationPatient),
-                "PixelSpacing": tuple(ds.PixelSpacing),
-                "Rows": ds.Rows,
-                "Columns": ds.Columns,
-                "PixelArray": ds.pixel_array,
-                "RescaleSlope": float(getattr(ds, "RescaleSlope", 1.0)),
-                "RescaleIntercept": float(getattr(ds, "RescaleIntercept", 0.0)),
-                "WindowCenter": float(
-                    getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL)
-                ),
-                "WindowWidth": float(getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH)),
-                "BitsStored": int(getattr(ds, "BitsStored", 16)),
-            }
+            preprocessed_slice = CTSlice(
+                SeriesInstanceUID=ds.SeriesInstanceUID,
+                ImagePositionPatient=tuple(ds.ImagePositionPatient),
+                ImageOrientationPatient=tuple(ds.ImageOrientationPatient),
+                PixelSpacing=tuple(ds.PixelSpacing),
+                Rows=ds.Rows,
+                Columns=ds.Columns,
+                PixelArray=ds.pixel_array,  # Keep original dtype
+                RescaleSlope=float(getattr(ds, "RescaleSlope", 1.0)),
+                RescaleIntercept=float(getattr(ds, "RescaleIntercept", 0.0)),
+                WindowCenter=float(getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL)),
+                WindowWidth=float(getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH)),
+                BitsStored=int(getattr(ds, "BitsStored", 16)),
+            )
             preprocessed_data.append(preprocessed_slice)
         except AttributeError as e:
             st.warning(
@@ -59,48 +85,48 @@ def preprocess_ct_slice_datasets(
     return preprocessed_data
 
 
-def check_only_one_ct_series(preprocessed_data: Sequence[Dict[str, Any]]) -> None:
+def check_only_one_ct_series(preprocessed_data: Sequence[CTSlice]) -> None:
     """
     Ensure all CT slices belong to the same series.
 
     Args:
-        preprocessed_data (Sequence[Dict[str, Any]]): Preprocessed CT slice data.
+        preprocessed_data (Sequence[CTSlice]): Preprocessed CT slice data.
 
     Raises:
         ValueError: If CT slices belong to different SeriesInstanceUIDs.
     """
-    series_uid = preprocessed_data[0]["SeriesInstanceUID"]
+    series_uid = preprocessed_data[0].SeriesInstanceUID
     for idx, data in enumerate(preprocessed_data[1:], start=2):
-        if data["SeriesInstanceUID"] != series_uid:
+        if data.SeriesInstanceUID != series_uid:
             raise ValueError(
                 f"CT slice {idx} has a different SeriesInstanceUID. All slices must belong to the same series."
             )
 
 
-def check_all_slices_aligned(preprocessed_data: Sequence[Dict[str, Any]]) -> None:
+def check_all_slices_aligned(preprocessed_data: Sequence[CTSlice]) -> None:
     """
     Ensure all CT slices are aligned in position, orientation, and spacing.
 
     Args:
-        preprocessed_data (Sequence[Dict[str, Any]]): Preprocessed CT slice data.
+        preprocessed_data (Sequence[CTSlice]): Preprocessed CT slice data.
 
     Raises:
         ValueError: If CT slices are misaligned in position, orientation, or spacing.
     """
-    ref_position = preprocessed_data[0]["ImagePositionPatient"][:2]
-    ref_orientation = preprocessed_data[0]["ImageOrientationPatient"]
-    ref_spacing = preprocessed_data[0]["PixelSpacing"]
+    ref_position = preprocessed_data[0].ImagePositionPatient[:2]
+    ref_orientation = preprocessed_data[0].ImageOrientationPatient
+    ref_spacing = preprocessed_data[0].PixelSpacing
 
     for idx, data in enumerate(preprocessed_data[1:], start=2):
-        if data["ImagePositionPatient"][:2] != ref_position:
+        if data.ImagePositionPatient[:2] != ref_position:
             raise ValueError(
                 f"CT slice {idx} has a different ImagePositionPatient. All slices must be aligned."
             )
-        if data["ImageOrientationPatient"] != ref_orientation:
+        if data.ImageOrientationPatient != ref_orientation:
             raise ValueError(
                 f"CT slice {idx} has a different ImageOrientationPatient. All slices must have the same orientation."
             )
-        if data["PixelSpacing"] != ref_spacing:
+        if data.PixelSpacing != ref_spacing:
             raise ValueError(
                 f"CT slice {idx} has a different PixelSpacing. All slices must have the same pixel spacing."
             )
@@ -210,16 +236,16 @@ def load_ct_as_memmap(
     check_all_slices_aligned(preprocessed_data)
 
     # Sort slices based on ImagePositionPatient Z-coordinate
-    preprocessed_data.sort(key=lambda data: data["ImagePositionPatient"][2])
+    preprocessed_data.sort(key=lambda data: data.ImagePositionPatient[2])
 
     num_slices = len(preprocessed_data)
-    height = preprocessed_data[0]["Rows"]
-    width = preprocessed_data[0]["Columns"]
+    height = preprocessed_data[0].Rows
+    width = preprocessed_data[0].Columns
 
     memmap_path = dirpath / memmap_file
 
     # Determine dtype based on BitsStored
-    bits_stored_set = set(slice_data["BitsStored"] for slice_data in preprocessed_data)
+    bits_stored_set = set(slice_data.BitsStored for slice_data in preprocessed_data)
     if len(bits_stored_set) > 1:
         raise ValueError("CT slices have differing BitsStored values.")
 
@@ -227,8 +253,10 @@ def load_ct_as_memmap(
 
     if bits_stored <= 16:
         dtype = np.int16
+        st.info(f"Selected dtype: {dtype} based on BitsStored={bits_stored}")
     else:
-        dtype = np.int32
+        dtype = np.float32
+        st.info(f"Selected dtype: {dtype} based on BitsStored={bits_stored}")
 
     if not memmap_path.exists():
         try:
@@ -240,13 +268,11 @@ def load_ct_as_memmap(
             )
             for i, data in enumerate(preprocessed_data):
                 # Rescale the pixel data
-                rescaled = (
-                    data["PixelArray"] * data["RescaleSlope"] + data["RescaleIntercept"]
-                )
+                rescaled = data.PixelArray * data.RescaleSlope + data.RescaleIntercept
                 if dtype == np.int16:
                     rescaled = rescaled.astype(np.int16)
                 elif dtype == np.float32:
-                    rescaled = rescaled.astype(np.int32)
+                    rescaled = rescaled.astype(np.float32)
                 memmap[i, :, :] = rescaled
             memmap.flush()
             st.info(f"CT volume data saved to {memmap_path}.")
@@ -268,16 +294,16 @@ def load_ct_as_memmap(
     pixel_min = float(memmap.min())
     pixel_max = float(memmap.max())
 
-    wl_default = int(first_data.get("WindowCenter", DEFAULT_WINDOW_LEVEL))
-    ww_default = int(first_data.get("WindowWidth", DEFAULT_WINDOW_WIDTH))
+    wl_default = int(first_data.WindowCenter)
+    ww_default = int(first_data.WindowWidth)
 
     try:
         X, Y = compute_patient_coordinates(
             height,
             width,
-            first_data["ImagePositionPatient"],
-            first_data["ImageOrientationPatient"],
-            first_data["PixelSpacing"],
+            first_data.ImagePositionPatient,
+            first_data.ImageOrientationPatient,
+            first_data.PixelSpacing,
         )
     except Exception as e:
         raise RuntimeError(f"Failed to compute patient coordinates: {e}") from e
@@ -287,9 +313,9 @@ def load_ct_as_memmap(
         try:
             ct_headers.append(
                 {
-                    "ipp": data["ImagePositionPatient"],
-                    "iop": data["ImageOrientationPatient"],
-                    "spacing": data["PixelSpacing"],
+                    "ipp": data.ImagePositionPatient,
+                    "iop": data.ImageOrientationPatient,
+                    "spacing": data.PixelSpacing,
                 }
             )
         except Exception as e:
