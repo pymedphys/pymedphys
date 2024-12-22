@@ -40,13 +40,14 @@ def preprocess_ct_slice_datasets(
                 "PixelSpacing": tuple(ds.PixelSpacing),
                 "Rows": ds.Rows,
                 "Columns": ds.Columns,
-                "PixelArray": ds.pixel_array.astype(np.float32),
+                "PixelArray": ds.pixel_array,
                 "RescaleSlope": float(getattr(ds, "RescaleSlope", 1.0)),
                 "RescaleIntercept": float(getattr(ds, "RescaleIntercept", 0.0)),
                 "WindowCenter": float(
                     getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL)
                 ),
                 "WindowWidth": float(getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH)),
+                "BitsStored": int(getattr(ds, "BitsStored", 16)),
             }
             preprocessed_data.append(preprocessed_slice)
         except AttributeError as e:
@@ -217,18 +218,36 @@ def load_ct_as_memmap(
 
     memmap_path = dirpath / memmap_file
 
+    # Determine dtype based on BitsStored
+    bits_stored_set = set(slice_data["BitsStored"] for slice_data in preprocessed_data)
+    if len(bits_stored_set) > 1:
+        raise ValueError("CT slices have differing BitsStored values.")
+
+    bits_stored = bits_stored_set.pop()
+
+    if bits_stored <= 16:
+        dtype = np.int16
+    else:
+        dtype = np.int32
+
     if not memmap_path.exists():
         try:
             memmap = np.memmap(
                 memmap_path,
-                dtype=np.float32,
+                dtype=dtype,
                 mode="w+",
                 shape=(num_slices, height, width),
             )
             for i, data in enumerate(preprocessed_data):
-                memmap[i, :, :] = (
+                # Rescale the pixel data
+                rescaled = (
                     data["PixelArray"] * data["RescaleSlope"] + data["RescaleIntercept"]
                 )
+                if dtype == np.int16:
+                    rescaled = rescaled.astype(np.int16)
+                elif dtype == np.float32:
+                    rescaled = rescaled.astype(np.int32)
+                memmap[i, :, :] = rescaled
             memmap.flush()
             st.info(f"CT volume data saved to {memmap_path}.")
         except Exception as e:
@@ -237,7 +256,7 @@ def load_ct_as_memmap(
         try:
             memmap = np.memmap(
                 memmap_path,
-                dtype=np.float32,
+                dtype=dtype,
                 mode="r",
                 shape=(num_slices, height, width),
             )
