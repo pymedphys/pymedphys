@@ -12,25 +12,27 @@ This project adheres to
 ### New features and enhancements
 
 - PyMedPhys now includes its own custom, `numba`-accelerated implementation of
-  multilinear interpolation. You can find the technical reference [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  multilinear interpolation. You can find the technical reference
+  [here](https://docs.pymedphys.com/lib/ref/interp.html).
   This was implemented for the following reasons:
     - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
      `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
       the technical reference page for a performance comparison.
-    - At the time of writing, EconForge's `interplation` appears incompatible
+    - At the time of writing, EconForge's `interpolation` appears incompatible
       with `numba>=0.60`.
     - Removing an additional dependency (namely, EconForge's `interpolation`)
       is generally better for maintenance, holding all else equal.
 
 ### (Potentially) breaking changes.
 
-- **WARNING**: Updating to `scipy >= 1.11` introduced changes to test baselines for the
-  electron factors algorithm. This occurred without any `pymedphys` code changes.
-  Changes in baseline on the order of ~0.5% have been observed to be, but we
-  cannot guarantee that changes in a given electron factor calculation do not
-  exceed 0.5%. If you do use this algorithm, we strongly recommend that you
-  compare current results with previously known results and report any large
-  deviations [here](https://github.com/pymedphys/pymedphys/issues/1858)
+- **WARNING**: Updating to `scipy >= 1.11` introduced changes to test
+  baselines for the electron factors algorithm. This occurred without any
+  `pymedphys` code changes. Changes in baseline on the order of ~0.5% have
+  been observed to be, but we cannot guarantee that changes in a given
+  electron factor calculation do not exceed 0.5%. If you do use this
+  algorithm, we strongly recommend that you compare current results with
+  previously known results and report any large deviations
+  [here](https://github.com/pymedphys/pymedphys/issues/1858)
 
 ## [0.40.0]
 
