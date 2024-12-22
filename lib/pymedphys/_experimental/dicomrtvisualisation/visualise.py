@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
 
-st.title("Interactive CT Slice Viewer")
+st.title("Interactive DICOM RT Viewer")
 
 DEFAULT_WINDOW_LEVEL = 0
 DEFAULT_WINDOW_WIDTH = 500
@@ -78,20 +78,10 @@ def compute_patient_coordinates(
 ):
     """
     Compute patient coordinates efficiently using matrix multiplication.
-
-    Args:
-        height (int): Number of rows in the image.
-        width (int): Number of columns in the image.
-        ipp (tuple): Image Position Patient (3D coordinates of the first pixel).
-        iop (tuple): Image Orientation Patient (cosines of row and column axes).
-        pixel_spacing (tuple): Spacing between pixels (row spacing, column spacing).
-
-    Returns:
-        tuple: X, Y coordinate arrays of shape (height, width).
     """
-    ipp = np.array(ipp)
-    iop = np.array(iop).reshape(2, 3)  # Reshape to 2x3 matrix (row_cosine, col_cosine)
-    pixel_spacing = np.array(pixel_spacing)
+    ipp = np.array(ipp, dtype=np.float32)  # Use float32 for memory efficiency
+    iop = np.array(iop, dtype=np.float32).reshape(2, 3)
+    pixel_spacing = np.array(pixel_spacing, dtype=np.float32)
 
     # Scale row and column cosines by pixel spacing
     try:
@@ -99,8 +89,12 @@ def compute_patient_coordinates(
     except ValueError as e:
         raise ValueError(f"Error in scaling IOP with Pixel Spacing: {e}") from e
 
-    # Create meshgrid of pixel indices
-    jj, ii = np.meshgrid(np.arange(width), np.arange(height), indexing="xy")
+    # Create meshgrid of pixel indices once if they are consistent across slices
+    jj, ii = np.meshgrid(
+        np.arange(width, dtype=np.float32),
+        np.arange(height, dtype=np.float32),
+        indexing="xy",
+    )
 
     # Stack the pixel indices and compute physical coordinates
     indices = np.stack([jj.ravel(), ii.ravel()], axis=0)  # Shape: (2, height * width)
@@ -603,22 +597,35 @@ def update_figure(
 
     # Add new contour traces for the selected structures
     try:
-        if slice_z in contour_map:
-            for structure_name, contour in contour_map[slice_z]:
-                if structure_name in selected_structures:
-                    x, y = contour[:, 0], contour[:, 1]
-                    colour = structures[structure_name]["Colour"]
-                    fig.add_trace(
-                        go.Scatter(
-                            x=x,
-                            y=y,
-                            mode="lines",
-                            line=dict(color=colour, width=2),
-                            name=structure_name,
-                            showlegend=False,  # Legend is handled within checkboxes
-                            hoverinfo="skip",
-                        )
-                    )
+        for structure_name in selected_structures:
+            contours = [
+                contour
+                for (s, contour) in contour_map.get(slice_z, [])
+                if s == structure_name
+            ]
+            if not contours:
+                continue
+
+            x = []
+            y = []
+            for contour in contours:
+                x.extend(contour[:, 0])
+                y.extend(contour[:, 1])
+                x.append(None)  # Break between contours
+                y.append(None)
+
+            colour = structures[structure_name]["Colour"]
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=y,
+                    mode="lines",
+                    line=dict(color=colour, width=2),
+                    name=structure_name,
+                    showlegend=False,  # Legend is handled within checkboxes
+                    hoverinfo="skip",
+                )
+            )
     except Exception as e:
         st.error(f"Error adding contour traces: {e}")
 
@@ -630,16 +637,20 @@ def update_figure(
             dose_Y_slice = dose_Y.get(slice_idx)
 
             if dose_X_slice is not None and dose_Y_slice is not None:
-                # Normalize dose for colorscale
+                # Ensure dose_X_slice and dose_Y_slice are Numpy arrays
+                dose_X_slice = np.asarray(dose_X_slice, dtype=np.float32)
+                dose_Y_slice = np.asarray(dose_Y_slice, dtype=np.float32)
+
+                # Normalize dose using Numpy's efficient operations
                 dose_min = dose_slice.min()
                 dose_max = dose_slice.max()
                 normalized_dose = (
-                    (dose_slice - dose_min) / (dose_max - dose_min)
+                    np.clip((dose_slice - dose_min) / (dose_max - dose_min), 0, 1)
                     if dose_max > dose_min
                     else dose_slice
                 )
 
-                # Create a semi-transparent colorwash using Heatmap
+                # Use Numpy's array operations to prepare data for Plotly
                 dose_heatmap = go.Heatmap(
                     z=normalized_dose,
                     colorscale="Jet",
@@ -649,7 +660,7 @@ def update_figure(
                     dx=dose_X_slice[0, 1] - dose_X_slice[0, 0],
                     y0=dose_Y_slice[0, 0],
                     dy=dose_Y_slice[1, 0] - dose_Y_slice[0, 0],
-                    hovertemplate=f"Dose: %{{z:.2f}} {dose_units}<extra></extra>",
+                    hovertemplate=f"Dose: %{{z:.4f}} {dose_units}<extra></extra>",
                     name="Dose Overlay",
                 )
                 fig.add_trace(dose_heatmap)
