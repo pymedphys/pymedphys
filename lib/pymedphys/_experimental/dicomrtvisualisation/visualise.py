@@ -15,60 +15,76 @@ DEFAULT_WINDOW_WIDTH = 500
 def preprocess_ct_slice_datasets(ct_slice_datasets):
     """Preprocesses and caches common properties for CT slice datasets."""
     preprocessed_data = []
-    for ds in ct_slice_datasets:
-        preprocessed_data.append(
-            {
-                "SeriesInstanceUID": ds.SeriesInstanceUID,
-                "ImagePositionPatient": ds.ImagePositionPatient,
-                "ImageOrientationPatient": ds.ImageOrientationPatient,
-                "PixelSpacing": ds.PixelSpacing,
-                "Rows": ds.Rows,
-                "Columns": ds.Columns,
-                "PixelArray": ds.pixel_array,
-                "RescaleSlope": ds.RescaleSlope,
-                "RescaleIntercept": ds.RescaleIntercept,
-                "WindowCenter": getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL),
-                "WindowWidth": getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH),
-            }
-        )
+    for idx, ds in enumerate(ct_slice_datasets):
+        try:
+            preprocessed_data.append(
+                {
+                    "SeriesInstanceUID": ds.SeriesInstanceUID,
+                    "ImagePositionPatient": tuple(ds.ImagePositionPatient),
+                    "ImageOrientationPatient": tuple(ds.ImageOrientationPatient),
+                    "PixelSpacing": tuple(ds.PixelSpacing),
+                    "Rows": ds.Rows,
+                    "Columns": ds.Columns,
+                    "PixelArray": ds.pixel_array,
+                    "RescaleSlope": getattr(ds, "RescaleSlope", 1.0),
+                    "RescaleIntercept": getattr(ds, "RescaleIntercept", 0.0),
+                    "WindowCenter": getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL),
+                    "WindowWidth": getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH),
+                }
+            )
+        except AttributeError as e:
+            st.warning(
+                f"Missing attribute in CT slice {idx + 1}: {e}. This slice will be skipped."
+            )
+    if not preprocessed_data:
+        raise ValueError("No valid CT slices found after preprocessing.")
     return preprocessed_data
 
 
-# Updated checks to use preprocessed data
 def _check_only_one_ct_series(preprocessed_data):
+    """Ensure all CT slices belong to the same series."""
     series_uid = preprocessed_data[0]["SeriesInstanceUID"]
-    if any(data["SeriesInstanceUID"] != series_uid for data in preprocessed_data[1:]):
-        raise ValueError("At least one CT slice dataset is not from the same series")
+    for idx, data in enumerate(preprocessed_data[1:], start=2):
+        if data["SeriesInstanceUID"] != series_uid:
+            raise ValueError(
+                f"CT slice {idx} has a different SeriesInstanceUID. All slices must belong to the same series."
+            )
 
 
 def _check_all_slices_aligned(preprocessed_data):
+    """Ensure all CT slices are aligned in position, orientation, and spacing."""
     ref_position = preprocessed_data[0]["ImagePositionPatient"][:2]
     ref_orientation = preprocessed_data[0]["ImageOrientationPatient"]
     ref_spacing = preprocessed_data[0]["PixelSpacing"]
 
-    for data in preprocessed_data[1:]:
+    for idx, data in enumerate(preprocessed_data[1:], start=2):
         if data["ImagePositionPatient"][:2] != ref_position:
-            raise ValueError("At least one CT slice dataset has a different position")
+            raise ValueError(
+                f"CT slice {idx} has a different ImagePositionPatient. All slices must be aligned."
+            )
         if data["ImageOrientationPatient"] != ref_orientation:
             raise ValueError(
-                "At least one CT slice dataset has a different orientation"
+                f"CT slice {idx} has a different ImageOrientationPatient. All slices must have the same orientation."
             )
         if data["PixelSpacing"] != ref_spacing:
             raise ValueError(
-                "At least one CT slice dataset has a different pixel spacing"
+                f"CT slice {idx} has a different PixelSpacing. All slices must have the same pixel spacing."
             )
 
 
-def compute_patient_coordinates(height, width, ipp, iop, pixel_spacing):
+@st.cache_data(show_spinner=False, persist=True)
+def compute_patient_coordinates(
+    height: int, width: int, ipp: tuple, iop: tuple, pixel_spacing: tuple
+):
     """
     Compute patient coordinates efficiently using matrix multiplication.
 
     Args:
         height (int): Number of rows in the image.
         width (int): Number of columns in the image.
-        ipp (list or ndarray): Image Position Patient (3D coordinates of the first pixel).
-        iop (list or ndarray): Image Orientation Patient (cosines of row and column axes).
-        pixel_spacing (list or ndarray): Spacing between pixels (row spacing, column spacing).
+        ipp (tuple): Image Position Patient (3D coordinates of the first pixel).
+        iop (tuple): Image Orientation Patient (cosines of row and column axes).
+        pixel_spacing (tuple): Spacing between pixels (row spacing, column spacing).
 
     Returns:
         tuple: X, Y coordinate arrays of shape (height, width).
@@ -78,7 +94,10 @@ def compute_patient_coordinates(height, width, ipp, iop, pixel_spacing):
     pixel_spacing = np.array(pixel_spacing)
 
     # Scale row and column cosines by pixel spacing
-    iop_scaled = iop.T @ np.diag(pixel_spacing)  # Shape: (3, 2)
+    try:
+        iop_scaled = iop.T @ np.diag(pixel_spacing)  # Shape: (3, 2)
+    except ValueError as e:
+        raise ValueError(f"Error in scaling IOP with Pixel Spacing: {e}") from e
 
     # Create meshgrid of pixel indices
     jj, ii = np.meshgrid(np.arange(width), np.arange(height), indexing="xy")
@@ -97,17 +116,31 @@ def compute_patient_coordinates(height, width, ipp, iop, pixel_spacing):
 def load_ct_as_memmap(dirpath, memmap_file="ct_volume.dat"):
     """
     Load CT slices as a memory-mapped array and cache the operation.
+
+    Args:
+        dirpath (Path): Path to the directory containing CT DICOM files.
+        memmap_file (str): Filename for the memory-mapped file.
+
+    Returns:
+        tuple: (memmap, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default)
     """
     dirpath = pathlib.Path(dirpath)
 
     ct_slice_datasets = []
     for fpath in sorted(dirpath.glob("*.dcm")):
-        ds = pydicom.dcmread(fpath)
-        if ds.Modality == "CT":
-            ct_slice_datasets.append(ds)
+        try:
+            ds = pydicom.dcmread(fpath)
+            if ds.Modality == "CT":
+                ct_slice_datasets.append(ds)
+        except pydicom.errors.InvalidDicomError:
+            st.warning(
+                f"File {fpath.name} is not a valid DICOM file and will be skipped."
+            )
+        except Exception as e:
+            st.warning(f"Error reading {fpath.name}: {e}. This file will be skipped.")
 
     if not ct_slice_datasets:
-        raise ValueError("No CT slices found in the provided directory.")
+        raise ValueError("No valid CT slices found in the provided directory.")
 
     preprocessed_data = preprocess_ct_slice_datasets(ct_slice_datasets)
 
@@ -124,18 +157,29 @@ def load_ct_as_memmap(dirpath, memmap_file="ct_volume.dat"):
     memmap_path = dirpath / memmap_file
 
     if not memmap_path.exists():
-        memmap = np.memmap(
-            memmap_path, dtype=np.int16, mode="w+", shape=(num_slices, height, width)
-        )
-        for i, data in enumerate(preprocessed_data):
-            memmap[i, :, :] = (
-                data["PixelArray"] * data["RescaleSlope"] + data["RescaleIntercept"]
+        try:
+            memmap = np.memmap(
+                memmap_path,
+                dtype=np.int16,
+                mode="w+",
+                shape=(num_slices, height, width),
             )
-        memmap.flush()
+            for i, data in enumerate(preprocessed_data):
+                memmap[i, :, :] = (
+                    data["PixelArray"] * data["RescaleSlope"] + data["RescaleIntercept"]
+                )
+            memmap.flush()
+            st.info(f"CT volume data saved to {memmap_path}.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to create memory-mapped file: {e}") from e
     else:
-        memmap = np.memmap(
-            memmap_path, dtype=np.int16, mode="r", shape=(num_slices, height, width)
-        )
+        try:
+            memmap = np.memmap(
+                memmap_path, dtype=np.int16, mode="r", shape=(num_slices, height, width)
+            )
+            st.info(f"CT volume data loaded from existing memmap file {memmap_path}.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load memory-mapped file: {e}") from e
 
     first_data = preprocessed_data[0]
     pixel_min = memmap.min()
@@ -144,22 +188,29 @@ def load_ct_as_memmap(dirpath, memmap_file="ct_volume.dat"):
     wl_default = int(first_data.get("WindowCenter", DEFAULT_WINDOW_LEVEL))
     ww_default = int(first_data.get("WindowWidth", DEFAULT_WINDOW_WIDTH))
 
-    X, Y = compute_patient_coordinates(
-        height,
-        width,
-        first_data["ImagePositionPatient"],
-        first_data["ImageOrientationPatient"],
-        first_data["PixelSpacing"],
-    )
+    try:
+        X, Y = compute_patient_coordinates(
+            height,
+            width,
+            first_data["ImagePositionPatient"],
+            first_data["ImageOrientationPatient"],
+            first_data["PixelSpacing"],
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to compute patient coordinates: {e}") from e
 
-    ct_headers = [
-        {
-            "ipp": data["ImagePositionPatient"],
-            "iop": data["ImageOrientationPatient"],
-            "spacing": data["PixelSpacing"],
-        }
-        for data in preprocessed_data
-    ]
+    ct_headers = []
+    for data in preprocessed_data:
+        try:
+            ct_headers.append(
+                {
+                    "ipp": data["ImagePositionPatient"],
+                    "iop": data["ImageOrientationPatient"],
+                    "spacing": data["PixelSpacing"],
+                }
+            )
+        except Exception as e:
+            st.warning(f"Error processing CT header data: {e}")
 
     return memmap, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default
 
@@ -168,33 +219,84 @@ def load_ct_as_memmap(dirpath, memmap_file="ct_volume.dat"):
 def load_rt_structures(fpath):
     """
     Load RT structures and cache based on the file path.
+
+    Args:
+        fpath (Path): Path to the RTSTRUCT DICOM file.
+
+    Returns:
+        dict: Structures with their contours and display information.
     """
-    ds = pydicom.dcmread(fpath)
+    try:
+        ds = pydicom.dcmread(fpath)
+    except pydicom.errors.InvalidDicomError as ide:
+        raise ValueError("The provided file is not a valid DICOM file.") from ide
+    except Exception as e:
+        raise ValueError(f"Error reading RTSTRUCT file: {e}") from e
+
     if ds.Modality != "RTSTRUCT":
-        raise ValueError("File is not an RTSTRUCT DICOM file")
+        raise ValueError("File is not an RTSTRUCT DICOM file.")
+
+    required_sequences = ["StructureSetROISequence", "ROIContourSequence"]
+    for seq in required_sequences:
+        if not hasattr(ds, seq):
+            raise ValueError(f"RTSTRUCT file is missing the required {seq}.")
 
     structures = {}
-    roi_nums_to_names = {
-        roi.ROINumber: roi.ROIName for roi in ds.StructureSetROISequence
-    }
+    roi_nums_to_names = {}
+    try:
+        for roi in ds.StructureSetROISequence:
+            roi_num = getattr(roi, "ROINumber", None)
+            roi_name = getattr(roi, "ROIName", "Unknown")
+            if roi_num is not None:
+                roi_nums_to_names[roi_num] = roi_name
+            else:
+                st.warning("Found ROI without ROINumber. Skipping this ROI.")
+    except Exception as e:
+        raise ValueError(f"Error processing StructureSetROISequence: {e}") from e
 
-    for roi_contour in ds.ROIContourSequence:
-        if not hasattr(roi_contour, "ContourSequence"):
-            continue
-        roi_name = roi_nums_to_names.get(roi_contour.ReferencedROINumber, "Unknown")
+    try:
+        for roi_contour in ds.ROIContourSequence:
+            if not hasattr(roi_contour, "ContourSequence"):
+                st.warning("ROIContourSequence item missing ContourSequence. Skipping.")
+                continue
+            roi_num = getattr(roi_contour, "ReferencedROINumber", None)
+            roi_name = roi_nums_to_names.get(roi_num, "Unknown")
 
-        contours = []
-        for contour_seq in roi_contour.ContourSequence:
-            contour_data = contour_seq.ContourData
-            points = np.array(contour_data).reshape(-1, 3)
-            contours.append(points)
+            contours = []
+            for contour_seq in roi_contour.ContourSequence:
+                contour_data = getattr(contour_seq, "ContourData", None)
+                if contour_data is None:
+                    st.warning("ContourSequence item missing ContourData. Skipping.")
+                    continue
+                try:
+                    points = np.array(contour_data, dtype=float).reshape(-1, 3)
+                    contours.append(points)
+                except Exception as e:
+                    st.warning(
+                        f"Error reshaping ContourData: {e}. Skipping this contour."
+                    )
 
-        if contours:
-            structures[roi_name] = {
-                "Contours": contours,
-                "Colour": f"rgb{tuple(np.uint8(c) for c in roi_contour.ROIDisplayColor)}",
-                "Number": roi_contour.ReferencedROINumber,
-            }
+            if contours:
+                try:
+                    colour = (
+                        f"rgb{tuple(np.uint8(c) for c in roi_contour.ROIDisplayColor)}"
+                    )
+                except AttributeError:
+                    st.warning(
+                        f"ROIDisplayColor missing for ROI {roi_name}. Defaulting to gray."
+                    )
+                    colour = "rgb(128, 128, 128)"
+                structures[roi_name] = {
+                    "Contours": contours,
+                    "Colour": colour,
+                    "Number": roi_num,
+                }
+    except Exception as e:
+        raise ValueError(f"Error processing ROIContourSequence: {e}") from e
+
+    if not structures:
+        st.warning("No valid structures found in RTSTRUCT file.")
+
     return structures
 
 
@@ -236,23 +338,53 @@ def load_rt_dose(fpath, _ct_headers):
             dose_X (dict): Mapping of slice index to X coordinates arrays.
             dose_Y (dict): Mapping of slice index to Y coordinates arrays.
     """
-    ds = pydicom.dcmread(fpath)
-    if ds.Modality != "RTDOSE":
-        raise ValueError("File is not an RTDOSE DICOM file")
+    try:
+        ds = pydicom.dcmread(fpath)
+    except pydicom.errors.InvalidDicomError as ide:
+        raise ValueError("The provided RTDOSE file is not a valid DICOM file.") from ide
+    except Exception as e:
+        raise ValueError(f"Error reading RTDOSE file: {e}") from e
 
-    dose_grid_scaling = getattr(ds, "DoseGridScaling", 1.0)
+    if ds.Modality != "RTDOSE":
+        raise ValueError("File is not an RTDOSE DICOM file.")
+
+    dose_grid_scaling = getattr(ds, "DoseGridScaling", None)
+    if dose_grid_scaling is None:
+        st.warning("DoseGridScaling missing. Assuming a scaling factor of 1.0.")
+        dose_grid_scaling = 1.0
+
     dose_units = getattr(ds, "DoseUnits", "UNKNOWN")  # Usually 'GY' or 'CGY'
 
-    dose_data = ds.pixel_array * dose_grid_scaling  # Convert to physical dose values
+    try:
+        dose_data = (
+            ds.pixel_array * dose_grid_scaling
+        )  # Convert to physical dose values
+    except Exception as e:
+        raise ValueError(f"Error processing dose pixel data: {e}") from e
 
     # Extract dose grid information
     grid_frame_offset_vector = getattr(
-        ds, "GridFrameOffsetVector", [0.0]
+        ds, "GridFrameOffsetVector", None
     )  # Z-offsets for each dose slice
-    dose_origin = np.array(ds.ImagePositionPatient)
+    if grid_frame_offset_vector is None:
+        st.warning(
+            "GridFrameOffsetVector missing. Assuming single dose slice at origin."
+        )
+        grid_frame_offset_vector = [0.0]
+
+    dose_origin = getattr(ds, "ImagePositionPatient", None)
+    if dose_origin is None:
+        raise ValueError("Dose ImagePositionPatient missing.")
+
+    dose_origin = np.array(dose_origin, dtype=float)
 
     # Compute dose slice positions based on grid_frame_offset_vector
-    dose_z_positions = dose_origin[2] + grid_frame_offset_vector
+    try:
+        dose_z_positions = dose_origin[2] + np.array(
+            grid_frame_offset_vector, dtype=float
+        )
+    except Exception as e:
+        raise ValueError(f"Error computing dose slice positions: {e}") from e
 
     slice_z_positions = [header["ipp"][2] for header in _ct_headers]
 
@@ -262,13 +394,19 @@ def load_rt_dose(fpath, _ct_headers):
 
     for idx, dose_z in enumerate(dose_z_positions):
         # Find the closest CT slice based on Z-coordinate
-        closest_slice_idx = np.argmin(np.abs(np.array(slice_z_positions) - dose_z))
+        try:
+            closest_slice_idx = np.argmin(np.abs(np.array(slice_z_positions) - dose_z))
+        except Exception as e:
+            st.warning(
+                f"Error finding closest CT slice for dose slice {idx + 1}: {e}. Skipping."
+            )
+            continue
 
         # Check if this dose_z closely matches the CT slice's z-coordinate (within tolerance)
         z_tolerance = 1e-3  # in mm
         if np.abs(slice_z_positions[closest_slice_idx] - dose_z) > z_tolerance:
             st.warning(
-                f"Dose slice at dose_z={dose_z} mm does not closely match any CT slice Z-coordinate. Skipping."
+                f"Dose slice {idx + 1} at dose_z={dose_z} mm does not closely match any CT slice Z-coordinate. Skipping."
             )
             continue
 
@@ -282,31 +420,46 @@ def load_rt_dose(fpath, _ct_headers):
             ) / 2
 
         # Calculate spatial coordinates for the dose slice
-        # Using dose's ImagePositionPatient, ImageOrientationPatient, and PixelSpacing
-        dose_X_slice, dose_Y_slice = compute_patient_coordinates(
-            ds.Rows,
-            ds.Columns,
-            ds.ImagePositionPatient,
-            ds.ImageOrientationPatient,
-            ds.PixelSpacing,
-        )
+        dose_iop = getattr(ds, "ImageOrientationPatient", None)
+        dose_pixel_spacing = getattr(ds, "PixelSpacing", None)
+        if dose_iop is None or dose_pixel_spacing is None:
+            st.warning(
+                f"Missing ImageOrientationPatient or PixelSpacing for dose slice {idx + 1}. Cannot compute spatial coordinates."
+            )
+            continue
+
+        try:
+            dose_X_slice, dose_Y_slice = compute_patient_coordinates(
+                ds.Rows,
+                ds.Columns,
+                tuple(ds.ImagePositionPatient),
+                tuple(ds.ImageOrientationPatient),
+                tuple(ds.PixelSpacing),
+            )
+        except Exception as e:
+            st.warning(
+                f"Failed to compute spatial coordinates for dose slice {idx + 1}: {e}. Skipping."
+            )
+            continue
 
         dose_X[closest_slice_idx] = dose_X_slice
         dose_Y[closest_slice_idx] = dose_Y_slice
+
+    if not dose_map:
+        st.warning("No valid dose slices were mapped to CT slices.")
 
     return dose_map, dose_units, dose_X, dose_Y
 
 
 def window_image(img, ww, wl):
+    """Apply window level and window width to the image."""
     img_min = wl - (ww / 2)
     img_max = wl + (ww / 2)
     return np.clip(img, img_min, img_max)
 
 
 def create_structure_legend(structures):
-    """
-    Creates an HTML legend for the structures with their corresponding colors.
-    """
+    """Creates an HTML legend for the structures with their corresponding colors."""
     legend_html = "<h4>Structures Legend</h4><ul>"
     for structure_name, structure_data in structures.items():
         color = structure_data["Colour"]
@@ -321,21 +474,7 @@ def create_structure_legend(structures):
 def initialize_base_figure(
     ct_image, ct_headers, X, Y, initial_slice_idx, wl_default, ww_default
 ):
-    """
-    Initialize and cache the base figure for the CT viewer.
-
-    Args:
-        ct_image (np.ndarray): The CT image data.
-        ct_headers (list): Headers containing metadata for each slice.
-        X (np.ndarray): X coordinates of the image grid.
-        Y (np.ndarray): Y coordinates of the image grid.
-        initial_slice_idx (int): Index of the initial slice.
-        wl_default (int): Default window level.
-        ww_default (int): Default window width.
-
-    Returns:
-        go.Figure: The initialized Plotly figure.
-    """
+    """Initialize and cache the base figure for the CT viewer."""
     height, width = ct_image.shape[1:]
     slice_image = ct_image[initial_slice_idx, :, :]
     windowed_img = window_image(slice_image, ww_default, wl_default)
@@ -415,110 +554,119 @@ def update_figure(
     dose_X,
     dose_Y,
 ):
-    """
-    Update the existing figure with new data based on user inputs.
-
-    Args:
-        fig (go.Figure): The existing Plotly figure.
-        ct_image (np.ndarray): The CT image data.
-        slice_idx (int): Index of the selected slice.
-        wl (int): Window level.
-        ww (int): Window width.
-        ct_headers (list): Headers containing metadata for each slice.
-        structures (dict): RT structure data.
-        contour_map (dict): Precomputed mapping of contours to Z-coordinates.
-        selected_structures (list): List of structure names to display.
-        dose_map (dict): Mapping of slice indices to dose data.
-        show_dose (bool): Whether to show the dose overlay.
-        dose_units (str): Units of the dose ('GY' or 'CGY').
-        dose_X (dict): Mapping of slice index to X coordinates arrays for dose.
-        dose_Y (dict): Mapping of slice index to Y coordinates arrays for dose.
-
-    Returns:
-        go.Figure: The updated Plotly figure.
-    """
-    slice_image = ct_image[slice_idx, :, :]
-    windowed_img = window_image(slice_image, ww, wl)
-    img_min = wl - (ww / 2)
-    img_max = wl + (ww / 2)
+    """Update the existing figure with new data based on user inputs."""
+    try:
+        slice_image = ct_image[slice_idx, :, :]
+        windowed_img = window_image(slice_image, ww, wl)
+        img_min = wl - (ww / 2)
+        img_max = wl + (ww / 2)
+    except IndexError:
+        st.error(f"Slice index {slice_idx} is out of bounds.")
+        return fig
+    except Exception as e:
+        st.error(f"Error processing slice {slice_idx}: {e}")
+        return fig
 
     # Update heatmap trace (CT image)
-    fig.data[0].z = windowed_img
-    fig.data[0].zmin = img_min
-    fig.data[0].zmax = img_max
+    try:
+        fig.data[0].z = windowed_img
+        fig.data[0].zmin = img_min
+        fig.data[0].zmax = img_max
+    except IndexError:
+        st.error("CT image heatmap trace is missing.")
+        return fig
+    except Exception as e:
+        st.error(f"Error updating heatmap: {e}")
+        return fig
 
     # Update the title
-    slice_z = ct_headers[slice_idx]["ipp"][2]
-    fig.update_layout(title=f"Z = {slice_z:.2f} mm (Slice {slice_idx})")
+    try:
+        slice_z = ct_headers[slice_idx]["ipp"][2]
+        fig.update_layout(title=f"Z = {slice_z:.2f} mm (Slice {slice_idx})")
+    except IndexError:
+        st.error(f"Slice header for index {slice_idx} is missing.")
+    except Exception as e:
+        st.error(f"Error updating title: {e}")
 
     # Remove existing contour and dose overlay traces
-    fig.data = tuple(
-        trace
-        for trace in fig.data
-        if not (
-            (isinstance(trace, go.Scatter) and trace.name in structures.keys())
-            or (isinstance(trace, go.Heatmap) and trace.name == "Dose Overlay")
+    try:
+        fig.data = tuple(
+            trace
+            for trace in fig.data
+            if not (
+                (isinstance(trace, go.Scatter) and trace.name in structures.keys())
+                or (isinstance(trace, go.Heatmap) and trace.name == "Dose Overlay")
+            )
         )
-    )
+    except Exception as e:
+        st.error(f"Error removing old traces: {e}")
 
     # Add new contour traces for the selected structures
-    if slice_z in contour_map:
-        for structure_name, contour in contour_map[slice_z]:
-            if structure_name in selected_structures:
-                x, y = contour[:, 0], contour[:, 1]
-                colour = structures[structure_name]["Colour"]
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=y,
-                        mode="lines",
-                        line=dict(color=colour, width=2),
-                        name=structure_name,
-                        showlegend=False,  # Legend is handled within checkboxes
-                        hoverinfo="skip",
+    try:
+        if slice_z in contour_map:
+            for structure_name, contour in contour_map[slice_z]:
+                if structure_name in selected_structures:
+                    x, y = contour[:, 0], contour[:, 1]
+                    colour = structures[structure_name]["Colour"]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x,
+                            y=y,
+                            mode="lines",
+                            line=dict(color=colour, width=2),
+                            name=structure_name,
+                            showlegend=False,  # Legend is handled within checkboxes
+                            hoverinfo="skip",
+                        )
                     )
-                )
+    except Exception as e:
+        st.error(f"Error adding contour traces: {e}")
 
     # Add RTDOSE overlay if enabled
     if show_dose and slice_idx in dose_map:
-        dose_slice = dose_map[slice_idx]
-        dose_X_slice = dose_X.get(slice_idx)
-        dose_Y_slice = dose_Y.get(slice_idx)
+        try:
+            dose_slice = dose_map[slice_idx]
+            dose_X_slice = dose_X.get(slice_idx)
+            dose_Y_slice = dose_Y.get(slice_idx)
 
-        if dose_X_slice is not None and dose_Y_slice is not None:
-            # Normalize dose for colorscale
-            dose_min = dose_slice.min()
-            dose_max = dose_slice.max()
-            normalized_dose = (
-                (dose_slice - dose_min) / (dose_max - dose_min)
-                if dose_max > dose_min
-                else dose_slice
-            )
+            if dose_X_slice is not None and dose_Y_slice is not None:
+                # Normalize dose for colorscale
+                dose_min = dose_slice.min()
+                dose_max = dose_slice.max()
+                normalized_dose = (
+                    (dose_slice - dose_min) / (dose_max - dose_min)
+                    if dose_max > dose_min
+                    else dose_slice
+                )
 
-            # Create a semi-transparent colorwash using Heatmap
-            dose_heatmap = go.Heatmap(
-                z=normalized_dose,
-                colorscale="Jet",
-                opacity=0.5,
-                showscale=False,
-                x0=dose_X_slice[0, 0],
-                dx=dose_X_slice[0, 1] - dose_X_slice[0, 0],
-                y0=dose_Y_slice[0, 0],
-                dy=dose_Y_slice[1, 0] - dose_Y_slice[0, 0],
-                hovertemplate=f"Dose: %{{z:.2f}} {dose_units}<extra></extra>",
-                name="Dose Overlay",
-            )
-            fig.add_trace(dose_heatmap)
-        else:
-            st.warning(
-                f"No spatial coordinates found for dose slice at index {slice_idx}. "
-                "Cannot overlay dose data."
-            )
+                # Create a semi-transparent colorwash using Heatmap
+                dose_heatmap = go.Heatmap(
+                    z=normalized_dose,
+                    colorscale="Jet",
+                    opacity=0.5,
+                    showscale=False,
+                    x0=dose_X_slice[0, 0],
+                    dx=dose_X_slice[0, 1] - dose_X_slice[0, 0],
+                    y0=dose_Y_slice[0, 0],
+                    dy=dose_Y_slice[1, 0] - dose_Y_slice[0, 0],
+                    hovertemplate=f"Dose: %{{z:.2f}} {dose_units}<extra></extra>",
+                    name="Dose Overlay",
+                )
+                fig.add_trace(dose_heatmap)
+            else:
+                st.warning(
+                    f"No spatial coordinates found for dose slice at index {slice_idx}. "
+                    "Cannot overlay dose data."
+                )
+        except Exception as e:
+            st.error(f"Error adding RTDOSE overlay: {e}")
 
     return fig
 
 
 # Sidebar to upload DICOM directory, RTSTRUCT file, and RTDOSE file
+st.sidebar.header("Input Files")
+
 dicom_dir = st.sidebar.text_input("Enter DICOM directory path")
 rtstruct_file = st.sidebar.text_input("Enter RTSTRUCT file path")
 rtdose_file = st.sidebar.text_input("Enter RTDOSE file path (optional)")
@@ -528,39 +676,59 @@ show_dose = False
 if rtdose_file:
     show_dose = st.sidebar.checkbox("Show Dose Colorwash", value=False)
 
-if pathlib.Path(dicom_dir).exists() and pathlib.Path(rtstruct_file).exists():
-    ct_image, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default = (
-        load_ct_as_memmap(pathlib.Path(dicom_dir))
-    )
-    structures = load_rt_structures(pathlib.Path(rtstruct_file))
-    contour_map = preprocess_contours(structures)
-
-    # Extract Z-coordinates from CT headers
-    z_coords = [header["ipp"][2] for header in ct_headers]
-
-    # Load RTDOSE if provided and path exists
-    dose_map = {}
-    dose_units = ""
-    dose_X = {}
-    dose_Y = {}
-    if rtdose_file:
-        if pathlib.Path(rtdose_file).exists():
+if dicom_dir and rtstruct_file:
+    if pathlib.Path(dicom_dir).exists():
+        if pathlib.Path(rtstruct_file).exists():
             try:
-                dose_map, dose_units, dose_X, dose_Y = load_rt_dose(
-                    pathlib.Path(rtdose_file), _ct_headers=ct_headers
-                )
-                st.sidebar.success("RTDOSE loaded successfully.")
+                (
+                    ct_image,
+                    ct_headers,
+                    X,
+                    Y,
+                    pixel_min,
+                    pixel_max,
+                    wl_default,
+                    ww_default,
+                ) = load_ct_as_memmap(pathlib.Path(dicom_dir))
+                structures = load_rt_structures(pathlib.Path(rtstruct_file))
+                contour_map = preprocess_contours(structures)
+                st.sidebar.success("CT and RTSTRUCT files loaded successfully.")
             except Exception as e:
-                st.sidebar.error(f"Error loading RTDOSE: {e}")
-                dose_map = {}
-                dose_units = ""
-                dose_X = {}
-                dose_Y = {}
+                st.error(f"Error loading CT or RTSTRUCT data: {e}")
+                st.stop()
         else:
-            st.sidebar.error("Invalid RTDOSE file path.")
+            st.error("RTSTRUCT file path does not exist.")
+            st.stop()
+    else:
+        st.error("DICOM directory path does not exist.")
+        st.stop()
 else:
-    st.error("Invalid DICOM directory or RTSTRUCT file path.")
+    st.info("Please enter both DICOM directory and RTSTRUCT file paths.")
     st.stop()
+
+# Extract Z-coordinates from CT headers
+z_coords = [header["ipp"][2] for header in ct_headers]
+
+# Load RTDOSE if provided and path exists
+dose_map = {}
+dose_units = ""
+dose_X = {}
+dose_Y = {}
+if rtdose_file:
+    if pathlib.Path(rtdose_file).exists():
+        try:
+            dose_map, dose_units, dose_X, dose_Y = load_rt_dose(
+                pathlib.Path(rtdose_file), _ct_headers=ct_headers
+            )
+            st.sidebar.success("RTDOSE loaded successfully.")
+        except Exception as e:
+            st.sidebar.error(f"Error loading RTDOSE: {e}")
+            dose_map = {}
+            dose_units = ""
+            dose_X = {}
+            dose_Y = {}
+    else:
+        st.sidebar.error("Invalid RTDOSE file path.")
 
 num_slices, height, width = ct_image.shape
 
@@ -579,7 +747,12 @@ with st.sidebar:
     )
 
     # Display Z-coordinate based on selected slice
-    st.write(f"**Z-Coordinate:** {z_coords[slice_idx]:.2f} mm (Slice {slice_idx})")
+    try:
+        st.write(f"**Z-Coordinate:** {z_coords[slice_idx]:.2f} mm (Slice {slice_idx})")
+    except IndexError:
+        st.error(f"Slice index {slice_idx} is out of bounds.")
+    except Exception as e:
+        st.error(f"Error displaying Z-coordinate: {e}")
 
     # Sliders for window level and width
     wl = st.slider(
@@ -627,16 +800,20 @@ with st.sidebar:
 
 # Initialize the figure once
 if "base_figure" not in st.session_state:
-    initial_slice_idx = ct_image.shape[0] // 2
-    st.session_state.base_figure = initialize_base_figure(
-        ct_image,
-        ct_headers,
-        X,
-        Y,
-        initial_slice_idx,
-        wl_default,
-        ww_default,
-    )
+    try:
+        initial_slice_idx = num_slices // 2
+        st.session_state.base_figure = initialize_base_figure(
+            ct_image,
+            ct_headers,
+            X,
+            Y,
+            initial_slice_idx,
+            wl_default,
+            ww_default,
+        )
+    except Exception as e:
+        st.error(f"Error initializing base figure: {e}")
+        st.stop()
 
 # Update the figure based on user inputs, including selected structures and dose
 updated_fig = update_figure(
