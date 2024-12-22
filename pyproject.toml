@@ -125,7 +125,7 @@ pytest-rerunfailures = { version = "*", optional = true } # groups = ["all", "te
 # ---------------- #
 pre-commit = { version = "*", optional = true }      # groups = ["dev", "all"]
 ruff = { version = "*", optional = true }        # groups = ["dev", "all", "propagate", "doctests"]
-pyright = { version = "<=1.1.386", optional = true }   # groups = ["dev", "all"]
+pyright = { version = "*", optional = true }   # groups = ["dev", "all"]
 rope = { version = "*", optional = true }            # groups = ["dev", "all"]
 doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
