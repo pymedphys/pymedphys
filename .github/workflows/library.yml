@@ -322,12 +322,12 @@ jobs:
           echo "status=before" >> $GITHUB_OUTPUT
           poetry check
 
-      ## Pyright
+      ## Pyright (TOML parsing issue with 1.1.387+)
 
       - name: Install and run pyright
         if: matrix.task == 'pyright'
         run: |
-          npm install -g pyright
+          npm install -g pyright@1.1.386
           poetry run pyright
 
       ## Pytest
