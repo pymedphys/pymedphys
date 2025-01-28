@@ -1,13 +1,13 @@
 Traceback (most recent call last):
   File "/home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages/jupyter_cache/executors/utils.py", line 58, in single_nb_execution
     executenb(
-  File "/home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages/nbclient/client.py", line 1314, in execute
+  File "/home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages/nbclient/client.py", line 1319, in execute
     return NotebookClient(nb=nb, resources=resources, km=km, **kwargs).execute()
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
     return loop.run_until_complete(inner)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.7/x64/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+  File "/opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/asyncio/base_events.py", line 686, in run_until_complete
     return future.result()
            ^^^^^^^^^^^^^^^
   File "/home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages/nbclient/client.py", line 709, in async_execute
