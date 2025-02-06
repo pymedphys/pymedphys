@@ -17,12 +17,10 @@ jobs:
 
     services:
       SQLServer:
-        image: mcr.microsoft.com/mssql/server:2017-latest
-        options: --user 10001:0
+        image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: Y
           SA_PASSWORD: sqlServerPassw0rd
-          HOME: /tmp
         ports:
           - 1433:1433
 
@@ -122,18 +120,18 @@ jobs:
 
       ## Mosaiq_db tests -- only run on Ubuntu because needs container
 
-      - name: Wait for SQL Server to start
-        run: |
-          echo "Waiting for SQL Server..."
-          for i in {1..30}; do
-            if nc -z localhost 1433; then
-              echo "SQL Server is up!"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "SQL Server did not start in time"
-          exit 1
+      # - name: Wait for SQL Server to start
+      #   run: |
+      #     echo "Waiting for SQL Server..."
+      #     for i in {1..30}; do
+      #       if nc -z localhost 1433; then
+      #         echo "SQL Server is up!"
+      #         exit 0
+      #       fi
+      #       sleep 2
+      #     done
+      #     echo "SQL Server did not start in time"
+      #     exit 1
 
       - name: Run MSQ database tests
         run: |
