@@ -12,6 +12,9 @@ jobs:
   TestMosaiqDb:
     # if: false
 
+    env:
+      FORCE_COLOR: true
+
     runs-on: ubuntu-latest
     timeout-minutes: 60
 

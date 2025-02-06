@@ -74,6 +74,8 @@ jobs:
   # =============================================================================
 
   Tests:
+    env:
+      FORCE_COLOR: true
     strategy:
       fail-fast: false
       matrix:
