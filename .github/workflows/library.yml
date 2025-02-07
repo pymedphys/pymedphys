@@ -74,6 +74,8 @@ jobs:
   # =============================================================================
 
   Tests:
+    env:
+      FORCE_COLOR: true
     strategy:
       fail-fast: false
       matrix:
@@ -322,7 +324,7 @@ jobs:
           echo "status=before" >> $GITHUB_OUTPUT
           poetry check
 
-      ## Pyright
+      ## Pyright (TOML parsing issue with 1.1.387+)
 
       - name: Install and run pyright
         if: matrix.task == 'pyright'
