@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.41.0"
+version = "0.42.0-dev0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = ["PyMedPhys Contributors <developers@pymedphys.com>"]
@@ -78,6 +78,9 @@ trio = { version = ">=0.25.0", optional = true }      # groups = ["user", "all"]
 trio-asyncio = { version = "*", optional = true }     # groups = ["user", "all"]
 anyio = { version = "*", optional = true }            # groups = ["user", "all"]
 
+# Visualisation
+plotly = "^5.24.1"        # groups = ["user", "all"]
+dash = "^2.18.1"        # groups = ["user", "all"]
 
 # ---- #
 # CVEs #
@@ -120,8 +123,8 @@ pytest-rerunfailures = { version = "*", optional = true } # groups = ["all", "te
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }      # groups = ["dev", "all"]
-ruff = { version = "0.4.1", optional = true }        # groups = ["dev", "all", "propagate", "doctests"]
-pyright = { version = "1.1.359", optional = true }   # groups = ["dev", "all"]
+ruff = { version = "*", optional = true }        # groups = ["dev", "all", "propagate", "doctests"]
+pyright = { version = "*", optional = true }   # groups = ["dev", "all"]
 rope = { version = "*", optional = true }            # groups = ["dev", "all"]
 doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
@@ -135,6 +138,7 @@ all = [
     "anyio",
     "astroid",
     "attrs",
+    "dash",
     "dbfread",
     "dicompyler-core",
     "doc8",
@@ -149,6 +153,7 @@ all = [
     "numpy",
     "packaging",
     "pandas",
+    "plotly",
     "pre-commit",
     "psutil",
     "pydicom",
@@ -184,15 +189,7 @@ all = [
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = [
-    "doc8",
-    "pre-commit",
-    "pyright",
-    "readme-renderer",
-    "rope",
-    "ruff",
-    "tabulate",
-]
+dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
@@ -229,6 +226,7 @@ user = [
     "anthropic",
     "anyio",
     "attrs",
+    "dash",
     "dbfread",
     "dicompyler-core",
     "imageio",
@@ -239,6 +237,7 @@ user = [
     "numpy",
     "packaging",
     "pandas",
+    "plotly",
     "pydicom",
     "pylibjpeg-libjpeg",
     "pymssql",
