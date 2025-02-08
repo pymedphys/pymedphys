@@ -22,7 +22,7 @@ tests = ["hypothesis", "pytest"]
 name = "alabaster"
 version = "0.7.16"
 description = "A light, configurable Sphinx theme"
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "alabaster-0.7.16-py3-none-any.whl", hash = "sha256:b46733c07dce03ae4e150330b975c75737fa60f0a7c591b6c8bf4928a28e2c92"},
@@ -174,7 +174,7 @@ tests-mypy = ["mypy (>=1.11.1)", "pytest-mypy-plugins"]
 name = "babel"
 version = "2.16.0"
 description = "Internationalization utilities"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "babel-2.16.0-py3-none-any.whl", hash = "sha256:368b5b98b37c06b7daf6696391c3240c938b37767d4584413e8438c5c435fa8b"},
@@ -841,7 +841,7 @@ tomli = {version = "*", markers = "python_version < \"3.11\""}
 name = "docutils"
 version = "0.20.1"
 description = "Docutils -- Python Documentation Utilities"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "docutils-0.20.1-py3-none-any.whl", hash = "sha256:96f387a2c5562db4476f09f13bbab2192e764cac08ebbf3a34a95d9b1e4a59d6"},
@@ -1327,7 +1327,7 @@ tifffile = ["tifffile"]
 name = "imagesize"
 version = "1.4.1"
 description = "Getting image size from png/jpeg/jpeg2000/gif file"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
     {file = "imagesize-1.4.1-py2.py3-none-any.whl", hash = "sha256:0d8d18d08f840c19d0ee7ca1fd82490fdc3729b7ac93f49870406ddde8ef8d8b"},
@@ -3223,7 +3223,7 @@ docs = ["matplotlib", "numpy", "numpydoc", "pillow", "sphinx", "sphinx-copybutto
 name = "pygments"
 version = "2.18.0"
 description = "Pygments is a syntax highlighting package written in Python."
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "pygments-2.18.0-py3-none-any.whl", hash = "sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a"},
@@ -3571,7 +3571,7 @@ files = [
 name = "pyyaml"
 version = "6.0.2"
 description = "YAML parser and emitter for Python"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "PyYAML-6.0.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:0a9a2848a5b7feac301353437eb7d5957887edbf81d56e903999a75a3d743086"},
@@ -4243,7 +4243,7 @@ files = [
 name = "snowballstemmer"
 version = "2.2.0"
 description = "This package provides 29 stemmers for 28 languages generated from Snowball algorithms."
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "snowballstemmer-2.2.0-py2.py3-none-any.whl", hash = "sha256:c8e1716e83cc398ae16824e5572ae04e0d9fc2c6b985fb0f900f5f0c96ecba1a"},
@@ -4276,7 +4276,7 @@ files = [
 name = "sphinx"
 version = "7.4.7"
 description = "Python documentation generator"
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "sphinx-7.4.7-py3-none-any.whl", hash = "sha256:c2419e2135d11f1951cd994d6eb18a1835bd8fdd8429f9ca375dc1f3281bd239"},
@@ -4414,7 +4414,7 @@ theme-sbt = ["sphinx-book-theme (>=1.1,<2.0)"]
 name = "sphinx-external-toc"
 version = "1.0.1"
 description = "A sphinx extension that allows the site-map to be defined in a single YAML file."
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "sphinx_external_toc-1.0.1-py3-none-any.whl", hash = "sha256:d9e02d50731dee9697c1887e4f8b361e7b86d38241f0e66bd5a9f4096779646f"},
@@ -4514,7 +4514,7 @@ sphinx = ["matplotlib", "myst-nb", "numpy", "sphinx-book-theme", "sphinx-design"
 name = "sphinxcontrib-applehelp"
 version = "2.0.0"
 description = "sphinxcontrib-applehelp is a Sphinx extension which outputs Apple help books"
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "sphinxcontrib_applehelp-2.0.0-py3-none-any.whl", hash = "sha256:4cd3f0ec4ac5dd9c17ec65e9ab272c9b867ea77425228e68ecf08d6b28ddbdb5"},
@@ -4551,7 +4551,7 @@ test = ["pytest", "pytest-cov"]
 name = "sphinxcontrib-devhelp"
 version = "2.0.0"
 description = "sphinxcontrib-devhelp is a sphinx extension which outputs Devhelp documents"
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "sphinxcontrib_devhelp-2.0.0-py3-none-any.whl", hash = "sha256:aefb8b83854e4b0998877524d1029fd3e6879210422ee3780459e28a1f03a8a2"},
@@ -4567,7 +4567,7 @@ test = ["pytest"]
 name = "sphinxcontrib-htmlhelp"
 version = "2.1.0"
 description = "sphinxcontrib-htmlhelp is a sphinx extension which renders HTML help files"
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "sphinxcontrib_htmlhelp-2.1.0-py3-none-any.whl", hash = "sha256:166759820b47002d22914d64a075ce08f4c46818e17cfc9470a9786b759b19f8"},
@@ -4583,7 +4583,7 @@ test = ["html5lib", "pytest"]
 name = "sphinxcontrib-jsmath"
 version = "1.0.1"
 description = "A sphinx extension which renders display math in HTML via JavaScript"
-optional = true
+optional = false
 python-versions = ">=3.5"
 files = [
     {file = "sphinxcontrib-jsmath-1.0.1.tar.gz", hash = "sha256:a9925e4a4587247ed2191a22df5f6970656cb8ca2bd6284309578f2153e0c4b8"},
@@ -4597,7 +4597,7 @@ test = ["flake8", "mypy", "pytest"]
 name = "sphinxcontrib-qthelp"
 version = "2.0.0"
 description = "sphinxcontrib-qthelp is a sphinx extension which outputs QtHelp documents"
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "sphinxcontrib_qthelp-2.0.0-py3-none-any.whl", hash = "sha256:b18a828cdba941ccd6ee8445dbe72ffa3ef8cbe7505d8cd1fa0d42d3f2d5f3eb"},
@@ -4613,7 +4613,7 @@ test = ["defusedxml (>=0.7.1)", "pytest"]
 name = "sphinxcontrib-serializinghtml"
 version = "2.0.0"
 description = "sphinxcontrib-serializinghtml is a sphinx extension which outputs \"serialized\" HTML files (json and pickle)"
-optional = true
+optional = false
 python-versions = ">=3.9"
 files = [
     {file = "sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl", hash = "sha256:6e2cb0eef194e10c27ec0023bfeb25badbbb5868244cf5bc5bdc04e4464bf331"},
@@ -4899,7 +4899,7 @@ files = [
 name = "tomli"
 version = "2.2.1"
 description = "A lil' TOML parser"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "tomli-2.2.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:678e4fa69e4575eb77d103de3df8a895e1591b48e740211bd1067378c69e8249"},
@@ -5232,17 +5232,17 @@ type = ["pytest-mypy"]
 all = ["Pillow", "PyYAML", "anthropic", "anyio", "astroid", "attrs", "dash", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "natsort", "networkx", "numba", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pylibjpeg-libjpeg", "pylint", "pymssql", "pynetdicom", "pyright", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "requests", "rope", "ruff", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "tabulate", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["dash", "doc8", "plotly", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
+dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = ["ipython", "jupyter-book", "matplotlib", "networkx", "numba", "numpy", "pydicom", "scipy", "sphinx-argparse", "sphinx-book-theme", "toml", "tqdm"]
-doctests = ["dash", "plotly", "ruff", "sphinx-book-theme", "tabulate"]
+doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
 tests = ["astroid", "numba", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
-user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numba", "numpy", "packaging", "pandas", "pydicom", "pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "requests", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
+user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dash", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numba", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "requests", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "c7e13a4a43a443c2f634a5c9cff1d283071b0051fc9dc97d44f670573f8164d6"
+content-hash = "77f0e079125fa0eaa876a1f4150a1898c00370a4ea95fd4ea91dadad19d5d839"

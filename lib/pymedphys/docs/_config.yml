@@ -4,8 +4,8 @@ copyright: "2018-2021"
 logo: img/pymedphys.svg
 execute:
   execute_notebooks: cache
-# parse:
-#   myst_extended_syntax: true
+parse:
+  myst_extended_syntax: true
 
 html:
   favicon: img/pymedphys.svg
@@ -14,8 +14,6 @@ html:
   use_repository_button: true
   use_issues_button: true
   baseurl: https://docs.pymedphys.com/
-  analytics:
-    google_analytics_id: UA-26591325-7
 
 
 repository:
