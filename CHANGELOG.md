@@ -7,6 +7,13 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### News around this release
+
+- PyMedPhys no longer has a Discourse group. Forum-like conversation and
+  collaboration has moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions)
+
 ## [0.41.0]
 
 ### New features and enhancements

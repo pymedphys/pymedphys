@@ -355,5 +355,6 @@ be uploaded. That was achieved with:
 
 If you'd like to get help with any of the above, or you'd like to use some of
 the above to make your own portable Streamlit executables and you're running
-into trouble. Feel free to reach out over at the PyMedPhys discourse group
-<https://pymedphys.discourse.group/>.
+into trouble. Feel free to reach out either by [creating an Issue](https://github.com/pymedphys/pymedphys/issues/new)
+or [starting a Discussion](https://github.com/pymedphys/pymedphys/discussions/new/choose)
+over at the PyMedPhys GitHub page.
