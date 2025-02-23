@@ -64,8 +64,8 @@ within the `Release Notes`_.
 Community
 **************
 
-PyMedPhys has a `Discourse community <https://pymedphys.discourse.group/>`_
-to both help you find your feet using PyMedPhys and to facilitate collaboration
+PyMedPhys has a `GitHub Discussions <https://github.com/pymedphys/pymedphys/discussions>`_
+page to both help you find your feet using PyMedPhys and to facilitate collaboration
 and general discussion. Please reach out over there and we'd love to get to
 know you!
 
