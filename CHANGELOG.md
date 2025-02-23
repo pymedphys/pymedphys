@@ -12,7 +12,7 @@ This project adheres to
 ### News around this release
 
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and
-  collaboration has moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions)
+  collaboration has moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
 
 ## [0.41.0]
 
