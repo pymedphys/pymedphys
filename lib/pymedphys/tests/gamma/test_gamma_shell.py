@@ -17,7 +17,6 @@
 
 """Tests for gamma shell."""
 
-
 from pymedphys._imports import numpy as np
 
 import pymedphys

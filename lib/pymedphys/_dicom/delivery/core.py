@@ -66,7 +66,7 @@ def _check_for_supported_collimation_device(
 
     supported_configurations = [{"MLCX", "ASYMY"}]
 
-    if not rt_beam_limiting_device_types in supported_configurations:
+    if rt_beam_limiting_device_types not in supported_configurations:
         raise ValueError(
             _pretty_print(
                 """\
@@ -182,10 +182,8 @@ class DeliveryDicom(DeliveryBase):
 
         gantry_tol = utilities.gantry_tol_from_gantry_angles(template_gantry_angles)
 
-        all_masked_delivery_data = (
-            filtered._mask_by_gantry(  # pylint: disable = protected-access
-                template_gantry_angles, gantry_tol
-            )
+        all_masked_delivery_data = filtered._mask_by_gantry(  # pylint: disable = protected-access
+            template_gantry_angles, gantry_tol
         )
 
         fraction_index = _pmp_rtplan.get_fraction_group_index(
@@ -326,7 +324,6 @@ class DeliveryDicom(DeliveryBase):
         return cls(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
     def _to_dicom_beam(self, dicom_template, beam_index, fraction_index):
-
         created_dicom = deepcopy(dicom_template)
         data_converted = self._coordinate_convert()
 

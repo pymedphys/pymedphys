@@ -59,7 +59,6 @@ class PinnacleImage:
     """
 
     def __init__(self, pinnacle, path, image):
-
         self._pinnacle = pinnacle
         self._path = path
         self._image = image

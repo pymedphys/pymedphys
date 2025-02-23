@@ -85,7 +85,6 @@ def export_cli(args):
     # If a TAR archive was supplied, extract it and determine the path
     # to the patient directory
     if os.path.isfile(input_path) and tarfile.is_tarfile(input_path):
-
         tmp_dir = tempfile.mkdtemp()
 
         logger.info("Extracting TAR archive to: %s", tmp_dir)
@@ -94,7 +93,7 @@ def export_cli(args):
 
         for m in t.getmembers():
             # Need to filter out files containing ":" for Windows
-            if not ":" in m.name:
+            if ":" not in m.name:
                 t.extract(m, path=tmp_dir)
 
         input_path = tmp_dir
@@ -103,7 +102,6 @@ def export_cli(args):
         # with Patient file
         pat_dirs = []
         for root, _, files in os.walk(input_path):
-
             if "Patient" in files:
                 pat_dirs.append(root)
 
@@ -150,7 +148,6 @@ def export_cli(args):
             plan = pl
 
     if not plan:
-
         if plan_name:
             logger.error("Plan not found (%s)", plan_name)
             sys.exit()
@@ -164,7 +161,6 @@ def export_cli(args):
 
     # Set the Trial if it was given
     if trial:
-
         try:
             plan.active_trial = trial
         except KeyError:
@@ -186,7 +182,6 @@ def export_cli(args):
         os.makedirs(output_directory)
 
     if uid_prefix:
-
         if not plan.is_prefix_valid(uid_prefix):
             logger.error("UID Prefix supplied is invalid")
             sys.exit()
@@ -194,7 +189,6 @@ def export_cli(args):
 
     primary_image_exported = False
     if image_series:
-
         image_series_uids = []
 
         if image_series == "all":
@@ -212,9 +206,7 @@ def export_cli(args):
                 primary_image_exported = True
 
     if "CT" in modality:
-
         if plan.primary_image:
-
             logger.info(
                 "Exporting primary image for plan: %s", plan.plan_info["PlanName"]
             )

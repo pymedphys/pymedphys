@@ -74,7 +74,7 @@ def _set_parameters():
     return demo_mode
 
 
-@st.cache
+@st.cache_data
 def _download_demo_data():
     cwd = pathlib.Path.cwd()
     pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=cwd)
@@ -82,7 +82,7 @@ def _download_demo_data():
     return cwd.joinpath("pymedphys-gui-demo")
 
 
-@st.cache
+@st.cache_data
 def _get_config(demo_mode):
     if demo_mode:
         path = _download_demo_data()

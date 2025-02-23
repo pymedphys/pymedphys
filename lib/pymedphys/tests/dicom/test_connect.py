@@ -62,7 +62,6 @@ def check_dicom_agrees(ds1, ds2):
 
 
 def prepare_listen_command(port, receive_directory, ae_title):
-
     return [
         pmp_test_utils.get_executable_even_when_embedded(),
         "-m",
@@ -79,7 +78,6 @@ def prepare_listen_command(port, receive_directory, ae_title):
 
 
 def prepare_send_command(port, ae_title, send_file):
-
     return [
         pmp_test_utils.get_executable_even_when_embedded(),
         "-m",
@@ -97,7 +95,6 @@ def prepare_send_command(port, ae_title, send_file):
 
 @contextmanager
 def listener_process(port, receive_directory, ae_title):
-
     listener_command = prepare_listen_command(port, receive_directory, ae_title)
     proc = subprocess.Popen(
         listener_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
@@ -327,11 +324,9 @@ def test_dicom_listener_cli(test_dataset):
     scp_ae_title = "PYMEDPHYSTEST"
 
     with tempfile.TemporaryDirectory() as tmp_directory:
-
         test_directory = pathlib.Path(tmp_directory)
 
         with listener_process(TEST_PORT, test_directory, scp_ae_title):
-
             # Send the data to the listener
             ae = pynetdicom.AE()
             ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
@@ -353,13 +348,11 @@ def test_dicom_sender(test_dataset):
     scp_ae_title = "PYMEDPHYSTEST"
 
     with tempfile.TemporaryDirectory() as tmp_directory:
-
         test_directory = pathlib.Path(tmp_directory)
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
 
         with listener_process(TEST_PORT, receive_directory, scp_ae_title):
-
             dicom_sender = DicomSender(
                 host="127.0.0.1", port=TEST_PORT, ae_title=scp_ae_title
             )
@@ -380,7 +373,6 @@ def test_dicom_sender_cli(test_dataset):
     scp_ae_title = "PYMEDPHYSTEST"
 
     with tempfile.TemporaryDirectory() as tmp_directory:
-
         test_directory = pathlib.Path(tmp_directory)
         send_directory = test_directory.joinpath("send")
         send_directory.mkdir()
@@ -393,7 +385,6 @@ def test_dicom_sender_cli(test_dataset):
         sender_command = prepare_send_command(TEST_PORT, scp_ae_title, send_file)
 
         with listener_process(TEST_PORT, receive_directory, scp_ae_title) as lp:
-
             subprocess.call(sender_command)
 
             stream_output = b""

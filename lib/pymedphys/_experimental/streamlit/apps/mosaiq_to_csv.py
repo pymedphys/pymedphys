@@ -26,7 +26,7 @@ from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as _mosaiq
 
-CATEGORY = categories.PLANNING
+CATEGORY = categories.DRAFT
 TITLE = "Mosaiq to CSV"
 
 LIB_ROOT = pathlib.Path(__file__).parents[3]
@@ -194,7 +194,7 @@ def _apply_table_type_conversions_inplace(tables, types_map):
         for column_name, column_type in column_types.items():
             if column_type in ["binary", "timestamp"]:
                 table[column_name] = table[column_name].apply(
-                    lambda x: base64.b64encode(x).decode()
+                    lambda x: base64.urlsafe_b64encode(x).decode()
                 )
                 continue
             if column_type == "datetime":
@@ -266,7 +266,7 @@ def _append_filtered_table(connection, df, table, column_name, column_value):
     return df
 
 
-@st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
+@st.cache_data(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def _get_all_columns(connection, table):
     """Get the column schema from an MSSQL table."""
     raw_columns = pymedphys.mosaiq.execute(
@@ -287,14 +287,14 @@ def _get_all_columns(connection, table):
     return columns, types
 
 
-@st.cache(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
+@st.cache_data(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def _get_filtered_table(connection, table, column_name, column_value):
     """Get the rows from an MSSQL table where the column_value matches
     within the given column_name."""
-    if not table in ALLOWLIST_TABLE_NAMES:
+    if table not in ALLOWLIST_TABLE_NAMES:
         raise ValueError(f"{table} must be within the allowlist")
 
-    if not column_name in ALLOWLIST_COLUMN_NAMES:
+    if column_name not in ALLOWLIST_COLUMN_NAMES:
         raise ValueError(f"{column_name} must be within the allowlist")
 
     column_value = str(column_value)

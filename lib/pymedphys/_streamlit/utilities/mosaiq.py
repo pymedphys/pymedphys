@@ -146,10 +146,8 @@ def get_uncached_mosaiq_connection(
 
     st.stop()
 
-    raise ValueError("This should never be reached")
 
-
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+@st.cache_resource()
 def get_cached_mosaiq_connection(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
 ) -> _connect.Connection:
@@ -178,7 +176,7 @@ def get_cached_mosaiq_connection(
     )
 
 
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+@st.cache_resource()
 def get_cached_mosaiq_connection_in_dict(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
 ) -> Dict[Literal["connection"], _connect.Connection]:

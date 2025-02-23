@@ -31,7 +31,7 @@ def config_in_current_directory():
     return HERE
 
 
-@st.cache
+@st.cache_data
 def download_demo_files():
     cwd = pathlib.Path.cwd()
     pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=cwd)
@@ -52,7 +52,7 @@ def get_config(config_mode):
     return st_config.get_config(path)
 
 
-@st.cache
+@st.cache_data
 def get_dicom_export_locations(config):
     site_directories = st_config.get_site_directories(config)
     dicom_export_locations = {
@@ -63,7 +63,7 @@ def get_dicom_export_locations(config):
     return dicom_export_locations
 
 
-@st.cache
+@st.cache_data
 def get_icom_live_stream_directories(config):
     icom_live_stream_directories = {}
     for site in config["site"]:
@@ -76,7 +76,7 @@ def get_icom_live_stream_directories(config):
     return icom_live_stream_directories
 
 
-@st.cache
+@st.cache_data
 def get_machine_centre_map(config):
     machine_centre_map = {}
     for site in config["site"]:
@@ -100,7 +100,7 @@ def _get_alias_with_fallback(site_mosaiq_config):
     return f"{site_mosaiq_config['hostname']}:{port}"
 
 
-@st.cache
+@st.cache_data
 def get_mosaiq_details(config):
     mosaiq_details = {
         site["name"]: {
@@ -117,28 +117,28 @@ def get_mosaiq_details(config):
     return mosaiq_details
 
 
-@st.cache
+@st.cache_data
 def get_default_icom_directories(config):
     default_icom_directory = config["icom"]["patient_directories"]
 
     return default_icom_directory
 
 
-@st.cache
+@st.cache_data
 def get_default_gamma_options(config):
     default_gamma_options = config["gamma"]
 
     return default_gamma_options
 
 
-@st.cache
+@st.cache_data
 def get_logfile_root_dir(config):
     logfile_root_dir = pathlib.Path(config["trf_logfiles"]["root_directory"])
 
     return logfile_root_dir
 
 
-@st.cache
+@st.cache_data
 def get_indexed_backups_directory(config):
     logfile_root_dir = get_logfile_root_dir(config)
     indexed_backups_directory = logfile_root_dir.joinpath("diagnostics/already_indexed")
@@ -146,7 +146,7 @@ def get_indexed_backups_directory(config):
     return indexed_backups_directory
 
 
-@st.cache
+@st.cache_data
 def get_indexed_trf_directory(config):
     logfile_root_dir = get_logfile_root_dir(config)
     indexed_trf_directory = logfile_root_dir.joinpath("indexed")

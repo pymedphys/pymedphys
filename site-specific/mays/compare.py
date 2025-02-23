@@ -1,3 +1,5 @@
+# ruff: noqa
+
 import datetime
 
 import pandas as pd
@@ -162,7 +164,6 @@ def compare_to_mosaiq(dicom_table, mos_table):
 
     for field in range(len(dicom_table)):
         for label in to_be_compared:
-
             # check that the corresponding value exists in Mosaiq
             if label in mos_index:
                 add_dicom = pd.DataFrame(

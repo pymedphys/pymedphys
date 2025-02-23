@@ -14,10 +14,7 @@
 # limitations under the License.
 
 
-"""A toolbox for connecting to Mosaiq SQL.
-"""
-
-from typing import Dict, List, Tuple
+"""A toolbox for connecting to Mosaiq SQL."""
 
 from pymedphys._imports import pymssql
 
@@ -40,7 +37,12 @@ class Connection:
     ):
         try:
             self._connection = pymssql.connect(
-                hostname, username, password, database=database, port=port
+                hostname,
+                username,
+                password,
+                database=database,
+                port=port,
+                read_only=True,
             )
         except pymssql.OperationalError as error:
             error_message = error.args[0][1]
@@ -81,11 +83,11 @@ class Cursor:
     def close(self):
         self._cursor.close()
 
-    def execute(self, query: str, parameters: Dict = None):
+    def execute(self, query: str, parameters: dict | None = None):
         self._cursor.execute(query, parameters)
 
-    def fetchall(self) -> List[Tuple[str, ...]]:
-        results: List[Tuple[str, ...]] = self._cursor.fetchall()
+    def fetchall(self) -> list[tuple[str, ...]]:
+        results: list[tuple[str, ...]] = self._cursor.fetchall()
 
         return results
 

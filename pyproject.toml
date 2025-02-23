@@ -1,11 +1,9 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.40.0"
+version = "0.42.0-dev0"
 readme = "README.rst"
 description = "Medical Physics library"
-authors = [
-    "PyMedPhys Contributors <developers@pymedphys.com>"
-]
+authors = ["PyMedPhys Contributors <developers@pymedphys.com>"]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"
 repository = "https://github.com/pymedphys/pymedphys"
@@ -22,7 +20,7 @@ packages = [{ include = "pymedphys", from = "lib" }]
 include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.9.7 || >3.9.7,<3.12"
+python = ">=3.10,<3.13"
 typing-extensions = "*"
 setuptools = "*"
 tomlkit = "*"
@@ -59,11 +57,10 @@ dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
 scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 imageio = { version = "*", optional = true }         # groups = ["user", "all"]
 
-streamlit = { version = "~1.29.0", optional = true } # groups = ["user", "all"]
-streamlit-ace = { version = "*", optional = true }   # groups = ["user", "all"]
+streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
 
-# NumPy's lower bound here is for typing support
-numpy = { version = ">=1.20.2", optional = true } # groups = ["user", "all", "icom", "docs"]
+numba = { version = "*", optional = true }      # groups = ["user", "all", "docs", "tests"]
+numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
 
 # The following lower bounded packages are due to certain APIs utilised
 pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "all", "mosaiq"]
@@ -71,9 +68,19 @@ pydicom = { version = ">=2.0.0", optional = true } # groups = ["user", "all", "d
 
 # The following lower bounds are so that the versions with wheels are utilised
 # for the installation
-shapely = { version = ">=1.7.0", optional = true }       # groups = ["user", "all"]
+shapely = { version = ">=1.7.0", optional = true } # groups = ["user", "all"]
 
 pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user", "all"]
+
+# AI
+anthropic = { version = "0.29.0", optional = true }   # groups = ["user", "all"]
+trio = { version = ">=0.25.0", optional = true }      # groups = ["user", "all"]
+trio-asyncio = { version = "*", optional = true }     # groups = ["user", "all"]
+anyio = { version = "*", optional = true }            # groups = ["user", "all"]
+
+# Visualisation
+plotly = "^5.24.1"        # groups = ["user", "all"]
+dash = "^2.18.1"        # groups = ["user", "all"]
 
 # ---- #
 # CVEs #
@@ -91,22 +98,16 @@ Pillow = { version = ">=9.0.0", optional = true } # groups = ["user", "all"]
 # ----------- #
 flashgamma = { version = "*", optional = true } # groups = ["comparables"]
 
-# -------- #
-# Speedups #
-# -------- #
-
-# Many environments have issue with installing llvmlite, so, until it is more
-# reliable, don't include this dependency in the standard install.
-interpolation = { version = ">=2.1.0", optional = true } # groups = ["speedups"]
-
 # ------------- #
 # Documentation #
 # ------------- #
 sphinx-argparse = { version = "*", optional = true } # groups = ["all", "docs"]
 # sphinx-ext-napoleon = { version = "*", optional = true }  # groups = ["all", "docs"]
 sphinx-book-theme = { version = "*", optional = true }   # groups = ["all", "docs", "doctests"]
-jupyter-book = { version = ">=0.12.0", optional = true } # groups = ["all", "docs"]
 networkx = { version = "*", optional = true }            # groups = ["all", "docs"]
+
+# v2.x is in alpha, and breaks the docs build at time of writing.
+jupyter-book = { version = ">=0.12.0 <2.0.0", optional = true } # groups = ["all", "docs"]
 
 # ----- #
 # Tests #
@@ -122,22 +123,23 @@ pytest-rerunfailures = { version = "*", optional = true } # groups = ["all", "te
 # Development Only #
 # ---------------- #
 pre-commit = { version = "*", optional = true }      # groups = ["dev", "all"]
-black = { version = ">=22.3.0", optional = true }     # groups = ["dev", "all", "propagate", "doctests"]
-mypy = { version = "*", optional = true }            # groups = ["dev", "all"]
+ruff = { version = "*", optional = true }        # groups = ["dev", "all", "propagate", "doctests"]
+pyright = { version = "*", optional = true }   # groups = ["dev", "all"]
 rope = { version = "*", optional = true }            # groups = ["dev", "all"]
 doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "doctests"]
-anthropic = "^0.21.3"
 pygithub = "^2.3.0"
 
 [tool.poetry.extras]
 all = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "astroid",
     "attrs",
-    "black",
+    "dash",
     "dbfread",
     "dicompyler-core",
     "doc8",
@@ -146,12 +148,13 @@ all = [
     "jupyter-book",
     "keyring",
     "matplotlib",
-    "mypy",
     "natsort",
     "networkx",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
+    "plotly",
     "pre-commit",
     "psutil",
     "pydicom",
@@ -159,6 +162,7 @@ all = [
     "pylint",
     "pymssql",
     "pynetdicom",
+    "pyright",
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
@@ -167,6 +171,7 @@ all = [
     "readme-renderer",
     "requests",
     "rope",
+    "ruff",
     "scikit-learn",
     "scipy",
     "shapely",
@@ -174,23 +179,25 @@ all = [
     "sphinx-book-theme",
     "sqlalchemy",
     "streamlit",
-    "streamlit-ace",
     "tabulate",
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["black", "doc8", "mypy", "pre-commit", "readme-renderer", "rope", "tabulate"]
+dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
     "jupyter-book",
     "matplotlib",
     "networkx",
+    "numba",
     "numpy",
     "pydicom",
     "scipy",
@@ -199,13 +206,13 @@ docs = [
     "toml",
     "tqdm",
 ]
-doctests = ["black", "sphinx-book-theme", "tabulate"]
+doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
-propagate = ["black"]
-speedups = ["interpolation"]
+propagate = ["ruff"]
 tests = [
     "astroid",
+    "numba",
     "psutil",
     "pylint",
     "pytest",
@@ -217,16 +224,21 @@ tests = [
 user = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "attrs",
+    "dash",
     "dbfread",
     "dicompyler-core",
     "imageio",
     "keyring",
     "matplotlib",
     "natsort",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
+    "plotly",
     "pydicom",
     "pylibjpeg-libjpeg",
     "pymssql",
@@ -239,10 +251,11 @@ user = [
     "shapely",
     "sqlalchemy",
     "streamlit",
-    "streamlit-ace",
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]
@@ -250,52 +263,46 @@ user = [
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"
 
-[tool.isort]
-multi_line_output = 3
-line_length = 88
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
+[tool.poetry.group.dev.dependencies]
+sphinx-external-toc = "^1.0.1"
 
-known_third_party = ["pymedphys._imports"]
-known_general_scientific = [
-    "numpy",
-    "scipy",
-    "pandas",
-    "imageio",
-    "PIL",
-    "skimage",
-    "matplotlib",
-    "mpl_toolkits",
-    "shapely",
-    "altair",
-    "sklearn",
-    "plotly",
+[tool.ruff.lint]
+# These were the existing issues when first migrating to ruff, we can feel
+# free to remove these an iteratively tighten the belt if so desired.
+extend-ignore = [
+    # "F401", # imported but unused
+    # "E741", # Ambiguous variable name
+    # "E722", # Do not use bare `except`
 ]
-known_machine_learning = ["tensorflow", "pytorch"]
-known_streamlit = ["streamlit", "streamlit_ace", "streamlit_analytics"]
-known_medphys = [
-    "pydicom",
-    "pylinac",
-    "pynetdicom",
-    "libjpeg",
-    "dicompylercore",
-]
-known_first_party = ["pymedphys"]
-known_experimental = ["pymedphys._experimental"]
-sections = [
-    "FUTURE",
-    "STDLIB",
-    "THIRDPARTY",
-    "GENERAL_SCIENTIFIC",
-    "MACHINE_LEARNING",
-    "STREAMLIT",
-    "MEDPHYS",
-    "FIRSTPARTY",
-    "EXPERIMENTAL",
-    "LOCALFOLDER",
-]
+
+
+[tool.ruff.lint.isort]
+known-third-party = ["pymedphys._imports"]
+known-first-party = ["pymedphys"]
+
+[tool.pyright]
+include = ["lib/pymedphys"]
+
+# These have been set to False in order to be able to utilise pyright, but
+# future work would be to iteratively set these to true and fix the code base.
+reportMissingImports = false
+reportGeneralTypeIssues = false
+reportUnboundVariable = false
+reportOptionalMemberAccess = false
+reportOptionalSubscript = false
+reportOptionalOperand = false
+reportOptionalCall = false
+reportOptionalIterable = false
+reportPrivateImportUsage = false
+reportArgumentType = false
+reportCallIssue = false
+reportOperatorIssue = false
+reportAttributeAccessIssue = false
+reportAssignmentType = false
+reportIndexIssue = false
+reportReturnType = false
+reportMissingModuleSource = false
+reportTypedDictNotRequiredAccess = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

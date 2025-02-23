@@ -50,7 +50,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
 
     for data in patient_data:
         _, patient_name = extract.extract(data, "Patient Name")
-        if not patient_name is None:
+        if patient_name is not None:
             break
 
     logging.debug(
@@ -173,7 +173,7 @@ class PatientIcomData:
                 {"patient_id": patient_id},
             )
 
-        elif not usage_start is None:
+        elif usage_start is not None:
             logging.debug(
                 "Delivery that started at %(usage_start)s appears to "
                 "have completed.",

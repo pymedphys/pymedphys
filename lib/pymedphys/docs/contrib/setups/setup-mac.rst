@@ -5,8 +5,9 @@ MacOS Setup
 Overview
 ========
 
-* Install Python 3.8
-* `Install Poetry`_
+* Install Python 3.12.3
+* Install `pipx` with ``pip install pipx``
+* Install ``poetry`` with ``pipx install poetry``
 * Install freetds
 
   * Can be done with `Homebrew`_; ``brew install freetds``
@@ -23,7 +24,6 @@ Overview
 You're good to go.
 
 .. _`Homebrew`: https://brew.sh/
-.. _`Install Poetry`: https://poetry.eustace.io/docs/#installation
 
 
 Opinionated Recommendations

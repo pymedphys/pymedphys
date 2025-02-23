@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Create a reproducible hash from a filepath.
-"""
+"""Create a reproducible hash from a filepath."""
 
 import hashlib
 

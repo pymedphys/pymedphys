@@ -1,5 +1,5 @@
 # pylint: disable = unused-import
-
+# ruff: noqa: F401
 
 from pymedphys._experimental.pseudonymisation import (
     get_default_pseudonymisation_keywords,

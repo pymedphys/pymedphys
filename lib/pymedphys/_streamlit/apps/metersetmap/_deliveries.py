@@ -18,24 +18,24 @@ from pymedphys._imports import streamlit as st
 import pymedphys
 
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data()
 def delivery_from_trf(pandas_table):
     return pymedphys.Delivery._from_pandas(  # pylint: disable = protected-access
         pandas_table
     )
 
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data()
 def delivery_from_icom(icom_stream):
     return pymedphys.Delivery.from_icom(icom_stream)
 
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data()
 def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
 
 
-@st.cache(hash_funcs={pymedphys.mosaiq.Connection: id}, allow_output_mutation=True)
+@st.cache_data(hash_funcs={pymedphys.mosaiq.Connection: id})
 def delivery_from_mosaiq(connection_and_field_id):
     connection, field_id = connection_and_field_id
     return pymedphys.Delivery.from_mosaiq(connection, field_id)

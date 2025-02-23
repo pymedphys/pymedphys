@@ -75,8 +75,7 @@ def non_private_tags_in_dicom_dataset(ds):
     for elem in ds:
         if not elem.tag.is_private and not (
             # Ignore retired Group Length elements
-            elem.tag.element == 0
-            and elem.tag.group > 6
+            elem.tag.element == 0 and elem.tag.group > 6
         ):
             non_private_tags.append(elem.tag)
     return non_private_tags
@@ -248,7 +247,7 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     for elem in ds:
         if elem.keyword in get_default_identifying_keywords():
             dummy_value = get_anonymous_replacement_value(elem.keyword)
-            if not elem.value in ("", [], dummy_value, None):
+            if elem.value not in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
                     float(elem.value), float(dummy_value)
                 ):

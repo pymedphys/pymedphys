@@ -1,0 +1,129 @@
+locale: en_US
+scripts:
+    before:
+        - Update Ident set IDA=Pat_ID1
+tables:
+  Patient:
+    columns:
+      Birth_DtTm:
+        type: fake_update
+        # need to constrain to something within the same year or two so age is usable
+        fake_type: date_of_birth
+      SS_Number:
+
+        type: fake_update
+        fake_type: ssn
+      Last_Name:
+        type: fake_update
+        fake_type: last_name
+      First_Name:
+        type: fake_update
+        fake_type: first_name
+      MIddle_Name:
+        type: fake_update
+        fake_type: first_name
+      Maiden_Name:
+        type: fake_update
+        fake_type: last_name
+      Last_Name_Secondary:
+        type: fake_update
+        # need to localize
+        fake_type: last_name
+      First_Name_Secondary:
+        type: fake_update
+        # need to localize
+        fake_type: first_name
+      # Middle_Name_Secondary:
+        # overwrite with empty string for testing purposes
+        # type: ( '' )
+      Last_Name_SingleByte:
+        type: fake_update
+        fake_type: last_name
+      First_Name_SingleByte:
+        type: fake_update
+        # need to localize
+        fake_type: first_name
+      # Middle_Name_SingleByte:
+        # overwrite with empty string for testing purposes
+        # type: ( '' )
+      MotherMaidenName:
+        type: fake_update
+        fake_type: last_name
+
+  PatientFamilyHistory:
+    columns:
+      Name:
+        type: fake_update
+        fake_type: name
+
+  PatientName:
+    columns:
+      Last_Name:
+        type: fake_update
+        fake_type: last_name
+      First_Name:
+        type: fake_update
+        fake_type: first_name
+      Middle_Name:
+        type: fake_update
+        fake_type: first_name
+  Staff:
+    columns:
+      Initials:
+        type: fake_update
+        fake_type: word
+      User_Name: unique_login
+      PasswordBytes:
+        type: fake_update
+        fake_type: binary
+        fake_args:
+            length: 15
+        sql_type: binary(15)
+      Last_Name:
+        type: fake_update
+        fake_type: last_name
+      First_Name:
+        type: fake_update
+        fake_type: first_name
+      # Mdl_Initial:
+        # type: ( '' )
+      Birth_DtTm:
+        type: fake_update
+        fake_type: date_of_birth
+      City: ( 'Metropolis' )
+      State_Province: ( 'Pacifica' )
+      Country: ( 'Oceania' )
+      Work_Phone:
+        type: fake_update
+        fake_type: phone_number
+      Fax:
+        type: fake_update
+        fake_type: phone_number
+      Pager:
+        type: fake_update
+        fake_type: phone_number
+      CellPhone:
+        type: fake_update
+        fake_type: phone_number
+      Email: unique_email
+      Home_Phone:
+        type: fake_update
+        fake_type: phone_number
+      DirectMailAddress:
+        type: fake_update
+        fake_type: address
+      Last_Name_SingleByte:
+        type: fake_update
+        fake_type: last_name
+      First_Name_SingleByte:
+        type: fake_update
+        fake_type: first_name
+      Mdl_Initial_SingleByte: ( '' )
+
+  Ident:
+    columns:
+      IDB: ( '' )
+      IDC: ( '' )
+      IDD: ( '' )
+      IDE: ( '' )
+      IDF: ( '' )

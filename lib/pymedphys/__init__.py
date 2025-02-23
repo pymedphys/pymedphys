@@ -1,6 +1,17 @@
+# ruff: noqa: F401
+
 """Module docstring."""
 
-from . import dicom, electronfactors, metersetmap, mosaiq, mudensity, pinnacle, trf
+from . import (
+    dicom,
+    electronfactors,
+    interpolate,
+    metersetmap,
+    mosaiq,
+    mudensity,
+    pinnacle,
+    trf,
+)
 from ._data import data_path, zenodo_data_paths, zip_data_paths
 from ._delivery import Delivery
 from ._gamma.implementation.shell import gamma_shell as gamma

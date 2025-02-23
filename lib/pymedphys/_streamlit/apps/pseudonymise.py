@@ -1,5 +1,4 @@
-"""Streamlit Gui for Pseudonymise
-"""
+"""Streamlit Gui for Pseudonymise"""
 
 # Copyright (C) 2020 Stuart Swerdloff
 
@@ -14,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 
 import base64
 import datetime
@@ -70,9 +68,7 @@ def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
     """
     pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch[  # type: ignore
         "UI"
-    ](
-        ds_input.SOPInstanceUID
-    )
+    ](ds_input.SOPInstanceUID)
 
     sop_class_uid: pydicom.dataelem.DataElement = ds_input.SOPClassUID
 

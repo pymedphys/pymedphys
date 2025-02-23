@@ -119,7 +119,6 @@ class DicomListener(DicomConnectBase):
             self.on_released_callback(self.association_directory)
 
     def on_c_store(self, event):
-
         dataset = event.dataset
 
         try:
@@ -142,7 +141,6 @@ class DicomListener(DicomConnectBase):
         status_ds.Status = 0x0000
 
         if filepath.exists():
-
             # If the file already exists, open it up and compare the contents
             # (converting to JSON string to perform comparison)
             existing_ds = pydicom.read_file(filepath)

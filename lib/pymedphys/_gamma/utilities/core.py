@@ -43,16 +43,13 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
     """Check user inputs."""
 
     if not isinstance(axes_evaluation, tuple) or not isinstance(axes_reference, tuple):
-
         if isinstance(axes_evaluation, np.ndarray) and isinstance(
             axes_reference, np.ndarray
         ):
-
             if (
                 len(np.shape(axes_evaluation)) == 1
                 and len(np.shape(axes_reference)) == 1
             ):
-
                 axes_evaluation = (axes_evaluation,)
                 axes_reference = (axes_reference,)
 

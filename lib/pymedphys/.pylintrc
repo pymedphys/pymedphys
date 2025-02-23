@@ -39,6 +39,12 @@ disable =
     unnecessary-dunder-call,
     unnecessary-list-index-lookup,
     superfluous-parens,
+    used-before-assignment,
+    possibly-used-before-assignment,
+    useless-import-alias,
+
+[DESIGN]
+max-positional-arguments=20
 
 [FORMAT]
 max-line-length=88

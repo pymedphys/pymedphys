@@ -19,17 +19,16 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xmltodict
 
+from pymedphys._experimental.streamlit.utilities import dbf
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
-from pymedphys._experimental.streamlit.utilities import dbf
-
-CATEGORY = categories.PLANNING
+CATEGORY = categories.DRAFT
 TITLE = "iView Database Explorer"
 
 
-@st.cache()
+@st.cache_data()
 def get_files_for_extension(directory: pathlib.Path, extension: str):
     """Cached file list.
 

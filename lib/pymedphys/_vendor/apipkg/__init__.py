@@ -49,7 +49,6 @@ def _py_abspath(path):
     that will leave paths from jython jars alone
     """
     if path.startswith("__pyclasspath__"):
-
         return path
     else:
         return os.path.abspath(path)
@@ -181,7 +180,7 @@ class ApiModule(ModuleType):
             if target is not None and name != "__onfirstaccess__":
                 # retry, onfirstaccess might have set attrs
                 return getattr(self, name)
-            raise AttributeError(name)
+            raise AttributeError(f"{target} is missing {name}")
 
         result = importobj(modpath, attrname)
         setattr(self, name, result)

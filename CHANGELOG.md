@@ -7,9 +7,32 @@ All notable changes to are documented here.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.41.0]
 
-- None
+### New features and enhancements
+
+- PyMedPhys now includes its own custom, `numba`-accelerated implementation of
+  multilinear interpolation. You can find the technical reference
+  [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  This was implemented for the following reasons:
+    - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
+     `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
+      the technical reference page for a performance comparison.
+    - At the time of writing, EconForge's `interpolation` appears incompatible
+      with `numba>=0.60`.
+    - Removing an additional dependency (namely, EconForge's `interpolation`)
+      is generally better for maintenance, holding all else equal.
+
+### (Potentially) breaking changes.
+
+- **WARNING**: Updating to `scipy >= 1.11` introduced changes to test
+  baselines for the electron factors algorithm. This occurred without any
+  `pymedphys` code changes. Changes in baseline on the order of ~0.5% have
+  been observed to be, but we cannot guarantee that changes in a given
+  electron factor calculation do not exceed 0.5%. If you do use this
+  algorithm, we strongly recommend that you compare current results with
+  previously known results and report any large deviations
+  [here](https://github.com/pymedphys/pymedphys/issues/1858)
 
 ## [0.40.0]
 
@@ -1394,7 +1417,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 - Began keeping record of changes in `changelog.md`
 
-[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.39.3...main
+[unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.40.0...main
+[0.41.0]: https://github.com/pymedphys/pymedphys/compare/v0.40.0...v0.41.0
 [0.40.0]: https://github.com/pymedphys/pymedphys/compare/v0.39.3...v0.40.0
 [0.39.3]: https://github.com/pymedphys/pymedphys/compare/v0.39.2...v0.39.3
 [0.39.2]: https://github.com/pymedphys/pymedphys/compare/v0.39.1...v0.39.2

@@ -13,13 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
-from typing import List, Union, cast
-
-from typing_extensions import Literal
-
-Number = Union[float, int]
 import datetime
+import pathlib
+from typing import List, Literal, Union, cast
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
@@ -31,6 +27,9 @@ from pymedphys._experimental.streamlit.utilities import icom as _icom
 from pymedphys._experimental.streamlit.utilities import iteration as _iteration
 
 from . import _angles, _filtering, _frames, _sync, _utilities
+
+Number = Union[float, int]
+
 
 MAXIMUM_ANGLE_AXIS_MAGNITUDE = 200
 
@@ -274,7 +273,6 @@ def table_transfer_via_interpolation(source, location, key):
 def _angle_filtering(
     database_table: "pd.DataFrame", advanced_mode: bool
 ) -> "pd.DataFrame":
-
     st.write(
         """
         ### Angle filtering definitions

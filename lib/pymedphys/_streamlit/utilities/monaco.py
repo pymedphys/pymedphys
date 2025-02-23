@@ -166,6 +166,6 @@ def monaco_patient_directory_picker(
     return monaco_site, monaco_directory, patient_id, plan_directory, patient_directory
 
 
-@st.cache
+@st.cache_data
 def read_monaco_patient_name(monaco_patient_directory):
     return mnc_patient.read_patient_name(monaco_patient_directory)

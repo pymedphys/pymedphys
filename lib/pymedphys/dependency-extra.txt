@@ -1,9 +1,11 @@
 all = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "astroid",
     "attrs",
-    "black",
+    "dash",
     "dbfread",
     "dicompyler-core",
     "doc8",
@@ -12,12 +14,13 @@ all = [
     "jupyter-book",
     "keyring",
     "matplotlib",
-    "mypy",
     "natsort",
     "networkx",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
+    "plotly",
     "pre-commit",
     "psutil",
     "pydicom",
@@ -25,6 +28,7 @@ all = [
     "pylint",
     "pymssql",
     "pynetdicom",
+    "pyright",
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
@@ -33,6 +37,7 @@ all = [
     "readme-renderer",
     "requests",
     "rope",
+    "ruff",
     "scikit-learn",
     "scipy",
     "shapely",
@@ -40,23 +45,25 @@ all = [
     "sphinx-book-theme",
     "sqlalchemy",
     "streamlit",
-    "streamlit-ace",
     "tabulate",
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["black", "doc8", "mypy", "pre-commit", "readme-renderer", "rope", "tabulate"]
+dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
 dicom = ["pydicom", "pynetdicom"]
 docs = [
     "ipython",
     "jupyter-book",
     "matplotlib",
     "networkx",
+    "numba",
     "numpy",
     "pydicom",
     "scipy",
@@ -65,13 +72,13 @@ docs = [
     "toml",
     "tqdm",
 ]
-doctests = ["black", "sphinx-book-theme", "tabulate"]
+doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
-propagate = ["black"]
-speedups = ["interpolation"]
+propagate = ["ruff"]
 tests = [
     "astroid",
+    "numba",
     "psutil",
     "pylint",
     "pytest",
@@ -83,16 +90,21 @@ tests = [
 user = [
     "Pillow",
     "PyYAML",
+    "anthropic",
+    "anyio",
     "attrs",
+    "dash",
     "dbfread",
     "dicompyler-core",
     "imageio",
     "keyring",
     "matplotlib",
     "natsort",
+    "numba",
     "numpy",
     "packaging",
     "pandas",
+    "plotly",
     "pydicom",
     "pylibjpeg-libjpeg",
     "pymssql",
@@ -105,10 +117,11 @@ user = [
     "shapely",
     "sqlalchemy",
     "streamlit",
-    "streamlit-ace",
     "timeago",
     "toml",
     "tqdm",
+    "trio",
+    "trio-asyncio",
     "watchdog",
     "xmltodict",
 ]

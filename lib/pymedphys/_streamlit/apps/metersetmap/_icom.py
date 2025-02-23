@@ -24,7 +24,7 @@ from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._utilities import patient as utl_patient
 
 
-@st.cache
+@st.cache_data
 def load_icom_stream(icom_path):
     with lzma.open(icom_path, "r") as f:
         contents = f.read()
@@ -192,7 +192,7 @@ def icom_input_method(
             patient_name = utl_patient.convert_patient_name_from_split(
                 *patient_name.split(", ")
             )
-        except:  # pylint: disable = bare-except
+        except:  # pylint: disable = bare-except  # noqa: E722
             pass
 
         patient_names.add(patient_name)

@@ -5,8 +5,9 @@ Linux Setup
 Overview
 ========
 
-* Install Python 3.8
-* `Install Poetry`_
+* Install Python 3.12.3
+* Install `pipx` with ``pip install pipx``
+* Install ``poetry`` with ``pipx install poetry``
 * Clone the PyMedPhys git repo
 * Run ``poetry install -E all`` within the root of the repo
 * Run ``poetry run pre-commit install``
@@ -15,8 +16,6 @@ Overview
   * eg. ``sudo apt-get install pandoc``
 
 You're good to go.
-
-.. _`Install Poetry`: https://poetry.eustace.io/docs/#installation
 
 
 Opinionated Recommendations
@@ -32,7 +31,7 @@ Opinionated Recommendations
 
 
 .. _`Install pyenv`: https://github.com/pyenv/pyenv-installer#install
-.. _`Install prerequisites`: https://github.com/pyenv/pyenv/wiki/common-build-problems#prerequisites
+.. _`Install prerequisites`: https://github.com/pyenv/pyenv/wiki#suggested-build-environment
 .. _`VSCode`: https://code.visualstudio.com/Download
 .. _`Jupyter Lab`: https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html#pip
 .. _`Configure pyenv`: https://amaral.northwestern.edu/resources/guides/pyenv-tutorial

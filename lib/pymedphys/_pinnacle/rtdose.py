@@ -86,7 +86,6 @@ def trilinear_interpolation(idx, grid):
 
 
 def convert_dose(plan, export_path):
-
     # Check that the plan has a primary image, as we can't create a meaningful RTDOSE without it:
     if not plan.primary_image:
         plan.logger.error("No primary image found for plan. Unable to generate RTDOSE.")
@@ -101,7 +100,7 @@ def convert_dose(plan, export_path):
 
     patient_position = plan.patient_position
 
-    if not patient_position in supported_orientations:
+    if patient_position not in supported_orientations:
         raise NotImplementedError(
             f"{patient_position} orientation not supported. Only: "
             f"{supported_orientations}"
@@ -264,7 +263,6 @@ def convert_dose(plan, export_path):
         return
 
     for beam in beam_list:
-
         plan.logger.info("Exporting Dose for beam: %s", beam["Name"])
 
         # Get the binary file for this beam
@@ -388,7 +386,6 @@ def convert_dose(plan, export_path):
                 trial_info["DoseGrid .Dimension .X"]
                 * trial_info["DoseGrid .Dimension .Y"],
             ):
-
                 pixelsforframe.append(
                     float(
                         pixel_data_list[
@@ -419,7 +416,6 @@ def convert_dose(plan, export_path):
     # Scale by the scaling factor
     pixelvaluelist = []
     for _, element in enumerate(summed_pixel_values, 0):
-
         if scale != 0:
             element = round(element / scale)
         else:

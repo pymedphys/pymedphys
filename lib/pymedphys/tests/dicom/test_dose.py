@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" A test suite for the DICOM RT Dose toolbox."""
+"""A test suite for the DICOM RT Dose toolbox."""
 
 import copy
 import json
@@ -79,7 +79,6 @@ def test_require_dicom_patient_position():
     test_orientations = ("HFS", "HFP", "FFS", "FFP")
 
     for orient, ds in test_ds_dict.items():
-
         for test_orient in test_orientations:
             if orient == test_orient:
                 orientation.require_dicom_patient_position(ds, test_orient)
@@ -95,7 +94,6 @@ def test_require_dicom_patient_position():
 
 @pytest.mark.pydicom
 def test_sum_doses_in_datasets():
-
     scale1 = 1e-2
     data1 = (
         np.array(

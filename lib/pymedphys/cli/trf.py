@@ -13,9 +13,7 @@
 # limitations under the License.
 
 
-"""A command line interface for the conversion of Elekta binary log files.
-"""
-
+"""A command line interface for the conversion of Elekta binary log files."""
 
 from pymedphys._trf.decode.detect import detect_cli
 from pymedphys._trf.decode.trf2csv import trf2csv_cli
