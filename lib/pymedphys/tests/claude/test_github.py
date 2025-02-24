@@ -78,16 +78,24 @@ def test_create_issue_comment_with_claude_response_to_user_comment(
 
     claude_response_mock = anthropic.types.message.Message(
         id="1234",
-        content=[
-            anthropic.types.ContentBlock(
-                text="This is a\nmultiline\ntest\nresponse.", type="text"
-            )
-        ],
+        content=[{"text": "This is a\nmultiline\ntest\nresponse.", "type": "text"}],
         model="claude-3-opus-20240229",
         role="assistant",
         type="message",
-        usage=anthropic.types.Usage(input_tokens=10, output_tokens=25),
+        usage={"input_tokens": 10, "output_tokens": 25},
     )
+    # claude_response_mock = anthropic.types.message.Message(
+    #     id="1234",
+    #     content=[
+    #         anthropic.types.ContentBlock(
+    #             text="This is a\nmultiline\ntest\nresponse.", type="text"
+    #         )
+    #     ],
+    #     model="claude-3-opus-20240229",
+    #     role="assistant",
+    #     type="message",
+    #     usage=anthropic.types.Usage(input_tokens=10, output_tokens=25),
+    # )
 
     try:
         comment_new = (
@@ -127,16 +135,31 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
         "respond-to-issue-comment"
     ]
 
-    respond_to_issue_comment_cmd = (
-        f"{respond_to_issue_comment_cli} "
-        f"{TEST_CONFIG['issue_number']} "
-        f"{TEST_CONFIG['owner_repo_name']} "
-        f"{TEST_CONFIG['test_username']} "
-        f"'{TEST_CONFIG['test_comment']}' "
-        f"--repo '{TEST_CONFIG['owner_repo_name']}' "
-        f"--claude_model {TEST_CONFIG['claude_model']} "
-        f"--max_tokens {TEST_CONFIG['max_tokens']}"
-    )
+    respond_to_issue_comment_cmd = [
+        *respond_to_issue_comment_cli,
+        str(TEST_CONFIG["issue_number"]),
+        TEST_CONFIG["owner_repo_name"],
+        TEST_CONFIG["test_username"],
+        TEST_CONFIG["test_comment"],
+        "--repo",
+        TEST_CONFIG["owner_repo_name"],
+        "--claude_model",
+        TEST_CONFIG["claude_model"],
+        "--max_tokens",
+        str(TEST_CONFIG["max_tokens"]),
+    ]
 
     subprocess.check_call(respond_to_issue_comment_cmd)
+    # respond_to_issue_comment_cmd = (
+    #     f"{respond_to_issue_comment_cli} "
+    #     f"{TEST_CONFIG['issue_number']} "
+    #     f"{TEST_CONFIG['owner_repo_name']} "
+    #     f"{TEST_CONFIG['test_username']} "
+    #     f"'{TEST_CONFIG['test_comment']}' "
+    #     f"--repo '{TEST_CONFIG['owner_repo_name']}' "
+    #     f"--claude_model {TEST_CONFIG['claude_model']} "
+    #     f"--max_tokens {TEST_CONFIG['max_tokens']}"
+    # )
+
+    # subprocess.check_call(respond_to_issue_comment_cmd)
     assert issue.comments == issue_comment_count_before + 1
