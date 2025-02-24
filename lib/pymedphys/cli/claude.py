@@ -16,7 +16,7 @@
 
 import os
 
-from pymedphys._claude.githubassist import respond_to_issue_comment_cli
+from pymedphys._claude.respond import respond_to_issue_comment_cli
 
 
 def set_up_claude_cli(subparsers):
