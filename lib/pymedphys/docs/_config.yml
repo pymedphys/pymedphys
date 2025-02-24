@@ -1,6 +1,6 @@
 title: PyMedPhys
 author: the PyMedPhys community
-copyright: "2018-2021"
+copyright: "2018-2025"
 logo: img/pymedphys.svg
 execute:
   execute_notebooks: cache
