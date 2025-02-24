@@ -55,7 +55,7 @@ xmltodict = { version = "*", optional = true }       # groups = ["user", "all"]
 timeago = { version = "*", optional = true }         # groups = ["user", "all"]
 dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
 scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
-imageio = { version = "*", optional = true }         # groups = ["user", "all"]
+imageio = { version = "*", extras = ["tifffile"], optional = true }         # groups = ["user", "all"]
 
 streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
 

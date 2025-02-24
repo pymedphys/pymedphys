@@ -181,7 +181,7 @@ def test_dataset():
             "SeriesInstanceUID": test_series_uid,
             "StudyInstanceUID": test_study_uid,
             "PatientID": patient_id,
-            "Modality": "RTPlan",
+            "Modality": "RTPLAN",
             "Manufacturer": "PyMedPhys",
             "BeamSequence": [{"Manufacturer": "PyMedPhys"}],
         }
