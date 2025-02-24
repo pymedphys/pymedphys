@@ -111,12 +111,12 @@ def create_issue_comment_with_claude_response_to_user_comment(
         claude_response_text = claude_response.content[0].text
 
     comment_body_new = (
-        "**AI Assistant Clauude**\n\n"
-        "*Prompt sent to Clauude:* "
+        "**AI Assistant Claude**\n\n"
+        "*Prompt sent to Claude:* "
         f"[link]({claude_system_prompt_link})\n\n"
-        f"*Comment that called Clauude:*\n"
+        f"*Comment that called Claude:*\n"
         f"> **{username}**: {user_comment}\n"
-        "*Clauude's response:*\n\n"
+        "*Claude's response:*\n\n"
         f"{claude_response_text}"
     )
     return issue.create_comment(comment_body_new)
