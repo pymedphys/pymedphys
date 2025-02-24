@@ -23,7 +23,9 @@ def set_up_claude_cli(subparsers):
     claude_parser = subparsers.add_parser(
         "claude", help="An AI toolbox for interacting with GitHub issues."
     )
-    claude_subparsers = claude_parser.add_subparsers(dest="claude")
+    claude_subparsers = claude_parser.add_subparsers(
+        dest="claude_command", required=True, help="Available Claude commands"
+    )
 
     respond_to_issue_comment(claude_subparsers)
 
@@ -95,7 +97,7 @@ def respond_to_issue_comment(claude_subparsers):
         "-m",
         default="claude-3-opus-20240229",
         type=str,
-        help="The access key to use the Anthropic API.",
+        help="The Claude model to use for generating responses.",
     )
 
     parser.add_argument(
@@ -103,7 +105,7 @@ def respond_to_issue_comment(claude_subparsers):
         "-t",
         default=1024,
         type=int,
-        help="The access key to use the Anthropic API.",
+        help="The maximum number of tokens in Claude's response.",
     )
 
     parser.set_defaults(func=respond_to_issue_comment_cli)

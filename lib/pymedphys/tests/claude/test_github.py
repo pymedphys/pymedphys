@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 import subprocess
 from typing import Optional
@@ -84,18 +85,6 @@ def test_create_issue_comment_with_claude_response_to_user_comment(
         type="message",
         usage={"input_tokens": 10, "output_tokens": 25},
     )
-    # claude_response_mock = anthropic.types.message.Message(
-    #     id="1234",
-    #     content=[
-    #         anthropic.types.ContentBlock(
-    #             text="This is a\nmultiline\ntest\nresponse.", type="text"
-    #         )
-    #     ],
-    #     model="claude-3-opus-20240229",
-    #     role="assistant",
-    #     type="message",
-    #     usage=anthropic.types.Usage(input_tokens=10, output_tokens=25),
-    # )
 
     try:
         comment_new = (
@@ -131,6 +120,14 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
     """
     issue_comment_count_before = issue.comments
 
+    # Create test environment with required tokens
+    test_env = os.environ.copy()
+    # Only set dummy values if the tokens aren't already in the environment
+    if not test_env.get("GITHUB_TOKEN"):
+        test_env["GITHUB_TOKEN"] = "dummy_token_for_testing"
+    if not test_env.get("ANTHROPIC_API_TOKEN"):
+        test_env["ANTHROPIC_API_TOKEN"] = "dummy_anthropic_token_for_testing"
+
     respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_claude_cli() + [
         "respond-to-issue-comment"
     ]
@@ -138,7 +135,6 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
     respond_to_issue_comment_cmd = [
         *respond_to_issue_comment_cli,
         str(TEST_CONFIG["issue_number"]),
-        TEST_CONFIG["owner_repo_name"],
         TEST_CONFIG["test_username"],
         TEST_CONFIG["test_comment"],
         "--repo",
@@ -149,17 +145,11 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
         str(TEST_CONFIG["max_tokens"]),
     ]
 
-    subprocess.check_call(respond_to_issue_comment_cmd)
-    # respond_to_issue_comment_cmd = (
-    #     f"{respond_to_issue_comment_cli} "
-    #     f"{TEST_CONFIG['issue_number']} "
-    #     f"{TEST_CONFIG['owner_repo_name']} "
-    #     f"{TEST_CONFIG['test_username']} "
-    #     f"'{TEST_CONFIG['test_comment']}' "
-    #     f"--repo '{TEST_CONFIG['owner_repo_name']}' "
-    #     f"--claude_model {TEST_CONFIG['claude_model']} "
-    #     f"--max_tokens {TEST_CONFIG['max_tokens']}"
-    # )
-
-    # subprocess.check_call(respond_to_issue_comment_cmd)
-    assert issue.comments == issue_comment_count_before + 1
+    # Execute command with test environment
+    try:
+        subprocess.check_call(respond_to_issue_comment_cmd, env=test_env)
+        assert issue.comments == issue_comment_count_before + 1
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with return code {e.returncode}")
+        print(f"Command was: {' '.join(respond_to_issue_comment_cmd)}")
+        raise
