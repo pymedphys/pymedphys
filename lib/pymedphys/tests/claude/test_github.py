@@ -1,6 +1,7 @@
 import json
 import pathlib
 import subprocess
+from typing import Optional
 
 import anthropic
 import github
@@ -9,8 +10,16 @@ import pytest
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._claude import githubassist
 
-OWNER_REPO_NAME = "pymedphys/pymedphys"
-ISSUE_NUMER = 1844
+# Constants
+TEST_CONFIG = {
+    "owner_repo_name": "pymedphys/pymedphys",
+    "issue_number": 1844,
+    "test_username": "@!Claude_test",
+    "test_comment": "This is a test comment",
+    "claude_model": "claude-3-haiku-20240307",
+    "max_tokens": 10,
+}
+
 HERE = pathlib.Path(__file__).parent.resolve()
 BASELINES_JSON = HERE / "baselines.json"
 
@@ -27,33 +36,45 @@ def github_connection():
 
 @pytest.fixture
 def repo(github_connection):
-    return github_connection.get_repo(OWNER_REPO_NAME)
+    return github_connection.get_repo(TEST_CONFIG["owner_repo_name"])
 
 
 @pytest.fixture
 def issue(repo):
-    return repo.get_issue(ISSUE_NUMER)
+    return repo.get_issue(TEST_CONFIG["issue_number"])
 
 
-def test_system_prompt_github_issue_comment(repo, save_baseline=False):
+def test_system_prompt_github_issue_comment(
+    repo: github.Repository.Repository, save_baseline: bool = False
+) -> None:
+    """Test the generation of system prompt for GitHub issue comments.
 
-    system_prompt = githubassist.system_prompt_github_issue_comment(repo, ISSUE_NUMER)
+    Args:
+        repo: The GitHub repository fixture
+        save_baseline: Whether to save the baseline or compare against it
+    """
+    system_prompt = githubassist.system_prompt_github_issue_comment(
+        repo, TEST_CONFIG["issue_number"]
+    )
     assert system_prompt != ""
 
     if save_baseline:
         json_dict = {"system_prompt": system_prompt}
-
-        with open(BASELINES_JSON, "w", encoding="UTF-8") as f:
-            json.dump(json_dict, f, indent=2)
+        BASELINES_JSON.write_text(json.dumps(json_dict, indent=2), encoding="UTF-8")
     else:
-        with open(BASELINES_JSON, encoding="UTF-8") as f:
-            json_dict = json.load(f)
+        json_dict = json.loads(BASELINES_JSON.read_text(encoding="UTF-8"))
         assert json_dict["system_prompt"] == system_prompt
 
 
-def test_create_issue_comment_with_claude_response_to_user_comment(issue):
-    username = "@!Claude_test"
-    user_comment = "Please summarise"
+def test_create_issue_comment_with_claude_response_to_user_comment(
+    issue: github.Issue.Issue,
+) -> None:
+    """Test creating an issue comment with Claude's response.
+
+    Args:
+        issue: The GitHub issue fixture
+    """
+    comment_new: Optional[github.IssueComment.IssueComment] = None
 
     claude_response_mock = anthropic.types.message.Message(
         id="1234",
@@ -68,23 +89,38 @@ def test_create_issue_comment_with_claude_response_to_user_comment(issue):
         usage=anthropic.types.Usage(input_tokens=10, output_tokens=25),
     )
 
-    comment_new = (
-        githubassist.create_issue_comment_with_claude_response_to_user_comment(
-            issue, username, user_comment, claude_response_mock
-        )
-    )
     try:
+        comment_new = (
+            githubassist.create_issue_comment_with_claude_response_to_user_comment(
+                issue=issue,
+                username=TEST_CONFIG["test_username"],
+                user_comment=TEST_CONFIG["test_comment"],
+                claude_response=claude_response_mock,
+            )
+        )
+
+        # Verify comment was created
         assert issue.get_comment(comment_new.id) == comment_new
+
+        # Verify comment can be deleted
         with pytest.raises(github.UnknownObjectException):
             comment_new.delete()
             issue.get_comment(comment_new.id)
+
     finally:
         if comment_new is not None:
-            comment_new.delete()
+            try:
+                comment_new.delete()
+            except github.UnknownObjectException:
+                pass  # Comment was already deleted
 
 
-def test_response_to_github_issue_comment_cli(issue):
+def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None:
+    """Test the CLI command for responding to GitHub issue comments.
 
+    Args:
+        issue: The GitHub issue fixture
+    """
     issue_comment_count_before = issue.comments
 
     respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_dicom_cli() + [
@@ -93,16 +129,14 @@ def test_response_to_github_issue_comment_cli(issue):
 
     respond_to_issue_comment_cmd = (
         f"{respond_to_issue_comment_cli} "
-        f"{ISSUE_NUMER} "
-        f"{OWNER_REPO_NAME} "
-        "@!Claude_test "
-        "'This is a test comment'"
-        "--repo 'pymedphys/pymedphys' "
-        "--claude_model claude-3-haiku-20240307"
-        "--max_tokens 10"
+        f"{TEST_CONFIG['issue_number']} "
+        f"{TEST_CONFIG['owner_repo_name']} "
+        f"{TEST_CONFIG['test_username']} "
+        f"'{TEST_CONFIG['test_comment']}' "
+        f"--repo '{TEST_CONFIG['owner_repo_name']}' "
+        f"--claude_model {TEST_CONFIG['claude_model']} "
+        f"--max_tokens {TEST_CONFIG['max_tokens']}"
     )
-    try:
-        subprocess.check_call(respond_to_issue_comment_cmd)
-        assert issue.comments == issue_comment_count_before + 1
-    finally:
-        remove_file(temp_anon_filepath)
+
+    subprocess.check_call(respond_to_issue_comment_cmd)
+    assert issue.comments == issue_comment_count_before + 1
