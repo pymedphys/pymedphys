@@ -211,6 +211,7 @@ icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
 tests = [
+    "anthropic",
     "astroid",
     "numba",
     "psutil",

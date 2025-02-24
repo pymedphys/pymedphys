@@ -5408,10 +5408,10 @@ doctests = ["ruff", "sphinx-book-theme", "tabulate"]
 icom = ["numpy"]
 mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
 propagate = ["ruff"]
-tests = ["astroid", "numba", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
+tests = ["anthropic", "astroid", "numba", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
 user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dash", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numba", "numpy", "packaging", "pandas", "plotly", "pydicom", "pylibjpeg-libjpeg", "pymssql", "pynetdicom", "python-dateutil", "pywin32", "requests", "scikit-learn", "scipy", "shapely", "sqlalchemy", "streamlit", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "6e6ead96717cd681db828f9dd73ed4b13c430023f561ab6aa1c4c086e67e67de"
+content-hash = "aa3a964ebc9b4ae0bbd622e1baad89111e190ee9261f909d7a06aaf404e1dedc"
