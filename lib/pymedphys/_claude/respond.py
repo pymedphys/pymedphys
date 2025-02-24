@@ -44,6 +44,7 @@ def respond_to_issue_comment_cli(args) -> None:
         claude_client = anthropic.Anthropic(api_key=args.anthropic_api_key)
 
         logging.info("Sending message to Claude and obtaining response...")
+
         claude_response = claude_client.messages.create(
             model=args.claude_model,
             max_tokens=args.max_tokens,
@@ -57,13 +58,15 @@ def respond_to_issue_comment_cli(args) -> None:
         )
         logging.debug("Received response from Claude: %s", claude_response)
 
-        logging.info("Creating comment on %s issue %i", args.repo, args.issue_number)
         githubassist.create_issue_comment_with_claude_response_to_user_comment(
             issue=repo.get_issue(args.issue_number),
             username=args.username,
             user_comment=args.user_comment,
             claude_response=claude_response,
         )
+    except anthropic.APIError as e:
+        logging.error("Anthropic API error: %s", e)
+        raise
     except Exception as e:
         logging.error("Failed to process request: %s", str(e), exc_info=True)
         raise
