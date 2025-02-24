@@ -8,7 +8,7 @@
 
 import logging
 
-import anthropic
+from pymedphys._imports import anthropic
 
 from pymedphys._claude import githubassist
 

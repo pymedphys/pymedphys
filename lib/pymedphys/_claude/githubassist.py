@@ -8,7 +8,7 @@
 
 import os
 
-import github
+from pymedphys._imports import github
 
 
 def github_client(token=None):
