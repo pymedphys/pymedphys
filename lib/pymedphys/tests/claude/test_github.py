@@ -36,7 +36,6 @@ def issue(repo):
 
 
 def test_system_prompt_github_issue_comment(repo, save_baseline=False):
-
     system_prompt = githubassist.system_prompt_github_issue_comment(repo, ISSUE_NUMER)
     assert system_prompt != ""
 
@@ -84,7 +83,6 @@ def test_create_issue_comment_with_claude_response_to_user_comment(issue):
 
 
 def test_response_to_github_issue_comment_cli(issue):
-
     issue_comment_count_before = issue.comments
 
     respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_dicom_cli() + [

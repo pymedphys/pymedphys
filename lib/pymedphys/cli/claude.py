@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Provides a set of tools for interacting with GitHub using Anthropic's Claude.
-"""
+"""Provides a set of tools for interacting with GitHub using Anthropic's Claude."""
+
 import os
 
 from pymedphys._claude.githubassist import respond_to_issue_comment_cli
