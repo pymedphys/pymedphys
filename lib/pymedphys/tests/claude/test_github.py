@@ -131,7 +131,7 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
     """
     issue_comment_count_before = issue.comments
 
-    respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_dicom_cli() + [
+    respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_claude_cli() + [
         "respond-to-issue-comment"
     ]
 
