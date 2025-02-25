@@ -2,6 +2,7 @@ import json
 import os
 import pathlib
 import subprocess
+import time
 from typing import Optional
 
 import anthropic
@@ -64,7 +65,18 @@ def test_system_prompt_github_issue_comment(
         BASELINES_JSON.write_text(json.dumps(json_dict, indent=2), encoding="UTF-8")
     else:
         json_dict = json.loads(BASELINES_JSON.read_text(encoding="UTF-8"))
-        assert json_dict["system_prompt"] == system_prompt
+        # using startswith makes this test idempotent.
+        baseline_prompt = str(json_dict["system_prompt"])
+        print(f"baseline_prompt: length {len(baseline_prompt)}")
+        print(baseline_prompt)
+        print(f"system_prompt: length {len(system_prompt)}")
+        print(system_prompt)
+        # the last part of the prompt is an xml element closure that won't be there if more comments appear
+        #  crop off a few extra characters just to be sure
+        closure_length = len("]</issue_comments>")
+        comparison_length = len(baseline_prompt) - (closure_length + 2)
+
+        assert system_prompt[:comparison_length] == baseline_prompt[:comparison_length]
 
 
 def test_create_issue_comment_with_claude_response_to_user_comment(
@@ -148,6 +160,7 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
     # Execute command with test environment
     try:
         subprocess.check_call(respond_to_issue_comment_cmd, env=test_env)
+        time.sleep(5)  # give GitHub issue a chance to update from the previous command
         assert issue.comments == issue_comment_count_before + 1
     except subprocess.CalledProcessError as e:
         print(f"Command failed with return code {e.returncode}")
