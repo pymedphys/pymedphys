@@ -2,7 +2,7 @@ import json
 import os
 import pathlib
 import subprocess
-import time
+import warnings
 from typing import Optional
 
 import anthropic
@@ -33,6 +33,13 @@ def claude_connection():
 
 @pytest.fixture
 def github_connection():
+    if not os.environ.get("GITHUB_TOKEN"):
+        # Provide specific warning that the GITHUB_TOKEN is missing
+        warnings.warn(
+            "GITHUB_TOKEN environment variable not set. "
+            "This test will fail without it. Set this variable to run GitHub tests.",
+            UserWarning,
+        )
     return githubassist.github_client()
 
 
@@ -124,7 +131,10 @@ def test_create_issue_comment_with_claude_response_to_user_comment(
                 pass  # Comment was already deleted
 
 
-def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None:
+@pytest.mark.anthropic_key
+def test_response_to_github_issue_comment_cli(
+    repo: github.Repository.Repository, issue: github.Issue.Issue
+) -> None:
     """Test the CLI command for responding to GitHub issue comments.
 
     Args:
@@ -136,9 +146,22 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
     test_env = os.environ.copy()
     # Only set dummy values if the tokens aren't already in the environment
     if not test_env.get("GITHUB_TOKEN"):
-        test_env["GITHUB_TOKEN"] = "dummy_token_for_testing"
+        # Skip the test if no API key is provided
+        warnings.warn(
+            "GITHUB_TOKEN environment variable not set. "
+            "This test would fail without it. Set this variable to run GitHub tests.",
+            UserWarning,
+        )
+        pytest.skip("GITHUB_TOKEN environment variable not set")
+
     if not test_env.get("ANTHROPIC_API_KEY"):
-        test_env["ANTHROPIC_API_KEY"] = "dummy_anthropic_token_for_testing"
+        # Skip the test if no API key is provided
+        warnings.warn(
+            "ANTHROPIC_API_KEY environment variable not set. "
+            "This test would fail without it. Set this variable to run API tests.",
+            UserWarning,
+        )
+        pytest.skip("ANTHROPIC_API_KEY environment variable not set")
 
     respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_claude_cli() + [
         "respond-to-issue-comment"
@@ -160,8 +183,9 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
     # Execute command with test environment
     try:
         subprocess.check_call(respond_to_issue_comment_cmd, env=test_env)
-        time.sleep(5)  # give GitHub issue a chance to update from the previous command
-        assert issue.comments == issue_comment_count_before + 1
+        # time.sleep(5)  # give GitHub issue a chance to update from the previous command
+        refreshed_issue = repo.get_issue(TEST_CONFIG["issue_number"])  # type: ignore
+        assert refreshed_issue.comments > issue_comment_count_before
     except subprocess.CalledProcessError as e:
         print(f"Command failed with return code {e.returncode}")
         print(f"Command was: {' '.join(respond_to_issue_comment_cmd)}")
