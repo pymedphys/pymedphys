@@ -29,6 +29,12 @@ SKIPPING_CONFIG = {
         "description": "mark test as using mosaiq db",
         "skip_otherwise": True,
     },
+    "anthropic_key": {
+        "options": ["--run-only-anthropic", "--anthropic"],
+        "help": "run only the tests that use Anthropic API",
+        "description": "mark test as requiring an Anthropic API key",
+        "skip_otherwise": False,
+    },
     "all": {
         "options": ["--run-all-tests", "--all"],
         "help": "run all tests",
