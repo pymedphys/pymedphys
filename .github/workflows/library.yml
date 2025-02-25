@@ -76,6 +76,7 @@ jobs:
   # =============================================================================
 
   Tests:
+    environment: 'sis-api-access'
     env:
       FORCE_COLOR: true
     strategy:
@@ -340,6 +341,7 @@ jobs:
         if: matrix.task == 'tests' || matrix.task == 'updates'
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           poetry run pymedphys dev tests -v
 
