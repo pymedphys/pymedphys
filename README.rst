@@ -126,7 +126,7 @@ Maintainers
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
 * `Stuart Swerdloff`_
-    * `ELEKTA Pty Ltd`_: New Zealand
+    * `SJS Targeted Solutions, LLP`_: New Zealand
 
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
