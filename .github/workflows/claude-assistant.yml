@@ -8,7 +8,7 @@ jobs:
   claude_assist_comment:
     if: contains(github.event.comment.body, 'claude')
     runs-on: ubuntu-latest
-
+    environment: sis-api-access
     steps:
     - name: Get issue details and comments
       id: get-issue-details
@@ -70,7 +70,7 @@ jobs:
         MAX_TOKENS=1024
         DATA_JSON=$(
             jq -nr \
-              --arg model "claude-3-opus-20240229" \
+              --arg model "claude-3-7-sonnet-20250219" \
               --argjson max_tokens "$MAX_TOKENS" \
               --argjson messages "[$MESSAGES_JSON]" \
               '$ARGS.named'
