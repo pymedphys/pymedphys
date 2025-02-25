@@ -238,6 +238,8 @@ Past contributors
 
 .. _`Swerdloff Family`: https://github.com/sjswerdloff
 
+.. _`SJS Targeted Solutions, LLP`: https://github.com/sjswerdloff
+
 .. _`Radformation Inc.`: https://radformation.com/
 
 .. _`IRCCS Humanitas Research Hospital`: https://www.humanitas.net/
