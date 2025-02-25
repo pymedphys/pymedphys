@@ -33,7 +33,7 @@ SKIPPING_CONFIG = {
         "options": ["--run-only-anthropic", "--anthropic"],
         "help": "run only the tests that use Anthropic API",
         "description": "mark test as requiring an Anthropic API key",
-        "skip_otherwise": False,
+        "skip_otherwise": True,
     },
     "all": {
         "options": ["--run-all-tests", "--all"],
