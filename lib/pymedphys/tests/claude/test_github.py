@@ -125,8 +125,8 @@ def test_response_to_github_issue_comment_cli(issue: github.Issue.Issue) -> None
     # Only set dummy values if the tokens aren't already in the environment
     if not test_env.get("GITHUB_TOKEN"):
         test_env["GITHUB_TOKEN"] = "dummy_token_for_testing"
-    if not test_env.get("ANTHROPIC_API_TOKEN"):
-        test_env["ANTHROPIC_API_TOKEN"] = "dummy_anthropic_token_for_testing"
+    if not test_env.get("ANTHROPIC_API_KEY"):
+        test_env["ANTHROPIC_API_KEY"] = "dummy_anthropic_token_for_testing"
 
     respond_to_issue_comment_cli = pmp_test_utils.get_pymedphys_claude_cli() + [
         "respond-to-issue-comment"

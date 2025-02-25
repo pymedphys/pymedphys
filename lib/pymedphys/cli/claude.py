@@ -87,7 +87,7 @@ def respond_to_issue_comment(claude_subparsers):
     parser.add_argument(
         "--anthropic_api_key",
         "-a",
-        default=os.environ.get("ANTHROPIC_API_TOKEN"),
+        default=os.environ.get("ANTHROPIC_API_KEY"),
         type=str,
         help="The access key to use the Anthropic API.",
     )
