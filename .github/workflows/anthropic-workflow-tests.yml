@@ -1,7 +1,16 @@
 name: AnthropicApiTests
 
 on:
-  workflow_dispatch: # Manual trigger only
+  push:
+    branches:
+      - main
+  workflow_run:
+    workflows: ["Security Scan"]
+    types:
+      - completed
+  release:
+    types:
+      - created
 
 jobs:
   # =============================================================================
@@ -31,8 +40,35 @@ jobs:
 
   # =============================================================================
 
-  TestAnthropicApi:
+  SecurityScan:
     needs: CheckPermissions
+    if: needs.CheckPermissions.outputs.has-permission == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full git history for scanning
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Custom scan for Anthropic API key exposure patterns
+      - name: Scan for Anthropic API key exposure
+        run: |
+          # Look for common patterns that might try to expose environment variables
+          ! grep -r --include="*.py" "os.environ\['ANTHROPIC_API_KEY'\]" --include="*.yml" --include="*.yaml" -E '(print|log|console\.log|echo).*ANTHROPIC' .
+          ! grep -r --include="*.py" -E '(requests\.get|requests\.post|fetch).*\$\{?ANTHROPIC' .
+          ! grep -r --include="*.py" -E 'save_to_file.*environ' .
+          echo "No suspicious API key exposure patterns found"
+
+  # =============================================================================
+
+  TestAnthropicApi:
+    needs: [CheckPermissions, SecurityScan]
     if: needs.CheckPermissions.outputs.has-permission == 'true'
 
     env:

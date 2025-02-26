@@ -4,13 +4,19 @@ on:
   push:
     branches:
       - main
-  pull_request:
+  workflow_run:
+    workflows: ["Security Scan"]
+    types:
+      - completed
 
 jobs:
   # =============================================================================
 
   TestMosaiqDb:
     # if: false
+
+    # Skip this job if the workflow was triggered by a failed security scan
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
 
     env:
       FORCE_COLOR: true

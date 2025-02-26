@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - main
-  pull_request:
+  workflow_run:
+    workflows: ["Security Scan"]
+    types:
+      - completed
   release:
     types:
       - created
@@ -76,6 +79,9 @@ jobs:
   # =============================================================================
 
   Tests:
+    # Skip this job if the workflow was triggered by a failed security scan
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+
     env:
       FORCE_COLOR: true
     strategy:
@@ -91,7 +97,7 @@ jobs:
             "cypress",
             "slow",
             "pyright",
-            "propagate",
+            "propagate"
           ]
 
         exclude:
@@ -108,6 +114,7 @@ jobs:
           - os: "windows"
             task: "cypress"
 
+
           - os: "macos"
             task: "stackoverflow"
           - os: "macos"
@@ -120,6 +127,7 @@ jobs:
             task: "pyright"
           - os: "macos"
             task: "propagate"
+
 
         include:
           # Spread the below across the range of supported Python versions.
