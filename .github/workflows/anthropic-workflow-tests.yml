@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_run:
     workflows: ["Security Scan"]
     types:
@@ -16,11 +19,23 @@ jobs:
   # =============================================================================
 
   CheckPermissions:
+    # Skip this job if the workflow was triggered by a failed security scan
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     outputs:
       has-permission: ${{ steps.check.outputs.has-permission }}
+      is-pr: ${{ steps.check-pr.outputs.is-pr }}
 
     steps:
+      - name: Check if event is a PR
+        id: check-pr
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "is-pr=true" >> $GITHUB_OUTPUT
+          else
+            echo "is-pr=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check if actor has maintainer permissions
         id: check
         run: |
@@ -40,36 +55,12 @@ jobs:
 
   # =============================================================================
 
-  SecurityScan:
-    needs: CheckPermissions
-    if: needs.CheckPermissions.outputs.has-permission == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full git history for scanning
-
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Custom scan for Anthropic API key exposure patterns
-      - name: Scan for Anthropic API key exposure
-        run: |
-          # Look for common patterns that might try to expose environment variables
-          ! grep -r --include="*.py" "os.environ\['ANTHROPIC_API_KEY'\]" --include="*.yml" --include="*.yaml" -E '(print|log|console\.log|echo).*ANTHROPIC' .
-          ! grep -r --include="*.py" -E '(requests\.get|requests\.post|fetch).*\$\{?ANTHROPIC' .
-          ! grep -r --include="*.py" -E 'save_to_file.*environ' .
-          echo "No suspicious API key exposure patterns found"
-
-  # =============================================================================
-
   TestAnthropicApi:
-    needs: [CheckPermissions, SecurityScan]
-    if: needs.CheckPermissions.outputs.has-permission == 'true'
+    # For PR events: Run tests regardless of permission level
+    # For non-PR events: Only run if actor has sufficient permissions
+    # Skip if the workflow was triggered by a failed security scan
+    if: (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (needs.CheckPermissions.outputs.is-pr == 'true' || needs.CheckPermissions.outputs.has-permission == 'true')
+    needs: CheckPermissions
 
     env:
       FORCE_COLOR: true
