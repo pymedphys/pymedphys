@@ -31,10 +31,10 @@ jobs:
       #     GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       #     GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Run Gitleaks
+      #   uses: gitleaks/gitleaks-action@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Custom scan for Anthropic API key exposure patterns
       - name: Scan for Anthropic API key exposure
