@@ -5,7 +5,7 @@ on:
     branches:
       - main
   workflow_run:
-    workflows: ["Security Scan"]
+    workflows: ["Library"]
     types:
       - completed
 
