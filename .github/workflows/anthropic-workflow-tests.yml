@@ -141,7 +141,7 @@ jobs:
 
       - name: Install a tests environment
         run: |
-          poetry install -E tests -E dicom
+          poetry install  -E tests -E dicom -E mosaiq
 
       # -----------------------------------------------------------------------------
 
