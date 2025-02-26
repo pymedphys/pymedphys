@@ -94,7 +94,7 @@ jobs:
           echo "::set-output name=dir::$(pip cache dir)"
 
       - name: Pip Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-tests-ubuntu-${{ steps.full-python-version.outputs.version }}
@@ -122,7 +122,7 @@ jobs:
           poetry config virtualenvs.in-project true
 
       - name: Poetry Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: poetry-cache
         with:
           path: .venv
@@ -154,7 +154,7 @@ jobs:
 
       - name: PyMedPhys Cache
         id: pymedphys-cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
           key: pymedphys-tests-ubuntu-${{ hashFiles('**/hashes.json') }}
