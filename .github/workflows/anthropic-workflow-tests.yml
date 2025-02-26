@@ -8,7 +8,7 @@ on:
     branches:
       - main
   workflow_run:
-    workflows: ["MosaiqDbTests"]
+    workflows: ["Security Scan"]
     types:
       - completed
   release:
