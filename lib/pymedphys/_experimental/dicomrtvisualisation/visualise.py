@@ -1,12 +1,12 @@
 import os
 import pathlib
+from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
-import pydicom
 import plotly.graph_objects as go
+import pydicom
 import streamlit as st
-from dataclasses import dataclass
 
 st.set_page_config(layout="wide")
 
@@ -71,14 +71,20 @@ def preprocess_ct_slice_datasets(
                 PixelArray=ds.pixel_array,  # Keep original dtype
                 RescaleSlope=float(getattr(ds, "RescaleSlope", 1.0)),
                 RescaleIntercept=float(getattr(ds, "RescaleIntercept", 0.0)),
-                WindowCenter=float(getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL)),
-                WindowWidth=float(getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH)),
+                WindowCenter=float(
+                    getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL)[0]
+                ),
+                WindowWidth=float(getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH)[0]),
                 BitsStored=int(getattr(ds, "BitsStored", 16)),
             )
             preprocessed_data.append(preprocessed_slice)
         except AttributeError as e:
             st.warning(
                 f"Missing attribute in CT slice {idx + 1}: {e}. This slice will be skipped."
+            )
+        except Exception as unknown_e:
+            st.warning(
+                f"Failure processing in CT slice {idx + 1}: {unknown_e}. This slice will be skipped."
             )
     if not preprocessed_data:
         raise ValueError("No valid CT slices found after preprocessing.")
@@ -885,7 +891,9 @@ if dicom_dir and rtstruct_file:
                     wl_default,
                     ww_default,
                 ) = load_ct_as_memmap(dicom_path)
+                #                st.write("Successfully Loaded CT as memmap")
                 structures = load_rt_structures(rtstruct_path)
+                #                st.write("Successfully loaded RT SS")
                 contour_map = preprocess_contours(structures)
                 st.sidebar.success("CT and RTSTRUCT files loaded successfully.")
             except Exception as e:
