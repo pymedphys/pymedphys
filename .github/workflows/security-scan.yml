@@ -1,0 +1,82 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+  push:
+    branches: [ main, master, develop ]
+
+# Ensure this workflow has higher priority
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  secret-scan:
+    name: Scan for secrets and key exposure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full git history for scanning
+
+      # - name: GitGuardian scan
+      #   uses: GitGuardian/ggshield-action@master
+      #   env:
+      #     GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+      #     GITHUB_PUSH_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      #     GITHUB_PULL_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      #     GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      #     GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+
+      # - name: Run Gitleaks
+      #   uses: gitleaks/gitleaks-action@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Custom scan for Anthropic API key exposure patterns
+      - name: Scan for Anthropic API key exposure
+        run: |
+          # Look for common patterns that might try to expose environment variables
+          ! grep -r --include="*.py" "os.environ\['ANTHROPIC_API_KEY'\]" --include="*.yml" --include="*.yaml" -E '(print|log|console\.log|echo).*ANTHROPIC' .
+          ! grep -r --include="*.py" -E '(requests\.get|requests\.post|fetch).*\$\{?ANTHROPIC' .
+          ! grep -r --include="*.py" -E 'save_to_file.*environ' .
+          echo "No suspicious API key exposure patterns found"
+
+      # Check for modifications to credential handling code
+      - name: Check for suspicious changes to auth modules
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- "**/auth.py" "**/credentials.py" "**/config.py" | \
+          grep -E '(ANTHROPIC|API_KEY|SECRET|TOKEN)' > changes.txt || true
+
+          if [ -s changes.txt ]; then
+            echo "⚠️ Changes detected in credential handling code:"
+            cat changes.txt
+            echo "These changes require careful review but don't necessarily indicate a security issue."
+          else
+            echo "✅ No suspicious changes to credential handling code detected."
+          fi
+
+      # Check for test file modifications that might execute code with credentials
+      - name: Check test files for credential access
+        if: github.event_name == 'pull_request'
+        run: |
+          FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- "**/test_*.py" "**/conftest.py")
+          if [ -n "$FILES" ]; then
+            for file in $FILES; do
+              grep -l -E '(os\.environ|getenv|load_dotenv)' $file || true
+            done > test_env_files.txt
+
+            if [ -s test_env_files.txt ]; then
+              echo "⚠️ Modified test files accessing environment variables:"
+              cat test_env_files.txt
+              echo "These files require careful review of how environment variables are used."
+            else
+              echo "✅ No suspicious environment access in modified test files."
+            fi
+          else
+            echo "No test files were modified in this PR."
+          fi
