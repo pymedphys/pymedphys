@@ -15,22 +15,20 @@
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
   </script>
-  <!--
-    this give us a css class that will be invisible only if js is disabled
-  -->
-  <noscript>
-    <style>
-      .pst-js-only { display: none !important; }
-
-    </style>
-  </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
 
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=a3416100" />
+  
+  <link href="../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -39,11 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/style.css?v=055d366d" />
   
-  <!-- So that users can add custom icons -->
-  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
     <script src="../../../_static/documentation_options.js?v=9eb32ce0"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
@@ -81,7 +78,6 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="" />
   </head>
   
   
@@ -97,8 +93,19 @@
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
 
   
-  <dialog id="pst-search-dialog">
-    
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
 <form class="bd-search d-flex align-items-center"
       action="../../../search.html"
       method="get">
@@ -106,6 +113,7 @@
   <input type="search"
          class="form-control"
          name="q"
+         id="search-input"
          placeholder="Search this book..."
          aria-label="Search this book..."
          autocomplete="off"
@@ -113,8 +121,8 @@
          autocapitalize="off"
          spellcheck="false"/>
   <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
-</form>
-  </dialog>
+</form></div>
+  </div>
 
   <div class="pst-async-banner-revealer d-none">
   <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
@@ -132,8 +140,7 @@
       
         
       
-      <dialog id="pst-primary-sidebar-modal"></dialog>
-      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+      <div class="bd-sidebar-primary bd-sidebar">
         
 
   
@@ -163,17 +170,21 @@
     
     
     <img src="../../../_static/pymedphys.svg" class="logo__image only-light" alt="PyMedPhys - Home"/>
-    <img src="../../../_static/pymedphys.svg" class="logo__image only-dark pst-js-only" alt="PyMedPhys - Home"/>
+    <script>document.write(`<img src="../../../_static/pymedphys.svg" class="logo__image only-dark" alt="PyMedPhys - Home"/>`);</script>
   
   
 </a></div>
         <div class="sidebar-primary-item">
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
- <i class="fa-solid fa-magnifying-glass"></i>
- <span class="search-button__default-text">Search</span>
- <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
-</button></div>
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
         <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
         <ul class="nav bd-sidenav">
@@ -274,14 +285,9 @@
   
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
-      <div class="sidebar-primary-item">
-<div id="ethical-ad-placement"
-      class="flat"
-      data-ea-publisher="readthedocs"
-      data-ea-type="readthedocs-sidebar"
-      data-ea-manual="true">
-</div></div>
   </div>
+  
+  <div id="rtd-footer-container"></div>
 
 
       </div>
@@ -377,16 +383,24 @@
 
 
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button>
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script>
 
 
-<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<script>
+document.write(`
+  <button class="btn btn-sm pst-navbar-icon search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
-</button>
+  </button>
+`);
+</script>
 
 </div></div>
       
@@ -453,13 +467,13 @@
 <span class="c1"># SOFTWARE.</span>
 
 
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 
-<span class="kn">from</span> <span class="nn">pymedphys._imports</span> <span class="kn">import</span> <span class="n">pydicom</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pymedphys._imports</span><span class="w"> </span><span class="kn">import</span> <span class="n">pydicom</span>
 
-<span class="kn">from</span> <span class="nn">.pinn_yaml</span> <span class="kn">import</span> <span class="n">pinn_to_dict</span>
-<span class="kn">from</span> <span class="nn">.rtstruct</span> <span class="kn">import</span> <span class="n">find_iso_center</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.pinn_yaml</span><span class="w"> </span><span class="kn">import</span> <span class="n">pinn_to_dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.rtstruct</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_iso_center</span>
 
 <span class="c1"># Medical Connections offers free valid UIDs</span>
 <span class="c1"># (http://www.medicalconnections.co.uk/FreeUID.html)</span>
@@ -469,7 +483,7 @@
 
 <div class="viewcode-block" id="PinnaclePlan">
 <a class="viewcode-back" href="../../../users/ref/lib/experimental/pinnacle.html#pymedphys.pinnacle.PinnaclePlan">[docs]</a>
-<span class="k">class</span> <span class="nc">PinnaclePlan</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PinnaclePlan</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a plan within the Pinnacle data.</span>
 
 <span class="sd">    This class manages the data specific to a plan within a Pinnacle dataset.</span>
@@ -484,7 +498,7 @@
 <span class="sd">            Plan info dict from &#39;Patient&#39; file.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pinnacle</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">plan</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pinnacle</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">plan</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pinnacle</span> <span class="o">=</span> <span class="n">pinnacle</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_plan_info</span> <span class="o">=</span> <span class="n">plan</span>
@@ -514,7 +528,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Primary Image Not Available&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the configured logger.</span>
 
 <span class="sd">        Returns</span>
@@ -525,7 +539,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pinnacle</span><span class="o">.</span><span class="n">logger</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">pinnacle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pinnacle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the PinnacleExport object.</span>
 
 <span class="sd">        Returns</span>
@@ -536,7 +550,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pinnacle</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the path of the Pinnacle data.</span>
 
 <span class="sd">        Returns</span>
@@ -547,7 +561,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">primary_image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">primary_image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the primary image for this plan.</span>
 
 <span class="sd">        Returns</span>
@@ -558,7 +572,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_primary_image</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">machine_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">machine_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the machine info for this plan.</span>
 
 <span class="sd">        Returns</span>
@@ -575,7 +589,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_machine_info</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">trials</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trials</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the trials within this plan.</span>
 
 <span class="sd">        Returns</span>
@@ -601,7 +615,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">active_trial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">active_trial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get and set the active trial for this plan.</span>
 
 <span class="sd">        When DICOM objects are exported, data from the active trial is</span>
@@ -611,7 +625,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trial_info</span>
 
     <span class="nd">@active_trial</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span> <span class="nf">active_trial</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial_name</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">active_trial</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial_name</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trial_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trials</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">trial</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">trial_name</span><span class="p">:</span>
@@ -622,7 +636,7 @@
         <span class="k">raise</span> <span class="ne">KeyError</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">plan_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plan_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the plan information for this plan.</span>
 
 <span class="sd">        Returns</span>
@@ -633,7 +647,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan_info</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">trial_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trial_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the trial information of the active trial.</span>
 
 <span class="sd">        Returns</span>
@@ -650,7 +664,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trial_info</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the points defined within the plan.</span>
 
 <span class="sd">        Returns</span>
@@ -673,7 +687,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_points</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">patient_position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">patient_position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the patient position</span>
 
 <span class="sd">        Returns</span>
@@ -712,7 +726,7 @@
         <span class="k">return</span> <span class="n">pat_pos</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">iso_center</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">iso_center</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets and sets the iso center for this plan.&quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_iso_center</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -721,11 +735,11 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iso_center</span>
 
     <span class="nd">@iso_center</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span> <span class="nf">iso_center</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iso_center</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">iso_center</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iso_center</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_iso_center</span> <span class="o">=</span> <span class="n">iso_center</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">is_prefix_valid</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_prefix_valid</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if a UID prefix is valid.</span>
 
 <span class="sd">        Parameters</span>
@@ -742,7 +756,7 @@
 
         <span class="k">return</span> <span class="kc">False</span>
 
-    <span class="k">def</span> <span class="nf">generate_uids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uid_type</span><span class="o">=</span><span class="s2">&quot;HASH&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_uids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uid_type</span><span class="o">=</span><span class="s2">&quot;HASH&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Generates UIDs to be used for exporting this plan.</span>
 
 <span class="sd">        Parameters</span>
@@ -779,7 +793,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Struct Instance UID: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_struct_inst_uid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">plan_inst_uid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plan_inst_uid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the instance UID for RTPLAN.</span>
 
 <span class="sd">        Returns</span>
@@ -794,7 +808,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan_inst_uid</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">dose_inst_uid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dose_inst_uid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the instance UID for RTDOSE.</span>
 
 <span class="sd">        Returns</span>
@@ -809,7 +823,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dose_inst_uid</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">struct_inst_uid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">struct_inst_uid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the instance UID for RTSTRUCT.</span>
 
 <span class="sd">        Returns</span>
@@ -824,7 +838,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_struct_inst_uid</span>
 
     <span class="c1"># Convert the point from the pinnacle plan format to dicom</span>
-    <span class="k">def</span> <span class="nf">convert_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">convert_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert a point from Pinnacle coordinates to DICOM coordinates.</span>
 
 <span class="sd">        Parameters</span>
@@ -927,8 +941,8 @@ By the PyMedPhys community
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script src="../../../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
 
   <footer class="bd-footer">
   </footer>

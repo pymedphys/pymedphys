@@ -95,7 +95,7 @@ Cell [0;32mIn[5], line 4[0m
 [1;32m      5[0m     [38;5;124m"[39m[38;5;124mEconForge[39m[38;5;124m"[39m: interp3d_econforge,
 [1;32m      6[0m     [38;5;124m"[39m[38;5;124mScipy[39m[38;5;124m"[39m: interp3d_scipy,
 [1;32m      7[0m }
-[1;32m     10[0m [38;5;28;01mdef[39;00m [38;5;21mbenchmark[39m(
+[1;32m     10[0m [38;5;28;01mdef[39;00m[38;5;250m [39m[38;5;21mbenchmark[39m(
 [1;32m     11[0m     n_values: Sequence[[38;5;28mint[39m],
 [1;32m     12[0m     interpolation_multiples: Sequence[[38;5;28mint[39m],
 [0;32m   (...)[0m
