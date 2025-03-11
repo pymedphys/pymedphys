@@ -5,6 +5,10 @@ on:
     branches:
       - main
   pull_request:
+  workflow_run:
+    workflows: ["Security Scan"]
+    types:
+      - completed
   release:
     types:
       - created
@@ -26,10 +30,10 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Set up Python 3.9
+      - name: Set up Python 3.12
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: 3.12
 
       - uses: actions/cache@v3
         with:
@@ -51,7 +55,9 @@ jobs:
           git checkout $GITHUB_HEAD_REF
           git pull
           pip install pipx
-          pipx install poetry
+          pipx install poetry==1.8.5
+          # poetry 1.8.5 is the latest of poetry 1.x
+          # poetry 2.x defaults to the equivalent of 1.x --no-update and doesn't support that argument
           poetry lock --no-update
           pre-commit run --all-files || true
           git commit -m "Fix pre-commit failures" -a
@@ -74,6 +80,9 @@ jobs:
   # =============================================================================
 
   Tests:
+    # Skip this job if the workflow was triggered by a failed security scan
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+
     env:
       FORCE_COLOR: true
     strategy:
@@ -89,7 +98,7 @@ jobs:
             "cypress",
             "slow",
             "pyright",
-            "propagate",
+            "propagate"
           ]
 
         exclude:
@@ -106,6 +115,7 @@ jobs:
           - os: "windows"
             task: "cypress"
 
+
           - os: "macos"
             task: "stackoverflow"
           - os: "macos"
@@ -118,6 +128,7 @@ jobs:
             task: "pyright"
           - os: "macos"
             task: "propagate"
+
 
         include:
           # Spread the below across the range of supported Python versions.
@@ -180,7 +191,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1.3.4
         with:
-          version: 1.7.1
+          version: 1.8.5
           virtualenvs-create: true
 
       - name: Update PATH in Windows
@@ -336,6 +347,8 @@ jobs:
 
       - name: Run basic pytest tests
         if: matrix.task == 'tests' || matrix.task == 'updates'
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
           poetry run pymedphys dev tests -v
 

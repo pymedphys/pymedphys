@@ -1,38 +1,73 @@
-name: MosaiqDbTests
+name: AnthropicApiTests
 
 on:
   push:
     branches:
       - main
   pull_request:
+    branches:
+      - main
   workflow_run:
     workflows: ["Security Scan"]
     types:
       - completed
+  release:
+    types:
+      - created
 
 jobs:
   # =============================================================================
 
-  TestMosaiqDb:
-    # if: false
-
+  CheckPermissions:
     # Skip this job if the workflow was triggered by a failed security scan
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      has-permission: ${{ steps.check.outputs.has-permission }}
+      is-pr: ${{ steps.check-pr.outputs.is-pr }}
+
+    steps:
+      - name: Check if event is a PR
+        id: check-pr
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "is-pr=true" >> $GITHUB_OUTPUT
+          else
+            echo "is-pr=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if actor has maintainer permissions
+        id: check
+        run: |
+          # Get the repository collaborator permission level using GitHub API
+          PERMISSION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission" \
+            | jq -r '.permission')
+
+          # Check if permission level is sufficient (admin, maintain, or write)
+          if [[ "$PERMISSION" == "admin" || "$PERMISSION" == "maintain" || "$PERMISSION" == "write" ]]; then
+            echo "has-permission=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-permission=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Actor: ${{ github.actor }}, Permission: $PERMISSION"
+
+  # =============================================================================
+
+  TestAnthropicApi:
+    # For PR events: Run tests regardless of permission level
+    # For non-PR events: Only run if actor has sufficient permissions
+    # Skip if the workflow was triggered by a failed security scan
+    if: (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (needs.CheckPermissions.outputs.is-pr == 'true' || needs.CheckPermissions.outputs.has-permission == 'true')
+    needs: CheckPermissions
 
     env:
       FORCE_COLOR: true
 
     runs-on: ubuntu-latest
     timeout-minutes: 60
-
-    services:
-      SQLServer:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: sqlServerPassw0rd
-        ports:
-          - 1433:1433
+    environment: sis-api-access  # Named environment containing your API keys
 
     steps:
       - uses: actions/checkout@v2
@@ -106,7 +141,7 @@ jobs:
 
       - name: Install a tests environment
         run: |
-          poetry install -E mosaiq -E tests -E dicom
+          poetry install  -E tests -E dicom -E mosaiq
 
       # -----------------------------------------------------------------------------
 
@@ -128,21 +163,9 @@ jobs:
 
       # TESTS
 
-      ## Mosaiq_db tests -- only run on Ubuntu because needs container
-
-      # - name: Wait for SQL Server to start
-      #   run: |
-      #     echo "Waiting for SQL Server..."
-      #     for i in {1..30}; do
-      #       if nc -z localhost 1433; then
-      #         echo "SQL Server is up!"
-      #         exit 0
-      #       fi
-      #       sleep 2
-      #     done
-      #     echo "SQL Server did not start in time"
-      #     exit 1
-
-      - name: Run MSQ database tests
+      - name: Run Anthropic API tests
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          poetry run pymedphys dev tests -v --mosaiqdb
+          poetry run pymedphys dev tests -v --anthropic

@@ -61,23 +61,22 @@ def test_structure_dose_mask():
     )
 
     for i, _ in enumerate(contour_z):
-        # All points within the eroded mask are also within the dicom_mask
-        assert np.all(np.logical_and(eroded_mask, dicom_mask[i, :, :]) == eroded_mask)
+        # Test if all points within the eroded mask are also within the dicom_mask
+        logical_and_result = np.logical_and(eroded_mask, dicom_mask[i, :, :])
+        assert np.array_equal(logical_and_result, eroded_mask)
 
-        # All points outside the buffered mask are also outside the dicom_mask
-        assert np.all(
-            np.logical_and(
-                np.logical_not(buffered_mask), np.logical_not(dicom_mask[i, :, :])
-            )
-            == np.logical_not(buffered_mask)
-        )
+        # Test if all points outside the buffered mask are also outside the dicom_mask
+        not_buffered = np.logical_not(buffered_mask)
+        not_dicom = np.logical_not(dicom_mask[i, :, :])
+        logical_and_result = np.logical_and(not_buffered, not_dicom)
+        assert np.array_equal(logical_and_result, not_buffered)
 
 
 def _get_grid_spacing(array):
     dx = np.unique(np.round(np.diff(array), 4))
-    assert len(dx) == 1
+    assert dx.size == 1  # Changed from len(dx) to dx.size for numpy array
 
-    return dx
+    return dx[0]  # Return scalar value instead of 0-d array
 
 
 def _convert_contours_to_dummy_dicom_files(
@@ -127,10 +126,16 @@ def _convert_contours_to_dummy_dicom_files(
             "Rows": len(y_grid),
             # The order of PixelSpacing is Row, Column (dy, dx).
             # http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_10.7.html#sect_10.7.1.3
-            "PixelSpacing": [dy, dx],
-            "ImagePositionPatient": [x0, y0, contour_z[0]],
+            "PixelSpacing": [float(dy), float(dx)],  # Ensure scalar values
+            "ImagePositionPatient": [
+                float(x0),
+                float(y0),
+                float(contour_z[0]),
+            ],  # Ensure scalar values
             "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],  # HFS
-            "GridFrameOffsetVector": contour_z,
+            "GridFrameOffsetVector": [
+                float(z) for z in contour_z
+            ],  # Ensure scalar values
         }
     )
 
@@ -151,7 +156,9 @@ def _shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon):
 
     points_within_contour = shapely_points.intersection(with_buffer)
 
-    assert points_within_contour.within(with_buffer)
+    # Convert to boolean scalar
+    within_result = points_within_contour.within(with_buffer)
+    assert bool(within_result)  # Explicit conversion to bool
 
     mask = _loop_based_mask_approach(xx, yy, points_within_contour)
 
@@ -159,7 +166,7 @@ def _shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon):
 
 
 def _loop_based_mask_approach(xx, yy, points_within_contour):
-    mask = np.zeros_like(xx).astype("bool")
+    mask = np.zeros_like(xx, dtype=bool)
 
     for point in points_within_contour.geoms:
         coord = point.coords.xy
