@@ -81,7 +81,7 @@ jobs:
         id: full-python-version
         shell: bash
         run: |
-          echo "{version}={$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")} >> $GITHUB_OUTPUT
+          echo "{version}={$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")}" >> $GITHUB_OUTPUT
 
       # -----------------------------------------------------------------------------
 
