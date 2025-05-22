@@ -84,7 +84,7 @@ PyMedPhys is a medical physics library organized as follows:
 
 3. **CLI Architecture**: The CLI is modular with subcommands defined in `cli/` subdirectory. Each major feature has its own CLI module (e.g., `dicom_cli`, `trf_cli`).
 
-4. **Data Management**: 
+4. **Data Management**:
    - External data is managed through Zenodo with hashes stored in `_data/hashes.json`
    - The `_data` module provides utilities for downloading and caching external datasets
 

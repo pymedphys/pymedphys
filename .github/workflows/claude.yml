@@ -42,7 +42,7 @@ jobs:
             "Write",
             "GlobTool",
             "GrepTool",
-            
+
             # Git status and inspection
             "Bash(git status)",
             "Bash(git log)",
@@ -53,19 +53,19 @@ jobs:
             "Bash(git branch)",
             "Bash(git branch -a)",
             "Bash(git remote -v)",
-            
+
             # Git configuration and setup
             "Bash(git config user.name)",
             "Bash(git config user.email)",
             "Bash(git fetch)",
             "Bash(git fetch origin)",
-            
+
             # Branch operations
             "Bash(git checkout -b)",
             "Bash(git checkout)",
             "Bash(git branch -D)",
             "Bash(git merge)",
-            
+
             # Staging and committing
             "Bash(git add)",
             "Bash(git add .)",
@@ -74,12 +74,12 @@ jobs:
             "Bash(git commit --amend)",
             "Bash(git reset)",
             "Bash(git reset --hard)",
-            
+
             # Push operations
             "Bash(git push)",
             "Bash(git push origin)",
             "Bash(git push -u origin)",
-            
+
             # GitHub CLI operations
             "Bash(gh auth status)",
             "Bash(gh pr create)",
@@ -88,7 +88,7 @@ jobs:
             "Bash(gh pr view)",
             "Bash(gh pr comment)",
             "Bash(gh issue comment)",
-            
+
             # PyMedPhys specific development
             "Bash(poetry install)",
             "Bash(poetry install -E all)",
@@ -96,7 +96,7 @@ jobs:
             "Bash(poetry run pytest)",
             "Bash(poetry run pre-commit run)",
             "Bash(poetry run pre-commit run --all-files)",
-            
+
             # Poetry dependency management
             "Bash(poetry add)",
             "Bash(poetry remove)",
@@ -111,7 +111,7 @@ jobs:
             "Bash(poetry env info)",
             "Bash(poetry env use)",
             "Bash(poetry cache clear)",
-            
+
             # UV package manager (future migration)
             "Bash(uv pip install)",
             "Bash(uv pip install -e)",
@@ -124,7 +124,7 @@ jobs:
             "Bash(uv remove)",
             "Bash(uv tool install)",
             "Bash(uv tool run)",
-            
+
             # Code quality tools
             "Bash(poetry run ruff check)",
             "Bash(poetry run ruff check --fix)",
@@ -136,7 +136,7 @@ jobs:
             "Bash(uv run ruff format)",
             "Bash(uv run pyright)",
             "Bash(uv run mypy)",
-            
+
             # General utilities
             "Bash(ls)",
             "Bash(ls -la)",
