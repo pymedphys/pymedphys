@@ -34,3 +34,116 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-opus-4-20250514
+          allowed_tools: [
+            # File operations
+            "View",
+            "Edit",
+            "Write",
+            "GlobTool",
+            "GrepTool",
+            
+            # Git status and inspection
+            "Bash(git status)",
+            "Bash(git log)",
+            "Bash(git log --oneline)",
+            "Bash(git diff)",
+            "Bash(git diff --staged)",
+            "Bash(git diff HEAD)",
+            "Bash(git branch)",
+            "Bash(git branch -a)",
+            "Bash(git remote -v)",
+            
+            # Git configuration and setup
+            "Bash(git config user.name)",
+            "Bash(git config user.email)",
+            "Bash(git fetch)",
+            "Bash(git fetch origin)",
+            
+            # Branch operations
+            "Bash(git checkout -b)",
+            "Bash(git checkout)",
+            "Bash(git branch -D)",
+            "Bash(git merge)",
+            
+            # Staging and committing
+            "Bash(git add)",
+            "Bash(git add .)",
+            "Bash(git add -A)",
+            "Bash(git commit -m)",
+            "Bash(git commit --amend)",
+            "Bash(git reset)",
+            "Bash(git reset --hard)",
+            
+            # Push operations
+            "Bash(git push)",
+            "Bash(git push origin)",
+            "Bash(git push -u origin)",
+            
+            # GitHub CLI operations
+            "Bash(gh auth status)",
+            "Bash(gh pr create)",
+            "Bash(gh pr create --title)",
+            "Bash(gh pr list)",
+            "Bash(gh pr view)",
+            "Bash(gh pr comment)",
+            "Bash(gh issue comment)",
+            
+            # PyMedPhys specific development
+            "Bash(poetry install)",
+            "Bash(poetry install -E all)",
+            "Bash(poetry run pymedphys:*)",
+            "Bash(poetry run pytest)",
+            "Bash(poetry run pre-commit run)",
+            "Bash(poetry run pre-commit run --all-files)",
+            
+            # Poetry dependency management
+            "Bash(poetry add)",
+            "Bash(poetry remove)",
+            "Bash(poetry update)",
+            "Bash(poetry lock)",
+            "Bash(poetry lock --no-update)",
+            "Bash(poetry show)",
+            "Bash(poetry show --tree)",
+            "Bash(poetry show --outdated)",
+            "Bash(poetry check)",
+            "Bash(poetry version)",
+            "Bash(poetry env info)",
+            "Bash(poetry env use)",
+            "Bash(poetry cache clear)",
+            
+            # UV package manager (future migration)
+            "Bash(uv pip install)",
+            "Bash(uv pip install -e)",
+            "Bash(uv pip install -r)",
+            "Bash(uv venv)",
+            "Bash(uv run)",
+            "Bash(uv sync)",
+            "Bash(uv lock)",
+            "Bash(uv add)",
+            "Bash(uv remove)",
+            "Bash(uv tool install)",
+            "Bash(uv tool run)",
+            
+            # Code quality tools
+            "Bash(poetry run ruff check)",
+            "Bash(poetry run ruff check --fix)",
+            "Bash(poetry run ruff format)",
+            "Bash(poetry run pyright)",
+            "Bash(poetry run mypy)",
+            "Bash(uv run ruff check)",
+            "Bash(uv run ruff check --fix)",
+            "Bash(uv run ruff format)",
+            "Bash(uv run pyright)",
+            "Bash(uv run mypy)",
+            
+            # General utilities
+            "Bash(ls)",
+            "Bash(ls -la)",
+            "Bash(pwd)",
+            "Bash(cat)",
+            "Bash(head)",
+            "Bash(tail)",
+            "Bash(which)",
+            "Bash(echo)"
+          ]
