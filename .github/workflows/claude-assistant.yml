@@ -6,7 +6,7 @@ on:
 
 jobs:
   claude_assist_comment:
-    if: contains(github.event.comment.body, 'claude')
+    if: contains(github.event.comment.body, '!claude')
     runs-on: ubuntu-latest
     environment: sis-api-access
     steps:
