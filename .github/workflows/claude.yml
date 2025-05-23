@@ -122,4 +122,6 @@ jobs:
             Bash(head),
             Bash(tail),
             Bash(which),
-            Bash(echo)
+            Bash(echo),
+            mcp__github_file_ops__commit_files,
+            mcp__github__create_pull_request
