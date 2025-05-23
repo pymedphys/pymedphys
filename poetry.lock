@@ -5292,7 +5292,7 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 type = ["pytest-mypy"]
 
 [extras]
-all = ["Pillow", "PyYAML", "anthropic", "anyio", "astroid", "attrs", "dash", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "natsort", "networkx", "numba", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pygithub", "pylibjpeg-libjpeg", "pylint", "pymssql", "pynetdicom", "pyright", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "requests", "rope", "ruff", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "tabulate", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
+all = ["Pillow", "PyYAML", "altair", "anthropic", "anyio", "astroid", "attrs", "dash", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython", "jupyter-book", "keyring", "matplotlib", "natsort", "networkx", "numba", "numpy", "packaging", "pandas", "plotly", "pre-commit", "psutil", "pydicom", "pygithub", "pylibjpeg-libjpeg", "pylint", "pymssql", "pynetdicom", "pyright", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32", "readme-renderer", "requests", "rope", "ruff", "scikit-learn", "scipy", "shapely", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit", "tabulate", "timeago", "toml", "tqdm", "trio", "trio-asyncio", "watchdog", "xmltodict"]
 cli = ["toml"]
 comparables = ["flashgamma"]
 dev = ["doc8", "pre-commit", "pygithub", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
@@ -5308,4 +5308,4 @@ user = ["Pillow", "PyYAML", "anthropic", "anyio", "attrs", "dash", "dbfread", "d
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.14"
-content-hash = "ab4bf82c59dc212ec663475ec802e79f123cba647fc65b4c4f6016ede9b1dab3"
+content-hash = "2696a42ca5690df8569f5d19e6b769251b7adaf97e49971eb8c2a5e092c2db5c"
