@@ -7,7 +7,6 @@ import tkinter.filedialog
 import altair
 import anthropic
 import attr
-import black
 import dash
 import dateutil
 import dateutil.relativedelta
@@ -18,8 +17,6 @@ import dicompylercore.dvh as dvh
 import dicompylercore.dvhcalc as dvhcalc
 import github
 import imageio.v2 as imageio
-import interpolation
-import interpolation.splines
 import keyring
 import libjpeg
 import matplotlib
@@ -94,7 +91,5 @@ import watchdog
 import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
-import xlsxwriter
-import xlsxwriter.worksheet
 import xmltodict
 import yaml

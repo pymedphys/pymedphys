@@ -81,6 +81,7 @@ anyio = { version = "*", optional = true }            # groups = ["user", "all"]
 # Visualisation
 plotly = { version = "*", optional = true }        # groups = ["user", "all"]
 dash = { version = "*", optional = true }        # groups = ["user", "all"]
+altair = { version = "*", optional = true }        # groups = ["all"]
 
 # ---- #
 # CVEs #
@@ -135,6 +136,7 @@ pygithub = { version = "*", optional = true }  # groups = ["dev", "all"]
 all = [
     "Pillow",
     "PyYAML",
+    "altair",
     "anthropic",
     "anyio",
     "astroid",
