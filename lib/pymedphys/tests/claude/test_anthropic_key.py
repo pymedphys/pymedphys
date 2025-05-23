@@ -75,7 +75,7 @@ def test_anthropic_api_key(capsys):
     "model_name",
     [
         "claude-3-haiku-20240307",
-        "claude-3-7-sonnet-20250219",  # Add or remove models as needed
+        "claude-3-5-sonnet-20241022",  # Add or remove models as needed
     ],
 )
 def test_anthropic_models(model_name: str, capsys):

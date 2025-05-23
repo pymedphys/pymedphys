@@ -216,6 +216,7 @@ tests = [
     "astroid",
     "numba",
     "psutil",
+    "pygithub",
     "pylint",
     "pytest",
     "pytest-rerunfailures",
