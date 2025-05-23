@@ -141,3 +141,53 @@ When modifying DICOM functionality, be aware of:
 - Anonymization requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+## Bash Command Restrictions
+
+**IMPORTANT**: When Claude Code has restricted bash permissions (via `allowed_tools`), command chaining with `&` or `&&` is NOT allowed.
+
+### The Problem
+If the allowed_tools configuration specifies individual bash commands like:
+```yaml
+Bash(git add file.txt),
+Bash(git commit -m "message")
+```
+
+This does NOT allow chained commands like:
+- ❌ `git add file.txt && git commit -m "message"`
+- ❌ `command1 & command2`
+- ❌ `command1 ; command2`
+
+Each `Bash(command)` entry is treated as an exact string match for a single command only.
+
+### The Solution
+Execute commands sequentially instead of chaining:
+1. Execute the first command
+2. Check the result
+3. If successful, execute the next command
+
+This approach prioritizes security over efficiency, ensuring that only explicitly allowed commands can be executed.
+
+## Maintainer Guidance Documentation
+
+**IMPORTANT**: When maintainers provide specific guidance or preferences during PR reviews or issue discussions, that guidance must be permanently added to this CLAUDE.md file.
+
+### Why This Matters
+- Prevents repeated explanations of the same preferences
+- Ensures consistent behavior across all Claude Code interactions
+- Documents project-specific conventions and requirements
+- Builds institutional knowledge that persists across sessions
+
+### What to Document
+- Security preferences (like the bash command restrictions above)
+- Code style preferences not captured by linters
+- Workflow preferences (e.g., when to create PRs, how to handle commits)
+- Testing requirements or patterns
+- Any other maintainer feedback that would apply to future work
+
+### How to Update
+When a maintainer provides guidance:
+1. Complete the requested task
+2. Add the guidance to the appropriate section in this file
+3. If no appropriate section exists, create a new one
+4. Commit the updated CLAUDE.md along with other changes
