@@ -20,7 +20,7 @@ packages = [{ include = "pymedphys", from = "lib" }]
 include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.10,<3.14"
 typing-extensions = "*"
 setuptools = "*"
 tomlkit = "*"
@@ -57,7 +57,7 @@ dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
 scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
 imageio = { version = "*", extras = ["tifffile"], optional = true }         # groups = ["user", "all"]
 
-streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
+streamlit = { version = "~1.41.0", optional = true } # groups = ["user", "all"]
 
 numba = { version = "*", optional = true }      # groups = ["user", "all", "docs", "tests"]
 numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
@@ -73,7 +73,7 @@ shapely = { version = ">=1.7.0", optional = true } # groups = ["user", "all"]
 pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user", "all"]
 
 # AI
-anthropic = { version = "0.46.0", optional = true }   # groups = ["user", "all"]
+anthropic = { version = "0.42.0", optional = true }   # groups = ["user", "all"]
 trio = { version = ">=0.25.0", optional = true }      # groups = ["user", "all"]
 trio-asyncio = { version = "*", optional = true }     # groups = ["user", "all"]
 anyio = { version = "*", optional = true }            # groups = ["user", "all"]
@@ -106,8 +106,8 @@ sphinx-argparse = { version = "*", optional = true } # groups = ["all", "docs"]
 sphinx-book-theme = { version = "*", optional = true }   # groups = ["all", "docs", "doctests"]
 networkx = { version = "*", optional = true }            # groups = ["all", "docs"]
 
-# v2.x is in alpha, and breaks the docs build at time of writing.
-jupyter-book = { version = ">=0.12.0 <2.0.0", optional = true } # groups = ["all", "docs"]
+# Updated to allow v2.x which is now stable
+jupyter-book = { version = ">=0.12.0", optional = true } # groups = ["all", "docs"]
 
 # ----- #
 # Tests #
