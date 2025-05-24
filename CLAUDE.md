@@ -76,6 +76,16 @@ PyMedPhys is a medical physics library organized as follows:
   - `_experimental/`: Experimental features not yet stable
   - `_streamlit/`: Streamlit web app components
 
+### Project Maintainers
+
+PyMedPhys is maintained by:
+- SimonBiggs
+- sjswerdloff
+- Matthew-Jennings
+- pchlap
+
+When creating conda recipes, pull requests, or other metadata that requires maintainer information, use this list.
+
 ### Key Architectural Patterns
 
 1. **Private/Public Module Pattern**: Implementation details are in `_module/` directories, with public APIs exposed through `module.py` files at the package root.
