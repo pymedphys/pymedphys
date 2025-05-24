@@ -220,20 +220,11 @@ When working with restricted bash permissions:
 
 ### Pre-commit Hook Exclusions
 
-When adding files that use special syntax (like Jinja2 templating) that causes pre-commit validation to fail:
+When adding files that cause pre-commit validation to fail due to special syntax:
 
-**Preference**: Fix the issue directly in the current PR by adding exclusions to `.pre-commit-config.yaml`
+**Important Principle**: Do NOT create a separate PR for pre-commit fixes when they're blocking the current PR. Instead, add the necessary exclusion patterns directly to `.pre-commit-config.yaml` to fix the immediate issue.
 
-**Example**: Conda recipe files use Jinja2 templating which isn't valid YAML:
-```yaml
-- id: check-yaml
-  exclude: ^conda-recipe/.*\.yaml$
-```
-
-**Important**:
-- Do NOT create a separate PR for pre-commit fixes when they're blocking the current PR
-- Add the necessary exclusion patterns directly to fix the immediate issue
-- Common patterns that need exclusions:
-  - Conda recipe files: `^conda-recipe/.*\.yaml$`
-  - Template files: Files using Jinja2 or other templating languages
-  - Generated files: Files that are auto-generated with non-standard syntax
+This applies to files that use:
+- Template languages (Jinja2, etc.) that conflict with file format validators
+- Generated files with non-standard syntax
+- Special configuration formats that don't match standard linters
