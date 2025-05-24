@@ -14,39 +14,44 @@ def test_pn_length_compliance_with_delimiter():
 
     # Since there's only one component, it should be truncated to 64 chars
     components = result.split("^")
+    assert len(components) == 5  # PN always has 5 components
     assert len(components[0]) <= 64
 
     # Test case 2: Two components - first should be max 63 chars to leave room for delimiter
     pn_value = f"{long_name}^{long_name}"
     result = _pseudonymise_PN(pn_value)
     components = result.split("^")
+    assert len(components) == 5  # PN always has 5 components
 
     # First component + delimiter should be <= 64
     assert len(components[0]) <= 63  # Room for the ^ delimiter
-    # Last non-empty component can be 64 chars
+    # Second component can be 64 chars if it's effectively the last non-empty
     assert len(components[1]) <= 64
 
-    # Test case 3: All five components populated
-    pn_value = f"{long_name}^{long_name}^{long_name}^Dr^PhD"
+    # Test case 3: All five components populated with long prefix and suffix
+    long_prefix = "P" * 100
+    long_suffix = "S" * 100
+    pn_value = f"{long_name}^{long_name}^{long_name}^{long_prefix}^{long_suffix}"
     result = _pseudonymise_PN(
         pn_value, strip_name_prefix=False, strip_name_suffix=False
     )
     components = result.split("^")
+    assert len(components) == 5  # PN always has 5 components
 
-    # First three components should be max 63 chars (room for delimiter)
+    # First four components should be max 63 chars (room for delimiter)
     assert len(components[0]) <= 63
     assert len(components[1]) <= 63
     assert len(components[2]) <= 63
-    assert len(components[3]) <= 63  # "Dr" with delimiter
-    assert len(components[4]) <= 64  # Last component, no delimiter after
+    assert len(components[3]) <= 63  # Prefix with delimiter
+    assert len(components[4]) <= 64  # Last component (suffix), no delimiter after
 
     # Verify total length per component group (content + delimiter)
-    for i in range(len(components) - 1):
-        # Each component + its delimiter should be <= 64
-        component_with_delimiter = components[i] + "^"
-        assert (
-            len(component_with_delimiter) <= 64
-        ), f"Component {i} with delimiter exceeds 64 chars"
+    # Check each component explicitly to avoid loops in tests
+    assert len(f"{components[0]}^") <= 64
+    assert len(f"{components[1]}^") <= 64
+    assert len(f"{components[2]}^") <= 64
+    assert len(f"{components[3]}^") <= 64
+    # Last component has no delimiter
 
 
 @pytest.mark.pydicom
@@ -100,7 +105,55 @@ def test_pn_real_world_example():
     # Verify the DICOM standard compliance
     # "The Value Length of each component group is 64 characters maximum,
     # including the delimiter for the component group"
-    if len(components) > 1:
-        for i in range(len(components) - 1):
-            if components[i]:  # Only check non-empty components
-                assert len(components[i] + "^") <= 64
+    # Check each component explicitly (avoiding loops and conditionals)
+    assert len(f"{components[0]}^") <= 64
+    assert len(f"{components[1]}^") <= 64
+    assert len(f"{components[2]}^") <= 64
+    # Last two components might be empty, but still check
+    assert components[3] == "" or len(f"{components[3]}^") <= 64
+    assert components[4] == "" or len(components[4]) <= 64
+
+
+@pytest.mark.pydicom
+def test_pn_empty_string():
+    """Test that entirely empty PN string is handled correctly."""
+    
+    # Test with completely empty PN
+    pn_value = ""
+    result = _pseudonymise_PN(pn_value)
+    components = result.split("^")
+    
+    # Should have 5 empty components
+    assert len(components) == 5
+    assert components == ["", "", "", "", ""]
+
+
+@pytest.mark.pydicom
+def test_pseudonymise_PN_nondefault_max_component_length():
+    """Test with non-default max_component_length parameter."""
+    # Example input with long components
+    pn = "FAMILYNAME^GIVENNAME^MIDDLENAME^PREFIX^SUFFIX"
+    max_component_length = 32
+
+    result = _pseudonymise_PN(pn, max_component_length=max_component_length, 
+                            strip_name_prefix=False, strip_name_suffix=False)
+
+    # Split the result into components
+    components = result.split("^")
+    assert len(components) == 5
+
+    # All components except the last non-empty one must be <= max_component_length - 1
+    # Since all components are non-empty, components 0-3 need room for delimiter
+    assert len(components[0]) <= max_component_length - 1
+    assert len(components[1]) <= max_component_length - 1
+    assert len(components[2]) <= max_component_length - 1
+    assert len(components[3]) <= max_component_length - 1
+    
+    # The last component can be up to max_component_length
+    assert len(components[4]) <= max_component_length
+
+    # Verify with delimiter included
+    assert len(f"{components[0]}^") <= max_component_length
+    assert len(f"{components[1]}^") <= max_component_length
+    assert len(f"{components[2]}^") <= max_component_length
+    assert len(f"{components[3]}^") <= max_component_length

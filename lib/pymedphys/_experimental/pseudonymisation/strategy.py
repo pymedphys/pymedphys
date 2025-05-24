@@ -181,7 +181,7 @@ def _pseudonymise_plaintext(value):
     # eliminate trailing '='
     pseudonym_length = len(text_pseudonym)
     if text_pseudonym[pseudonym_length - 1] == "=":
-        text_pseudonym = text_pseudonym[0 : pseudonym_length - 1]
+        text_pseudonym = text_pseudonym[:pseudonym_length - 1]
     return text_pseudonym
 
 
@@ -193,7 +193,7 @@ def _strip_plus_slash_from_base64(value):
 
 def _pseudonymise_AE(value):
     my_pseudonym = _pseudonymise_plaintext(value)
-    my_sliced_pseudonym = my_pseudonym[0:16]
+    my_sliced_pseudonym = my_pseudonym[:16]
     return my_sliced_pseudonym
 
 
@@ -248,7 +248,7 @@ def _pseudonymise_CS(value):
     # In addition to changing to upper case, remove or replace base64 characters that
     # are not in: alphanumeric, the space character, or the underscore character
     my_upper_pseudonym = str(my_pseudonym.upper().replace("+", "").replace("/", "_"))
-    my_sliced_pseudonym = my_upper_pseudonym[0:15]
+    my_sliced_pseudonym = my_upper_pseudonym[:15]
     return my_sliced_pseudonym
 
 
@@ -320,14 +320,14 @@ def _pseudonymise_DS(value):
 
     my_hex_digest = my_hash_func.hexdigest()
 
-    sliced_digest = my_hex_digest[0:count_digits]
+    sliced_digest = my_hex_digest[:count_digits]
     # convert the hex digest values to a base ten integer
     my_integer = int(sliced_digest, 16)
     my_integer_string = str(my_integer)
 
     new_digits = list()
     for i in range(0, count_digits):
-        new_digits.append(int(my_integer_string[i : i + 1]))
+        new_digits.append(int(my_integer_string[i:i + 1]))
     # print("new digits : " + str(new_digits))
     new_decimal_tuple = tuple((as_tuple.sign, tuple(new_digits), as_tuple.exponent))
     new_decimal = Decimal(new_decimal_tuple)
@@ -340,13 +340,13 @@ def _pseudonymize_DT(value):
 
 def _pseudonymise_LO(value):
     my_pseudonym = _pseudonymise_plaintext(value)
-    my_sliced_pseudonym = my_pseudonym[0:64]
+    my_sliced_pseudonym = my_pseudonym[:64]
     return my_sliced_pseudonym
 
 
 def _pseudonymise_LT(value):
     my_pseudonym = _pseudonymise_plaintext(value)
-    my_sliced_pseudonym = my_pseudonym[0:10240]
+    my_sliced_pseudonym = my_pseudonym[:10240]
     return my_sliced_pseudonym
 
 
@@ -379,7 +379,7 @@ def _pseudonymise_PN(
     value : string representation of Persons Name
         DESCRIPTION.
     max_component_length : integer, optional
-        Maximum length for each component INCLUDING delimiter. The default is 64.
+        Maximum length for each component INCLUDING the '^' delimiter. The default is 64. The delimiter used to separate components is the '^' character.
     strip_name_prefix : Boolean, optional
         DESCRIPTION. The default is True.
     strip_name_suffix : Boolean, optional
@@ -391,6 +391,9 @@ def _pseudonymise_PN(
         A pseudonym, but doesn't deal with Unicode (yet)
 
     """
+    # Validate max_component_length to prevent negative slicing
+    if max_component_length < 2:
+        raise ValueError("max_component_length must be at least 2 to accommodate a character and delimiter")
     persons_name_three = pydicom.valuerep.PersonName(value)
     family_name = persons_name_three.family_name
     given_name = persons_name_three.given_name
@@ -440,9 +443,9 @@ def _pseudonymise_PN(
         # Check if there are any subsequent non-empty components
         has_subsequent = bool(pseudo_given or pseudo_middle or prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_family[0 : max_component_length - 1])
+            components.append(pseudo_family[:max_component_length - 1])
         else:
-            components.append(pseudo_family[0:max_component_length])
+            components.append(pseudo_family[:max_component_length])
     else:
         components.append("")
 
@@ -450,9 +453,9 @@ def _pseudonymise_PN(
     if pseudo_given:
         has_subsequent = bool(pseudo_middle or prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_given[0 : max_component_length - 1])
+            components.append(pseudo_given[:max_component_length - 1])
         else:
-            components.append(pseudo_given[0:max_component_length])
+            components.append(pseudo_given[:max_component_length])
     else:
         components.append("")
 
@@ -460,9 +463,9 @@ def _pseudonymise_PN(
     if pseudo_middle:
         has_subsequent = bool(prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_middle[0 : max_component_length - 1])
+            components.append(pseudo_middle[:max_component_length - 1])
         else:
-            components.append(pseudo_middle[0:max_component_length])
+            components.append(pseudo_middle[:max_component_length])
     else:
         components.append("")
 
@@ -470,15 +473,15 @@ def _pseudonymise_PN(
     if prefix:
         has_subsequent = bool(suffix)
         if has_subsequent:
-            components.append(prefix[0 : max_component_length - 1])
+            components.append(prefix[:max_component_length - 1])
         else:
-            components.append(prefix[0:max_component_length])
+            components.append(prefix[:max_component_length])
     else:
         components.append("")
 
     # Suffix - last component, no delimiter after it
     if suffix:
-        components.append(suffix[0:max_component_length])
+        components.append(suffix[:max_component_length])
     else:
         components.append("")
 
@@ -487,7 +490,7 @@ def _pseudonymise_PN(
 
 
 def _pseudonymise_SH(value):
-    return _pseudonymise_plaintext(value)[0:16]
+    return _pseudonymise_plaintext(value)[:16]
 
 
 def _pseudonymise_SQ(value):
@@ -506,7 +509,7 @@ def _pseudonymise_SQ(value):
 
 
 def _pseudonymise_ST(value):
-    return _pseudonymise_plaintext(value)[0:1024]
+    return _pseudonymise_plaintext(value)[:1024]
 
 
 def _pseudonymise_TM(value):
@@ -520,8 +523,8 @@ def _pseudonymise_UI(value):
     # my_digest = HASH3_256.digest()
     my_hex_digest = my_hash_func.hexdigest()
     chars_available = 63 - len(PYMEDPHYS_ROOT_UID)  # 64 less '.'
-    big_int = int(my_hex_digest[0:chars_available], 16)
-    pseudonymous_ui = PYMEDPHYS_ROOT_UID + "." + str(big_int)[0:chars_available]
+    big_int = int(my_hex_digest[:chars_available], 16)
+    pseudonymous_ui = PYMEDPHYS_ROOT_UID + "." + str(big_int)[:chars_available]
     return pseudonymous_ui
 
 
