@@ -406,14 +406,18 @@ def _pseudonymise_PN(
         pseudo_family = ""
 
     if given_name:
-        pseudo_given = _strip_plus_slash_from_base64(_pseudonymise_plaintext(given_name))
+        pseudo_given = _strip_plus_slash_from_base64(
+            _pseudonymise_plaintext(given_name)
+        )
         if pseudo_given is None:
             pseudo_given = ""
     else:
         pseudo_given = ""
 
     if middle_name:
-        pseudo_middle = _strip_plus_slash_from_base64(_pseudonymise_plaintext(middle_name))
+        pseudo_middle = _strip_plus_slash_from_base64(
+            _pseudonymise_plaintext(middle_name)
+        )
         if pseudo_middle is None:
             pseudo_middle = ""
     else:
