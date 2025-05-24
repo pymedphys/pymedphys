@@ -117,12 +117,12 @@ def test_pn_real_world_example():
 @pytest.mark.pydicom
 def test_pn_empty_string():
     """Test that entirely empty PN string is handled correctly."""
-    
+
     # Test with completely empty PN
     pn_value = ""
     result = _pseudonymise_PN(pn_value)
     components = result.split("^")
-    
+
     # Should have 5 empty components
     assert len(components) == 5
     assert components == ["", "", "", "", ""]
@@ -135,8 +135,12 @@ def test_pseudonymise_PN_nondefault_max_component_length():
     pn = "FAMILYNAME^GIVENNAME^MIDDLENAME^PREFIX^SUFFIX"
     max_component_length = 32
 
-    result = _pseudonymise_PN(pn, max_component_length=max_component_length, 
-                            strip_name_prefix=False, strip_name_suffix=False)
+    result = _pseudonymise_PN(
+        pn,
+        max_component_length=max_component_length,
+        strip_name_prefix=False,
+        strip_name_suffix=False,
+    )
 
     # Split the result into components
     components = result.split("^")
@@ -148,7 +152,7 @@ def test_pseudonymise_PN_nondefault_max_component_length():
     assert len(components[1]) <= max_component_length - 1
     assert len(components[2]) <= max_component_length - 1
     assert len(components[3]) <= max_component_length - 1
-    
+
     # The last component can be up to max_component_length
     assert len(components[4]) <= max_component_length
 

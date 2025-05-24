@@ -181,7 +181,7 @@ def _pseudonymise_plaintext(value):
     # eliminate trailing '='
     pseudonym_length = len(text_pseudonym)
     if text_pseudonym[pseudonym_length - 1] == "=":
-        text_pseudonym = text_pseudonym[:pseudonym_length - 1]
+        text_pseudonym = text_pseudonym[: pseudonym_length - 1]
     return text_pseudonym
 
 
@@ -327,7 +327,7 @@ def _pseudonymise_DS(value):
 
     new_digits = list()
     for i in range(0, count_digits):
-        new_digits.append(int(my_integer_string[i:i + 1]))
+        new_digits.append(int(my_integer_string[i : i + 1]))
     # print("new digits : " + str(new_digits))
     new_decimal_tuple = tuple((as_tuple.sign, tuple(new_digits), as_tuple.exponent))
     new_decimal = Decimal(new_decimal_tuple)
@@ -393,7 +393,9 @@ def _pseudonymise_PN(
     """
     # Validate max_component_length to prevent negative slicing
     if max_component_length < 2:
-        raise ValueError("max_component_length must be at least 2 to accommodate a character and delimiter")
+        raise ValueError(
+            "max_component_length must be at least 2 to accommodate a character and delimiter"
+        )
     persons_name_three = pydicom.valuerep.PersonName(value)
     family_name = persons_name_three.family_name
     given_name = persons_name_three.given_name
@@ -443,7 +445,7 @@ def _pseudonymise_PN(
         # Check if there are any subsequent non-empty components
         has_subsequent = bool(pseudo_given or pseudo_middle or prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_family[:max_component_length - 1])
+            components.append(pseudo_family[: max_component_length - 1])
         else:
             components.append(pseudo_family[:max_component_length])
     else:
@@ -453,7 +455,7 @@ def _pseudonymise_PN(
     if pseudo_given:
         has_subsequent = bool(pseudo_middle or prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_given[:max_component_length - 1])
+            components.append(pseudo_given[: max_component_length - 1])
         else:
             components.append(pseudo_given[:max_component_length])
     else:
@@ -463,7 +465,7 @@ def _pseudonymise_PN(
     if pseudo_middle:
         has_subsequent = bool(prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_middle[:max_component_length - 1])
+            components.append(pseudo_middle[: max_component_length - 1])
         else:
             components.append(pseudo_middle[:max_component_length])
     else:
@@ -473,7 +475,7 @@ def _pseudonymise_PN(
     if prefix:
         has_subsequent = bool(suffix)
         if has_subsequent:
-            components.append(prefix[:max_component_length - 1])
+            components.append(prefix[: max_component_length - 1])
         else:
             components.append(prefix[:max_component_length])
     else:
