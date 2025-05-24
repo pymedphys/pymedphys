@@ -221,6 +221,12 @@ This approach prioritizes security over efficiency, as confirmed by maintainer @
    - Check if a recent PR was merged that might have added those permissions
    - The workflow's checkout might be from before the merge
 
+3. **GitHub Workflow File Restrictions**: The `mcp__github_file_ops__commit_files` tool cannot commit files to the `.github/workflows/` directory. This appears to be a security restriction to prevent automated creation or modification of GitHub Actions workflows. When creating workflow files:
+   - The tool will return "undefined" errors when attempting to commit to `.github/workflows/`
+   - You can successfully commit to other directories including `.github/` itself
+   - Provide the workflow content in an expandable comment section for manual creation
+   - This is NOT a general permission issue - the same tool works for other file locations
+
 ### PR Link Format
 
 **Always use this exact format when providing PR links**:
