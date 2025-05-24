@@ -230,7 +230,7 @@ When adding files that use special syntax (like Jinja2 templating) that causes p
   exclude: ^conda-recipe/.*\.yaml$
 ```
 
-**Important**: 
+**Important**:
 - Do NOT create a separate PR for pre-commit fixes when they're blocking the current PR
 - Add the necessary exclusion patterns directly to fix the immediate issue
 - Common patterns that need exclusions:
