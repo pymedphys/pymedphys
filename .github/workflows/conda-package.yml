@@ -23,6 +23,16 @@ jobs:
         with:
           fetch-depth: 0  # Needed for git describe to work
 
+      - name: Cache conda packages
+        uses: actions/cache@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('conda-recipe/meta.yaml') }}
+          restore-keys: |
+            conda-${{ runner.os }}-${{ matrix.python-version }}-
+            conda-${{ runner.os }}-
+            conda-
+
       - name: Set up Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -31,32 +41,142 @@ jobs:
           channel-priority: strict
           auto-activate-base: true
           activate-environment: ""
+          use-only-tar-bz2: true  # For caching to work properly
 
       - name: Install conda-build
         shell: bash -l {0}
         run: |
-          conda install -y conda-build conda-verify
+          conda install -y conda-build=3.30.0 conda-verify=3.4.2
+
+      - name: Create local recipe for building from source
+        run: |
+          # Create a modified meta.yaml for local builds
+          cat > conda-recipe/meta.local.yaml << 'EOF'
+          {% set name = "pymedphys" %}
+          {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0').lstrip('v') %}
+
+          package:
+            name: {{ name|lower }}
+            version: {{ version }}
+
+          source:
+            path: ..
+
+          build:
+            number: 0
+            noarch: python
+            script: {{ PYTHON }} -m pip install . -vv
+            entry_points:
+              - pymedphys = pymedphys.__main__:main
+
+          requirements:
+            host:
+              - python >=3.10,<3.13
+              - pip
+              - poetry-core >=1.0.0
+            run:
+              - python >=3.10,<3.13
+              - typing-extensions
+              - setuptools
+              - tomlkit
+              # Core user dependencies
+              - tqdm
+              - attrs
+              - watchdog
+              - keyring
+              - packaging
+              - pyyaml
+              - requests
+              - python-dateutil
+              - matplotlib-base
+              - scipy
+              - pymssql  # [not win]
+              - sqlalchemy
+              - natsort
+              - toml
+              - pynetdicom
+              - dbfread
+              - xmltodict
+              - timeago
+              - dicompyler-core
+              - scikit-learn
+              - imageio
+              - streamlit >=1.34.0,<1.35.0
+              - numba
+              - numpy >=1.26
+              - pandas >=1.0.0
+              - pydicom >=2.0.0
+              - shapely >=1.7.0
+              - pylibjpeg-libjpeg >=1.3.2
+              - anthropic ==0.46.0
+              - trio >=0.25.0
+              - trio-asyncio
+              - anyio
+              - plotly >=5.24.1
+              - dash >=2.18.1
+              - pillow >=9.0.0
+              - ipython >=7.31.1
+              - pywin32 >=301  # [win]
+
+          test:
+            imports:
+              - pymedphys
+              - pymedphys.dicom
+              - pymedphys.gamma
+              - pymedphys.metersetmap
+              - pymedphys.trf
+            commands:
+              - pymedphys --help
+              - pymedphys --version
+            requires:
+              - pip
+
+          about:
+            home: https://pymedphys.com
+            summary: Medical Physics library
+            description: |
+              PyMedPhys is a medical physics library that provides tools for
+              various medical physics applications including:
+              - DICOM handling and anonymization
+              - Gamma analysis for dose distribution comparison
+              - Treatment delivery data processing (TRF, iCOM)
+              - Integration with oncology information systems (Mosaiq)
+              - Electron factor calculations
+              - And more...
+            license: Apache-2.0
+            license_family: Apache
+            license_file: LICENSE
+            doc_url: https://docs.pymedphys.com
+            dev_url: https://github.com/pymedphys/pymedphys
+
+          extra:
+            recipe-maintainers:
+              - SimonBiggs
+              - sjswerdloff
+              - Matthew-Jennings
+              - pchlap
+          EOF
 
       - name: Build conda package
         shell: bash -l {0}
         run: |
-          conda build conda-recipe/ --output-folder ./conda-bld
+          # Build using the local recipe
+          conda build conda-recipe/meta.local.yaml --output-folder ./conda-bld
 
       - name: Test package installation
         shell: bash -l {0}
         run: |
-          # Create a test environment
+          # Create and activate a test environment
           conda create -n test-env python=${{ matrix.python-version }} -y
-          conda activate test-env
 
           # Install the built package
-          conda install -c ./conda-bld pymedphys -y
+          conda install -n test-env -c ./conda-bld pymedphys -y
 
-          # Test import
-          python -c "import pymedphys; print(f'PyMedPhys {pymedphys.__version__} imported successfully')"
+          # Test import using conda run
+          conda run -n test-env python -c "import pymedphys; print(f'PyMedPhys {pymedphys.__version__} imported successfully')"
 
           # Run basic CLI command
-          pymedphys --version
+          conda run -n test-env pymedphys --version
 
       - name: Upload conda package
         uses: actions/upload-artifact@v3
@@ -92,20 +212,61 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Generate conda-forge update instructions
+        id: generate-instructions
         run: |
-          echo "## Conda-forge Update Instructions"
-          echo ""
-          echo "A new release has been created. To update the conda-forge feedstock:"
-          echo ""
-          echo "1. Wait for the PyPI package to be uploaded"
-          echo "2. Get the SHA256 hash of the PyPI tarball:"
-          echo "   \`\`\`"
-          echo "   curl -sL https://pypi.io/packages/source/p/pymedphys/pymedphys-${GITHUB_REF#refs/tags/}.tar.gz | sha256sum"
-          echo "   \`\`\`"
-          echo "3. Update the pymedphys-feedstock fork with:"
-          echo "   - New version number"
-          echo "   - New SHA256 hash"
-          echo "   - Any new dependencies"
-          echo "4. Create a PR to conda-forge/pymedphys-feedstock"
-          echo ""
-          echo "The conda-forge bot will handle the rest!"
+          # Get release tag
+          RELEASE_TAG="${GITHUB_REF#refs/tags/}"
+
+          # Create release instructions
+          cat > release-instructions.md << EOF
+          ## Conda-forge Update Instructions for PyMedPhys ${RELEASE_TAG}
+
+          A new release has been created. To update the conda-forge feedstock:
+
+          ### 1. Wait for PyPI Package
+          First, ensure the PyPI package has been uploaded for version ${RELEASE_TAG}.
+
+          ### 2. Get the SHA256 Hash
+          Run this command to get the SHA256 hash of the PyPI tarball:
+          \`\`\`bash
+          curl -sL https://pypi.io/packages/source/p/pymedphys/pymedphys-${RELEASE_TAG}.tar.gz | sha256sum
+          \`\`\`
+
+          ### 3. Fork and Update the Feedstock
+          1. Fork https://github.com/conda-forge/pymedphys-feedstock if you haven't already
+          2. Create a new branch for the update
+          3. Update \`recipe/meta.yaml\`:
+             - Update the version to ${RELEASE_TAG}
+             - Update the SHA256 hash
+             - Review and update any changed dependencies
+             - Update build number to 0 (if it was incremented for rebuilds)
+
+          ### 4. Create Pull Request
+          1. Push your changes to your fork
+          2. Create a PR to conda-forge/pymedphys-feedstock
+          3. Title: "Update to version ${RELEASE_TAG}"
+          4. The conda-forge bot will automatically check the recipe
+
+          ### 5. Merge and Distribution
+          Once the PR is approved and merged:
+          - The conda-forge bot will automatically build packages for all platforms
+          - Packages will be available on conda-forge within a few hours
+
+          ### Maintainers
+          Recipe maintainers who can merge PRs:
+          - SimonBiggs
+          - sjswerdloff
+          - Matthew-Jennings
+          - pchlap
+          EOF
+
+          # Also output to console for visibility
+          echo "::group::Release Instructions"
+          cat release-instructions.md
+          echo "::endgroup::"
+
+      - name: Upload release instructions
+        uses: actions/upload-artifact@v3
+        with:
+          name: conda-forge-release-instructions
+          path: release-instructions.md
