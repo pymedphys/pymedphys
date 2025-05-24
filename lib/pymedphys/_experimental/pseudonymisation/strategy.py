@@ -396,20 +396,27 @@ def _pseudonymise_PN(
     given_name = persons_name_three.given_name
     middle_name = persons_name_three.middle_name
 
-    # Process each component
-    base64_pseudo_family = _pseudonymise_plaintext(family_name)
-    pseudo_family = _strip_plus_slash_from_base64(base64_pseudo_family)
-    if pseudo_family is not None:
-        pseudo_family = pseudo_family
+    # Process each component - preserve empty components
+    if family_name:
+        base64_pseudo_family = _pseudonymise_plaintext(family_name)
+        pseudo_family = _strip_plus_slash_from_base64(base64_pseudo_family)
+        if pseudo_family is None:
+            pseudo_family = ""
     else:
         pseudo_family = ""
 
-    pseudo_given = _strip_plus_slash_from_base64(_pseudonymise_plaintext(given_name))
-    if pseudo_given is None:
+    if given_name:
+        pseudo_given = _strip_plus_slash_from_base64(_pseudonymise_plaintext(given_name))
+        if pseudo_given is None:
+            pseudo_given = ""
+    else:
         pseudo_given = ""
 
-    pseudo_middle = _strip_plus_slash_from_base64(_pseudonymise_plaintext(middle_name))
-    if pseudo_middle is None:
+    if middle_name:
+        pseudo_middle = _strip_plus_slash_from_base64(_pseudonymise_plaintext(middle_name))
+        if pseudo_middle is None:
+            pseudo_middle = ""
+    else:
         pseudo_middle = ""
 
     prefix = persons_name_three.name_prefix
