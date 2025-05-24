@@ -141,3 +141,79 @@ When modifying DICOM functionality, be aware of:
 - Anonymization requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+## Claude Code Workflow Guidelines
+
+### Bash Command Restrictions
+
+When the Claude workflow uses restricted bash permissions (via `allowed_tools` with specific `Bash(command)` entries):
+
+**Important**: Command chaining with `&` or `&&` is NOT allowed. Each `Bash(command)` entry is treated as an exact string match.
+
+**Problem Example**:
+```yaml
+Bash(git add file.txt),
+Bash(git commit -m "message")
+```
+This does NOT allow: `git add file.txt && git commit -m "message"`
+
+**Solution**: Execute commands sequentially:
+1. Execute first command
+2. Check result
+3. If successful, execute next command
+
+This approach prioritizes security over efficiency, as confirmed by maintainer @sjswerdloff.
+
+### Git and GitHub Tool Usage
+
+#### Known Issues and Workarounds
+
+1. **MCP GitHub commit tools**: The `mcp__github_file_ops__commit_files` tool may sometimes fail with undefined errors. When this happens:
+   - Try using sequential git commands via Bash
+   - Be aware that commit messages must be part of the allowed command string for restricted bash
+
+2. **Timing Issues with PR Merges**: Be aware that workflow runs may start with a repository state from just before a recent PR merge. If permissions appear to be missing:
+   - Check if a recent PR was merged that might have added those permissions
+   - The workflow's checkout might be from before the merge
+
+### PR Link Format
+
+**Always use this exact format when providing PR links**:
+```
+https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
+```
+
+**Important**:
+- Use THREE dots (`...`) between branch names, not two (`..`)
+- Correct: `compare/main...feature-branch`
+- Wrong: `compare/main..feature-branch`
+
+### Maintainer Guidance Documentation
+
+**Critical**: Any time you receive guidance, feedback, or learn something important from maintainers:
+
+1. **Immediately update CLAUDE.md** with the new information
+2. **Commit the changes** to your branch
+3. **Create a PR** using the format above
+4. **Provide the PR link** to maintainers
+
+This ensures that:
+- Future Claude Code interactions will follow the same guidelines
+- Maintainers don't need to repeatedly explain the same concepts
+- Knowledge is preserved across different workflow runs
+
+### Dependency Updates
+
+When updating dependencies:
+1. Update version constraints in `pyproject.toml`
+2. Run `poetry update` to regenerate `poetry.lock`
+3. Test changes to ensure nothing breaks
+4. Note: If `poetry update` is not in allowed tools, request it be added
+
+### Working with Restricted Permissions
+
+When working with restricted bash permissions:
+1. Check the `.github/workflows/claude.yml` file for allowed commands
+2. If a needed command is missing, create a PR to add it to `allowed_tools`
+3. Be specific about which commands you need and why
+4. Remember that exact string matching is used for command validation
