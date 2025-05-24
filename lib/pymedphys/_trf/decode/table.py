@@ -14,10 +14,14 @@
 
 # from typing import List
 
+import logging
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 
 from .constants import CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 def decode_trf_table(trf_table_contents, header_table_contents):
@@ -93,7 +97,7 @@ def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
         for c in column_names_from_data:
             if c not in column_names_from_dict_including_unknowns:
                 column_names_from_dict_including_unknowns[c] = "Item: " + c
-                print(f'"{c}": "Item: {c}",')
+                logger.debug('Unrecognized TRF column: "%s": "Item: %s"', c, c)
 
         column_names = ["Timestamp Data"] + [
             column_names_from_dict[c] for c in column_names_from_data

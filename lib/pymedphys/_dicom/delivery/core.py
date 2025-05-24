@@ -47,6 +47,10 @@ def _check_for_supported_collimation_device(
     """Validate whether or not the beam limiting devices in use are
     supported for use by ``pymedphys.Delivery.from_dicom``.
 
+    Currently supports the following collimation configurations:
+    - MLCX with ASYMY (traditional linac setup)
+    - MLCY with ASYMX (e.g., MR-Linac setup)
+
     Parameters
     ----------
     beam_limiting_device_sequence
@@ -60,13 +64,17 @@ def _check_for_supported_collimation_device(
         configurations.
 
     """
-    rt_beam_limiting_device_types = {
+    rt_beam_limiting_device_types = frozenset(
         item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
-    }
+    )
 
-    supported_configurations = [{"MLCX", "ASYMY"}, {"MLCY", "ASYMX"}]
+    # Use frozensets for immutability and faster membership checks
+    supported_configurations = frozenset([
+        frozenset(["MLCX", "ASYMY"]),
+        frozenset(["MLCY", "ASYMX"])
+    ])
 
-    if not rt_beam_limiting_device_types in supported_configurations:
+    if rt_beam_limiting_device_types not in supported_configurations:
         raise ValueError(
             _pretty_print(
                 """\
@@ -97,9 +105,9 @@ def _check_for_supported_collimation_device(
                 """
             ).format(
                 supported_configurations="\n* ".join(
-                    [str(item) for item in supported_configurations]
+                    [str(set(item)) for item in supported_configurations]
                 ),
-                rt_beam_limiting_device_types=rt_beam_limiting_device_types,
+                rt_beam_limiting_device_types=set(rt_beam_limiting_device_types),
             )
         )
 
@@ -109,6 +117,10 @@ class DeliveryDicom(DeliveryBase):
     def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_group_number=None):
         """Create a ``pymedphys.Delivery`` object from an RT Plan DICOM
         dataset.
+
+        Supports the following collimation configurations:
+        - MLCX with ASYMY (traditional linac setup)
+        - MLCY with ASYMX (e.g., MR-Linac setup)
 
         Parameters
         ----------
@@ -240,7 +252,8 @@ class DeliveryDicom(DeliveryBase):
 
         if len(mlc_sequence) != 1:
             raise ValueError(
-                "Expected there to be only one device labelled as MLCX or MLCY"
+                "Expected there to be only one device labelled as MLCX or MLCY. "
+                "MLCX is used for traditional linacs, MLCY for MR-Linac systems."
             )
 
         mlc_limiting_device = mlc_sequence[0]
@@ -279,14 +292,14 @@ class DeliveryDicom(DeliveryBase):
             for mlc in dicom_mlcs
         ]
 
-        jaw_type = "ASYMY"
-        # leaf banks are swapped around for MLCY vs MLCX
-        # according to Martijn Kusters
-        # and the jaw will be in the X direction.
-        # previous hardcode was ASYMY, now including ASYMX
-        # but using jaw_type variable in case symmetric jaws show up
-        # in a supported collimation type set.
+        # Determine jaw type based on MLC orientation
+        # MLCX (standard linac): MLC leaves move in X direction, jaws in Y direction (ASYMY)
+        # MLCY (e.g., MR-Linac): MLC leaves move in Y direction, jaws in X direction (ASYMX)
+        jaw_type = "ASYMY"  # Default for MLCX
+        
         if mlc_device_type == "MLCY":
+            # For MLCY devices, leaf banks need to be swapped
+            # This is based on the MR-Linac configuration where the MLC orientation is rotated
             mlcs[:, :, [0, 1]] = mlcs[:, :, [1, 0]]
             jaw_type = "ASYMX"
 
