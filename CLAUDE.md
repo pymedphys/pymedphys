@@ -144,6 +144,23 @@ When modifying DICOM functionality, be aware of:
 
 ## Claude Code Workflow Guidelines
 
+### CLAUDE.md Content Guidelines
+
+**Critical**: This file should only contain general principles and guidance that apply broadly across the codebase.
+
+**What to include**:
+- General development workflows and patterns
+- Architectural principles and conventions
+- Reusable commands and procedures
+- General principles from maintainer feedback that prevent repetition
+
+**What NOT to include**:
+- Task-specific examples or solutions
+- One-off fixes for specific issues
+- Detailed explanations of individual features
+
+**Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behavior across all Claude Code interactions.
+
 ### Bash Command Restrictions
 
 When the Claude workflow uses restricted bash permissions (via `allowed_tools` with specific `Bash(command)` entries):
