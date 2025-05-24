@@ -296,7 +296,7 @@ When asked to create GitHub workflow files (`.github/workflows/*.yml`):
 
 **Example response**:
 ```
-I've created the workflow file at `claude_created_workflows_preview/my-workflow.yml`. 
+I've created the workflow file at `claude_created_workflows_preview/my-workflow.yml`.
 
 To move it to the correct location:
 1. Pull this branch locally
