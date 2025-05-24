@@ -1,0 +1,111 @@
+name: Conda Package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  release:
+    types:
+      - created
+
+jobs:
+  build-test:
+    name: Build and Test Conda Package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for git describe to work
+      
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge
+          channel-priority: strict
+          auto-activate-base: true
+          activate-environment: ""
+      
+      - name: Install conda-build
+        shell: bash -l {0}
+        run: |
+          conda install -y conda-build conda-verify
+      
+      - name: Build conda package
+        shell: bash -l {0}
+        run: |
+          conda build conda-recipe/ --output-folder ./conda-bld
+      
+      - name: Test package installation
+        shell: bash -l {0}
+        run: |
+          # Create a test environment
+          conda create -n test-env python=${{ matrix.python-version }} -y
+          conda activate test-env
+          
+          # Install the built package
+          conda install -c ./conda-bld pymedphys -y
+          
+          # Test import
+          python -c "import pymedphys; print(f'PyMedPhys {pymedphys.__version__} imported successfully')"
+          
+          # Run basic CLI command
+          pymedphys --version
+      
+      - name: Upload conda package
+        uses: actions/upload-artifact@v3
+        with:
+          name: conda-package-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: ./conda-bld/*/pymedphys-*.tar.bz2
+  
+  test-from-conda-forge:
+    name: Test Installation from conda-forge
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Don't fail the workflow if package isn't on conda-forge yet
+    
+    steps:
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: "3.11"
+          channels: conda-forge
+          channel-priority: strict
+      
+      - name: Try installing from conda-forge
+        shell: bash -l {0}
+        run: |
+          conda install -c conda-forge pymedphys -y || echo "Package not available on conda-forge yet"
+          python -c "import pymedphys; print(f'PyMedPhys {pymedphys.__version__} from conda-forge')" || echo "Could not import from conda-forge"
+  
+  release-guidance:
+    name: Provide Release Guidance
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate conda-forge update instructions
+        run: |
+          echo "## Conda-forge Update Instructions"
+          echo ""
+          echo "A new release has been created. To update the conda-forge feedstock:"
+          echo ""
+          echo "1. Wait for the PyPI package to be uploaded"
+          echo "2. Get the SHA256 hash of the PyPI tarball:"
+          echo "   \`\`\`"
+          echo "   curl -sL https://pypi.io/packages/source/p/pymedphys/pymedphys-${GITHUB_REF#refs/tags/}.tar.gz | sha256sum"
+          echo "   \`\`\`"
+          echo "3. Update the pymedphys-feedstock fork with:"
+          echo "   - New version number"
+          echo "   - New SHA256 hash"
+          echo "   - Any new dependencies"
+          echo "4. Create a PR to conda-forge/pymedphys-feedstock"
+          echo ""
+          echo "The conda-forge bot will handle the rest!"
