@@ -395,7 +395,7 @@ def _pseudonymise_PN(
     family_name = persons_name_three.family_name
     given_name = persons_name_three.given_name
     middle_name = persons_name_three.middle_name
-    
+
     # Process each component
     base64_pseudo_family = _pseudonymise_plaintext(family_name)
     pseudo_family = _strip_plus_slash_from_base64(base64_pseudo_family)
@@ -423,48 +423,48 @@ def _pseudonymise_PN(
     # According to DICOM standard, each component group can be max 64 chars INCLUDING delimiter
     # So we need to account for the ^ delimiter when slicing
     components = []
-    
+
     # Family name - if not empty and not the last component, reserve 1 char for delimiter
     if pseudo_family:
         # Check if there are any subsequent non-empty components
         has_subsequent = bool(pseudo_given or pseudo_middle or prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_family[0:max_component_length-1])
+            components.append(pseudo_family[0 : max_component_length - 1])
         else:
             components.append(pseudo_family[0:max_component_length])
     else:
         components.append("")
-    
+
     # Given name - if not empty and not the last component, reserve 1 char for delimiter
     if pseudo_given:
         has_subsequent = bool(pseudo_middle or prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_given[0:max_component_length-1])
+            components.append(pseudo_given[0 : max_component_length - 1])
         else:
             components.append(pseudo_given[0:max_component_length])
     else:
         components.append("")
-    
+
     # Middle name - if not empty and not the last component, reserve 1 char for delimiter
     if pseudo_middle:
         has_subsequent = bool(prefix or suffix)
         if has_subsequent:
-            components.append(pseudo_middle[0:max_component_length-1])
+            components.append(pseudo_middle[0 : max_component_length - 1])
         else:
             components.append(pseudo_middle[0:max_component_length])
     else:
         components.append("")
-    
+
     # Prefix - if not empty and not the last component, reserve 1 char for delimiter
     if prefix:
         has_subsequent = bool(suffix)
         if has_subsequent:
-            components.append(prefix[0:max_component_length-1])
+            components.append(prefix[0 : max_component_length - 1])
         else:
             components.append(prefix[0:max_component_length])
     else:
         components.append("")
-    
+
     # Suffix - last component, no delimiter after it
     if suffix:
         components.append(suffix[0:max_component_length])
