@@ -379,7 +379,7 @@ def _pseudonymise_PN(
     value : string representation of Persons Name
         DESCRIPTION.
     max_component_length : integer, optional
-        DESCRIPTION. The default is 64.
+        Maximum length for each component INCLUDING delimiter. The default is 64.
     strip_name_prefix : Boolean, optional
         DESCRIPTION. The default is True.
     strip_name_suffix : Boolean, optional
@@ -395,23 +395,21 @@ def _pseudonymise_PN(
     family_name = persons_name_three.family_name
     given_name = persons_name_three.given_name
     middle_name = persons_name_three.middle_name
+    
+    # Process each component
     base64_pseudo_family = _pseudonymise_plaintext(family_name)
     pseudo_family = _strip_plus_slash_from_base64(base64_pseudo_family)
     if pseudo_family is not None:
-        pseudo_family = pseudo_family[0:max_component_length]
+        pseudo_family = pseudo_family
     else:
         pseudo_family = ""
 
     pseudo_given = _strip_plus_slash_from_base64(_pseudonymise_plaintext(given_name))
-    if pseudo_given is not None:
-        pseudo_given = pseudo_given[0:max_component_length]
-    else:
+    if pseudo_given is None:
         pseudo_given = ""
 
     pseudo_middle = _strip_plus_slash_from_base64(_pseudonymise_plaintext(middle_name))
-    if pseudo_middle is not None:
-        pseudo_middle = pseudo_middle[0:max_component_length]
-    else:
+    if pseudo_middle is None:
         pseudo_middle = ""
 
     prefix = persons_name_three.name_prefix
@@ -421,9 +419,59 @@ def _pseudonymise_PN(
     if strip_name_suffix:
         suffix = ""
 
-    pseudonym = "{}^{}^{}^{}^{}".format(
-        pseudo_family, pseudo_given, pseudo_middle, prefix, suffix
-    )
+    # Build the PN value with proper length limits
+    # According to DICOM standard, each component group can be max 64 chars INCLUDING delimiter
+    # So we need to account for the ^ delimiter when slicing
+    components = []
+    
+    # Family name - if not empty and not the last component, reserve 1 char for delimiter
+    if pseudo_family:
+        # Check if there are any subsequent non-empty components
+        has_subsequent = bool(pseudo_given or pseudo_middle or prefix or suffix)
+        if has_subsequent:
+            components.append(pseudo_family[0:max_component_length-1])
+        else:
+            components.append(pseudo_family[0:max_component_length])
+    else:
+        components.append("")
+    
+    # Given name - if not empty and not the last component, reserve 1 char for delimiter
+    if pseudo_given:
+        has_subsequent = bool(pseudo_middle or prefix or suffix)
+        if has_subsequent:
+            components.append(pseudo_given[0:max_component_length-1])
+        else:
+            components.append(pseudo_given[0:max_component_length])
+    else:
+        components.append("")
+    
+    # Middle name - if not empty and not the last component, reserve 1 char for delimiter
+    if pseudo_middle:
+        has_subsequent = bool(prefix or suffix)
+        if has_subsequent:
+            components.append(pseudo_middle[0:max_component_length-1])
+        else:
+            components.append(pseudo_middle[0:max_component_length])
+    else:
+        components.append("")
+    
+    # Prefix - if not empty and not the last component, reserve 1 char for delimiter
+    if prefix:
+        has_subsequent = bool(suffix)
+        if has_subsequent:
+            components.append(prefix[0:max_component_length-1])
+        else:
+            components.append(prefix[0:max_component_length])
+    else:
+        components.append("")
+    
+    # Suffix - last component, no delimiter after it
+    if suffix:
+        components.append(suffix[0:max_component_length])
+    else:
+        components.append("")
+
+    pseudonym = "^".join(components)
     return pseudonym
 
 
