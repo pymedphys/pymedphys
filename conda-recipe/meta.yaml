@@ -100,4 +100,5 @@ extra:
   recipe-maintainers:
     - SimonBiggs
     - sjswerdloff
-    # Add other maintainers here
+    - Matthew-Jennings
+    - pchlap
