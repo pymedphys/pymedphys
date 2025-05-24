@@ -1,0 +1,16 @@
+# Conda build configuration for pymedphys
+
+# Python version constraints
+python:
+  - 3.10
+  - 3.11
+  - 3.12
+
+# Pin numpy version for ABI compatibility
+numpy:
+  - 1.26
+
+# Exclude certain combinations that are known to fail
+zip_keys:
+  - python
+  - numpy

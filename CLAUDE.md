@@ -76,6 +76,16 @@ PyMedPhys is a medical physics library organized as follows:
   - `_experimental/`: Experimental features not yet stable
   - `_streamlit/`: Streamlit web app components
 
+### Project Maintainers
+
+PyMedPhys is maintained by:
+- SimonBiggs
+- sjswerdloff
+- Matthew-Jennings
+- pchlap
+
+When creating conda recipes, pull requests, or other metadata that requires maintainer information, use this list.
+
 ### Key Architectural Patterns
 
 1. **Private/Public Module Pattern**: Implementation details are in `_module/` directories, with public APIs exposed through `module.py` files at the package root.
@@ -143,6 +153,41 @@ When modifying DICOM functionality, be aware of:
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
 
 ## Claude Code Workflow Guidelines
+
+### CRITICAL META-INSTRUCTION: Always Document General Feedback
+
+**EXCEPTIONALLY IMPORTANT**: When maintainers provide ANY general feedback, guidance, or principles:
+
+1. **IMMEDIATELY implement the feedback** in your current task
+2. **AND SIMULTANEOUSLY update CLAUDE.md** to document the general principle
+3. **BOTH actions are MANDATORY** - doing only one is incomplete
+
+This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code instances. Failure to follow this results in maintainers having to repeatedly provide the same guidance, which wastes their time and degrades the development experience.
+
+**Example scenarios where this applies**:
+- When told how to handle certain types of files or situations
+- When given preferences about workflow or process
+- When corrected about general behavior patterns
+- When learning important information about the project while completing tasks
+
+**The goal**: Every interaction should make future interactions better by preserving knowledge.
+
+### CLAUDE.md Content Guidelines
+
+**Critical**: This file should only contain general principles and guidance that apply broadly across the codebase.
+
+**What to include**:
+- General development workflows and patterns
+- Architectural principles and conventions
+- Reusable commands and procedures
+- General principles from maintainer feedback that prevent repetition
+
+**What NOT to include**:
+- Task-specific examples or solutions
+- One-off fixes for specific issues
+- Detailed explanations of individual features
+
+**Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behavior across all Claude Code interactions.
 
 ### Bash Command Restrictions
 
@@ -217,3 +262,14 @@ When working with restricted bash permissions:
 2. If a needed command is missing, create a PR to add it to `allowed_tools`
 3. Be specific about which commands you need and why
 4. Remember that exact string matching is used for command validation
+
+### Pre-commit Hook Exclusions
+
+When adding files that cause pre-commit validation to fail due to special syntax:
+
+**Important Principle**: Do NOT create a separate PR for pre-commit fixes when they're blocking the current PR. Instead, add the necessary exclusion patterns directly to `.pre-commit-config.yaml` to fix the immediate issue.
+
+This applies to files that use:
+- Template languages (Jinja2, etc.) that conflict with file format validators
+- Generated files with non-standard syntax
+- Special configuration formats that don't match standard linters
