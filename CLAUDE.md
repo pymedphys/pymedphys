@@ -297,7 +297,7 @@ This applies to files that use:
 **Important**: Git commit timestamps reflect when commits are created, not when work began.
 
 **Key Points**:
-- Branch timestamps show when the first commit was pushed to GitHub
+- "Branch timestamps" (as shown in GitHub's UI) indicate when the first commit was pushed to GitHub on a branch. This is not a standard Git term, but rather how GitHub displays branch activity.
 - Timestamps cannot be retroactively changed as they're part of the commit SHA
 - Work start times are not tracked by Git
 
