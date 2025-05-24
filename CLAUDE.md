@@ -221,6 +221,12 @@ This approach prioritizes security over efficiency, as confirmed by maintainer @
    - Check if a recent PR was merged that might have added those permissions
    - The workflow's checkout might be from before the merge
 
+3. **GitHub Workflow File Restrictions**: The `mcp__github_file_ops__commit_files` tool cannot commit files to the `.github/workflows/` directory. This appears to be a security restriction to prevent automated creation or modification of GitHub Actions workflows. When creating workflow files:
+   - The tool will return "undefined" errors when attempting to commit to `.github/workflows/`
+   - You can successfully commit to other directories including `.github/` itself
+   - Provide the workflow content in an expandable comment section for manual creation
+   - This is NOT a general permission issue - the same tool works for other file locations
+
 ### PR Link Format
 
 **Always use this exact format when providing PR links**:
@@ -273,6 +279,7 @@ This applies to files that use:
 - Template languages (Jinja2, etc.) that conflict with file format validators
 - Generated files with non-standard syntax
 - Special configuration formats that don't match standard linters
+
 
 ### Branch and File Management
 
@@ -329,3 +336,38 @@ When discussing permissions needed for operations:
 - Basic file operations: `git add`, `git commit`, `git push`
 - GitHub API operations: `mcp__github__create_branch`, `mcp__github__push_files`
 - External operations: Access to external repositories with justification
+
+### GitHub Workflow File Creation
+
+When asked to create GitHub workflow files (`.github/workflows/*.yml`):
+
+**Important**: Due to permission restrictions on the `.github/workflows/` directory, use the following approach:
+
+1. **Create a preview directory**: Use `claude_created_workflows_preview/` in the repository root
+2. **Place the workflow file there** with the intended filename (e.g., `conda-package.yml`)
+3. **Inform the user** that they need to:
+   - Pull the branch locally
+   - Move the file from `claude_created_workflows_preview/` to `.github/workflows/`
+   - Push the change back using their own permissions
+4. **Provide the PR creation link** with the branch as-is
+
+**Recommended PR Workflow**: Create the PR first, then move the file. This approach:
+- Allows immediate visibility of the proposed workflow
+- Enables discussion and review before the file is in its final location
+- Permits the maintainer to make the move as part of the PR review process
+- Avoids potential confusion if the branch is updated locally but not pushed
+
+**Example response**:
+```
+I've created the workflow file at `claude_created_workflows_preview/my-workflow.yml`.
+
+To move it to the correct location:
+1. Pull this branch locally
+2. Move the file: `mv claude_created_workflows_preview/my-workflow.yml .github/workflows/`
+3. Commit and push the change
+
+[Create PR](https://github.com/pymedphys/pymedphys/compare/main...branch-name)
+```
+
+This approach ensures successful workflow file delivery despite permission restrictions.
+
