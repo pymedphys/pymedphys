@@ -54,21 +54,21 @@ jobs:
           cat > conda-recipe/meta.local.yaml << 'EOF'
           {% set name = "pymedphys" %}
           {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0').lstrip('v') %}
-          
+
           package:
             name: {{ name|lower }}
             version: {{ version }}
-          
+
           source:
             path: ..
-          
+
           build:
             number: 0
             noarch: python
             script: {{ PYTHON }} -m pip install . -vv
             entry_points:
               - pymedphys = pymedphys.__main__:main
-          
+
           requirements:
             host:
               - python >=3.10,<3.13
@@ -117,7 +117,7 @@ jobs:
               - pillow >=9.0.0
               - ipython >=7.31.1
               - pywin32 >=301  # [win]
-          
+
           test:
             imports:
               - pymedphys
@@ -130,7 +130,7 @@ jobs:
               - pymedphys --version
             requires:
               - pip
-          
+
           about:
             home: https://pymedphys.com
             summary: Medical Physics library
@@ -148,7 +148,7 @@ jobs:
             license_file: LICENSE
             doc_url: https://docs.pymedphys.com
             dev_url: https://github.com/pymedphys/pymedphys
-          
+
           extra:
             recipe-maintainers:
               - SimonBiggs
@@ -168,13 +168,13 @@ jobs:
         run: |
           # Create and activate a test environment
           conda create -n test-env python=${{ matrix.python-version }} -y
-          
+
           # Install the built package
           conda install -n test-env -c ./conda-bld pymedphys -y
-          
+
           # Test import using conda run
           conda run -n test-env python -c "import pymedphys; print(f'PyMedPhys {pymedphys.__version__} imported successfully')"
-          
+
           # Run basic CLI command
           conda run -n test-env pymedphys --version
 
@@ -216,22 +216,22 @@ jobs:
         run: |
           # Get release tag
           RELEASE_TAG="${GITHUB_REF#refs/tags/}"
-          
+
           # Create release instructions
           cat > release-instructions.md << EOF
           ## Conda-forge Update Instructions for PyMedPhys ${RELEASE_TAG}
-          
+
           A new release has been created. To update the conda-forge feedstock:
-          
+
           ### 1. Wait for PyPI Package
           First, ensure the PyPI package has been uploaded for version ${RELEASE_TAG}.
-          
+
           ### 2. Get the SHA256 Hash
           Run this command to get the SHA256 hash of the PyPI tarball:
           \`\`\`bash
           curl -sL https://pypi.io/packages/source/p/pymedphys/pymedphys-${RELEASE_TAG}.tar.gz | sha256sum
           \`\`\`
-          
+
           ### 3. Fork and Update the Feedstock
           1. Fork https://github.com/conda-forge/pymedphys-feedstock if you haven't already
           2. Create a new branch for the update
@@ -240,18 +240,18 @@ jobs:
              - Update the SHA256 hash
              - Review and update any changed dependencies
              - Update build number to 0 (if it was incremented for rebuilds)
-          
+
           ### 4. Create Pull Request
           1. Push your changes to your fork
           2. Create a PR to conda-forge/pymedphys-feedstock
           3. Title: "Update to version ${RELEASE_TAG}"
           4. The conda-forge bot will automatically check the recipe
-          
+
           ### 5. Merge and Distribution
           Once the PR is approved and merged:
           - The conda-forge bot will automatically build packages for all platforms
           - Packages will be available on conda-forge within a few hours
-          
+
           ### Maintainers
           Recipe maintainers who can merge PRs:
           - SimonBiggs
@@ -259,7 +259,7 @@ jobs:
           - Matthew-Jennings
           - pchlap
           EOF
-          
+
           # Also output to console for visibility
           echo "::group::Release Instructions"
           cat release-instructions.md
