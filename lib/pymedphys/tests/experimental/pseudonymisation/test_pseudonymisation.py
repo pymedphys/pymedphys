@@ -171,8 +171,8 @@ def test_identifier_is_sequence_vr():
         "RequestAttributesSequence",
     ]
 
-    identifying_requested_procedure_id = "Tumour Identification"
-    non_identifying_scheduled_procedure_step_id = "Tumour ID with Dual Energy"
+    identifying_requested_procedure_id = "Tumour ID"
+    non_identifying_scheduled_procedure_step_id = "Dual Energy"
     ds_input = dicom_dataset_from_dict(
         {
             "PatientID": "ABC123",
