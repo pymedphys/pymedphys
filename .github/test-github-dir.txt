@@ -1,1 +1,0 @@
-Testing if .github directory has special restrictions
