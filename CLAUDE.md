@@ -154,6 +154,24 @@ When modifying DICOM functionality, be aware of:
 
 ## Claude Code Workflow Guidelines
 
+### CRITICAL META-INSTRUCTION: Always Document General Feedback
+
+**EXCEPTIONALLY IMPORTANT**: When maintainers provide ANY general feedback, guidance, or principles:
+
+1. **IMMEDIATELY implement the feedback** in your current task
+2. **AND SIMULTANEOUSLY update CLAUDE.md** to document the general principle
+3. **BOTH actions are MANDATORY** - doing only one is incomplete
+
+This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code instances. Failure to follow this results in maintainers having to repeatedly provide the same guidance, which wastes their time and degrades the development experience.
+
+**Example scenarios where this applies**:
+- When told how to handle certain types of files or situations
+- When given preferences about workflow or process
+- When corrected about general behavior patterns
+- When learning important information about the project while completing tasks
+
+**The goal**: Every interaction should make future interactions better by preserving knowledge.
+
 ### CLAUDE.md Content Guidelines
 
 **Critical**: This file should only contain general principles and guidance that apply broadly across the codebase.
