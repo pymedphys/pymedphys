@@ -1,0 +1,103 @@
+{% set name = "pymedphys" %}
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0').lstrip('v') %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  entry_points:
+    - pymedphys = pymedphys.__main__:main
+
+requirements:
+  host:
+    - python >=3.10,<3.13
+    - pip
+    - poetry-core >=1.0.0
+  run:
+    - python >=3.10,<3.13
+    - typing-extensions
+    - setuptools
+    - tomlkit
+    # Core user dependencies
+    - tqdm
+    - attrs
+    - watchdog
+    - keyring
+    - packaging
+    - pyyaml
+    - requests
+    - python-dateutil
+    - matplotlib-base
+    - scipy
+    - pymssql  # [not win]
+    - sqlalchemy
+    - natsort
+    - toml
+    - pynetdicom
+    - dbfread
+    - xmltodict
+    - timeago
+    - dicompyler-core
+    - scikit-learn
+    - imageio
+    - streamlit >=1.34.0,<1.35.0
+    - numba
+    - numpy >=1.26
+    - pandas >=1.0.0
+    - pydicom >=2.0.0
+    - shapely >=1.7.0
+    - pylibjpeg-libjpeg >=1.3.2
+    - anthropic =0.46.0
+    - trio >=0.25.0
+    - trio-asyncio
+    - anyio
+    - plotly >=5.24.1
+    - dash >=2.18.1
+    - pillow >=9.0.0
+    - ipython >=7.31.1
+    - pywin32 >=301  # [win]
+
+test:
+  imports:
+    - pymedphys
+    - pymedphys.dicom
+    - pymedphys.gamma
+    - pymedphys.metersetmap
+    - pymedphys.trf
+  commands:
+    - pymedphys --help
+    - pymedphys --version
+  requires:
+    - pip
+
+about:
+  home: https://pymedphys.com
+  summary: Medical Physics library
+  description: |
+    PyMedPhys is a medical physics library that provides tools for
+    various medical physics applications including:
+    - DICOM handling and anonymization
+    - Gamma analysis for dose distribution comparison
+    - Treatment delivery data processing (TRF, iCOM)
+    - Integration with oncology information systems (Mosaiq)
+    - Electron factor calculations
+    - And more...
+  license: Apache-2.0
+  license_family: Apache
+  license_file: LICENSE
+  doc_url: https://docs.pymedphys.com
+  dev_url: https://github.com/pymedphys/pymedphys
+
+extra:
+  recipe-maintainers:
+    - SimonBiggs
+    - sjswerdloff
+    # Add other maintainers here
