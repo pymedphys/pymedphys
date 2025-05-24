@@ -217,3 +217,23 @@ When working with restricted bash permissions:
 2. If a needed command is missing, create a PR to add it to `allowed_tools`
 3. Be specific about which commands you need and why
 4. Remember that exact string matching is used for command validation
+
+### Pre-commit Hook Exclusions
+
+When adding files that use special syntax (like Jinja2 templating) that causes pre-commit validation to fail:
+
+**Preference**: Fix the issue directly in the current PR by adding exclusions to `.pre-commit-config.yaml`
+
+**Example**: Conda recipe files use Jinja2 templating which isn't valid YAML:
+```yaml
+- id: check-yaml
+  exclude: ^conda-recipe/.*\.yaml$
+```
+
+**Important**: 
+- Do NOT create a separate PR for pre-commit fixes when they're blocking the current PR
+- Add the necessary exclusion patterns directly to fix the immediate issue
+- Common patterns that need exclusions:
+  - Conda recipe files: `^conda-recipe/.*\.yaml$`
+  - Template files: Files using Jinja2 or other templating languages
+  - Generated files: Files that are auto-generated with non-standard syntax
