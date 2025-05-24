@@ -280,6 +280,63 @@ This applies to files that use:
 - Generated files with non-standard syntax
 - Special configuration formats that don't match standard linters
 
+
+### Branch and File Management
+
+#### Branch Name Accuracy
+
+**Critical**: Always provide accurate branch names when referencing branches. Incorrect branch names waste maintainer time searching for non-existent branches.
+
+**Best Practices**:
+- Double-check branch names before mentioning them
+- Use the actual branch name from your current git status
+- If unsure, explicitly state you're on a branch but need to verify the exact name
+
+#### Git Timestamps
+
+**Important**: Git commit timestamps reflect when commits are created, not when work began.
+
+**Key Points**:
+- "Branch timestamps" (as shown in GitHub's UI) indicate when the first commit was pushed to GitHub on a branch. This is not a standard Git term, but rather how GitHub displays branch activity.
+- Timestamps cannot be retroactively changed as they're part of the commit SHA
+- Work start times are not tracked by Git
+
+#### Handling File Creation Failures
+
+When unable to commit files due to permission issues:
+
+**Fallback Strategy**:
+1. Include the complete file content in a comment using expandable details sections
+2. Clearly explain why the file couldn't be committed
+3. Provide clear instructions for manual file creation
+
+**Example Format**:
+```markdown
+<details>
+<summary>Click to expand: path/to/file.ext</summary>
+
+```yaml
+# File content here
+```
+
+</details>
+```
+
+#### Permission Documentation
+
+When discussing permissions needed for operations:
+
+**Always Include**:
+1. **Immediate Needs**: Minimal permissions to complete the current task
+2. **Future Needs**: Additional permissions for full automation (if applicable)
+3. **Security Considerations**: Why each permission is needed
+4. **Fallback Options**: What can be done without the permissions
+
+**Format Example**:
+- Basic file operations: `git add`, `git commit`, `git push`
+- GitHub API operations: `mcp__github__create_branch`, `mcp__github__push_files`
+- External operations: Access to external repositories with justification
+
 ### GitHub Workflow File Creation
 
 When asked to create GitHub workflow files (`.github/workflows/*.yml`):
