@@ -129,7 +129,7 @@ rope = { version = "*", optional = true }            # groups = ["dev", "all"]
 doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
 readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
 tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "doctests"]
-pygithub = "^2.3.0"
+pygithub = "^2.3.0" # groups = ["dev", "all"]
 
 [tool.poetry.extras]
 all = [
