@@ -23,6 +23,7 @@ from pymedphys._dicom.header import (
     adjust_RED_cli,
 )
 from pymedphys._dicom.structure.merge import merge_contours_cli
+from pymedphys._dicom.structure.split import split_structure_set_cli
 
 
 def set_up_dicom_cli(subparsers):
@@ -33,6 +34,7 @@ def set_up_dicom_cli(subparsers):
 
     anonymise(dicom_subparsers)
     merge_contours(dicom_subparsers)
+    split_structure_set(dicom_subparsers)
     adjust_machine_name(dicom_subparsers)
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
@@ -275,3 +277,41 @@ def send(dicom_subparsers):
         help="The Called AE Title",
     )
     parser.set_defaults(func=send_cli)
+
+
+def split_structure_set(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        "split-structure-set",
+        help=(
+            "Split RT Structure Set by Frame of Reference UID. "
+            "This is useful when converting structure sets from Oncentra "
+            "(which allows multiple Frame of Reference UIDs) to Eclipse "
+            "(which requires a single Frame of Reference UID per structure set)."
+        ),
+    )
+
+    parser.add_argument(
+        "input_file", 
+        type=str,
+        help="Path to input RT Structure Set DICOM file"
+    )
+    parser.add_argument(
+        "output_dir",
+        type=str,
+        help="Directory where split structure sets and registrations will be saved"
+    )
+    parser.add_argument(
+        "--no-registrations",
+        action="store_true",
+        help="Skip generation of spatial registration objects"
+    )
+    parser.add_argument(
+        "--prefix",
+        type=str,
+        default=None,
+        help=(
+            "Prefix for output filenames. If not provided, "
+            "the input filename stem will be used."
+        )
+    )
+    parser.set_defaults(func=split_structure_set_cli)

@@ -11,3 +11,4 @@ from ._dicom.dose import (
     zyx_and_dose_from_dataset,
 )
 from ._dicom.structure.merge import merge_contours
+from ._dicom.structure.split import split_structure_set_by_frame_of_reference
