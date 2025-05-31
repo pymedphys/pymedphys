@@ -1,0 +1,115 @@
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-opus-4-20250514
+          allowed_tools: >
+            View,
+            Edit,
+            Write,
+            GlobTool,
+            GrepTool,
+            Bash(git status),
+            Bash(git log),
+            Bash(git log --oneline),
+            Bash(git diff),
+            Bash(git diff --staged),
+            Bash(git diff HEAD),
+            Bash(git branch),
+            Bash(git branch -a),
+            Bash(git remote -v),
+            Bash(git config user.name),
+            Bash(git config user.email),
+            Bash(git fetch),
+            Bash(git fetch origin),
+            Bash(git checkout -b),
+            Bash(git checkout),
+            Bash(git branch -D),
+            Bash(git merge),
+            Bash(git add),
+            Bash(git add .),
+            Bash(git add -A),
+            Bash(git commit -m),
+            Bash(git commit --amend),
+            Bash(git reset),
+            Bash(git reset --hard),
+            Bash(git push),
+            Bash(git push origin),
+            Bash(git push -u origin),
+            Bash(gh auth status),
+            Bash(gh pr create),
+            Bash(gh pr create --title),
+            Bash(gh pr list),
+            Bash(gh pr view),
+            Bash(gh pr comment),
+            Bash(gh issue comment),
+            Bash(uv --version),
+            Bash(uv venv),
+            Bash(uv sync),
+            Bash(uv sync --all-extras),
+            Bash(uv sync --extra),
+            Bash(uv lock),
+            Bash(uv lock --check),
+            Bash(uv lock --upgrade),
+            Bash(uv add),
+            Bash(uv remove),
+            Bash(uv pip install),
+            Bash(uv pip install -e),
+            Bash(uv pip install -r),
+            Bash(uv run),
+            Bash(uv run pymedphys:*),
+            Bash(uv run pytest),
+            Bash(uv run pre-commit run),
+            Bash(uv run pre-commit run --all-files),
+            Bash(uv run ruff check),
+            Bash(uv run ruff check --fix),
+            Bash(uv run ruff format),
+            Bash(uv run pyright),
+            Bash(uv run mypy),
+            Bash(uv tool install),
+            Bash(uv tool run),
+            Bash(uv build),
+            Bash(uv build --wheel),
+            Bash(uv publish),
+            Bash(ls),
+            Bash(ls -la),
+            Bash(pwd),
+            Bash(cat),
+            Bash(head),
+            Bash(tail),
+            Bash(which),
+            Bash(echo),
+            mcp__github_file_ops__commit_files,
+            mcp__github__create_pull_request
