@@ -24,7 +24,7 @@ build the documentation:
 
 .. code:: bash
 
-    poetry run pymedphys dev docs
+    uv run pymedphys dev docs
 
 
 Docstring extraction

@@ -7,10 +7,10 @@ Overview
 
 * Install Python 3.12.3
 * Install `pipx` with ``pip install pipx``
-* Install ``poetry`` with ``pipx install poetry``
+* Install ``uv`` with ``pipx install uv``
 * Clone the PyMedPhys git repo
-* Run ``poetry install -E all`` within the root of the repo
-* Run ``poetry run pre-commit install``
+* Run ``uv sync --all-extras`` within the root of the repo
+* Run ``uv run pre-commit install``
 * Install ``pandoc`` via your package manager
 
   * eg. ``sudo apt-get install pandoc``

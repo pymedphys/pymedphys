@@ -7,11 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Setup and Installation
 
 ```bash
-# Install with Poetry (required for development)
-poetry install -E all
+# Install with uv (required for development)
+uv sync --all-extras
 
 # Install pre-commit hooks
-poetry run pre-commit install
+uv run pre-commit install
 
 # Install for user use only
 pip install pymedphys[user]
@@ -21,43 +21,43 @@ pip install pymedphys[user]
 
 ```bash
 # Run all tests
-poetry run pymedphys dev tests
+uv run pymedphys dev tests
 
 # Run specific test file or directory
-poetry run pymedphys dev tests tests/path/to/test.py
+uv run pymedphys dev tests tests/path/to/test.py
 
 # Run with specific pytest options
-poetry run pymedphys dev tests -v -s -k "test_name"
+uv run pymedphys dev tests -v -s -k "test_name"
 
 # Run doctests
-poetry run pymedphys dev doctests
+uv run pymedphys dev doctests
 
 # Run E2E tests with Cypress
-poetry run pymedphys dev tests --cypress
+uv run pymedphys dev tests --cypress
 ```
 
 ### Code Quality
 
 ```bash
 # Run linting with ruff (automatically fixes issues)
-poetry run ruff check --fix .
-poetry run ruff format .
+uv run ruff check --fix .
+uv run ruff format .
 
 # Run type checking with pyright
-poetry run pyright
+uv run pyright
 
 # Run pre-commit on all files
-poetry run pre-commit run --all-files
+uv run pre-commit run --all-files
 
 # Check imports are clean
-poetry run pymedphys dev imports
+uv run pymedphys dev imports
 ```
 
 ### Documentation
 
 ```bash
 # Build documentation
-poetry run pymedphys dev docs
+uv run pymedphys dev docs
 
 # The docs use Jupyter Book and are located in lib/pymedphys/docs/
 ```
@@ -113,7 +113,7 @@ When creating conda recipes, pull requests, or other metadata that requires main
 
 ### Dependencies and Extras
 
-The project uses Poetry with optional dependency groups:
+The project uses uv with optional dependency groups:
 - `user`: Standard user installation
 - `all`: All features including development tools
 - `dev`: Development tools (linting, formatting)
@@ -257,9 +257,9 @@ This ensures that:
 
 When updating dependencies:
 1. Update version constraints in `pyproject.toml`
-2. Run `poetry update` to regenerate `poetry.lock`
+2. Run `uv lock` to regenerate `uv.lock`
 3. Test changes to ensure nothing breaks
-4. Note: If `poetry update` is not in allowed tools, request it be added
+4. Note: If `uv lock` is not in allowed tools, request it be added
 
 ### Working with Restricted Permissions
 

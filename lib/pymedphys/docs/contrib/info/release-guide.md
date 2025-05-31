@@ -27,18 +27,18 @@ git push --set-upstream origin VERSION-release-prep
 Update the version code near the top of the file:
 
 ```toml
-[tool.poetry]
+[project]
 name = "pymedphys"
 version = "VERSION"
 readme = "README.rst"
 ...
 ```
 
-Then run poetry update as well as propagate:
+Then run uv lock as well as propagate:
 
 ```bash
-poetry update
-poetry run pymedphys dev propagate
+uv lock --upgrade
+uv run pymedphys dev propagate
 ```
 
 ## Update CHANGELOG
@@ -90,16 +90,17 @@ Once the release pull request has been approved and merged, you're ready to rele
 
 Make sure you have an account at [PyPI](https://www.pypi.org) and your account has been added to the pymedphys project (contact the [pymedphys maintainers](https://github.com/pymedphys/pymedphys#maintainers) to be added).
 
-Next, create a token on PyPI for the pymedphys project used by to authenticate and upload the release. Create the token under the [pymedphys settings page](https://pypi.org/manage/project/pymedphys/settings/). Then add the token to your poetry configuration:
+Next, create a token on PyPI for the pymedphys project used by to authenticate and upload the release. Create the token under the [pymedphys settings page](https://pypi.org/manage/project/pymedphys/settings/). Then set the token as an environment variable:
 
 ```bash
-poetry config pypi-token.pypi [your-pypi-token]
+export UV_PUBLISH_TOKEN=[your-pypi-token]
 ```
 
 ### Publish release to PyPI
 
 ```bash
-poetry --build publish
+uv build
+uv publish
 ```
 
 ### Publish release on GitHub

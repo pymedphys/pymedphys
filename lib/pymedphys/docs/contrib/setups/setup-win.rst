@@ -11,13 +11,13 @@ Overview
 
 * `Install Python`_ 3.12.3
 * Install `pipx` with ``pip install pipx``
-* Install ``poetry`` with ``pipx install poetry``
+* Install ``uv`` with ``pipx install uv``
 * `Install git`_
 * Clone the PyMedPhys git repo
 
   * eg. ``git clone https://github.com/pymedphys/pymedphys.git``
-* Run ``poetry install -E all`` within the root of the repo
-* Run ``poetry run pre-commit install``
+* Run ``uv sync --all-extras`` within the root of the repo
+* Run ``uv run pre-commit install``
 * `Install pandoc`_
 
 You're good to go.
@@ -31,10 +31,10 @@ More Advanced Options
 =====================
 
 * `Setting up OpenSSH on Windows 10`_
-* `Add Jupyter Kernel to Poetry`_
+* `Add Jupyter Kernel to uv`_
 
 .. _`Setting up OpenSSH on Windows 10`: ../other/win-open-ssh.html
-.. _`Add Jupyter Kernel to Poetry`: ../other/add-jupyter-kernel.html
+.. _`Add Jupyter Kernel to uv`: ../other/add-jupyter-kernel.html
 
 
 Opinionated Recommendations
@@ -87,17 +87,16 @@ don't know what ``vim`` is make sure to change the default setting from ``vim``
 to VSCode (that was just installed).
 
 
-Install poetry
-..............
+Install uv
+..........
 
-To install Poetry run the following within a command prompt:
+To install uv run the following within a command prompt:
 
 .. code:: bash
 
-    curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+    pipx install uv
 
-What this does is detailed in the `Install Poetry`_ docs. You will need to
-close and reopen your command prompt after installing Poetry.
+You will need to close and reopen your command prompt after installing uv.
 
 
 Install the development version of PyMedPhys and pre-commit
@@ -119,8 +118,8 @@ Then install PyMedPhys and set up pre-commit by running:
 
 .. code:: bash
 
-    poetry install -E all
-    poetry run pre-commit install
+    uv sync --all-extras
+    uv run pre-commit install
 
 
 Install a Jupyter Lab kernel for the development install
@@ -128,4 +127,4 @@ Install a Jupyter Lab kernel for the development install
 
 .. code:: bash
 
-    poetry run python -m ipykernel install --user --name pymedphys
+    uv run python -m ipykernel install --user --name pymedphys

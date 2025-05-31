@@ -20,7 +20,7 @@ requirements:
   host:
     - python >=3.10,<3.13
     - pip
-    - poetry-core >=1.0.0
+    - hatchling
   run:
     - python >=3.10,<3.13
     - typing-extensions

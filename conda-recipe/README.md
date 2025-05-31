@@ -51,9 +51,9 @@ For updates to an existing feedstock:
 - Some dependencies might need to be added to conda-forge if not already available
 - The recipe uses `noarch: python` since PyMedPhys is pure Python
 
-## Handling Poetry-based Projects
+## Handling uv-based Projects
 
-Since PyMedPhys uses Poetry, the recipe:
-- Requires `poetry-core` as a host dependency
+Since PyMedPhys uses uv with a hatchling build backend, the recipe:
+- Requires `hatchling` as a host dependency
 - Uses pip for installation with `--no-build-isolation`
 - The version is automatically extracted from git tags or pyproject.toml
