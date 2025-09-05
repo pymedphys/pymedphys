@@ -468,16 +468,11 @@ def convert_struct(plan, export_path, skip_pattern):
     ds.StructureSetTime = study_time
     ds.StudyDate = study_date
     ds.StudyTime = study_time
+    ds.ManufacturerModelName = plan.plan_info.get("ToolType", "")
     ds.SoftwareVersions = plan.plan_info["PinnacleVersionDescription"]
     ds.StructureSetName = "POIandROI"
     ds.SeriesNumber = "1"
     ds.PatientName = patient_info["FullName"]
-
-    try:
-        ds.ManufacturerModelName = plan.plan_info["ToolType"]
-    except KeyError:
-        # Missing ToolType field
-        ds.ManufacturerModelName = ""
 
     ds.ReferencedFrameOfReferenceSequence = pydicom.sequence.Sequence()
     ReferencedFrameofReference = pydicom.dataset.Dataset()
