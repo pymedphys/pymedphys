@@ -110,13 +110,18 @@ def convert_plan(plan, export_path):
     ds.Modality = RTPLANModality
     ds.Manufacturer = Manufacturer
     ds.OperatorsName = ""
-    ds.ManufacturersModelName = plan_info["ToolType"]
     ds.SoftwareVersions = [plan_info["PinnacleVersionDescription"]]
     ds.PhysiciansOfRecord = patient_info["RadiationOncologist"]
     ds.PatientName = patient_info["FullName"]
     ds.PatientBirthDate = patient_info["DOB"]
     ds.PatientID = patient_info["MedicalRecordNumber"]
     ds.PatientSex = patient_info["Gender"][0]
+
+    try:
+        ds.ManufacturerModelName = plan_info["ToolType"]
+    except KeyError:
+        # Missing ToolType field
+        ds.ManufacturerModelName = ""
 
     ds.StudyInstanceUID = image_info["StudyInstanceUID"]
     ds.SeriesInstanceUID = planInstanceUID
