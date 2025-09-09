@@ -141,7 +141,7 @@ def convert_dose(plan, export_path):
     ds.Modality = RTDOSEModality
     ds.Manufacturer = Manufacturer
     ds.OperatorsName = ""
-    ds.ManufacturerModelName = plan_info.get("ToolType", "")
+    ds.ManufacturerModelName = plan_info["ToolType"]
     ds.SoftwareVersions = [plan_info["PinnacleVersionDescription"]]
     ds.PhysiciansOfRecord = patient_info["RadiationOncologist"]
     ds.PatientName = patient_info["FullName"]
