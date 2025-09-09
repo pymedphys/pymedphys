@@ -110,7 +110,7 @@ def convert_plan(plan, export_path):
     ds.Modality = RTPLANModality
     ds.Manufacturer = Manufacturer
     ds.OperatorsName = ""
-    ds.ManufacturersModelName = plan_info["ToolType"]
+    ds.ManufacturerModelName = plan_info.get("ToolType", "")
     ds.SoftwareVersions = [plan_info["PinnacleVersionDescription"]]
     ds.PhysiciansOfRecord = patient_info["RadiationOncologist"]
     ds.PatientName = patient_info["FullName"]
