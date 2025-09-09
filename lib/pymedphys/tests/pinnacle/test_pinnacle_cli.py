@@ -163,6 +163,6 @@ def test_pinnacle_cli_skip_roi(data):
 
     # Check that the ROI excluded is not in the resulting RTStruct
     rts_dcm = os.listdir(output_path)[0]
-    ds = pydicom.read_file(os.path.join(output_path, rts_dcm))
+    ds = pydicom.dcmread(os.path.join(output_path, rts_dcm))
     for roi in ds.StructureSetROISequence:
         assert not roi.ROIName == skip_roi_name

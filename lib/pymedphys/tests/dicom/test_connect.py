@@ -251,7 +251,7 @@ def test_dicom_listener_send(listener, test_dataset):
     )
     assert file_path.exists()
 
-    read_dataset = pydicom.read_file(file_path)
+    read_dataset = pydicom.dcmread(file_path)
     assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
 
     # Clean up after ourselves
@@ -290,7 +290,7 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     file_path = pathlib.Path(association_storage_path).joinpath(
         f"RP.{test_dataset.SOPInstanceUID}.dcm"
     )
-    ds = pydicom.read_file(file_path)
+    ds = pydicom.dcmread(file_path)
     ds.Manufacturer = "PyMedPhysModified"
     ds.save_as(file_path, write_like_original=False)
 
@@ -304,13 +304,13 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     assoc.release()
 
     # Check the original file is the same
-    read_dataset = pydicom.read_file(file_path)
+    read_dataset = pydicom.dcmread(file_path)
     assert read_dataset.Manufacturer == "PyMedPhysModified"
 
     # Check the other file was written to the orphan directory
     orphan_files = list(association_storage_path.joinpath("orphan").glob("*"))
     assert len(orphan_files) == 1
-    orphan_dataset = pydicom.read_file(orphan_files[0])
+    orphan_dataset = pydicom.dcmread(orphan_files[0])
     assert orphan_dataset.Manufacturer == "PyMedPhys"
 
     # Clean up after ourselves
@@ -337,7 +337,7 @@ def test_dicom_listener_cli(test_dataset):
             assoc.release()
 
         file_path = _build_hierarchical_path_to_plan(test_directory, test_dataset)
-        read_dataset = pydicom.read_file(file_path)
+        read_dataset = pydicom.dcmread(file_path)
         assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
 
 
@@ -362,7 +362,7 @@ def test_dicom_sender(test_dataset):
 
         dcm_files = receive_directory.glob("**/*.dcm")
         dcm_file = next(dcm_files)
-        ds = pydicom.read_file(dcm_file)
+        ds = pydicom.dcmread(dcm_file)
         check_dicom_agrees(ds, test_dataset)
 
 
@@ -395,5 +395,5 @@ def test_dicom_sender_cli(test_dataset):
 
         dcm_files = receive_directory.glob("**/*.dcm")
         dcm_file = next(dcm_files)
-        ds = pydicom.read_file(dcm_file)
+        ds = pydicom.dcmread(dcm_file)
         check_dicom_agrees(ds, test_dataset)

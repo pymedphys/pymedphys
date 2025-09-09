@@ -203,7 +203,7 @@ def convert_image(image, export_path):
 
     for file in os.listdir(dicom_directory):
         # try:
-        imageds = pydicom.read_file(os.path.join(dicom_directory, file), force=True)
+        imageds = pydicom.dcmread(os.path.join(dicom_directory, file), force=True)
 
         imageds.PatientName = image.pinnacle.patient_info["FullName"]
         imageds.PatientID = image.pinnacle.patient_info["MedicalRecordNumber"]

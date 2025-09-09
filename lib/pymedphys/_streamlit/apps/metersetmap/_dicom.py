@@ -29,7 +29,7 @@ def pydicom_hash_function(dicom):
 
 @st.cache_data(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_function})
 def load_dicom_file_if_plan(filepath):
-    dcm = pydicom.read_file(str(filepath), force=True, stop_before_pixels=True)
+    dcm = pydicom.dcmread(str(filepath), force=True, stop_before_pixels=True)
     if dcm.SOPClassUID == DICOM_PLAN_UID:
         return dcm
 
@@ -60,7 +60,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         try:
             dicom_plan_bytes.seek(0)
-            dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
+            dicom_plan = pydicom.dcmread(dicom_plan_bytes, force=True)
         except:  # pylint: disable = bare-except  # noqa: E722
             st.write(_exceptions.WrongFileType("Does not appear to be a DICOM file"))
             return {}

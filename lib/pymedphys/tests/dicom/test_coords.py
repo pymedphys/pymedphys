@@ -16,9 +16,8 @@
 import copy
 import json
 
-from pymedphys._imports import matplotlib
+from pymedphys._imports import matplotlib, plt, pydicom, pytest
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
@@ -141,7 +140,7 @@ def test_coords_in_datasets_are_equal():
 @pytest.mark.pydicom
 def test_non_square_pixels():
     path_to_downloaded_file = pymedphys.data_path("rtdose_non_square_pixels.dcm")
-    rtdose = pydicom.read_file(path_to_downloaded_file, force=True)
+    rtdose = pydicom.dcmread(path_to_downloaded_file, force=True)
     zyx, dose = pymedphys.dicom.zyx_and_dose_from_dataset(rtdose)
     test_points = []
     for p in rtdose.ROIContourSequence:

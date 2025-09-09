@@ -24,15 +24,15 @@ TEMPLATE_DIR = HERE.joinpath("templates")
 
 
 def load_templates():
-    vmat_example = pydicom.read_file(
+    vmat_example = pydicom.dcmread(
         str(TEMPLATE_DIR.joinpath("vmat_example.dcm")), force=True
     )
 
-    fff_example = pydicom.read_file(
+    fff_example = pydicom.dcmread(
         str(TEMPLATE_DIR.joinpath("FFF_example.dcm")), force=True
     )
 
-    collimation = pydicom.read_file(
+    collimation = pydicom.dcmread(
         str(TEMPLATE_DIR.joinpath("24mm_x_20mm_rectangle.dcm")), force=True
     )
 

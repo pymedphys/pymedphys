@@ -35,7 +35,7 @@ def adjust_machine_name(dicom_dataset, new_machine_name):
 
 
 def adjust_machine_name_cli(args):
-    dicom_dataset = pydicom.read_file(args.input_file, force=True)
+    dicom_dataset = pydicom.dcmread(args.input_file, force=True)
     new_dicom_dataset = adjust_machine_name(dicom_dataset, args.new_machine_name)
 
     pydicom.write_file(args.output_file, new_dicom_dataset)
@@ -108,7 +108,7 @@ def adjust_rel_elec_density(
 def adjust_RED_cli(args):
     adjustment_map = dict(zip(args.adjustment_map[::2], args.adjustment_map[1::2]))
 
-    dicom_dataset = pydicom.read_file(args.input_file, force=True)
+    dicom_dataset = pydicom.dcmread(args.input_file, force=True)
     new_dicom_dataset = adjust_rel_elec_density(
         dicom_dataset,
         adjustment_map,
@@ -145,7 +145,7 @@ def adjust_RED_by_structure_name(dicom_dataset):
 
 
 def adjust_RED_by_structure_name_cli(args):
-    dicom_dataset = pydicom.read_file(args.input_file, force=True)
+    dicom_dataset = pydicom.dcmread(args.input_file, force=True)
     new_dicom_dataset = adjust_RED_by_structure_name(dicom_dataset)
 
     pydicom.write_file(args.output_file, new_dicom_dataset)
