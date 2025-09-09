@@ -40,7 +40,7 @@ ADJUSTED_DICOM_FILENAME = os.path.join(
 
 
 def compare_dicom_cli(command, original, expected):
-    pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
+    pydicom.dcmwrite(ORIGINAL_DICOM_FILENAME, original)
 
     try:
         subprocess.check_call(command)

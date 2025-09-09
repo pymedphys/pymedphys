@@ -38,7 +38,7 @@ def adjust_machine_name_cli(args):
     dicom_dataset = pydicom.dcmread(args.input_file, force=True)
     new_dicom_dataset = adjust_machine_name(dicom_dataset, args.new_machine_name)
 
-    pydicom.write_file(args.output_file, new_dicom_dataset)
+    pydicom.dcmwrite(args.output_file, new_dicom_dataset)
 
 
 def delete_sequence_item_with_matching_key(sequence, key, value):
@@ -115,7 +115,7 @@ def adjust_RED_cli(args):
         ignore_missing_structure=args.ignore_missing_structure,
     )
 
-    pydicom.write_file(args.output_file, new_dicom_dataset)
+    pydicom.dcmwrite(args.output_file, new_dicom_dataset)
 
 
 def RED_adjustment_map_from_structure_names(structure_names):
@@ -148,7 +148,7 @@ def adjust_RED_by_structure_name_cli(args):
     dicom_dataset = pydicom.dcmread(args.input_file, force=True)
     new_dicom_dataset = adjust_RED_by_structure_name(dicom_dataset)
 
-    pydicom.write_file(args.output_file, new_dicom_dataset)
+    pydicom.dcmwrite(args.output_file, new_dicom_dataset)
 
 
 def patient_ids_in_datasets_are_equal(

@@ -215,4 +215,4 @@ def merge_contours_cli(args):
             )
             merge_contours(roi_contour_sequence, inplace=True)
 
-    pydicom.write_file(args.output_file, dicom_dataset)
+    pydicom.dcmwrite(args.output_file, dicom_dataset)
