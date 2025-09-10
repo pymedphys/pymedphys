@@ -327,7 +327,7 @@ def convert_dose(plan, export_path):
             ds.ImagePositionPatient[2],
         ]
 
-        if os.path.isfile(binary_file):
+        if os.path.isfile(binary_file) and os.path.getsize(binary_file) > 0:
             with open(binary_file, "rb") as b:
                 for z in range(trial_info["DoseGrid .Dimension .Z"] - 1, -1, -1):
                     for y in range(0, trial_info["DoseGrid .Dimension .Y"]):
