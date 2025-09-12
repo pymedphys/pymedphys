@@ -16,13 +16,6 @@ from __future__ import annotations
 
 from pymedphys._imports import pydicom
 
-transfer_syntax_map = {
-    (True, True): pydicom.uid.ImplicitVRLittleEndian,
-    # (True, False): pydicom.uid.ImplicitVRBigEndian, # Retired UID
-    (False, True): pydicom.uid.ExplicitVRLittleEndian,
-    (False, False): pydicom.uid.ExplicitVRBigEndian,
-}
-
 
 def ensure_transfer_syntax(ds: pydicom.dataset.Dataset) -> pydicom.dataset.Dataset:
     """
@@ -34,6 +27,12 @@ def ensure_transfer_syntax(ds: pydicom.dataset.Dataset) -> pydicom.dataset.Datas
     'is_little_endian' and 'is_implicit_VR' when available; otherwise
     default to Explicit VR Little Endian.
     """
+    transfer_syntax_map = {
+        (True, True): pydicom.uid.ImplicitVRLittleEndian,
+        # (True, False): pydicom.uid.ImplicitVRBigEndian, # Retired UID
+        (False, True): pydicom.uid.ExplicitVRLittleEndian,
+        (False, False): pydicom.uid.ExplicitVRBigEndian,
+    }
 
     if not hasattr(ds, "file_meta"):
         ds.file_meta = pydicom.dataset.FileMetaDataset()
