@@ -23,7 +23,7 @@ repos:
       - id: ruff
         args: [ --fix ]
       - id: ruff-format
-  - repo: https://github.com/python-poetry/poetry
-    rev: "1.8"
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.8.17
     hooks:
-      - id: poetry-check
+      - id: uv-lock
