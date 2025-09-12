@@ -14,18 +14,17 @@
 
 from __future__ import annotations
 
-from pydicom import uid
-from pydicom.dataset import Dataset, FileMetaDataset
+from pymedphys._imports import pydicom
 
 transfer_syntax_map = {
-    (True, True): uid.ImplicitVRLittleEndian,
-    # (True, False): uid.ImplicitVRBigEndian, # Retired UID
-    (False, True): uid.ExplicitVRLittleEndian,
-    (False, False): uid.ExplicitVRBigEndian,
+    (True, True): pydicom.uid.ImplicitVRLittleEndian,
+    # (True, False): pydicom.uid.ImplicitVRBigEndian, # Retired UID
+    (False, True): pydicom.uid.ExplicitVRLittleEndian,
+    (False, False): pydicom.uid.ExplicitVRBigEndian,
 }
 
 
-def ensure_transfer_syntax(ds: Dataset) -> Dataset:
+def ensure_transfer_syntax(ds: pydicom.dataset.Dataset) -> pydicom.dataset.Dataset:
     """
     Ensure ds.file_meta.TransferSyntaxUID is present and consistent.
 
@@ -37,7 +36,7 @@ def ensure_transfer_syntax(ds: Dataset) -> Dataset:
     """
 
     if not hasattr(ds, "file_meta"):
-        ds.file_meta = FileMetaDataset()
+        ds.file_meta = pydicom.dataset.FileMetaDataset()
 
     if not hasattr(ds.file_meta, "TransferSyntaxUID"):
         if not hasattr(ds, "is_implicit_VR"):
