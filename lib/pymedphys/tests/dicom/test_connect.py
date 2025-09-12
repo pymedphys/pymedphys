@@ -203,7 +203,6 @@ def test_dataset():
     test_dataset.file_meta = file_meta
     test_dataset.is_implicit_VR = True
     test_dataset.is_little_endian = True
-    test_dataset.fix_meta_info(enforce_standard=True)
 
     return test_dataset
 
