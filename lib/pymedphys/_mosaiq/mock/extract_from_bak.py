@@ -30,7 +30,6 @@ from pymedphys._imports import pandas as pd
 import pymedphys
 
 from . import paths, utilities
-
 from .server_from_bak import start_mssql_docker_image_with_bak_restore
 from .utilities import load_csv_and_toml
 
@@ -98,4 +97,4 @@ if __name__ == "__main__":
     print(extract())
 
 
-# poetry run python -m pymedphys._mosaiq.mock.extract_from_bak
+# uv run -- python -m pymedphys._mosaiq.mock.extract_from_bak
