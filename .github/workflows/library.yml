@@ -209,10 +209,10 @@ jobs:
       - name: Run clean tests (import checks)
         if: matrix.task == 'tests'
         run: |
-          pymedphys --help
-          python -c "import pymedphys"
-          python -c "import pymedphys.beta"
-          python -c "import pymedphys.experimental"
+          uv run -- pymedphys --help
+          uv run -- python -c "import pymedphys"
+          uv run -- python -c "import pymedphys.beta"
+          uv run -- python -c "import pymedphys.experimental"
 
       - name: Remove base install of pymedphys
         if: matrix.task == 'tests'
