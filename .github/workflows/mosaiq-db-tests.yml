@@ -71,14 +71,14 @@ jobs:
           path: |
             ~/.cache/uv
             .venv
-          key: uv-tests-ubuntu-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'poetry.lock') }}
+          key: uv-tests-ubuntu-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
             uv-tests-ubuntu-
 
       # -----------------------------------------------------------------------------
       # Sync the project environment with extras needed for these tests.
       # If your tests/dev dependencies are in extras named "tests", "mosaiq", "dicom",
-      # this is equivalent to `poetry install -E mosaiq -E tests -E dicom`.
+      # this is equivalent to `uv sync --extra mosaiq --extra tests --extra dicom`.
       # Add `--dev` if you keep dev-deps outside those extras and want them included.
       - name: Install test environment with uv
         shell: bash

@@ -267,7 +267,7 @@ jobs:
           node-version: "14"
 
       # -----------------------------------------------------------------------------
-      # PyMedPhys data cache (replace poetry run with uv run)
+      # PyMedPhys data cache
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
         if: matrix.task != 'pyright'

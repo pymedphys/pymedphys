@@ -95,20 +95,20 @@ The PyMedPhys documentation contains two overarching guides:
 Development
 =============
 
-The PyMedPhys project is managed using `Poetry`_.
+PyMedPhys uses `uv`_ for package and project management.
 
 After cloning the repository, install the PyMedPhys dependencies and set up pre-commit by running:
 
 .. code:: bash
 
-    poetry install -E all
-    poetry run pre-commit install
+    uv sync --extra all --group dev
+    uv run -- pre-commit install
 
 Run automated tests with:
 
 .. code:: bash
 
-    poetry run pymedphys dev tests
+    uv run -- pymedphys dev tests
 
 
 Our Team
@@ -131,7 +131,7 @@ Maintainers
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 * `Matthew Jennings`_
-    * `Royal Adelaide Hospital`_, Australia
+    * `Icon Group`_, Australia
 
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
@@ -218,7 +218,7 @@ Past contributors
 
 .. _`ELEKTA AB`: https://www.elekta.com/
 
-.. _`Royal Adelaide Hospital`: https://www.rah.sa.gov.au/
+.. _`Icon Group`: https://icongroup.global/
 
 .. _`University of New South Wales`: https://www.unsw.edu.au/
 
@@ -265,4 +265,4 @@ Past contributors
 .. _`workstation setup guides`: https://docs.pymedphys.com/en/latest/contrib/setups/index.html
 .. _`repository information`: https://docs.pymedphys.com/en/latest/contrib/info/index.html
 .. _`tips & tricks`: https://docs.pymedphys.com/en/latest/contrib/tips/index.html
-.. _`Poetry`: https://python-poetry.org/
+.. _`uv`: https://docs.astral.sh/uv/
