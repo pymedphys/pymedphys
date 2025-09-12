@@ -217,7 +217,7 @@ jobs:
       - name: Remove base install of pymedphys
         if: matrix.task == 'tests'
         run: |
-          uv pip uninstall -y pymedphys
+          uv pip uninstall pymedphys
 
       # -----------------------------------------------------------------------------
       # Install per task using uv extras/groups
