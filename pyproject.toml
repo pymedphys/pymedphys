@@ -84,6 +84,7 @@ tests = [
   "astroid",
   "numba",
   "psutil",
+  "PyGithub",
   "pylint",
   "pytest",
   "pytest-rerunfailures",
