@@ -190,6 +190,10 @@ jobs:
         run: |
           uv build
 
+      - name: Create virtualenv
+        if: matrix.task == 'tests'
+        run: uv venv
+
       - name: Install wheel (Windows)
         if: matrix.task == 'tests' && matrix.os == 'windows'
         shell: pwsh
@@ -197,6 +201,7 @@ jobs:
           uv pip install (Get-Item .\dist\*.whl)
 
       - name: Install wheel (non-Windows)
+
         if: matrix.task == 'tests' && matrix.os != 'windows'
         run: |
           uv pip install ./dist/*.whl
