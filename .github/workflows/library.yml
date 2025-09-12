@@ -159,7 +159,21 @@ jobs:
         id: full-python-version
         shell: bash
         run: |
-          echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info)))" >> $GITHUB_OUTPUT
+          version="$(python - <<'PY'
+          import sys
+          print('-'.join(str(v) for v in sys.version_info))
+          PY
+          )"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+
+      # -----------------------------------------------------------------------------
+      # Cache the virtualenv created by uv (per task, per OS, per Python, per lockfile)
+      - name: Cache virtualenv
+        uses: actions/cache@v3
+        with:
+          path: .venv
+
 
       # -----------------------------------------------------------------------------
       # Cache the virtualenv created by uv (per task, per OS, per Python, per lockfile)
