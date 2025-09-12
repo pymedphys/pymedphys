@@ -2,11 +2,11 @@ name: Security Scan
 
 on:
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
 
-# Ensure this workflow has higher priority
+# Keep this workflow high-priority but don't cancel mid-run
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -20,17 +20,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full git history for scanning
+          fetch-depth: 0  # full history for scanners
 
-      # - name: GitGuardian scan
-      #   uses: GitGuardian/ggshield-action@master
-      #   env:
-      #     GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
-      #     GITHUB_PUSH_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      #     GITHUB_PULL_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      #     GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-      #     GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+      # --- uv setup (to run Python-based scanners like ggshield) ---
+      - name: Install uv
+        run: |
+          set -euo pipefail
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv --version
 
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: uv-security-${{ runner.os }}-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            uv-security-${{ runner.os }}-
+
+      # --- Optional: GitGuardian via uvx if API key provided ---
+      - name: GitGuardian scan (ggshield)
+        if: ${{ secrets.GITGUARDIAN_API_KEY != '' }}
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+        run: |
+          set -euo pipefail
+          # Install and run ggshield with uvx (no project install needed)
+          uvx ggshield --version
+          # scan staged files in a PR, else full repo scan
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            uvx ggshield secret scan pr --verbose "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          else
+            uvx ggshield secret scan repo .
+          fi
+
+      # --- Optional: Gitleaks (uncomment to enable) ---
       # - name: Run Gitleaks
       #   uses: gitleaks/gitleaks-action@v2
       #   env:
@@ -39,43 +66,74 @@ jobs:
       # Custom scan for Anthropic API key exposure patterns
       - name: Scan for Anthropic API key exposure
         run: |
-          # Look for common patterns that might try to expose environment variables
-          ! grep -r --include="*.py" "os.environ\['ANTHROPIC_API_KEY'\]" --include="*.yml" --include="*.yaml" -E '(print|log|console\.log|echo).*ANTHROPIC' .
-          ! grep -r --include="*.py" -E '(requests\.get|requests\.post|fetch).*\$\{?ANTHROPIC' .
-          ! grep -r --include="*.py" -E 'save_to_file.*environ' .
-          echo "No suspicious API key exposure patterns found"
+          set -euo pipefail
+          shopt -s globstar nullglob
 
-      # Check for modifications to credential handling code
+          # Fail if any suspicious pattern is found; print findings
+          found=0
+
+          # Inline prints/logs referencing ANTHROPIC in code or YAML
+          if grep -R --line-number --with-filename -E '(print|log|console\.log|echo).*ANTHROPIC' -- **/*.py **/*.yml **/*.yaml || true; then
+            echo "Potential logging of Anthropic references detected"
+            found=1
+          fi
+
+          # Direct env expansion in network calls
+          if grep -R --line-number --with-filename -E '(requests\.get|requests\.post|fetch).*(ANTHROPIC_API_KEY|\${?ANTHROPIC)' -- **/*.py || true; then
+            echo "Potential network call using ANTHROPIC_API_KEY detected"
+            found=1
+          fi
+
+          # Writes to files using environment contents
+          if grep -R --line-number --with-filename -E 'save_to_file.*(os\.environ|getenv)' -- **/*.py || true; then
+            echo "Potential file write of environment content detected"
+            found=1
+          fi
+
+          if [[ "$found" -eq 0 ]]; then
+            echo "No suspicious API key exposure patterns found"
+          else
+            echo "Suspicious patterns detected"; exit 1
+          fi
+
+      # Check for modifications to credential handling code in PRs
       - name: Check for suspicious changes to auth modules
         if: github.event_name == 'pull_request'
         run: |
-          git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- "**/auth.py" "**/credentials.py" "**/config.py" | \
-          grep -E '(ANTHROPIC|API_KEY|SECRET|TOKEN)' > changes.txt || true
+          set -euo pipefail
+          git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- \
+            "**/auth.py" "**/credentials.py" "**/config.py" | \
+            grep -E '(ANTHROPIC|API_KEY|SECRET|TOKEN)' > changes.txt || true
 
-          if [ -s changes.txt ]; then
-            echo "⚠️ Changes detected in credential handling code:"
+          if [[ -s changes.txt ]]; then
+            echo "Changes detected in credential handling code:"
             cat changes.txt
             echo "These changes require careful review but don't necessarily indicate a security issue."
           else
-            echo "✅ No suspicious changes to credential handling code detected."
+            echo "No suspicious changes to credential handling code detected."
           fi
 
-      # Check for test file modifications that might execute code with credentials
+      # Check for test file modifications that might execute with credentials
       - name: Check test files for credential access
         if: github.event_name == 'pull_request'
         run: |
-          FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- "**/test_*.py" "**/conftest.py")
-          if [ -n "$FILES" ]; then
-            for file in $FILES; do
-              grep -l -E '(os\.environ|getenv|load_dotenv)' $file || true
-            done > test_env_files.txt
+          set -euo pipefail
+          files="$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- "**/test_*.py" "**/conftest.py" || true)"
+          if [[ -n "${files}" ]]; then
+            : > test_env_files.txt
+            for f in ${files}; do
+              if grep -q -E '(os\.environ|getenv|load_dotenv)' "$f"; then
+                echo "$f" >> test_env_files.txt
+              fi
+            done
 
-            if [ -s test_env_files.txt ]; then
-              echo "⚠️ Modified test files accessing environment variables:"
+            if [[ -s test_env_files.txt ]]; then
+              echo "Modified test files accessing environment variables:"
               cat test_env_files.txt
               echo "These files require careful review of how environment variables are used."
+              # Do not fail automatically; just surface for review
             else
-              echo "✅ No suspicious environment access in modified test files."
+              echo "No suspicious environment access in modified test files."
             fi
           else
             echo "No test files were modified in this PR."

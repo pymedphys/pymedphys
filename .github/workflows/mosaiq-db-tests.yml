@@ -11,11 +11,7 @@ on:
       - completed
 
 jobs:
-  # =============================================================================
-
   TestMosaiqDb:
-    # if: false
-
     # Skip this job if the workflow was triggered by a failed security scan
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
 
@@ -35,101 +31,88 @@ jobs:
           - 1433:1433
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
+        id: setup-python
         with:
-          python-version: 3.12
+          python-version: "3.12"
 
-      - name: Get full Python version
+      - name: Record full Python version
         id: full-python-version
         shell: bash
         run: |
-          echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
+          PYVER="$(python - <<'PY'
+          import sys
+          v = sys.version_info
+          print(f"{v.major}.{v.minor}.{v.micro}-{v.releaselevel}-{v.serial}")
+          PY
+          )"
+          echo "version=$PYVER" >> "$GITHUB_OUTPUT"
 
       # -----------------------------------------------------------------------------
-
-      # Set up pip
-
-      - name: Get pip cache dir
-        id: pip-cache
-        run: |
-          python -m pip install -U pip # to ensure version > 20 to have cache dir
-          echo "::set-output name=dir::$(pip cache dir)"
-
-      - name: Pip Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pip-cache.outputs.dir }}
-          key: pip-tests-ubuntu-${{ steps.full-python-version.outputs.version }}
-
-      # -----------------------------------------------------------------------------
-
-      # Upgrade pip and setuptools, and install poetry
-
-      - name: Upgrade pip and setuptools
-        run: |
-          pip install --upgrade pip setuptools
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1.3.4
-        with:
-          version: 1.8.5
-          virtualenvs-create: true
-
-      # -----------------------------------------------------------------------------
-
-      # Set up Poetry
-
-      - name: Configure poetry
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Poetry Cache
-        uses: actions/cache@v4
-        id: poetry-cache
-        with:
-          path: .venv
-          key: venv-tests-ubuntu-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
-
-      # This is from <https://github.com/python-poetry/poetry/blob/639d5e057/.github/workflows/main.yml#L57-L60>
-      - name: Ensure cache is healthy
-        if: steps.poetry-cache.outputs.cache-hit == 'true'
+      # Install uv (fast Python package manager) and expose its bin paths
+      - name: Install uv
         shell: bash
         run: |
-          timeout 10s poetry run pip --version || rm -rf .venv
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Show uv version for logs
+          uv --version
+
+      # Cache uv and the in-project virtualenv to speed up installs
+      - name: Cache uv + venv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: uv-tests-ubuntu-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'poetry.lock') }}
+          restore-keys: |
+            uv-tests-ubuntu-
 
       # -----------------------------------------------------------------------------
-
-      ## Install with Tests Environment
-
-      - name: Install a tests environment
+      # Sync the project environment with extras needed for these tests.
+      # If your tests/dev dependencies are in extras named "tests", "mosaiq", "dicom",
+      # this is equivalent to `poetry install -E mosaiq -E tests -E dicom`.
+      # Add `--dev` if you keep dev-deps outside those extras and want them included.
+      - name: Install test environment with uv
+        shell: bash
         run: |
-          poetry install -E mosaiq -E tests -E dicom
+          # Create/refresh .venv and install with required extras
+          uv sync --extra mosaiq --extra tests --extra dicom
+
+          # (Optional) Show resolved env for debug
+          uv run python -c "import sys; print(sys.executable)"
+          uv pip list
 
       # -----------------------------------------------------------------------------
-
       # PyMedPhys Data Cache
-
       - name: Get PyMedPhys cache directory
         id: pymedphys-cache-location
+        shell: bash
         run: |
-          echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
+          DIR="$(uv run python - <<'PY'
+          import pymedphys._config as cf
+          print(str(cf.get_config_dir()))
+          PY
+          )"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
 
       - name: PyMedPhys Cache
-        id: pymedphys-cache
         uses: actions/cache@v4
         with:
           path: ${{ steps.pymedphys-cache-location.outputs.dir }}
           key: pymedphys-tests-ubuntu-${{ hashFiles('**/hashes.json') }}
 
       # -----------------------------------------------------------------------------
-
       # TESTS
-
-      ## Mosaiq_db tests -- only run on Ubuntu because needs container
-
+      # If SQL Server takes a few seconds to accept connections in your environment,
+      # consider re-enabling a short wait loop.
       # - name: Wait for SQL Server to start
       #   run: |
       #     echo "Waiting for SQL Server..."
@@ -144,5 +127,6 @@ jobs:
       #     exit 1
 
       - name: Run MSQ database tests
+        shell: bash
         run: |
-          poetry run pymedphys dev tests -v --mosaiqdb
+          uv run pymedphys dev tests -v --mosaiqdb
