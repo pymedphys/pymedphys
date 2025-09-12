@@ -21,7 +21,7 @@ from pymedphys._imports import matplotlib, plt, pydicom, scipy
 from pymedphys._imports import numpy as np
 
 from . import orientation
-from ._compat import ensure_transfer_syntax
+from .compat import ensure_transfer_syntax
 from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
 from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
