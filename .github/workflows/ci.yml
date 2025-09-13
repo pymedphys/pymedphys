@@ -62,10 +62,6 @@ jobs:
     needs: [pre-commit]
     if: success() || failure()
     uses: ./.github/workflows/unit-tests.yml
-    with:
-      # Use full matrix on main, quick matrix on PRs
-      python-matrix: ${{ github.event_name == 'pull_request' && '["3.13"]' || '["3.10", "3.13"]' }}
-      quick: ${{ github.event_name == 'pull_request' }}
     secrets: inherit
 
   # Integration tests run on main or when labeled
