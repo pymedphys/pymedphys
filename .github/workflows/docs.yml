@@ -1,0 +1,59 @@
+name: Documentation
+
+on:
+  workflow_call:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'lib/pymedphys/docs/**'
+      - '*.md'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install docs dependencies
+        run: uv sync --frozen --extra docs
+
+      - name: Download required data
+        run: |
+          uv run python -c "
+          import pymedphys
+          pymedphys.data_path('original_dose_beam_4.dcm')
+          pymedphys.data_path('logfile_dose_beam_4.dcm')
+          "
+
+      - name: Build documentation
+        run: |
+          uv run pymedphys dev docs
+
+          # Check for broken links
+          uv run python -m sphinx.ext.linkcheck lib/pymedphys/docs || true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: lib/pymedphys/docs/_build/html
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/deploy-pages@v4

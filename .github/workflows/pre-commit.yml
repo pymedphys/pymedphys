@@ -1,0 +1,59 @@
+name: Pre-commit
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run pre-commit
+        id: pre-commit
+        continue-on-error: true
+        run: |
+          uv run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Auto-fix if needed
+        if: steps.pre-commit.outcome == 'failure' && github.event_name == 'pull_request'
+        run: |
+          git config user.email "bot@pymedphys.com"
+          git config user.name "PyMedPhys Bot"
+
+          uv run pre-commit run --all-files || true
+
+          if [[ -n $(git status -s) ]]; then
+            git add -A
+            git commit -m "🤖 Auto-fix pre-commit issues"
+            git push
+          fi

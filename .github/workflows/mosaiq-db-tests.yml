@@ -1,132 +1,66 @@
-name: MosaiqDbTests
+name: Database Tests
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+  workflow_dispatch:
   pull_request:
-  workflow_run:
-    workflows: ["Security Scan"]
-    types:
-      - completed
+    paths:
+      - 'lib/pymedphys/**/*mosaiq*'
+      - 'lib/pymedphys/**/*database*'
+      - '.github/workflows/*db*.yml'
 
 jobs:
-  TestMosaiqDb:
-    # Skip this job if the workflow was triggered by a failed security scan
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-
-    env:
-      FORCE_COLOR: true
-
+  test-mosaiq-db:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     services:
-      SQLServer:
+      sqlserver:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: Y
           SA_PASSWORD: sqlServerPassw0rd
         ports:
           - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P sqlServerPassw0rd -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
-        id: setup-python
         with:
           python-version: "3.12"
 
-      - name: Record full Python version
-        id: full-python-version
-        shell: bash
-        run: |
-          PYVER="$(python - <<'PY'
-          import sys
-          v = sys.version_info
-          print(f"{v.major}.{v.minor}.{v.micro}-{v.releaselevel}-{v.serial}")
-          PY
-          )"
-          echo "version=$PYVER" >> "$GITHUB_OUTPUT"
-
-      # -----------------------------------------------------------------------------
-      # Install uv (fast Python package manager) and expose its bin paths
-      - name: Install uv
-        shell: bash
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          # Show uv version for logs
-          uv --version
-
-      # Cache uv and the in-project virtualenv to speed up installs
-      - name: Cache uv + venv
-        uses: actions/cache@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
         with:
-          path: |
-            ~/.cache/uv
-            .venv
-          key: uv-tests-ubuntu-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-          restore-keys: |
-            uv-tests-ubuntu-
+          enable-cache: true
 
-      # -----------------------------------------------------------------------------
-      # Sync the project environment with extras needed for these tests.
-      # If your tests/dev dependencies are in extras named "tests", "mosaiq", "dicom",
-      # this is equivalent to `uv sync --extra mosaiq --extra tests --extra dicom`.
-      # Add `--dev` if you keep dev-deps outside those extras and want them included.
-      - name: Install test environment with uv
-        shell: bash
+      - name: Install dependencies
         run: |
-          # Create/refresh .venv and install with required extras
-          uv sync --extra mosaiq --extra tests --extra dicom
+          uv sync --frozen --extra mosaiq --extra tests --extra dicom
 
-          # (Optional) Show resolved env for debug
-          uv run python -c "import sys; print(sys.executable)"
-          uv pip list
-
-      # -----------------------------------------------------------------------------
-      # PyMedPhys Data Cache
-      - name: Get PyMedPhys cache directory
-        id: pymedphys-cache-location
-        shell: bash
+      - name: Wait for SQL Server
         run: |
-          DIR="$(uv run python - <<'PY'
-          import pymedphys._config as cf
-          print(str(cf.get_config_dir()))
-          PY
-          )"
-          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+          for i in {1..30}; do
+            if sqlcmd -S localhost -U SA -P sqlServerPassw0rd -Q "SELECT 1" &>/dev/null; then
+              echo "✅ SQL Server is ready"
+              break
+            fi
+            echo "⏳ Waiting for SQL Server... ($i/30)"
+            sleep 2
+          done
 
-      - name: PyMedPhys Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pymedphys-cache-location.outputs.dir }}
-          key: pymedphys-tests-ubuntu-${{ hashFiles('**/hashes.json') }}
-
-      # -----------------------------------------------------------------------------
-      # TESTS
-      # If SQL Server takes a few seconds to accept connections in your environment,
-      # consider re-enabling a short wait loop.
-      # - name: Wait for SQL Server to start
-      #   run: |
-      #     echo "Waiting for SQL Server..."
-      #     for i in {1..30}; do
-      #       if nc -z localhost 1433; then
-      #         echo "SQL Server is up!"
-      #         exit 0
-      #       fi
-      #       sleep 2
-      #     done
-      #     echo "SQL Server did not start in time"
-      #     exit 1
-
-      - name: Run MSQ database tests
-        shell: bash
+      - name: Run database tests
+        env:
+          MOSAIQ_SQL_SERVER: localhost
+          MOSAIQ_SQL_USER: SA
+          MOSAIQ_SQL_PASSWORD: sqlServerPassw0rd
         run: |
+          uv run pytest tests/mosaiq/ -v --tb=short
           uv run pymedphys dev tests -v --mosaiqdb

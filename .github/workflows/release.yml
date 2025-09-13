@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write  # For PyPI trusted publishing
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+    with:
+      matrix: minimal
+    secrets: inherit
+
+  build-and-publish:
+    needs: [tests]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pymedphys
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build distributions
+        run: |
+          uv build --wheel --sdist
+
+          # Verify
+          uv pip install --dry-run dist/*.whl
+          pip install twine
+          twine check dist/*
+
+      - name: Publish to TestPyPI
+        if: inputs.dry_run != false
+        run: |
+          uv publish --index-url https://test.pypi.org/simple/
+
+      - name: Publish to PyPI
+        if: inputs.dry_run == false || github.event_name == 'release'
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

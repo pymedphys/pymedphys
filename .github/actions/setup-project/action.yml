@@ -1,0 +1,48 @@
+name: Setup PyMedPhys Project
+description: Standard setup for PyMedPhys CI
+
+inputs:
+  python-version:
+    description: Python version to use
+    default: '3.12'
+  extras:
+    description: Space-separated list of extras to install
+    default: ''
+  node-version:
+    description: Node.js version (optional)
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          uv.lock
+          pyproject.toml
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.extras }}" ]; then
+          EXTRAS=""
+          for extra in ${{ inputs.extras }}; do
+            EXTRAS="$EXTRAS --extra $extra"
+          done
+          uv sync --frozen $EXTRAS
+        else
+          uv sync --frozen
+        fi
+
+    - name: Set up Node.js
+      if: inputs.node-version != ''
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}

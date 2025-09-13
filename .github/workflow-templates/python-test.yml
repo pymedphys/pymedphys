@@ -1,0 +1,17 @@
+# .github/workflow-templates/python-test.yml
+name: Python Test Template
+
+env:
+  UV_CACHE_DIR: ~/.cache/uv
+  UV_SYSTEM_PYTHON: 1
+  FORCE_COLOR: 1
+  PIP_DISABLE_PIP_VERSION_CHECK: 1
+  PYTHONUNBUFFERED: 1
+
+defaults:
+  run:
+    shell: bash
+
+# Standard cache configuration
+# Standard error handling
+# Standard artifact upload

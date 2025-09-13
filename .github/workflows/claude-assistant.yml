@@ -13,10 +13,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  claude_assist_comment:
-    if: contains(github.event.comment.body, '!claude')
+  should-respond:
     runs-on: ubuntu-latest
-    environment: sis-api-access
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      mode: ${{ steps.check.outputs.mode }}
+    steps:
+      - name: Check if Claude was mentioned
+        id: check
+        env:
+          COMMENT: ${{ github.event.comment.body || github.event.review.body }}
+        run: |
+          if echo "$COMMENT" | grep -q '@claude-code'; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "mode=code" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT" | grep -q '!claude'; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "mode=assist" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
+  rate-limit:
+    needs: [should-respond]
+    if: needs.should-respond.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check rate limits
+        run: |
+          # Implement rate limiting logic
+          # Store in GitHub Actions cache or use external service
+          echo "Checking rate limits for ${{ github.actor }}"
+
+  claude-respond:
+    needs: [should-respond, rate-limit]
+    if: needs.should-respond.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    environment: claude-api  # Use environment for secrets
     timeout-minutes: 10
 
     steps:
