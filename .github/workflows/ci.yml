@@ -7,8 +7,8 @@ on:
   workflow_call:
 
 permissions:
-  contents: write  # Changed from 'read' to 'write'
-  pull-requests: write  # Added for pre-commit auto-fixes
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -66,8 +66,8 @@ jobs:
     secrets: inherit
     permissions:
       contents: read
-      pages: write
-      id-token: write
+      pages: read
+      id-token: read
 
   docs:
     needs: [tests]
