@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import io
-import json
 import re
 import subprocess
 import textwrap
@@ -223,7 +222,7 @@ def propagate_extras():
     # Ensure 'all' exists (prefer explicit; else union of all extras)
     if "all" not in extras_map:
         union_pkgs = set()
-        for k, v in extras_map.items():
+        for _, v in extras_map.items():
             union_pkgs.update(v)
         extras_map["all"] = sorted(union_pkgs, key=str.lower)
 
