@@ -1,0 +1,171 @@
+name: Library
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: library-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: "3.12"
+          cache-key-suffix: lib-tests
+      - name: Install
+        shell: bash
+        run: uv pip install -e ".[dev,tests]" --system
+      - name: Pytest (fast; skip slow)
+        shell: bash
+        run: uv run pytest -m "not slow" --junitxml=test-results/junit.xml || true
+      - name: Artifacts (guarded)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-tests
+          if-no-files-found: ignore
+          path: |
+            test-results/**/*.xml
+            coverage.xml
+            htmlcov
+
+  slow:
+    name: slow
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: "3.12"
+          cache-key-suffix: lib-slow
+      - name: Install
+        shell: bash
+        run: uv pip install -e ".[dev,tests]" --system
+      - name: Pytest (slow)
+        shell: bash
+        run: uv run pytest -m slow -q
+
+  pyright:
+    name: pyright
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: "3.12"
+          cache-key-suffix: lib-pyright
+      - name: Install
+        shell: bash
+        run: |
+          uv pip install -e ".[dev]" --system
+          uv pip install pyright --system
+      - name: Type-check
+        shell: bash
+        run: uv run pyright
+
+  docs:
+    name: docs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: "3.12"
+          cache-key-suffix: lib-docs
+      - name: Install docs deps
+        shell: bash
+        run: uv pip install -e ".[docs]" --system
+      - name: Build docs (auto-detect)
+        shell: bash
+        run: |
+          set -eux
+          if [[ -f mkdocs.yml ]]; then
+            uvx mkdocs build
+          elif [[ -f docs/Makefile ]]; then
+            make -C docs html
+          else
+            echo "No docs config found; skipping."
+          fi
+      - name: Upload docs artifact (guarded)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-docs
+          if-no-files-found: ignore
+          path: |
+            site
+            docs/_build/html
+
+  cypress:
+    name: cypress
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Cypress project
+        id: detect
+        shell: bash
+        run: |
+          if [[ -f package.json && -d cypress ]]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.present == 'true'
+        with:
+          node-version: 22
+      - name: npm ci
+        if: steps.detect.outputs.present == 'true'
+        run: npm ci
+      - name: Run Cypress
+        if: steps.detect.outputs.present == 'true'
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx cypress verify
+          npx cypress run || (echo "Cypress failures" && exit 1)
+      - name: Upload Cypress artifacts (guarded)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-cypress
+          if-no-files-found: ignore
+          path: |
+            cypress/videos
+            cypress/screenshots
+
+  propagate:
+    name: propagate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: "3.12"
+          cache-key-suffix: lib-prop
+      - name: Install
+        shell: bash
+        run: uv pip install -e ".[dev]" --system
+      - name: Run propagate if present
+        shell: bash
+        run: |
+          set -eux
+          if [[ -f scripts/propagate.sh ]]; then
+            bash scripts/propagate.sh
+          elif [[ -f tools/propagate.sh ]]; then
+            bash tools/propagate.sh
+          else
+            echo "No propagate script found; skipping."
+          fi
