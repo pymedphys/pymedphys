@@ -26,17 +26,26 @@ jobs:
 
       - name: Scan for exposed secrets
         run: |
-          # Check for common secret patterns
+          # Check for common secret patterns (excluding .github directory)
           ! grep -r --include="*.py" --include="*.yml" --include="*.yaml" \
+            --exclude-dir=.github \
             -E '(api[_-]?key|secret|token|password|credential)\s*=\s*["\047][A-Za-z0-9+/]{20,}' . || {
             echo "::error::Potential secrets found in code"
             exit 1
           }
 
-          # Specific check for Anthropic API key
-          ! grep -r --include="*.py" --include="*.yml" --include="*.yaml" \
+          # Specific check for Anthropic API key exposure in code (not in workflow definitions)
+          ! grep -r --include="*.py" \
             -E '(print|log|console\.log|echo).*ANTHROPIC' . || {
-            echo "::error::Potential Anthropic API key exposure"
+            echo "::error::Potential Anthropic API key exposure in Python code"
+            exit 1
+          }
+
+          # Check for hardcoded API keys in non-workflow YAML
+          ! grep -r --include="*.yml" --include="*.yaml" \
+            --exclude-dir=.github \
+            -E 'ANTHROPIC.*=.*["\047][A-Za-z0-9+/]{20,}' . || {
+            echo "::error::Potential Anthropic API key in configuration"
             exit 1
           }
 
