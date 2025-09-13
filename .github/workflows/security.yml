@@ -1,14 +1,11 @@
 name: Security Scan
 
 on:
-  pull_request:
-    paths:
-      - 'pyproject.toml'
-      - 'uv.lock'
   schedule:
     - cron: '0 0 * * MON'
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   scan:
@@ -33,12 +30,13 @@ jobs:
       - name: Dependency audit
         run: |
           uv sync --frozen
-          uv pip audit
+          uv pip install pip-audit
+          uv run pip-audit  # Changed from 'uv pip audit'
 
       - name: Run Bandit
         run: |
           uv pip install bandit[toml]
-          uv run -- bandit -r pymedphys/ -f sarif -o bandit.sarif || true
+          uv run bandit -r pymedphys/ -f sarif -o bandit.sarif || true
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -46,7 +44,7 @@ jobs:
           sarif_file: bandit.sarif
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # pin for security
+        uses: aquasecurity/trivy-action@v0.22.0 # pin for security
         with:
           scan-type: fs
           scan-ref: .
