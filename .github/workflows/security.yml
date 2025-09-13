@@ -1,11 +1,14 @@
 name: Security Scan
 
 on:
+  pull_request:
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
   schedule:
     - cron: '0 0 * * MON'
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   scan:
@@ -16,13 +19,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-project
         with:
-          python-version: "3.12"
+          extras: 'all'
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+      - name: Scan for Anthropic API key exposure
+        run: |
+          ! grep -r --include="*.py" --include="*.yml" --include="*.yaml" \
+            -E '(print|log|console\.log|echo).*ANTHROPIC' .
+          ! grep -r --include="*.py" \
+            -E '(requests\.get|requests\.post|fetch).*\$\{?ANTHROPIC' .
 
       - name: Dependency audit
         run: |
@@ -31,8 +37,8 @@ jobs:
 
       - name: Run Bandit
         run: |
-          pip install bandit[toml]
-          bandit -r pymedphys/ -f sarif -o bandit.sarif || true
+          uv pip install bandit[toml]
+          uv run -- bandit -r pymedphys/ -f sarif -o bandit.sarif || true
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -40,7 +46,7 @@ jobs:
           sarif_file: bandit.sarif
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.22.0 # pin for security
         with:
           scan-type: fs
           scan-ref: .

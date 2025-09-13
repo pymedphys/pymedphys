@@ -2,6 +2,11 @@ name: Documentation
 
 on:
   workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        default: true
+        required: false
   push:
     branches: [main]
     paths:
@@ -9,9 +14,14 @@ on:
       - 'lib/pymedphys/docs/**'
       - '*.md'
   workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        default: true
+        required: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -21,18 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-project
         with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-
-      - name: Install docs dependencies
-        run: uv sync --frozen --extra docs
+          extras: 'docs'
 
       - name: Download required data
         run: |
@@ -54,6 +55,14 @@ jobs:
         with:
           path: lib/pymedphys/docs/_build/html
 
+  deploy:
+    needs: [build]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/deploy-pages@v4

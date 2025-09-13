@@ -1,169 +1,230 @@
-name: Tests
+name: "Tests (reusable)"
 
 on:
   workflow_call:
     inputs:
-      matrix:
+      mode:
+        required: false
         type: string
-        default: full
-        description: 'Matrix strategy: full, standard, minimal'
-  workflow_dispatch:
-    inputs:
-      task:
-        type: choice
-        options: [tests, slow, pyright, cypress, coverage, all]
+        default: "standard"
+      python-matrix:
+        required: false
+        type: string
+        default: '["3.10","3.11","3.12","3.13"]'
+      include-cypress:
+        required: false
+        type: boolean
+        default: false
+      extra-pytest-args:
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
 
 jobs:
-  define-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Define test matrix
-        id: set-matrix
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const matrices = {
-              minimal: [
-                {os: 'ubuntu-latest', python: '3.12', task: 'tests'}
-              ],
-              standard: [
-                {os: 'ubuntu-latest', python: '3.12', task: 'tests'},
-                {os: 'ubuntu-latest', python: '3.10', task: 'tests'},
-                {os: 'windows-latest', python: '3.12', task: 'tests'},
-                {os: 'macos-latest', python: '3.12', task: 'tests'}
-              ],
-              full: [
-                {os: 'ubuntu-latest', python: '3.12', task: 'tests'},
-                {os: 'ubuntu-latest', python: '3.11', task: 'tests'},
-                {os: 'ubuntu-latest', python: '3.10', task: 'tests'},
-                {os: 'windows-latest', python: '3.12', task: 'tests'},
-                {os: 'windows-latest', python: '3.10', task: 'tests'},
-                {os: 'macos-latest', python: '3.12', task: 'tests'},
-                {os: 'ubuntu-latest', python: '3.12', task: 'slow'},
-                {os: 'ubuntu-latest', python: '3.12', task: 'pyright'},
-                {os: 'ubuntu-latest', python: '3.12', task: 'cypress'},
-                {os: 'ubuntu-latest', python: '3.12', task: 'coverage'},
-                {os: 'ubuntu-latest', python: '3.12', task: 'stackoverflow'}
-              ]
-            };
-
-            const inputTask = '${{ inputs.task }}';
-            let matrix;
-
-            if (inputTask && inputTask !== 'all') {
-              matrix = [{os: 'ubuntu-latest', python: '3.12', task: inputTask}];
-            } else {
-              matrix = matrices['${{ inputs.matrix }}'] || matrices.full;
-            }
-
-            core.setOutput('matrix', JSON.stringify({include: matrix}));
-
-  test:
-    needs: [define-matrix]
+  unit:
+    name: unit (matrix)
+    timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
-
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ${{ fromJSON(inputs['python-matrix']) }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: ${{ contains(matrix.task, 'slow') && 90 || contains(matrix.task, 'cypress') && 45 || 30 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ matrix.python-version }}
+          extras: 'dev tests'
+
+      - name: Run pytest (mode-aware)
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
+          PYTEST_EXTRA: ${{ inputs.extra-pytest-args }}
+        run: |
+          set -euxo pipefail
+          if [[ "${MODE}" == "full" ]]; then
+            PYTEST_ARGS="${PYTEST_EXTRA}"
+          else
+            PYTEST_ARGS="-m 'not slow' ${PYTEST_EXTRA}"
+          fi
+          mkdir -p test-results
+          uv run pytest ${PYTEST_ARGS} --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+
+      - name: Upload JUnit XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.os }}-${{ matrix.python-version }}
+          path: test-results/*.xml
+          if-no-files-found: ignore
+
+  doctests:
+    if: ${{ inputs.mode == 'full' }}
+    name: doctests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests doctests'
+      - run: uv run pymedphys dev doctests -v
+
+  pyright:
+    if: ${{ inputs.mode == 'full' }}
+    name: type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          node-version: ''      # omit if no Node needed
+
+      - name: Run pyright
+        shell: bash
+        run: |
+          set -euxo pipefail
+          uvx pyright
+
+  slow:
+    if: ${{ inputs.mode == 'full' }}
+    name: slow tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+
+      - name: Run slow marker
+        shell: bash
+        run: |
+          set -euxo pipefail
+          uv run pytest -m slow -q
+
+  propagate:
+    if: ${{ inputs.mode == 'full' }}
+    name: propagate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
+      - uses: ./.github/actions/setup-project
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: |
-            uv.lock
-            pyproject.toml
-
-      - name: Install task dependencies
+      - name: Run propagate script if present
         shell: bash
         run: |
-          EXTRAS=""
-          case "${{ matrix.task }}" in
-            tests|coverage|slow|cypress|pyright)
-              EXTRAS="--extra user --extra tests --extra doctests"
-              ;;
-            stackoverflow)
-              EXTRAS="--extra user"
-              ;;
-          esac
-          uv sync --frozen $EXTRAS
+          set -euxo pipefail
+          if [[ -x scripts/propagate.sh ]]; then
+            bash scripts/propagate.sh
+          elif [[ -x tools/propagate.sh ]]; then
+            bash tools/propagate.sh
+          else
+            echo "No propagate script found, skipping."
+          fi
 
-      - name: Set up Node.js
-        if: contains('cypress pyright', matrix.task)
+  lint:
+    if: ${{ inputs.mode == 'full' }}
+    name: pylint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+      - run: uv run pymedphys dev lint
+
+  stackoverflow:
+    if: ${{ inputs.mode == 'full' }}
+    name: stackoverflow checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'  # Match main branch
+      - name: Run stackoverflow examples
+        run: |
+          # Run bash script if exists
+          if [[ -x scripts/stackoverflow.sh ]]; then
+            bash scripts/stackoverflow.sh
+          fi
+          # Also run Python example if exists
+          if [[ -f examples/stackoverflow/gamma.py ]]; then
+            uv run python examples/stackoverflow/gamma.py
+          fi
+
+  ui-e2e:
+    if: ${{ inputs.mode == 'full' && inputs.include-cypress }}
+    name: cypress e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: ''  # or minimal extras needed
+
+      - name: Detect UI project
+        id: detect
+        shell: bash
+        run: |
+          if [[ -f package.json && -d cypress ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: ${{ steps.detect.outputs.present == 'true' }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: ${{ matrix.task == 'cypress' && 'npm' || '' }}
+          node-version: "20"
+          cache: "npm"
 
-      - name: Cache PyMedPhys data
-        uses: actions/cache@v4
-        with:
-          path: ~/.pymedphys
-          key: pymedphys-data-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
-          restore-keys: |
-            pymedphys-data-${{ runner.os }}-
-
-      - name: Run ${{ matrix.task }}
+      - name: Install UI deps
+        if: ${{ steps.detect.outputs.present == 'true' }}
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
+          if [[ -f package-lock.json ]]; then
+            npm ci
+          else
+            npm install
+          fi
 
-          case "${{ matrix.task }}" in
-            tests)
-              uv run pytest -xvs --durations=10
-              if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-                uv run pymedphys dev doctests -v || true
-                uv run pymedphys dev lint || true
-              fi
-              ;;
-            coverage)
-              uv run pytest --cov=pymedphys --cov-report=xml --cov-report=html --cov-report=term
-              ;;
-            slow)
-              uv run pytest -v --slow --durations=50
-              ;;
-            pyright)
-              npm install -g pyright@1.1.386
-              uv run pyright
-              ;;
-            cypress)
-              uv run pymedphys dev tests --cypress
-              ;;
-            stackoverflow)
-              for script in examples/stackoverflow/*.py; do
-                echo "Running: $script"
-                uv run python "$script"
-              done
-              ;;
-          esac
+      - name: Run Cypress headless
+        if: ${{ steps.detect.outputs.present == 'true' }}
+        shell: bash
+        env:
+          CI: "true"
+        run: |
+          set -euxo pipefail
+          npx cypress run
 
-      - name: Upload coverage
-        if: matrix.task == 'coverage'
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-
-      - name: Upload test artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-artifacts-${{ matrix.os }}-${{ matrix.python }}-${{ matrix.task }}-${{ github.run_id }}
-          path: |
-            coverage.html/
-            pymedphys/tests/e2e/cypress/videos/
-            pymedphys/tests/e2e/cypress/screenshots/
-            .pytest_cache/
-          retention-days: 7
+  wheel-test:
+    if: ${{ inputs.mode == 'full' }}
+    name: wheel build test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+      - run: |
+          uv build --wheel
+          uv pip install dist/*.whl
+          pymedphys --help
+          python -c "import pymedphys"

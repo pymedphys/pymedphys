@@ -6,11 +6,27 @@ on:
   pull_request:
   workflow_call:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mosaiq: ${{ steps.filter.outputs.mosaiq }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mosaiq:
+              - 'lib/pymedphys/**/*mosaiq*'
+              - 'lib/pymedphys/**/*database*'
+
   pre-commit:
     uses: ./.github/workflows/pre-commit.yml
     secrets: inherit
@@ -20,16 +36,27 @@ jobs:
     if: success() || failure()  # Run tests even if pre-commit fails
     uses: ./.github/workflows/tests.yml
     with:
-      matrix: ${{ github.event_name == 'pull_request' && 'standard' || 'full' }}
+      mode: ${{ github.event_name == 'pull_request' && 'standard' || 'full' }}
+      include-cypress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     secrets: inherit
 
   mosaiq-db-tests:  # ADD THIS
-    needs: [pre-commit]
+    needs: [pre-commit, changes]
     if: |
-      (success() || failure()) &&
-      (github.event_name == 'push' ||
-       contains(github.event.pull_request.labels.*.name, 'database'))
+      (success() || failure()) && (
+        github.event_name == 'push' ||
+        contains(github.event.pull_request.labels.*.name, 'database') ||
+        needs.changes.outputs.mosaiq == 'true'
+      )
     uses: ./.github/workflows/mosaiq-db-tests.yml
+    secrets: inherit
+
+  docs-check:
+    needs: [tests]
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/docs.yml
+    with:
+      publish: false
     secrets: inherit
 
   docs:

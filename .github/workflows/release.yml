@@ -17,7 +17,8 @@ jobs:
   tests:
     uses: ./.github/workflows/tests.yml
     with:
-      matrix: minimal
+      python-matrix: '["3.13"]'
+      mode: 'standard'
     secrets: inherit
 
   build-and-publish:
@@ -30,13 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-project
         with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+          extras: 'dev tests'
 
       - name: Build distributions
         run: |
@@ -44,8 +41,8 @@ jobs:
 
           # Verify
           uv pip install --dry-run dist/*.whl
-          pip install twine
-          twine check dist/*
+          uv pip install twine
+          uv run -- twine check dist/*
 
       - name: Publish to TestPyPI
         if: inputs.dry_run != false

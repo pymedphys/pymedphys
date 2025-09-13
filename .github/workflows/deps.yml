@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v4
@@ -49,8 +49,9 @@ jobs:
       - name: Run tests
         if: steps.update.outputs.changed == 'true'
         run: |
-          uv sync --frozen --extra user --extra tests
-          uv run pytest --co -q  # Quick sanity check
+          uv sync --frozen --extra user --extra tests --extra docs
+          uv run -- pymedphys dev tests  # Full test run, not just --co
+          uv run -- pymedphys dev docs  # Also test docs build
 
       - name: Create PR
         if: steps.update.outputs.changed == 'true'

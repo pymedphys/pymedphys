@@ -4,7 +4,7 @@ description: Standard setup for PyMedPhys CI
 inputs:
   python-version:
     description: Python version to use
-    default: '3.12'
+    default: '3.13'
   extras:
     description: Space-separated list of extras to install
     default: ''
@@ -15,6 +15,9 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -31,18 +34,24 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
-        if [ -n "${{ inputs.extras }}" ]; then
-          EXTRAS=""
-          for extra in ${{ inputs.extras }}; do
-            EXTRAS="$EXTRAS --extra $extra"
-          done
-          uv sync --frozen $EXTRAS
+        set -euxo pipefail
+        EXTRAS="${{ inputs.extras }}"
+        if [ -n "$EXTRAS" ]; then
+          uv sync --frozen $(echo $EXTRAS | xargs -n1 echo --extra)
         else
           uv sync --frozen
         fi
 
+    - name: Cache PyMedPhys data
+      uses: actions/cache@v4
+      with:
+        path: ~/.pymedphys
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+
     - name: Set up Node.js
-      if: inputs.node-version != ''
+      if: ${{ inputs.node-version != '' }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: package-lock.json

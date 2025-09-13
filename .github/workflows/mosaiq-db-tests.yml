@@ -21,19 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-project
         with:
-          python-version: "3.13"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: |
-          uv sync --frozen --extra mosaiq --extra tests --extra dicom
+          python-version: '3.13'
+          extras: 'mosaiq tests dicom'
 
       - name: Wait for SQL Server startup
         run: |

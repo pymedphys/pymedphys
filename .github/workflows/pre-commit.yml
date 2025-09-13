@@ -18,19 +18,10 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-project
         with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Install dependencies
-        run: uv sync --frozen --extra dev
+          python-version: '3.13'
+          extras: 'all'
 
       - name: Cache pre-commit
         uses: actions/cache@v4
