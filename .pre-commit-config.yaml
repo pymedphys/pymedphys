@@ -14,9 +14,6 @@ repos:
       - id: check-yaml
         exclude: ^conda-recipe/.*\.yaml$
       - id: check-toml
-        # Force UTF-8 mode so open() reads TOML as UTF-8
-        env:
-          PYTHONUTF8: "1"
       - id: check-added-large-files
         args: ["--maxkb", "500"]
         exclude: ^.*yarn-.*cjs$
