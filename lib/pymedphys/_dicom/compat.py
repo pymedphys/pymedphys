@@ -38,9 +38,9 @@ def ensure_transfer_syntax(ds: pydicom.dataset.Dataset) -> pydicom.dataset.Datas
         ds.file_meta = pydicom.dataset.FileMetaDataset()
 
     if not hasattr(ds.file_meta, "TransferSyntaxUID"):
-        if not hasattr(ds, "is_implicit_VR"):
+        if not hasattr(ds, "is_implicit_VR") or ds.is_implicit_VR is None:
             ds.is_implicit_VR = False
-        if not hasattr(ds, "is_little_endian"):
+        if not hasattr(ds, "is_little_endian") or ds.is_little_endian is None:
             ds.is_little_endian = True
 
         ds.file_meta.TransferSyntaxUID = transfer_syntax_map[
