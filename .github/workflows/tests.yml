@@ -86,6 +86,7 @@ jobs:
             pyproject.toml
 
       - name: Install task dependencies
+        shell: bash
         run: |
           EXTRAS=""
           case "${{ matrix.task }}" in
