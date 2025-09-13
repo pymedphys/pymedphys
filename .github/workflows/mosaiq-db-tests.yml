@@ -57,7 +57,6 @@ jobs:
             echo "Test attempt $i/3"
             if uv run pymedphys dev tests -v --mosaiqdb; then
               echo "Tests passed!"
-              uv run pytest tests/mosaiq/ -v --tb=short
               exit 0
             fi
             echo "Tests failed, waiting 10 seconds before retry..."
