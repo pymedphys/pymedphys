@@ -82,14 +82,20 @@ dev = [
 tests = [
   "anthropic",
   "astroid",
+  "imageio",
+  "matplotlib",
   "numba",
+  "Pillow",
   "psutil",
+  "pydicom>=2.0.0",
+  "pynetdicom",
   "PyGithub",
   "pylint",
   "pytest",
   "pytest-rerunfailures",
   "pytest-sugar",
   "python-dateutil",
+  "shapely",
   "tqdm",
 ]
 
@@ -201,6 +207,16 @@ all = [
     "watchdog",
     "xmltodict",
 ]
+
+[tool.pymedphys.extra-groups]
+# Groups are consumed by propagate_extras(); this table is authoritative.
+# Each value lists EXTRA NAMES defined under [project.optional-dependencies].
+dev   = ["tests", "docs", "cli", "propagate"]
+docs  = ["docs"]
+user  = ["user"]
+
+# Optional aggregations if you want “full” exports in CI, etc.
+full  = ["user", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
 
 [dependency-groups]
 dev = [
