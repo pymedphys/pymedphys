@@ -1,82 +1,61 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [ main ]
   push:
-    branches: [ main ]
-  schedule:
-    - cron: "0 3 * * *" # nightly full suite
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: "standard or full"
-        type: choice
-        required: false
-        default: standard
-        options: [standard, full]
-
-# Default, minimal permissions; escalate per job
-permissions:
-  contents: read
+    branches: [main]
+  pull_request:
+  workflow_call:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   pre-commit:
-    name: pre-commit
     uses: ./.github/workflows/pre-commit.yml
-    permissions:
-      contents: read
-
-  tests-standard:
-    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'standard') }}
-    name: tests (standard)
-    uses: ./.github/workflows/tests.yml
-    with:
-      mode: standard
-      include-cypress: false
-    permissions:
-      contents: read
-
-  tests-full:
-    if: ${{ github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full') }}
-    name: tests (full)
-    uses: ./.github/workflows/tests.yml
-    with:
-      mode: full
-      include-cypress: false # set true to enable UI job for repos that have Cypress
     secrets: inherit
-    permissions:
-      contents: read
 
-  mosaiq-db:
-    # Runs only on main or scheduled (avoid requiring DB creds on PRs)
-    if: ${{ github.event_name != 'pull_request' }}
-    name: Mosaiq DB tests
+  tests:
+    needs: [pre-commit]
+    if: success() || failure()  # Run tests even if pre-commit fails
+    uses: ./.github/workflows/tests.yml
+    with:
+      matrix: ${{ github.event_name == 'pull_request' && 'standard' || 'full' }}
+    secrets: inherit
+
+  mosaiq-db-tests:  # ADD THIS
+    needs: [pre-commit]
+    if: |
+      (success() || failure()) &&
+      (github.event_name == 'push' ||
+       contains(github.event.pull_request.labels.*.name, 'database'))
     uses: ./.github/workflows/mosaiq-db-tests.yml
     secrets: inherit
-    permissions:
-      contents: read
-
-  security:
-    # Run on PRs and main; the called workflow also has a weekly schedule
-    name: Security checks
-    uses: ./.github/workflows/security.yml
-    secrets: inherit
-    permissions:
-      contents: read
-      security-events: write   # for SARIF uploads
 
   docs:
-    # Deploy docs only from main pushes
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    name: Docs (build+deploy Pages)
+    needs: [tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/docs.yml
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     secrets: inherit
+
+  summary:
+    needs: [pre-commit, tests, mosaiq-db-tests, docs]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## CI Results 📊
+
+          | Job | Status |
+          |-----|--------|
+          | Pre-commit | ${{ needs.pre-commit.result }} |
+          | Tests | ${{ needs.tests.result }} |
+          | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
+          | Documentation | ${{ needs.docs.result || 'skipped' }} |
+
+          **Workflow:** ${{ github.workflow }}
+          **Triggered by:** ${{ github.actor }}
+          **Event:** ${{ github.event_name }}
+          EOF

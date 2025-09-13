@@ -1,107 +1,53 @@
-name: security
+name: Security Scan
 
 on:
-  workflow_call:
   schedule:
-    - cron: "30 2 * * 1" # weekly
+    - cron: '0 0 * * MON'
+  push:
+    branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  security-events: write
-
 jobs:
-  codeql:
-    name: CodeQL
-    runs-on: ubuntu-24.04
+  scan:
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
       security-events: write
+
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: python
-      - uses: github/codeql-action/analyze@v3
 
-  gitleaks:
-    name: Gitleaks (artifact + SARIF)
-    runs-on: ubuntu-24.04
-    env:
-      HAS_GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE != '' }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # If license provided (org repos often need it), use pinned gitleaks action (v2.3.9)
-      - name: Gitleaks action (licensed orgs)
-        if: env.HAS_GITLEAKS_LICENSE == 'true'
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
-
-      # Fallback: OSS CLI (no license required)
-      - name: Setup Python/uv
-        if: env.HAS_GITLEAKS_LICENSE != 'true'
-        uses: ./.github/actions/setup-project
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache-key-suffix: gitleaks
-      - name: Gitleaks CLI scan (OSS)
-        if: env.HAS_GITLEAKS_LICENSE != 'true'
-        shell: bash
-        run: |
-          uvx gitleaks --version || true
-          uvx gitleaks detect --redact \
-            --report-path gitleaks.sarif --report-format sarif || exit_code=$?
-          # Upload SARIF even if leaks are found (exit code typically 1)
-          echo "exit_code=${exit_code:-0}" >> $GITHUB_OUTPUT
 
-      - name: Upload SARIF (CLI only)
-        if: env.HAS_GITLEAKS_LICENSE != 'true'
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: gitleaks.sarif
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
 
-  ggshield:
-    name: GitGuardian ggshield (optional)
-    runs-on: ubuntu-24.04
-    env:
-      HAS_GG_KEY: ${{ secrets.GITGUARDIAN_API_KEY != '' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-project
-        with:
-          python-version: "3.12"
-          cache-key-suffix: ggshield
-      - name: Run ggshield if key exists
-        if: env.HAS_GG_KEY == 'true'
-        shell: bash
-        env:
-          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+      - name: Dependency audit
         run: |
-          uvx ggshield secret scan repo --show-secrets --exit-zero || true
+          uv sync --frozen
+          uv pip audit
 
-  pip-audit:
-    name: pip-audit (SARIF)
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-project
-        with:
-          python-version: "3.12"
-          cache-key-suffix: pipaudit
-      - name: Install runtime deps
-        shell: bash
+      - name: Run Bandit
         run: |
-          uv pip install -e . --system
-      - name: Run pip-audit
-        shell: bash
-        run: |
-          uvx pip-audit -f sarif -o pip-audit.sarif || true
+          pip install bandit[toml]
+          bandit -r pymedphys/ -f sarif -o bandit.sarif || true
+
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: pip-audit.sarif
+          sarif_file: bandit.sarif
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy.sarif
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif

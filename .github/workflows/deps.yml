@@ -1,54 +1,63 @@
-name: deps
+name: Update Dependencies
 
 on:
   schedule:
-    - cron: "45 2 * * 1" # Mondays
+    - cron: '0 0 * * MON'
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
   update:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-project
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache-key-suffix: deps
 
-      - name: Update uv lockfiles & pre-commit hooks
-        shell: bash
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Update dependencies
+        id: update
         run: |
-          set -euxo pipefail
-          if [[ -f pyproject.toml ]]; then
-            uv lock --upgrade
+          # Save current lock
+          cp uv.lock uv.lock.old
+
+          # Update
+          uv lock --upgrade
+
+          # Check if changed
+          if diff -q uv.lock uv.lock.old > /dev/null; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+
+            # Generate changelog
+            echo "## Dependency Updates" > updates.md
+            echo "" >> updates.md
+            echo '```diff' >> updates.md
+            diff uv.lock.old uv.lock | grep "^[><]" | head -50 >> updates.md
+            echo '```' >> updates.md
           fi
-          uv pip install pre-commit --system
-          uv run pre-commit autoupdate || true
 
-      - name: Commit changes (if any)
-        shell: bash
+      - name: Run tests
+        if: steps.update.outputs.changed == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore(deps): update lockfiles and hooks" || echo "No changes to commit"
+          uv sync --frozen --extra user --extra tests
+          uv run pytest --co -q  # Quick sanity check
 
-      # Pin to a full commit SHA (v7.0.8)
-      # https://github.com/peter-evans/create-pull-request/releases/tag/v7.0.8
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+      - name: Create PR
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
         with:
-          branch: chore/deps-autoupdate
-          title: "chore(deps): automated updates"
-          commit-message: "chore(deps): update lockfiles and hooks"
-          body: "Automated dependency maintenance"
-          labels: |
-            maintenance
-            dependencies
+          title: "⬆️ Update dependencies"
+          body-path: updates.md
+          branch: deps/update-${{ github.run_number }}
+          commit-message: "chore: update dependencies"
+          labels: dependencies

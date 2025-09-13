@@ -1,60 +1,63 @@
-name: release
+name: Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  release:
+    types: [created]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: true
 
 permissions:
-  contents: read
+  contents: write
+  id-token: write  # For PyPI trusted publishing
 
 jobs:
-  build:
-    name: Build dists
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-project
-        with:
-          python-version: "3.12"
-          cache-key-suffix: release
-      - name: Build sdist/wheels
-        shell: bash
-        run: |
-          uv pip install build --system
-          uv run python -m build
-      - name: Upload dists
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist
-          if-no-files-found: error
+  tests:
+    uses: ./.github/workflows/tests.yml
+    with:
+      matrix: minimal
+    secrets: inherit
 
-  publish:
-    name: Publish to PyPI (OIDC)
-    needs: build
-    runs-on: ubuntu-24.04
+  build-and-publish:
+    needs: [tests]
+    runs-on: ubuntu-latest
     environment:
       name: pypi
-      # optional: set URL to project page for nicer env card on runs
       url: https://pypi.org/p/pymedphys
-    permissions:
-      id-token: write  # REQUIRED for Trusted Publishing
-      contents: read
-    steps:
-      - name: Download dists
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist
 
-      # Pin to a full commit SHA (v1.13.0)
-      # PyPA recommends pinning to a tag or full commit SHA; we use a SHA here.
-      - name: Publish
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          # attestations are ON by default for Trusted Publishing in recent versions
-          # repository-url: https://test.pypi.org/legacy/  # (for TestPyPI)
-          # skip-existing: true
-          verbose: true
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build distributions
+        run: |
+          uv build --wheel --sdist
+
+          # Verify
+          uv pip install --dry-run dist/*.whl
+          pip install twine
+          twine check dist/*
+
+      - name: Publish to TestPyPI
+        if: inputs.dry_run != false
+        run: |
+          uv publish --index-url https://test.pypi.org/simple/
+
+      - name: Publish to PyPI
+        if: inputs.dry_run == false || github.event_name == 'release'
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

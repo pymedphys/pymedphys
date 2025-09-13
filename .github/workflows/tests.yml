@@ -1,196 +1,168 @@
-name: "Tests"
+name: Tests
 
 on:
   workflow_call:
     inputs:
-      mode:
-        required: false
+      matrix:
         type: string
-        default: "standard"  # standard | full
-      python-matrix:
-        required: false
-        type: string
-        default: '["3.10","3.11","3.12","3.13"]'
-      include-cypress:
-        required: false
-        type: boolean
-        default: false
-      extra-pytest-args:
-        required: false
-        type: string
-        default: ""
-    secrets:
-      CYPRESS_RECORD_KEY:
-        required: false
-
-permissions:
-  contents: read
+        default: full
+        description: 'Matrix strategy: full, standard, minimal'
+  workflow_dispatch:
+    inputs:
+      task:
+        type: choice
+        options: [tests, slow, pyright, cypress, coverage, all]
 
 jobs:
-  unit:
-    name: "unit (matrix)"
-    runs-on: ubuntu-24.04
+  define-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Define test matrix
+        id: set-matrix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const matrices = {
+              minimal: [
+                {os: 'ubuntu-latest', python: '3.12', task: 'tests'}
+              ],
+              standard: [
+                {os: 'ubuntu-latest', python: '3.12', task: 'tests'},
+                {os: 'ubuntu-latest', python: '3.10', task: 'tests'},
+                {os: 'windows-latest', python: '3.12', task: 'tests'},
+                {os: 'macos-latest', python: '3.12', task: 'tests'}
+              ],
+              full: [
+                {os: 'ubuntu-latest', python: '3.12', task: 'tests'},
+                {os: 'ubuntu-latest', python: '3.11', task: 'tests'},
+                {os: 'ubuntu-latest', python: '3.10', task: 'tests'},
+                {os: 'windows-latest', python: '3.12', task: 'tests'},
+                {os: 'windows-latest', python: '3.10', task: 'tests'},
+                {os: 'macos-latest', python: '3.12', task: 'tests'},
+                {os: 'ubuntu-latest', python: '3.12', task: 'slow'},
+                {os: 'ubuntu-latest', python: '3.12', task: 'pyright'},
+                {os: 'ubuntu-latest', python: '3.12', task: 'cypress'},
+                {os: 'ubuntu-latest', python: '3.12', task: 'coverage'},
+                {os: 'ubuntu-latest', python: '3.12', task: 'stackoverflow'}
+              ]
+            };
+
+            const inputTask = '${{ inputs.task }}';
+            let matrix;
+
+            if (inputTask && inputTask !== 'all') {
+              matrix = [{os: 'ubuntu-latest', python: '3.12', task: inputTask}];
+            } else {
+              matrix = matrices['${{ inputs.matrix }}'] || matrices.full;
+            }
+
+            core.setOutput('matrix', JSON.stringify({include: matrix}));
+
+  test:
+    needs: [define-matrix]
     strategy:
       fail-fast: false
-      matrix:
-        python-version: ${{ fromJson(inputs.python-matrix) }}
+      matrix: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ contains(matrix.task, 'slow') && 90 || contains(matrix.task, 'cypress') && 45 || 30 }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup project
-        uses: ./.github/actions/setup-project
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache-key-suffix: tests-${{ inputs.mode }}
+          python-version: ${{ matrix.python }}
 
-      - name: Install
-        shell: bash
-        run: |
-          uv pip install -e ".[dev,tests]" --system
-
-      - name: Run pytest (mode-aware)
-        shell: bash
-        run: |
-          set -euxo pipefail
-          if [[ "${{ inputs.mode }}" == "full" ]]; then
-            PYTEST_ARGS="${{ inputs.extra-pytest-args }}"
-          else
-            PYTEST_ARGS="-m 'not slow' ${{ inputs.extra-pytest-args }}"
-          fi
-          uv run pytest $PYTEST_ARGS --junitxml=test-results/junit-${{ matrix.python-version }}.xml || STATUS=$?
-          echo "status=${STATUS:-0}" >> $GITHUB_OUTPUT
-
-      - name: Upload results if they exist
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
         with:
-          name: unit-${{ matrix.python-version }}-${{ inputs.mode }}
-          if-no-files-found: ignore
-          path: |
-            ./test-results/**/*.xml
-            ./coverage.xml
-            ./htmlcov
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
 
-  pyright:
-    name: "pyright (full)"
-    if: ${{ inputs.mode == 'full' }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-project
-        with:
-          python-version: "3.12"
-          cache-key-suffix: pyright
-      - name: Install runtime deps for type-check
-        shell: bash
+      - name: Install task dependencies
         run: |
-          uv pip install -e ".[dev]" --system
-          uv pip install pyright --system
-      - name: Run pyright
-        shell: bash
-        run: uv run pyright
+          EXTRAS=""
+          case "${{ matrix.task }}" in
+            tests|coverage|slow|cypress|pyright)
+              EXTRAS="--extra user --extra tests --extra doctests"
+              ;;
+            stackoverflow)
+              EXTRAS="--extra user"
+              ;;
+          esac
+          uv sync --frozen $EXTRAS
 
-  slow:
-    name: "slow tests (full)"
-    if: ${{ inputs.mode == 'full' }}
-    uses: ./.github/workflows/python-test.yml
-    with:
-      python-version: "3.12"
-      pytest-args: "-m slow -q"
-      cache-key-suffix: "slow"
-
-  propagate:
-    name: "propagate (full; runs only if script present)"
-    if: ${{ inputs.mode == 'full' }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-project
-        with:
-          python-version: "3.12"
-          cache-key-suffix: prop
-      - name: Install dev
-        shell: bash
-        run: uv pip install -e ".[dev]" --system
-      - name: Run propagate script if present
-        shell: bash
-        run: |
-          set -euxo pipefail
-          if [[ -f scripts/propagate.sh ]]; then
-            bash scripts/propagate.sh
-          elif [[ -f tools/propagate.sh ]]; then
-            bash tools/propagate.sh
-          else
-            echo "No propagate script found; skipping."
-          fi
-
-  stackoverflow:
-    name: "stackoverflow (full; runs only if script present)"
-    if: ${{ inputs.mode == 'full' }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-project
-        with:
-          python-version: "3.12"
-          cache-key-suffix: so
-      - name: Install dev
-        shell: bash
-        run: uv pip install -e ".[dev]" --system
-      - name: Run SO script if present
-        shell: bash
-        run: |
-          set -euxo pipefail
-          if [[ -f scripts/stackoverflow.sh ]]; then
-            bash scripts/stackoverflow.sh
-          else
-            echo "No stackoverflow script found; skipping."
-          fi
-
-  ui-e2e:
-    name: "UI E2E (optional; Node+Cypress via npm)"
-    if: ${{ inputs.mode == 'full' && inputs.include-cypress }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Detect cypress project
-        id: detect
-        shell: bash
-        run: |
-          if [[ -f package.json && -d cypress ]]; then
-            echo "present=true" >> $GITHUB_OUTPUT
-          else
-            echo "present=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Setup Node
-        if: steps.detect.outputs.present == 'true'
+      - name: Set up Node.js
+        if: contains('cypress pyright', matrix.task)
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '20'
+          cache: ${{ matrix.task == 'cypress' && 'npm' || '' }}
 
-      - name: Install deps
-        if: steps.detect.outputs.present == 'true'
-        shell: bash
-        run: npm ci
+      - name: Cache PyMedPhys data
+        uses: actions/cache@v4
+        with:
+          path: ~/.pymedphys
+          key: pymedphys-data-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
+          restore-keys: |
+            pymedphys-data-${{ runner.os }}-
 
-      - name: Run Cypress (no third-party action)
-        if: steps.detect.outputs.present == 'true'
+      - name: Run ${{ matrix.task }}
         shell: bash
-        env:
-          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx cypress verify
-          npx cypress run || (echo "Cypress failures" && exit 1)
+          set -euo pipefail
 
-      - name: Upload Cypress artifacts if they exist
-        if: always()
+          case "${{ matrix.task }}" in
+            tests)
+              uv run pytest -xvs --durations=10
+              if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+                uv run pymedphys dev doctests -v || true
+                uv run pymedphys dev lint || true
+              fi
+              ;;
+            coverage)
+              uv run pytest --cov=pymedphys --cov-report=xml --cov-report=html --cov-report=term
+              ;;
+            slow)
+              uv run pytest -v --slow --durations=50
+              ;;
+            pyright)
+              npm install -g pyright@1.1.386
+              uv run pyright
+              ;;
+            cypress)
+              uv run pymedphys dev tests --cypress
+              ;;
+            stackoverflow)
+              for script in examples/stackoverflow/*.py; do
+                echo "Running: $script"
+                uv run python "$script"
+              done
+              ;;
+          esac
+
+      - name: Upload coverage
+        if: matrix.task == 'coverage'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+      - name: Upload test artifacts
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: cypress-artifacts
-          if-no-files-found: ignore
+          name: test-artifacts-${{ matrix.os }}-${{ matrix.python }}-${{ matrix.task }}-${{ github.run_id }}
           path: |
-            cypress/videos
-            cypress/screenshots
+            coverage.html/
+            pymedphys/tests/e2e/cypress/videos/
+            pymedphys/tests/e2e/cypress/screenshots/
+            .pytest_cache/
+          retention-days: 7

@@ -1,49 +1,48 @@
-name: "Setup project (Python + uv)"
-description: "Install Python and uv, set up caching and toolchain for reproducible builds/tests"
-author: "pymedphys maintainers"
+name: Setup PyMedPhys Project
+description: Standard setup for PyMedPhys CI
 
 inputs:
   python-version:
-    description: "Python version to install"
-    required: true
-    default: "3.12"
-  uv-version:
-    description: "uv major version (ignored when pinning to SHA)"
-    required: false
-    default: "6"
-  cache-key-suffix:
-    description: "Optional cache-key suffix to disambiguate caches"
-    required: false
-    default: ""
+    description: Python version to use
+    default: '3.12'
+  extras:
+    description: Space-separated list of extras to install
+    default: ''
+  node-version:
+    description: Node.js version (optional)
+    default: ''
 
 runs:
-  using: "composite"
+  using: composite
   steps:
-    - name: Setup Python
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
-        cache: 'pip'
 
-    # Pin third-party action to a full commit SHA (v6)
-    # ref: https://github.com/astral-sh/setup-uv/releases (v6 tag)
-    - name: Setup uv
-      uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v6
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
       with:
         enable-cache: true
-        cache-suffix: ${{ inputs.cache-key-suffix }}
+        cache-dependency-glob: |
+          uv.lock
+          pyproject.toml
 
-    - name: Show tool versions
+    - name: Install dependencies
       shell: bash
       run: |
-        python --version
-        uv --version
-        uv pip --version || true
+        if [ -n "${{ inputs.extras }}" ]; then
+          EXTRAS=""
+          for extra in ${{ inputs.extras }}; do
+            EXTRAS="$EXTRAS --extra $extra"
+          done
+          uv sync --frozen $EXTRAS
+        else
+          uv sync --frozen
+        fi
 
-    # Optional: ensure a local venv exists (uv creates one implicitly in many commands, but this is explicit)
-    - name: Create venv
-      shell: bash
-      run: |
-        uv venv --python ${{ inputs.python-version }}
-        echo "VIRTUAL_ENV=$(pwd)/.venv" >> $GITHUB_ENV
-        echo "$(pwd)/.venv/bin" >> $GITHUB_PATH
+    - name: Set up Node.js
+      if: inputs.node-version != ''
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}

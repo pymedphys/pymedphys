@@ -1,56 +1,59 @@
-name: docs
+name: Documentation
 
 on:
   workflow_call:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'lib/pymedphys/docs/**'
+      - '*.md'
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
-
 jobs:
-  build:
-    runs-on: ubuntu-24.04
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-project
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache-key-suffix: docs
-      - name: Install docs deps
-        shell: bash
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install docs dependencies
+        run: uv sync --frozen --extra docs
+
+      - name: Download required data
         run: |
-          uv pip install -e ".[docs]" --system
-      - name: Build docs
-        shell: bash
+          uv run python -c "
+          import pymedphys
+          pymedphys.data_path('original_dose_beam_4.dcm')
+          pymedphys.data_path('logfile_dose_beam_4.dcm')
+          "
+
+      - name: Build documentation
         run: |
-          set -euxo pipefail
-          if [[ -f docs/Makefile ]]; then
-            make -C docs html
-            echo "out=docs/_build/html" >> $GITHUB_OUTPUT
-          elif [[ -f mkdocs.yml ]]; then
-            uv pip install mkdocs mkdocs-material --system
-            mkdocs build
-            echo "out=site" >> $GITHUB_OUTPUT
-          else
-            echo "No docs configuration found" >&2
-            exit 1
-          fi
-        id: build
+          uv run pymedphys dev docs
+
+          # Check for broken links
+          uv run python -m sphinx.ext.linkcheck lib/pymedphys/docs || true
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ steps.build.outputs.out }}
+          path: lib/pymedphys/docs/_build/html
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
-    steps:
-      - uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/deploy-pages@v4
