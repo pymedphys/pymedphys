@@ -27,7 +27,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'dev tests doctests'
 
       - name: Run doctests
@@ -44,7 +43,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'dev tests'
 
       - name: Run slow tests
@@ -60,7 +58,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'user'
 
       - name: Run stackoverflow examples
@@ -80,8 +77,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-project
-        with:
-          python-version: '3.13'
 
       - name: Build and test wheel
         run: |
@@ -98,8 +93,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-project
-        with:
-          python-version: '3.13'
 
       - name: Run propagate scripts
         run: |

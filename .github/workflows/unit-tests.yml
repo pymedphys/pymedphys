@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   test:
-    name: Test (${{ matrix.os }} / py${{ matrix.python-version }})
+    name: ${{ matrix.os }} - py${{ matrix.python-version }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
