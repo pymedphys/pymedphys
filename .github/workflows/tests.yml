@@ -1,4 +1,4 @@
-name: "Tests (reusable)"
+name: "Tests"
 
 on:
   workflow_call:
@@ -20,15 +20,11 @@ on:
         type: string
         default: ""
     secrets:
-      # Optional secrets used by some jobs if present
       CYPRESS_RECORD_KEY:
         required: false
 
 permissions:
   contents: read
-
-env:
-  IS_FULL: ${{ inputs.mode == 'full' }}
 
 jobs:
   unit:
@@ -56,15 +52,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          if [[ "${{ env.IS_FULL }}" == "true" ]]; then
-            # Full: everything
+          if [[ "${{ inputs.mode }}" == "full" ]]; then
             PYTEST_ARGS="${{ inputs.extra-pytest-args }}"
           else
-            # Standard: skip "slow" and anything explicitly long-running
             PYTEST_ARGS="-m 'not slow' ${{ inputs.extra-pytest-args }}"
           fi
           uv run pytest $PYTEST_ARGS --junitxml=test-results/junit-${{ matrix.python-version }}.xml || STATUS=$?
-          # Generate coverage only if pytest produced it (guard uploads later)
           echo "status=${STATUS:-0}" >> $GITHUB_OUTPUT
 
       - name: Upload results if they exist
@@ -80,7 +73,7 @@ jobs:
 
   pyright:
     name: "pyright (full)"
-    if: ${{ env.IS_FULL == 'true' }}
+    if: ${{ inputs.mode == 'full' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +92,7 @@ jobs:
 
   slow:
     name: "slow tests (full)"
-    if: ${{ env.IS_FULL == 'true' }}
+    if: ${{ inputs.mode == 'full' }}
     uses: ./.github/workflows/python-test.yml
     with:
       python-version: "3.12"
@@ -108,7 +101,7 @@ jobs:
 
   propagate:
     name: "propagate (full; runs only if script present)"
-    if: ${{ env.IS_FULL == 'true' }}
+    if: ${{ inputs.mode == 'full' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -133,7 +126,7 @@ jobs:
 
   stackoverflow:
     name: "stackoverflow (full; runs only if script present)"
-    if: ${{ env.IS_FULL == 'true' }}
+    if: ${{ inputs.mode == 'full' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -156,7 +149,7 @@ jobs:
 
   ui-e2e:
     name: "UI E2E (optional; Node+Cypress via npm)"
-    if: ${{ env.IS_FULL == 'true' && inputs.include-cypress }}
+    if: ${{ inputs.mode == 'full' && inputs.include-cypress }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -190,7 +183,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npx cypress verify
-          # If you have a dev server, start it here before the run (e.g., npm run start & wait-on ...)
           npx cypress run || (echo "Cypress failures" && exit 1)
 
       - name: Upload Cypress artifacts if they exist
