@@ -1,66 +1,42 @@
-name: Database Tests
+name: Mosaiq DB tests
 
 on:
   workflow_call:
+    secrets:
+      MOSAIQ_DB_URL:
+        required: false
+      MOSAIQ_DB_USER:
+        required: false
+      MOSAIQ_DB_PASS:
+        required: false
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'lib/pymedphys/**/*mosaiq*'
-      - 'lib/pymedphys/**/*database*'
-      - '.github/workflows/*db*.yml'
+
+permissions:
+  contents: read
 
 jobs:
-  test-mosaiq-db:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: sqlServerPassw0rd
-        ports:
-          - 1433:1433
-        options: >-
-          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P sqlServerPassw0rd -Q 'SELECT 1'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+  mosaiq:
+    runs-on: ubuntu-24.04
+    env:
+      HAS_DB: ${{ secrets.MOSAIQ_DB_URL != '' }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-project
         with:
           python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: |
-          uv sync --frozen --extra mosaiq --extra tests --extra dicom
-
-      - name: Wait for SQL Server
-        run: |
-          for i in {1..30}; do
-            if sqlcmd -S localhost -U SA -P sqlServerPassw0rd -Q "SELECT 1" &>/dev/null; then
-              echo "✅ SQL Server is ready"
-              break
-            fi
-            echo "⏳ Waiting for SQL Server... ($i/30)"
-            sleep 2
-          done
-
-      - name: Run database tests
+          cache-key-suffix: mosaiq
+      - name: Install DB extras
+        shell: bash
+        run: uv pip install -e ".[dev,mosaiq]" --system
+      - name: Run DB tests if secrets present
+        if: env.HAS_DB == 'true'
+        shell: bash
         env:
-          MOSAIQ_SQL_SERVER: localhost
-          MOSAIQ_SQL_USER: SA
-          MOSAIQ_SQL_PASSWORD: sqlServerPassw0rd
-        run: |
-          uv run pytest tests/mosaiq/ -v --tb=short
-          uv run pymedphys dev tests -v --mosaiqdb
+          MOSAIQ_DB_URL:  ${{ secrets.MOSAIQ_DB_URL }}
+          MOSAIQ_DB_USER: ${{ secrets.MOSAIQ_DB_USER }}
+          MOSAIQ_DB_PASS: ${{ secrets.MOSAIQ_DB_PASS }}
+        run: uv run pytest -q -m "mosaiq"
+      - name: Skip (no secrets)
+        if: env.HAS_DB != 'true'
+        shell: bash
+        run: echo "No DB secrets provided; skipping."

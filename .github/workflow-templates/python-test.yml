@@ -1,17 +1,56 @@
-# .github/workflow-templates/python-test.yml
-name: Python Test Template
+name: "Python test (reusable)"
 
-env:
-  UV_CACHE_DIR: ~/.cache/uv
-  UV_SYSTEM_PYTHON: 1
-  FORCE_COLOR: 1
-  PIP_DISABLE_PIP_VERSION_CHECK: 1
-  PYTHONUNBUFFERED: 1
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+        default: "3.13"
+      pytest-args:
+        required: false
+        type: string
+        default: "-q"
+      cache-key-suffix:
+        required: false
+        type: string
+        default: ""
 
-defaults:
-  run:
-    shell: bash
+permissions:
+  contents: read
 
-# Standard cache configuration
-# Standard error handling
-# Standard artifact upload
+jobs:
+  test:
+    name: "pytest (py=${{ inputs.python-version }})"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache-key-suffix: ${{ inputs.cache-key-suffix }}
+
+      - name: Install project + dev deps
+        shell: bash
+        run: |
+          uv pip install -e ".[dev,tests]" --system
+
+      - name: Run pytest
+        shell: bash
+        run: |
+          set -euxo pipefail
+          uv run pytest ${{ inputs.pytest-args }}
+
+      - name: Upload junit/coverage if present
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-outputs-py${{ inputs.python-version }}
+          if-no-files-found: ignore
+          path: |
+            ./.pytest_cache
+            ./test-results/**/*.xml
+            ./coverage.xml
+            ./htmlcov
