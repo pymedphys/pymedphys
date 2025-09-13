@@ -1,4 +1,4 @@
-# pylint: disable = unused-import, reimported, import-error
+# pylint: skip-file
 # ruff: noqa: F401
 
 import tkinter
