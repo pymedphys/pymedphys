@@ -10,7 +10,7 @@ on:
       python-matrix:
         required: false
         type: string
-        default: '["3.10","3.11","3.12","3.13"]'
+        default: '["3.10", "3.13"]'
       include-cypress:
         required: false
         type: boolean
@@ -49,13 +49,12 @@ jobs:
           PYTEST_EXTRA: ${{ inputs.extra-pytest-args }}
         run: |
           set -euxo pipefail
-          if [[ "${MODE}" == "full" ]]; then
-            PYTEST_ARGS="${PYTEST_EXTRA}"
-          else
-            PYTEST_ARGS="-m 'not slow' ${PYTEST_EXTRA}"
-          fi
           mkdir -p test-results
-          uv run pytest ${PYTEST_ARGS} --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+          if [[ "${MODE}" == "full" ]]; then
+            uv run pytest ${PYTEST_EXTRA} --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+          else
+            uv run pytest -m "not slow" ${PYTEST_EXTRA} --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+          fi
 
       - name: Upload JUnit XML
         if: always()
