@@ -7,7 +7,8 @@ on:
   workflow_call:
 
 permissions:
-  contents: read
+  contents: write  # Changed from 'read' to 'write'
+  pull-requests: write  # Added for pre-commit auto-fixes
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -30,17 +31,20 @@ jobs:
   pre-commit:
     uses: ./.github/workflows/pre-commit.yml
     secrets: inherit
+    # Permissions are now inherited from parent
 
   tests:
     needs: [pre-commit]
-    if: success() || failure()  # Run tests even if pre-commit fails
+    if: success() || failure()
     uses: ./.github/workflows/tests.yml
     with:
       mode: ${{ github.event_name == 'pull_request' && 'standard' || 'full' }}
       include-cypress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     secrets: inherit
+    permissions:
+      contents: read  # Tests only need read access
 
-  mosaiq-db-tests:  # ADD THIS
+  mosaiq-db-tests:
     needs: [pre-commit, changes]
     if: |
       (success() || failure()) && (
@@ -50,6 +54,8 @@ jobs:
       )
     uses: ./.github/workflows/mosaiq-db-tests.yml
     secrets: inherit
+    permissions:
+      contents: read  # DB tests only need read access
 
   docs-check:
     needs: [tests]
@@ -58,17 +64,27 @@ jobs:
     with:
       publish: false
     secrets: inherit
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
 
   docs:
     needs: [tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/docs.yml
     secrets: inherit
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
 
   summary:
     needs: [pre-commit, tests, mosaiq-db-tests, docs]
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Generate Summary
         run: |
