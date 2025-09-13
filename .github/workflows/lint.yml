@@ -8,17 +8,16 @@ permissions:
   contents: read
 
 jobs:
-  ruff:
+  lint:
     name: Ruff (lint & format)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
-          extras: ''  # Minimal dependencies for linting
+          extras: "lint"
 
       - name: Run ruff check
         run: |
@@ -27,18 +26,6 @@ jobs:
       - name: Run ruff format check
         run: |
           uv run ruff format --check --diff
-
-  pylint:
-    name: Pylint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup-project
-        with:
-          python-version: '3.13'
-          extras: 'dev tests'
 
       - name: Run pylint
         run: |

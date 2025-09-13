@@ -79,6 +79,12 @@ dev = [
   "tabulate",
 ]
 
+lint = [
+  "astroid",
+  "pylint",
+  "ruff",
+]
+
 tests = [
   "anthropic",
   "astroid",

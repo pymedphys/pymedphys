@@ -2269,6 +2269,11 @@ doctests = [
 icom = [
     { name = "numpy" },
 ]
+lint = [
+    { name = "astroid" },
+    { name = "pylint" },
+    { name = "ruff" },
+]
 mosaiq = [
     { name = "attrs" },
     { name = "pandas" },
@@ -2353,6 +2358,7 @@ requires-dist = [
     { name = "anyio", marker = "extra == 'all'" },
     { name = "anyio", marker = "extra == 'user'" },
     { name = "astroid", marker = "extra == 'all'" },
+    { name = "astroid", marker = "extra == 'lint'" },
     { name = "astroid", marker = "extra == 'tests'" },
     { name = "attrs", marker = "extra == 'all'" },
     { name = "attrs", marker = "extra == 'mosaiq'" },
@@ -2415,6 +2421,7 @@ requires-dist = [
     { name = "pylibjpeg-libjpeg", marker = "extra == 'tests'", specifier = ">=1.3.2" },
     { name = "pylibjpeg-libjpeg", marker = "extra == 'user'", specifier = ">=1.3.2" },
     { name = "pylint", marker = "extra == 'all'" },
+    { name = "pylint", marker = "extra == 'lint'" },
     { name = "pylint", marker = "extra == 'tests'" },
     { name = "pymssql", marker = "extra == 'all'" },
     { name = "pymssql", marker = "extra == 'mosaiq'" },
@@ -2447,6 +2454,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'all'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'doctests'" },
+    { name = "ruff", marker = "extra == 'lint'" },
     { name = "ruff", marker = "extra == 'propagate'" },
     { name = "scikit-learn", marker = "extra == 'all'" },
     { name = "scikit-learn", marker = "extra == 'mosaiq'" },
@@ -2493,7 +2501,7 @@ requires-dist = [
     { name = "xmltodict", marker = "extra == 'all'" },
     { name = "xmltodict", marker = "extra == 'user'" },
 ]
-provides-extras = ["user", "dev", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq", "propagate", "all"]
+provides-extras = ["user", "dev", "lint", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq", "propagate", "all"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "sphinx-external-toc", specifier = ">=1.0.1" }]
