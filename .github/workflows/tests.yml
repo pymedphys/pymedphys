@@ -40,7 +40,7 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
-          extras: 'dev tests mosaiq dicom'
+          extras: 'dev tests mosaiq'
 
       - name: Run pytest (mode-aware)
         shell: bash

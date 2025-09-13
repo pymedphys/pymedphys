@@ -90,6 +90,7 @@ tests = [
   "pydicom>=2.0.0",
   "pynetdicom",
   "PyGithub",
+  "pylibjpeg-libjpeg>=1.3.2",
   "pylint",
   "pytest",
   "pytest-rerunfailures",
