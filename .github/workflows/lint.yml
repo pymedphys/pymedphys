@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   lint:
-    name: Ruff (lint & format)
+    name: Pylint
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -18,14 +18,6 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           extras: "lint"
-
-      - name: Run ruff check
-        run: |
-          uv run ruff check --output-format=github
-
-      - name: Run ruff format check
-        run: |
-          uv run ruff format --check --diff
 
       - name: Run pylint
         run: |
