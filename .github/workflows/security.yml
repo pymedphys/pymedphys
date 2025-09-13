@@ -46,7 +46,7 @@ jobs:
           sarif_file: bandit.sarif
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@v0.22.0 # pin for security
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # pin for security
         with:
           scan-type: fs
           scan-ref: .
