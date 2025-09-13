@@ -3,11 +3,6 @@ name: Database Tests
 on:
   workflow_call:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'lib/pymedphys/**/*mosaiq*'
-      - 'lib/pymedphys/**/*database*'
-      - '.github/workflows/*db*.yml'
 
 jobs:
   test-mosaiq-db:
