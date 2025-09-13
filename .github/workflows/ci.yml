@@ -31,7 +31,6 @@ jobs:
   pre-commit:
     uses: ./.github/workflows/pre-commit.yml
     secrets: inherit
-    # Permissions are now inherited from parent
 
   tests:
     needs: [pre-commit]
@@ -66,8 +65,6 @@ jobs:
     secrets: inherit
     permissions:
       contents: read
-      pages: read
-      id-token: read
 
   docs:
     needs: [tests]
