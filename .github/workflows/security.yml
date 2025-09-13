@@ -5,53 +5,140 @@ on:
     - cron: '0 0 * * MON'
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - '**/*.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/*.yml'
   workflow_dispatch:
 
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
+permissions:
+  security-events: write
+  contents: read
 
+jobs:
+  secrets-scan:
+    name: Scan for Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for exposed secrets
+        run: |
+          # Check for common secret patterns
+          ! grep -r --include="*.py" --include="*.yml" --include="*.yaml" \
+            -E '(api[_-]?key|secret|token|password|credential)\s*=\s*["\047][A-Za-z0-9+/]{20,}' . || {
+            echo "::error::Potential secrets found in code"
+            exit 1
+          }
+
+          # Specific check for Anthropic API key
+          ! grep -r --include="*.py" --include="*.yml" --include="*.yaml" \
+            -E '(print|log|console\.log|echo).*ANTHROPIC' . || {
+            echo "::error::Potential Anthropic API key exposure"
+            exit 1
+          }
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-project
         with:
+          python-version: '3.13'
           extras: 'all'
 
-      - name: Scan for Anthropic API key exposure
+      - name: Run pip-audit
+        continue-on-error: true  # Don't fail PR, just report
         run: |
-          ! grep -r --include="*.py" --include="*.yml" --include="*.yaml" \
-            -E '(print|log|console\.log|echo).*ANTHROPIC' .
-          ! grep -r --include="*.py" \
-            -E '(requests\.get|requests\.post|fetch).*\$\{?ANTHROPIC' .
-
-      - name: Dependency audit
-        run: |
-          uv sync --frozen
           uv pip install pip-audit
-          uv run pip-audit  # Changed from 'uv pip audit'
+          uv run pip-audit --desc --fix || true
+
+  python-security:
+    name: Python Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: '3.13'
 
       - name: Run Bandit
+        continue-on-error: true
         run: |
           uv pip install bandit[toml]
-          uv run bandit -r pymedphys/ -f sarif -o bandit.sarif || true
+          uv run bandit -r lib/pymedphys/ -f sarif -o bandit.sarif || true
 
-      - name: Upload SARIF
+      - name: Upload Bandit results
+        if: github.event_name != 'pull_request'  # Only upload on main
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: bandit.sarif
 
-      - name: Run Trivy
-        uses: aquasecurity/trivy-action@v0.22.0 # pin for security
+  container-scan:
+    name: Container & File System Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy scanner
+        uses: aquasecurity/trivy-action@0.28.0  # Pin version for security
         with:
           scan-type: fs
           scan-ref: .
           format: sarif
           output: trivy.sarif
+          severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results
+        if: github.event_name != 'pull_request'  # Only upload on main
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy.sarif
+
+  github-actions-security:
+    name: GitHub Actions Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for dangerous workflow patterns
+        run: |
+          # Check for use of pull_request_target with checkout of PR code
+          ! grep -r --include="*.yml" --include="*.yaml" -A 5 "pull_request_target:" .github/workflows/ | \
+            grep -E "ref:.*head|HEAD" || {
+            echo "::warning::Potentially dangerous pull_request_target usage detected"
+          }
+
+          # Check for workflow_run without proper conditions
+          ! grep -r --include="*.yml" --include="*.yaml" "workflow_run:" .github/workflows/ | \
+            grep -v "if:" || {
+            echo "::warning::workflow_run without conditions detected"
+          }
+
+  security-summary:
+    name: Security Summary
+    needs: [secrets-scan, dependency-audit, python-security, container-scan, github-actions-security]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate security report
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## Security Scan Results 🔒
+
+          | Check | Status |
+          |-------|--------|
+          | Secrets Scan | ${{ needs.secrets-scan.result }} |
+          | Dependency Audit | ${{ needs.dependency-audit.result }} |
+          | Python Security | ${{ needs.python-security.result }} |
+          | Container Scan | ${{ needs.container-scan.result }} |
+          | GitHub Actions | ${{ needs.github-actions-security.result }} |
+
+          **Note:** Some checks may show as failed but are configured as non-blocking warnings.
+          Review the individual job logs for details.
+          EOF

@@ -14,15 +14,43 @@ permissions:
   id-token: write  # For PyPI trusted publishing
 
 jobs:
-  tests:
-    uses: ./.github/workflows/tests.yml
-    with:
-      python-matrix: '["3.13"]'
-      mode: 'standard'
+  # Run core quality checks
+  quality-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Starting release quality checks"
+
+  lint:
+    needs: [quality-checks]
+    uses: ./.github/workflows/lint.yml
     secrets: inherit
 
+  type-check:
+    needs: [quality-checks]
+    uses: ./.github/workflows/type-check.yml
+    secrets: inherit
+
+  # Run focused unit tests
+  unit-tests:
+    needs: [quality-checks]
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      python-matrix: '["3.13"]'  # Test with latest Python for release
+      quick: false  # Full OS matrix for release
+    secrets: inherit
+
+  # Run integration tests for release
+  integration-tests:
+    needs: [unit-tests]
+    uses: ./.github/workflows/integration-tests.yml
+    with:
+      run-slow: true  # Include slow tests for release
+    secrets: inherit
+
+  # Build and publish
   build-and-publish:
-    needs: [tests]
+    needs: [lint, type-check, unit-tests, integration-tests]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -33,16 +61,27 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
+          python-version: '3.13'
           extras: 'dev tests'
 
       - name: Build distributions
         run: |
           uv build --wheel --sdist
 
-          # Verify
+          # Verify wheel
           uv pip install --dry-run dist/*.whl
           uv pip install twine
-          uv run -- twine check dist/*
+          uv run twine check dist/*
+
+      - name: Test installation
+        run: |
+          # Create a fresh venv and test installation
+          uv venv test-env
+          source test-env/bin/activate || test-env/Scripts/activate
+          uv pip install dist/*.whl
+          pymedphys --version
+          python -c "import pymedphys; print(pymedphys.__version__)"
+          deactivate
 
       - name: Publish to TestPyPI
         if: inputs.dry_run != false
@@ -58,3 +97,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+
+      - name: Create release summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## Release Summary 🚀
+
+          **Version:** ${{ github.ref_name }}
+          **Dry Run:** ${{ inputs.dry_run || false }}
+
+          ### Quality Checks
+          - Linting: ${{ needs.lint.result }}
+          - Type Check: ${{ needs.type-check.result }}
+          - Unit Tests: ${{ needs.unit-tests.result }}
+          - Integration Tests: ${{ needs.integration-tests.result }}
+
+          ### Artifacts
+          Check the workflow artifacts for built wheels and sdist.
+          EOF

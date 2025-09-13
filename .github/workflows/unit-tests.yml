@@ -1,0 +1,59 @@
+name: Unit Tests
+
+on:
+  workflow_call:
+    inputs:
+      python-matrix:
+        required: false
+        type: string
+        default: '["3.10", "3.13"]'
+      extra-pytest-args:
+        required: false
+        type: string
+        default: ""
+      quick:
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }} / py${{ matrix.python-version }})
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
+        python-version: ${{ fromJSON(inputs.python-matrix) }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ matrix.python-version }}
+          extras: 'dev tests mosaiq'
+
+      - name: Run unit tests
+        shell: bash
+        env:
+          PYTEST_EXTRA: ${{ inputs.extra-pytest-args }}
+        run: |
+          set -euxo pipefail
+          mkdir -p test-results
+
+          # Always exclude slow tests in unit test runs
+          uv run pytest -m "not slow" ${PYTEST_EXTRA} \
+            --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.os }}-${{ matrix.python-version }}
+          path: test-results/*.xml
+          if-no-files-found: ignore

@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mosaiq: ${{ steps.filter.outputs.mosaiq }}
+      docs: ${{ steps.filter.outputs.docs }}
+      python: ${{ steps.filter.outputs.python }}
     steps:
       - uses: dorny/paths-filter@v3
         id: filter
@@ -27,22 +29,57 @@ jobs:
             mosaiq:
               - 'lib/pymedphys/**/*mosaiq*'
               - 'lib/pymedphys/**/*database*'
+            docs:
+              - 'docs/**'
+              - 'lib/pymedphys/docs/**'
+              - '*.md'
+            python:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
 
+  # Pre-commit always runs
   pre-commit:
     uses: ./.github/workflows/pre-commit.yml
     secrets: inherit
 
-  tests:
+  # Linting always runs for PRs and main
+  lint:
     needs: [pre-commit]
     if: success() || failure()
-    uses: ./.github/workflows/tests.yml
-    with:
-      mode: ${{ github.event_name == 'pull_request' && 'standard' || 'full' }}
-      include-cypress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    uses: ./.github/workflows/lint.yml
     secrets: inherit
-    permissions:
-      contents: read  # Tests only need read access
 
+  # Type checking always runs for PRs and main
+  type-check:
+    needs: [pre-commit]
+    if: success() || failure()
+    uses: ./.github/workflows/type-check.yml
+    secrets: inherit
+
+  # Unit tests always run
+  unit-tests:
+    needs: [pre-commit]
+    if: success() || failure()
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      # Use full matrix on main, quick matrix on PRs
+      python-matrix: ${{ github.event_name == 'pull_request' && '["3.13"]' || '["3.10", "3.13"]' }}
+      quick: ${{ github.event_name == 'pull_request' }}
+    secrets: inherit
+
+  # Integration tests run on main or when labeled
+  integration-tests:
+    needs: [unit-tests]
+    if: |
+      github.event_name == 'push' ||
+      contains(github.event.pull_request.labels.*.name, 'full-test')
+    uses: ./.github/workflows/integration-tests.yml
+    with:
+      run-slow: ${{ github.event_name == 'push' }}
+    secrets: inherit
+
+  # Database tests run based on changes or labels
   mosaiq-db-tests:
     needs: [pre-commit, changes]
     if: |
@@ -53,31 +90,66 @@ jobs:
       )
     uses: ./.github/workflows/mosaiq-db-tests.yml
     secrets: inherit
-    permissions:
-      contents: read  # DB tests only need read access
 
+  # Docs check for PRs with doc changes
   docs-check:
-    needs: [tests]
-    if: github.event_name == 'pull_request'
+    needs: [changes]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.docs == 'true'
     uses: ./.github/workflows/docs.yml
     with:
       publish: false
     secrets: inherit
-    permissions:
-      contents: read
 
-  docs:
-    needs: [tests]
+  # Docs publish on main
+  docs-publish:
+    needs: [unit-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/docs.yml
+    with:
+      publish: true
     secrets: inherit
     permissions:
       contents: write
       pages: write
       id-token: write
 
+  # Cypress E2E tests only on main
+  cypress-e2e:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Cypress
+        id: check
+        run: |
+          if [[ -f package.json && -d cypress ]]; then
+            echo "has-cypress=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-cypress=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node
+        if: steps.check.outputs.has-cypress == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install and run Cypress
+        if: steps.check.outputs.has-cypress == 'true'
+        env:
+          CI: true
+        run: |
+          npm ci
+          npx cypress run
+
+  # Summary job provides overall status
   summary:
-    needs: [pre-commit, tests, mosaiq-db-tests, docs]
+    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish, cypress-e2e]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -88,14 +160,46 @@ jobs:
           cat >> $GITHUB_STEP_SUMMARY << 'EOF'
           ## CI Results 📊
 
-          | Job | Status |
-          |-----|--------|
+          ### Core Checks (Always Run)
+          | Check | Status |
+          |-------|--------|
           | Pre-commit | ${{ needs.pre-commit.result }} |
-          | Tests | ${{ needs.tests.result }} |
+          | Lint | ${{ needs.lint.result }} |
+          | Type Check | ${{ needs.type-check.result }} |
+          | Unit Tests | ${{ needs.unit-tests.result }} |
+
+          ### Extended Checks
+          | Check | Status |
+          |-------|--------|
+          | Integration Tests | ${{ needs.integration-tests.result || 'skipped' }} |
           | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
-          | Documentation | ${{ needs.docs.result || 'skipped' }} |
+          | Documentation | ${{ needs.docs-check.result || needs.docs-publish.result || 'skipped' }} |
+          | Cypress E2E | ${{ needs.cypress-e2e.result || 'skipped' }} |
 
           **Workflow:** ${{ github.workflow }}
           **Triggered by:** ${{ github.actor }}
           **Event:** ${{ github.event_name }}
+          **Branch:** ${{ github.ref_name }}
           EOF
+
+      - name: Check Required Status
+        if: always()
+        run: |
+          # These must pass for PRs
+          if [[ "${{ needs.pre-commit.result }}" != "success" && "${{ needs.pre-commit.result }}" != "skipped" ]]; then
+            echo "❌ Pre-commit failed"
+            exit 1
+          fi
+          if [[ "${{ needs.lint.result }}" != "success" && "${{ needs.lint.result }}" != "skipped" ]]; then
+            echo "❌ Linting failed"
+            exit 1
+          fi
+          if [[ "${{ needs.type-check.result }}" != "success" && "${{ needs.type-check.result }}" != "skipped" ]]; then
+            echo "❌ Type checking failed"
+            exit 1
+          fi
+          if [[ "${{ needs.unit-tests.result }}" != "success" && "${{ needs.unit-tests.result }}" != "skipped" ]]; then
+            echo "❌ Unit tests failed"
+            exit 1
+          fi
+          echo "✅ All required checks passed"
