@@ -52,7 +52,7 @@ def _compare_tel_to_dicom(tel_path, dcm_path):
         fraction_group_number = 1
 
     delivery_dcm = pymedphys.Delivery.from_dicom(
-        pydicom.read_file(str(dcm_path), force=True),
+        pydicom.dcmread(str(dcm_path), force=True),
         fraction_group_number=fraction_group_number,
     )
     delivery_monaco = pymedphys.Delivery.from_monaco(tel_path)

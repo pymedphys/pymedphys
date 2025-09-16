@@ -17,11 +17,11 @@
 import copy
 from typing import Sequence
 
-from pymedphys._imports import matplotlib
+from pymedphys._imports import matplotlib, plt, pydicom, scipy
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom, scipy
 
 from . import orientation
+from .compat import ensure_transfer_syntax
 from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
 from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
@@ -38,15 +38,10 @@ def zyx_and_dose_from_dataset(dataset):
     return coords, dose
 
 
-def dose_from_dataset(ds, set_transfer_syntax_uid=True):
+def dose_from_dataset(ds):
     r"""Extract the dose grid from a DICOM RT Dose file."""
-
-    if set_transfer_syntax_uid:
-        ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
-
-    dose = ds.pixel_array * ds.DoseGridScaling
-
-    return dose
+    ensure_transfer_syntax(ds)
+    return ds.pixel_array * ds.DoseGridScaling
 
 
 def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
@@ -328,6 +323,8 @@ def sum_doses_in_datasets(
         A new DICOM RT Dose dataset whose dose is the sum of all doses
         within `datasets`
     """
+    for ds in datasets:
+        ensure_transfer_syntax(ds)
 
     if not all(ds.Modality == "RTDOSE" for ds in datasets):
         raise ValueError("`datasets` must only contain DICOM RT Dose datasets.")

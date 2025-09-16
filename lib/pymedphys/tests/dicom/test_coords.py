@@ -16,13 +16,12 @@
 import copy
 import json
 
-from pymedphys._imports import matplotlib
+from pymedphys._imports import matplotlib, plt, pydicom, pytest
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._dicom import coords, create
+from pymedphys._dicom import compat, coords, create
 
 ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
@@ -97,23 +96,24 @@ def test_extract_dicom_patient_xyz():
 def test_coords_in_datasets_are_equal():
     bits_allocated = 32
 
-    test_dicom_dict = {
-        "ImagePositionPatient": [-1.0, -1.0, -1.0],
-        "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
-        "BitsAllocated": bits_allocated,
-        "BitsStored": bits_allocated,
-        "Rows": 3,
-        "Columns": 3,
-        "PixelRepresentation": 0,
-        "SamplesPerPixel": 1,
-        "PhotometricInterpretation": "MONOCHROME2",
-        "PixelSpacing": [1.0, 1.0],
-        "GridFrameOffsetVector": [0.0, 1.0, 2.0],
-        "PixelData": np.ones((3, 3, 3)).tobytes(),
-    }
+    ds1 = create.dicom_dataset_from_dict(
+        {
+            "ImagePositionPatient": [-1.0, -1.0, -1.0],
+            "ImageOrientationPatient": [1, 0, 0, 0, 1, 0],
+            "BitsAllocated": bits_allocated,
+            "BitsStored": bits_allocated,
+            "Rows": 3,
+            "Columns": 3,
+            "PixelRepresentation": 0,
+            "SamplesPerPixel": 1,
+            "PhotometricInterpretation": "MONOCHROME2",
+            "PixelSpacing": [1.0, 1.0],
+            "GridFrameOffsetVector": [0.0, 1.0, 2.0],
+            "PixelData": np.ones((3, 3, 3)).tobytes(),
+        }
+    )
 
-    ds1 = create.dicom_dataset_from_dict(test_dicom_dict)
-    ds1.fix_meta_info(enforce_standard=False)
+    compat.ensure_transfer_syntax(ds1)
     ds2 = copy.deepcopy(ds1)
     assert coords.coords_in_datasets_are_equal([ds1, ds2])
 
@@ -141,7 +141,7 @@ def test_coords_in_datasets_are_equal():
 @pytest.mark.pydicom
 def test_non_square_pixels():
     path_to_downloaded_file = pymedphys.data_path("rtdose_non_square_pixels.dcm")
-    rtdose = pydicom.read_file(path_to_downloaded_file, force=True)
+    rtdose = pydicom.dcmread(path_to_downloaded_file, force=True)
     zyx, dose = pymedphys.dicom.zyx_and_dose_from_dataset(rtdose)
     test_points = []
     for p in rtdose.ROIContourSequence:

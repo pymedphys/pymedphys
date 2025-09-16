@@ -40,11 +40,11 @@ ADJUSTED_DICOM_FILENAME = os.path.join(
 
 
 def compare_dicom_cli(command, original, expected):
-    pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
+    pydicom.dcmwrite(ORIGINAL_DICOM_FILENAME, original)
 
     try:
         subprocess.check_call(command)
-        cli_adjusted_ds = pydicom.read_file(ADJUSTED_DICOM_FILENAME, force=True)
+        cli_adjusted_ds = pydicom.dcmread(ADJUSTED_DICOM_FILENAME, force=True)
 
         assert str(cli_adjusted_ds) == str(expected)
     finally:

@@ -67,8 +67,8 @@ def run_gamma(
     if random_subset is not None:
         np.random.seed(42)
 
-    ds_ref = pydicom.read_file(filepath_ref)
-    ds_eval = pydicom.read_file(filepath_eval)
+    ds_ref = pydicom.dcmread(filepath_ref)
+    ds_eval = pydicom.dcmread(filepath_eval)
 
     axes_reference = load_yx_from_dicom(ds_ref)
     dose_reference = dose_from_dataset(ds_ref)

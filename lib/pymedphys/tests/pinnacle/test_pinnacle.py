@@ -90,7 +90,7 @@ def find_corresponding_dicom(dcm):
         dicom_files = [f for f in files if f.endswith(".dcm")]
         for f in dicom_files:
             dcm_file = os.path.join(root, f)
-            ds = pydicom.read_file(dcm_file)
+            ds = pydicom.dcmread(dcm_file)
 
             if ds.PatientID == dcm.PatientID and ds.Modality == dcm.Modality:
                 if ds.Modality == "CT":
@@ -118,7 +118,7 @@ def test_ct(pinn):
         # Get the exported CT file
         for f in os.listdir(export_path):
             if f.startswith("CT"):
-                exported_ct = pydicom.read_file(os.path.join(export_path, f))
+                exported_ct = pydicom.dcmread(os.path.join(export_path, f))
                 assert exported_ct.Modality == "CT"
 
                 # Get the ground truth CT file
@@ -156,7 +156,7 @@ def test_struct(pinn):
         # Get the exported struct file
         for f in os.listdir(export_path):
             if f.startswith("RS"):
-                exported_struct = pydicom.read_file(os.path.join(export_path, f))
+                exported_struct = pydicom.dcmread(os.path.join(export_path, f))
                 assert exported_struct.Modality == "RTSTRUCT"
 
         # Get the ground truth RTSTRUCT file
@@ -213,7 +213,7 @@ def test_dose(pinn):
         # Get the exported RTDOSE file
         for f in os.listdir(export_path):
             if f.startswith("RD"):
-                exported_dose = pydicom.read_file(os.path.join(export_path, f))
+                exported_dose = pydicom.dcmread(os.path.join(export_path, f))
                 assert exported_dose.Modality == "RTDOSE"
                 break
 
@@ -240,7 +240,7 @@ def test_plan(pinn):
         # Get the exported RTPLAN file
         for f in os.listdir(export_path):
             if f.startswith("RP"):
-                exported_plan = pydicom.read_file(os.path.join(export_path, f))
+                exported_plan = pydicom.dcmread(os.path.join(export_path, f))
                 assert exported_plan.Modality == "RTPLAN"
                 break
 
@@ -305,14 +305,14 @@ def test_dose_hfs(orientation_pinn):
     # Get the exported RTDOSE file
     for f in os.listdir(export_path):
         if f.startswith("RD"):
-            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            exported_dose = pydicom.dcmread(os.path.join(export_path, f))
             assert exported_dose.Modality == "RTDOSE"
             break
 
     # Get the ground truth RTDOSE file
     gt_dose_file = "1.3.46.670589.13.997910418.20200707132626.548267.dcm"
     gt_dose_path = os.path.join(data_path, "dicom", "HFS", gt_dose_file)
-    pinn_dose = pydicom.read_file(gt_dose_path)
+    pinn_dose = pydicom.dcmread(gt_dose_path)
     assert pinn_dose is not None
 
     assert_same_dose(exported_dose, pinn_dose)
@@ -335,14 +335,14 @@ def test_dose_hfp(orientation_pinn):
     # Get the exported RTDOSE file
     for f in os.listdir(export_path):
         if f.startswith("RD"):
-            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            exported_dose = pydicom.dcmread(os.path.join(export_path, f))
             assert exported_dose.Modality == "RTDOSE"
             break
 
     # Get the ground truth RTDOSE file
     gt_dose_file = "1.3.46.670589.13.997910418.20200707132247.647011.dcm"
     gt_dose_path = os.path.join(data_path, "dicom", "HFP", gt_dose_file)
-    pinn_dose = pydicom.read_file(gt_dose_path)
+    pinn_dose = pydicom.dcmread(gt_dose_path)
     assert pinn_dose is not None
 
     assert_same_dose(exported_dose, pinn_dose)
@@ -365,14 +365,14 @@ def test_dose_ffs(orientation_pinn):
     # Get the exported RTDOSE file
     for f in os.listdir(export_path):
         if f.startswith("RD"):
-            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            exported_dose = pydicom.dcmread(os.path.join(export_path, f))
             assert exported_dose.Modality == "RTDOSE"
             break
 
     # Get the ground truth RTDOSE file
     gt_dose_file = "1.3.46.670589.13.997910418.20200707132449.572508.dcm"
     gt_dose_path = os.path.join(data_path, "dicom", "FFS", gt_dose_file)
-    pinn_dose = pydicom.read_file(gt_dose_path)
+    pinn_dose = pydicom.dcmread(gt_dose_path)
     assert pinn_dose is not None
 
     assert_same_dose(exported_dose, pinn_dose)
@@ -395,14 +395,14 @@ def test_dose_ffp(orientation_pinn):
     # Get the exported RTDOSE file
     for f in os.listdir(export_path):
         if f.startswith("RD"):
-            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            exported_dose = pydicom.dcmread(os.path.join(export_path, f))
             assert exported_dose.Modality == "RTDOSE"
             break
 
     # Get the ground truth RTDOSE file
     gt_dose_file = "1.3.46.670589.13.997910418.20200707132737.923688.dcm"
     gt_dose_path = os.path.join(data_path, "dicom", "FFP", gt_dose_file)
-    pinn_dose = pydicom.read_file(gt_dose_path)
+    pinn_dose = pydicom.dcmread(gt_dose_path)
     assert pinn_dose is not None
 
     assert_same_dose(exported_dose, pinn_dose)
