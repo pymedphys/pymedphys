@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css?v=4fa983c6" />
     <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
@@ -597,24 +597,20 @@ For a Monte Carlo planning system this dose distribution includes statistical no
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: pymedphys in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (0.42.0.dev0)
-Requirement already satisfied: pygithub&lt;3.0.0,&gt;=2.3.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (2.6.1)
-Requirement already satisfied: setuptools in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (75.8.0)
-Requirement already satisfied: tomlkit in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (0.13.2)
-Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (4.12.2)
+Requirement already satisfied: pygithub&lt;3.0.0,&gt;=2.3.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (2.8.1)
+Requirement already satisfied: setuptools in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (80.9.0)
+Requirement already satisfied: tomlkit in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (0.13.3)
+Requirement already satisfied: typing-extensions in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pymedphys) (4.15.0)
 Requirement already satisfied: pynacl&gt;=1.4.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (1.5.0)
-Requirement already satisfied: requests&gt;=2.14.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.32.3)
+Requirement already satisfied: requests&gt;=2.14.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.32.5)
 Requirement already satisfied: pyjwt&gt;=2.4.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pyjwt[crypto]&gt;=2.4.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.10.1)
-Requirement already satisfied: urllib3&gt;=1.26.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.3.0)
-Requirement already satisfied: Deprecated in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (1.2.18)
-</pre></div>
-</div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Requirement already satisfied: cryptography&gt;=3.4.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pyjwt[crypto]&gt;=2.4.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (44.0.1)
-Requirement already satisfied: cffi&gt;=1.12 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from cryptography&gt;=3.4.0-&gt;pyjwt[crypto]&gt;=2.4.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (1.17.1)
-Requirement already satisfied: pycparser in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from cffi&gt;=1.12-&gt;cryptography&gt;=3.4.0-&gt;pyjwt[crypto]&gt;=2.4.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.22)
-Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from requests&gt;=2.14.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (3.4.1)
+Requirement already satisfied: urllib3&gt;=1.26.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.5.0)
+Requirement already satisfied: cryptography&gt;=3.4.0 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from pyjwt[crypto]&gt;=2.4.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (45.0.7)
+Requirement already satisfied: cffi&gt;=1.14 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from cryptography&gt;=3.4.0-&gt;pyjwt[crypto]&gt;=2.4.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.0.0)
+Requirement already satisfied: pycparser in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from cffi&gt;=1.14-&gt;cryptography&gt;=3.4.0-&gt;pyjwt[crypto]&gt;=2.4.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2.22)
+Requirement already satisfied: charset_normalizer&lt;4,&gt;=2 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from requests&gt;=2.14.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (3.4.3)
 Requirement already satisfied: idna&lt;4,&gt;=2.5 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from requests&gt;=2.14.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (3.10)
-Requirement already satisfied: certifi&gt;=2017.4.17 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from requests&gt;=2.14.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2025.1.31)
-Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from Deprecated-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (1.17.2)
+Requirement already satisfied: certifi&gt;=2017.4.17 in /home/runner/work/pymedphys/pymedphys/.venv/lib/python3.12/site-packages (from requests&gt;=2.14.0-&gt;pygithub&lt;3.0.0,&gt;=2.3.0-&gt;pymedphys) (2025.8.3)
 </pre></div>
 </div>
 </div>
@@ -680,7 +676,7 @@ Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedph
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/8ea73b7ecf1967b911ce54cb20081e5f8761877f69c0625a3ff8cbb900a82e95.png" src="../../../_images/8ea73b7ecf1967b911ce54cb20081e5f8761877f69c0625a3ff8cbb900a82e95.png" />
+<img alt="../../../_images/9dbbd38e412350593874e09d27d8ed9d2612bf67b9bf4907fb978580e3d56840.png" src="../../../_images/9dbbd38e412350593874e09d27d8ed9d2612bf67b9bf4907fb978580e3d56840.png" />
 </div>
 </div>
 <p>Of importance the length of the first coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the first dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>, and the length of the second coordinate set in <code class="docutils literal notranslate"><span class="pre">coords</span></code> matches the second dimension of <code class="docutils literal notranslate"><span class="pre">dose_ref</span></code>. This is required because <code class="docutils literal notranslate"><span class="pre">pymedphys.gamma</span></code> internally uses <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.RegularGridInterpolator.html"><code class="docutils literal notranslate"><span class="pre">scipy.interpolate.RegularGridInterpolator</span></code></a> and the gamma implimentation has been chosen to align with this scipy coordinate convention uses here.</p>
@@ -747,7 +743,7 @@ Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedph
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/0080bfffb56b0e07bd9e73b40f258a4f5f9ca920ace2dcfadde3188f2901407a.png" src="../../../_images/0080bfffb56b0e07bd9e73b40f258a4f5f9ca920ace2dcfadde3188f2901407a.png" />
+<img alt="../../../_images/11af69242f50a61af3acb0368448e99b9ae0145e6ae04e1e76a1916eed5adab4.png" src="../../../_images/11af69242f50a61af3acb0368448e99b9ae0145e6ae04e1e76a1916eed5adab4.png" />
 </div>
 </div>
 </section>
@@ -770,7 +766,7 @@ Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedph
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/e661aa9b8789de7d58ab1c8be56d36281c4ee24bf9c90b836f02ad07fce02268.png" src="../../../_images/e661aa9b8789de7d58ab1c8be56d36281c4ee24bf9c90b836f02ad07fce02268.png" />
+<img alt="../../../_images/03c833c43d76b7208e8c654e074b854d9c43f25ca9a38d9b76a7512445440195.png" src="../../../_images/03c833c43d76b7208e8c654e074b854d9c43f25ca9a38d9b76a7512445440195.png" />
 </div>
 </div>
 </section>
@@ -806,12 +802,12 @@ Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedph
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2415/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2376/3121033137.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_no_noise = pymedphys.gamma(
 </pre></div>
 </div>
-<img alt="../../../_images/756fd19a7010bb03cd4ef72f53a5b7365b1c9d0c74df69d39273e8811fb752a9.png" src="../../../_images/756fd19a7010bb03cd4ef72f53a5b7365b1c9d0c74df69d39273e8811fb752a9.png" />
-<img alt="../../../_images/46acdf04141b23e41c12a184d283baee6981f9112993ccd5539f9378aaa9ddba.png" src="../../../_images/46acdf04141b23e41c12a184d283baee6981f9112993ccd5539f9378aaa9ddba.png" />
+<img alt="../../../_images/7030d4ceade88d3bf3bcdd4fbd41ed0bda177a154ba5f008b6e4dde9f4c41e8e.png" src="../../../_images/7030d4ceade88d3bf3bcdd4fbd41ed0bda177a154ba5f008b6e4dde9f4c41e8e.png" />
+<img alt="../../../_images/153ae7060261791c4b195b4c08621440f082a4d16548f3a4f722433d5210d80e.png" src="../../../_images/153ae7060261791c4b195b4c08621440f082a4d16548f3a4f722433d5210d80e.png" />
 </div>
 </div>
 </section>
@@ -836,7 +832,7 @@ Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedph
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/db5fee79982a80b5754e8df5c03e8af1caa1e4900489f776a815b081f9797410.png" src="../../../_images/db5fee79982a80b5754e8df5c03e8af1caa1e4900489f776a815b081f9797410.png" />
+<img alt="../../../_images/df940c35a25c778d133bff2b19fea22c080d2049a5bcaebd886001ab83b867bb.png" src="../../../_images/df940c35a25c778d133bff2b19fea22c080d2049a5bcaebd886001ab83b867bb.png" />
 </div>
 </div>
 <p>Let’s see what our dise difference looks like with this noise</p>
@@ -857,7 +853,7 @@ Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedph
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../../_images/4d78bdcdf913dbecaa485f4f4a585395ed4f0be4fe8afb81026e306e1e895515.png" src="../../../_images/4d78bdcdf913dbecaa485f4f4a585395ed4f0be4fe8afb81026e306e1e895515.png" />
+<img alt="../../../_images/57cc6e1fd5244131d57f230954500de856a0c52ff8d8da33f86424b2d3e01635.png" src="../../../_images/57cc6e1fd5244131d57f230954500de856a0c52ff8d8da33f86424b2d3e01635.png" />
 </div>
 </div>
 <p>But what about our gamma?</p>
@@ -890,12 +886,12 @@ Requirement already satisfied: wrapt&lt;2,&gt;=1.10 in /home/runner/work/pymedph
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2415/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/tmp/ipykernel_2376/511314066.py:1: DeprecationWarning: Parameter `quiet` will be deprecated in the future
   gamma_with_noise = pymedphys.gamma(
 </pre></div>
 </div>
-<img alt="../../../_images/7162667e3b785cf3112eec27d064b9060e3397c30ead0ecf02e950356f3c6b9b.png" src="../../../_images/7162667e3b785cf3112eec27d064b9060e3397c30ead0ecf02e950356f3c6b9b.png" />
-<img alt="../../../_images/2231d8008a9846ba6d345aadadec8aef75983e501f613751f1060bd7665fddbe.png" src="../../../_images/2231d8008a9846ba6d345aadadec8aef75983e501f613751f1060bd7665fddbe.png" />
+<img alt="../../../_images/0a54267e4c4f620a7dd8bf9c7a4a1871f862dc6cef6f7daa2a9624ff5ad15f5a.png" src="../../../_images/0a54267e4c4f620a7dd8bf9c7a4a1871f862dc6cef6f7daa2a9624ff5ad15f5a.png" />
+<img alt="../../../_images/da621ef8eb9ca3ce59ed20b835d3b4a01ae239467b3708bfa1d62033d29ca232.png" src="../../../_images/da621ef8eb9ca3ce59ed20b835d3b4a01ae239467b3708bfa1d62033d29ca232.png" />
 </div>
 </div>
 </section>
