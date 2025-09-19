@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -2265,6 +2265,7 @@ doctests = [
     { name = "ruff" },
     { name = "sphinx-book-theme" },
     { name = "tabulate" },
+    { name = "toml" },
 ]
 icom = [
     { name = "numpy" },
@@ -2484,6 +2485,7 @@ requires-dist = [
     { name = "toml", marker = "extra == 'all'" },
     { name = "toml", marker = "extra == 'cli'" },
     { name = "toml", marker = "extra == 'docs'" },
+    { name = "toml", marker = "extra == 'doctests'" },
     { name = "toml", marker = "extra == 'mosaiq'" },
     { name = "toml", marker = "extra == 'user'" },
     { name = "tomlkit" },

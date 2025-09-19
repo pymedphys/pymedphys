@@ -125,6 +125,7 @@ doctests = [
   "ruff",
   "sphinx-book-theme",
   "tabulate",
+  "toml"
 ]
 
 # comparables = [
