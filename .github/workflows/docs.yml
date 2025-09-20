@@ -20,6 +20,11 @@ on:
         default: true
         required: false
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest

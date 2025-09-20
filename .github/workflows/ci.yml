@@ -57,12 +57,15 @@ jobs:
     uses: ./.github/workflows/type-check.yml
     secrets: inherit
 
-  # Unit tests always run
+  # Unit tests run only latest Python on Ubuntu for PRs, and full Python/OS matrix on main
   unit-tests:
     needs: [pre-commit]
     if: success() || failure()
     uses: ./.github/workflows/unit-tests.yml
+    with:
+      quick: ${{ github.event_name == 'pull_request' }}
     secrets: inherit
+
 
   # Integration tests run on main or when labeled
   integration-tests:

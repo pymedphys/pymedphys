@@ -266,7 +266,7 @@ Required status checks for merge:
 1. Update matrix in `unit-tests.yml`:
    ```yaml
    python-matrix:
-     default: '["3.10", "3.11", "3.12", "3.13"]'
+     default: '["3.10", "3.12", "3.13"]'
    ```
 
 2. Update `action.yml` default if needed:
