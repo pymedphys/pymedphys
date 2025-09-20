@@ -331,7 +331,7 @@ and
 [uv](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L173-L187)
 were all installed. Needed to also install PyOxidizer, which was included as
 PyMedPhys `build` dependency extras. So installation of PyOxidizer and other
-CLI dependencies was achieved with [`uv sync --extra build --extra cli`](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311).
+CLI dependencies were achieved with [`uv sync --extra build --extra cli`](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311).
 
 Once this build was completed within the CI, the resulting artifacts needed to
 be uploaded. That was achieved with:

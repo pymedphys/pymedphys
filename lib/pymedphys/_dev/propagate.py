@@ -93,9 +93,7 @@ def read_pyproject():
 
 def get_version_string():
     pyproject_contents = read_pyproject()
-    version_string = pyproject_contents["project"]["version"]
-
-    return version_string
+    return pyproject_contents["project"]["version"]
 
 
 def propagate_version():
@@ -168,7 +166,11 @@ def _make_requirements_txt(
     real_extras = set(py["project"]["optional-dependencies"].keys())
     missing = [x for x in extras if x not in real_extras]
     if missing:
-        raise RuntimeError(f"Unknown extras in REQUIREMENTS_CONFIG: {missing}")
+        available = sorted(real_extras)
+        raise RuntimeError(
+            f"Unknown extras in REQUIREMENTS_CONFIG: {missing}. "
+            f"Available extras are: {available}"
+        )
 
     filepath = REPO_ROOT.joinpath(filename)
 
@@ -177,14 +179,18 @@ def _make_requirements_txt(
     # TODO: Once the hashes pinning issue in poetry is fixed, remove the
     # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
     # for more details.
-    cmd = (
-        "uv export --no-hashes "
-        + uv_environment_flags
-        + " --format requirements-txt --output-file "
-        + filename
-        + " --locked"
-    )
-    subprocess.check_call(cmd, shell=True, cwd=REPO_ROOT)
+    cmd = [
+        "uv",
+        "export",
+        "--no-hashes",
+        *uv_environment_flags.split(),
+        "--format",
+        "requirements-txt",
+        "--output-file",
+        filename,
+        "--locked",
+    ]
+    subprocess.check_call(cmd, cwd=REPO_ROOT)
 
     if include_pymedphys:
         pymedphys_install_command = f".[{','.join(extras)}]\n"
@@ -211,7 +217,7 @@ def propagate_extras():
     def base_name(spec: str) -> str:
         head = spec.split(";", 1)[0].strip()  # drop any ; markers
         m = name_re.match(head)
-        return m.group(1) if m else head
+        return m[1] if m else head
 
     # Build extras -> package list
     extras_map = {}
