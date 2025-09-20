@@ -84,7 +84,7 @@ Fast unit tests with smart matrix strategy.
 
 - **Features**:
   - Full OS matrix on main (Ubuntu, Windows, macOS)
-  - Quick mode for PRs (Ubuntu + Python 3.13 only)
+  - Quick mode for PRs (Ubuntu +  latest supported Python version)
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
@@ -187,7 +187,7 @@ Always Run:
 ├── pre-commit        # Auto-formatting
 ├── lint             # Ruff + Pylint
 ├── type-check       # Pyright
-└── unit-tests       # Quick mode (Ubuntu + Python 3.13)
+└── unit-tests       # Quick mode (Ubuntu + latest supported Python version)
 
 Conditional:
 ├── mosaiq-db-tests  # If database files changed
@@ -266,13 +266,13 @@ Required status checks for merge:
 1. Update matrix in `unit-tests.yml`:
    ```yaml
    python-matrix:
-     default: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+     default: '["3.10", "3.11", "3.12", "3.13"]'
    ```
 
 2. Update `action.yml` default if needed:
    ```yaml
    python-version:
-     default: '3.14'
+     default: '3.13'
    ```
 
 ### Modifying Test Behavior
@@ -304,7 +304,7 @@ act push -W .github/workflows/ci.yml
 
 # Test with specific inputs
 act push -W .github/workflows/unit-tests.yml \
-  --input python-matrix='["3.13"]' \
+  --input python-matrix='["3.12"]' \
   --input quick=true
 
 # Test PR workflow
@@ -427,7 +427,7 @@ When modifying workflows:
 
 ## Version Compatibility
 
-- **Python**: 3.10 - 3.13 (tested in CI)
+- **Python**: 3.10 - 3.12 (tested in CI)
 - **Node.js**: 20.x (for Cypress and build tools)
 - **uv**: Latest version (auto-updated)
 - **GitHub Actions**: Ubuntu 22.04, Windows 2022, macOS 12/13/14

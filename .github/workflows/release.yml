@@ -36,8 +36,7 @@ jobs:
     needs: [quality-checks]
     uses: ./.github/workflows/unit-tests.yml
     with:
-      python-matrix: '["3.13"]'  # Test with latest Python for release
-      quick: false  # Full OS matrix for release
+      quick: false
     secrets: inherit
 
   # Run integration tests for release
@@ -61,7 +60,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'dev tests'
 
       - name: Build distributions

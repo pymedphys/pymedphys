@@ -23,7 +23,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'mosaiq tests dicom'
 
       - name: Wait for SQL Server startup

@@ -17,7 +17,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'dev tests'
 
       - name: Run pyright
@@ -34,7 +33,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'dev tests'
 
       - name: Run mypy

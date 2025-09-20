@@ -4,7 +4,7 @@ description: Standard setup for PyMedPhys CI
 inputs:
   python-version:
     description: Python version to use
-    default: '3.13'
+    default: '3.12'
   extras:
     description: Space-separated list of extras to install
     default: ''

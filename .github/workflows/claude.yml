@@ -35,8 +35,6 @@ jobs:
       # but keeping it helps non-uv tools (e.g., ruff, mypy) when run outside uv.
       - name: Set up Python
         uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
 
       # Install uv (fast Python package manager) for the runner.
       - name: Install uv

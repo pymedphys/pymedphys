@@ -57,7 +57,6 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.13'
           extras: 'all'
 
       - name: Run pip-audit
@@ -73,8 +72,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-project
-        with:
-          python-version: '3.13'
 
       - name: Run Bandit
         continue-on-error: true
