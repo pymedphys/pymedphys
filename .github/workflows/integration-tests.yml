@@ -27,7 +27,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev tests doctests'
+          extras: 'all'
 
       - name: Run doctests
         run: |

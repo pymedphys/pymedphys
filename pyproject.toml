@@ -122,6 +122,7 @@ docs = [
 ]
 
 doctests = [
+  "pytest",
   "ruff",
   "sphinx-book-theme",
   "tabulate",
