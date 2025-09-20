@@ -23,9 +23,9 @@ def gaussian_cdf(x, mu=0, sig=1):
 
 
 def scaled_penumbra_sig(profile_shoulder_edge=0.8):
-    sig = 1 / (2 * np.sqrt(2) * scipy.special.erfinv(profile_shoulder_edge * 2 - 1))  # pylint: disable=no-member
-
-    return sig
+    return 1 / (
+        2 * np.sqrt(2) * scipy.special.erfinv(profile_shoulder_edge * 2 - 1) # pylint: disable=no-member
+    )
 
 
 def create_profile_function(centre, field_width, penumbra_width):
