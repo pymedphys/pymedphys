@@ -63,7 +63,7 @@ Runs pre-commit hooks for code formatting and basic checks.
   - Commits fixes automatically with bot account
   - Caches pre-commit environments
 
-#### `lint.yml` ⭐ NEW
+#### `lint.yml`
 Dedicated linting workflow for code quality.
 
 - **Jobs**:
@@ -71,7 +71,7 @@ Dedicated linting workflow for code quality.
   - `pylint`: Comprehensive Python linting
 - **Always runs on PRs** for early issue detection
 
-#### `type-check.yml` ⭐ NEW
+#### `type-check.yml`
 Static type checking for type safety.
 
 - **Jobs**:
@@ -79,7 +79,7 @@ Static type checking for type safety.
   - `mypy`: Secondary checker (optional/non-blocking)
 - **Always runs on PRs** to ensure type safety
 
-#### `unit-tests.yml` ⭐ NEW
+#### `unit-tests.yml`
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
@@ -90,7 +90,7 @@ Fast unit tests with smart matrix strategy.
 
 ### Extended Workflows (Conditional)
 
-#### `integration-tests.yml` ⭐ NEW
+#### `integration-tests.yml`
 Comprehensive testing beyond unit tests.
 
 - **Test Types**:
@@ -184,7 +184,7 @@ For a typical pull request:
 
 ```
 Always Run:
-├── pre-commit        # Auto-formatting
+├── pre-commit       # Auto-formatting
 ├── lint             # Ruff + Pylint
 ├── type-check       # Pyright
 └── unit-tests       # Quick mode (Ubuntu + latest supported Python version)
@@ -203,9 +203,9 @@ On merge to main:
 Everything from PR workflow, plus:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
-├── cypress-e2e       # Browser tests (if present)
-├── docs-publish      # Deploy to GitHub Pages
-└── security          # Full security scan
+├── cypress-e2e        # Browser tests (if present)
+├── docs-publish       # Deploy to GitHub Pages
+└── security           # Full security scan
 ```
 
 ## Required Secrets
@@ -238,62 +238,8 @@ Required status checks for merge:
 - `database` - Force database tests to run
 - `skip-ci` - Skip CI checks (use sparingly)
 
-## Performance Optimization
 
-### Caching Strategy
-
-- **uv cache**: Dependencies cached by lock file hash
-- **Pre-commit cache**: Cached by config file hash
-- **PyMedPhys data**: Cached by data hash file
-- **Node modules**: Cached by package-lock.json
-
-### Parallel Execution
-
-- Matrix builds run in parallel (OS × Python version)
-- Independent workflows run separately
-- Concurrency groups prevent duplicate runs on PR updates
-
-### Resource Usage
-
-- **Quick PR feedback**: ~5-10 minutes for core checks
-- **Full main branch CI**: ~20-30 minutes with all tests
-- **Release workflow**: ~30-40 minutes with full validation
-
-## Common Maintenance Tasks
-
-### Adding a New Python Version
-
-1. Update matrix in `unit-tests.yml`:
-   ```yaml
-   python-matrix:
-     default: '["3.10", "3.12", "3.13"]'
-   ```
-
-2. Update `action.yml` default if needed:
-   ```yaml
-   python-version:
-     default: '3.13'
-   ```
-
-### Modifying Test Behavior
-
-- **Skip specific tests**: Add pytest markers
-- **Change timeouts**: Modify `timeout-minutes` in workflows
-- **Add test categories**: Create new jobs in `integration-tests.yml`
-
-### Debugging Failed Workflows
-
-1. **Check job summaries**: View the CI summary table
-2. **Download artifacts**: Get JUnit XML test reports
-3. **Re-run specific jobs**: Use GitHub UI "Re-run failed jobs"
-4. **Enable debug logging**:
-   ```yaml
-   env:
-     ACTIONS_RUNNER_DEBUG: true
-     ACTIONS_STEP_DEBUG: true
-   ```
-
-### Testing Workflows Locally
+## Testing Workflows Locally
 
 ```bash
 # Install act
@@ -334,58 +280,6 @@ uv run pytest -m slow
 uv run pymedphys dev docs
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-#### Pre-commit Auto-fix Not Working
-- Check bot has write permissions on repository
-- Ensure PR is from same repo (not a fork)
-- Verify `GITHUB_TOKEN` has appropriate permissions
-
-#### Tests Failing Only in CI
-- Check for OS-specific issues (path separators, line endings)
-- Verify all test data files are committed
-- Check environment variable differences
-- Review timezone/locale dependencies
-
-#### Mosaiq Database Tests Failing
-- SQL Server needs 30+ seconds to start
-- Check password meets SQL Server requirements
-- Verify connection string format
-- Review firewall/port settings
-
-#### Documentation Not Deploying
-- Verify GitHub Pages enabled in settings
-- Check `pages` permission in workflow
-- Ensure no build errors in docs job
-- Verify CNAME file if using custom domain
-
-#### Type Checking Discrepancies
-- Ensure same pyright version locally and in CI
-- Check for missing type stubs
-- Verify all dependencies installed
-- Review pyproject.toml type checking config
-
-#### Claude Not Responding
-- Verify `ANTHROPIC_API_KEY` secret is set
-- Check trigger pattern (`@claude` or `!claude`)
-- Review rate limiting logs
-- Verify comment isn't from a bot
-
-### Performance Issues
-
-#### Slow CI Runs
-- Check matrix strategy (reduce for PRs)
-- Review test parallelization
-- Optimize Docker layer caching
-- Consider self-hosted runners for heavy workloads
-
-#### Cache Misses
-- Verify cache key includes all dependencies
-- Check cache size limits (10GB max)
-- Review cache eviction (7 days unused)
-- Consider multiple cache keys with fallbacks
 
 ## Security Considerations
 
@@ -397,50 +291,11 @@ uv run pymedphys dev docs
 - **Review security alerts**: Weekly scan results
 - **Limit workflow triggers**: Avoid `pull_request_target` misuse
 
-## Migration Guide
-
-### From Monolithic to Modular Workflows
-
-1. **Phase 1**: Add new workflow files
-   - Keep existing `tests.yml` as compatibility wrapper
-   - Add new modular workflows alongside
-
-2. **Phase 2**: Update CI orchestration
-   - Replace `ci.yml` with new version
-   - Update branch protection rules
-
-3. **Phase 3**: Clean up
-   - Remove compatibility wrappers
-   - Update documentation
-   - Train team on new structure
-
-## Contributing
-
-When modifying workflows:
-
-1. **Test in feature branch** using `workflow_dispatch`
-2. **Update this README** for any changes
-3. **Follow patterns** for consistency
-4. **Add error handling** and retries where appropriate
-5. **Document inputs/outputs** for reusable workflows
-6. **Consider backward compatibility** for breaking changes
 
 ## Version Compatibility
 
-- **Python**: 3.10 - 3.12 (tested in CI)
+- **Python**: 3.10, 3.12 (tested in CI)
 - **Node.js**: 20.x (for Cypress and build tools)
 - **uv**: Latest version (auto-updated)
 - **GitHub Actions**: Ubuntu 22.04, Windows 2022, macOS 12/13/14
 - **SQL Server**: 2022 Latest (for Mosaiq tests)
-
-## Getting Help
-
-1. Check workflow run logs in Actions tab
-2. Review this README for configuration
-3. Search existing issues with `ci/cd` label
-4. Open new issue with reproduction steps
-5. Check [GitHub Actions documentation](https://docs.github.com/actions)
-
-## License
-
-These workflows are part of the PyMedPhys project and follow the same Apache 2.0 license.
