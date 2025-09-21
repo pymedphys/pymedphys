@@ -24,7 +24,7 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@v4
+      uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4
       with:
         enable-cache: true
         cache-dependency-glob: |

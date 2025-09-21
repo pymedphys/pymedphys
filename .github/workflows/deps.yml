@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-python@v5
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4
 
       - name: Update dependencies
         id: update
@@ -53,7 +53,7 @@ jobs:
 
       - name: Create PR
         if: steps.update.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
         with:
           title: "⬆️ Update dependencies"
           body-path: updates.md
