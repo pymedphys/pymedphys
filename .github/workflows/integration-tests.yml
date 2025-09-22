@@ -1,0 +1,105 @@
+name: Integration Tests
+
+on:
+  workflow_call:
+    inputs:
+      run-slow:
+        type: boolean
+        default: false
+        required: false
+  workflow_dispatch:
+    inputs:
+      run-slow:
+        type: boolean
+        default: true
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  doctests:
+    name: Doctests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'all'
+
+      - name: Run doctests
+        run: |
+          uv run pymedphys dev doctests -v
+
+  slow-tests:
+    name: Slow Tests
+    if: ${{ inputs.run-slow }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+
+      - name: Run slow tests
+        run: |
+          uv run pytest -m slow -q
+
+  stackoverflow:
+    name: StackOverflow Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      - name: Run stackoverflow examples
+        run: |
+          if [[ -x scripts/stackoverflow.sh ]]; then
+            bash scripts/stackoverflow.sh
+          fi
+          if [[ -f examples/stackoverflow/gamma.py ]]; then
+            uv run python examples/stackoverflow/gamma.py
+          fi
+
+  wheel-build:
+    name: Wheel Build Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Build and test wheel
+        run: |
+          uv build --wheel
+          pip install dist/*.whl
+          pymedphys --help
+          python -c "import pymedphys"
+
+  propagate:
+    name: Propagate Scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Run propagate scripts
+        run: |
+          if [[ -x scripts/propagate.sh ]]; then
+            bash scripts/propagate.sh
+          elif [[ -x tools/propagate.sh ]]; then
+            bash tools/propagate.sh
+          else
+            echo "No propagate script found, skipping."
+          fi

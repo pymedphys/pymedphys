@@ -7,4 +7,5 @@
 file-structure
 docs-guide
 release-guide
+workflows
 ```

@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write  # For PyPI trusted publishing
+
+jobs:
+  # Run core quality checks
+  quality-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Starting release quality checks"
+
+  lint:
+    needs: [quality-checks]
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+
+  type-check:
+    needs: [quality-checks]
+    uses: ./.github/workflows/type-check.yml
+    secrets: inherit
+
+  # Run focused unit tests
+  unit-tests:
+    needs: [quality-checks]
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      quick: false
+    secrets: inherit
+
+  # Run integration tests for release
+  integration-tests:
+    needs: [unit-tests]
+    uses: ./.github/workflows/integration-tests.yml
+    with:
+      run-slow: true  # Include slow tests for release
+    secrets: inherit
+
+  # Build and publish
+  build-and-publish:
+    needs: [lint, type-check, unit-tests, integration-tests]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pymedphys
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+
+      - name: Build distributions
+        run: |
+          uv build --wheel --sdist
+
+          # Verify wheel
+          uv pip install --dry-run dist/*.whl
+          uv pip install twine
+          uv run twine check dist/*
+
+      - name: Test installation
+        run: |
+          # Create a fresh venv and test installation
+          uv venv test-env
+          source test-env/bin/activate || test-env/Scripts/activate
+          uv pip install dist/*.whl
+          pymedphys --version
+          python -c "import pymedphys; print(pymedphys.__version__)"
+          deactivate
+
+      - name: Publish to TestPyPI
+        if: inputs.dry_run != false
+        run: |
+          uv publish --index-url https://test.pypi.org/simple/
+
+      - name: Publish to PyPI
+        if: inputs.dry_run == false || github.event_name == 'release'
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836
+        with:
+          files: dist/*
+
+      - name: Create release summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## Release Summary 🚀
+
+          **Version:** ${{ github.ref_name }}
+          **Dry Run:** ${{ inputs.dry_run || false }}
+
+          ### Quality Checks
+          - Linting: ${{ needs.lint.result }}
+          - Type Check: ${{ needs.type-check.result }}
+          - Unit Tests: ${{ needs.unit-tests.result }}
+          - Integration Tests: ${{ needs.integration-tests.result }}
+
+          ### Artifacts
+          Check the workflow artifacts for built wheels and sdist.
+          EOF

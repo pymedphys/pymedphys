@@ -1,0 +1,40 @@
+name: Type Check
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pyright:
+    name: Pyright
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+
+      - name: Run pyright
+        run: |
+          uvx pyright
+
+  mypy:
+    name: MyPy (optional)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true  # Don't fail the workflow if mypy fails
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+
+      - name: Run mypy
+        run: |
+          uv run mypy --install-types --non-interactive pymedphys || true

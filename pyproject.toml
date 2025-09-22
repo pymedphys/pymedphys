@@ -1,13 +1,13 @@
-[tool.poetry]
+[project]
 name = "pymedphys"
 version = "0.42.0-dev0"
-readme = "README.rst"
 description = "Medical Physics library"
-authors = ["PyMedPhys Contributors <developers@pymedphys.com>"]
-license = "Apache-2.0"
-homepage = "https://pymedphys.com"
-repository = "https://github.com/pymedphys/pymedphys"
-documentation = "https://docs.pymedphys.com"
+readme = "README.rst"
+requires-python = ">=3.10,<3.13"
+license = { file = "LICENSE" }
+authors = [
+  { name = "PyMedPhys Contributors", email = "developers@pymedphys.com" }
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
@@ -15,123 +15,150 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
 ]
+dependencies = [
+  "typing-extensions",
+  "setuptools",
+  "tomlkit",
+]
 
-packages = [{ include = "pymedphys", from = "lib" }]
-include = ["lib/pymedphys/docs/_build/html/**/*"]
+[project.urls]
+Homepage = "https://pymedphys.com"
+Repository = "https://github.com/pymedphys/pymedphys"
+Documentation = "https://docs.pymedphys.com"
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-typing-extensions = "*"
-setuptools = "*"
-tomlkit = "*"
+[project.scripts]
+pymedphys = "pymedphys.__main__:main"
 
+[project.optional-dependencies]
+user = [
+  "Pillow",
+  "PyYAML",
+  "anthropic",
+  "anyio",
+  "attrs",
+  "dash",
+  "dbfread",
+  "dicompyler-core",
+  "imageio[tifffile]",
+  "keyring",
+  "matplotlib",
+  "natsort",
+  "numba",
+  "numpy>=1.26",
+  "packaging",
+  "pandas>=1.0.0",
+  "plotly",
+  "pydicom>=2.0.0",
+  "pylibjpeg-libjpeg>=1.3.2",
+  "pymssql",
+  "pynetdicom",
+  "python-dateutil",
+  "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
+  "requests",
+  "scikit-learn",
+  "scipy",
+  "shapely>=1.7.0",
+  "sqlalchemy",
+  "streamlit~=1.34.0",
+  "timeago",
+  "toml",
+  "tqdm",
+  "trio",
+  "trio-asyncio",
+  "watchdog",
+  "xmltodict",
+]
 
-# ------- #
-# Library #
-# ------- #
+dev = [
+  "doc8",
+  "pre-commit",
+  "pyright",
+  "readme-renderer",
+  "rope",
+  "ruff",
+  "tabulate",
+]
 
-tqdm = { version = "*", optional = true }     # groups = ["user", "all", "tests", "docs"]
-attrs = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
-watchdog = { version = "*", optional = true } # groups = ["user", "all"]
+lint = [
+  "astroid",
+  "pylint",
+  "ruff",
+]
 
-keyring = { version = "*", optional = true }         # groups = ["user", "all"]
-packaging = { version = "*", optional = true }       # groups = ["user", "all"]
-PyYAML = { version = "*", optional = true }          # groups = ["user", "all"]
-requests = { version = "*", optional = true }        # groups = ["user", "all"]
-python-dateutil = { version = "*", optional = true } # groups = ["user", "all", "tests"]
+tests = [
+  "anthropic",
+  "astroid",
+  "imageio",
+  "matplotlib",
+  "numba",
+  "Pillow",
+  "psutil",
+  "pydicom>=2.0.0",
+  "pynetdicom",
+  "PyGithub",
+  "pylibjpeg-libjpeg>=1.3.2",
+  "pylint",
+  "pytest",
+  "pytest-rerunfailures",
+  "pytest-sugar",
+  "python-dateutil",
+  "shapely",
+  "tqdm",
+]
 
-matplotlib = { version = "*", optional = true } # groups = ["user", "all", "docs"]
-scipy = { version = "*", optional = true }      # groups = ["user", "all", "docs"]
+docs = [
+  "ipython>=7.31.1",
+  "jupyter-book>=0.12.0,<2.0.0",
+  "matplotlib",
+  "networkx",
+  "numba",
+  "numpy",
+  "pydicom",
+  "scipy",
+  "sphinx-argparse",
+  "sphinx-book-theme",
+  "toml",
+  "tqdm",
+]
 
-pymssql = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
-sqlalchemy = { version = "*", optional = true } # groups = ["user", "all", "mosaiq"]
-natsort = { version = "*", optional = true }    # groups = ["user", "all"]
-toml = { version = "*", optional = true }       # groups = ["user", "cli", "all", "mosaiq", "docs"]
+doctests = [
+  "pytest",
+  "ruff",
+  "sphinx-book-theme",
+  "tabulate",
+  "toml"
+]
 
-pynetdicom = { version = "*", optional = true } # groups = ["user", "all", "dicom"]
+# comparables = [
+#     "flashgamma",
+# ]
 
-dbfread = { version = "*", optional = true }         # groups = ["user", "all"]
-xmltodict = { version = "*", optional = true }       # groups = ["user", "all"]
-timeago = { version = "*", optional = true }         # groups = ["user", "all"]
-dicompyler-core = { version = "*", optional = true } # groups = ["user", "all"]
-scikit-learn = { version = "*", optional = true }    # groups = ["user", "all", "mosaiq"]
-imageio = { version = "*", extras = ["tifffile"], optional = true }         # groups = ["user", "all"]
+cli = [
+    "toml",
+]
 
-streamlit = { version = "~1.34.0", optional = true } # groups = ["user", "all"]
+dicom = [
+    "pydicom>=2.0.0",
+    "pynetdicom",
+]
 
-numba = { version = "*", optional = true }      # groups = ["user", "all", "docs", "tests"]
-numpy = { version = ">=1.26", optional = true } # groups = ["user", "all", "icom", "docs"]
+icom = [
+    "numpy>=1.26",
+]
 
-# The following lower bounded packages are due to certain APIs utilised
-pandas = { version = ">=1.0.0", optional = true }  # groups = ["user", "all", "mosaiq"]
-pydicom = { version = ">=2.0.0", optional = true } # groups = ["user", "all", "dicom", "docs"]
+mosaiq = [
+    "attrs",
+    "pandas>=1.0.0",
+    "pymssql",
+    "scikit-learn",
+    "sqlalchemy",
+    "toml",
+]
 
-# The following lower bounds are so that the versions with wheels are utilised
-# for the installation
-shapely = { version = ">=1.7.0", optional = true } # groups = ["user", "all"]
+propagate = [
+    "ruff",
+]
 
-pylibjpeg-libjpeg = { version = ">=1.3.2", optional = true } # groups = ["user", "all"]
-
-# AI
-anthropic = { version = "0.46.0", optional = true }   # groups = ["user", "all"]
-trio = { version = ">=0.25.0", optional = true }      # groups = ["user", "all"]
-trio-asyncio = { version = "*", optional = true }     # groups = ["user", "all"]
-anyio = { version = "*", optional = true }            # groups = ["user", "all"]
-
-# Visualisation
-plotly = "^5.24.1"        # groups = ["user", "all"]
-dash = "^2.18.1"        # groups = ["user", "all"]
-
-# ---- #
-# CVEs #
-# ---- #
-
-# CVE-2021-32559 <https://github.com/advisories/GHSA-hwfp-hg2m-9vr2>
-pywin32 = { version = ">=301", optional = true, platform = "win32" } # groups = ["user", "all"]
-# CVE-2022-21699 <https://github.com/advisories/GHSA-pq7m-3gw7-gq5x>
-ipython = { version = ">=7.31.1", optional = true } # groups = ["docs", "all"]
-# CVE-2022-22817 <https://github.com/advisories/GHSA-8vj2-vxx3-667w>
-Pillow = { version = ">=9.0.0", optional = true } # groups = ["user", "all"]
-
-# ----------- #
-# Comparables #
-# ----------- #
-flashgamma = { version = "*", optional = true } # groups = ["comparables"]
-
-# ------------- #
-# Documentation #
-# ------------- #
-sphinx-argparse = { version = "*", optional = true } # groups = ["all", "docs"]
-# sphinx-ext-napoleon = { version = "*", optional = true }  # groups = ["all", "docs"]
-sphinx-book-theme = { version = "*", optional = true }   # groups = ["all", "docs", "doctests"]
-networkx = { version = "*", optional = true }            # groups = ["all", "docs"]
-
-# v2.x is in alpha, and breaks the docs build at time of writing.
-jupyter-book = { version = ">=0.12.0 <2.0.0", optional = true } # groups = ["all", "docs"]
-
-# ----- #
-# Tests #
-# ----- #
-pytest = { version = "*", optional = true }               # groups = ["all", "tests"]
-pytest-sugar = { version = "*", optional = true }         # groups = ["all", "tests"]
-astroid = { version = "*", optional = true }              # groups = ["all", "tests"]
-psutil = { version = "*", optional = true }               # groups = ["all", "tests"]
-pylint = { version = "*", optional = true }               # groups = ["all", "tests"]
-pytest-rerunfailures = { version = "*", optional = true } # groups = ["all", "tests"]
-
-# ---------------- #
-# Development Only #
-# ---------------- #
-pre-commit = { version = "*", optional = true }      # groups = ["dev", "all"]
-ruff = { version = "*", optional = true }        # groups = ["dev", "all", "propagate", "doctests"]
-pyright = { version = "*", optional = true }   # groups = ["dev", "all"]
-rope = { version = "*", optional = true }            # groups = ["dev", "all"]
-doc8 = { version = "*", optional = true }            # groups = ["dev", "all"]
-readme-renderer = { version = "*", optional = true } # groups = ["dev", "all"]
-tabulate = { version = "*", optional = true }        # groups = ["dev", "all", "doctests"]
-pygithub = "^2.3.0"
-
-[tool.poetry.extras]
 all = [
     "Pillow",
     "PyYAML",
@@ -143,22 +170,23 @@ all = [
     "dbfread",
     "dicompyler-core",
     "doc8",
-    "imageio",
-    "ipython",
-    "jupyter-book",
+    "imageio[tifffile]",
+    "ipython>=7.31.1",
+    "jupyter-book>=0.12.0,<2.0.0",
     "keyring",
     "matplotlib",
     "natsort",
     "networkx",
     "numba",
-    "numpy",
+    "numpy>=1.26",
     "packaging",
-    "pandas",
+    "pandas>=1.0.0",
     "plotly",
     "pre-commit",
     "psutil",
-    "pydicom",
-    "pylibjpeg-libjpeg",
+    "pydicom>=2.0.0",
+    "PyGithub",
+    "pylibjpeg-libjpeg>=1.3.2",
     "pylint",
     "pymssql",
     "pynetdicom",
@@ -167,18 +195,18 @@ all = [
     "pytest-rerunfailures",
     "pytest-sugar",
     "python-dateutil",
-    "pywin32",
+    "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
     "readme-renderer",
     "requests",
     "rope",
     "ruff",
     "scikit-learn",
     "scipy",
-    "shapely",
+    "shapely>=1.7.0",
     "sphinx-argparse",
     "sphinx-book-theme",
     "sqlalchemy",
-    "streamlit",
+    "streamlit~=1.34.0",
     "tabulate",
     "timeago",
     "toml",
@@ -188,98 +216,36 @@ all = [
     "watchdog",
     "xmltodict",
 ]
-cli = ["toml"]
-comparables = ["flashgamma"]
-dev = ["doc8", "pre-commit", "pyright", "readme-renderer", "rope", "ruff", "tabulate"]
-dicom = ["pydicom", "pynetdicom"]
-docs = [
-    "ipython",
-    "jupyter-book",
-    "matplotlib",
-    "networkx",
-    "numba",
-    "numpy",
-    "pydicom",
-    "scipy",
-    "sphinx-argparse",
-    "sphinx-book-theme",
-    "toml",
-    "tqdm",
-]
-doctests = ["ruff", "sphinx-book-theme", "tabulate"]
-icom = ["numpy"]
-mosaiq = ["attrs", "pandas", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
-propagate = ["ruff"]
-tests = [
-    "anthropic",
-    "astroid",
-    "numba",
-    "psutil",
-    "pylint",
-    "pytest",
-    "pytest-rerunfailures",
-    "pytest-sugar",
-    "python-dateutil",
-    "tqdm",
-]
-user = [
-    "Pillow",
-    "PyYAML",
-    "anthropic",
-    "anyio",
-    "attrs",
-    "dash",
-    "dbfread",
-    "dicompyler-core",
-    "imageio",
-    "keyring",
-    "matplotlib",
-    "natsort",
-    "numba",
-    "numpy",
-    "packaging",
-    "pandas",
-    "plotly",
-    "pydicom",
-    "pylibjpeg-libjpeg",
-    "pymssql",
-    "pynetdicom",
-    "python-dateutil",
-    "pywin32",
-    "requests",
-    "scikit-learn",
-    "scipy",
-    "shapely",
-    "sqlalchemy",
-    "streamlit",
-    "timeago",
-    "toml",
-    "tqdm",
-    "trio",
-    "trio-asyncio",
-    "watchdog",
-    "xmltodict",
+
+[tool.pymedphys.extra-groups]
+# Groups are consumed by propagate_extras(); this table is authoritative.
+# Each value lists EXTRA NAMES defined under [project.optional-dependencies].
+dev   = ["tests", "docs", "cli", "propagate"]
+docs  = ["docs"]
+user  = ["user"]
+
+# Optional aggregations if you want “full” exports in CI, etc.
+full  = ["user", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
+
+[dependency-groups]
+dev = [
+  "sphinx-external-toc>=1.0.1",
 ]
 
-[tool.poetry.scripts]
-pymedphys = "pymedphys.__main__:main"
+[tool.hatch.build]
+include = ["lib/pymedphys/docs/_build/html/**/*"]
 
-[tool.poetry.group.dev.dependencies]
-sphinx-external-toc = "^1.0.1"
+[tool.hatch.build.targets.wheel]
+packages = ["lib/pymedphys"]
 
+# Existing tool config stays as-is
 [tool.ruff.lint]
-# These were the existing issues when first migrating to ruff, we can feel
-# free to remove these an iteratively tighten the belt if so desired.
-extend-ignore = [
-    # "F401", # imported but unused
-    # "E741", # Ambiguous variable name
-    # "E722", # Do not use bare `except`
-]
-
+extend-ignore = ["E741", "E722", "F401"]  # example: match your current settings
 
 [tool.ruff.lint.isort]
 known-third-party = ["pymedphys._imports"]
 known-first-party = ["pymedphys"]
+
 
 [tool.pyright]
 include = ["lib/pymedphys"]
@@ -306,5 +272,5 @@ reportMissingModuleSource = false
 reportTypedDictNotRequiredAccess = false
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"

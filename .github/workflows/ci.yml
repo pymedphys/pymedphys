@@ -1,0 +1,204 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mosaiq: ${{ steps.filter.outputs.mosaiq }}
+      docs: ${{ steps.filter.outputs.docs }}
+      python: ${{ steps.filter.outputs.python }}
+    steps:
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: filter
+        with:
+          filters: |
+            mosaiq:
+              - 'lib/pymedphys/**/*mosaiq*'
+              - 'lib/pymedphys/**/*database*'
+            docs:
+              - 'docs/**'
+              - 'lib/pymedphys/docs/**'
+              - '*.md'
+            python:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+
+  # Pre-commit always runs
+  pre-commit:
+    uses: ./.github/workflows/pre-commit.yml
+    secrets: inherit
+
+  # Linting always runs for PRs and main
+  lint:
+    needs: [pre-commit]
+    if: success() || failure()
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+
+  # Type checking always runs for PRs and main
+  type-check:
+    needs: [pre-commit]
+    if: success() || failure()
+    uses: ./.github/workflows/type-check.yml
+    secrets: inherit
+
+  # Unit tests run only latest Python on Ubuntu for PRs, and full Python/OS matrix on main
+  unit-tests:
+    needs: [pre-commit]
+    if: success() || failure()
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      quick: ${{ github.event_name == 'pull_request' }}
+    secrets: inherit
+
+
+  # Integration tests run on main or when labeled
+  integration-tests:
+    needs: [unit-tests]
+    if: |
+      github.event_name == 'push' ||
+      contains(github.event.pull_request.labels.*.name, 'full-test')
+    uses: ./.github/workflows/integration-tests.yml
+    with:
+      run-slow: ${{ github.event_name == 'push' }}
+    secrets: inherit
+
+  # Database tests run based on changes or labels
+  mosaiq-db-tests:
+    needs: [pre-commit, changes]
+    if: |
+      (success() || failure()) && (
+        github.event_name == 'push' ||
+        contains(github.event.pull_request.labels.*.name, 'database') ||
+        needs.changes.outputs.mosaiq == 'true'
+      )
+    uses: ./.github/workflows/mosaiq-db-tests.yml
+    secrets: inherit
+
+  # Docs check for PRs with doc changes
+  docs-check:
+    needs: [changes]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.docs == 'true'
+    uses: ./.github/workflows/docs.yml
+    with:
+      publish: false
+    secrets: inherit
+
+  # Docs publish on main
+  docs-publish:
+    needs: [unit-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/docs.yml
+    with:
+      publish: true
+    secrets: inherit
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+  # Cypress E2E tests only on main
+  cypress-e2e:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Cypress
+        id: check
+        run: |
+          if [[ -f package.json && -d cypress ]]; then
+            echo "has-cypress=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-cypress=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node
+        if: steps.check.outputs.has-cypress == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install and run Cypress
+        if: steps.check.outputs.has-cypress == 'true'
+        env:
+          CI: true
+        run: |
+          npm ci
+          npx cypress run
+
+  # Summary job provides overall status
+  summary:
+    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish, cypress-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Generate Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## CI Results 📊
+
+          ### Core Checks (Always Run)
+          | Check | Status |
+          |-------|--------|
+          | Pre-commit | ${{ needs.pre-commit.result }} |
+          | Lint | ${{ needs.lint.result }} |
+          | Type Check | ${{ needs.type-check.result }} |
+          | Unit Tests | ${{ needs.unit-tests.result }} |
+
+          ### Extended Checks
+          | Check | Status |
+          |-------|--------|
+          | Integration Tests | ${{ needs.integration-tests.result || 'skipped' }} |
+          | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
+          | Documentation | ${{ needs.docs-check.result || needs.docs-publish.result || 'skipped' }} |
+          | Cypress E2E | ${{ needs.cypress-e2e.result || 'skipped' }} |
+
+          **Workflow:** ${{ github.workflow }}
+          **Triggered by:** ${{ github.actor }}
+          **Event:** ${{ github.event_name }}
+          **Branch:** ${{ github.ref_name }}
+          EOF
+
+      - name: Check Required Status
+        if: always()
+        run: |
+          # These must pass for PRs
+          if [[ "${{ needs.pre-commit.result }}" != "success" && "${{ needs.pre-commit.result }}" != "skipped" ]]; then
+            echo "❌ Pre-commit failed"
+            exit 1
+          fi
+          if [[ "${{ needs.lint.result }}" != "success" && "${{ needs.lint.result }}" != "skipped" ]]; then
+            echo "❌ Linting failed"
+            exit 1
+          fi
+          if [[ "${{ needs.type-check.result }}" != "success" && "${{ needs.type-check.result }}" != "skipped" ]]; then
+            echo "❌ Type checking failed"
+            exit 1
+          fi
+          if [[ "${{ needs.unit-tests.result }}" != "success" && "${{ needs.unit-tests.result }}" != "skipped" ]]; then
+            echo "❌ Unit tests failed"
+            exit 1
+          fi
+          echo "✅ All required checks passed"

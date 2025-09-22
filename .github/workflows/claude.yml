@@ -23,11 +23,42 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      # Optional: set up a default Python for tools that expect it.
+      # uv can also manage its own Python, so this is not strictly required,
+      # but keeping it helps non-uv tools (e.g., ruff, mypy) when run outside uv.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+      # Install uv (fast Python package manager) for the runner.
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Restore uv cache to speed up dependency ops.
+      - name: Restore uv cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      # Optionally ensure a Python is available via uv (honors .python-version/pyproject if present)
+      # Skipped if you rely on actions/setup-python. Uncomment if you want uv-managed Python:
+      # - name: Ensure Python via uv
+      #   run: |
+      #     uv python install
 
       - name: Run Claude Code
         id: claude
@@ -35,6 +66,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: claude-opus-4-20250514
+          # The action will execute only these commands when tools are invoked.
           allowed_tools: >
             View,
             Edit,
@@ -75,25 +107,6 @@ jobs:
             Bash(gh pr view),
             Bash(gh pr comment),
             Bash(gh issue comment),
-            Bash(poetry install),
-            Bash(poetry install -E all),
-            Bash(poetry run pymedphys:*),
-            Bash(poetry run pytest),
-            Bash(poetry run pre-commit run),
-            Bash(poetry run pre-commit run --all-files),
-            Bash(poetry add),
-            Bash(poetry remove),
-            Bash(poetry update),
-            Bash(poetry lock),
-            Bash(poetry lock --no-update),
-            Bash(poetry show),
-            Bash(poetry show --tree),
-            Bash(poetry show --outdated),
-            Bash(poetry check),
-            Bash(poetry version),
-            Bash(poetry env info),
-            Bash(poetry env use),
-            Bash(poetry cache clear),
             Bash(uv pip install),
             Bash(uv pip install -e),
             Bash(uv pip install -r),
@@ -105,11 +118,6 @@ jobs:
             Bash(uv remove),
             Bash(uv tool install),
             Bash(uv tool run),
-            Bash(poetry run ruff check),
-            Bash(poetry run ruff check --fix),
-            Bash(poetry run ruff format),
-            Bash(poetry run pyright),
-            Bash(poetry run mypy),
             Bash(uv run ruff check),
             Bash(uv run ruff check --fix),
             Bash(uv run ruff format),

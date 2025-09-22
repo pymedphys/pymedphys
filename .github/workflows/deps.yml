@@ -1,0 +1,62 @@
+name: Update Dependencies
+
+on:
+  schedule:
+    - cron: '0 0 * * MON'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4
+
+      - name: Update dependencies
+        id: update
+        run: |
+          # Save current lock
+          cp uv.lock uv.lock.old
+
+          # Update
+          uv lock --upgrade
+
+          # Check if changed
+          if diff -q uv.lock uv.lock.old > /dev/null; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+
+            # Generate changelog
+            echo "## Dependency Updates" > updates.md
+            echo "" >> updates.md
+            echo '```diff' >> updates.md
+            diff uv.lock.old uv.lock | grep "^[><]" | head -50 >> updates.md
+            echo '```' >> updates.md
+          fi
+
+      - name: Run tests
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          uv sync --frozen --extra user --extra tests --extra docs
+          uv run -- pymedphys dev tests  # Full test run, not just --co
+          uv run -- pymedphys dev docs  # Also test docs build
+
+      - name: Create PR
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
+        with:
+          title: "⬆️ Update dependencies"
+          body-path: updates.md
+          branch: deps/update-${{ github.run_number }}
+          commit-message: "chore: update dependencies"
+          labels: dependencies

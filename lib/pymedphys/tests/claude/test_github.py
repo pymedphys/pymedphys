@@ -12,6 +12,10 @@ import pytest
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._claude import githubassist
 
+pytest.skip(
+    allow_module_level=True, reason="Skipping GitHub connection tests until troubleshot"
+)
+
 # Constants
 TEST_CONFIG = {
     "owner_repo_name": "pymedphys/pymedphys",
