@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pytest
+from pymedphys._imports import pytest, toml
 
 import pymedphys
 from pymedphys._mosaiq import helpers
@@ -164,3 +165,36 @@ def test_get_qcls_by_date(connection: pymedphys.mosaiq.Connection):
     for dt in list(set(QCL_COMPLETED_DATETIMES).difference({a_completion_datetime})):
         # pylint: disable=unsubscriptable-object
         assert np.datetime64(dt) not in qcls_by_date["actual_completed_time"].tolist()
+
+
+@pytest.mark.mosaiqdb
+def test_mosaiq_table_to_type_map_dict(connection: pymedphys.mosaiq.Connection):
+    types_map: dict[str, dict[str, str]] = {"TxField": {"RowVers": "varbinary"}}
+    try:
+        mosaiq_table_type_map_dict = helpers.mosaiq_table_to_type_map_dict(
+            connection, table_name="TxField"
+        )
+        HERE = pathlib.Path(__file__).parent
+        PMP_LIB_DIR = HERE.parent.parent
+        toml_path = PMP_LIB_DIR.joinpath("_mosaiq/mock/data/types_map.toml")
+        # types_map.toml got moved around, so just in case it gets moved around
+        # in the future, this might help a tester figure out what's going on
+        print(f"Attempting to open types_map.toml from {toml_path}")
+        with open(toml_path) as f:
+            types_map = toml.load(f)
+            # for key, value in types_map["TxField"].items():
+            #     print(f"Key: {key} ; Value: {value}")
+        for column_name, data_type in types_map["TxField"].items():
+            if data_type in utilities.TYPE_CASTING:
+                types_map["TxField"][column_name] = utilities.TYPE_CASTING[
+                    data_type
+                ]  # needed for TYPE_CASTING workaround in _mosaiq/mock/utilities.py
+        # For some reason, the "timestamp" type of RowVers becomes
+        # "varbinary" in the mimicked database, and not "largebinary" as
+        # expected by the TYPE_CASTING in _mosaiq/mock/utilities.py.
+        # The only workaround I could get properly working is the one below.
+
+        types_map["TxField"]["RowVers"] = "varbinary"  # workaround
+    except FileNotFoundError as e_table_or_mapping:
+        print(e_table_or_mapping)
+    assert mosaiq_table_type_map_dict["TxField"] == types_map["TxField"]
