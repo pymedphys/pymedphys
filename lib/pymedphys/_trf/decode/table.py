@@ -14,10 +14,14 @@
 
 # from typing import List
 
+import logging
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 
 from .constants import CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 def decode_trf_table(trf_table_contents, header_table_contents):
@@ -80,6 +84,17 @@ def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
             np.concatenate((timestamps[i], item_parts))
             for i, item_parts in enumerate(item_part_values_data)
         ]
+        # prior to raising error below for lack of recognised key in the dict
+        # emit the list of items that aren't known.
+        # a potential enhancement would be to change the comprehension to operate
+        # on column_names_from_dict_including_unknowns rather than
+        # column_names_from_dict
+        column_names_from_dict_including_unknowns = dict(column_names_from_dict)
+        for c in column_names_from_data:
+            if c not in column_names_from_dict_including_unknowns:
+                column_names_from_dict_including_unknowns[c] = "Item: " + c
+                logger.debug('Unrecognized TRF column: "%s": "Item: %s"', c, c)
+
         column_names = ["Timestamp Data"] + [
             column_names_from_dict[c] for c in column_names_from_data
         ]
