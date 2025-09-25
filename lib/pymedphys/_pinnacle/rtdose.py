@@ -64,8 +64,8 @@ def construct_dose_from_binary(binary_data, trial_data, dose_array):
     """
     idx=0
     for z in range(trial_data["DoseGrid .Dimension .Z"] - 1, -1, -1):
-        for y in range(0, trial_data["DoseGrid .Dimension .Y"]):
-            for x in range(0, trial_data["DoseGrid .Dimension .X"]):
+        for y in range(trial_data["DoseGrid .Dimension .Y"]):
+            for x in range(trial_data["DoseGrid .Dimension .X"]):
                 data_element = binary_data[idx:idx+4]
                 value = struct.unpack(">f", data_element)[0]
                 dose_array[x, y, z] = value
@@ -345,7 +345,7 @@ def convert_dose(plan, export_path):
         if os.path.isfile(binary_file):
             size = os.path.getsize(binary_file)
             with open(binary_file, "rb") as b:
-                data = b.read
+                data = b.read()
                 if size > 32:
                     # Binary files that are decidedly non-empty
                     dose_grid = construct_dose_from_binary(data, trial_info, dose_grid)
