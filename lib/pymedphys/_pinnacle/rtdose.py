@@ -58,6 +58,21 @@ from .constants import (
     RTPlanSOPClassUID,
 )
 
+def construct_dose_from_binary(binary_data, trial_data, dose_array):
+    """
+    Read binary data into dose array with dimensions from trial data
+    """
+    idx=0
+    for z in range(trial_data["DoseGrid .Dimension .Z"] - 1, -1, -1):
+        for y in range(trial_data["DoseGrid .Dimension .Y"]):
+            for x in range(trial_data["DoseGrid .Dimension .X"]):
+                data_element = binary_data[idx:idx+4]
+                value = struct.unpack(">f", data_element)[0]
+                dose_array[x, y, z] = value
+                idx += 4
+    return dose_array
+
+
 
 def trilinear_interpolation(idx, grid):
     """
@@ -328,13 +343,20 @@ def convert_dose(plan, export_path):
         ]
 
         if os.path.isfile(binary_file):
+            size = os.path.getsize(binary_file)
             with open(binary_file, "rb") as b:
-                for z in range(trial_info["DoseGrid .Dimension .Z"] - 1, -1, -1):
-                    for y in range(0, trial_info["DoseGrid .Dimension .Y"]):
-                        for x in range(0, trial_info["DoseGrid .Dimension .X"]):
-                            data_element = b.read(4)
-                            value = struct.unpack(">f", data_element)[0]
-                            dose_grid[x, y, z] = value
+                data = b.read()
+                if size > 32:
+                    # Binary files that are decidedly non-empty
+                    dose_grid = construct_dose_from_binary(data, trial_info, dose_grid)
+                elif 8 <= size <= 32:
+                    if all(byte == 0 for byte in data):
+                        # File is full of zeroes
+                        continue
+                    else:
+                        # File has non-zero content
+                        dose_grid = construct_dose_from_binary(data, trial_info, dose_grid)
+
         else:
             plan.logger.warning("Dose file not found")
             plan.logger.error("Skipping generating RTDOSE")
