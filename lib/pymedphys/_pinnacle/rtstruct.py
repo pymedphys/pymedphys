@@ -45,6 +45,8 @@ import time
 
 from pymedphys._imports import pydicom
 
+from pymedphys._dicom.compat import ensure_transfer_syntax
+
 from .constants import (
     GImplementationClassUID,
     GTransferSyntaxUID,
@@ -535,7 +537,6 @@ def convert_struct(plan, export_path, skip_pattern):
     ds.ApprovalStatus = "UNAPPROVED"
     
     # Set the transfer syntax using ensure_transfer_syntax
-    from pymedphys._dicom.compat import ensure_transfer_syntax
     ensure_transfer_syntax(ds)
 
     # Save the RTDose Dicom File

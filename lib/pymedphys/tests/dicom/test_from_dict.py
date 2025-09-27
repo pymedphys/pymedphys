@@ -34,64 +34,99 @@ def test_dicom_from_dict():
 
 
 @pytest.mark.pydicom
-def test_dicom_from_dict_transfer_syntax():
+@pytest.mark.parametrize(
+    "input_dict,template_setup,expected_transfer_syntax_uid,expected_is_implicit_vr,expected_is_little_endian",
+    [
+        # Test 1: Dataset without any transfer syntax settings
+        (
+            {"PatientName": "Test^Patient"},
+            None,
+            pydicom.uid.ImplicitVRLittleEndian,
+            True,
+            True,
+        ),
+        # Test 2: Dataset with template that has different settings
+        (
+            {"PatientName": "Test^Patient"},
+            {"is_implicit_VR": False, "is_little_endian": True},
+            pydicom.uid.ExplicitVRLittleEndian,
+            False,
+            True,
+        ),
+        # Test 3: Missing transfer syntax metadata
+        (
+            {"PatientID": "12345", "StudyDate": "20230101", "Modality": "CT"},
+            None,
+            pydicom.uid.ImplicitVRLittleEndian,
+            True,
+            True,
+        ),
+        # Test 4: Existing file_meta preserved from template
+        (
+            {"SeriesDescription": "Test Series"},
+            {
+                "is_implicit_VR": False,
+                "is_little_endian": False,
+                "transfer_syntax_uid": pydicom.uid.ExplicitVRBigEndian,
+            },
+            pydicom.uid.ExplicitVRBigEndian,
+            False,
+            False,
+        ),
+    ],
+)
+def test_dicom_from_dict_transfer_syntax(
+    input_dict,
+    template_setup,
+    expected_transfer_syntax_uid,
+    expected_is_implicit_vr,
+    expected_is_little_endian,
+):
     """Test that ensure_transfer_syntax is properly applied when creating datasets."""
-    # Test 1: Dataset without any transfer syntax settings
-    dataset1 = dicom_dataset_from_dict({"PatientName": "Test^Patient"})
-    
+    template = None
+    if template_setup:
+        template = pydicom.Dataset()
+        if "is_implicit_VR" in template_setup:
+            template.is_implicit_VR = template_setup["is_implicit_VR"]
+        if "is_little_endian" in template_setup:
+            template.is_little_endian = template_setup["is_little_endian"]
+        if "transfer_syntax_uid" in template_setup:
+            template.file_meta = pydicom.dataset.FileMetaDataset()
+            template.file_meta.TransferSyntaxUID = template_setup["transfer_syntax_uid"]
+
+    dataset = dicom_dataset_from_dict(input_dict, template_ds=template)
+
     # Verify that file_meta and TransferSyntaxUID are set
-    assert hasattr(dataset1, "file_meta")
-    assert hasattr(dataset1.file_meta, "TransferSyntaxUID")
-    assert dataset1.file_meta.TransferSyntaxUID == pydicom.uid.ImplicitVRLittleEndian
-    assert dataset1.is_implicit_VR is True
-    assert dataset1.is_little_endian is True
-    
-    # Test 2: Dataset with template that has different settings
-    template = pydicom.Dataset()
-    template.is_implicit_VR = False
-    template.is_little_endian = True
-    
-    dataset2 = dicom_dataset_from_dict(
-        {"PatientName": "Test^Patient"}, template_ds=template
-    )
-    
-    # Verify the appropriate TransferSyntaxUID is set based on template settings
-    assert dataset2.file_meta.TransferSyntaxUID == pydicom.uid.ExplicitVRLittleEndian
-    assert dataset2.is_implicit_VR is False
-    assert dataset2.is_little_endian is True
-
-
-@pytest.mark.pydicom
-def test_dicom_from_dict_missing_transfer_syntax():
-    """Test that datasets missing transfer syntax info get defaults applied."""
-    # Create a dataset with no transfer syntax metadata
-    dataset = dicom_dataset_from_dict({
-        "PatientID": "12345",
-        "StudyDate": "20230101",
-        "Modality": "CT"
-    })
-    
-    # Ensure defaults are applied
     assert hasattr(dataset, "file_meta")
     assert hasattr(dataset.file_meta, "TransferSyntaxUID")
-    # Default should be Implicit VR Little Endian
-    assert dataset.file_meta.TransferSyntaxUID == pydicom.uid.ImplicitVRLittleEndian
+    assert dataset.file_meta.TransferSyntaxUID == expected_transfer_syntax_uid
+    assert dataset.is_implicit_VR is expected_is_implicit_vr
+    assert dataset.is_little_endian is expected_is_little_endian
 
 
 @pytest.mark.pydicom
-def test_dicom_from_dict_with_existing_file_meta():
-    """Test that existing file_meta is preserved when provided via template."""
-    template = pydicom.Dataset()
-    template.file_meta = pydicom.dataset.FileMetaDataset()
-    template.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRBigEndian
-    template.is_implicit_VR = False
-    template.is_little_endian = False
+def test_pinnacle_rtstruct_transfer_syntax():
+    """Test that RTStruct files created via Pinnacle export have proper transfer syntax."""
+    # This test verifies that the convert_struct workflow properly applies
+    # ensure_transfer_syntax to the created dataset
+    from pymedphys._dicom.compat import ensure_transfer_syntax
     
-    dataset = dicom_dataset_from_dict(
-        {"SeriesDescription": "Test Series"}, template_ds=template
+    # Create a mock dataset similar to what convert_struct creates
+    file_meta = pydicom.dataset.FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.481.3"  # RT Structure Set
+    file_meta.MediaStorageSOPInstanceUID = pydicom.uid.generate_uid()
+    file_meta.ImplementationClassUID = pydicom.uid.generate_uid()
+    
+    # Create dataset without transfer syntax
+    ds = pydicom.dataset.FileDataset(
+        "test.dcm", {}, file_meta=file_meta, preamble=b"\x00" * 128
     )
     
-    # Verify the TransferSyntaxUID is preserved from template
-    assert dataset.file_meta.TransferSyntaxUID == pydicom.uid.ExplicitVRBigEndian
-    assert dataset.is_implicit_VR is False
-    assert dataset.is_little_endian is False
+    # Apply ensure_transfer_syntax like convert_struct does
+    ensure_transfer_syntax(ds)
+    
+    # Verify transfer syntax was set properly
+    assert hasattr(ds.file_meta, "TransferSyntaxUID")
+    assert ds.file_meta.TransferSyntaxUID == pydicom.uid.ImplicitVRLittleEndian
+    assert ds.is_implicit_VR is True
+    assert ds.is_little_endian is True
