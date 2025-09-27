@@ -631,3 +631,40 @@ def test_anonymisation_preserves_transfer_syntax():
     assert anon_ds.file_meta.TransferSyntaxUID == original_transfer_syntax
     assert anon_ds.is_implicit_VR == original_is_implicit
     assert anon_ds.is_little_endian == original_is_little_endian
+
+
+@pytest.mark.pydicom
+def test_anonymisation_handles_missing_file_meta():
+    """Test that anonymisation handles datasets without file_meta correctly."""
+    # Create a test dataset without file_meta
+    test_dict = {
+        "PatientName": "Test^Patient",
+        "PatientID": "12345",
+        "StudyDate": "20230101",
+        "Modality": "CT",
+        "PixelData": b"\x00\x01\x02\x03"
+    }
+    
+    # Create dataset using pydicom.Dataset directly to avoid dicom_dataset_from_dict
+    # which now includes ensure_transfer_syntax
+    ds = pydicom.Dataset()
+    for key, value in test_dict.items():
+        setattr(ds, key, value)
+    
+    # Verify dataset has no file_meta
+    assert not hasattr(ds, "file_meta")
+    
+    # Anonymise the dataset
+    anon_ds = anonymise_dataset(ds)
+    
+    # Verify anonymisation succeeded
+    assert anon_ds.PatientName == "ANONYMOUS^PATIENT"
+    assert anon_ds.PatientID == "ANON0000"
+    
+    # Verify file_meta was created by ensure_transfer_syntax during anonymisation
+    # (since the anonymised dataset is saved/processed, it needs transfer syntax)
+    assert hasattr(anon_ds, "file_meta")
+    assert hasattr(anon_ds.file_meta, "TransferSyntaxUID")
+    assert anon_ds.file_meta.TransferSyntaxUID == pydicom.uid.ExplicitVRLittleEndian
+    assert anon_ds.is_implicit_VR is False
+    assert anon_ds.is_little_endian is True
