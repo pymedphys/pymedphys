@@ -597,3 +597,37 @@ def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=
         # "TemplateExtensionOrganizationUID",
         # "TransactionUID",
         # "UID",
+
+
+@pytest.mark.pydicom
+def test_anonymisation_preserves_transfer_syntax():
+    """Test that anonymisation preserves the dataset's transfer syntax."""
+    # Create a test dataset with explicit VR big endian transfer syntax
+    test_dict = {
+        "PatientName": "Test^Patient",
+        "PatientID": "12345",
+        "StudyDate": "20230101",
+        "Modality": "CT"
+    }
+    
+    # Create dataset with a specific transfer syntax
+    ds = dicom_dataset_from_dict(test_dict)
+    ds.file_meta = pydicom.dataset.FileMetaDataset()
+    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRBigEndian
+    ds.is_implicit_VR = False
+    ds.is_little_endian = False
+    
+    # Store original transfer syntax values
+    original_transfer_syntax = ds.file_meta.TransferSyntaxUID
+    original_is_implicit = ds.is_implicit_VR
+    original_is_little_endian = ds.is_little_endian
+    
+    # Anonymise the dataset
+    anon_ds = anonymise_dataset(ds)
+    
+    # Verify transfer syntax is preserved
+    assert hasattr(anon_ds, "file_meta")
+    assert hasattr(anon_ds.file_meta, "TransferSyntaxUID")
+    assert anon_ds.file_meta.TransferSyntaxUID == original_transfer_syntax
+    assert anon_ds.is_implicit_VR == original_is_implicit
+    assert anon_ds.is_little_endian == original_is_little_endian

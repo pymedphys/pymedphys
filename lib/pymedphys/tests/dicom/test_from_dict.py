@@ -33,6 +33,25 @@ def test_dicom_from_dict():
     assert created_dataset == baseline_dataset
 
 
+def _create_template_from_setup(template_setup):
+    """Helper to create template dataset from setup configuration."""
+    if not template_setup:
+        return None
+        
+    template = pydicom.Dataset()
+    if "is_implicit_VR" in template_setup:
+        template.is_implicit_VR = template_setup["is_implicit_VR"]
+    if "is_little_endian" in template_setup:
+        template.is_little_endian = template_setup["is_little_endian"]
+    if "transfer_syntax_uid" in template_setup:
+        template.file_meta = pydicom.dataset.FileMetaDataset()
+        template.file_meta.TransferSyntaxUID = template_setup["transfer_syntax_uid"]
+    if "invalid_ts" in template_setup and template_setup["invalid_ts"]:
+        template.file_meta = pydicom.dataset.FileMetaDataset()
+        template.file_meta.TransferSyntaxUID = "INVALID_TRANSFER_SYNTAX"
+    return template
+
+
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "input_dict,template_setup,expected_transfer_syntax_uid,expected_is_implicit_vr,expected_is_little_endian",
@@ -73,6 +92,30 @@ def test_dicom_from_dict():
             False,
             False,
         ),
+        # Test 5: Conflicting transfer syntax values (implicit VR but big endian is retired)
+        (
+            {"PatientID": "54321", "StudyDate": "20231231", "Modality": "MR"},
+            {"is_implicit_VR": True, "is_little_endian": False},
+            pydicom.uid.ExplicitVRBigEndian,  # ensure_transfer_syntax handles this by using False,False mapping
+            False,
+            False,
+        ),
+        # Test 6: Invalid transfer syntax value in template (keeps the invalid value)
+        (
+            {"PatientID": "67890", "StudyDate": "20231111", "Modality": "US"},
+            {"invalid_ts": True},
+            "INVALID_TRANSFER_SYNTAX",  # Invalid value is preserved
+            False,  # Default from ensure_transfer_syntax
+            True,  # Default from ensure_transfer_syntax
+        ),
+        # Test 7: file_meta missing in both input and template
+        (
+            {},  # Empty dict
+            None,  # No template
+            pydicom.uid.ImplicitVRLittleEndian,  # Default from ensure_transfer_syntax
+            True,  # Default from ensure_transfer_syntax
+            True,  # Default from ensure_transfer_syntax
+        ),
     ],
 )
 def test_dicom_from_dict_transfer_syntax(
@@ -83,17 +126,7 @@ def test_dicom_from_dict_transfer_syntax(
     expected_is_little_endian,
 ):
     """Test that ensure_transfer_syntax is properly applied when creating datasets."""
-    template = None
-    if template_setup:
-        template = pydicom.Dataset()
-        if "is_implicit_VR" in template_setup:
-            template.is_implicit_VR = template_setup["is_implicit_VR"]
-        if "is_little_endian" in template_setup:
-            template.is_little_endian = template_setup["is_little_endian"]
-        if "transfer_syntax_uid" in template_setup:
-            template.file_meta = pydicom.dataset.FileMetaDataset()
-            template.file_meta.TransferSyntaxUID = template_setup["transfer_syntax_uid"]
-
+    template = _create_template_from_setup(template_setup)
     dataset = dicom_dataset_from_dict(input_dict, template_ds=template)
 
     # Verify that file_meta and TransferSyntaxUID are set
