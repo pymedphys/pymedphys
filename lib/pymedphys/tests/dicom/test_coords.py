@@ -113,9 +113,14 @@ def test_coords_in_datasets_are_equal():
         }
     )
 
-    compat.ensure_transfer_syntax(ds1)
     ds2 = copy.deepcopy(ds1)
     assert coords.coords_in_datasets_are_equal([ds1, ds2])
+    
+    # Verify transfer syntax consistency between datasets after copying
+    assert hasattr(ds1, "file_meta") and hasattr(ds2, "file_meta")
+    assert ds1.file_meta.TransferSyntaxUID == ds2.file_meta.TransferSyntaxUID
+    assert ds1.is_implicit_VR == ds2.is_implicit_VR
+    assert ds1.is_little_endian == ds2.is_little_endian
 
     # only one coords supplied:
     assert coords.coords_in_datasets_are_equal([ds1])
