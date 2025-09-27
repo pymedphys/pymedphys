@@ -15,7 +15,7 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._data import download
-from pymedphys._dicom import create
+from pymedphys._dicom import compat, create
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS_FILEPATH,
     anonymise_directory,
@@ -103,7 +103,7 @@ def _check_is_anonymised_dataset_file_and_dir(
     temp_filepath = str(tmp_path / "test.dcm")
 
     try:
-        create.set_default_transfer_syntax(ds)
+        compat.ensure_transfer_syntax(ds)
 
         ds.file_meta = pydicom.filereader.read_file_meta_info(test_file_path)
 

@@ -18,7 +18,8 @@ from copy import deepcopy
 from packaging import version
 from pymedphys._imports import pydicom
 
-from . import anonymise, coords, create
+from . import anonymise, coords
+from .compat import ensure_transfer_syntax
 
 # pylint: disable=W0201
 
@@ -28,7 +29,7 @@ class DicomBase:
         if copy:
             dataset = deepcopy(dataset)
 
-        create.set_default_transfer_syntax(dataset)
+        ensure_transfer_syntax(dataset)
 
         self.dataset = dataset
 
