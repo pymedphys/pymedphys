@@ -113,7 +113,6 @@ def test_coords_in_datasets_are_equal():
         }
     )
 
-    compat.ensure_transfer_syntax(ds1)
     ds2 = copy.deepcopy(ds1)
     assert coords.coords_in_datasets_are_equal([ds1, ds2])
 
