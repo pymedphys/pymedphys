@@ -1,112 +1,123 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+import warnings
+from typing import Iterable, List
 
 import numpy as np
 
 from ..config import DVHConfig
-from ..dicom_io import ROI, DoseGridGeom
-from .polygon import rasterise_fraction
+from ..dicom_geom import DoseGridGeom
+from ..dicom_io import ROI, Contour2D  # assumes you already have these dataclasses
 
 
-def _stack_polys_for_numba(polys: List[np.ndarray]) -> np.ndarray:
-    """
-    Pack a list of (Ni,2) polygons into a 3D array (P, Mmax, 2), pad with NaN row to mark end.
-    """
-    if len(polys) == 0:
-        return np.full((1, 1, 2), np.nan, dtype=np.float32)
-    mmax = max(p.shape[0] for p in polys)
-    out = np.full(
-        (len(polys) + 1, mmax, 2), np.nan, dtype=np.float32
-    )  # +1 NaN sentinel
-    for p, poly in enumerate(polys):
-        out[p, : poly.shape[0], :] = poly.astype(np.float32)
-    return out
+def _points_in_ring_evenodd(
+    px: np.ndarray, py: np.ndarray, ring_rc: np.ndarray
+) -> np.ndarray:
+    """Ray casting test for a single ring (returns boolean mask for points inside the ring)."""
+    ring = np.asarray(ring_rc, dtype=float)
+    if ring.ndim != 2 or ring.shape[1] != 2:
+        raise ValueError("ring must be (M,2) [row, col]")
+
+    # Use x=col, y=row
+    x = ring[:, 1]
+    y = ring[:, 0]
+    # Ensure closed ring
+    if not (np.isclose(x[0], x[-1]) and np.isclose(y[0], y[-1])):
+        x = np.concatenate([x, x[:1]])
+        y = np.concatenate([y, y[:1]])
+
+    x0 = x[:-1]
+    y0 = y[:-1]
+    x1 = x[1:]
+    y1 = y[1:]
+
+    # Broadcast to (edges, points)
+    py_e = py[None, :]
+    px_e = px[None, :]
+
+    # Edge crosses the scanline?
+    cond = (y0[:, None] > py_e) != (y1[:, None] > py_e)
+    # x coordinate of intersection of edge with scanline
+    denom = (y1 - y0)[:, None]
+    denom = np.where(np.abs(denom) < 1e-15, 1e-15, denom)
+
+    xinters = (
+        x0[:, None] + (px_e * 0 + 1) * (x1 - x0)[:, None] * (py_e - y0[:, None]) / denom
+    )
+
+    hit = cond & (px_e < xinters)
+    inside = np.bitwise_xor.reduce(hit, axis=0)
+    return inside
+
+
+def _rasterise_even_odd(
+    rings: List[np.ndarray], R: int, C: int, supersample: int
+) -> np.ndarray:
+    """Return (R,C) fractional coverage using even-odd fill over 'rings'."""
+    s = max(1, int(supersample))
+    # Sub-pixel centres in r,c space
+    rr = np.arange(R, dtype=float)[:, None] + (np.arange(s, dtype=float) + 0.5) / s
+    cc = np.arange(C, dtype=float)[None, :] + (np.arange(s, dtype=float) + 0.5) / s
+
+    # Full grid
+    rr_grid = np.repeat(rr[:, None, :], C, axis=1)  # (R,C,s)
+    rr_grid = np.repeat(rr_grid[:, :, None, :], s, axis=2)  # (R,C,s,s)
+    cc_grid = np.repeat(cc[None, :, :], R, axis=0)
+    cc_grid = np.repeat(cc_grid[:, :, None, :], s, axis=2)
+
+    # Flatten to points
+    rr_f = rr_grid.reshape(-1)
+    cc_f = cc_grid.reshape(-1)
+
+    # Even-odd across all rings
+    inside_any = np.zeros(rr_f.shape, dtype=bool)
+    for ring in rings:
+        inside_any ^= _points_in_ring_evenodd(cc_f, rr_f, ring)  # x=col, y=row
+
+    # Aggregate back to (R,C)
+    inside_any = inside_any.reshape(R, C, s, s)
+    frac = inside_any.mean(axis=(2, 3)).astype(float)
+    return frac
 
 
 def voxelise_roi_to_mask(roi: ROI, geom: DoseGridGeom, cfg: DVHConfig) -> np.ndarray:
     """
-    Compute a fractional-occupancy mask aligned to the DOSE grid: (K,R,C) in [0,1].
+    Voxelise an ROI (with rings/holes) onto the provided geometry.
 
-    Strategy (right_prism):
-      - Compute slab bounds along 'w' between adjacent contour planes; extend end-caps by half-slice if enabled.
-      - For each K-slice whose w-distance lies within a slab, rasterise the 2D contours onto (R,C) with sub-sampling.
-
-    Notes
-    -----
-    This follows the common “right-prism” approach used by several systems and analysed in Pepin et al. 2022. :contentReference[oaicite:9]{index=9}
-    A linear SDF-like interpolation mode ('sdf_linear') is provided as an approximation to shape-based interpolation.
+    Returns a mask with shape (num_slices_with_contours, R, C) containing
+    fractional occupancy in [0,1]. If multiple contours share a slice index,
+    their rings are combined using even-odd parity.
     """
-    K, R, C = geom.shape
-    # Prepare slab edges from ROI contour z_mm values
-    z = np.array([c.z_mm for c in roi.contours], dtype=float)
-    if z.size == 0:
-        return np.zeros((K, R, C), dtype=np.float32)
+    R, C = geom.R, geom.C
+    s = int(getattr(cfg, "inplane_supersample", 1) or 1)
 
-    # Compute midpoints for slabs
-    mids = None
-    if z.size > 1:
-        mids = (z[:-1] + z[1:]) * 0.5
-    # For each contour, get lower/upper bounds
-    lower = np.empty_like(z)
-    upper = np.empty_like(z)
-    for i in range(len(z)):
-        lower[i] = z[i] if i == 0 else mids[i - 1]
-        upper[i] = z[i] if i == len(z) - 1 else mids[i]
-    if cfg.endcap_mode == "half_slice" and z.size > 1:
-        # Extend end-caps by half the local spacing
-        lower[0] = z[0] - (z[1] - z[0]) * 0.5
-        upper[-1] = z[-1] + (z[-1] - z[-2]) * 0.5
+    # Group contours by nearest k (slice), emit warning if multiple z across ROI
+    z_vals = np.array([c.z_mm for c in roi.contours], dtype=float)
+    if np.max(z_vals) - np.min(z_vals) > 1e-6:
+        warnings.warn(
+            f"ROI '{roi.name}' spans multiple z positions; assigning each contour to its nearest slice."
+        )
 
-    # Map each frame's w-distance (from ipp) for slice centres
-    if K > 1:
-        _ = geom.gfo[1] - geom.gfo[0]
-        wdist_k = geom.gfo  # centre at given offset
-    else:
-        wdist_k = np.array([geom.gfo[0]])
+    def _z_to_k(z_mm: float) -> int:
+        # Interpret z_mm as offset along +w (mm) relative to ipp projected onto w
+        # Map to fractional k then round to nearest index
+        kf = geom._invert_gfo(float(z_mm))
+        return int(np.clip(np.round(kf), 0, geom.K - 1))
 
-    mask = np.zeros((K, R, C), dtype=np.float32)
+    by_k: dict[int, List[np.ndarray]] = {}
+    for contour in roi.contours:
+        k = _z_to_k(contour.z_mm)
+        # Each contour carries a list of rings (outer, inner, ...)
+        for ring in contour.points_rc:
+            by_k.setdefault(k, []).append(np.asarray(ring, dtype=float))
 
-    # Rasterise per K: find which contour slab covers this K, rasterise all polygons at that slab
-    for slab_idx, c2d in enumerate(roi.contours):
-        polys = [_ensure_closed(poly) for poly in c2d.points_rc]
-        packed = _stack_polys_for_numba(polys)
-        # find k indices within [lower, upper]
-        k_sel = np.where((wdist_k >= lower[slab_idx]) & (wdist_k < upper[slab_idx]))[0]
-        if k_sel.size == 0:
-            continue
-        # Rasterise once; reuse for all k in the slab (right_prism)
-        frac = rasterise_fraction(R, C, packed, max(1, cfg.inplane_supersample))
-        for k in k_sel:
-            mask[k, :, :] = np.maximum(mask[k, :, :], frac)
+    if not by_k:
+        return np.zeros((0, R, C), dtype=float)
 
-    if cfg.voxelise_mode == "sdf_linear" and len(roi.contours) > 1:
-        # Optional refinement: linear blend of adjacent slice fractions across k within [lower, upper]
-        # (SDF-like behaviour; cheap approximation)
-        for i in range(len(roi.contours) - 1):
-            z0, z1 = z[i], z[i + 1]
-            k_sel = np.where((wdist_k >= z0) & (wdist_k < z1))[0]
-            if k_sel.size == 0:
-                continue
-            polys0 = _stack_polys_for_numba(
-                [_ensure_closed(p) for p in roi.contours[i].points_rc]
-            )
-            polys1 = _stack_polys_for_numba(
-                [_ensure_closed(p) for p in roi.contours[i + 1].points_rc]
-            )
-            frac0 = rasterise_fraction(R, C, polys0, max(1, cfg.inplane_supersample))
-            frac1 = rasterise_fraction(R, C, polys1, max(1, cfg.inplane_supersample))
-            for k in k_sel:
-                t = (wdist_k[k] - z0) / (z1 - z0 + 1e-12)
-                mask[k] = np.maximum(mask[k], (1 - t) * frac0 + t * frac1)
+    masks = []
+    for k in sorted(by_k.keys()):
+        rings = by_k[k]
+        mask2d = _rasterise_even_odd(rings, R, C, s)
+        masks.append(mask2d)
 
-    return np.clip(mask, 0.0, 1.0).astype(np.float32)
-
-
-def _ensure_closed(poly: np.ndarray) -> np.ndarray:
-    """Ensure first point repeats at end for polygon closure during rasterisation."""
-    if poly.shape[0] < 3:
-        return poly
-    if not np.allclose(poly[0], poly[-1]):
-        return np.vstack([poly, poly[0]])
-    return poly
+    return np.stack(masks, axis=0)
