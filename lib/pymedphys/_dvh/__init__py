@@ -1,0 +1,19 @@
+"""
+pymedphys._dvh — Accurate, configurable DVH calculation and validation.
+
+Core ideas:
+- High-fidelity, user-configurable voxelisation with optional supersampling,
+  right-prism end-caps or SDF-like (linear) interpolation between slices.
+- Trilinear dose sampling using pymedphys.interpolate.interp (fallback provided).
+- Analytical ground-truth suites (Nelms linear-gradient shapes; sphere + Gaussian)
+  wired into a validation harness for CI.
+
+Methodological references:
+- Analytical DVHs and commissioning tests: Nelms et al. 2015. :contentReference[oaicite:4]{index=4}
+- Precision bands, end-capping behaviours across vendors: Pepin et al. 2022. :contentReference[oaicite:5]{index=5}
+- Gaussian-in-sphere analytical DVH and clinical small-volume behaviour: Walker & Byrne 2024. :contentReference[oaicite:6]{index=6}
+- Independent DVH practices and pitfalls in multi-system contexts: Ebert et al. 2010. :contentReference[oaicite:7]{index=7}
+"""
+
+from .config import DVHConfig
+from .dvh import compute_dvh, dvh_metrics
