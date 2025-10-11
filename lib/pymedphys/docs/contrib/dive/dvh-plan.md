@@ -2,7 +2,7 @@
 
 A clinically‑oriented, cross‑modality, high‑precision dose–volume histogram engine for Python 3.12/3.13 (Windows/macOS/Linux)
 
-### Primary goals
+## Primary goals
 
 - A trustworthy, open, clinically usable DVH engine for QA, covering photons (including SRS/SBRT), protons and brachytherapy (any case that provides a 3D dose grid).
 
@@ -98,6 +98,9 @@ tests/
 
 - Verify coordinate frames; build transforms dose↔CT↔struct space; handle mismatched origins/spacings robustly (we will not assume matching grids). (Ebert demonstrated such mismatches are common across sites.)
 
+- When CT is missing, infer interslice spacing strictly from RTSTRUCT Z positions; for half_slice caps, use the local adjacent contour spacing; if spacing is non‑uniform, cap lengths follow local half‑distance. Emit a WARNING when CT and structure Zs would have disagreed by >0.2 mm if CT were present, as this is a known source of end‑cap variability.” (End‑capping impact emphasised by Nelms & Walker/Byrne.)
+  - Prefer ContourImageSequence (when present) to bind contours to CT planes; when absent, fall back to raw Z; log a WARNING if the implied slice spacing differs by >0.2 mm across planes. This avoids silent mis‑inference of half‑slice cap lengths.
+
 ### 2. Voxelise ROI (3D)
 
 - In‑slice: polygon scan‑conversion with holes/rings via even–odd rule; robust to degenerate vertices; support diverging structures (1 contour splitting into 2 on next slice).
@@ -150,6 +153,8 @@ tests/
 
 - `"fast_preview"`: coarse subvoxel and fewer bins; suitable for fast iteration (clearly marked “preview – not for decisions”).
 
+- Expose a single `DeterministicConfig` (fixed RNG seed, fixed sampling layout) so re‑runs are bit‑stable — helpful during paired programming and CI bisects.
+
 ### 5.2 Key knobs (user configurable)
 
 - **Supersampling:** `mode={"target_points","target_subvoxel_mm","grid_factor"}`; defaults: `target_points=100_000` inside ROI.
@@ -163,6 +168,8 @@ tests/
 - **End‑caps:** `truncate` | `half_slice` | `shape_based` (default) | `half_slice_with_max_mm=1.5`.
 
 - **DVH bins:** `dynamic` (`min_bins=10_000`, `max_bins=100_000`) or `fixed` (`bin_width_Gy`).
+
+  - Bin edges are left‑closed/right‑open; cumulative DVH built from differential histogram; linear interpolation used to evaluate D_x%/V_yGy between knots; dynamic bins target ≥10 000, capped at 100 000; record effective bin width in outputs.
 
 - **D_min/D_max strategy:** `volume_samples_only` | `+surface_vertices` (default).
 
@@ -190,7 +197,7 @@ tests/
 import pymedphys as pmp
 from pymedphys.dvh import compute_dvh, DVHConfig, load_dicom_plan
 
-plan = load_dicom_plan(rtstruct_path, rtdose_path, ct_path=None)
+plan = load_dicom_study(rtstruct_path, rtdose_path, ct_path=None)
 cfg = DVHConfig.preset("clinical_qa").replace(
     endcaps="shape_based", target_points=100_000, precision_analysis=True
 )
@@ -218,11 +225,19 @@ pmp-dvh compute \
 
 - DVH curve (differential & cumulative); metrics JSON; optional plots; **audit JSON** including: package versions, Git SHA, config, input hashes (DICOM SOPInstanceUIDs & file checksums), date/time, hostname; “computed by PyMedPhys DVH”.
 
+- D_min/D_max are computed from (a) volumetric samples plus (b) surface‑vertex probes; report them alongside D_99 / D_1 and D_0.03 cc (with a note that min/max are less clinically stable)
+
+  - If ROI volume < 0.03 cc, automatically fall back to the largest definable near‑max volume (e.g., D_volume=10% of ROI or D_1%) and emit a WARNING that D_0.03 cc is not applicable.
+
 ## 7) Validation & uncertainty reporting
 
 ### 7.1 Ground‑truth validation (Nelms 2015)
 
-- Use the Nelms analytical datasets (sphere, cylinder, cone; linear gradients; various slice/dose spacings), exercising the **three Nelms test archetypes** (vary dose grid; match grids to slice spacing; rotated vs aligned). Expected behaviours and failure modes are well‑documented. We will target ≤0.1% with the `max_accuracy` preset and show error behaviour vs parameter relaxations.
+- Use the Nelms analytical datasets (sphere, cylinder, cone; linear gradients; various slice/dose spacings), exercising the **three Nelms test archetypes** (vary dose grid; match grids to slice spacing; rotated vs aligned). Expected behaviours and failure modes are well‑documented. We will target ≤ 0.1% volume‑difference at matched dose points (vertical distance) and ≤ 0.1% dose‑difference at matched volume points (horizontal distance) over the analytic DVH with the `max_accuracy` preset. Compute both like Nelms Test 3 using volume‑error histograms at 300 samples per curve. Show error behaviour vs. parameter relaxations.
+
+- For D_x% and V_yGy, evaluate by linear interpolation between cumulative histogram knots; record bin width and whether edges are left‑closed/right‑open to ensure reproducibility.
+
+- For each small synthetic sphere/cylinder, generate two cases: one centred on a CT slice and one centred halfway between slices to stress end‑cap extrapolation, as in Walker & Byrne
 
 #### Acceptance criteria (subset)
 
@@ -238,6 +253,8 @@ pmp-dvh compute \
 
 - Implement the stair‑step band algorithm to quantify precision as percent‑difference distribution between fitted best curve and bounding curves, and report median/IQR across geometries and grid perturbations. This will become a built‑in QA report users can run on their own system.
 
+- Construct bands by (i) computing DVHs across a grid of dose‑grid spacings and CT/structure slice spacings for both SI and AP gradient directions; (ii) extract upper/lower monotone envelopes at each dose; (iii) compute median/IQR of |ΔV| and |ΔD| vs the best‑fit curve; report direction‑specific precision (SI vs AP) because SI shows larger steps in most systems.” (Pepin shows direction dependence and step‑size growth with slice spacing.)
+
 ### 7.3 Clinical‑like sensitivity
 
 - Emulate clinical variability experiments: vary slice/dose spacings and re‑compute for representative OARs/PTVs; report percent uncertainty of D_mean/D_max and D95 across the grid combinations, mirroring the clinical findings (Eclipse/ProKnow/MIM/RayStation examples).
@@ -246,9 +263,15 @@ pmp-dvh compute \
 
 - When ROI < 1 cc or has ≤5–7 slices, emit a prominent log warning and attach contextual guidance (e.g., potential ~2–9% D95 variability sub‑20 cc; can reach ~10–20% for ~0.1 cc; PCI/MGI can deviate sharply). Encourage tighter sampling and careful tolerance setting.
 
+- When issuing warnings, state the slice count and Z spacing, and suggest grid_factor in odd multiples (5×, 7×) to ensure sampling planes include original dose planes (as per PlanIQ rationale); show a one‑line note that PCI/MGI are sensitive to end‑caps and should be interpreted with the chosen cap mode.
+
 ### 7.5 Multicentre consistency (Ebert 2010)
 
 - Include a gamma‑like DVH comparison harness (dose‑to‑agreement & volume‑difference criteria) to compare our DVH against imported TPS‑exported DVHs, as an additional, practical cross‑check (diagnostic only).
+
+- Default DVH‑gamma: ΔV = 1% of structure volume, ΔD = 1% of D_max, with pass if ≥95% bins have γ<1; also compute results at 3%/2% to mirror Ebert Table 3.
+
+- Additionally report min/mean/max dose differences for targets; DVH‑gamma can under‑detect discrepancies when the DVH is a rectangle (uniform target dose).
 
 ## 8) Test‑Driven Development plan (strict)
 
@@ -316,7 +339,7 @@ pmp-dvh compute \
 
 ## 10) Engineering details
 
-- **Numerics:** float32 for storage, float64 for accumulators/metrics; Kahan compensation on sums; careful thresholding around polygon edges.
+- **Numerics:** float32 for storage, float64 for accumulators/metrics; Kahan compensation on sums; careful thresholding around polygon edges. These are invariant and should not be downgraded.
 
 - **Robustness:** tolerant to non‑monotone Z‑ordering, duplicate points, near‑zero‑area contours; deduplicate planes within a tolerance; warn when CT and struct Z do not align (documented pitfall).
 
@@ -366,7 +389,13 @@ pmp-dvh compute \
 
 ### Sprint 9 (docs & examples)
 
-- End‑to‑end notebooks; CLI recipes; “commission your TPS DVH” guide; include Ebert‑style gamma DVH compare utility.
+- End‑to‑end notebooks; CLI recipes; “commission your TPS DVH” guide; include Ebert‑style gamma DVH compare utility. Checklist:
+
+  - [ ] **Nelms Test 1:** fine contours, vary dose grid → all D_x% within ±1% under clinical_qa; ≤0.1% under max_accuracy.
+  - [ ] **Nelms Test 2/3:** matched spacings; volume‑error histogram |mean| ≤ 0.3%, stdev ≤ 1–3% depending on shape/resolution.
+  - [ ] **Ebert DVH‑gamma:** ≥95% bins pass at 1%/1%, and near‑100% at 3%/2% for typical clinical structures; also report min/mean/max deltas for targets.
+  - [ ] **Pepin precision:** report SI vs AP precision medians and IQRs; steps should shrink with finer slice/dose spacing; document band widths per preset.
+  - [ ] **Small volumes:** for < 1 cc or ≤ 7 slices, warn and require SRS preset with elevated Z‑supersampling; include PCI/MGI readouts.
 
 ### Sprint 10 (release & hardening)
 
