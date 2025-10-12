@@ -22,6 +22,7 @@ from pymedphys._vendor.patchlogging import apply_logging_patch
 from .claude import claude_cli
 from .dev import dev_cli
 from .dicom import dicom_cli
+from .dvh import dvh_cli
 from .experimental import experimental_cli
 from .gui import gui_cli
 from .icom import icom_cli
@@ -42,6 +43,7 @@ def define_parser():
     subparsers = parser.add_subparsers()
 
     dicom_cli(subparsers)
+    dvh_cli(subparsers)
     claude_cli(subparsers)
     experimental_cli(subparsers)
     pinnacle_cli(subparsers)
