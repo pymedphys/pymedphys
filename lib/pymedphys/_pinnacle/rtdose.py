@@ -58,20 +58,35 @@ from .constants import (
     RTPlanSOPClassUID,
 )
 
-def construct_dose_from_binary(binary_data, trial_data, dose_array):
+
+def construct_dose_from_binary(binary_data, array):
     """
-    Read binary data into dose array with dimensions from trial data
+    Read binary data into empty dose array
     """
+    X, Y, Z = array.shape
     idx=0
-    for z in range(trial_data["DoseGrid .Dimension .Z"] - 1, -1, -1):
-        for y in range(trial_data["DoseGrid .Dimension .Y"]):
-            for x in range(trial_data["DoseGrid .Dimension .X"]):
+    for z in range(Z - 1, -1, -1):
+        for y in range(Y):
+            for x in range(X):
                 data_element = binary_data[idx:idx+4]
                 value = struct.unpack(">f", data_element)[0]
-                dose_array[x, y, z] = value
+                array[x, y, z] = value
                 idx += 4
-    return dose_array
+    return array
 
+
+def read_binary_data(binary_file):
+    """
+    Check if the supplied binary file is non-empty and return the data if so
+    """
+    if os.path.isfile(binary_file):
+        size = os.path.getsize(binary_file)
+        with open(binary_file, "rb") as b:
+            data = b.read()
+            if all(byte == 0 for byte in data):
+                return False
+            else:
+                return data
 
 
 def trilinear_interpolation(idx, grid):
@@ -278,12 +293,19 @@ def convert_dose(plan, export_path):
         return
 
     for beam in beam_list:
+
         plan.logger.info("Exporting Dose for beam: %s", beam["Name"])
 
         # Get the binary file for this beam
         binary_id = re.findall("\\d+", beam["DoseVolume"])[0]
         filled_binary_id = str(binary_id).zfill(3)
         binary_file = os.path.join(plan.path, f"plan.Trial.binary.{filled_binary_id}")
+
+        # check whether the binary file is non-empty
+        binary_data = read_binary_data(binary_file)
+            if binary_data is False:
+                plan.logger.warning("No Dose found for beam: %s. Skipping beam.", beam['Name'])
+                return
 
         # Get the prescription for this beam (need this for number of fractions)
         prescription = [
@@ -341,26 +363,7 @@ def convert_dose(plan, export_path):
             ds.ImagePositionPatient[1],
             ds.ImagePositionPatient[2],
         ]
-
-        if os.path.isfile(binary_file):
-            size = os.path.getsize(binary_file)
-            with open(binary_file, "rb") as b:
-                data = b.read()
-                if size > 32:
-                    # Binary files that are decidedly non-empty
-                    dose_grid = construct_dose_from_binary(data, trial_info, dose_grid)
-                elif 8 <= size <= 32:
-                    if all(byte == 0 for byte in data):
-                        # File is full of zeroes
-                        continue
-                    else:
-                        # File has non-zero content
-                        dose_grid = construct_dose_from_binary(data, trial_info, dose_grid)
-
-        else:
-            plan.logger.warning("Dose file not found")
-            plan.logger.error("Skipping generating RTDOSE")
-            return
+        dose_grid = construct_dose_from_binary(binary_data, dose_grid)
 
         # Get the index within that grid of the dose reference point
         idx = [0.0, 0.0, 0.0]
