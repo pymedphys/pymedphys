@@ -303,9 +303,9 @@ def convert_dose(plan, export_path):
 
         # check whether the binary file is non-empty
         binary_data = read_binary_data(binary_file)
-            if binary_data is False:
-                plan.logger.warning("No Dose found for beam: %s. Skipping beam.", beam['Name'])
-                return
+        if binary_data is False:
+            plan.logger.warning("No Dose found for beam: %s. Skipping beam.", beam['Name'])
+            return
 
         # Get the prescription for this beam (need this for number of fractions)
         prescription = [

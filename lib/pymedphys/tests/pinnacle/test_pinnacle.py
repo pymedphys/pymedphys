@@ -410,7 +410,8 @@ def test_dose_ffp(orientation_pinn):
 
     assert_same_dose(exported_dose, pinn_dose)
 
-    @pytest.fixture
+
+@pytest.fixture
 def temp_binary_file():
     """Fixture to create and cleanup temporary binary files"""
     files = []
@@ -432,7 +433,7 @@ def temp_binary_file():
 
 
 # Tests for construct_dose_from_binary
-    @pytest.mark.array
+@pytest.mark.array
 def test_basic_dose_construction():
     """Test basic dose array construction from binary data"""
     # Create a 2x2x2 array
@@ -451,7 +452,7 @@ def test_basic_dose_construction():
     assert isinstance(result, np.ndarray)
     assert np.any(result != 0)
 
-    @pytest.mark.array
+@pytest.mark.array
 def test_single_voxel_array():
     """Test with 1x1x1 array"""
     array = np.zeros((1, 1, 1), dtype=np.float32)
@@ -461,7 +462,7 @@ def test_single_voxel_array():
 
     assert result[0, 0, 0] == 42.5
 
-    @pytest.mark.array
+@pytest.mark.array
 def test_negative_values():
     """Test handling of negative dose values"""
     array = np.zeros((2, 1, 1), dtype=np.float32)
@@ -472,7 +473,7 @@ def test_negative_values():
     assert result[0, 0, 0] == -10.5
     assert result[1, 0, 0] == -20.3
 
-    @pytest.mark.array
+@pytest.mark.array
 def test_z_axis_reversal():
     """Test that z-axis is filled in reverse order"""
     array = np.zeros((1, 1, 3), dtype=np.float32)
@@ -486,7 +487,7 @@ def test_z_axis_reversal():
     assert result[0, 0, 1] == 2.0
     assert result[0, 0, 0] == 3.0
 
-    @pytest.mark.array
+@pytest.mark.array
 def test_large_array():
     """Test with a larger array"""
     shape = (10, 10, 10)
@@ -498,7 +499,7 @@ def test_large_array():
     assert result.shape == shape
     assert np.any(result != 0)
 
-    @pytest.mark.array
+@pytest.mark.array
 def test_exact_binary_size():
     """Test that binary data size matches array size"""
     array = np.zeros((2, 2, 2), dtype=np.float32)
@@ -510,7 +511,7 @@ def test_exact_binary_size():
     assert len(binary_data) == 32
     assert result is not None
 
-    @pytest.mark.array
+@pytest.mark.array
 def test_preserves_array_type():
     """Test that the returned array maintains float32 type"""
     array = np.zeros((2, 2, 2), dtype=np.float32)
@@ -522,7 +523,7 @@ def test_preserves_array_type():
 
 
 # Tests for read_binary_data
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_read_valid_binary_file(temp_binary_file):
     """Test reading a valid binary file with data"""
     test_data = struct.pack(">f", 1.5) + struct.pack(">f", 2.5)
@@ -532,7 +533,7 @@ def test_read_valid_binary_file(temp_binary_file):
 
     assert result == test_data
 
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_read_all_zeros_file(temp_binary_file):
     """Test that file with all zeros returns False"""
     test_data = b'\x00' * 16
@@ -542,14 +543,14 @@ def test_read_all_zeros_file(temp_binary_file):
 
     assert result is False
 
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_nonexistent_file():
     """Test handling of nonexistent file"""
     result = read_binary_data('/nonexistent/path/file.bin')
 
     assert result is None
 
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_empty_file(temp_binary_file):
     """Test reading an empty file"""
     file_path = temp_binary_file(b'')
@@ -560,7 +561,7 @@ def test_empty_file(temp_binary_file):
     # This means it will return False
     assert result is False
 
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_mixed_zeros_and_data(temp_binary_file):
     """Test file with some zeros and some data"""
     test_data = b'\x00\x00\x01\x02'
@@ -571,7 +572,7 @@ def test_mixed_zeros_and_data(temp_binary_file):
     # Should return data since not all bytes are zero
     assert result == test_data
 
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_large_binary_file(temp_binary_file):
     """Test reading a larger binary file"""
     test_data = b''.join(struct.pack(">f", float(i)) for i in range(1000))
@@ -582,7 +583,7 @@ def test_large_binary_file(temp_binary_file):
     assert result == test_data
     assert len(result) == 4000  # 1000 floats * 4 bytes
 
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_single_nonzero_byte(temp_binary_file):
     """Test file with single non-zero byte"""
     test_data = b'\x01'
@@ -592,7 +593,7 @@ def test_single_nonzero_byte(temp_binary_file):
 
     assert result == test_data
 
-    @pytest.mark.binary
+@pytest.mark.binary
 def test_file_size_check(temp_binary_file):
     """Test that file size is correctly evaluated"""
     test_data = struct.pack(">f", 1.0) * 100
