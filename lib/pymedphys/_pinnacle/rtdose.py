@@ -46,6 +46,7 @@ import time
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
+from pymedphys._pinnacle.pinnacle_exceptions import MissingBeamDoseError, MissingCTImageError, MissingTrialBeamsError
 
 from pymedphys._dicom.orientation import IMAGE_ORIENTATION_MAP
 
@@ -57,7 +58,6 @@ from .constants import (
     RTDoseSOPClassUID,
     RTPlanSOPClassUID,
 )
-
 
 def construct_dose_from_binary(binary_data, array):
     """
@@ -119,7 +119,7 @@ def convert_dose(plan, export_path):
     # Check that the plan has a primary image, as we can't create a meaningful RTDOSE without it:
     if not plan.primary_image:
         plan.logger.error("No primary image found for plan. Unable to generate RTDOSE.")
-        return
+        raise MissingCTImageError("Plan has no primary image associated with it.")
 
     supported_orientations = ("HFS", "HFP", "FFS", "FFP")
 
@@ -290,8 +290,9 @@ def convert_dose(plan, export_path):
     beam_list = trial_info["BeamList"] if trial_info["BeamList"] else []
     if len(beam_list) == 0:
         plan.logger.warning("No Beams found in Trial. Unable to generate RTDOSE.")
-        return
+        raise MissingTrialBeamsError("No Beams found in Trial.")
 
+    empty_beams = 0
     for beam in beam_list:
 
         plan.logger.info("Exporting Dose for beam: %s", beam["Name"])
@@ -305,7 +306,11 @@ def convert_dose(plan, export_path):
         binary_data = read_binary_data(binary_file)
         if binary_data is False:
             plan.logger.warning("No Dose found for beam: %s. Skipping beam.", beam['Name'])
-            return
+            empty_beams += 1
+            if empty_beams == len(beam_list):
+                plan.logger.error("All beams in plan are missing dose. Unable to generate RTDOSE.")
+                raise MissingBeamDoseError("All beams in plan are missing dose.")
+            continue
 
         # Get the prescription for this beam (need this for number of fractions)
         prescription = [
