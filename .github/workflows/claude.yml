@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           fetch-depth: 1
 
@@ -34,7 +34,7 @@ jobs:
       # uv can also manage its own Python, so this is not strictly required,
       # but keeping it helps non-uv tools (e.g., ruff, mypy) when run outside uv.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
 
       # Install uv (fast Python package manager) for the runner.
       - name: Install uv
@@ -45,7 +45,7 @@ jobs:
 
       # Restore uv cache to speed up dependency ops.
       - name: Restore uv cache
-        uses: actions/cache@v4
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
         with:
           path: |
             ~/.cache/uv
@@ -62,7 +62,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@ff9acae5886d41a99ed4ec14b7dc147d55834722 # 1.0.77
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: claude-opus-4-20250514

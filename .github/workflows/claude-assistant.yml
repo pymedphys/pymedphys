@@ -184,7 +184,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MESSAGE_CONTENT: ${{ steps.generate-message.outputs.message-content }}
-           Centralise model and token limits here for easy tuning
+          # Centralise model and token limits here for easy tuning
           CLAUDE_MODEL: claude-3-7-sonnet-20250219
           MAX_TOKENS: "1024"
         run: |
@@ -215,14 +215,14 @@ jobs:
           echo "response=$resp" >> "$GITHUB_OUTPUT"
 
       - name: Get URL to prompt log
-        uses: Tiryoh/gha-jobid-action@v1
+        uses: Tiryoh/gha-jobid-action@be260d8673c9211a84cdcf37794ebd654ba81eef #1.4.0
         id: job-info
         with:
           job_name: "${{ github.job }}"
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create issue comment when skipped
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # 5.0.0
         if: steps.security-check.outputs.skip-processing == 'true'
         with:
           issue-number: ${{ github.event.issue.number }}
@@ -234,7 +234,7 @@ jobs:
             The request contained potentially sensitive keywords or patterns that triggered our security filters.
 
       - name: Create issue comment with Claude's error
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # 5.0.0
         if: steps.security-check.outputs.skip-processing != 'true' && (fromJson(steps.claude-response.outputs.response).error != null)
         with:
           issue-number: ${{ github.event.issue.number }}
@@ -250,7 +250,7 @@ jobs:
             ${{ fromJson(steps.claude-response.outputs.response).error.message }}
 
       - name: Create issue comment with Claude's response
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # 5.0.0
         if: steps.security-check.outputs.skip-processing != 'true' && (fromJson(steps.claude-response.outputs.response).error == null)
         with:
           issue-number: ${{ github.event.issue.number }}
