@@ -44,6 +44,6 @@ jobs:
 
           if [[ -n $(git status -s) ]]; then
             git add -A
-            git commit -m "🤖 Auto-fix pre-commit issues"
+            git commit -m "🤖 Auto-fix pre-commit issues [skip ci]"
             git push
           fi
