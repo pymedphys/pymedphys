@@ -1,6 +1,3 @@
-`lib/pymedphys/docs/contrib/info/dependency-update-prs.md`
-
-```md
 # Reviewing automated dependency update PRs
 
 Automated dependency update PRs should be boring. This page explains what the
@@ -135,4 +132,3 @@ That usually means one of two things:
 2. the validation failed, so the workflow never opened the PR
 
 If you suspect the second case, run the workflow manually and inspect the logs.
-```
