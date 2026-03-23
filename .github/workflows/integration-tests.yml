@@ -81,7 +81,7 @@ jobs:
       - name: Build and test wheel
         run: |
           uv build --wheel
-          pip install dist/*.whl
+          uv pip install dist/*.whl
           pymedphys --help
           python -c "import pymedphys"
 
