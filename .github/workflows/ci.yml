@@ -99,6 +99,10 @@ jobs:
     uses: ./.github/workflows/docs.yml
     with:
       publish: false
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
     secrets: inherit
 
   # Docs publish on main
