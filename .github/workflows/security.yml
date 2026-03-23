@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload Bandit results
         if: github.event_name != 'pull_request'  # Only upload on main
-        uses: actions/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
+        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
         with:
           sarif_file: bandit.sarif
 
@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload Trivy results
         if: github.event_name != 'pull_request'  # Only upload on main
-        uses: actions/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
+        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
         with:
           sarif_file: trivy.sarif
 
