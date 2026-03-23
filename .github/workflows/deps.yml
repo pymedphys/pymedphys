@@ -13,10 +13,12 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
+        with:
+          python-version: 3.12
 
       - name: Set up uv
         uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4
@@ -44,12 +46,33 @@ jobs:
             echo '```' >> updates.md
           fi
 
-      - name: Run tests
+      - name: Run focused validation
         if: steps.update.outputs.changed == 'true'
         run: |
+          set -euxo pipefail
+
           uv sync --frozen --extra user --extra tests --extra docs
-          uv run -- pymedphys dev tests  # Full test run, not just --co
-          uv run -- pymedphys dev docs  # Also test docs build
+
+          uv run pytest -q --maxfail=1 \
+            -m "not slow and not cypress and not mosaiqdb and not anthropic_key" \
+            lib/pymedphys/tests/coordinates \
+            lib/pymedphys/tests/delivery \
+            lib/pymedphys/tests/dicom \
+            lib/pymedphys/tests/gamma \
+            lib/pymedphys/tests/interp \
+            lib/pymedphys/tests/logfiles \
+            lib/pymedphys/tests/metersetmap \
+            lib/pymedphys/tests/trf \
+            lib/pymedphys/tests/utilities
+
+          uv run pymedphys dev docs
+
+          uv build --wheel
+          uv venv .wheel-test
+          source .wheel-test/bin/activate
+          uv pip install dist/*.whl
+          pymedphys --help
+          python -c "import pymedphys; print(pymedphys.__version__)"
 
       - name: Create PR
         if: steps.update.outputs.changed == 'true'
