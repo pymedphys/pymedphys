@@ -21,7 +21,7 @@ jobs:
 
       - name: Run pyright
         run: |
-          uvx pyright
+          uv run -- pyright
 
   mypy:
     name: MyPy (optional)
@@ -37,4 +37,4 @@ jobs:
 
       - name: Run mypy
         run: |
-          uv run mypy --install-types --non-interactive pymedphys || true
+          uv run -- mypy --install-types --non-interactive pymedphys || true
