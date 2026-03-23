@@ -77,13 +77,14 @@ jobs:
         continue-on-error: true
         run: |
           uv pip install bandit[toml]
-          uv run bandit -r lib/pymedphys/ -f sarif -o bandit.sarif || true
+          uv run bandit -r lib/pymedphys/ -f json -o bandit.json || true
 
       - name: Upload Bandit results
         if: github.event_name != 'pull_request'  # Only upload on main
-        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 4.6.2
         with:
-          sarif_file: bandit.sarif
+          name: bandit-results
+          path: bandit.json
 
   container-scan:
     name: Container & File System Scan
