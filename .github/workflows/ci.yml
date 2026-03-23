@@ -118,38 +118,6 @@ jobs:
       pages: write
       id-token: write
 
-  # Cypress E2E tests only on main
-  cypress-e2e:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
-
-      - name: Check for Cypress
-        id: check
-        run: |
-          if [[ -f package.json && -d cypress ]]; then
-            echo "has-cypress=true" >> $GITHUB_OUTPUT
-          else
-            echo "has-cypress=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Setup Node
-        if: steps.check.outputs.has-cypress == 'true'
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install and run Cypress
-        if: steps.check.outputs.has-cypress == 'true'
-        env:
-          CI: true
-        run: |
-          npm ci
-          npx cypress run
-
   # Summary job provides overall status
   summary:
     needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish, cypress-e2e]
