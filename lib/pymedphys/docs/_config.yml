@@ -5,11 +5,12 @@ logo: img/pymedphys.svg
 execute:
   execute_notebooks: cache
 parse:
-  myst_extended_syntax: true
+  myst_extended_syntax: []
 
 html:
   favicon: img/pymedphys.svg
-  google_analytics_id: UA-26591325-7
+  analytics:
+    google_analytics_id: UA-26591325-7
   home_page_in_navbar: false
   use_edit_page_button: true
   use_repository_button: true
