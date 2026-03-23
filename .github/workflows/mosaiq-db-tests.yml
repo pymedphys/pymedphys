@@ -27,9 +27,15 @@ jobs:
 
       - name: Wait for SQL Server startup
         run: |
-          # Simple wait to let SQL Server complete its startup
-          echo "Giving SQL Server time to start..."
-          sleep 30
+          for i in $(seq 1 30); do
+            if /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'sqlServerPassw0rd' -Q 'SELECT 1' &>/dev/null; then
+              echo "SQL Server is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "SQL Server failed to start"
+          exit 1
 
       - name: Run database tests with retry
         env:
