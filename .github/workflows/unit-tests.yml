@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
-        python-version: ${{ fromJSON(inputs.python-matrix) }}
+        python-version: ${{ inputs.quick && fromJSON('["3.12"]') || fromJSON(inputs.python-matrix) }}
     runs-on: ${{ matrix.os }}
 
     steps:
