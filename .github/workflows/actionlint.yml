@@ -22,4 +22,4 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - name: Run actionlint
-        uses: rhysd/actionlint@a52854e7e09cdb580ab549fbb3f0a46dc2e55942 # 1.7.7
+        uses: rhysd/actionlint@393031adb9afb225ee52ae2ccd7a5af5525e03e8 # 1.7.11
