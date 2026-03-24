@@ -4,21 +4,19 @@ description: Standard setup for PyMedPhys CI
 inputs:
   python-version:
     description: Python version to use
-    default: "3.12"
+    default: '3.12'
   extras:
     description: Space-separated list of extras to install
-    default: ""
+    default: ''
   node-version:
     description: Node.js version (optional)
-    default: ""
+    default: ''
 
 runs:
   using: composite
   steps:
     - name: Set up Python
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
-      env:
-        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       with:
         python-version: ${{ inputs.python-version }}
 
@@ -36,18 +34,15 @@ runs:
       shell: bash
       run: |
         set -euxo pipefail
-
         EXTRAS="${{ inputs.extras }}"
         if [ -n "$EXTRAS" ]; then
-          uv sync --frozen $(echo "$EXTRAS" | xargs -n1 echo --extra)
+          uv sync --frozen $(echo $EXTRAS | xargs -n1 echo --extra)
         else
           uv sync --frozen
         fi
 
     - name: Cache PyMedPhys data
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
-      env:
-        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       with:
         path: ~/.pymedphys
         key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
@@ -55,8 +50,6 @@ runs:
     - name: Set up Node.js
       if: ${{ inputs.node-version != '' }}
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
-      env:
-        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       with:
         node-version: ${{ inputs.node-version }}
         cache: npm
