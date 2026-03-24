@@ -15,13 +15,9 @@ on:
         required: false
         type: boolean
         default: false
-  workflow_dispatch:
 
 permissions:
   contents: read
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   test:
@@ -33,13 +29,14 @@ jobs:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
         python-version: ${{ inputs.quick && fromJSON('["3.12"]') || fromJSON(inputs.python-matrix) }}
     runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
-          extras: "dev tests mosaiq"
+          extras: 'dev tests mosaiq'
 
       - name: Run unit tests
         shell: bash
@@ -47,10 +44,9 @@ jobs:
           PYTEST_EXTRA: ${{ inputs.extra-pytest-args }}
         run: |
           set -euxo pipefail
-
           mkdir -p test-results
 
-          # shellcheck disable=SC2086
+          # Always exclude slow tests in unit test runs
           uv run pytest -m "not slow" ${PYTEST_EXTRA} \
             --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
 
@@ -61,3 +57,4 @@ jobs:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
           path: test-results/*.xml
           if-no-files-found: ignore
+          retention-days: 30
