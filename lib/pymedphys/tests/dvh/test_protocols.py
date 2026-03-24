@@ -75,7 +75,9 @@ class TestInterSliceStrategyProtocol:
             alpha = (z_mm - lower_contour.z_mm) / (
                 upper_contour.z_mm - lower_contour.z_mm
             )
-            blended = (1 - alpha) * lower_contour.points_xy_mm + alpha * upper_contour.points_xy_mm
+            blended = (
+                1 - alpha
+            ) * lower_contour.points_xy_mm + alpha * upper_contour.points_xy_mm
             return PlanarContour(z_mm=z_mm, points_xy_mm=blended)
 
         assert isinstance(shape_based, InterSliceStrategy)
