@@ -14,26 +14,16 @@ permissions:
   id-token: write  # For PyPI trusted publishing
 
 jobs:
-  # Run core quality checks
-  quality-checks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "Starting release quality checks"
-
   lint:
-    needs: [quality-checks]
     uses: ./.github/workflows/lint.yml
     secrets: inherit
 
   type-check:
-    needs: [quality-checks]
     uses: ./.github/workflows/type-check.yml
     secrets: inherit
 
   # Run focused unit tests
   unit-tests:
-    needs: [quality-checks]
     uses: ./.github/workflows/unit-tests.yml
     with:
       quick: false
@@ -56,7 +46,7 @@ jobs:
       url: https://pypi.org/p/pymedphys
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - uses: ./.github/actions/setup-project
         with:
@@ -82,12 +72,12 @@ jobs:
           deactivate
 
       - name: Publish to TestPyPI
-        if: inputs.dry_run != false
+        if: inputs.dry_run != 'false'
         run: |
           uv publish --index-url https://test.pypi.org/simple/
 
       - name: Publish to PyPI
-        if: inputs.dry_run == false || github.event_name == 'release'
+        if: inputs.dry_run == 'false' || github.event_name == 'release'
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
 
       - name: Upload release assets
@@ -103,7 +93,7 @@ jobs:
           ## Release Summary 🚀
 
           **Version:** ${{ github.ref_name }}
-          **Dry Run:** ${{ inputs.dry_run || false }}
+          **Dry Run:** ${{ inputs.dry_run || 'false' }}
 
           ### Quality Checks
           - Linting: ${{ needs.lint.result }}
