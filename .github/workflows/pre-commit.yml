@@ -4,6 +4,9 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
@@ -16,11 +19,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: true
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'all'
+          extras: "all"
 
       - name: Cache pre-commit
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
@@ -29,21 +33,47 @@ jobs:
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit
-        id: pre-commit
+        id: pre_commit
         continue-on-error: true
         run: |
           uv run pre-commit run --all-files --show-diff-on-failure
 
       - name: Auto-fix if needed
-        if: steps.pre-commit.outcome == 'failure' && github.event_name == 'pull_request'
+        if: >
+          steps.pre_commit.outcome == 'failure' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         run: |
+          set -euxo pipefail
+
           git config user.email "bot@pymedphys.com"
           git config user.name "PyMedPhys Bot"
 
           uv run pre-commit run --all-files || true
 
-          if [[ -n $(git status -s) ]]; then
-            git add -A
-            git commit -m "🤖 Auto-fix pre-commit issues [skip ci]"
-            git push
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "Pre-commit failed but produced no auto-fixable changes."
+            exit 1
           fi
+
+          BRANCH_NAME="$(git branch --show-current)"
+
+          if [[ -z "${BRANCH_NAME}" ]]; then
+            echo "Could not determine checked out branch name."
+            exit 1
+          fi
+
+          git add -A
+          git commit -m "Auto-fix pre-commit issues"
+          git push origin "HEAD:refs/heads/${BRANCH_NAME}"
+
+      - name: Fail when auto-fix cannot push
+        if: >
+          steps.pre_commit.outcome == 'failure' &&
+          (
+            github.event_name != 'pull_request' ||
+            github.event.pull_request.head.repo.full_name != github.repository
+          )
+        run: |
+          echo "Pre-commit failed and auto-fix is only available on same-repository pull requests."
+          exit 1

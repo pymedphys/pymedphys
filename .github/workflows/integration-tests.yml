@@ -17,6 +17,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   doctests:
     name: Doctests
@@ -27,7 +30,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'all'
+          extras: "all"
 
       - name: Run doctests
         run: |
@@ -43,7 +46,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev tests'
+          extras: "dev tests"
 
       - name: Run slow tests
         run: |
@@ -58,13 +61,14 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'user'
+          extras: "user"
 
       - name: Run stackoverflow examples
         run: |
           if [[ -x scripts/stackoverflow.sh ]]; then
             bash scripts/stackoverflow.sh
           fi
+
           if [[ -f examples/stackoverflow/gamma.py ]]; then
             uv run python examples/stackoverflow/gamma.py
           fi
