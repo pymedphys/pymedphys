@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
+        description: "Publish to TestPyPI only (true) or also to PyPI (false)"
         type: boolean
         default: true
 
@@ -16,35 +17,25 @@ permissions:
 jobs:
   lint:
     uses: ./.github/workflows/lint.yml
-    secrets: inherit
 
   type-check:
     uses: ./.github/workflows/type-check.yml
-    secrets: inherit
 
-  # Run focused unit tests
   unit-tests:
     uses: ./.github/workflows/unit-tests.yml
     with:
       quick: false
-    secrets: inherit
 
-  # Run integration tests for release
   integration-tests:
     needs: [unit-tests]
     uses: ./.github/workflows/integration-tests.yml
     with:
-      run-slow: true  # Include slow tests for release
-    secrets: inherit
+      run-slow: true
 
-  # Build and publish
-  build-and-publish:
+  # Build the package and verify it installs cleanly.
+  build:
     needs: [lint, type-check, unit-tests, integration-tests]
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/pymedphys
-
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
@@ -55,15 +46,11 @@ jobs:
       - name: Build distributions
         run: |
           uv build --wheel --sdist
-
-          # Verify wheel
-          uv pip install --dry-run dist/*.whl
           uv pip install twine
           uv run twine check dist/*
 
       - name: Test installation
         run: |
-          # Create a fresh venv and test installation
           uv venv test-env
           source test-env/bin/activate || test-env/Scripts/activate
           uv pip install dist/*.whl
@@ -71,36 +58,104 @@ jobs:
           python -c "import pymedphys; print(pymedphys.__version__)"
           deactivate
 
+      - name: Upload built distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 4.6.2
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # Publish to TestPyPI for manual dry-run dispatches.
+  publish-testpypi:
+    needs: [build]
+    if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pymedphys
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # 4.2.1
+        with:
+          name: dist
+          path: dist/
+
       - name: Publish to TestPyPI
-        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
-        run: |
-          uv publish --index-url https://test.pypi.org/simple/
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  # Publish to PyPI for real releases or explicit non-dry-run dispatches.
+  publish-pypi:
+    needs: [build]
+    if: >
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pymedphys
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # 4.2.1
+        with:
+          name: dist
+          path: dist/
 
       - name: Publish to PyPI
-        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
 
+  # Upload release assets only on a real GitHub release.
+  upload-release-assets:
+    needs: [publish-pypi]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # 4.2.1
+        with:
+          name: dist
+          path: dist/
+
       - name: Upload release assets
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836
         with:
           files: dist/*
 
+  summary:
+    needs: [lint, type-check, unit-tests, integration-tests, build, publish-testpypi, publish-pypi]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
       - name: Create release summary
-        if: always()
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
-          ## Release Summary 🚀
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## Release Summary
 
           **Version:** ${{ github.ref_name }}
-          **Dry Run:** ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          **Event:** ${{ github.event_name }}
+          **Dry Run:** ${{ inputs.dry_run || 'N/A (release event)' }}
 
           ### Quality Checks
-          - Linting: ${{ needs.lint.result }}
-          - Type Check: ${{ needs.type-check.result }}
-          - Unit Tests: ${{ needs.unit-tests.result }}
-          - Integration Tests: ${{ needs.integration-tests.result }}
+          | Check | Status |
+          |-------|--------|
+          | Lint | ${{ needs.lint.result }} |
+          | Type Check | ${{ needs.type-check.result }} |
+          | Unit Tests | ${{ needs.unit-tests.result }} |
+          | Integration Tests | ${{ needs.integration-tests.result }} |
+          | Build | ${{ needs.build.result }} |
 
-          ### Artifacts
-          Check the workflow artifacts for built wheels and sdist.
+          ### Publishing
+          | Target | Status |
+          |--------|--------|
+          | TestPyPI | ${{ needs.publish-testpypi.result || 'skipped' }} |
+          | PyPI | ${{ needs.publish-pypi.result || 'skipped' }} |
           EOF
