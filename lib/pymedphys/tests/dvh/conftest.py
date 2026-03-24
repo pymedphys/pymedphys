@@ -449,7 +449,7 @@ def _symmetric_axis_mm(
 def _make_linear_dose_grid(
     direction: str,
     resolution_mm: float,
-    grid_extent_mm: float = 30.0,
+    grid_extent_mm: float = 12.0,
     *,
     centre_dose_gy: float = 17.0,
     gradient_gy_per_mm: float = 1.0,
@@ -488,21 +488,25 @@ def _make_linear_dose_grid(
 
         D(x, y, z) = centre_dose_gy + gradient_gy_per_mm × z
 
-    .. warning::
+    .. note::
 
-        The grid **will contain negative dose values** when the product
-        ``gradient_gy_per_mm × grid_extent_mm`` exceeds
-        ``centre_dose_gy``.  With the defaults (17 Gy centre, 1 Gy/mm
-        gradient, ±30 mm extent) doses range from −13 Gy to +47 Gy.
-        Negative doses are unphysical but are intentionally preserved
-        because the Nelms analytical DVH formulae assume an unbounded
-        linear field.  All five standard Nelms structures fit within
-        ±12 mm of the origin where doses remain safely positive
-        (5–29 Gy).  If a test needs strictly non-negative dose, use
-        a smaller ``grid_extent_mm`` or a larger ``centre_dose_gy``.
+        This helper is constrained to generate physically valid,
+        non-negative dose grids because ``DoseGrid`` rejects negative
+        values. Therefore the parameters must satisfy
+
+        ``centre_dose_gy >= abs(gradient_gy_per_mm) * grid_extent_mm``
+
+        so that the minimum dose anywhere in the grid is at least 0 Gy.
     """
     if direction not in {"AP", "SI"}:
         raise ValueError("direction must be 'AP' or 'SI'.")
+
+    min_possible_dose_gy = centre_dose_gy - abs(gradient_gy_per_mm) * grid_extent_mm
+    if min_possible_dose_gy < 0.0:
+        raise ValueError(
+            "linear_dose_grid parameters would create negative dose values. "
+            "Require centre_dose_gy >= abs(gradient_gy_per_mm) * grid_extent_mm."
+        )
 
     x_mm = _symmetric_axis_mm(grid_extent_mm, resolution_mm)
     y_mm = _symmetric_axis_mm(grid_extent_mm, resolution_mm)
@@ -513,10 +517,8 @@ def _make_linear_dose_grid(
     )
 
     if direction == "AP":
-        # Gradient along patient-y (axis index 1).
         values_gy = values_gy + gradient_gy_per_mm * y_mm[np.newaxis, :, np.newaxis]
     else:
-        # Gradient along patient-z (axis index 2).
         values_gy = values_gy + gradient_gy_per_mm * z_mm[np.newaxis, np.newaxis, :]
 
     return DoseGrid(axes_mm=(x_mm, y_mm, z_mm), values_gy=values_gy)
@@ -1591,12 +1593,17 @@ def _validate_fixture_geometry() -> None:
         _last_max_r < 0.01
     ), f"Last sphere slice should be a tiny polygon, radius={_last_max_r}"
 
-    # --- Rotated cylinder slices must be rectangles (4 vertices) ---
+    # --- Rotated cylinder slices must be rectangles (4 unique vertices + close) ---
     _rot_cyl = _make_nelms_rotated_cylinder_contours(spacing_mm=2.0)
     for _rc_contour in _rot_cyl:
-        assert _rc_contour.points_xy_mm.shape == (4, 2), (
+        assert _rc_contour.points_xy_mm.shape == (5, 2), (
             f"Rotated cylinder slice at z={_rc_contour.z_mm} has "
-            f"{_rc_contour.points_xy_mm.shape[0]} vertices, expected 4"
+            f"{_rc_contour.points_xy_mm.shape[0]} vertices, expected 5 "
+            "(4 unique vertices + 1 closing vertex)"
+        )
+        np.testing.assert_allclose(
+            _rc_contour.points_xy_mm[0],
+            _rc_contour.points_xy_mm[-1],
         )
 
     # --- Slice position generator: endpoints present and exact ---
