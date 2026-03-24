@@ -50,6 +50,7 @@ jobs:
 
           mkdir -p test-results
 
+          # shellcheck disable=SC2086
           uv run pytest -m "not slow" ${PYTEST_EXTRA} \
             --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
 

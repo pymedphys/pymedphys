@@ -89,7 +89,7 @@ jobs:
       - name: Create release summary
         if: always()
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
           ## Release Summary 🚀
 
           **Version:** ${{ github.ref_name }}

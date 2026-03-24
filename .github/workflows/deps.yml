@@ -34,16 +34,18 @@ jobs:
 
           # Check if changed
           if diff -q uv.lock uv.lock.old > /dev/null; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
 
             # Generate changelog
-            echo "## Dependency Updates" > updates.md
-            echo "" >> updates.md
-            echo '```diff' >> updates.md
-            diff uv.lock.old uv.lock | grep "^[><]" | head -50 >> updates.md
-            echo '```' >> updates.md
+            {
+              echo "## Dependency Updates"
+              echo ""
+              echo '```diff'
+              diff uv.lock.old uv.lock | grep "^[><]" | head -50 || true
+              echo '```'
+            } > updates.md
           fi
 
       - name: Run focused validation

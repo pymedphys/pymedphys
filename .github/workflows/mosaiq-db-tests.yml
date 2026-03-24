@@ -27,7 +27,7 @@ jobs:
 
       - name: Wait for SQL Server startup
         run: |
-          for i in $(seq 1 30); do
+          for _i in $(seq 1 30); do
             if /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'sqlServerPassw0rd' -Q 'SELECT 1' &>/dev/null; then
               echo "SQL Server is ready"
               exit 0
