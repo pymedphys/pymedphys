@@ -6,8 +6,10 @@ This module defines the foundational data model for DVH computation:
 - ``Structure``: a named DICOM ROI composed of planar contours.
 - ``DoseGrid``: a rectilinear 3-D dose distribution on DICOM patient axes.
 - ``DVHResult``: a cumulative DVH curve with metadata and diagnostics.
-- Strategy protocols for point-in-polygon, inter-slice interpolation,
-  and end-cap logic, enabling clean strategy-swapping without inheritance.
+
+Computation-dispatch interfaces (point-in-polygon, inter-slice interpolation,
+end-cap strategies) live in ``protocols.py``, not here.  This module contains
+only the data containers that the rest of the engine operates on.
 
 Design notes
 ------------
@@ -32,7 +34,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from numbers import Real
-from typing import ClassVar, NamedTuple, Protocol, cast, runtime_checkable
+from typing import ClassVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -44,7 +46,6 @@ import numpy.typing as npt
 FloatArray1D = npt.NDArray[np.float64]
 FloatArray2D = npt.NDArray[np.float64]
 FloatArray3D = npt.NDArray[np.float64]
-BoolArray1D = npt.NDArray[np.bool_]
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -68,26 +69,6 @@ _ALLOWED_GEOMETRIC_TYPES = frozenset(
 
 _UNIFORM_SPACING_RTOL: float = 1e-5
 _UNIFORM_SPACING_ATOL: float = 1e-8
-
-
-# ---------------------------------------------------------------------------
-# Named tuples
-# ---------------------------------------------------------------------------
-
-
-class ZExtent(NamedTuple):
-    """A z-axis extent expressed as ``(z_lower_mm, z_upper_mm)``.
-
-    Interpretation (open vs closed) depends on context:
-
-    - ``EndCapStrategy`` returns a half-open extent ``[z_lower, z_upper)``
-      consistent with the slab-ownership convention (§5.3 of the plan).
-    - ``Structure.z_extent_mm`` returns a closed extent
-      ``[z_first, z_last]`` spanning the first and last contour slices.
-    """
-
-    z_lower_mm: float
-    z_upper_mm: float
 
 
 # ---------------------------------------------------------------------------
@@ -135,99 +116,6 @@ class PlanarContour:
         object.__setattr__(self, "z_mm", float(self.z_mm))
         object.__setattr__(self, "points_xy_mm", points_xy_mm)
         object.__setattr__(self, "geometric_type", geometric_type)
-
-
-# ---------------------------------------------------------------------------
-# Strategy protocols
-# ---------------------------------------------------------------------------
-
-
-@runtime_checkable
-class PIPStrategy(Protocol):
-    """Return an inclusion mask for query points against one planar contour.
-
-    Parameters
-    ----------
-    query_points_xy_mm : FloatArray2D
-        Shape ``(M, 2)`` array of query-point XY coordinates.
-    contour_xy_mm : FloatArray2D
-        Shape ``(N, 2)`` array of closed-polygon XY vertices.
-
-    Returns
-    -------
-    BoolArray1D
-        Length-``M`` boolean mask; ``True`` means inside or on boundary.
-    """
-
-    def __call__(
-        self,
-        query_points_xy_mm: FloatArray2D,
-        contour_xy_mm: FloatArray2D,
-        /,
-    ) -> BoolArray1D: ...
-
-
-@runtime_checkable
-class InterSliceStrategy(Protocol):
-    """Return an interpolated contour for a requested z position.
-
-    The returned ``PlanarContour`` is constructed at ``z_mm`` with
-    interpolated XY vertices derived from the bounding contours.
-
-    Parameters
-    ----------
-    lower_contour : PlanarContour
-        The contour on the slice immediately below ``z_mm``.
-    upper_contour : PlanarContour
-        The contour on the slice immediately above ``z_mm``.
-    z_mm : float
-        The target axial position for interpolation.
-
-    Returns
-    -------
-    PlanarContour
-        A new contour at ``z_mm`` with interpolated vertex positions.
-    """
-
-    def __call__(
-        self,
-        lower_contour: PlanarContour,
-        upper_contour: PlanarContour,
-        z_mm: float,
-        /,
-    ) -> PlanarContour: ...
-
-
-@runtime_checkable
-class EndCapStrategy(Protocol):
-    """Return the z extent owned by an end contour for the chosen rule.
-
-    The returned ``ZExtent`` expresses a half-open interval
-    ``[z_lower_mm, z_upper_mm)`` consistent with the project's
-    slab-ownership convention (§5.3).
-
-    Parameters
-    ----------
-    contour : PlanarContour
-        The terminal (inferior or superior) contour.
-    neighbour_spacing_mm : float
-        The axial spacing to the nearest neighbouring contour slice.
-    is_superior : bool
-        ``True`` if this is the most-superior (highest-z) end contour.
-
-    Returns
-    -------
-    ZExtent
-        The half-open z extent owned by this end contour.
-    """
-
-    def __call__(
-        self,
-        contour: PlanarContour,
-        neighbour_spacing_mm: float,
-        is_superior: bool,
-        /,
-    ) -> ZExtent: ...
 
 
 # ---------------------------------------------------------------------------
@@ -283,11 +171,11 @@ class Structure:
         object.__setattr__(self, "coordinate_frame", coordinate_frame)
 
     @property
-    def z_extent_mm(self) -> ZExtent:
-        """Closed z-extent ``[z_first, z_last]`` spanning the contour slices.
+    def z_extent_mm(self) -> tuple[float, float]:
+        """Closed z-extent spanning the contour slices.
 
-        Returns the z positions of the most-inferior and most-superior
-        contours.  Requires at least one contour.
+        Returns ``(z_first, z_last)`` — the z positions of the most-inferior
+        and most-superior contours.  Requires at least one contour.
 
         Raises
         ------
@@ -296,10 +184,7 @@ class Structure:
         """
         if not self.contours:
             raise ValueError("Structure has no contours; z_extent_mm is undefined")
-        return ZExtent(
-            z_lower_mm=self.contours[0].z_mm,
-            z_upper_mm=self.contours[-1].z_mm,
-        )
+        return (self.contours[0].z_mm, self.contours[-1].z_mm)
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +334,7 @@ class DVHResult:
     voxel_count: int
     bin_width_gy: float
     supersampling_factor: tuple[int, int, int]
-    pip_method: str
+    point_in_polygon_method: str
     interslice_method: str
     endcap_method: str
 
@@ -499,9 +384,11 @@ class DVHResult:
             int(supersampling_factor[2]),
         )
 
-        pip_method = str(self.pip_method)
-        if not pip_method:
-            raise ValueError("DVHResult.pip_method must be a non-empty string")
+        point_in_polygon_method = str(self.point_in_polygon_method)
+        if not point_in_polygon_method:
+            raise ValueError(
+                "DVHResult.point_in_polygon_method must be a non-empty string"
+            )
 
         interslice_method = str(self.interslice_method)
         if not interslice_method:
@@ -511,6 +398,7 @@ class DVHResult:
         if not endcap_method:
             raise ValueError("DVHResult.endcap_method must be a non-empty string")
 
+        # Mutable dataclass: use plain assignment (not object.__setattr__).
         self.structure_name = str(self.structure_name)
         self.dose_bins_gy = dose_bins_gy
         self.cumulative_volume_cm3 = cumulative_volume_cm3
@@ -518,7 +406,7 @@ class DVHResult:
         self.voxel_count = voxel_count
         self.bin_width_gy = bin_width_gy
         self.supersampling_factor = supersampling_factor
-        self.pip_method = pip_method
+        self.point_in_polygon_method = point_in_polygon_method
         self.interslice_method = interslice_method
         self.endcap_method = endcap_method
         self.preset_name = _normalise_optional_string(self.preset_name)
@@ -671,16 +559,11 @@ def _axis_spacing(axis: FloatArray1D) -> float:
 # ---------------------------------------------------------------------------
 
 __all__ = [
-    "BoolArray1D",
     "DVHResult",
     "DoseGrid",
-    "EndCapStrategy",
     "FloatArray1D",
     "FloatArray2D",
     "FloatArray3D",
-    "InterSliceStrategy",
-    "PIPStrategy",
     "PlanarContour",
     "Structure",
-    "ZExtent",
 ]

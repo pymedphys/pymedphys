@@ -6,7 +6,8 @@ Organised by class under test:
 - Structure
 - DoseGrid
 - DVHResult
-- Strategy Protocols (PIPStrategy, InterSliceStrategy, EndCapStrategy)
+
+Strategy protocol tests live in ``test_protocols.py``.
 """
 
 from __future__ import annotations
@@ -17,12 +18,8 @@ import pytest
 from pymedphys._dvh.types import (
     DVHResult,
     DoseGrid,
-    EndCapStrategy,
-    InterSliceStrategy,
-    PIPStrategy,
     PlanarContour,
     Structure,
-    ZExtent,
 )
 
 
@@ -49,7 +46,7 @@ def _make_dvh_result(**overrides: object) -> DVHResult:
         "voxel_count": 100,
         "bin_width_gy": 1.0,
         "supersampling_factor": (5, 5, 5),
-        "pip_method": "winding_number",
+        "point_in_polygon_method": "winding_number",
         "interslice_method": "right_prism",
         "endcap_method": "half_slab",
     }
@@ -144,7 +141,7 @@ class TestPlanarContourValidation:
                 geometric_type="OPEN_NONPLANAR",
             )
 
-    def test_accepts_CLOSED_PLANAR_XOR(self) -> None:
+    def test_accepts_closed_planar_xor(self) -> None:
         contour = PlanarContour(
             z_mm=0.0,
             points_xy_mm=np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]),
@@ -269,16 +266,15 @@ class TestStructureZExtent:
         c3 = _triangle(z=3.0)
         structure = Structure(name="PTV", number=1, contours=(c1, c2, c3))
 
-        extent = structure.z_extent_mm
-        assert isinstance(extent, ZExtent)
-        assert extent.z_lower_mm == 1.0
-        assert extent.z_upper_mm == 5.0
+        z_lo, z_hi = structure.z_extent_mm
+        assert z_lo == 1.0
+        assert z_hi == 5.0
 
     def test_z_extent_single_contour(self) -> None:
         structure = Structure(name="PTV", number=1, contours=(_triangle(z=7.5),))
-        extent = structure.z_extent_mm
-        assert extent.z_lower_mm == 7.5
-        assert extent.z_upper_mm == 7.5
+        z_lo, z_hi = structure.z_extent_mm
+        assert z_lo == 7.5
+        assert z_hi == 7.5
 
     def test_z_extent_raises_for_no_contours(self) -> None:
         structure = Structure(name="PTV", number=1, contours=())
@@ -458,7 +454,7 @@ class TestDVHResultConstruction:
         result = _make_dvh_result()
         np.testing.assert_allclose(result.cumulative_volume_cm3, [10.0, 7.5, 0.0])
         assert result.structure_name == "PTV"
-        assert result.pip_method == "winding_number"
+        assert result.point_in_polygon_method == "winding_number"
         assert result.supersampling_factor == (5, 5, 5)
 
     def test_cumulative_bin_semantics_documented(self) -> None:
@@ -497,9 +493,9 @@ class TestDVHResultValidation:
         with pytest.raises(ValueError, match="supersampling_factor"):
             _make_dvh_result(supersampling_factor=(5, 0, 5))
 
-    def test_rejects_empty_pip_method(self) -> None:
-        with pytest.raises(ValueError, match="pip_method"):
-            _make_dvh_result(pip_method="")
+    def test_rejects_empty_point_in_polygon_method(self) -> None:
+        with pytest.raises(ValueError, match="point_in_polygon_method"):
+            _make_dvh_result(point_in_polygon_method="")
 
     def test_rejects_empty_interslice_method(self) -> None:
         with pytest.raises(ValueError, match="interslice_method"):
@@ -550,103 +546,3 @@ class TestDVHResultOptionalFields:
         assert result.surface_max_dose_gy == pytest.approx(2.1)
         assert result.computation_time_s == pytest.approx(1.23)
         assert result.warnings == ["test warning"]
-
-
-# ===================================================================
-# Strategy Protocols
-# ===================================================================
-
-
-class TestPIPStrategyProtocol:
-    """Verify PIPStrategy runtime-checkable behaviour."""
-
-    def test_conforming_function_is_recognised(self) -> None:
-        def my_pip(
-            query_points_xy_mm: np.ndarray,
-            contour_xy_mm: np.ndarray,
-            /,
-        ) -> np.ndarray:
-            return np.ones(len(query_points_xy_mm), dtype=bool)
-
-        assert isinstance(my_pip, PIPStrategy)
-
-    def test_conforming_callable_class_is_recognised(self) -> None:
-        class MyPIP:
-            def __call__(
-                self,
-                query_points_xy_mm: np.ndarray,
-                contour_xy_mm: np.ndarray,
-                /,
-            ) -> np.ndarray:
-                return np.ones(len(query_points_xy_mm), dtype=bool)
-
-        assert isinstance(MyPIP(), PIPStrategy)
-
-    def test_non_callable_is_not_recognised(self) -> None:
-        assert not isinstance("not callable", PIPStrategy)
-        assert not isinstance(42, PIPStrategy)
-
-
-class TestInterSliceStrategyProtocol:
-    """Verify InterSliceStrategy runtime-checkable behaviour."""
-
-    def test_conforming_function_is_recognised(self) -> None:
-        def my_interp(
-            lower_contour: PlanarContour,
-            upper_contour: PlanarContour,
-            z_mm: float,
-            /,
-        ) -> PlanarContour:
-            return PlanarContour(
-                z_mm=z_mm, points_xy_mm=lower_contour.points_xy_mm.copy()
-            )
-
-        assert isinstance(my_interp, InterSliceStrategy)
-
-    def test_non_callable_is_not_recognised(self) -> None:
-        assert not isinstance(None, InterSliceStrategy)
-
-
-class TestEndCapStrategyProtocol:
-    """Verify EndCapStrategy runtime-checkable behaviour."""
-
-    def test_conforming_function_is_recognised(self) -> None:
-        def my_endcap(
-            contour: PlanarContour,
-            neighbour_spacing_mm: float,
-            is_superior: bool,
-            /,
-        ) -> ZExtent:
-            half = neighbour_spacing_mm / 2.0
-            if is_superior:
-                return ZExtent(contour.z_mm - half, contour.z_mm + half)
-            return ZExtent(contour.z_mm - half, contour.z_mm + half)
-
-        assert isinstance(my_endcap, EndCapStrategy)
-
-    def test_non_callable_is_not_recognised(self) -> None:
-        assert not isinstance([], EndCapStrategy)
-
-
-# ===================================================================
-# ZExtent
-# ===================================================================
-
-
-class TestZExtent:
-    """Verify ZExtent named tuple behaviour."""
-
-    def test_construction_and_access(self) -> None:
-        extent = ZExtent(z_lower_mm=1.0, z_upper_mm=5.0)
-        assert extent.z_lower_mm == 1.0
-        assert extent.z_upper_mm == 5.0
-
-    def test_tuple_unpacking(self) -> None:
-        z_lo, z_hi = ZExtent(z_lower_mm=2.0, z_upper_mm=8.0)
-        assert z_lo == 2.0
-        assert z_hi == 8.0
-
-    def test_indexing(self) -> None:
-        extent = ZExtent(z_lower_mm=3.0, z_upper_mm=9.0)
-        assert extent[0] == 3.0
-        assert extent[1] == 9.0
