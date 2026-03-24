@@ -22,23 +22,27 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: "docs"
+          extras: 'docs'
 
       - name: Download required data
         run: |
-          uv run python -c "import pymedphys; pymedphys.data_path('original_dose_beam_4.dcm'); pymedphys.data_path('logfile_dose_beam_4.dcm')"
+          uv run python -c "
+          import pymedphys
+          pymedphys.data_path('original_dose_beam_4.dcm')
+          pymedphys.data_path('logfile_dose_beam_4.dcm')
+          "
 
       - name: Build documentation
         run: |
           uv run pymedphys dev docs
 
+          # External linkcheck is advisory — external sites go down.
           uv run python -m sphinx.ext.linkcheck lib/pymedphys/docs || true
 
       - name: Upload artifact
