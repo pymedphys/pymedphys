@@ -7,9 +7,6 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   lint:
     name: Pylint
@@ -20,7 +17,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: "all"
+          extras: 'all'
 
       - name: Run pylint
         run: |
