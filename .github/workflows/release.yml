@@ -72,12 +72,12 @@ jobs:
           deactivate
 
       - name: Publish to TestPyPI
-        if: inputs.dry_run != 'false'
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
         run: |
           uv publish --index-url https://test.pypi.org/simple/
 
       - name: Publish to PyPI
-        if: inputs.dry_run == 'false' || github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
 
       - name: Upload release assets
@@ -93,7 +93,7 @@ jobs:
           ## Release Summary 🚀
 
           **Version:** ${{ github.ref_name }}
-          **Dry Run:** ${{ inputs.dry_run || 'false' }}
+          **Dry Run:** ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 
           ### Quality Checks
           - Linting: ${{ needs.lint.result }}
