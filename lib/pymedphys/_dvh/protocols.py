@@ -11,11 +11,11 @@ These are structural-subtyping protocols (PEP 544).  Any callable with the
 right signature satisfies the protocol — no inheritance required.  A plain
 function, a lambda, or a callable class instance all work.
 
-The MVP ships one implementation of each (winding number, right prism,
-half-slab variants).  The protocols exist so that post-MVP extensions
-(ray-casting, shape-based interpolation, tapered end-caps) can be added
-by writing a new function and passing it to ``compute_dvh``, not by
-refactoring the engine.
+The MVP ships one implementation of each (winding number, shape-based
+interpolation, half-slab variants).  The protocols exist so that
+post-MVP extensions (ray-casting, tapered end-caps, alternative
+morphing methods) can be added by writing a new function and passing it
+to ``compute_dvh``, not by refactoring the engine.
 """
 
 from __future__ import annotations
@@ -81,9 +81,10 @@ class InterSliceStrategy(Protocol):
     Given two bounding contours and a target z, return a new
     ``PlanarContour`` at that z with interpolated vertex positions.
 
-    The MVP uses right-prism interpolation (the lower contour's geometry
-    is extruded unchanged between slices).  Post-MVP extensions may use
-    shape-based morphing that blends upper and lower vertices.
+    The MVP uses shape-based interpolation, which blends upper and lower
+    contour vertices to produce a morphed intermediate cross-section.
+    Right-prism interpolation (extruding the lower contour unchanged) is
+    available as an alternative but is no longer the default.
 
     Parameters
     ----------
