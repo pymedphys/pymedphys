@@ -64,17 +64,21 @@ class TestInterSliceStrategyProtocol:
     """Verify InterSliceStrategy runtime-checkable behaviour."""
 
     def test_conforming_function_is_recognised(self) -> None:
-        def right_prism(
+        # shape_based is the preferred MVP inter-slice strategy; it blends
+        # upper and lower contour vertices at the target z position.
+        def shape_based(
             lower_contour: PlanarContour,
             upper_contour: PlanarContour,
             z_mm: float,
             /,
         ) -> PlanarContour:
-            return PlanarContour(
-                z_mm=z_mm, points_xy_mm=lower_contour.points_xy_mm.copy()
+            alpha = (z_mm - lower_contour.z_mm) / (
+                upper_contour.z_mm - lower_contour.z_mm
             )
+            blended = (1 - alpha) * lower_contour.points_xy_mm + alpha * upper_contour.points_xy_mm
+            return PlanarContour(z_mm=z_mm, points_xy_mm=blended)
 
-        assert isinstance(right_prism, InterSliceStrategy)
+        assert isinstance(shape_based, InterSliceStrategy)
 
     def test_non_callable_is_not_recognised(self) -> None:
         assert not isinstance(None, InterSliceStrategy)
