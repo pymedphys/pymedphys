@@ -39,7 +39,7 @@ jobs:
     permissions:
       contents: write
     secrets:
-      PYMEDPHYS_CI_BOT_APP_ID: ${{ secrets.PYMEDPHYS_CI_BOT_APP_ID }}
+      PYMEDPHYS_CI_BOT_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
       PYMEDPHYS_CI_BOT_TOKEN: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
 
   # Linting — skip if pre-commit pushed an auto-fix (a fresh run is coming).

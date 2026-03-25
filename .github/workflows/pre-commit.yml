@@ -3,7 +3,7 @@ name: Pre-commit
 on:
   workflow_call:
     secrets:
-      PYMEDPHYS_CI_BOT_APP_ID:
+      PYMEDPHYS_CI_BOT_ID:
         description: App ID for pymedphys-ci-bot GitHub App.
         required: false
       PYMEDPHYS_CI_BOT_TOKEN:
@@ -32,14 +32,14 @@ jobs:
             echo "available=true" >> "$GITHUB_OUTPUT"
           fi
         env:
-          BOT_APP_ID: ${{ secrets.PYMEDPHYS_CI_BOT_APP_ID }}
+          BOT_APP_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
 
       - name: Generate bot token
         id: bot-token
         if: steps.check-bot.outputs.available == 'true'
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_APP_ID }}
+          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
           private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
