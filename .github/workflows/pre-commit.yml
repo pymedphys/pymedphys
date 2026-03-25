@@ -3,8 +3,11 @@ name: Pre-commit
 on:
   workflow_call:
     secrets:
+      PYMEDPHYS_CI_BOT_APP_ID:
+        description: App ID for pymedphys-ci-bot GitHub App.
+        required: false
       PYMEDPHYS_CI_BOT_TOKEN:
-        description: Token for pymedphys-ci-bot. Pushes with this token retrigger CI.
+        description: Private key for pymedphys-ci-bot GitHub App.
         required: false
   workflow_dispatch:
 
@@ -16,12 +19,29 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Check for bot credentials
+        id: check-bot
+        run: |
+          if [[ -n "$BOT_APP_ID" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          BOT_APP_ID: ${{ secrets.PYMEDPHYS_CI_BOT_APP_ID }}
+
+      - name: Generate bot token
+        id: bot-token
+        if: steps.check-bot.outputs.available == 'true'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_APP_ID }}
+          private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
-          token: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN || github.token }}
+          token: ${{ steps.bot-token.outputs.token || github.token }}
 
       - uses: ./.github/actions/setup-project
         with:
