@@ -264,7 +264,20 @@ class DoseGrid:
     def spacing_mm(self) -> tuple[float, float, float]:
         """Voxel spacing ``(dx, dy, dz)`` in mm.
 
-        Returns ``0.0`` for any single-point axis where spacing is undefined.
+        Notes
+        -----
+        If an axis contains only a single point, its spacing component is
+        returned as ``0.0`` — a sentinel meaning *undefined*, not a real
+        measurement.  Callers that need to use this value arithmetically
+        (e.g. to compute a voxel volume) must guard against single-point axes
+        explicitly::
+
+            dx, dy, dz = grid.spacing_mm
+            if any(s == 0.0 for s in (dx, dy, dz)):
+                raise ValueError("DoseGrid has a single-point axis; spacing is undefined")
+
+        Single-point axes are rare in clinical dose grids but can occur in
+        synthetic test grids and 2-D dose planes.
         """
         return (
             _axis_spacing(self.axes_mm[0]),
@@ -548,7 +561,11 @@ def _normalise_optional_float(value: float | None) -> float | None:
 
 
 def _axis_spacing(axis: FloatArray1D) -> float:
-    """Return the uniform spacing of an axis, or 0.0 for single-point axes."""
+    """Return the uniform spacing of an axis.
+
+    Returns ``0.0`` for single-point axes as a sentinel for *undefined*
+    spacing.  See ``DoseGrid.spacing_mm`` for caller guidance.
+    """
     if axis.size < 2:
         return 0.0
     return float(axis[1] - axis[0])

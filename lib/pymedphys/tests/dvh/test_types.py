@@ -444,12 +444,15 @@ class TestDoseGridProperties:
         assert pytest.approx(dz) == 1.5
 
     def test_spacing_mm_single_point_axis(self) -> None:
+        # A single-point axis has no meaningful spacing; 0.0 is the sentinel
+        # returned by DoseGrid.spacing_mm in that case.  Callers that need to
+        # use this value arithmetically must guard against 0.0 explicitly.
         x = np.array([5.0])
         y = np.array([0.0, 2.0])
         z = np.array([0.0, 3.0])
         grid = DoseGrid(axes_mm=(x, y, z), values_gy=np.ones((1, 2, 2)))
         dx, dy, dz = grid.spacing_mm
-        assert dx == 0.0
+        assert dx == 0.0  # sentinel: undefined spacing for single-point axis
         assert pytest.approx(dy) == 2.0
         assert pytest.approx(dz) == 3.0
 
