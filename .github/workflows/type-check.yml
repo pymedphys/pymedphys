@@ -41,4 +41,4 @@ jobs:
 
       - name: Run mypy
         run: |
-          uv run -- mypy --install-types --non-interactive pymedphys
+          uv run --with mypy mypy --install-types --non-interactive lib/pymedphys

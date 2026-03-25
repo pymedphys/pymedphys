@@ -118,7 +118,7 @@ jobs:
     steps:
       - name: Generate Summary
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
           ## CI Results
 
           ### Core Checks (Always Run)
