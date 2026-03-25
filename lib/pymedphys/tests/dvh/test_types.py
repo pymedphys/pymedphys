@@ -431,7 +431,6 @@ class TestDoseGridImmutability:
             np.testing.assert_array_equal(axis, axis_orig)
 
         np.testing.assert_array_equal(grid.values_gy, values_orig)
-            grid.values_gy[0, 0, 0] = 999.0
 
 
 class TestDoseGridProperties:
@@ -531,6 +530,14 @@ class TestDVHResultValidation:
     def test_rejects_empty_endcap_method(self) -> None:
         with pytest.raises(ValueError, match="endcap_method"):
             _make_dvh_result(endcap_method="")
+
+    def test_rejects_non_numeric_optional_float(self) -> None:
+        with pytest.raises(TypeError):
+            _make_dvh_result(surface_min_dose_gy="low")  # type: ignore[arg-type]
+
+    def test_coerces_warnings_to_strings(self) -> None:
+        result = _make_dvh_result(warnings=[123, "warn"])  # type: ignore[list-item]
+        assert result.warnings == ["123", "warn"]
 
 
 class TestDVHResultImmutability:
