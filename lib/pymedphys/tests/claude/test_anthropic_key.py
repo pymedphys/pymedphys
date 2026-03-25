@@ -3,6 +3,7 @@ import warnings
 
 import anthropic
 import pytest
+from anthropic.types import TextBlock
 
 
 # Custom pytest plugin to improve error output
@@ -100,7 +101,7 @@ def test_anthropic_models(model_name: str, capsys):
         assert message is not None
         first_block = message.content[0] if message.content else None
         response_text = (
-            first_block.text if first_block is not None and hasattr(first_block, "text") else "No text in response"
+            first_block.text if isinstance(first_block, TextBlock) else "No text in response"
         )
         print(f"Model response: '{response_text}'")
     except anthropic.APIError as e:

@@ -181,7 +181,11 @@ async def get_top_k_query_ids(
             continue
         selected_shuffled_query_ids.append(int(match.group(1)))
 
-    unshuffled_query_ids = tuple(shuffled_index[i] for i in selected_shuffled_query_ids)
+    unshuffled_query_ids = tuple(
+        shuffled_index[i]
+        for i in selected_shuffled_query_ids
+        if 0 <= i < len(shuffled_index)
+    )
 
     return unshuffled_query_ids
 

@@ -22,6 +22,7 @@ from typing import Any
 
 import trio
 from anthropic import AsyncAnthropic
+from anthropic.types import TextBlock
 
 import pymedphys
 
@@ -137,9 +138,9 @@ async def words_in_mouth_prompting(
 
     assert len(api_response.content) == 1
     content_response = api_response.content[0]
-    assert content_response.type == "text"
+    assert isinstance(content_response, TextBlock)
 
-    text: str = content_response.text  # type: ignore[union-attr]
+    text: str = content_response.text
     result = start_of_assistant_prompt + text
     print(result)
 

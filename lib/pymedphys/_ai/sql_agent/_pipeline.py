@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from functools import partial
 from itertools import chain
 from typing import Any
@@ -141,7 +141,7 @@ async def get_single_set_of_query_result_pairs(
     return list(zip(queries, results))
 
 
-async def gather(funcs: Sequence[Callable[..., Any]]):
+async def gather(funcs: Sequence[Callable[[], Awaitable[Any]]]):
     results = [None] * len(funcs)
 
     async def runner(func, i):
