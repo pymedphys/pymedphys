@@ -137,7 +137,7 @@ jobs:
     steps:
       - name: Create release summary
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
           ## Release Summary
 
           **Version:** ${{ github.ref_name }}
