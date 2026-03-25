@@ -15,9 +15,9 @@
 
 import json
 import re
-from typing import Any
 
 from anthropic import AsyncAnthropic
+from anthropic.types import Message
 
 import pymedphys
 from pymedphys._ai import model_versions
@@ -110,7 +110,7 @@ async def get_system_prompt(
 async def get_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Any],
+    messages: list[Message],
     sub_agent_prompt: str,
 ) -> tuple[str, ...]:
     raw_table_names = await _get_raw_selected_table_names(
@@ -126,8 +126,7 @@ async def get_selected_table_names(
             continue
 
         match = re.search(r'<table name="(.*)">', line)
-        if match is not None:
-            table_names.append(match.group(1))
+        table_names.append(match.group(1))
 
     return tuple(table_names)
 
@@ -135,7 +134,7 @@ async def get_selected_table_names(
 async def _get_raw_selected_table_names(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Any],
+    messages: list[Message],
     sub_agent_prompt: str,
 ) -> str:
     return await words_in_mouth_prompting(

@@ -15,10 +15,11 @@
 
 from functools import partial
 from itertools import chain
-from typing import Any
+from typing import Callable
 
 import trio
 from anthropic import AsyncAnthropic
+from anthropic.types import Message
 
 import pymedphys
 
@@ -39,7 +40,7 @@ MAX_QUERY_STRING_LENGTH = 2048
 async def sql_tool_pipeline(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Any],
+    messages: list[Message],
     sub_agent_prompt: str,
 ):
     """Receives a message transcript and sub agent prompt and returns
@@ -111,7 +112,7 @@ async def _execute_query_with_truncated_string_result(
 async def get_single_set_of_query_result_pairs(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Any],
+    messages: list[Message],
     sub_agent_prompt: str,
 ):
     table_names = await get_selected_table_names(
@@ -140,7 +141,7 @@ async def get_single_set_of_query_result_pairs(
     return list(zip(queries, results))
 
 
-async def gather(funcs: list[Any]):
+async def gather(funcs: list[Callable]):
     results = [None] * len(funcs)
 
     async def runner(func, i):

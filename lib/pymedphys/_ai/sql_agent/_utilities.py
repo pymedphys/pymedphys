@@ -18,10 +18,10 @@ from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from functools import wraps
-from typing import Any
 
 import trio
 from anthropic import AsyncAnthropic
+from anthropic.types import Message
 
 import pymedphys
 
@@ -104,12 +104,11 @@ async def words_in_mouth_prompting(
     system_prompt: str,
     appended_user_prompt: str,
     start_of_assistant_prompt: str,
-    messages: list[Any] | None = None,
-) -> str:
+    messages: list[Message] | None = None,
+):
     start_of_assistant_prompt = start_of_assistant_prompt.strip()
     appended_user_prompt = appended_user_prompt.strip()
 
-    messages_to_submit: list[Any]
     if messages:
         messages_to_submit = [
             {"role": item["role"], "content": deepcopy(item["content"])}

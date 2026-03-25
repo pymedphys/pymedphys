@@ -233,13 +233,13 @@ def mean_session_offset_for_site(
         mean of the session offset translation component for the site,
         or None if there are no session offsets
     """
-    offsets: List["np.ndarray"] = []
+    offsets = []
     for _, offset in session_offsets_for_site(connection, sit_set_id):
-        if offset is not None and np.any(offset):
+        if np.any(offset):
             offsets.append(offset)
 
     if offsets:
-        return np.mean(offsets, 0)  # type: ignore[no-any-return]
+        return np.mean(offsets, 0)
 
     return None
 

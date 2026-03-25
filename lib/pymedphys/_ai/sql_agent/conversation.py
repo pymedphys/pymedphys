@@ -16,7 +16,7 @@
 from typing import Any, Awaitable, Callable
 
 from anthropic import AsyncAnthropic
-from anthropic.types import MessageParam
+from anthropic.types import Message, MessageParam
 
 import pymedphys
 from pymedphys._ai import model_versions
@@ -51,7 +51,7 @@ in a different way.
 Your conversation with the user is occurring in markdown format, so
 please format your responses to the user with this in mind."""
 
-TOOLS_PROMPT: list[Any] = [
+TOOLS_PROMPT: list[MessageParam] = [
     {
         "name": "mosaiq_sql_agent",
         "description": """\
@@ -123,13 +123,13 @@ START_OF_ASSISTANT_PROMPT = "<thinking>"
 # flag.
 
 # TODO: Make both of these TypedDicts
-Messages = list[MessageParam]
+Messages = list[Message | MessageParam]
 
 
 async def recursively_append_message_responses(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Any],
+    messages: list[Message],
 ):
     await _conversation_with_tool_use(
         anthropic_client=anthropic_client,
@@ -144,7 +144,7 @@ async def recursively_append_message_responses(
 def create_tools_mappings(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Any],
+    messages: list[MessageParam],
 ):
     async def mosaiq_sql_agent(sub_agent_prompt: str):
         return await sql_tool_pipeline(
@@ -164,8 +164,8 @@ async def _conversation_with_tool_use(
     connection: pymedphys.mosaiq.Connection,
     model: str,
     system_prompt: str,
-    tools: list[Any],
-    messages: list[Any],
+    tools: list[MessageParam],
+    messages: list[Message],
 ):
     """Mutates messages in-place recursively.
     NOTE: This is probably not a good idea, likely worth refactoring."""
@@ -174,7 +174,7 @@ async def _conversation_with_tool_use(
         anthropic_client=anthropic_client, connection=connection, messages=messages
     )
 
-    messages_to_submit: list[Any] = [
+    messages_to_submit = [
         {"role": item["role"], "content": item["content"]} for item in messages
     ]
 
