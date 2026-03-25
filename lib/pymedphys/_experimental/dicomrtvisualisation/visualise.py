@@ -74,7 +74,9 @@ def preprocess_ct_slice_datasets(
                 WindowCenter=float(
                     getattr(ds, "WindowCenter", [DEFAULT_WINDOW_LEVEL])[0]
                 ),
-                WindowWidth=float(getattr(ds, "WindowWidth", [DEFAULT_WINDOW_WIDTH])[0]),
+                WindowWidth=float(
+                    getattr(ds, "WindowWidth", [DEFAULT_WINDOW_WIDTH])[0]
+                ),
                 BitsStored=int(getattr(ds, "BitsStored", 16)),
             )
             preprocessed_data.append(preprocessed_slice)
