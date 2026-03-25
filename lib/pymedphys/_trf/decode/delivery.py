@@ -76,10 +76,10 @@ class DeliveryLogfile(DeliveryBase):
 
         y2_bank = [table[name] for name in Y2_LEAF_BANK_NAMES]
 
-        mlc = [y1_bank, y2_bank]
-        mlc = np.swapaxes(mlc, 0, 2)
+        mlc_banks = [y1_bank, y2_bank]
+        mlc = np.swapaxes(mlc_banks, 0, 2)
 
-        jaw = [table[name] for name in JAW_NAMES]
-        jaw = np.swapaxes(jaw, 0, 1)
+        jaw_banks = [table[name] for name in JAW_NAMES]
+        jaw = np.swapaxes(jaw_banks, 0, 1)
 
         return cls(monitor_units, gantry, collimator, mlc, jaw)

@@ -98,8 +98,11 @@ def test_anthropic_models(model_name: str, capsys):
         )
         # If we get here, the model is accessible
         assert message is not None
+        first_block = message.content[0] if message.content else None
         response_text = (
-            message.content[0].text if message.content else "No text in response"
+            first_block.text
+            if isinstance(first_block, anthropic.types.TextBlock)
+            else "No text in response"
         )
         print(f"Model response: '{response_text}'")
     except anthropic.APIError as e:
