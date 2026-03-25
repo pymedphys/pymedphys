@@ -59,7 +59,9 @@ jobs:
             git commit -m "style: auto-fix pre-commit issues"
 
             if [[ -n "$CI_BOT_TOKEN" ]]; then
-              git remote set-url origin "https://x-access-token:${CI_BOT_TOKEN}@github.com/${{ github.repository }}.git"
+              # Strip any newlines from the token before embedding in the URL
+              CLEAN_TOKEN="$(printf '%s' "${CI_BOT_TOKEN}" | tr -d '\n\r')"
+              git remote set-url origin "https://x-access-token:${CLEAN_TOKEN}@github.com/${{ github.repository }}.git"
             fi
 
             git push origin "HEAD:${PR_BRANCH}"
