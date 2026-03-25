@@ -144,9 +144,7 @@ def get_uncached_mosaiq_connection(
     if st.button("Connect"):
         st.rerun()
 
-    st.stop()
-
-    raise RuntimeError("Unreachable: st.stop() should halt execution")
+    st.stop()  # type: ignore[return]  # st.stop() halts execution
 
 
 @st.cache_resource()

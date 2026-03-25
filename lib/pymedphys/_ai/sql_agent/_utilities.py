@@ -22,7 +22,6 @@ from typing import Any
 
 import trio
 from anthropic import AsyncAnthropic
-from anthropic.types import Message, MessageParam
 
 import pymedphys
 
