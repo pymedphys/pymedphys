@@ -39,53 +39,64 @@ jobs:
     permissions:
       contents: write
     secrets:
+      PYMEDPHYS_CI_BOT_APP_ID: ${{ secrets.PYMEDPHYS_CI_BOT_APP_ID }}
       PYMEDPHYS_CI_BOT_TOKEN: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
 
-  # Linting always runs — even if pre-commit fails, to surface all feedback at once.
+  # Linting — skip if pre-commit pushed an auto-fix (a fresh run is coming).
   lint:
     needs: [pre-commit]
-    if: success() || failure()
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true'
     uses: ./.github/workflows/lint.yml
 
-  # Type checking always runs.
+  # Type checking — skip if auto-fix pushed.
   type-check:
     needs: [pre-commit]
-    if: success() || failure()
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true'
     uses: ./.github/workflows/type-check.yml
 
-  # Unit tests: quick (Ubuntu/latest Python) for PRs, full matrix on main.
+  # Unit tests — skip if auto-fix pushed.
   unit-tests:
     needs: [pre-commit]
-    if: success() || failure()
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true'
     uses: ./.github/workflows/unit-tests.yml
     with:
       quick: ${{ github.event_name == 'pull_request' }}
 
-  # Integration tests on main or when labeled.
+  # Integration tests on main or when labeled — skip if auto-fix pushed.
   integration-tests:
-    needs: [unit-tests]
+    needs: [pre-commit, unit-tests]
     if: |
-      github.event_name == 'push' ||
-      contains(github.event.pull_request.labels.*.name, 'full-test')
+      needs.pre-commit.outputs.autofix-pushed != 'true' && (
+        github.event_name == 'push' ||
+        contains(github.event.pull_request.labels.*.name, 'full-test')
+      )
     uses: ./.github/workflows/integration-tests.yml
     with:
       run-slow: ${{ github.event_name == 'push' }}
 
-  # Database tests based on changes or labels.
+  # Database tests based on changes or labels — skip if auto-fix pushed.
   mosaiq-db-tests:
     needs: [pre-commit, changes]
     if: |
-      (success() || failure()) && (
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true' && (
         github.event_name == 'push' ||
         contains(github.event.pull_request.labels.*.name, 'database') ||
         needs.changes.outputs.mosaiq == 'true'
       )
     uses: ./.github/workflows/mosaiq-db-tests.yml
 
-  # Docs check for PRs with doc changes.
+  # Docs check for PRs with doc changes — skip if auto-fix pushed.
   docs-check:
-    needs: [changes]
+    needs: [pre-commit, changes]
     if: |
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
       github.event_name == 'pull_request' &&
       needs.changes.outputs.docs == 'true'
     uses: ./.github/workflows/docs.yml
@@ -118,6 +129,16 @@ jobs:
     steps:
       - name: Generate Summary
         run: |
+          if [[ "${{ needs.pre-commit.outputs.autofix-pushed }}" == "true" ]]; then
+            cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
+          ## CI Results
+
+          Pre-commit pushed an auto-fix commit. A fresh CI run will validate the fixes.
+          All other checks were skipped for this run.
+          EOF
+            exit 0
+          fi
+
           cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
           ## CI Results
 
@@ -143,7 +164,7 @@ jobs:
           EOF
 
       - name: Check Required Status
-        if: always()
+        if: always() && needs.pre-commit.outputs.autofix-pushed != 'true'
         run: |
           # These must pass for PRs
           if [[ "${{ needs.pre-commit.result }}" != "success" && "${{ needs.pre-commit.result }}" != "skipped" ]]; then

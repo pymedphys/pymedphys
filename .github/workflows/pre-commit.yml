@@ -9,6 +9,10 @@ on:
       PYMEDPHYS_CI_BOT_TOKEN:
         description: Private key for pymedphys-ci-bot GitHub App.
         required: false
+    outputs:
+      autofix-pushed:
+        description: "'true' if an auto-fix commit was pushed (a new CI run is expected)"
+        value: ${{ jobs.pre-commit.outputs.autofix-pushed }}
   workflow_dispatch:
 
 jobs:
@@ -17,6 +21,8 @@ jobs:
     permissions:
       contents: write
     timeout-minutes: 15
+    outputs:
+      autofix-pushed: ${{ steps.autofix.outputs.pushed }}
 
     steps:
       - name: Check for bot credentials
