@@ -14,9 +14,9 @@
 
 
 import json
+from typing import Any
 
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
 
 import pymedphys
 from pymedphys._ai import model_versions
@@ -121,10 +121,10 @@ async def get_system_prompt(
     connection: pymedphys.mosaiq.Connection,
     transcript: str,
     sub_agent_prompt: str,
-    tables_to_keep: tuple[str],
+    tables_to_keep: tuple[str, ...],
 ):
     filtered_tables_schema = await get_schema_formatted_for_prompt(
-        connection=connection, tables_to_keep=tables_to_keep
+        connection=connection, tables_to_keep=list(tables_to_keep)
     )
 
     return SYSTEM_PROMPT.format(
@@ -137,9 +137,9 @@ async def get_system_prompt(
 async def get_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Message],
+    messages: list[Any],
     sub_agent_prompt: str,
-    tables_to_keep: tuple[str],
+    tables_to_keep: tuple[str, ...],
 ):
     raw_queries = await _get_raw_queries(
         anthropic_client=anthropic_client,
@@ -163,9 +163,9 @@ async def get_queries(
 async def _get_raw_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Message],
+    messages: list[Any],
     sub_agent_prompt: str,
-    tables_to_keep: tuple[str],
+    tables_to_keep: tuple[str, ...],
 ):
     return await words_in_mouth_prompting(
         anthropic_client=anthropic_client,

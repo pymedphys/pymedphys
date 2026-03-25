@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import cache
-from typing import Sequence
+from typing import Optional, Sequence
 
 from pymedphys._imports import numba as nb, numpy as np, plt, scipy
 
@@ -81,7 +81,7 @@ def __check_inputs(
     values: "np.ndarray",
     points_interp: "np.ndarray",
     bounds_error=False,
-) -> None:
+) -> tuple:
     if not 1 <= len(axes_known) == points_interp.shape[-1] <= 3:
         raise ValueError(
             f"axes_known (len {len(axes_known)}) and points_interp (len {points_interp.shape[-1]}) must have the same length; either 1, 2, or 3"
@@ -317,8 +317,8 @@ def interp_linear_3d(axes_known, values, points_interp, extrap_fill_value=None):
 def interp_linear_scipy(
     axes_known,
     values,
-    axes_interp: Sequence["np.ndarray"] = None,
-    points_interp: "np.ndarray" = None,
+    axes_interp: Optional[Sequence["np.ndarray"]] = None,
+    points_interp: Optional["np.ndarray"] = None,
     keep_dims=False,
     bounds_error=True,
     extrap_fill_value=None,
@@ -355,8 +355,8 @@ def interp_linear_scipy(
 def interp(
     axes_known: Sequence["np.ndarray"],
     values: "np.ndarray",
-    axes_interp: Sequence["np.ndarray"] = None,
-    points_interp: "np.ndarray" = None,
+    axes_interp: Optional[Sequence["np.ndarray"]] = None,
+    points_interp: Optional["np.ndarray"] = None,
     keep_dims=False,
     bounds_error=True,
     extrap_fill_value=None,

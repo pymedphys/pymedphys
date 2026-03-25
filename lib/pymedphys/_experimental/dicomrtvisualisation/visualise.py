@@ -71,10 +71,10 @@ def preprocess_ct_slice_datasets(
                 PixelArray=ds.pixel_array,  # Keep original dtype
                 RescaleSlope=float(getattr(ds, "RescaleSlope", 1.0)),
                 RescaleIntercept=float(getattr(ds, "RescaleIntercept", 0.0)),
-                WindowCenter=float(
-                    getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL)[0]
+                WindowCenter=int(
+                    getattr(ds, "WindowCenter", [DEFAULT_WINDOW_LEVEL])[0]
                 ),
-                WindowWidth=float(getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH)[0]),
+                WindowWidth=int(getattr(ds, "WindowWidth", [DEFAULT_WINDOW_WIDTH])[0]),
                 BitsStored=int(getattr(ds, "BitsStored", 16)),
             )
             preprocessed_data.append(preprocessed_slice)
@@ -257,6 +257,7 @@ def load_ct_as_memmap(
 
     bits_stored = bits_stored_set.pop()
 
+    dtype: Any
     if bits_stored <= 16:
         dtype = np.int16
         st.info(f"Selected dtype: {dtype} based on BitsStored={bits_stored}")
@@ -427,7 +428,7 @@ def preprocess_contours(
     Returns:
         Dict[float, List[Tuple[str, np.ndarray]]]: Mapping of Z-coordinate to contours for each structure.
     """
-    contour_map = {}
+    contour_map: Dict[float, List[Tuple[str, np.ndarray]]] = {}
     for structure_name, structure_data in structures.items():
         for contour in structure_data["Contours"]:
             contour_z = contour[:, 2]
