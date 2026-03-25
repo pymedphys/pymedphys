@@ -31,7 +31,7 @@ class TestPointInPolygonStrategyProtocol:
     def test_conforming_function_is_recognised(self) -> None:
         def winding_number(
             query_points_xy_mm: np.ndarray,
-            contour_xy_mm: np.ndarray,
+            _contour_xy_mm: np.ndarray,
             /,
         ) -> np.ndarray:
             return np.ones(len(query_points_xy_mm), dtype=bool)
@@ -98,7 +98,7 @@ class TestEndCapStrategyProtocol:
         def half_slab(
             contour: PlanarContour,
             neighbour_spacing_mm: float,
-            is_superior: bool,
+            _is_superior: bool,
             /,
         ) -> tuple[float, float]:
             half = neighbour_spacing_mm / 2.0
