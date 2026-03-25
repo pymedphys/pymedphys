@@ -1,10 +1,7 @@
 """Shared DVH test fixtures for the PyMedPhys MVP.
 
-This provides every shared fixture used by the DVH test suite.  It is
-intentionally self-contained: while the ``pymedphys._dvh`` package is still
-under construction, local fallback dataclasses keep this module importable
-and executable without the production type definitions.  Once
-``_dvh.types`` exists the fallback is bypassed automatically.
+This provides every shared fixture used by the DVH test suite.  Type
+definitions are imported from ``pymedphys._dvh.types``.
 
 Geometry builders and computational helpers have been extracted to
 ``_fixture_geometry.py`` to keep this file within the project line-count
@@ -45,14 +42,12 @@ from __future__ import annotations
 # Standard library
 # ---------------------------------------------------------------------------
 import math
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
 # ---------------------------------------------------------------------------
 # Third-party — always available
 # ---------------------------------------------------------------------------
 import numpy as np
-import numpy.typing as npt
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -95,92 +90,10 @@ from pymedphys.tests.dvh._fixture_geometry import (
 )
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Section 1 — Type definitions (fallback for pre-MVP bootstrap)
-# ═══════════════════════════════════════════════════════════════════════════
-#
-# Once ``pymedphys._dvh.types`` exists these imports succeed and the local
-# definitions below are never reached.  The guard uses ``ImportError``
-# (not a bare ``Exception``) so that genuine bugs inside a partially-written
-# ``_dvh.types`` module are not silently swallowed.
+# Section 1 — Type imports from production module
 # ═══════════════════════════════════════════════════════════════════════════
 
-try:  # pragma: no cover — exercised naturally once ``_dvh.types`` exists
-    from pymedphys._dvh.types import DoseGrid, PlanarContour, Structure
-except ImportError:  # pragma: no cover — local fallback for the pre-MVP state
-
-    @dataclass(frozen=True)
-    class PlanarContour:  # type: ignore[no-redef]
-        """A single closed planar contour on one axial slice.
-
-        Attributes
-        ----------
-        z_mm
-            Slice coordinate in the DICOM patient z-axis (superior +).
-        points_xy_mm
-            Vertex array of shape ``(N, 2)`` in DICOM patient x/y
-            coordinates (patient-left +, patient-posterior +).
-        geometric_type
-            DICOM-style contour geometric type string.
-            ``"CLOSED_PLANAR"`` is the standard default.
-            ``"CLOSED_PLANAR_XOR"`` signals explicit XOR combination
-            with other contours on the same slice.
-        """
-
-        z_mm: float
-        points_xy_mm: npt.NDArray[np.float64]
-        geometric_type: str = "CLOSED_PLANAR"
-
-    @dataclass(frozen=True)
-    class Structure:  # type: ignore[no-redef]
-        """A structure (ROI) defined by a stack of planar contours.
-
-        Attributes
-        ----------
-        name
-            Human-readable structure name (e.g. ``"PTV"``).
-        number
-            Numeric ROI identifier — typically the DICOM ROI Number.
-        contours
-            Ordered tuple of planar contours, sorted by ascending z.
-        colour_rgb
-            Optional display colour as ``(R, G, B)`` in 0–255.
-        combination_mode
-            How to combine multiple contours on the same slice:
-            ``"auto"`` (default), ``"xor"``, ``"slice_union"``,
-            ``"vendor_compat_xor"``.
-        coordinate_frame
-            Always ``"DICOM_PATIENT"`` for the MVP.
-        """
-
-        name: str
-        number: int
-        contours: tuple[PlanarContour, ...]
-        colour_rgb: tuple[int, int, int] | None = None
-        combination_mode: str = "auto"
-        coordinate_frame: str = "DICOM_PATIENT"
-
-    @dataclass(frozen=True)
-    class DoseGrid:  # type: ignore[no-redef]
-        """A 3-D rectilinear dose distribution.
-
-        Attributes
-        ----------
-        axes_mm
-            Tuple of three 1-D arrays ``(x_mm, y_mm, z_mm)`` giving the
-            coordinate of every grid point along each DICOM patient axis.
-        values_gy
-            3-D array of dose values in Gray.  Shape is
-            ``(len(x_mm), len(y_mm), len(z_mm))`` and the indexing
-            contract is ``values_gy[ix, iy, iz]`` ↔
-            ``(x_mm[ix], y_mm[iy], z_mm[iz])``.
-        """
-
-        axes_mm: tuple[
-            npt.NDArray[np.float64],
-            npt.NDArray[np.float64],
-            npt.NDArray[np.float64],
-        ]
-        values_gy: npt.NDArray[np.float64]
+from pymedphys._dvh.types import DoseGrid, PlanarContour, Structure
 
 
 # ═══════════════════════════════════════════════════════════════════════════
