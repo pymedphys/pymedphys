@@ -404,6 +404,33 @@ class TestDoseGridImmutability:
     def test_writing_to_values_raises(self) -> None:
         grid = _make_dose_grid()
         with pytest.raises(ValueError, match="read-only"):
+            grid.values_gy[0, 0, 0] = 1.0
+
+    def test_defensive_copy_of_input_arrays(self) -> None:
+        """DoseGrid must not alias the caller's arrays."""
+        x = np.array([-10.0, 0.0, 10.0])
+        y = np.array([-20.0, 0.0, 20.0])
+        z = np.array([-30.0, 0.0, 30.0])
+        values = np.arange(27, dtype=float).reshape(3, 3, 3)
+
+        x_orig = x.copy()
+        y_orig = y.copy()
+        z_orig = z.copy()
+        values_orig = values.copy()
+
+        grid = DoseGrid(axes_mm=(x, y, z), values_gy=values)
+
+        # Mutate the original arrays after constructing the grid.
+        x += 1000.0
+        y += 1000.0
+        z += 1000.0
+        values[:] = -1.0
+
+        # The grid must remain unchanged – implementation must defensively copy.
+        for axis, axis_orig in zip(grid.axes_mm, (x_orig, y_orig, z_orig)):
+            np.testing.assert_array_equal(axis, axis_orig)
+
+        np.testing.assert_array_equal(grid.values_gy, values_orig)
             grid.values_gy[0, 0, 0] = 999.0
 
 
