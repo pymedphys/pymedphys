@@ -58,13 +58,14 @@ jobs:
             git add -A
             git commit -m "style: auto-fix pre-commit issues"
 
-            if [[ -n "$CI_BOT_TOKEN" ]]; then
-              # Strip any newlines from the token before embedding in the URL
-              CLEAN_TOKEN="$(printf '%s' "${CI_BOT_TOKEN}" | tr -d '\n\r')"
-              git remote set-url origin "https://x-access-token:${CLEAN_TOKEN}@github.com/${{ github.repository }}.git"
-            fi
-
+          if [[ -n "$CI_BOT_TOKEN" ]]; then
+            CLEAN_TOKEN="$(printf '%s' "${CI_BOT_TOKEN}" | tr -d '[:space:]')"
+            AUTH_HEADER="Authorization: Basic $(printf 'x-access-token:%s' "$CLEAN_TOKEN" | base64 -w0)"
+            git -c "http.https://github.com/.extraheader=${AUTH_HEADER}" \
+              push "https://github.com/${{ github.repository }}.git" "HEAD:${PR_BRANCH}"
+          else
             git push origin "HEAD:${PR_BRANCH}"
+          fi
             echo "pushed=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Auto-fix commit pushed. A new CI run will validate the fixes."
           else
