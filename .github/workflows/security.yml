@@ -149,7 +149,7 @@ jobs:
     steps:
       - name: Generate security report
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
           ## Security Scan Results
 
           | Check | Status |
