@@ -60,6 +60,7 @@ jobs:
 
           if [[ -n "$CI_BOT_TOKEN" ]]; then
             CLEAN_TOKEN="$(printf '%s' "${CI_BOT_TOKEN}" | tr -d '[:space:]')"
+            git config --unset-all http.https://github.com/.extraheader || true
             AUTH_HEADER="Authorization: Basic $(printf 'x-access-token:%s' "$CLEAN_TOKEN" | base64 -w0)"
             git -c "http.https://github.com/.extraheader=${AUTH_HEADER}" \
               push "https://github.com/${{ github.repository }}.git" "HEAD:${PR_BRANCH}"
