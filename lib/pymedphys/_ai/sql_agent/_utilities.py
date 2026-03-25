@@ -18,10 +18,11 @@ from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from functools import wraps
+from typing import Any
 
 import trio
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
+from anthropic.types import Message, MessageParam
 
 import pymedphys
 
@@ -104,13 +105,13 @@ async def words_in_mouth_prompting(
     system_prompt: str,
     appended_user_prompt: str,
     start_of_assistant_prompt: str,
-    messages: list[Message] | None = None,
-):
+    messages: list[dict[str, Any]] | None = None,
+) -> str:
     start_of_assistant_prompt = start_of_assistant_prompt.strip()
     appended_user_prompt = appended_user_prompt.strip()
 
     if messages:
-        messages_to_submit = [
+        messages_to_submit: list[dict[str, Any]] = [
             {"role": item["role"], "content": deepcopy(item["content"])}
             for item in messages
         ]
@@ -129,14 +130,18 @@ async def words_in_mouth_prompting(
     )
 
     api_response = await anthropic_client.messages.create(
-        system=system_prompt, model=model, max_tokens=4096, messages=messages_to_submit
+        system=system_prompt,
+        model=model,
+        max_tokens=4096,
+        messages=messages_to_submit,  # type: ignore[arg-type]
     )
 
     assert len(api_response.content) == 1
     content_response = api_response.content[0]
     assert content_response.type == "text"
 
-    result = start_of_assistant_prompt + content_response.text
+    text: str = content_response.text  # type: ignore[union-attr]
+    result = start_of_assistant_prompt + text
     print(result)
 
     return result

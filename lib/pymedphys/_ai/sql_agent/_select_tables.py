@@ -126,6 +126,8 @@ async def get_selected_table_names(
             continue
 
         match = re.search(r'<table name="(.*)">', line)
+        if match is None:
+            continue
         table_names.append(match.group(1))
 
     return tuple(table_names)

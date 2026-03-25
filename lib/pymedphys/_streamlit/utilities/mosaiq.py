@@ -146,6 +146,8 @@ def get_uncached_mosaiq_connection(
 
     st.stop()
 
+    raise RuntimeError("Unreachable: st.stop() should halt execution")
+
 
 @st.cache_resource()
 def get_cached_mosaiq_connection(
