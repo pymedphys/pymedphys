@@ -48,4 +48,4 @@ jobs:
             --with types-requests \
             --with types-tabulate \
             --with types-toml \
-            mypy lib/pymedphys || true
+            mypy lib/pymedphys
