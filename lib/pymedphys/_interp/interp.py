@@ -450,12 +450,13 @@ def interp(
 
     if len(axes_known) == 1:
         # keep_dims has no effect for 1D interpolation
-        return interp_linear_1d(
+        result: np.ndarray = interp_linear_1d(
             axes_known[0],
             values,
             points_interp,
             extrap_fill_value,
         )
+        return result
 
     elif len(axes_known) == 2:
         values_interp = interp_linear_2d(
@@ -479,4 +480,5 @@ def interp(
             )
         values_interp = values_interp.reshape([axis.size for axis in axes_interp])
 
-    return values_interp
+    final_result: np.ndarray = values_interp
+    return final_result

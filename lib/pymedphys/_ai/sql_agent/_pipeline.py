@@ -13,14 +13,13 @@
 # limitations under the License.
 
 
-from collections.abc import Callable, Coroutine, Sequence
+from collections.abc import Callable, Sequence
 from functools import partial
 from itertools import chain
 from typing import Any
 
 import trio
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
 
 import pymedphys
 

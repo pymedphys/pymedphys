@@ -14,9 +14,9 @@
 
 
 import json
+from typing import Any
 
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
 
 import pymedphys
 from pymedphys._ai import model_versions
@@ -137,7 +137,7 @@ async def get_system_prompt(
 async def get_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Message],
+    messages: list[dict[str, Any]],
     sub_agent_prompt: str,
     tables_to_keep: tuple[str, ...],
 ):
@@ -163,7 +163,7 @@ async def get_queries(
 async def _get_raw_queries(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Message],
+    messages: list[dict[str, Any]],
     sub_agent_prompt: str,
     tables_to_keep: tuple[str, ...],
 ):

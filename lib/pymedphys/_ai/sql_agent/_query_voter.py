@@ -16,9 +16,9 @@
 import json
 import random
 import re
+from typing import Any
 
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
 
 from pymedphys._ai import model_versions
 
@@ -153,7 +153,7 @@ async def get_system_prompt(
 
 async def get_top_k_query_ids(
     anthropic_client: AsyncAnthropic,
-    messages: list[Message],
+    messages: list[dict[str, Any]],
     sub_agent_prompt: str,
     query_result_pairs: list[tuple[str, str]],
 ) -> tuple[int, ...]:
@@ -188,7 +188,7 @@ async def get_top_k_query_ids(
 
 async def _get_raw_top_k_query_ids(
     anthropic_client: AsyncAnthropic,
-    messages: list[Message],
+    messages: list[dict[str, Any]],
     sub_agent_prompt: str,
     query_result_pairs: list[tuple[str, str]],
 ) -> str:
