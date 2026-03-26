@@ -79,7 +79,7 @@ jobs:
       )
     uses: ./.github/workflows/integration-tests.yml
     with:
-      run-slow: ${{ github.event_name == 'push' }}
+      run-slow: ${{ github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
 
   # Database tests based on changes or labels — skip if auto-fix pushed.
   mosaiq-db-tests:
