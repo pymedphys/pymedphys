@@ -30,7 +30,7 @@ DeliveryGeneric = TypeVar("DeliveryGeneric", bound="DeliveryBase")
 
 
 DeliveryNamedTuple = namedtuple(
-    "Delivery", ["monitor_units", "gantry", "collimator", "mlc", "jaw"]
+    "DeliveryNamedTuple", ["monitor_units", "gantry", "collimator", "mlc", "jaw"]
 )
 
 

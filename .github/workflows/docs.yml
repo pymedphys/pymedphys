@@ -42,7 +42,7 @@ jobs:
         run: |
           uv run pymedphys dev docs
 
-          # Check for broken links
+          # External linkcheck is advisory — external sites go down.
           uv run python -m sphinx.ext.linkcheck lib/pymedphys/docs || true
 
       - name: Upload artifact
