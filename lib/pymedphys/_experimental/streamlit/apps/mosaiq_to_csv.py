@@ -23,7 +23,6 @@ from pymedphys._imports import toml
 
 import pymedphys
 from pymedphys._streamlit import categories
-from pymedphys._streamlit.utilities import config as st_config
 from pymedphys._streamlit.utilities import mosaiq as _mosaiq
 
 CATEGORY = categories.DRAFT
@@ -66,8 +65,7 @@ ALLOWLIST_COLUMN_NAMES = [
 
 
 def main():
-    config = st_config.get_config()
-    connection = _mosaiq.get_single_mosaiq_connection_with_config(config)
+    connection = _mosaiq.get_mosaiq_connection_with_prompts()
 
     comma_sep_patient_ids: str = st.text_input("Comma Separated Patient IDs")
     if comma_sep_patient_ids == "":
@@ -157,7 +155,7 @@ def _get_all_tables(
         set(responsible_staff_ids).union(completed_staff_ids).union(machine_staff_ids)
     )
     staff_ids = np.array(list(staff_ids_with_nans))
-    staff_ids = staff_ids[np.logical_not(np.isnan(staff_ids))]
+    staff_ids = staff_ids[~pd.isna(staff_ids)]
     staff_ids = staff_ids.astype(int)
 
     # Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID
