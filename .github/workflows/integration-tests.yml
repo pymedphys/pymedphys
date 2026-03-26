@@ -47,7 +47,7 @@ jobs:
 
       - name: Run slow tests
         run: |
-          uv run pytest -m "slow"
+          uv run -- pymedphys dev tests -m "slow" -v
 
   stackoverflow:
     name: StackOverflow Examples
