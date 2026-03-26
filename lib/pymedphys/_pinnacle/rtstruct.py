@@ -535,7 +535,7 @@ def convert_struct(plan, export_path, skip_pattern):
     # find out where to get if its been approved or not
     # find out how to insert proper 'CodeString' here
     ds.ApprovalStatus = "UNAPPROVED"
-    
+
     # Set the transfer syntax using ensure_transfer_syntax
     ensure_transfer_syntax(ds)
 

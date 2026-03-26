@@ -37,7 +37,7 @@ def _create_template_from_setup(template_setup):
     """Helper to create template dataset from setup configuration."""
     if not template_setup:
         return None
-        
+
     template = pydicom.Dataset()
     if "is_implicit_VR" in template_setup:
         template.is_implicit_VR = template_setup["is_implicit_VR"]
@@ -143,21 +143,23 @@ def test_pinnacle_rtstruct_transfer_syntax():
     # This test verifies that the convert_struct workflow properly applies
     # ensure_transfer_syntax to the created dataset
     from pymedphys._dicom.compat import ensure_transfer_syntax
-    
+
     # Create a mock dataset similar to what convert_struct creates
     file_meta = pydicom.dataset.FileMetaDataset()
-    file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.481.3"  # RT Structure Set
+    file_meta.MediaStorageSOPClassUID = (
+        "1.2.840.10008.5.1.4.1.1.481.3"  # RT Structure Set
+    )
     file_meta.MediaStorageSOPInstanceUID = pydicom.uid.generate_uid()
     file_meta.ImplementationClassUID = pydicom.uid.generate_uid()
-    
+
     # Create dataset without transfer syntax
     ds = pydicom.dataset.FileDataset(
         "test.dcm", {}, file_meta=file_meta, preamble=b"\x00" * 128
     )
-    
+
     # Apply ensure_transfer_syntax like convert_struct does
     ensure_transfer_syntax(ds)
-    
+
     # Verify transfer syntax was set properly
     assert hasattr(ds.file_meta, "TransferSyntaxUID")
     assert ds.file_meta.TransferSyntaxUID == pydicom.uid.ImplicitVRLittleEndian
