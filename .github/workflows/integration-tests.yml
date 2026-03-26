@@ -47,7 +47,7 @@ jobs:
 
       - name: Run slow tests
         run: |
-          uv run pytest --slow -q
+          uv run pytest -m "slow"
 
   stackoverflow:
     name: StackOverflow Examples
