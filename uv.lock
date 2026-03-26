@@ -2402,6 +2402,7 @@ requires-dist = [
     { name = "packaging", marker = "extra == 'user'" },
     { name = "pandas", marker = "extra == 'all'", specifier = ">=1.0.0" },
     { name = "pandas", marker = "extra == 'mosaiq'", specifier = ">=1.0.0" },
+    { name = "pandas", marker = "extra == 'tests'", specifier = ">=1.0.0" },
     { name = "pandas", marker = "extra == 'user'", specifier = ">=1.0.0" },
     { name = "pillow", marker = "extra == 'all'" },
     { name = "pillow", marker = "extra == 'tests'" },
