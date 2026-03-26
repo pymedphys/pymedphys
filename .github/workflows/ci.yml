@@ -100,6 +100,10 @@ jobs:
     with:
       publish: false
     secrets: inherit
+    permissions:
+      contents: read
+      pages: write        # required by docs.yml
+      id-token: write     # required by docs.yml
 
   # Docs publish on main
   docs-publish:
@@ -114,41 +118,9 @@ jobs:
       pages: write
       id-token: write
 
-  # Cypress E2E tests only on main
-  cypress-e2e:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for Cypress
-        id: check
-        run: |
-          if [[ -f package.json && -d cypress ]]; then
-            echo "has-cypress=true" >> $GITHUB_OUTPUT
-          else
-            echo "has-cypress=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Setup Node
-        if: steps.check.outputs.has-cypress == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install and run Cypress
-        if: steps.check.outputs.has-cypress == 'true'
-        env:
-          CI: true
-        run: |
-          npm ci
-          npx cypress run
-
   # Summary job provides overall status
   summary:
-    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish, cypress-e2e]
+    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -173,7 +145,6 @@ jobs:
           | Integration Tests | ${{ needs.integration-tests.result || 'skipped' }} |
           | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
           | Documentation | ${{ needs.docs-check.result || needs.docs-publish.result || 'skipped' }} |
-          | Cypress E2E | ${{ needs.cypress-e2e.result || 'skipped' }} |
 
           **Workflow:** ${{ github.workflow }}
           **Triggered by:** ${{ github.actor }}

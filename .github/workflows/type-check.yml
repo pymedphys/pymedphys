@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - uses: ./.github/actions/setup-project
         with:
@@ -21,7 +21,7 @@ jobs:
 
       - name: Run pyright
         run: |
-          uvx pyright
+          uv run -- pyright
 
   mypy:
     name: MyPy (optional)
@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 15
     continue-on-error: true  # Don't fail the workflow if mypy fails
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - uses: ./.github/actions/setup-project
         with:
@@ -37,4 +37,4 @@ jobs:
 
       - name: Run mypy
         run: |
-          uv run mypy --install-types --non-interactive pymedphys || true
+          uv run -- mypy --install-types --non-interactive pymedphys || true
