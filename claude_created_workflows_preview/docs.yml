@@ -1,0 +1,40 @@
+name: Documentation
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'docs'
+
+      - name: Download required data
+        run: |
+          uv run python -c "
+          import pymedphys
+          pymedphys.data_path('original_dose_beam_4.dcm')
+          pymedphys.data_path('logfile_dose_beam_4.dcm')
+          "
+
+      - name: Build documentation
+        run: |
+          uv run pymedphys dev docs
+
+          # External linkcheck is advisory — external sites go down.
+          uv run python -m sphinx.ext.linkcheck lib/pymedphys/docs || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 4.6.2
+        with:
+          name: docs-html
+          path: lib/pymedphys/docs/_build/html
