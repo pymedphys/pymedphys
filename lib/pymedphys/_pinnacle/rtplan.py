@@ -43,6 +43,7 @@ import re
 import time
 
 from pymedphys._imports import pydicom
+from pymedphys._pinnacle.pinnacle_exceptions import MissingCTImageError, MissingTrialBeamsError
 
 from .constants import (
     GImplementationClassUID,
@@ -58,7 +59,7 @@ def convert_plan(plan, export_path):
     # Check that the plan has a primary image, as we can't create a meaningful RTPLAN without it:
     if not plan.primary_image:
         plan.logger.error("No primary image found for plan. Unable to generate RTPLAN.")
-        return
+        raise MissingCTImageError("Plan has no primary image associated with it.")
 
     # TODO Fix the RTPLAN export functionality and remove this warning
     plan.logger.warning(
@@ -159,7 +160,8 @@ def convert_plan(plan, export_path):
     beam_list = trial_info["BeamList"] if trial_info["BeamList"] else []
     if len(beam_list) == 0:
         plan.logger.warning("No Beams found in Trial. Unable to generate RTPLAN.")
-        return
+        raise MissingTrialBeamsError("No Beams found in Trial.")
+
     for beam in beam_list:
         beam_count = beam_count + 1
 
