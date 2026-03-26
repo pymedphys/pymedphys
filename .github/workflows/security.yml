@@ -6,12 +6,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths:
-      - '**/*.py'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - '.github/workflows/*.yml'
-      - '.github/actions/**/action.yml'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +13,28 @@ permissions:
   contents: read
 
 jobs:
+  # Detect whether security-relevant files changed. On PRs that only touch
+  # docs/markdown the downstream jobs will be skipped (but still reported,
+  # which satisfies required-status-check rules).
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      security: ${{ steps.filter.outputs.security }}
+    steps:
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: filter
+        with:
+          filters: |
+            security:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/*.yml'
+              - '.github/actions/**/action.yml'
+
   secrets-scan:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
     name: Scan for Secrets
     runs-on: ubuntu-latest
     steps:
@@ -54,6 +69,8 @@ jobs:
           # for broader and more reliable secret detection.
 
   dependency-audit:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
     name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
@@ -71,6 +88,8 @@ jobs:
           uv run pip-audit --desc
 
   python-security:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
     name: Python Security Analysis
     runs-on: ubuntu-latest
     steps:
@@ -93,6 +112,8 @@ jobs:
           retention-days: 14
 
   container-scan:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
     name: Container & File System Scan
     runs-on: ubuntu-latest
     steps:
@@ -122,6 +143,8 @@ jobs:
           retention-days: 14
 
   github-actions-security:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
     name: GitHub Actions Security
     runs-on: ubuntu-latest
     steps:
@@ -143,7 +166,7 @@ jobs:
 
   security-summary:
     name: Security Summary
-    needs: [secrets-scan, dependency-audit, python-security, container-scan, github-actions-security]
+    needs: [changes, secrets-scan, dependency-audit, python-security, container-scan, github-actions-security]
     if: always()
     runs-on: ubuntu-latest
     steps:
