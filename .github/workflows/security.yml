@@ -2,7 +2,7 @@ name: Security Scan
 
 on:
   schedule:
-    - cron: '0 0 * * MON'
+    - cron: '41 3 * * MON'  # Staggered to avoid top-of-hour congestion
   push:
     branches: [main]
   pull_request:
@@ -11,6 +11,7 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/*.yml'
+      - '.github/actions/**/action.yml'
   workflow_dispatch:
 
 permissions:
@@ -34,7 +35,7 @@ jobs:
             exit 1
           }
 
-          # Specific check for Anthropic API key exposure in code (not in workflow definitions)
+          # Specific check for Anthropic API key exposure in code
           ! grep -r --include="*.py" \
             -E '(print|log|console\.log|echo).*ANTHROPIC' . || {
             echo "::error::Potential Anthropic API key exposure in Python code"
@@ -49,6 +50,9 @@ jobs:
             exit 1
           }
 
+          # TODO: Consider replacing custom grep checks with Gitleaks
+          # for broader and more reliable secret detection.
+
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
@@ -59,11 +63,12 @@ jobs:
         with:
           extras: 'all'
 
+      # Advisory on PRs, blocking on scheduled/main runs.
       - name: Run pip-audit
-        continue-on-error: true  # Don't fail PR, just report
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         run: |
           uv pip install pip-audit
-          uv run pip-audit --desc --fix || true
+          uv run pip-audit --desc
 
   python-security:
     name: Python Security Analysis
@@ -74,17 +79,18 @@ jobs:
       - uses: ./.github/actions/setup-project
 
       - name: Run Bandit
-        continue-on-error: true
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         run: |
           uv pip install bandit[toml]
-          uv run bandit -r lib/pymedphys/ -f json -o bandit.json || true
+          uv run bandit -r lib/pymedphys/ -f json -o bandit.json
 
       - name: Upload Bandit results
-        if: github.event_name != 'pull_request'  # Only upload on main
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 4.6.2
         with:
           name: bandit-results
           path: bandit.json
+          retention-days: 14
 
   container-scan:
     name: Container & File System Scan
@@ -93,7 +99,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
       - name: Run Trivy scanner
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1  # Pin to full SHA for best security
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           scan-type: fs
           scan-ref: .
@@ -101,11 +107,19 @@ jobs:
           output: trivy.sarif
           severity: 'CRITICAL,HIGH'
 
-      - name: Upload Trivy results
-        if: github.event_name != 'pull_request'  # Only upload on main
+      - name: Upload Trivy SARIF (main/scheduled only)
+        if: github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
         with:
           sarif_file: trivy.sarif
+
+      - name: Upload Trivy artifact (always)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 4.6.2
+        with:
+          name: trivy-results
+          path: trivy.sarif
+          retention-days: 14
 
   github-actions-security:
     name: GitHub Actions Security
@@ -135,8 +149,8 @@ jobs:
     steps:
       - name: Generate security report
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          ## Security Scan Results 🔒
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
+          ## Security Scan Results
 
           | Check | Status |
           |-------|--------|
@@ -146,6 +160,6 @@ jobs:
           | Container Scan | ${{ needs.container-scan.result }} |
           | GitHub Actions | ${{ needs.github-actions-security.result }} |
 
-          **Note:** Some checks may show as failed but are configured as non-blocking warnings.
-          Review the individual job logs for details.
+          **Note:** On pull requests, dependency audit and Bandit are advisory (non-blocking).
+          On main and scheduled runs, they are blocking.
           EOF
