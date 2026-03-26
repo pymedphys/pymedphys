@@ -13,16 +13,21 @@ on:
 jobs:
   claude:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
       issues: write
       id-token: write
+
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: true
 
     steps:
       - name: Checkout repository
@@ -30,35 +35,17 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Optional: set up a default Python for tools that expect it.
-      # uv can also manage its own Python, so this is not strictly required,
-      # but keeping it helps non-uv tools (e.g., ruff, mypy) when run outside uv.
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
 
-      # Install uv (fast Python package manager) for the runner.
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      # Restore uv cache to speed up dependency ops.
-      - name: Restore uv cache
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
+      # Use the same pinned setup-uv action as the rest of CI.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # 5.3.2
         with:
-          path: |
-            ~/.cache/uv
-            .venv
-          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
-
-      # Optionally ensure a Python is available via uv (honors .python-version/pyproject if present)
-      # Skipped if you rely on actions/setup-python. Uncomment if you want uv-managed Python:
-      # - name: Ensure Python via uv
-      #   run: |
-      #     uv python install
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
 
       - name: Run Claude Code
         id: claude
@@ -66,7 +53,10 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: claude-opus-4-20250514
-          # The action will execute only these commands when tools are invoked.
+          # Allowed tools — read-only git operations, safe dev tooling,
+          # and controlled write operations via MCP.
+          # Destructive commands (git reset --hard, git branch -D, force push)
+          # are intentionally excluded.
           allowed_tools: >
             View,
             Edit,
@@ -88,15 +78,11 @@ jobs:
             Bash(git fetch origin),
             Bash(git checkout -b),
             Bash(git checkout),
-            Bash(git branch -D),
             Bash(git merge),
             Bash(git add),
             Bash(git add .),
             Bash(git add -A),
             Bash(git commit -m),
-            Bash(git commit --amend),
-            Bash(git reset),
-            Bash(git reset --hard),
             Bash(git push),
             Bash(git push origin),
             Bash(git push -u origin),

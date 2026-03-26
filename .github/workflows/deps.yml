@@ -2,7 +2,7 @@ name: Update Dependencies
 
 on:
   schedule:
-    - cron: '0 0 * * MON'
+    - cron: '17 3 * * MON'  # Staggered to avoid top-of-hour congestion
   workflow_dispatch:
 
 jobs:
@@ -18,10 +18,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
         with:
-          python-version: 3.12
+          python-version: '3.12'
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # 5.3.2
 
       - name: Update dependencies
         id: update
@@ -34,36 +34,31 @@ jobs:
 
           # Check if changed
           if diff -q uv.lock uv.lock.old > /dev/null; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
 
             # Generate changelog
-            echo "## Dependency Updates" > updates.md
-            echo "" >> updates.md
-            echo '```diff' >> updates.md
-            diff uv.lock.old uv.lock | grep "^[><]" | head -50 >> updates.md
-            echo '```' >> updates.md
+            {
+              echo "## Dependency Updates"
+              echo
+              echo '```diff'
+              diff uv.lock.old uv.lock | grep "^[><]" | head -50 || true
+              echo '```'
+            } > updates.md
           fi
 
-      - name: Run focused validation
+      - name: Run validation
         if: steps.update.outputs.changed == 'true'
         run: |
           set -euxo pipefail
 
           uv sync --frozen --extra user --extra tests --extra docs
 
-          uv run pytest -q --maxfail=1 \
-            -m "not slow and not cypress and not mosaiqdb and not anthropic_key" \
-            lib/pymedphys/tests/coordinates \
-            lib/pymedphys/tests/delivery \
-            lib/pymedphys/tests/dicom \
-            lib/pymedphys/tests/gamma \
-            lib/pymedphys/tests/interp \
-            lib/pymedphys/tests/logfiles \
-            lib/pymedphys/tests/metersetmap \
-            lib/pymedphys/tests/trf \
-            lib/pymedphys/tests/utilities
+          # Run the full non-slow test suite rather than a hand-curated
+          # subset — ensures new test directories are covered automatically.
+          uv run pytest -q --maxfail=3 \
+            -m "not slow and not cypress and not mosaiqdb and not anthropic_key"
 
           uv run pymedphys dev docs
 
@@ -78,7 +73,7 @@ jobs:
         if: steps.update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
         with:
-          title: "⬆️ Update dependencies"
+          title: "chore: update dependencies"
           body-path: updates.md
           branch: deps/update-${{ github.run_number }}
           commit-message: "chore: update dependencies"
