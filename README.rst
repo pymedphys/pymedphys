@@ -11,7 +11,7 @@ and open source distribution. Open code is better science.**
 
 |build| |pypi| |python| |license|
 
-.. |build| image:: https://github.com/pymedphys/pymedphys/actions/workflows/ci.yml/badge.svg?branch=main
+.. |build| image:: https://github.com/pymedphys/pymedphys/actions/workflows/ci.yml/badge.svg?branch=?branch=claude/debug-workflow-failure-AWhfc
    :target: https://github.com/pymedphys/pymedphys/actions/workflows/ci.yml
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
