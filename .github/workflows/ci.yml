@@ -101,28 +101,12 @@ jobs:
       github.event_name == 'pull_request' &&
       needs.changes.outputs.docs == 'true'
     uses: ./.github/workflows/docs.yml
-    with:
-      publish: false
     permissions:
       contents: read
-      pages: write
-      id-token: write
-
-  # Docs publish on main — gated on the full core CI set.
-  docs-publish:
-    needs: [lint, type-check, unit-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/docs.yml
-    with:
-      publish: true
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
 
   # Summary job provides overall status.
   summary:
-    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish]
+    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -156,7 +140,7 @@ jobs:
           |-------|--------|
           | Integration Tests | ${{ needs.integration-tests.result || 'skipped' }} |
           | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
-          | Documentation | ${{ needs.docs-check.result || needs.docs-publish.result || 'skipped' }} |
+          | Documentation | ${{ needs.docs-check.result || 'skipped' }} |
 
           **Workflow:** ${{ github.workflow }}
           **Triggered by:** ${{ github.actor }}
