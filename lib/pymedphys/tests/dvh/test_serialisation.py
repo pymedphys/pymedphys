@@ -200,6 +200,7 @@ class TestMetricRequestSetRoundTrip:
         d = mrs.to_dict()
         restored = MetricRequestSet.from_dict(d)
         assert len(restored.roi_requests) == 2
+        assert restored.dose_refs is not None
         assert "ptv60" in restored.dose_refs.refs
 
     def test_round_trip_preserves_roi_number(self) -> None:
@@ -426,6 +427,8 @@ class TestDVHResultSetRoundTrip:
         assert restored.schema_version == "1.0"
         assert len(restored.results) == 1
         assert restored.results[0].roi.name == "PTV"
+        assert restored.results[0].dvh is not None
+        assert rs.results[0].dvh is not None
         np.testing.assert_array_equal(
             restored.results[0].dvh.dose_bin_edges_gy,
             rs.results[0].dvh.dose_bin_edges_gy,
@@ -436,7 +439,9 @@ class TestDVHResultSetRoundTrip:
         d = rs.to_dict()
         restored = DVHResultSet.from_dict(d)
         assert restored.provenance.pymedphys_version == "0.42.0"
+        assert restored.provenance.input_metadata is not None
         assert restored.provenance.input_metadata.rtstruct_file_sha256 == "abc123"
+        assert restored.provenance.platform is not None
         assert restored.provenance.platform.python_version == "3.11.0"
 
     def test_metrics_preserved(self) -> None:
