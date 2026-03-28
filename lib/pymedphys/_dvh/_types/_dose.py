@@ -9,7 +9,10 @@ import numpy as np
 import numpy.typing as npt
 
 from pymedphys._dvh._types._grid_frame import GridFrame
-from pymedphys._dvh._types._validators import _validate_finite_array, _validate_nonneg_array
+from pymedphys._dvh._types._validators import (
+    _validate_finite_array,
+    _validate_nonneg_array,
+)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
