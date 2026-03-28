@@ -21,7 +21,7 @@ class TestIssueLevel:
 
 
 class TestIssueCode:
-    """Tests for the IssueCode enum — all 13 codes from the RFC."""
+    """Tests for the IssueCode enum — all 15 codes from the RFC."""
 
     EXPECTED_CODES = [
         "STRUCTURE_VOLUME_SMALL",
@@ -37,6 +37,8 @@ class TestIssueCode:
         "ROI_FAILED",
         "METRIC_UNAVAILABLE",
         "Z_TOLERANCE_APPLIED",
+        "DOSE_REFERENCE_MISSING",
+        "OBLIQUE_DOSE_GRID",
     ]
 
     def test_all_expected_codes_exist(self) -> None:
