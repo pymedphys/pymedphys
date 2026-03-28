@@ -197,7 +197,7 @@ def compute_dvh(
 | `_types/_dose_ref.py` | `DoseReference`, `DoseReferenceSet` |
 | `_types/_roi_ref.py` | `ROIRef` — ROI identity + colour |
 | `_types/_issues.py` | `IssueLevel`, `IssueCode`, `Issue` |
-| `_types/_metrics.py` | `MetricSpec`, `MetricFamily`, enums, `ROIMetricRequest`, `MetricRequestSet` |
+| `_types/_metrics.py` | `MetricSpec`, `MetricFamily`, enums, `ROIMetricRequest`, `MetricRequestSet`, `MetricSpec.parse()` grammar parser (no separate `_grammar.py` file) |
 | `_types/_config.py` | All config enums, `SupersamplingConfig`, `AlgorithmConfig`, `RuntimeConfig`, `PipelinePolicy`, `DVHConfig` |
 | `_types/_contour.py` | `Contour` (raw), `PlanarRegion`, `ContourROI` |
 | `_types/_dose.py` | `DoseGrid` |
@@ -205,7 +205,6 @@ def compute_dvh(
 | `_types/_sdf.py` | `SDFField` |
 | `_types/_results.py` | `DVHBins`, `MetricResult`, `ROIResult`, `DVHResultSet`, provenance types |
 | `_types/_inputs.py` | `DVHInputs` |
-| `_grammar.py` | `MetricSpec.parse()` implementation (lives on MetricSpec itself) |
 | `_serialisation.py` | JSON/TOML round-trip for all types |
 | `_protocols.py` | Strategy protocols: `StructureModelBuilder`, `OccupancyComputer`, `DoseInterpolator` (private) |
 | `_geometry/` | Point-in-polygon, SDF, contour interpolation, end-capping |
@@ -296,7 +295,7 @@ lib/pymedphys/tests/dvh/
         test_metrics.py      # MetricSpec, grammar parsing
         test_config.py
         test_contour.py
-        test_sdf.py          # SDFField
+        test_occupancy.py    # OccupancyField
         test_results.py      # DVHBins, ROIResult, DVHResultSet
         test_issues.py
     test_grammar.py          # MetricSpec.parse() round-trips

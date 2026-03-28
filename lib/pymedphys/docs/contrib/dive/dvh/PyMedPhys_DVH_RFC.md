@@ -1119,24 +1119,17 @@ class FloatingPointPrecision(str, Enum):
     FLOAT32 = "float32"
     FLOAT64 = "float64"
 
-class BinningStrategy(str, Enum):
-    """Controls how DVH bin edges are chosen.
-
-    UNIFORM_GY (default for practical mode): Uniform-width bins from 0 to
-        max_dose_gy * (1 + margin_fraction). Default bin width: 0.5 Gy
-        (per Drzymala et al. recommendation). Edges are NOT forced to align
-        with dose grid values.
-
-    DOSE_GRID_ALIGNED (default for reference mode): Bin edges coincide with
-        dose grid values present in the sampled set. Eliminates interpolation
-        artefacts in cumulative DVH.
-
-    CUSTOM: User supplies explicit dose_bin_edges_gy array via BinningConfig.
-        Must be strictly monotonically increasing.
-    """
-    UNIFORM_GY = "uniform_gy"
-    DOSE_GRID_ALIGNED = "dose_grid_aligned"
-    CUSTOM = "custom"
+# Phase 0 deferral: BinningStrategy is NOT implemented in Phase 0.
+# Phase 0 uses uniform binning only, controlled by dvh_bin_width_gy.
+# BinningStrategy will be implemented when histogram construction
+# logic is added (Phase 2+). The enum definition is retained here
+# for reference.
+#
+# class BinningStrategy(str, Enum):
+#     """Controls how DVH bin edges are chosen."""
+#     UNIFORM_GY = "uniform_gy"
+#     DOSE_GRID_ALIGNED = "dose_grid_aligned"
+#     CUSTOM = "custom"
 
 @dataclass(frozen=True, slots=True)
 class SupersamplingConfig:
@@ -1199,8 +1192,8 @@ class AlgorithmConfig:
     dose_interpolation: DoseInterpolationMethod = DoseInterpolationMethod.TRILINEAR
 
     # Histogram construction
-    dvh_bin_width_gy: float = 0.5  # 0.5 Gy default per Drzymala et al. recommendation
-    dvh_binning_strategy: BinningStrategy = BinningStrategy.UNIFORM_GY
+    dvh_bin_width_gy: float = 0.01  # 10 mGy default; finer than Drzymala's 0.5 Gy (1991)
+    # dvh_binning_strategy deferred to Phase 2+ (see BinningStrategy note above)
     dvh_type: DVHType = DVHType.BOTH
 
     # Precision
@@ -1297,6 +1290,16 @@ class DVHConfig:
 `PlanarRegion(exterior, holes=...)` provides validated contour data with explicit hole representation. The system distinguishes between raw imported contours (`Contour`) and canonical validated contours (`PlanarRegion`). Slice z-coordinates are normalised at import time using the policy's `z_tolerance_mm` to eliminate exact-float-equality brittleness from DICOM.
 
 ```python
+class CombinationMode(str, Enum):
+    """How overlapping contours on the same slice are combined."""
+    AUTO = "auto"
+    UNION = "union"
+    XOR = "xor"
+
+class CoordinateFrame(str, Enum):
+    """Coordinate frame of contour data."""
+    DICOM_PATIENT = "DICOM_PATIENT"
+
 @dataclass(frozen=True, slots=True, eq=False)
 class Contour:
     """A single closed 2D polygon on a single axial slice.
@@ -1406,8 +1409,8 @@ class ContourROI:
     """
     roi: ROIRef
     slices: tuple[tuple[float, tuple[PlanarRegion, ...]], ...]
-    combination_mode: str = "auto"       # "auto", "xor", "slice_union", "vendor_compat_xor"
-    coordinate_frame: str = "DICOM_PATIENT"
+    combination_mode: CombinationMode = CombinationMode.AUTO
+    coordinate_frame: CoordinateFrame = CoordinateFrame.DICOM_PATIENT
 
     def __post_init__(self) -> None:
         if not self.slices:
@@ -1435,10 +1438,26 @@ class ContourROI:
         return zs[-1] - zs[0]
 
     @property
-    def mean_slice_spacing_mm(self) -> Optional[float]:
+    def mean_slice_spacing_mm(self) -> float | None:
         if self.num_slices < 2:
             return None
         return self.z_extent_mm / (self.num_slices - 1)
+
+    @property
+    def slice_spacings_mm(self) -> tuple[float, ...] | None:
+        """Individual inter-slice spacings, or None for single-slice ROI."""
+        if self.num_slices < 2:
+            return None
+        zs = self.z_values_mm
+        return tuple(zs[i + 1] - zs[i] for i in range(len(zs) - 1))
+
+    @property
+    def is_uniform_spacing(self) -> bool | None:
+        """Whether slices are uniformly spaced (within 0.01 mm tolerance)."""
+        spacings = self.slice_spacings_mm
+        if spacings is None:
+            return None
+        return all(abs(s - spacings[0]) < 0.01 for s in spacings)
 ```
 
 ### 6.8 Dose and Occupancy Types
@@ -1518,9 +1537,14 @@ class OccupancyField:
 
     @property
     def volume_cc(self) -> float:
-        """Total structure volume in cc (mm³ / 1000)."""
-        dz, dy, dx = self.frame.spacing_mm
-        voxel_volume_mm3 = dx * dy * dz
+        """Total structure volume in cc (mm³ / 1000).
+
+        Uses ``|det(affine[:3,:3])|`` for the voxel volume, which is
+        correct for any axis-aligned grid (the only type currently
+        supported by ``GridFrame``).
+        """
+        aff = self.frame.index_to_patient_mm
+        voxel_volume_mm3 = abs(float(np.linalg.det(aff[:3, :3])))
         return float(np.sum(self.data)) * voxel_volume_mm3 / 1000.0
 
     def __eq__(self, other: object) -> bool:
@@ -1729,6 +1753,12 @@ class ROIDiagnostics:
     endcap_volume_fraction: Optional[float] = None
     computation_time_s: Optional[float] = None
 
+class ROIStatus(str, Enum):
+    """Status of an ROI computation result."""
+    OK = "ok"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
 @dataclass(frozen=True, slots=True)
 class ROIResult:
     """Complete result for a single ROI.
@@ -1740,7 +1770,7 @@ class ROIResult:
     Issues at this level affect this ROI as a whole.
     """
     roi: ROIRef
-    status: Literal["ok", "skipped", "failed"]
+    status: ROIStatus
     volume_cc: Optional[float] = None
     metrics: tuple[MetricResult, ...] = ()
     dvh: Optional[DVHBins] = None
@@ -1756,20 +1786,29 @@ class InputMetadata:
 
 @dataclass(frozen=True, slots=True)
 class PlatformInfo:
-    """Platform and dependency version info, for reproducibility."""
-    python_version: str
-    numpy_version: str
-    numba_version: str
-    os: str
+    """Platform and dependency version info, for reproducibility.
+
+    All fields default to empty string so PlatformInfo can be
+    constructed in Phase 0 where no computation exists yet.
+    """
+    python_version: str = ""
+    numpy_version: str = ""
+    numba_version: str = ""
+    os: str = ""
 
 @dataclass(frozen=True, slots=True)
 class ProvenanceRecord:
-    """Complete provenance for a computation run."""
-    pymedphys_version: str
-    timestamp_utc: str
-    config: DVHConfig
-    input_metadata: InputMetadata
-    platform: PlatformInfo
+    """Complete provenance for a computation run.
+
+    All fields have defaults so ProvenanceRecord can be constructed
+    in Phase 0 where no computation exists yet. The timestamp_utc
+    field, when non-empty, must be ISO 8601 UTC ending in 'Z'.
+    """
+    pymedphys_version: str = ""
+    timestamp_utc: str = ""
+    config: DVHConfig | None = None
+    input_metadata: InputMetadata | None = None
+    platform: PlatformInfo | None = None
 
 @dataclass(frozen=True, slots=True)
 class DVHResultSet:
@@ -1966,7 +2005,7 @@ result = compute_dvh(inputs, request, DVHConfig.reference())
 # Print results
 for roi_result in result.results:
     print(f"{roi_result.roi}: {roi_result.status}")
-    if roi_result.status == "ok":
+    if roi_result.status == ROIStatus.OK:
         for m in roi_result.metrics:
             print(f"  {m.spec.raw} = {m.value:.2f} {m.unit}")
 
@@ -2044,10 +2083,9 @@ class SDFField:
     def __hash__(self) -> int:
         return hash((self.frame, self.roi.name, self.data.tobytes()))
 
-# StructureModel is a union of the two first-class structure representation types.
-# SDFBuilder produces SDFField; RightPrismBuilder produces RightPrismModel.
-# OccupancyComputer dispatches on the runtime type of the StructureModel it receives.
-StructureModel = SDFField | RightPrismModel
+# Phase 0: StructureModelBuilder returns SDFField only.
+# RightPrismModel is deferred to Phase 1+ (practical/fast mode).
+# Future: StructureModel = SDFField | RightPrismModel
 
 @runtime_checkable
 class StructureModelBuilder(Protocol):
@@ -2058,33 +2096,27 @@ class StructureModelBuilder(Protocol):
     (right-prism vs SDF interpolation) from grid rasterisation
     (supersampling, occupancy computation).
 
-    Two first-class implementations are supported (both fully validated):
+    Phase 0 implementation returns ``SDFField`` only. Phase 1+ will
+    introduce ``RightPrismModel`` and a ``StructureModel`` union type
+    (``SDFField | RightPrismModel``), with ``OccupancyComputer``
+    dispatching on the runtime type.
 
-    - **SDFBuilder** (reference mode default): produces an `SDFField` — a 3D
+    Two first-class implementations are planned (both fully validated):
+
+    - **SDFBuilder** (reference mode default): produces an ``SDFField`` — a 3D
       signed-distance-field volume on a fine internal grid. Negative values =
       inside, positive = outside, zero = boundary.
 
-    - **RightPrismBuilder** (practical/fast mode default): produces a
-      `RightPrismModel` — a stack of 2D contour polygons with z-extents.
-      This is NOT an SDF and does not return an `SDFField`.
-
-    The return type is `StructureModel = SDFField | RightPrismModel`. The
-    `OccupancyComputer` receives the `StructureModel` and dispatches to the
-    appropriate occupancy algorithm based on its runtime type.
+    - **RightPrismBuilder** (practical/fast mode default, Phase 1+):
+      produces a ``RightPrismModel`` — a stack of 2D contour polygons
+      with z-extents. Uses point-in-polygon directly for occupancy.
     """
     def build(
         self,
         contour_roi: ContourROI,
         config: AlgorithmConfig,
-    ) -> StructureModel:
-        """Return a continuous 3D structure model.
-
-        The concrete return type depends on the builder implementation:
-        - `SDFBuilder.build(...)` returns `SDFField`
-        - `RightPrismBuilder.build(...)` returns `RightPrismModel`
-
-        Both are variants of `StructureModel = SDFField | RightPrismModel`.
-        """
+    ) -> SDFField:
+        """Return a continuous 3D structure model."""
         ...
 
 @runtime_checkable
@@ -2488,7 +2520,7 @@ Systematic single-variable sensitivity analysis for every configurable parameter
 - **Test-driven development (TDD).** Write the test first. See it fail. Implement the feature. See it pass. Never merge code without a covering test.
 - **Property-based testing** (via Hypothesis) for all dataclass invariants, metric grammar round-trips, and numerical monotonicity/bound properties.
 - **Golden-data regression tests** gate every merge.
-- **Strict typing** throughout. `mypy --strict` on all source files.
+- **Strict typing** throughout. `pyright` on all source files (per PyMedPhys project convention).
 - **AI-assisted workflow.** Each task is a self-contained specification with clear inputs, outputs, and acceptance criteria.
 - **Benchmark gating.** After Phase 3, every PR to core computation code must pass the full Tier 1 suite.
 - **Documentation as deliverable.** Every module and public function has complete docstrings.
@@ -2527,7 +2559,8 @@ lib/pymedphys/_dvh/
         _inputs.py           # DVHInputs
     _protocols.py            # StructureModelBuilder, OccupancyComputer, DoseInterpolator (private)
     _serialisation.py        # to_json(), from_json(), to_toml(), from_toml()
-    _grammar.py              # MetricSpec.parse() implementation
+    # Note: _grammar.py was merged into _types/_metrics.py —
+    # MetricSpec.parse() lives as a classmethod on MetricSpec itself.
 
 tests/dvh/
     __init__.py
@@ -3563,11 +3596,11 @@ This appendix records design decisions made during implementation that diverge f
 
 **RFC §6.7 originally specified:** `ContourROI(roi, slices)` — geometry only.
 
-**Decision:** Add `combination_mode: str = "auto"` and `coordinate_frame: str = "DICOM_PATIENT"` to `ContourROI`.
+**Decision:** Add `combination_mode: CombinationMode = CombinationMode.AUTO` and `coordinate_frame: CoordinateFrame = CoordinateFrame.DICOM_PATIENT` to `ContourROI`, using proper `str` enums rather than bare strings.
 
-**Rationale:** These fields govern how contours are combined during voxelisation (e.g., XOR vs union for overlapping contours on the same slice) and which coordinate frame applies. They are geometry-interpretation concerns, not identity concerns, so they belong on `ContourROI` rather than `ROIRef`. The prior flat `Structure` type carried these fields; splitting them between `ROIRef` (identity + display) and `ContourROI` (geometry + interpretation) preserves the information while maintaining clean separation.
+**Rationale:** These fields govern how contours are combined during voxelisation (e.g., XOR vs union for overlapping contours on the same slice) and which coordinate frame applies. They are geometry-interpretation concerns, not identity concerns, so they belong on `ContourROI` rather than `ROIRef`. The prior flat `Structure` type carried these fields; splitting them between `ROIRef` (identity + display) and `ContourROI` (geometry + interpretation) preserves the information while maintaining clean separation. Using `str` enums (`CombinationMode`, `CoordinateFrame`) provides type safety and IDE support while retaining string-based serialisation compatibility.
 
-**What changed:** RFC §6.7 code block updated to include both fields on `ContourROI`.
+**What changed:** RFC §6.7 code block updated to include both fields on `ContourROI` with enum types.
 
 #### B.3 `cached_property` incompatibility with `slots=True` — precompute in `__post_init__` (Phase 0)
 
