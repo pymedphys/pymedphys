@@ -421,7 +421,9 @@ class TestDVHResultSetRoundTrip:
         d = rs.to_dict()
         restored = DVHResultSet.from_dict(d)
         assert restored.provenance.pymedphys_version == "0.42.0"
+        assert restored.provenance.input_metadata is not None
         assert restored.provenance.input_metadata.rtstruct_file_sha256 == "abc123"
+        assert restored.provenance.platform is not None
         assert restored.provenance.platform.python_version == "3.11.0"
 
     def test_metrics_preserved(self) -> None:
