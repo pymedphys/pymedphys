@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 
 from pymedphys._dvh._types._grid_frame import GridFrame
-from pymedphys._dvh._types._validators import _validate_finite_array
+from pymedphys._dvh._types._validators import _validate_finite_array, _validate_nonneg_array
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -27,7 +27,7 @@ class DoseGrid:
         Spatial frame defining grid coordinates.
     uncertainty_gy : npt.NDArray[np.float64], optional
         Per-voxel dose uncertainty (same shape as dose_gy).
-        All values must be finite.
+        All values must be finite and non-negative (standard deviations).
     """
 
     dose_gy: npt.NDArray[np.float64]
@@ -49,6 +49,7 @@ class DoseGrid:
                 raise ValueError("Uncertainty shape must match dose shape")
             u = np.array(self.uncertainty_gy, dtype=np.float64)
             _validate_finite_array(u, "uncertainty_gy")
+            _validate_nonneg_array(u, "uncertainty_gy")
             u.flags.writeable = False
             object.__setattr__(self, "uncertainty_gy", u)
 

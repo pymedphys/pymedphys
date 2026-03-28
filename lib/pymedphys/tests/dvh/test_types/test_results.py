@@ -166,6 +166,22 @@ class TestDVHBins:
         )
         assert dvh.binned_mean_dose_gy == 0.0
 
+    def test_zero_volume_binned_min_is_zero(self) -> None:
+        dvh = DVHBins(
+            dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+            differential_volume_cc=np.array([0.0, 0.0]),
+            total_volume_cc=0.0,
+        )
+        assert dvh.binned_min_dose_gy == 0.0
+
+    def test_zero_volume_binned_max_is_zero(self) -> None:
+        dvh = DVHBins(
+            dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+            differential_volume_cc=np.array([0.0, 0.0]),
+            total_volume_cc=0.0,
+        )
+        assert dvh.binned_max_dose_gy == 0.0
+
     def test_bin_width_gy_raises_for_nonuniform(self) -> None:
         dvh = DVHBins(
             dose_bin_edges_gy=np.array([0.0, 1.0, 3.0]),

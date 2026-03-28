@@ -35,6 +35,11 @@ def _validate_axis_aligned_affine(aff: npt.NDArray[np.float64]) -> None:
 
     # Each column of the 3x3 linear part must have exactly one non-zero entry
     linear = aff[:3, :3]
+    # Zero-out tiny numerical noise so that near-axis-aligned DICOM affines
+    # are not rejected due to floating-point artefacts (e.g. 1e-15 from
+    # DICOM header parsing).  Threshold 1e-8 is well below typical voxel
+    # spacings (~0.1 mm) while above double-precision round-off (~1e-16).
+    linear = np.where(np.abs(linear) < 1e-8, 0.0, linear)
     for col_idx in range(3):
         col = linear[:, col_idx]
         nonzero_count = np.count_nonzero(col)

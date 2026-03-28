@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import FrozenSet, Literal, Optional
+from typing import FrozenSet, Literal, Optional, get_args
 
 import numpy as np
 import numpy.typing as npt
@@ -330,6 +330,13 @@ class ROIResult:
         )
 
 
+InputPathway = Literal["from_dicom", "from_arrays", "direct"]
+StructureRepresentation = Literal["contour", "mask", "sdf"]
+
+_VALID_INPUT_PATHWAYS: tuple[str, ...] = get_args(InputPathway)
+_VALID_STRUCTURE_REPRESENTATIONS: tuple[str, ...] = get_args(StructureRepresentation)
+
+
 @dataclass(frozen=True, slots=True)
 class InputMetadata:
     """Metadata about the computation inputs, for provenance.
@@ -342,19 +349,38 @@ class InputMetadata:
         SHA-256 hash of the RTDOSE file.
     dose_grid_frame : GridFrame, optional
         Grid frame of the dose input.
-    input_pathway : str, optional
-        How the inputs were provided. One of ``"from_dicom"``,
+    input_pathway : InputPathway, optional
+        How the inputs were provided. Must be one of ``"from_dicom"``,
         ``"from_arrays"``, or ``"direct"``.
-    structure_representation : str, optional
-        How structures were represented. One of ``"contour"``,
+    structure_representation : StructureRepresentation, optional
+        How structures were represented. Must be one of ``"contour"``,
         ``"mask"``, or ``"sdf"``.
     """
 
     rtstruct_file_sha256: Optional[str] = None
     rtdose_file_sha256: Optional[str] = None
     dose_grid_frame: Optional[GridFrame] = None
-    input_pathway: Optional[str] = None
-    structure_representation: Optional[str] = None
+    input_pathway: Optional[InputPathway] = None
+    structure_representation: Optional[StructureRepresentation] = None
+
+    def __post_init__(self) -> None:
+        if (
+            self.input_pathway is not None
+            and self.input_pathway not in _VALID_INPUT_PATHWAYS
+        ):
+            raise ValueError(
+                f"input_pathway must be one of {_VALID_INPUT_PATHWAYS!r}, "
+                f"got {self.input_pathway!r}"
+            )
+        if (
+            self.structure_representation is not None
+            and self.structure_representation not in _VALID_STRUCTURE_REPRESENTATIONS
+        ):
+            raise ValueError(
+                f"structure_representation must be one of "
+                f"{_VALID_STRUCTURE_REPRESENTATIONS!r}, "
+                f"got {self.structure_representation!r}"
+            )
 
     def to_dict(self) -> dict:
         d: dict = {}

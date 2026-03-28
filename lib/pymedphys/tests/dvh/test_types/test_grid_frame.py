@@ -149,6 +149,20 @@ class TestGridFrameAffineValidation:
         with pytest.raises(ValueError, match="non-finite"):
             GridFrame(shape_zyx=(5, 5, 5), index_to_patient_mm=aff)
 
+    def test_rejects_row_shear_with_one_nonzero_per_column(self) -> None:
+        """Affine with one nonzero per column but a row shear is rejected."""
+        aff = np.array(
+            [
+                [1.0, 1.0, 0.0, 0.0],  # row 0 has two non-zeros
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+        with pytest.raises(ValueError, match="row 0"):
+            GridFrame(shape_zyx=(5, 5, 5), index_to_patient_mm=aff)
+
     def test_accepts_valid_axis_aligned_affine(self) -> None:
         """Standard axis-permuted affine should be accepted."""
         gf = GridFrame.from_uniform(
