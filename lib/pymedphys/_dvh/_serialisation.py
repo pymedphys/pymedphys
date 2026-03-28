@@ -46,4 +46,4 @@ def from_json(json_str: str, cls: type[T]) -> T:
     T
         Deserialised instance.
     """
-    return cls.from_dict(json.loads(json_str))  # type: ignore[attr-defined]
+    return cls.from_dict(json.loads(json_str))  # type: ignore[attr-defined, no-any-return]

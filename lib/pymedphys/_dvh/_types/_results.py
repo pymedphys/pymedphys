@@ -331,9 +331,9 @@ class ProvenanceRecord:
 
     pymedphys_version: str = ""
     timestamp_utc: str = ""
-    config: DVHConfig = None  # type: ignore[assignment]
-    input_metadata: InputMetadata = None  # type: ignore[assignment]
-    platform: PlatformInfo = None  # type: ignore[assignment]
+    config: Optional[DVHConfig] = None
+    input_metadata: Optional[InputMetadata] = None
+    platform: Optional[PlatformInfo] = None
 
     def to_dict(self) -> dict:
         d: dict = {
