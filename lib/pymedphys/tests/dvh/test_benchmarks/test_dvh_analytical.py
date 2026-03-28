@@ -131,6 +131,10 @@ def _numerical_sphere_gaussian_dvh(
     # Critical radius where dose = dose_gy
     r_crit = sigma_mm * np.sqrt(2.0 * np.log(amplitude_gy / dose_gy))
     r_upper = min(r_crit, radius_mm)
+    # The integrand is a step function with a sharp discontinuity at r_upper.
+    # Without `points`, quad may straddle the discontinuity and return an
+    # inaccurate result. Passing `points=[r_upper]` forces quad to use r_upper
+    # as a subdivision boundary, ensuring the step is correctly captured.
     result, _ = quad(integrand, 0.0, radius_mm, points=[r_upper])
     return max(0.0, result)
 
@@ -411,6 +415,19 @@ class TestConeLinearGradientDVH:
         v = cone_linear_gradient_dvh(d_half, r, h, d0, g)
         assert float(v[0]) == pytest.approx(cone_volume(r, h) * 0.5**3, rel=1e-10)
 
+    def test_above_dmax_gives_zero_negative_gradient(self) -> None:
+        """g<0: dose strictly above d_max (= d0, the apex) gives V=0.
+
+        For negative gradient the high-dose end is at the apex (z=0) with
+        d_max = d0.  Any dose > d_max is physically unreachable, so the
+        clipping in cone_linear_gradient_dvh must return 0, not a spurious
+        positive volume.
+        """
+        r, h, d0, g = 12.0, 24.0, 60.0, -1.0
+        d_above_max = d0 + 5.0  # 65 Gy — above d_max=60 Gy
+        v = cone_linear_gradient_dvh(d_above_max, r, h, d0, g)
+        assert float(v[0]) == pytest.approx(0.0, abs=1e-10)
+
     def test_uniform_dose_step_function(self) -> None:
         r, h, d0 = 12.0, 24.0, 50.0
         v_below = cone_linear_gradient_dvh(40.0, r, h, d0, 0.0)
@@ -458,6 +475,18 @@ class TestConeLinearGradientDVH:
 
 class TestSphereRadialGaussianDVH:
     """Tests for sphere_radial_gaussian_dvh."""
+
+    def test_zero_dose_gives_total_volume(self) -> None:
+        """V(0) = V_total — all volume receives dose >= 0."""
+        r, A, sigma = 10.0, 60.0, 10.0
+        v = sphere_radial_gaussian_dvh(0.0, r, A, sigma)
+        assert float(v[0]) == pytest.approx(sphere_volume(r), rel=1e-10)
+
+    def test_negative_dose_gives_total_volume(self) -> None:
+        """V(D < 0) = V_total — negative dose threshold includes all volume."""
+        r, A, sigma = 10.0, 60.0, 10.0
+        v = sphere_radial_gaussian_dvh(-10.0, r, A, sigma)
+        assert float(v[0]) == pytest.approx(sphere_volume(r), rel=1e-10)
 
     def test_dose_below_surface_gives_total_volume(self) -> None:
         """When D ≤ dose at sphere surface, V = V_total."""

@@ -49,6 +49,9 @@ def sphere_linear_gradient_dvh(
         Dose at sphere centre (z=0) in Gy.
     gradient_gy_per_mm : float
         Dose gradient in Gy/mm. May be positive, negative, or zero.
+        A zero gradient produces a step function at ``d0_gy``. Zero must be
+        passed as exactly ``0.0``; near-zero values (e.g. ``1e-300``) are
+        treated as a non-zero gradient.
 
     Returns
     -------
@@ -101,7 +104,10 @@ def cylinder_linear_gradient_dvh(
     d0_gy : float
         Dose at z=0 in Gy.
     gradient_gy_per_mm : float
-        Dose gradient in Gy/mm.
+        Dose gradient in Gy/mm. May be positive, negative, or zero.
+        A zero gradient produces a step function at ``d0_gy``. Zero must be
+        passed as exactly ``0.0``; near-zero values (e.g. ``1e-300``) are
+        treated as a non-zero gradient.
 
     Returns
     -------
@@ -152,7 +158,10 @@ def cone_linear_gradient_dvh(
     d0_gy : float
         Dose at apex (z=0) in Gy.
     gradient_gy_per_mm : float
-        Dose gradient in Gy/mm.
+        Dose gradient in Gy/mm. May be positive, negative, or zero.
+        A zero gradient produces a step function at ``d0_gy``. Zero must be
+        passed as exactly ``0.0``; near-zero values (e.g. ``1e-300``) are
+        treated as a non-zero gradient.
 
     Returns
     -------
