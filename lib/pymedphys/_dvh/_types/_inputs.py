@@ -13,8 +13,9 @@ from pymedphys._dvh._types._dose import DoseGrid
 class DVHInputs:
     """Typed input bundle for DVH computation.
 
-    Use the named constructors to build inputs from DICOM paths
-    or raw NumPy arrays.
+    Construct directly by providing a ``DoseGrid`` and
+    ``ContourROI`` tuple. Named constructors for DICOM and
+    raw-array input pathways are planned for later phases.
 
     Parameters
     ----------
@@ -32,34 +33,3 @@ class DVHInputs:
     structures: tuple[ContourROI, ...]
     rtstruct_path: Optional[str] = None
     rtdose_path: Optional[str] = None
-
-    @classmethod
-    def from_dicom(
-        cls,
-        rtstruct_path: str,
-        rtdose_path: str,
-        roi_names: Optional[list[str]] = None,
-        policy: Optional[object] = None,
-    ) -> DVHInputs:
-        """Load from DICOM RTSTRUCT + RTDOSE files.
-
-        Not yet implemented — requires Phase 4.
-        """
-        raise NotImplementedError(
-            "DVHInputs.from_dicom() is not yet implemented (Phase 4)"
-        )
-
-    @classmethod
-    def from_arrays(
-        cls,
-        dose_gy: object,
-        structures: dict[str, object],
-        frame: object,
-    ) -> DVHInputs:
-        """Build from raw NumPy arrays.
-
-        Not yet implemented — requires Phase 4.
-        """
-        raise NotImplementedError(
-            "DVHInputs.from_arrays() is not yet implemented (Phase 4)"
-        )

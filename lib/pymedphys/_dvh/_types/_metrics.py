@@ -44,8 +44,13 @@ class MetricSpec:
     """A fully parsed, unambiguous metric specification.
 
     This is the metric AST — a structured representation that is
-    unambiguous about what is being computed, in what unit, and
-    against which dose reference.
+    unambiguous about what is being computed and in what unit.
+
+    Dose reference binding is handled at the ROI level
+    (``ROIMetricRequest.dose_ref_id``) or at the global level
+    (``MetricRequestSet.dose_refs.default_id``), not per-metric.
+    This simplifies the v1 semantics and avoids partial
+    implementation of per-metric dose references.
 
     Parameters
     ----------
@@ -57,8 +62,6 @@ class MetricSpec:
         Unit of the threshold.
     output_unit : OutputUnit
         Unit of the metric output.
-    dose_ref_id : str, optional
-        Binds to a DoseReferenceSet entry.
     raw : str
         Original string, preserved for display/provenance.
     """
@@ -67,7 +70,6 @@ class MetricSpec:
     threshold: Optional[float] = None
     threshold_unit: ThresholdUnit = ThresholdUnit.NONE
     output_unit: OutputUnit = OutputUnit.GY
-    dose_ref_id: Optional[str] = None
     raw: str = ""
 
     def __post_init__(self) -> None:
@@ -102,8 +104,6 @@ class MetricSpec:
             parts.append(f"{self.threshold}")
         parts.append(self.threshold_unit.value)
         parts.append(self.output_unit.value)
-        if self.dose_ref_id:
-            parts.append(f"ref={self.dose_ref_id}")
         return "|".join(parts)
 
     def to_dict(self) -> dict:
@@ -116,8 +116,6 @@ class MetricSpec:
         }
         if self.threshold is not None:
             d["threshold"] = self.threshold
-        if self.dose_ref_id is not None:
-            d["dose_ref_id"] = self.dose_ref_id
         return d
 
     @classmethod
@@ -128,7 +126,6 @@ class MetricSpec:
             threshold=d.get("threshold"),
             threshold_unit=ThresholdUnit(d["threshold_unit"]),
             output_unit=OutputUnit(d["output_unit"]),
-            dose_ref_id=d.get("dose_ref_id"),
             raw=d.get("raw", ""),
         )
 
@@ -329,7 +326,7 @@ class MetricRequestSet:
         for rr in self.roi_requests:
             for m in rr.metrics:
                 if m.requires_dose_ref:
-                    ref_id = m.dose_ref_id or rr.dose_ref_id
+                    ref_id = rr.dose_ref_id
                     if self.dose_refs is None:
                         raise ValueError(
                             f"Metric '{m.raw}' for ROI '{rr.roi}' requires a "
@@ -346,8 +343,10 @@ class MetricRequestSet:
     def to_dict(self) -> dict:
         """Serialise to a dict compatible with ``from_dict()``.
 
-        Uses the rich format with explicit dose_refs and per-ROI
-        metric dicts.
+        Uses a list-of-ROI-requests format that preserves full
+        ``ROIRef`` identity (including ``roi_number``), rather than
+        a name-keyed dict which would lose ROI number information
+        and break on duplicate ROI names.
         """
         d: dict = {}
         if self.dose_refs is not None:
@@ -357,15 +356,7 @@ class MetricRequestSet:
             }
             if self.dose_refs.default_id is not None:
                 d["default_dose_ref"] = self.dose_refs.default_id
-        metrics: dict = {}
-        for rr in self.roi_requests:
-            entry: dict = {
-                "metrics": [m.raw for m in rr.metrics],
-            }
-            if rr.dose_ref_id is not None:
-                entry["dose_ref"] = rr.dose_ref_id
-            metrics[rr.roi.name] = entry
-        d["metrics"] = metrics
+        d["roi_requests"] = [rr.to_dict() for rr in self.roi_requests]
         return d
 
     @property
@@ -375,9 +366,18 @@ class MetricRequestSet:
 
     @classmethod
     def from_dict(cls, d: dict) -> MetricRequestSet:
-        """Construct from a compact dict representation.
+        """Construct from a dict representation.
 
-        Supports both simple (single dose ref) and rich (SIB) formats.
+        Supports three input formats:
+
+        1. **Rich list format** (round-trip safe): ``roi_requests``
+           key containing a list of ``ROIMetricRequest`` dicts with
+           full ``ROIRef`` objects.
+        2. **Compact name-keyed format**: ``metrics`` key with ROI
+           names as keys. Does not preserve ``roi_number``.
+        3. **Simple single-ref format**: ``dose_ref_gy`` +
+           ``dose_ref_source`` for single-prescription plans.
+
         See RFC section 6.5 for full schema.
         """
         dose_refs = None
@@ -397,6 +397,15 @@ class MetricRequestSet:
                 )
             dose_refs = DoseReferenceSet.single(dose_gy=d["dose_ref_gy"], source=source)
 
+        # Rich list format (preferred, round-trip safe)
+        if "roi_requests" in d:
+            roi_requests = [ROIMetricRequest.from_dict(rr) for rr in d["roi_requests"]]
+            return cls(
+                roi_requests=tuple(roi_requests),
+                dose_refs=dose_refs,
+            )
+
+        # Compact name-keyed format (human-authored input)
         roi_requests = []
         for roi_key, spec in d["metrics"].items():
             if isinstance(spec, list):

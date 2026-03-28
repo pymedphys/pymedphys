@@ -9,6 +9,7 @@ import numpy.typing as npt
 
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import _validate_finite_array
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -39,6 +40,7 @@ class SDFField:
         if self.data.shape != expected:
             raise ValueError(f"SDF shape {self.data.shape} != frame shape {expected}")
         d = np.array(self.data, dtype=np.float64)
+        _validate_finite_array(d, "SDF data")
         d.flags.writeable = False
         object.__setattr__(self, "data", d)
 

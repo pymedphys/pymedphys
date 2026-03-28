@@ -24,21 +24,24 @@ MM3_PER_CC: float = 1000.0
 
 
 def _validate_positive(**kwargs: float | np.ndarray) -> None:
-    """Validate that all named arguments are strictly positive.
+    """Validate that all named arguments are strictly positive and finite.
 
     Parameters
     ----------
     **kwargs : float | numpy.ndarray
         Named dimension values to validate. Each value may be a scalar
-        or an array-like object; all elements must be strictly positive.
+        or an array-like object; all elements must be finite and
+        strictly positive.
 
     Raises
     ------
     ValueError
-        If any value is not strictly positive (> 0).
+        If any value is NaN, +Inf, -Inf, or not strictly positive (> 0).
     """
     for name, value in kwargs.items():
         array_value = np.asarray(value)
+        if not np.all(np.isfinite(array_value)):
+            raise ValueError(f"{name} must be finite, got {value}")
         if np.any(array_value <= 0):
             raise ValueError(f"{name} must be strictly positive, got {value}")
 

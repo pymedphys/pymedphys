@@ -9,6 +9,7 @@ import numpy.typing as npt
 
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import _validate_in_range
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -21,7 +22,8 @@ class OccupancyField:
     Parameters
     ----------
     data : npt.NDArray[np.float64]
-        Occupancy array, shape (nz, ny, nx).
+        Occupancy array, shape (nz, ny, nx). All values must be
+        finite and in [0.0, 1.0].
     frame : GridFrame
         Spatial frame.
     roi : ROIRef
@@ -39,6 +41,7 @@ class OccupancyField:
                 f"Occupancy shape {self.data.shape} != frame shape {expected}"
             )
         d = np.array(self.data, dtype=np.float64)
+        _validate_in_range(d, "occupancy data", 0.0, 1.0)
         d.flags.writeable = False
         object.__setattr__(self, "data", d)
 

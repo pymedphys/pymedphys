@@ -1,14 +1,13 @@
-"""PyMedPhys DVH Calculator.
+"""PyMedPhys DVH Calculator — domain types and configuration.
 
-A transparent, configurable DVH calculator with analytical benchmarks
-and comprehensive validation.
+Provides the domain type system for DVH computation: grid frames,
+dose grids, ROI references, contour geometry, metric specifications,
+configuration profiles, and result types.
 
-Public API
-----------
-compute_dvh : callable
-    Single entry point for DVH computation (not yet implemented).
-
-All domain types are available via ``pymedphys._dvh._types``.
+The ``compute_dvh`` entry point and DICOM I/O are not yet
+implemented; they are planned for later phases. Currently only
+the type model, metric grammar, serialisation, and analytical
+benchmark volume formulas are available.
 """
 
 from pymedphys._dvh._types import (
