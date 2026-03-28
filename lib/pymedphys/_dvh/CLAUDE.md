@@ -231,6 +231,14 @@ Benchmark volume formulas are standalone pure functions (e.g., `sphere_volume(ra
 
 Contour generation and `ShapeSpec` parameterisation are deferred to Tasks 1.3/1.5 — Task 1.1 is strictly closed-form volume formulas.
 
+### Dose fields separated from DVH formulas (Task 1.2)
+
+Dose distribution evaluation (`_dose_fields.py`) is separated from analytical DVH V(D) formulas (`_dvh_analytical.py`). Dose fields can be used independently for grid generation, interpolation testing, and visualisation.
+
+DVH functions are vectorized (accept `ArrayLike`, return `NDArray`). They return continuous V(D) in mm³ — not `DVHBins`. Each formula is validated against `scipy.integrate.quad` to < 0.01% error.
+
+The spherical cap formula uses the standard cap-height form `V = (π/3)(3rh² - h³)`, not the `z₀` form in the RFC (which is equivalent but uses confusing variable naming — see Appendix B.8).
+
 ---
 
 ## Key Design Invariants

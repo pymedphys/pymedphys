@@ -3524,6 +3524,24 @@ This appendix records design decisions made during implementation that diverge f
 
 **What changed:** Created `_benchmarks/__init__.py` and `_benchmarks/_geometry.py` with 7 volume functions + 1 conversion helper. 44 tests in `test_benchmarks/test_geometry.py`.
 
+#### B.8 Analytical DVH formulas and dose field separation (Phase 1)
+
+**RFC §9 Task 1.2 specified:** Closed-form cumulative DVH V(D) for benchmark shapes under specific dose distributions.
+
+**Decision 1: Separate dose fields from DVH formulas.** Dose distribution evaluation functions (`linear_gradient_dose`, `radial_gaussian_dose`) live in `_dose_fields.py`, separate from the closed-form DVH V(D) formulas in `_dvh_analytical.py`. This separation allows dose fields to be used independently for grid generation, interpolation testing, and visualisation.
+
+**Decision 2: Vectorized functions returning NDArray.** All functions accept `ArrayLike` and return `NDArray[np.float64]`, even for scalar input (via `np.atleast_1d`). Essential for numerical integration validation and later DVH discretization.
+
+**Decision 3: No DVHBins construction.** Analytical V(D) functions return continuous volume in mm³. Discretization into `DVHBins` deferred to Task 3.8 benchmark comparison framework.
+
+**Decision 4: Spherical cap formula correction.** The RFC §9 Task 1.2 spherical cap formula `V(D) = (π/3)(2r³ - 3r²h + h³)` uses `z₀` (cutting-plane position) notation but labels it `h` (cap height). The implemented formula uses the standard cap-height form: `V = (π/3)(3rh² - h³)` where `h = cap height = (Dmax - D)/|g|`. Both are mathematically equivalent when the variable mapping is correct; the implementation uses the cap-height form to avoid confusion.
+
+**Decision 5: Gradient sign handling.** The unified formula `Dmax = d0 + |g|·r` and `h_cap = clip((Dmax - D)/|g|, 0, 2r)` handles both positive and negative gradients for sphere and cylinder. The cone formula branches on `sign(g)` because the non-constant cross-section makes the DVH shape qualitatively different depending on which end of the cone faces the high-dose region.
+
+**Decision 6: Add hypothesis to test dependencies.** Property-based testing via `@given` decorators validates DVH invariants (monotonicity, bounds [0, V_total]) across randomized dose inputs.
+
+**What changed:** Created `_benchmarks/_dose_fields.py` (2 dose field functions), `_benchmarks/_dvh_analytical.py` (4 DVH functions). 66 new tests (11 dose fields + 55 DVH analytical). Added `hypothesis` to `pyproject.toml` test dependencies.
+
 ---
 
 ## 13. Future Research Directions: Computer Graphics Algorithms for DVH Computation
