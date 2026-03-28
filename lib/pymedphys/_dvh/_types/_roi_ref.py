@@ -54,3 +54,22 @@ class ROIRef:
         if self.roi_number is not None and other.roi_number is not None:
             return self.roi_number == other.roi_number
         return self.name == other.name
+
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        d: dict = {"name": self.name}
+        if self.roi_number is not None:
+            d["roi_number"] = self.roi_number
+        if self.colour_rgb is not None:
+            d["colour_rgb"] = list(self.colour_rgb)
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ROIRef:
+        """Deserialise from a plain dict."""
+        colour = d.get("colour_rgb")
+        return cls(
+            name=d["name"],
+            roi_number=d.get("roi_number"),
+            colour_rgb=tuple(colour) if colour is not None else None,
+        )

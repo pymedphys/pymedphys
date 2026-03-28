@@ -123,6 +123,25 @@ class DVHBins:
     def __hash__(self) -> int:
         return hash(self.dose_bin_edges_gy.tobytes())
 
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict. Cumulative values are NOT included."""
+        return {
+            "dose_bin_edges_gy": self.dose_bin_edges_gy.tolist(),
+            "differential_volume_cc": self.differential_volume_cc.tolist(),
+            "total_volume_cc": self.total_volume_cc,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> DVHBins:
+        """Deserialise from a plain dict."""
+        return cls(
+            dose_bin_edges_gy=np.array(d["dose_bin_edges_gy"], dtype=np.float64),
+            differential_volume_cc=np.array(
+                d["differential_volume_cc"], dtype=np.float64
+            ),
+            total_volume_cc=d["total_volume_cc"],
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class MetricResult:
@@ -137,6 +156,28 @@ class MetricResult:
     convergence_estimate: Optional[float] = None
     issues: tuple[Issue, ...] = ()
 
+    def to_dict(self) -> dict:
+        d: dict = {
+            "spec": self.spec.to_dict(),
+            "value": self.value,
+            "unit": self.unit,
+        }
+        if self.convergence_estimate is not None:
+            d["convergence_estimate"] = self.convergence_estimate
+        if self.issues:
+            d["issues"] = [i.to_dict() for i in self.issues]
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> MetricResult:
+        return cls(
+            spec=MetricSpec.from_dict(d["spec"]),
+            value=d.get("value"),
+            unit=d["unit"],
+            convergence_estimate=d.get("convergence_estimate"),
+            issues=tuple(Issue.from_dict(i) for i in d.get("issues", ())),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ROIDiagnostics:
@@ -149,6 +190,33 @@ class ROIDiagnostics:
     contour_slice_count: int = 0
     endcap_volume_fraction: Optional[float] = None
     computation_time_s: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        d: dict = {"contour_slice_count": self.contour_slice_count}
+        for field_name in (
+            "effective_supersampling",
+            "boundary_voxel_count",
+            "interior_voxel_count",
+            "mean_boundary_gradient_gy_per_mm",
+            "endcap_volume_fraction",
+            "computation_time_s",
+        ):
+            val = getattr(self, field_name)
+            if val is not None:
+                d[field_name] = val
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ROIDiagnostics:
+        return cls(
+            effective_supersampling=d.get("effective_supersampling"),
+            boundary_voxel_count=d.get("boundary_voxel_count"),
+            interior_voxel_count=d.get("interior_voxel_count"),
+            mean_boundary_gradient_gy_per_mm=d.get("mean_boundary_gradient_gy_per_mm"),
+            contour_slice_count=d.get("contour_slice_count", 0),
+            endcap_volume_fraction=d.get("endcap_volume_fraction"),
+            computation_time_s=d.get("computation_time_s"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +234,39 @@ class ROIResult:
     diagnostics: Optional[ROIDiagnostics] = None
     issues: tuple[Issue, ...] = ()
 
+    def to_dict(self) -> dict:
+        d: dict = {
+            "roi": self.roi.to_dict(),
+            "status": self.status,
+        }
+        if self.volume_cc is not None:
+            d["volume_cc"] = self.volume_cc
+        if self.metrics:
+            d["metrics"] = [m.to_dict() for m in self.metrics]
+        if self.dvh is not None:
+            d["dvh"] = self.dvh.to_dict()
+        if self.diagnostics is not None:
+            d["diagnostics"] = self.diagnostics.to_dict()
+        if self.issues:
+            d["issues"] = [i.to_dict() for i in self.issues]
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ROIResult:
+        dvh_d = d.get("dvh")
+        diag_d = d.get("diagnostics")
+        return cls(
+            roi=ROIRef.from_dict(d["roi"]),
+            status=d["status"],
+            volume_cc=d.get("volume_cc"),
+            metrics=tuple(MetricResult.from_dict(m) for m in d.get("metrics", ())),
+            dvh=DVHBins.from_dict(dvh_d) if dvh_d is not None else None,
+            diagnostics=(
+                ROIDiagnostics.from_dict(diag_d) if diag_d is not None else None
+            ),
+            issues=tuple(Issue.from_dict(i) for i in d.get("issues", ())),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class InputMetadata:
@@ -174,6 +275,27 @@ class InputMetadata:
     rtstruct_file_sha256: Optional[str] = None
     rtdose_file_sha256: Optional[str] = None
     dose_grid_frame: Optional[GridFrame] = None
+
+    def to_dict(self) -> dict:
+        d: dict = {}
+        if self.rtstruct_file_sha256 is not None:
+            d["rtstruct_file_sha256"] = self.rtstruct_file_sha256
+        if self.rtdose_file_sha256 is not None:
+            d["rtdose_file_sha256"] = self.rtdose_file_sha256
+        if self.dose_grid_frame is not None:
+            d["dose_grid_frame"] = self.dose_grid_frame.to_dict()
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> InputMetadata:
+        frame_d = d.get("dose_grid_frame")
+        return cls(
+            rtstruct_file_sha256=d.get("rtstruct_file_sha256"),
+            rtdose_file_sha256=d.get("rtdose_file_sha256"),
+            dose_grid_frame=(
+                GridFrame.from_dict(frame_d) if frame_d is not None else None
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +307,23 @@ class PlatformInfo:
     numba_version: str = ""
     os: str = ""
 
+    def to_dict(self) -> dict:
+        return {
+            "python_version": self.python_version,
+            "numpy_version": self.numpy_version,
+            "numba_version": self.numba_version,
+            "os": self.os,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> PlatformInfo:
+        return cls(
+            python_version=d.get("python_version", ""),
+            numpy_version=d.get("numpy_version", ""),
+            numba_version=d.get("numba_version", ""),
+            os=d.get("os", ""),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ProvenanceRecord:
@@ -195,6 +334,32 @@ class ProvenanceRecord:
     config: DVHConfig = None  # type: ignore[assignment]
     input_metadata: InputMetadata = None  # type: ignore[assignment]
     platform: PlatformInfo = None  # type: ignore[assignment]
+
+    def to_dict(self) -> dict:
+        d: dict = {
+            "pymedphys_version": self.pymedphys_version,
+            "timestamp_utc": self.timestamp_utc,
+        }
+        if self.config is not None:
+            d["config"] = self.config.to_dict()
+        if self.input_metadata is not None:
+            d["input_metadata"] = self.input_metadata.to_dict()
+        if self.platform is not None:
+            d["platform"] = self.platform.to_dict()
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ProvenanceRecord:
+        config_d = d.get("config")
+        meta_d = d.get("input_metadata")
+        plat_d = d.get("platform")
+        return cls(
+            pymedphys_version=d.get("pymedphys_version", ""),
+            timestamp_utc=d.get("timestamp_utc", ""),
+            config=DVHConfig.from_dict(config_d) if config_d else None,
+            input_metadata=(InputMetadata.from_dict(meta_d) if meta_d else None),
+            platform=PlatformInfo.from_dict(plat_d) if plat_d else None,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,3 +425,32 @@ class DVHResultSet:
             for metric_result in roi_result.metrics:
                 all_i.extend(metric_result.issues)
         return tuple(all_i)
+
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict suitable for JSON."""
+        d: dict = {
+            "schema_version": self.schema_version,
+            "results": [r.to_dict() for r in self.results],
+            "provenance": self.provenance.to_dict(),
+            "computation_time_s": self.computation_time_s,
+        }
+        if self.dose_refs is not None:
+            d["dose_refs"] = self.dose_refs.to_dict()
+        if self.issues:
+            d["issues"] = [i.to_dict() for i in self.issues]
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> DVHResultSet:
+        """Deserialise from a plain dict."""
+        refs_d = d.get("dose_refs")
+        return cls(
+            schema_version=d["schema_version"],
+            results=tuple(ROIResult.from_dict(r) for r in d["results"]),
+            provenance=ProvenanceRecord.from_dict(d["provenance"]),
+            computation_time_s=d["computation_time_s"],
+            dose_refs=(
+                DoseReferenceSet.from_dict(refs_d) if refs_d is not None else None
+            ),
+            issues=tuple(Issue.from_dict(i) for i in d.get("issues", ())),
+        )

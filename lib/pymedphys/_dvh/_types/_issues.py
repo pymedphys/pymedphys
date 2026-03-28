@@ -56,3 +56,27 @@ class Issue:
     message: str
     path: tuple[str, ...] = ()
     context: Optional[dict[str, Any]] = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a plain dict."""
+        d: dict[str, Any] = {
+            "level": self.level.value,
+            "code": self.code.value,
+            "message": self.message,
+        }
+        if self.path:
+            d["path"] = list(self.path)
+        if self.context is not None:
+            d["context"] = self.context
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> Issue:
+        """Deserialise from a plain dict."""
+        return cls(
+            level=IssueLevel(d["level"]),
+            code=IssueCode(d["code"]),
+            message=d["message"],
+            path=tuple(d.get("path", ())),
+            context=d.get("context"),
+        )
