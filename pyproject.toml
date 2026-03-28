@@ -88,6 +88,7 @@ lint = [
 tests = [
   "anthropic",
   "astroid",
+  "hypothesis",
   "imageio",
   "matplotlib",
   "numba",
