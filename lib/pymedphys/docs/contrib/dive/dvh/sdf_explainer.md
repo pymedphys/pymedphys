@@ -119,13 +119,19 @@ $$
 \phi(\mathbf{p}) = \text{sign}(\mathbf{p}) \cdot d(\mathbf{p}, \partial S)
 $$
 
-**This gives you the exact signed distance at every dose grid point, computed directly from the polygon vertices.** No rasterisation, no binary mask, no information loss. The distance from the grid point to the true contour boundary is known to floating-point precision (${\sim}10^{-15}$ m).
+**This gives you the exact signed distance at every dose grid point, computed directly from the polygon vertices** (exact in the sense of floating-point precision — the distance to the true piecewise-linear polygon boundary is computed analytically). No rasterisation, no binary mask, no information loss. The approximation enters later, in §"Partial-volume estimation", where the contour polygon itself is taken as an exact proxy for the true anatomical boundary.
 
 ### The 2D computation is fully vectorisable
 
 For a dose grid slice with $M = M_x \times M_y$ points and a contour with $N$ edges:
 
 ```python
+import numpy as np
+# np.einsum('...i,...i->...', a, b) is used for batched dot products
+# np.linalg.norm(x, axis=-1) is used for vector norms
+# Below, dot(a, b) ≡ np.einsum('...i,...i->...', a, b) and
+#       norm(x) ≡ np.linalg.norm(x, axis=-1) for readability
+
 # points: shape (M, 2)
 # v0, v1: shape (N, 2) — edge start/end vertices
 
@@ -147,7 +153,7 @@ dist = norm(points[:, None, :] - nearest, dim=-1)  # shape (M, N)
 min_dist = min(dist, dim=1)                     # shape (M,)
 ```
 
-For $M = 256 \times 256 = 65{,}536$ and $N = 100$, this is 6.5M point-to-segment distances — about 10 ms in NumPy, under 1 ms on GPU. **Faster than rasterising to a supersampled binary mask.**
+For $M = 256 \times 256 = 65{,}536$ and $N = 100$, this is 6.5M point-to-segment distances — well within real-time budget for all supported use cases. **Faster than rasterising to a supersampled binary mask.**
 
 ---
 
@@ -182,6 +188,16 @@ $$
 $$
 
 ...the zero level set curves inward and closes. This is equivalent to a hemispherical cap whose shape is determined by the contour geometry. More sophisticated approaches (Poisson reconstruction, or explicit CDT cap + SDF recomputation) are available, but this linear extrapolation is surprisingly effective and is what the Nelms test suite implicitly assumes for many test geometries.
+
+### Topology edge cases: structure appearance, disappearance, and branching
+
+The linear SDF interpolation scheme above assumes contours are present on both adjacent slices. Several edge cases require special treatment:
+
+**1. Structure appears or disappears at a slice boundary.** When a structure is present on slice $k$ but absent on slice $k-1$, linear SDF interpolation is undefined — there is no prior-slice SDF to interpolate from. The standard approach is to extrapolate from the first/last contour slice using the linear end-capping formula above (i.e., $\phi(x, y, z) = \phi(x, y; z_0) + (z_0 - z)$ for $z < z_0$). This is geometrically equivalent to a conical closure at the top and bottom of the structure. The PyMedPhys DVH calculator applies this rule automatically at the terminal slices of every structure.
+
+**2. Structure splits into two disconnected components between slices.** SDF linear interpolation between a single-component slice and a two-component slice does not correctly represent the topology change. The zero crossing morphs continuously — the level set stretches and pinches rather than branching. This is a known limitation of implicit surface interpolation (the level set cannot change topology by construction). *Mitigation:* detect topology changes by comparing connected-component count between adjacent slices using `scipy.ndimage.label` on the sign field. When a topology change is detected, either issue an `IssueCode.TOPOLOGY_CHANGE` warning and fall back to right-prism for the affected inter-slice interval, or alert the user to review the reconstruction visually.
+
+**3. Structure present on only 1–2 slices.** Clinically common for small lymph nodes, point-dose structures, and very thin structures near the edge of the imaging volume. For a single-slice contour, the SDF end-capping formula produces a reasonable ellipsoidal reconstruction — the structure tapers to zero above and below the single slice. For two adjacent slices, the linear interpolation is well-defined and produces a smooth truncated shape. These cases are handled correctly by the end-capping logic described above.
 
 ---
 
@@ -242,6 +258,8 @@ $$
 The fractional volume error per boundary voxel is of order $\epsilon / \Delta x \sim 1\%$. Compare this to the binary method's error of up to **50% per boundary voxel**.
 
 ### Summary: accuracy hierarchy
+
+> **Note:** The "1D exact" claim in the worked example at the end of this section (1D case only) refers to the degenerate case where the boundary is a single point — trivially planar. In 2D and 3D, the planar approximation introduces curvature-dependent error as quantified in the table below.
 
 | Method | Max error per boundary voxel | Requires supersampling? |
 | -------- | ------ | ------ |

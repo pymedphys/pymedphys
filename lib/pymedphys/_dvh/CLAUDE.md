@@ -64,11 +64,12 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 from dataclasses import dataclass
-from typing import Optional
 
 @dataclass(frozen=True, slots=True)            # No arrays → default eq is fine
 @dataclass(frozen=True, slots=True, eq=False)  # Has arrays → custom eq/hash
 ```
+
+**Note on `Optional`:** Use modern `X | None` syntax (PEP 604) instead of `Optional[X]`. `from typing import Optional` is not needed.
 
 **For types containing `np.ndarray`:**
 
@@ -86,7 +87,25 @@ def __post_init__(self) -> None:
 
 **Cached derived properties on frozen dataclasses:**
 
-Use `functools.cached_property` for expensive derived computations that are accessed repeatedly (e.g., `DVHBins.cumulative_volume_cc`). Since the dataclass is frozen, the cached value is stable.
+`functools.cached_property` does not work with `slots=True` dataclasses because `slots=True` eliminates `__dict__`. **Rule:** For `slots=True` dataclasses, precompute derived values in `__post_init__` and store them as private fields, then expose via regular `@property`. Only use `cached_property` on classes that intentionally carry a `__dict__` (i.e., non-slots classes).
+
+```python
+@dataclass(frozen=True, slots=True)
+class DVHBins:
+    dose_bin_edges_gy: np.ndarray
+
+    # Precompute derived values in __post_init__
+    _cumulative_volume_cc: np.ndarray = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        # ... validation ...
+        cumulative = np.cumsum(...)
+        object.__setattr__(self, '_cumulative_volume_cc', cumulative)
+
+    @property
+    def cumulative_volume_cc(self) -> np.ndarray:
+        return self._cumulative_volume_cc
+```
 
 ---
 
@@ -95,10 +114,9 @@ Use `functools.cached_property` for expensive derived computations that are acce
 ```python
 # Standard library first
 from __future__ import annotations
-import functools
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 # Third party
 import numpy as np
@@ -119,7 +137,7 @@ Use **NumPy style** docstrings (per PyMedPhys convention):
 def compute_dvh(
     inputs: DVHInputs,
     request: MetricRequestSet,
-    config: Optional[DVHConfig] = None,
+    config: DVHConfig | None = None,
 ) -> DVHResultSet:
     """Compute DVH and extract metrics.
 
@@ -328,7 +346,7 @@ Format: `type(scope): description`
 
 Types: `feat`, `fix`, `test`, `refactor`, `docs`, `perf`, `chore`
 
-Scopes for DVH work: `dvh/types`, `dvh/grammar`, `dvh/geometry`, `dvh/sdf`, `dvh/occupancy`, `dvh/dose`, `dvh/histogram`, `dvh/metrics`, `dvh/io`, `dvh/pipeline`, `dvh/benchmarks`, `dvh/config`, `dvh/serialisation`
+Scopes for DVH work: `dvh/types`, `dvh/grammar`, `dvh/geometry`, `dvh/sdf`, `dvh/occupancy`, `dvh/dose`, `dvh/histogram`, `dvh/metrics`, `dvh/io`, `dvh/pipeline`, `dvh/benchmarks`, `dvh/config`, `dvh/serialisation`, `dvh/provenance`
 
 ### Branch Strategy
 

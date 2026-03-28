@@ -26,7 +26,7 @@ Combined from the 21 markdown summaries in this project source set. Ordered chro
 - [Pepin (2022) - Assessment of dose-volume histogram precision for five clinical systems](#pepin-2022---assessment-of-dose-volume-histogram-precision-for-five-clinical-systems)
 - [Penoncello (2024) - Multicenter multivendor evaluation of dose volume histogram creation consistencies for 8 commercial radiation therapy dosimetric systems](#penoncello-2024---multicenter-multivendor-evaluation-of-dose-volume-histogram-creation-consistencies-for-8-commercial-radiation-therapy-dosimetric-systems)
 - [Grammatikou (2025) - Validation of dose-volume calculation accuracy for intracranial stereotactic radiosurgery with volumetric-modulated arc therapy using analytical and clinical treatment plans](#grammatikou-2025---validation-of-dose-volume-calculation-accuracy-for-intracranial-stereotactic-radiosurgery-with-volumetric-modulated-arc-therapy-using-analytical-and-clinical-treatment-plans)
-- [Walker (2025) - Clinical impact of DVH uncertainties](#walker-2025---clinical-impact-of-dvh-uncertainties)
+- [Walker and Byrne (2025) - Clinical impact of DVH uncertainties](#walker-and-byrne-2025---clinical-impact-of-dvh-uncertainties)
 
 ---
 
@@ -346,6 +346,8 @@ The tables below extract quantitative values explicitly reported in the text, fi
 **Confidence in findings:** **Medium.** The core sampling argument is convincing and mathematically grounded, but validation breadth is limited and some crucial computational details are absent.
 
 **Relevance to reference DVH calculator:** **High.** The paper identifies exactly the edge cases a gold-standard DVH engine must handle: **small volumes, thin shells, steep gradients, contour discretisation, and the difference between absolute and normalised DVHs**.
+
+**Contextualisation relative to the deterministic SDF approach:** The PyMedPhys DVH calculator uses a deterministic SDF-based approach rather than Kooy's stochastic Monte Carlo method. These are architecturally distinct: Kooy's method estimates volume by sampling random points within bounding boxes and testing inclusion, so its error is inherently statistical (bounded by the $1/\sqrt{N}$ convergence rate of Monte Carlo integration). The SDF planar approximation is a deterministic, geometry-derived estimate whose error scales as $(\Delta x / R)^2$ (where $R$ is the structure's radius of curvature) rather than as $1/\sqrt{N}$. The ~4–7% errors Kooy reports for small structures therefore represent a bound on the Monte Carlo method, not a fundamental lower bound for all DVH computation methods. Deterministic SDF-based methods can, in principle, achieve substantially lower errors for the same compute budget — particularly for structures with large radius of curvature relative to the dose grid spacing, which describes most OARs in clinical practice.
 
 ---
 
@@ -3222,6 +3224,7 @@ At the reference condition of **1 mm ST** and **1 mm DG**, Monaco performed very
 - **Journal:** Journal of Applied Clinical Medical Physics
 - **Year:** 2025
 - **DOI:** [10.1002/acm2.70235](https://doi.org/10.1002/acm2.70235)
+- **Dataset DOI (Mendeley Data):** `10.17632/pb55hjf5y3.1` [DOI to be verified prior to v1 implementation: `10.17632/pb55hjf5y3.1`]
 - **Open access:** Yes
 
 ### 2. Paper type and scope
@@ -3347,7 +3350,7 @@ Percent changes in Table 9c are calculated from the paper’s reported medians, 
 
 <!-- Source: SUMMARY - Walker 2025 - Clinical impact of DVH uncertainties.md -->
 
-## Walker (2025) - Clinical impact of DVH uncertainties
+## Walker and Byrne (2025) - Clinical impact of DVH uncertainties
 
 ### Executive summary
 
