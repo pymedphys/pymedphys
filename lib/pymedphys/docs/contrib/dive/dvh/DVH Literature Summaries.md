@@ -1,31 +1,32 @@
+<!-- markdownlint-disable MD024 -->
 # Summaries of relevant DVH literature
 
 Combined from the 21 markdown summaries in this project source set. Ordered chronologically by publication year.
 
 ## Contents
-- [Drzymala (1991) - Dose-volume histograms](#drzymala-1991-dose-volume-histograms)
-- [Kooy (1993) - Dose-volume histogram computations for small intracranial volumes](#kooy-1993-dose-volume-histogram-computations-for-small-intracranial-volumes)
-- [Fraass (1998) - American Association of Physicists in Medicine Radiation Therapy Committee Task Group 53: Quality assurance for clinical radiotherapy treatment planning](#fraass-1998-american-association-of-physicists-in-medicine-radiation-therapy-committee-task-group-53-quality-assurance-for-clinical-radiotherapy-treatment-planning)
-- [Panitsa (1998) - Quality control of dose volume histogram computation characteristics of 3D treatment planning systems](#panitsa-1998-quality-control-of-dose-volume-histogram-computation-characteristics-of-3d-treatment-planning-systems)
-- [Corbett (2002) - The effect of voxel size on the accuracy of dose-volume histograms of prostate 125I seed implants](#corbett-2002-the-effect-of-voxel-size-on-the-accuracy-of-dose-volume-histograms-of-prostate-125i-seed-implants)
-- [IAEA (2004) - Commissioning and quality assurance of computerized planning systems for radiation treatment of cancer](#iaea-2004-commissioning-and-quality-assurance-of-computerized-planning-systems-for-radiation-treatment-of-cancer)
-- [Chung (2006) - Dose variations with varying calculation grid size in head and neck IMRT](#chung-2006-dose-variations-with-varying-calculation-grid-size-in-head-and-neck-imrt)
-- [Kirisits (2007) - Accuracy of volume and DVH parameters determined with different brachytherapy treatment planning systems](#kirisits-2007-accuracy-of-volume-and-dvh-parameters-determined-with-different-brachytherapy-treatment-planning-systems)
-- [Henríquez (2008) - A novel method for the evaluation of uncertainty in dose-volume histogram computation](#henrquez-2008-a-novel-method-for-the-evaluation-of-uncertainty-in-dosevolume-histogram-computation)
-- [Ebert (2010) - Comparison of DVH data from multiple radiotherapy treatment planning systems](#ebert-2010-comparison-of-dvh-data-from-multiple-radiotherapy-treatment-planning-systems)
-- [Gossman (2010) - Dose-volume histogram quality assurance for linac-based treatment planning systems](#gossman-2010-dose-volume-histogram-quality-assurance-for-linac-based-treatment-planning-systems)
-- [Grimm (2011) - Dose tolerance limits and dose volume histogram evaluation for stereotactic body radiotherapy](#grimm-2011-dose-tolerance-limits-and-dose-volume-histogram-evaluation-for-stereotactic-body-radiotherapy)
-- [Zhang (2011) - Motion-weighted target volume and dose-volume histogram: A practical approximation of four-dimensional planning and evaluation](#zhang-2011-motion-weighted-target-volume-and-dose-volume-histogram-a-practical-approximation-of-four-dimensional-planning-and-evaluation)
-- [Rosewall (2014) - The effect of dose grid resolution on dose volume histograms for slender organs at risk during pelvic intensity-modulated radiotherapy](#rosewall-2014-the-effect-of-dose-grid-resolution-on-dose-volume-histograms-for-slender-organs-at-risk-during-pelvic-intensity-modulated-radiotherapy)
-- [Nelms (2015) - Methods, software and datasets to verify DVH calculations against analytical values: twenty years late(r)](#nelms-2015-methods-software-and-datasets-to-verify-dvh-calculations-against-analytical-values-twenty-years-later)
-- [Sunderland (2016) - Effects of voxelization on dose volume histogram accuracy](#sunderland-2016-effects-of-voxelization-on-dose-volume-histogram-accuracy)
-- [Snyder (2017) - Investigating the dosimetric effects of grid size on dose calculation accuracy using volumetric modulated arc therapy in spine stereotactic radiosurgery](#snyder-2017-investigating-the-dosimetric-effects-of-grid-size-on-dose-calculation-accuracy-using-volumetric-modulated-arc-therapy-in-spine-stereotactic-radiosurgery)
-- [Stanley (2021) - Accuracy of dose-volume metric calculation for small-volume radiosurgery targets](#stanley-2021-accuracy-of-dose-volume-metric-calculation-for-small-volume-radiosurgery-targets)
-- [Pepin (2022) - Assessment of dose-volume histogram precision for five clinical systems](#pepin-2022-assessment-of-dose-volume-histogram-precision-for-five-clinical-systems)
-- [Penoncello (2024) - Multicenter multivendor evaluation of dose volume histogram creation consistencies for 8 commercial radiation therapy dosimetric systems](#penoncello-2024-multicenter-multivendor-evaluation-of-dose-volume-histogram-creation-consistencies-for-8-commercial-radiation-therapy-dosimetric-systems)
-- [Grammatikou (2025) - Validation of dose-volume calculation accuracy for intracranial stereotactic radiosurgery with volumetric-modulated arc therapy using analytical and clinical treatment plans](#grammatikou-2025-validation-of-dose-volume-calculation-accuracy-for-intracranial-stereotactic-radiosurgery-with-volumetric-modulated-arc-therapy-using-analytical-and-clinical-treatment-plans)
-- [Walker (2025) - Clinical impact of DVH uncertainties](#walker-2025-clinical-impact-of-dvh-uncertainties)
 
+- [Drzymala et al. (1991) - Dose-volume histograms](#drzymala-1991---dose-volume-histograms)
+- [Kooy (1993) - Dose-volume histogram computations for small intracranial volumes](#kooy-1993---dose-volume-histogram-computations-for-small-intracranial-volumes)
+- [Fraass (1998) - AAPM Task Group 53: Quality assurance for clinical radiotherapy treatment planning](#fraass-1998---american-association-of-physicists-in-medicine-radiation-therapy-committee-task-group-53-quality-assurance-for-clinical-radiotherapy-treatment-planning)
+- [Panitsa (1998) - Quality control of dose volume histogram computation characteristics of 3D treatment planning systems](#panitsa-1998---quality-control-of-dose-volume-histogram-computation-characteristics-of-3d-treatment-planning-systems)
+- [Corbett (2002) - The effect of voxel size on the accuracy of dose-volume histograms of prostate 125I seed implants](#corbett-2002---the-effect-of-voxel-size-on-the-accuracy-of-dose-volume-histograms-of-prostate-125i-seed-implants)
+- [IAEA (2004) - Commissioning and quality assurance of computerized planning systems for radiation treatment of cancer](#iaea-2004---commissioning-and-quality-assurance-of-computerized-planning-systems-for-radiation-treatment-of-cancer)
+- [Chung (2006) - Dose variations with varying calculation grid size in head and neck IMRT](#chung-2006---dose-variations-with-varying-calculation-grid-size-in-head-and-neck-imrt)
+- [Kirisits (2007) - Accuracy of volume and DVH parameters determined with different brachytherapy treatment planning systems](#kirisits-2007---accuracy-of-volume-and-dvh-parameters-determined-with-different-brachytherapy-treatment-planning-systems)
+- [Henríquez (2008) - A novel method for the evaluation of uncertainty in dose-volume histogram computation](#henríquez-2008---a-novel-method-for-the-evaluation-of-uncertainty-in-dose-volume-histogram-computation)
+- [Ebert (2010) - Comparison of DVH data from multiple radiotherapy treatment planning systems](#ebert-2010---comparison-of-dvh-data-from-multiple-radiotherapy-treatment-planning-systems)
+- [Gossman (2010) - Dose-volume histogram quality assurance for linac-based treatment planning systems](#gossman-2010---dose-volume-histogram-quality-assurance-for-linac-based-treatment-planning-systems)
+- [Grimm (2011) - Dose tolerance limits and dose volume histogram evaluation for stereotactic body radiotherapy](#grimm-2011---dose-tolerance-limits-and-dose-volume-histogram-evaluation-for-stereotactic-body-radiotherapy)
+- [Zhang (2011) - Motion-weighted target volume and dose-volume histogram: A practical approximation of four-dimensional planning and evaluation](#zhang-2011---motion-weighted-target-volume-and-dose-volume-histogram-a-practical-approximation-of-four-dimensional-planning-and-evaluation)
+- [Rosewall (2014) - The effect of dose grid resolution on dose volume histograms for slender organs at risk during pelvic intensity-modulated radiotherapy](#rosewall-2014---the-effect-of-dose-grid-resolution-on-dose-volume-histograms-for-slender-organs-at-risk-during-pelvic-intensity-modulated-radiotherapy)
+- [Nelms (2015) - Methods, software and datasets to verify DVH calculations against analytical values: twenty years late(r)](#nelms-2015---methods-software-and-datasets-to-verify-dvh-calculations-against-analytical-values-twenty-years-later)
+- [Sunderland (2016) - Effects of voxelization on dose volume histogram accuracy](#sunderland-2016---effects-of-voxelization-on-dose-volume-histogram-accuracy)
+- [Snyder (2017) - Investigating the dosimetric effects of grid size on dose calculation accuracy using volumetric modulated arc therapy in spine stereotactic radiosurgery](#snyder-2017---investigating-the-dosimetric-effects-of-grid-size-on-dose-calculation-accuracy-using-volumetric-modulated-arc-therapy-in-spine-stereotactic-radiosurgery)
+- [Stanley (2021) - Accuracy of dose-volume metric calculation for small-volume radiosurgery targets](#stanley-2021---accuracy-of-dose-volume-metric-calculation-for-small-volume-radiosurgery-targets)
+- [Pepin (2022) - Assessment of dose-volume histogram precision for five clinical systems](#pepin-2022---assessment-of-dose-volume-histogram-precision-for-five-clinical-systems)
+- [Penoncello (2024) - Multicenter multivendor evaluation of dose volume histogram creation consistencies for 8 commercial radiation therapy dosimetric systems](#penoncello-2024---multicenter-multivendor-evaluation-of-dose-volume-histogram-creation-consistencies-for-8-commercial-radiation-therapy-dosimetric-systems)
+- [Grammatikou (2025) - Validation of dose-volume calculation accuracy for intracranial stereotactic radiosurgery with volumetric-modulated arc therapy using analytical and clinical treatment plans](#grammatikou-2025---validation-of-dose-volume-calculation-accuracy-for-intracranial-stereotactic-radiosurgery-with-volumetric-modulated-arc-therapy-using-analytical-and-clinical-treatment-plans)
+- [Walker (2025) - Clinical impact of DVH uncertainties](#walker-2025---clinical-impact-of-dvh-uncertainties)
 
 ---
 
@@ -140,10 +141,10 @@ Several aspects may not generalise directly. First, the paper partly conflates *
 
 ### 9. Data extraction table
 
-**Table 1. Explicit quantitative guidance and benchmark values extracted from the paper.**
+#### Table 1. Explicit quantitative guidance and benchmark values extracted from the paper
 
 | Quantity | Extracted value | Context / interpretation |
-|---|---:|---|
+| --- | ---: | --- |
 | Number of institutions | **4** | Four centres independently developed DVH code |
 | Intercomparison participants | **3 of 4** | Three institutions compared cumulative DVHs on a common phantom |
 | Common-phantom agreement | **±1 bin** | Concentric-cube phantom; exact bin width **[DETAIL NOT REPORTED]** |
@@ -158,7 +159,7 @@ Several aspects may not generalise directly. First, the paper partly conflates *
 **Table 2. Figure 6 TCP example illustrating biologically important low-volume tail effects.** The values below are taken from the page 6 legend and discussion.
 
 | Institution | TCP value | Rank by TCP | Rank by ordinary visual inspection of panel A |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | C | **0.90** | 1 | 1 |
 | B | **0.86** | 2 | 3 |
 | D | **0.80** | 3 | 4 |
@@ -215,19 +216,21 @@ The study is best described as a **hybrid methodological paper** combining:
 (3) a **physical phantom** verification of absolute volume estimation, and
 (4) a **single-patient clinical example** showing the resulting DVHs in a stereotactic radiosurgery context. There is no cohort study, no prospective clinical design, and no multi-institutional dataset.
 
-The computational core is a point-sampling estimator for structure volume. For a spherically symmetric probability density function \(P(r)\), the average volume represented by a sample point at radius \(r\) is written as \(\Delta v(r)=4\pi r^2/[N P(r)]\). For an arbitrary structure, any sampled point lying inside the structure contributes its weight to the estimated volume; thus, structure volume is the sum of per-point weights for all accepted points. The authors derive an analytical expression for the variance of this estimator for a sphere of radius \(R\), which allows them to compare alternative sampling distributions theoretically before implementing them. This is important: they do not merely assert that preferential sampling helps; they derive when and why it helps.
+The computational core is a point-sampling estimator for structure volume. For a spherically symmetric probability density function $P(r)$, the average volume represented by a sample point at radius $r$ is written as $\Delta v(r)=4\pi r^2/[N P(r)]$. For an arbitrary structure, any sampled point lying inside the structure contributes its weight to the estimated volume; thus, structure volume is the sum of per-point weights for all accepted points. The authors derive an analytical expression for the variance of this estimator for a sphere of radius $R$, which allows them to compare alternative sampling distributions theoretically before implementing them. This is important: they do not merely assert that preferential sampling helps; they derive when and why it helps.
 
 They first compare two reference distributions for integrating spherical volumes:
-- a **spherical density distribution** \(P_S(r)=1/R_{\max}\), uniform in radius but spatially nonuniform in Cartesian space, and
-- a **Cartesian-uniform distribution** \(P_C(r)=3r^2/R_{\max}^3\), which gives uniform point density in rectilinear coordinates.
 
-Using the derived standard deviation, they define an efficiency ratio \(M(r)=\sigma_C(r)/\sigma_S(r)\). When \(M(r)>1\), the spherical/nonuniform strategy is more efficient. This analysis underpins the later choice to bias samples towards small radii and regions near the target/isocentre.
+- a **spherical density distribution** $P_S(r)=1/R_{\max}$, uniform in radius but spatially nonuniform in Cartesian space, and
+- a **Cartesian-uniform distribution** $P_C(r)=3r^2/R_{\max}^3$, which gives uniform point density in rectilinear coordinates.
+
+Using the derived standard deviation, they define an efficiency ratio $M(r)=\sigma_C(r)/\sigma_S(r)$. When $M(r)>1$, the spherical/nonuniform strategy is more efficient. This analysis underpins the later choice to bias samples towards small radii and regions near the target/isocentre.
 
 For clinical use, the cranial volume is partitioned into multiple sampling regions. Two classes of region are defined:
+
 1. the region around each **target/isocentre**, where high gradients are expected;
 2. a region associated with each **anatomical structure** of interest.
 
-For the target/isocentre region, the authors use a **piecewise radial PDF** \(P_T(r)\): a constant density inside radius \(R_0\), and a lower constant density in the shell between \(R_0\) and \(R_1\). The partition parameter \(G\) assigns a fraction of points to the inner sphere; a typical value is **\(G=0.8\)**, meaning **80%** of samples fall inside \(R_0\). In clinical calculations they use **\(R_0=5\) cm** and **\(R_1=20\) cm**, justified respectively by typical maximum radiosurgery field size and negligible dose by 20 cm. For structure-specific sampling, they use \(P_V(r)=1/R_V\) for \(0<r<R_V\), where \(R_V\) is the radius of a sphere enclosing the structure, centred at the structure’s centre of mass. The target volume is therefore sampled twice: once through the target/isocentre region and once through its own anatomical region. Samples are randomly assigned to regions with probabilities proportional to **\(R_{0,i}^2\)** or **\(R_{V,i}^2\)**, via a cumulative weight \(W=\sum R_{0,i}^2+\sum R_{V,i}^2\). Angular coordinates \(\theta\) and \(\phi\) are sampled uniformly on the sphere.
+For the target/isocentre region, the authors use a **piecewise radial PDF** $P_T(r)$: a constant density inside radius $R_0$, and a lower constant density in the shell between $R_0$ and $R_1$. The partition parameter $G$ assigns a fraction of points to the inner sphere; a typical value is **$G=0.8$**, meaning **80%** of samples fall inside $R_0$. In clinical calculations they use **$R_0=5$ cm** and **$R_1=20$ cm**, justified respectively by typical maximum radiosurgery field size and negligible dose by 20 cm. For structure-specific sampling, they use $P_V(r)=1/R_V$ for $0<r<R_V$, where $R_V$ is the radius of a sphere enclosing the structure, centred at the structure’s centre of mass. The target volume is therefore sampled twice: once through the target/isocentre region and once through its own anatomical region. Samples are randomly assigned to regions with probabilities proportional to **$R_{0,i}^2$** or **$R_{V,i}^2$**, via a cumulative weight $W=\sum R_{0,i}^2+\sum R_{V,i}^2$. Angular coordinates $\theta$ and $\phi$ are sampled uniformly on the sphere.
 
 The formalism is explicitly geometry-agnostic in one important sense: the authors state that **any volume representation is acceptable** as long as one can determine whether a sampled point lies inside or outside the volume. Their implementation used the XKnife treatment-planning system (RSA, Brookline, MA), in which structures were represented as semi-parallel contours on consecutive CT slices, but they stress that this particular representation is not required by the sampling method itself. This is a notable engineering point because it separates the **sampling/integration strategy** from the **structure representation**.
 
@@ -237,9 +240,9 @@ DVH details are incompletely reported. The paper clearly states that it computes
 
 ### 5. Key results: quantitative
 
-The first main result is that **spatially nonuniform spherical sampling is markedly more efficient for small volumes** than Cartesian-uniform sampling. In Figure 1 on page 4, the error ratio \(M(r)=\sigma_C/\sigma_S\) is well above 1 for small spheres, confirming that preferential concentration of points at small radii reduces variance where small radiosurgical targets and adjacent OAR subvolumes live. The curve crosses towards parity only for larger radii, meaning the preferred sampler sacrifices some efficiency in distal, lower-interest regions to gain accuracy where it matters most clinically. Monte Carlo points track the theoretical curve closely.
+The first main result is that **spatially nonuniform spherical sampling is markedly more efficient for small volumes** than Cartesian-uniform sampling. In Figure 1 on page 4, the error ratio $M(r)=\sigma_C/\sigma_S$ is well above 1 for small spheres, confirming that preferential concentration of points at small radii reduces variance where small radiosurgical targets and adjacent OAR subvolumes live. The curve crosses towards parity only for larger radii, meaning the preferred sampler sacrifices some efficiency in distal, lower-interest regions to gain accuracy where it matters most clinically. Monte Carlo points track the theoretical curve closely.
 
-The second result is the quantitative accuracy of the chosen piecewise target PDF. Using **\(R_0=4\) cm, \(R_1=15\) cm, \(G=0.8\)** in the computational-accuracy experiment (Figure 2), the authors report that the proposed sampler keeps the **one-standard-deviation relative volume error below about 4% across the full tested range of sphere radii**, whereas a spatially uniform Cartesian sampling distribution performs much worse for small radii because it over-samples the outer “uninteresting” region. They state explicitly that **\(G=0.8\)** is a good compromise; larger \(G\) would further improve inner-region accuracy at the expense of the outer shell. The Monte Carlo data in Figure 2 were averaged over **100 trials** with **7500 points/trial**.
+The second result is the quantitative accuracy of the chosen piecewise target PDF. Using **$R_0=4$ cm, $R_1=15$ cm, $G=0.8$** in the computational-accuracy experiment (Figure 2), the authors report that the proposed sampler keeps the **one-standard-deviation relative volume error below about 4% across the full tested range of sphere radii**, whereas a spatially uniform Cartesian sampling distribution performs much worse for small radii because it over-samples the outer “uninteresting” region. They state explicitly that **$G=0.8$** is a good compromise; larger $G$ would further improve inner-region accuracy at the expense of the outer shell. The Monte Carlo data in Figure 2 were averaged over **100 trials** with **7500 points/trial**.
 
 The third result concerns thin, high-gradient subvolumes. Figure 3 shows the one-standard-deviation error in the volume of spherical shells of **1 cm³** and **2 cm³** as a function of inner shell radius. At **1 cm** from the sampling-region centre, the sampling error is **9%** for the **1 cm³** shell and **6%** for the **2 cm³** shell. At that location the corresponding shell thicknesses are **0.8 mm** and **1.6 mm**, respectively. The authors conclude that their ability to sample a volume affected by a gradient change over a **1 mm-thick shell** is about **7%**. This is a particularly important number for modern DVH benchmarking because it directly quantifies the challenge posed by thin structures or narrow gradient zones.
 
@@ -294,15 +297,15 @@ Several caveats limit generalisability. First, this paper mostly validates the *
 
 The tables below extract quantitative values explicitly reported in the text, figure captions, and Table 1.
 
-**Table 9a. Sampling parameters and reported accuracy**
+#### Table 9a. Sampling parameters and reported accuracy
 
 | Context | Quantity | Value | Notes |
-|---|---:|---:|---|
-| Clinical target-region PDF | \(R_0\) | **5 cm** | Inner sphere radius used clinically |
-| Clinical target-region PDF | \(R_1\) | **20 cm** | Outer shell limit used clinically |
-| Target-region PDF | \(G\) | **0.8** | **80%** of points inside \(R_0\) |
-| Figure 2 test case | \(R_0\) | **4 cm** | Used for computational-accuracy comparison |
-| Figure 2 test case | \(R_1\) | **15 cm** | Used for computational-accuracy comparison |
+| --- | ---: | ---: | --- |
+| Clinical target-region PDF | $R_0$ | **5 cm** | Inner sphere radius used clinically |
+| Clinical target-region PDF | $R_1$ | **20 cm** | Outer shell limit used clinically |
+| Target-region PDF | $G$ | **0.8** | **80%** of points inside $R_0$ |
+| Figure 2 test case | $R_0$ | **4 cm** | Used for computational-accuracy comparison |
+| Figure 2 test case | $R_1$ | **15 cm** | Used for computational-accuracy comparison |
 | Figure 2 test case | Trials | **100** | Monte Carlo average |
 | Figure 2 test case | Points per trial | **7500** | Monte Carlo average |
 | Reported performance | One-SD relative error | **~4%** | Proposed nonuniform sampler over full tested range of radii |
@@ -313,17 +316,17 @@ The tables below extract quantitative values explicitly reported in the text, fi
 | Discussion | Total points | **~10,000** | Across all volumes |
 | Discussion | Runtime | **5-30 s** | On then-current workstations |
 
-**Table 9b. Phantom verification**
+#### Table 9b. Phantom verification
 
 | Shape | Exact volume (cc) | Contoured volume (cc) | Sampled volume (cc) | Reported agreement |
-|---|---:|---:|---:|---|
+| --- | ---: | ---: | ---: | --- |
 | Cube (side **1 cm**) | **1.00** | **0.74** | **0.73 ± 0.02** | **3%** vs contoured |
 | Cylinder (radius **1 cm**, height **3 cm**) | **9.42** | **8.13** | **8.18 ± 0.18** | **2%** vs contoured |
 
-**Table 9c. Clinical example**
+#### Table 9c. Clinical example
 
 | Quantity | Value |
-|---|---:|
+| --- | ---: |
 | Tumour volume | **5.2 cc** |
 | Optic nerve volume | **~0.8 cc** |
 | Collimator size | **30 mm** |
@@ -395,6 +398,7 @@ First, DVH is present already at **acceptance testing**. In Table 2-2 the report
 Second, the report defines the geometric object on which a DVH depends. In Table 3-3, an ROI description is defined as a **voxel or surface description of each 3-D structure of interest**, used for calculation of DVHs and other statistics. This is a key conceptual point: TG-53 does not equate anatomy with contours alone. It already recognises that the actual computational object used for a DVH is some derived 3D region representation.
 
 Third, the paper addresses DVH explicitly in **Section 3.7.2** and **Table 3-20**. The text says that DVHs are an important part of modern treatment planning and warns that apparently simple QA phantoms may be vulnerable to grid-alignment artefacts. Table 3-20 then enumerates the checks that should be performed. These cover:
+
 - creation of the voxel VROI used for DVH generation;
 - Boolean structure combinations and multi-membership voxels;
 - dose interpolation into each voxel;
@@ -408,6 +412,7 @@ Third, the paper addresses DVH explicitly in **Section 3.7.2** and **Table 3-20*
 - correct comparison of DVHs from different cases with different dose grids or bin sizes.
 
 Fourth, TG-53 extends the DVH problem to **composite plans**. In Section 3.7.4, the report notes that some systems add or subtract dose distributions from different plans to build a composite plan for course-level evaluation. DVH-relevant QA issues then include:
+
 - prescription input for each component plan;
 - availability of fractionation / bio-effect corrections;
 - interpolation of individual plan dose distributions onto a common grid;
@@ -423,6 +428,7 @@ What the report **does not** specify is equally important. It gives **no referen
 Because TG-53 is a task-group report rather than an empirical comparison study, its “results” are primarily **QA statements, test matrices, and illustrative tolerances** rather than measured differences between algorithms. For DVH work, the most important quantitative statement appears in Table 1-3: DVH accuracy is listed as **“Depends on many factors”** rather than assigned a single tolerance. The report then names those factors explicitly: **dose calculation grid**, **volumetric region-of-interest grid**, **accuracy of object segmentation**, **histogram bin size**, and **plan normalisation**. That is arguably the most important direct DVH result in the paper.
 
 The second major result is the existence and content of **Table 3-20**, which is the paper’s dedicated DVH QA table. It contains **11 distinct DVH test domains**:
+
 1. VROI identification
 2. structure identification / Boolean handling
 3. voxel dose interpolation
@@ -493,6 +499,7 @@ The report also cautions against overly simple regular test objects. A reference
 TG-53 already points beyond a single cumulative DVH. It explicitly expects correct handling of **standard/direct**, **differential**, and **cumulative** histograms. It also places NTCP/TCP and fractionation/bio-effect corrections adjacent to DVH QA, and it treats composite plans as clinically evaluated objects. That means a modern reference engine should maintain a richer internal model than “one cumulative curve per structure”.
 
 At minimum, the data model should support:
+
 - multiple histogram representations from the same underlying dose-volume sample;
 - Boolean ROIs;
 - composite-plan accumulation;
@@ -521,7 +528,7 @@ TG-53 contains **one dedicated DVH table** and several additional DVH-specific r
 #### Table 9A. Full reproduction of TG-53 Table 3-20: DVH tests
 
 | Topic | Tests | Reasons |
-|---|---|---|
+| --- | --- | --- |
 | Volume region of interest (VROI) identification | Test creation of the voxel VROI description used to create DVHs against structure description. | Misidentification of VROI leads to incorrect DVH. |
 | Structure identification | Test Boolean combinations of objects (VROI and DVH of Normal Tissue-Target), and how voxels which belong to multiple structures are handled. | Incorrect complex VROI also leads to incorrect DVH. |
 | Voxel dose interpolation | Verify accuracy of dose interpolated into each voxel. | Interpolation from one 3-D grid to another could lead to grid-based artifacts or inaccuracies. |
@@ -537,7 +544,7 @@ TG-53 contains **one dedicated DVH table** and several additional DVH-specific r
 #### Table 9B. Other explicit DVH-related table entries and rows
 
 | Source table | DVH-related entry | Content |
-|---|---|---|
+| --- | --- | --- |
 | Table 1-3: selected performance characteristics | DVH accuracy | Traditional system: N/A; 3D system: “Depends on many factors.” Commentary: DVH accuracy depends on dose calculation grid, volumetric ROI grid, accuracy of object segmentation, histogram bin size, and plan normalisation. |
 | Table 2-2: acceptance test features | Dose display, dose volume histograms | Display dose calculation results. Use a standard dose distribution provided by the vendor to verify that the DVH code works as described. User-created dose distributions may also be used for additional tests. |
 | Table 3-3: anatomical structure definitions | Region-of-interest (ROI) description | A voxel or surface description of each 3-D structure of interest. Used for calculation of dose volume histograms and other kinds of statistics. |
@@ -547,7 +554,7 @@ TG-53 contains **one dedicated DVH table** and several additional DVH-specific r
 #### Table 9C. Composite-plan DVH-relevant checks explicitly named in Section 3.7.4
 
 | Composite-plan issue | TG-53 concern |
-|---|---|
+| --- | --- |
 | Prescription bookkeeping | Dose prescription input for each component plan |
 | Biology-aware accumulation | Availability of fractionation (bio-effect) corrections |
 | Spatial accumulation | Interpolation of individual plan dose distributions onto a common grid |
@@ -565,7 +572,6 @@ It gives no reference algorithm, no numerical DVH tolerance, no bin-width recomm
 **Confidence in findings:** **High** for the qualitative QA requirements and failure modes; **medium** for any attempt to derive concrete modern tolerances from it.
 
 **Relevance to reference DVH calculator:** **High**. TG-53 is not where one gets the final algorithm; it is where one gets the checklist of what the final algorithm must make explicit, test, and document.
-
 
 ---
 
@@ -664,14 +670,14 @@ A second caveat is under-reporting. Key parameters such as dose algorithm, exact
 
 ### 8. Connections to other literature
 
-- **Drzymala et al. (1991), _Dose-volume histograms_** foundational DVH background paper that established the role of DVHs in plan evaluation and is directly aligned with the motivation of this study.
-- **Niemierko and Goitein (1990), _Random sampling for evaluating treatment plans_** direct methodological precursor for the paper’s discussion of random sampling and point density in treatment plan evaluation.
-- **Lu and Chin (1993), _Sampling techniques for the evaluation of treatment plans_** another explicit antecedent on sampling strategy that Panitsa et al. use to frame DVH computation accuracy.
-- **Van Dyk et al. (1993), _Commissioning and quality assurance of treatment planning computers_** broader TPS QA framework that Panitsa et al. argue did not yet provide sufficiently specific DVH-focused QC procedures.
-- **Kutcher et al. (1994), _Comprehensive QA for radiation oncology: report of AAPM TG-40_** similarly a broad QA document positioned by the authors as insufficiently detailed for advanced 3D DVH functionality.
-- **Gossman et al. (2010), _Dose-volume histogram quality assurance for linac-based treatment planning systems_** important later companion work that extended DVH QA toward independent geometry-based checking rather than same-TPS self-consistency.
-- **Ebert et al. (2010), _Comparison of DVH data from multiple radiotherapy treatment planning systems_** later multi-system work relevant to inter-system variability and independent recalculation of DVH data.
-- **Nelms et al. (2015), _Methods, software and datasets to verify DVH calculations against analytical values: twenty years late(r)_** modern analytical benchmark framework that can be read as addressing the limitations already visible in Panitsa et al.
+- **Drzymala et al. (1991), *Dose-volume histograms*** foundational DVH background paper that established the role of DVHs in plan evaluation and is directly aligned with the motivation of this study.
+- **Niemierko and Goitein (1990), *Random sampling for evaluating treatment plans*** direct methodological precursor for the paper’s discussion of random sampling and point density in treatment plan evaluation.
+- **Lu and Chin (1993), *Sampling techniques for the evaluation of treatment plans*** another explicit antecedent on sampling strategy that Panitsa et al. use to frame DVH computation accuracy.
+- **Van Dyk et al. (1993), *Commissioning and quality assurance of treatment planning computers*** broader TPS QA framework that Panitsa et al. argue did not yet provide sufficiently specific DVH-focused QC procedures.
+- **Kutcher et al. (1994), *Comprehensive QA for radiation oncology: report of AAPM TG-40*** similarly a broad QA document positioned by the authors as insufficiently detailed for advanced 3D DVH functionality.
+- **Gossman et al. (2010), *Dose-volume histogram quality assurance for linac-based treatment planning systems*** important later companion work that extended DVH QA toward independent geometry-based checking rather than same-TPS self-consistency.
+- **Ebert et al. (2010), *Comparison of DVH data from multiple radiotherapy treatment planning systems*** later multi-system work relevant to inter-system variability and independent recalculation of DVH data.
+- **Nelms et al. (2015), *Methods, software and datasets to verify DVH calculations against analytical values: twenty years late(r)*** modern analytical benchmark framework that can be read as addressing the limitations already visible in Panitsa et al.
 
 ### 9. Data extraction table
 
@@ -680,7 +686,7 @@ The first two tables below transcribe numerical and configuration data explicitl
 #### Table 9a. DVH computation settings used in the intercomparison
 
 | Centre | TPS | Sampling method | No. of calculation points in 125 cc structure | Nominal points/cc [derived] | Comments |
-|---|---|---:|---:|---:|---|
+| --- | --- | ---: | ---: | ---: | --- |
 | A | Isis-3D v2.0 | Random points | 2,000 | 16.0 | No further comment reported |
 | B | Helax TMS 3.0A | Grid | 4,400 | 35.2 | Grid step **0.25 cm**, **11 slices** |
 | C | Dosigray | Combination | 31,250 | 250.0 | Random sampling for x and y; z defined by a grid |
@@ -691,20 +697,20 @@ The first two tables below transcribe numerical and configuration data explicitl
 #### Table 9b. Exact reported outcomes for test cases B2 and C
 
 | Centre | B2: offset beam | C: addition | C: subtraction |
-|---|---|---|---|
-| A | OK | ;  | OK |
-| B | OK | OK | ;  |
+| --- | --- | --- | --- |
+| A | OK | ; | OK |
+| B | OK | OK | ; |
 | C | OK | OK | OK |
-| D | ;  | OK | OK |
-| E | OK | * | ;  |
-| F | ;  | * | ;  |
+| D | ; | OK | OK |
+| E | OK | * | ; |
+| F | ; | * | ; |
 
 *OK = performed as expected; ;  = not performed; * = no DVH produced directly for addition, but manual sum of DVH(S1) and DVH(S2) matched DVH(SS).*
 
 #### Table 9c. Case A figure extraction [VISUALLY DIGITISED FROM FIGURE 3; approximate]
 
 | Centre | Dmax variation (%) | Dmin variation (%) | Volume variation (%) |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | A | 0.18 | 0.24 | 0.37 |
 | B | 0.62 | 0.82 | 2.42 |
 | C | 0.19 | 0.62 | ~0.00 |
@@ -715,7 +721,7 @@ The first two tables below transcribe numerical and configuration data explicitl
 #### Table 9d. Case B1 figure extraction [VISUALLY DIGITISED FROM FIGURE 4; approximate]
 
 | Centre | No. of energies shown | Approximate variation of penumbra volume (%) |
-|---|---:|---|
+| --- | ---: | --- |
 | A | 6 | 0.5, 4.7, 13.4, 14.0, 11.9, 7.5 |
 | B | 3 | 2.2, 10.4, 12.5 |
 | C | 3 | 0.7, 0.8, 2.7 |
@@ -844,10 +850,10 @@ The main caveat is generalisability. The “**1 mm is enough**” result is base
 
 The tables below extract the paper’s explicitly reported quantitative values and a small amount of directly stated figure-summary information from pages 3-5. No exact per-patient V100, V150, or V200 values or full curve coordinates were published.
 
-**Table 1. Study and dataset characteristics**
+#### Table 1. Study and dataset characteristics
 
 | Item | Value |
-|---|---:|
+| --- | ---: |
 | Clinical patient plans | **5** |
 | Implant type | Permanent prostate I-125 model 6711 seed implants |
 | Seeds per plan | **96-118** (median **104**) |
@@ -858,10 +864,10 @@ The tables below extract the paper’s explicitly reported quantitative values a
 | Artificial-plan seed counts | **1-153** |
 | Artificial-plan box dimensions | **40×40×30 mm³** |
 
-**Table 2. Main quantitative findings**
+#### Table 2. Main quantitative findings
 
 | Scenario | Quantity / condition | Reported result | Reference denominator / note |
-|---|---|---:|---|
+| --- | --- | ---: | --- |
 | Single seed, in-house | DVH agreement at **0.1 mm**, doses up to **300 Gy** | **±1%** | Versus hand calculation |
 | Single seed, in-house | DVH agreement at **0.1 mm**, doses up to **800 Gy** | **±3%** | Versus hand calculation |
 | Single seed, in-house | DVH agreement at **0.5 mm**, doses below **100 Gy** | **±5%** | Versus hand calculation |
@@ -892,7 +898,6 @@ The tables below extract the paper’s explicitly reported quantitative values a
 
 ---
 
-
 ## IAEA (2004) - Commissioning and quality assurance of computerized planning systems for radiation treatment of cancer
 
 ### Executive Summary
@@ -904,6 +909,7 @@ The report was motivated by accidental exposures and lack of public TPS QA guida
 For DVH work, the most useful material is Section 9.6.2 and Table 57, which define **10** commissioning tests covering histogram type, plan normalisation, relative versus absolute dose and volume, bin size, Boolean structures, consistency with dose display, calculation-point sampling, comparison guidelines, and dose/volume statistics. The report also warns that simple rectangular phantoms can be misleading because grid aliasing may create large volume errors. For a gold-standard open-source DVH engine, the message is clear: make assumptions explicit, validate against independent benchmarks, quantify error bars for small/high-gradient structures, and revalidate after software or hardware changes.
 
 ### 1. Bibliographic record
+
 - **Authors:** International Atomic Energy Agency (institutional author); contributors to drafting and review included P. Andreo, J. Cramb, B.A. Fraass, F. Ionescu-Farca, J. Izewska, V. Levin, B. Mijnheer, J.-C. Rosenwald, P. Scalliet, K.R. Shortt, J. Van Dyk, and S. Vatnitsky
 - **Title:** *Commissioning and quality assurance of computerized planning systems for radiation treatment of cancer*
 - **Journal:** Not applicable. Published as *Technical Reports Series No. 430* by the International Atomic Energy Agency
@@ -912,6 +918,7 @@ For DVH work, the most useful material is Section 9.6.2 and Table 57, which defi
 - **Open access:** Yes
 
 ### 2. Paper type and scope
+
 - **Type:** Task group report
 - **Domain tags (one or more):** D1 Computation | D2 Commercial systems
 - **Scope statement:** This report provides a full TPS QA framework covering purchase, acceptance testing, commissioning, periodic QA, patient-specific QA, and process management for external beam radiotherapy and brachytherapy. It is highly relevant to a reference DVH calculator because it explicitly identifies DVH creation as a QA-sensitive computational function tied to structure modelling, dose representation, point sampling, binning, and consistency with displayed dose.
@@ -931,6 +938,7 @@ A major methodological strength is its decomposition of the TPS problem into ana
 For dose calculation, the report classifies external-beam algorithms as measurement-based, analytical, superposition-based, or Monte Carlo-based, and distinguishes beam-specific checks, algorithm-specific investigations, and clinical calculation verification. It recommends three kinds of reference data: measured beam data, published benchmark data, and internal QA reference data. It also stresses that accuracy expectations differ by beam region and geometry, for example inner beam versus penumbra and homogeneous versus inhomogeneous phantoms. Statistical assessment is discussed through confidence limits, including the example formula $\Delta = |\text{average deviation}| + 1.5 \cdot SD$, but the report acknowledges that full statistical tooling is often unavailable in practice.
 
 The most relevant section here is **9.6.2 Dose-volume histograms**. Table 57 defines **10** DVH QA issues/tests:
+
 1. direct, cumulative, and differential DVH types;
 2. plan normalisation;
 3. relative versus absolute dose;
@@ -999,10 +1007,10 @@ This report predates much of modern VMAT, adaptive radiotherapy, and cloud-based
 
 ### 9. Data extraction table
 
-**Table 9a. Example criteria of acceptability for external dose calculations extracted from TRS-430**
+#### Table 9a. Example criteria of acceptability for external dose calculations extracted from TRS-430
 
 | Situation | Absolute dose at normalisation point | Central ray | Inner beam | Penumbra | Outer beam | Buildup |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Homogeneous square fields | **0.5%** | **1%** | **1.5%** | **2 mm** | **2%** | **20%** |
 | Homogeneous rectangular fields | **0.5%** | **1.5%** | **2%** | **2 mm** | **2%** | **20%** |
 | Asymmetric fields | **1%** | **2%** | **3%** | **2 mm** | **3%** | **20%** |
@@ -1012,10 +1020,10 @@ This report predates much of modern VMAT, adaptive radiotherapy, and cloud-based
 | Slab inhomogeneities | **3%** | **3%** | **5%** | **5 mm** | **5%** | Not applicable |
 | 3-D inhomogeneities | **5%** | **5%** | **7%** | **7 mm** | **7%** | Not applicable |
 
-**Table 9b. Example region-wise confidence-limit tolerances**
+#### Table 9b. Example region-wise confidence-limit tolerances
 
 | Region / metric | Simple geometry | Complex geometry | More complex geometry |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | $\delta_1$ central beam axis, high dose, small gradient | **2%** | **3%** | **4%** |
 | $\delta_2$ buildup / penumbra, high dose, large gradient | **2 mm or 10%** | **3 mm or 15%** | **3 mm or 15%** |
 | $\delta_3$ off-axis, high dose, small gradient | **3%** | **3%** | **4%** |
@@ -1023,10 +1031,10 @@ This report predates much of modern VMAT, adaptive radiotherapy, and cloud-based
 | $R_{W50}$ radiological width | **2 mm or 1%** | **2 mm or 1%** | **2 mm or 1%** |
 | $\delta_{50-90}$ beam fringe | **2 mm** | **3 mm** | **3 mm** |
 
-**Table 9c. DVH-related commissioning content explicitly listed in the report**
+#### Table 9c. DVH-related commissioning content explicitly listed in the report
 
 | Category | Quantitative detail |
-|---|---|
+| --- | --- |
 | Total DVH commissioning tests | **10** |
 | DVH test topics | Type; plan normalisation; relative/absolute dose; relative/absolute volume; histogram dose bin size; compound structures; consistency with dose display; calculation-point sampling; comparison guidelines; dose/volume statistics |
 | Overall commissioning matrix | **63** basic tests, **81** full tests, **15** special-issue tests |
@@ -1039,8 +1047,6 @@ This report predates much of modern VMAT, adaptive radiotherapy, and cloud-based
 - **Weaknesses:** Not an empirical inter-system comparison. It provides no public benchmark dataset, no reference DVH algorithm, and many details are intentionally vendor-neutral, so numerous implementation specifics remain **[DETAIL NOT REPORTED]**.
 - **Confidence in findings:** **High** for the QA philosophy, identified failure modes, and the need for explicit DVH commissioning. **Medium** for direct reuse of the numeric tolerances, because the report itself treats them as illustrative and context dependent.
 - **Relevance to reference DVH calculator:** **High**. Even though it is not a DVH algorithm paper, it provides a rigorous checklist of what a gold-standard DVH engine should document, validate, and continue to revalidate after software or workflow changes.
-
-
 
 ---
 
@@ -1077,7 +1083,7 @@ For a reference-quality DVH calculator, the paper implies that the engine must d
 
 The paper addressed a long-standing planning-system problem: dose is computed on a discrete 3D lattice, so any finite calculation grid introduces interpolation error and spatial aliasing, especially in beam penumbrae and other high-gradient regions. Earlier work by Niemierko and Goitein (1989a, 1989b, 1990), and by Lu and Chin (1993), had already shown in more conventional settings that grid spacing matters and that denser sampling improves accuracy at the cost of computation time. Chung et al. argued that IMRT makes the problem more acute because it creates finer spatial structure in dose distributions, steeper gradients around targets and organs at risk, and more opportunities for missed local peaks and valleys when sampling is too coarse.
 
-The immediate motivation was the theoretical work of Dempsey et al. (2005), which used Fourier and Nyquist arguments to suggest that spacing below **2.5 mm** should limit dose-distribution error to **<1%** for optimised IMRT. Chung et al. sought to test the practical manifestation of this issue in a real commercial TPS rather than an analytical or purely theoretical framework. For a reference DVH calculator, this is important even though the paper itself did not report DVHs: any DVH, D\(_x\), V\(_x\), gEUD, or NTCP derived from a voxelised dose matrix inherits the fidelity limits of that matrix. The paper is therefore best read as a study of dose-field sampling error that sets a lower bound on what downstream DVH algorithms can ever recover.
+The immediate motivation was the theoretical work of Dempsey et al. (2005), which used Fourier and Nyquist arguments to suggest that spacing below **2.5 mm** should limit dose-distribution error to **<1%** for optimised IMRT. Chung et al. sought to test the practical manifestation of this issue in a real commercial TPS rather than an analytical or purely theoretical framework. For a reference DVH calculator, this is important even though the paper itself did not report DVHs: any DVH, $D_x$, $V_x$, gEUD, or NTCP derived from a voxelised dose matrix inherits the fidelity limits of that matrix. The paper is therefore best read as a study of dose-field sampling error that sets a lower bound on what downstream DVH algorithms can ever recover.
 
 ### 4. Methods: detailed technical summary
 
@@ -1085,11 +1091,11 @@ This was a hybrid phantom-plus-clinical evaluation. The phantom was built from *
 
 Two phantom target configurations were planned. The “shallow” target lay at approximately **0.5 cm** depth from the superior surface; the “deep” target lay at approximately **6.0 cm** depth. Both targets were about **4 cm × 13 cm × 6 cm**. Three critical structures were included: **spinal cord** and **bilateral parotids**. Plans were **five-field step-and-shoot IMRT** head-and-neck plans with total prescription **54 Gy** in **1.8 Gy/fraction**. Gantry angles were **20°, 90°, 165°, 240°, 310°** for the shallow-target case and **0°, 70°, 145°, 220°, 290°** for the deep-target case. The inverse-planning workflow used a two-step process, with fluence optimisation followed by leaf-sequence optimisation. A **pencil-beam** algorithm was used during optimisation, and **superposition/convolution** was used for the final dose calculation. For the shallow case, segment counts ranged **7-21** with collimator sizes **6 × 7 to 14 × 7 cm²** for the deep case, **10-16** segments with collimator sizes **8 × 7 to 13 × 6 cm²**. The exact Pinnacle3 software version is **[DETAIL NOT REPORTED]**. Whether each grid size involved full re-optimisation or only recomputation of the final dose is also **[DETAIL NOT REPORTED]**.
 
-The key variable was final dose-calculation grid size: **1.5 mm, 2 mm, 3 mm, and 4 mm**. The **1.5 mm** calculation served as the internal reference when comparing grid sizes. To test phase sensitivity, the authors also shifted the grid origin by **half a voxel in all three coordinates**: **1 mm** for the 2 mm grid, **1.5 mm** for the 3 mm grid, and **2 mm** for the 4 mm grid. After dose computation, a **planar dose distribution** was extracted at **1 mm pixel size** by **linear interpolation**. This is not a DVH study: **no DVHs, no voxel-volume binning, no partial-volume dose integration, and no structure-wise D\(_x\)/V\(_x\) endpoints were reported**. Accordingly, DVH-specific implementation details such as contour rasterisation, partial-volume weighting, boundary handling, end-capping, cumulative versus differential DVH conventions, or DVH bin width are **[DETAIL NOT REPORTED / not applicable]**.
+The key variable was final dose-calculation grid size: **1.5 mm, 2 mm, 3 mm, and 4 mm**. The **1.5 mm** calculation served as the internal reference when comparing grid sizes. To test phase sensitivity, the authors also shifted the grid origin by **half a voxel in all three coordinates**: **1 mm** for the 2 mm grid, **1.5 mm** for the 3 mm grid, and **2 mm** for the 4 mm grid. After dose computation, a **planar dose distribution** was extracted at **1 mm pixel size** by **linear interpolation**. This is not a DVH study: **no DVHs, no voxel-volume binning, no partial-volume dose integration, and no structure-wise $D_x$/$V_x$ endpoints were reported**. Accordingly, DVH-specific implementation details such as contour rasterisation, partial-volume weighting, boundary handling, end-capping, cumulative versus differential DVH conventions, or DVH bin width are **[DETAIL NOT REPORTED / not applicable]**.
 
 Dose delivery used a **Varian 2100C 6 MV** linac. Film received monitor units corresponding to **five fractions** so that exposure sat near the middle of the film’s linear sensitometric range; measured dose was then scaled back to the full **30-fraction, 54 Gy** prescription for analysis. Film dosimetry used a **double-exposure correction** for non-uniformity, a Molecular Dynamics Personal Densitometer He-Ne laser scanner at **633 nm**, native scan resolution **100 µm/pixel**, and re-binning to **1 mm/pixel** to match the extracted TPS plane. To reduce scanner artefacts, the authors applied a **low-pass Wiener filter** and a **discrete fast Fourier transform deconvolution** using a measured line-spread function. Calibration films covered **0-17 Gy** and were fit with a **third-order polynomial**. Registration between measured and calculated planes was done **manually** using known geometry.
 
-Comparison metrics were planar rather than structure-based: **dose-difference histograms**, **relative dose-difference histograms**, **cumulative dose-difference histograms**, and **dose-difference maps**. Histogram bin widths were **0.15 Gy** for dose-difference histograms, **0.025 Gy** for cumulative dose-difference histograms, and **1 percentage point** for relative dose-difference histograms. Relative dose gradient was defined on the **1.5 mm reference plane** as \((1/D)\nabla D\) in the **x** and **y** directions, and points were binned into **0-5% mm\(^{-1}\)**, **5-10% mm\(^{-1}\)**, and **10-15% mm\(^{-1}\)** ranges. Gaussian fits were then applied to the relative dose-difference histograms, with mean, standard deviation, and FWHM reported. No formal hypothesis testing, confidence intervals, or goodness-of-fit statistics were reported. Three head-and-neck clinical cases were also recalculated on **1.5/2/3/4 mm** grids; for these, a single axial plane was extracted at **1 mm** with the grid origin kept consistent across grid sizes. Clinical case prescription and plan complexity are **[DETAIL NOT REPORTED]** in Methods, although Table 5 implies a **72 Gy** prescription.
+Comparison metrics were planar rather than structure-based: **dose-difference histograms**, **relative dose-difference histograms**, **cumulative dose-difference histograms**, and **dose-difference maps**. Histogram bin widths were **0.15 Gy** for dose-difference histograms, **0.025 Gy** for cumulative dose-difference histograms, and **1 percentage point** for relative dose-difference histograms. Relative dose gradient was defined on the **1.5 mm reference plane** as $(1/D)\nabla D$ in the **x** and **y** directions, and points were binned into **0-5% mm$^{-1}$**, **5-10% mm$^{-1}$**, and **10-15% mm$^{-1}$** ranges. Gaussian fits were then applied to the relative dose-difference histograms, with mean, standard deviation, and FWHM reported. No formal hypothesis testing, confidence intervals, or goodness-of-fit statistics were reported. Three head-and-neck clinical cases were also recalculated on **1.5/2/3/4 mm** grids; for these, a single axial plane was extracted at **1 mm** with the grid origin kept consistent across grid sizes. Clinical case prescription and plan complexity are **[DETAIL NOT REPORTED]** in Methods, although Table 5 implies a **72 Gy** prescription.
 
 The authors explicitly acknowledged that absolute TPS-versus-film disagreement is not due solely to grid size. They noted potential contributions from radiochromic film uncertainty, TPS modelling limitations, IMRT sequencing effects, and surface/build-up phenomena including electron contamination.
 
@@ -1099,7 +1105,7 @@ Using the **1.5 mm** grid as reference, the phantom study showed progressively l
 
 Grid-origin sensitivity was itself sizeable. A half-grid translation in all three axes produced **95%** readout differences of **1.00 Gy (1.9% of 54 Gy)**, **1.489 Gy (2.8%)**, and **2.029 Gy (3.8%)** for the shallow **2/3/4 mm** grids, and **1.287 Gy (2.4%)**, **1.828 Gy (3.4%)**, and **2.020 Gy (3.7%)** for the deep case. Thus, simply changing phase alignment of the same nominal grid could induce dose differences of the same order as the fine-versus-coarse grid comparison. The paper’s Figure 9 made the important point that local error is not strictly monotonic with voxel size: because of interpolation phase, a **4 mm** sample can occasionally agree better with a comparison point than a **3 mm** or even **2 mm** sample.
 
-Error spread worsened systematically in steeper gradients. From Table 3, the Gaussian-fit FWHM of the **relative** dose-difference histograms increased both with grid size and with relative gradient range. In the shallow case, FWHM rose from **2.27** to **6.14** to **7.02** for the **2 mm** grid across the **0-5**, **5-10**, and **10-15% mm\(^{-1}\)** bins, from **4.23** to **10.35** to **12.55** for **3 mm**, and from **5.69** to **10.90** to **16.83** for **4 mm**. The deep case showed a similar pattern, ending at **21.34** for the **4 mm**, **10-15% mm\(^{-1}\)** bin. A notable technical issue is that Table 3 labels these quantities in cGy, but they arise from relative-dose histograms and numerically satisfy FWHM ≈ 2.355\sigma, so they appear to be **percentage points**, not cGy.
+Error spread worsened systematically in steeper gradients. From Table 3, the Gaussian-fit FWHM of the **relative** dose-difference histograms increased both with grid size and with relative gradient range. In the shallow case, FWHM rose from **2.27** to **6.14** to **7.02** for the **2 mm** grid across the **0-5**, **5-10**, and **10-15% mm$^{-1}$** bins, from **4.23** to **10.35** to **12.55** for **3 mm**, and from **5.69** to **10.90** to **16.83** for **4 mm**. The deep case showed a similar pattern, ending at **21.34** for the **4 mm**, **10-15% mm$^{-1}$** bin. A notable technical issue is that Table 3 labels these quantities in cGy, but they arise from relative-dose histograms and numerically satisfy FWHM $\approx 2.355\sigma$, so they appear to be **percentage points**, not cGy.
 
 Against radiochromic film, the global histograms were much less discriminating. For the shallow target, the cumulative **95%** thresholds versus measurement were **6.812 Gy**, **7.067 Gy**, **7.667 Gy**, and **7.677 Gy** for **1.5/2/3/4 mm**, respectively. The maximum spread among these was only **0.865 Gy**, or **1.60% of 54 Gy**, despite obvious local changes in the dose-difference maps. The maps showed increasing surface inaccuracy and thicker internal discrepancy streaks with coarser grids, but these occupied too small a fraction of the plane to move the overall histogram strongly. This is one of the paper’s most useful findings: global summaries can hide locally important failures.
 
@@ -1117,7 +1123,7 @@ These conclusions are partly well-supported and partly broader than the data jus
 
 A reference DVH calculator should treat input dose-grid discretisation as a first-class uncertainty source, not a hidden implementation detail. This paper showed that moving from **1.5 mm** to **4 mm** can change the dose field by about **3.0 Gy** at the 95% plane readout in the shallow phantom, and that merely shifting the origin of a **4 mm** grid can add another **~2.0 Gy** of variation. For DVH work, that means the calculator should do two things: first, use rigorous sub-voxel structure integration so that it does not add further aliasing on top of the source grid; second, explicitly warn when the input dose grid itself is too coarse to support fine-structure or high-gradient metrics. Supersampling can reduce structure-sampling error, but it **cannot recover frequency content lost in the original dose calculation**.
 
-Practically, the engine should support trilinear or higher-order continuous interpolation inside each dose voxel, combined with fractional-volume structure clipping or very high-order quadrature. It should also expose an optional **grid-phase uncertainty mode**, for example by recomputing metrics under several sub-voxel offsets or reporting sensitivity to half-voxel shifts. The non-monotonic local behaviour in Figure 9 means one should not assume that a single coarse-to-fine convergence path will behave monotonically at every point. Metrics dominated by peaks or thin high-gradient regions, such as D\(_{0.03cc}\), D\(_{1cc}\), D\(_2\%\), or shell and surface statistics, deserve explicit caution when dose grids exceed roughly **2-2.5 mm** in head-and-neck IMRT.
+Practically, the engine should support trilinear or higher-order continuous interpolation inside each dose voxel, combined with fractional-volume structure clipping or very high-order quadrature. It should also expose an optional **grid-phase uncertainty mode**, for example by recomputing metrics under several sub-voxel offsets or reporting sensitivity to half-voxel shifts. The non-monotonic local behaviour in Figure 9 means one should not assume that a single coarse-to-fine convergence path will behave monotonically at every point. Metrics dominated by peaks or thin high-gradient regions, such as $D_{0.03\text{cc}}$, $D_{1\text{cc}}$, $D_{2\%}$, or shell and surface statistics, deserve explicit caution when dose grids exceed roughly **2-2.5 mm** in head-and-neck IMRT.
 
 #### 7b. Validation recommendations
 
@@ -1127,7 +1133,7 @@ For acceptance criteria, this paper implies that a reference implementation shou
 
 #### 7c. Extensibility considerations
 
-This paper strongly motivates capabilities beyond a single cumulative DVH curve. The largest discrepancies occurred near the **surface/build-up region**, so a reference tool should support **dose-surface histograms (DSH)** or shell-based dose summaries. Because the paper stratified error by **relative dose gradient**, a useful extension is a gradient-aware reporting layer, such as DVH uncertainty bands conditioned on local \(|\nabla D|/D\), or supplementary maps showing where coarse-grid input is likely to bias sampled metrics. Since the clinical cases showed systematic underestimation of sharper dose peaks, serial-organ models such as **gEUD** or NTCP formulations sensitive to the high-dose tail may be more affected than mean dose. The data model should therefore allow per-structure uncertainty propagation, not just point estimates.
+This paper strongly motivates capabilities beyond a single cumulative DVH curve. The largest discrepancies occurred near the **surface/build-up region**, so a reference tool should support **dose-surface histograms (DSH)** or shell-based dose summaries. Because the paper stratified error by **relative dose gradient**, a useful extension is a gradient-aware reporting layer, such as DVH uncertainty bands conditioned on local $|\nabla D|/D$, or supplementary maps showing where coarse-grid input is likely to bias sampled metrics. Since the clinical cases showed systematic underestimation of sharper dose peaks, serial-organ models such as **gEUD** or NTCP formulations sensitive to the high-dose tail may be more affected than mean dose. The data model should therefore allow per-structure uncertainty propagation, not just point estimates.
 
 #### 7d. Caveats and limitations
 
@@ -1145,45 +1151,45 @@ Generalisability is limited. The phantom was homogeneous solid water, the TPS wa
 
 ### 9. Data extraction table
 
-The original paper reported dose in cGy; values below are converted to **Gy**. The authors’ “95%/90%/85% region” values are **cumulative dose-difference histogram thresholds**, not DVH D\(_{95}\)/D\(_{90}\)/D\(_{85}\) endpoints.
+The original paper reported dose in cGy; values below are converted to **Gy**. The authors’ “95%/90%/85% region” values are **cumulative dose-difference histogram thresholds**, not DVH $D_{95}$/$D_{90}$/$D_{85}$ endpoints.
 
-**Table A. Phantom cumulative dose-difference thresholds versus 1.5 mm reference, prescription 54 Gy.**
+#### Table A. Phantom cumulative dose-difference thresholds versus 1.5 mm reference, prescription 54 Gy
 
 | Grid size | Shallow 95% | Deep 95% | Shallow 90% | Deep 90% | Shallow 85% | Deep 85% |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2 mm | 1.26 Gy (2.3%) | 1.10 Gy (2.0%) | 0.86 Gy (1.6%) | 0.852 Gy (1.6%) | 0.66 Gy (1.2%) | 0.651 Gy (1.2%) |
 | 3 mm | 2.482 Gy (4.6%) | 1.85 Gy (3.4%) | 1.18 Gy (2.2%) | 1.472 Gy (2.7%) | 1.38 Gy (2.6%) | 1.17 Gy (2.2%) |
 | 4 mm | 3.018 Gy (5.6%) | 2.49 Gy (4.6%) | 1.818 Gy (3.4%) | 1.892 Gy (3.5%) | 1.418 Gy (2.6%) | 1.65 Gy (3.1%) |
 
-**Table B. Phantom cumulative dose-difference thresholds for half-grid origin shifts, prescription 54 Gy.**
+#### Table B. Phantom cumulative dose-difference thresholds for half-grid origin shifts, prescription 54 Gy
 
 | Grid size and half-grid shift | Shallow 95% | Deep 95% | Shallow 90% | Deep 90% | Shallow 85% | Deep 85% |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2 mm (+1 mm origin shift) | 1.00 Gy (1.9%) | 1.287 Gy (2.4%) | 0.642 Gy (1.2%) | 0.887 Gy (1.6%) | ~0.50 Gy (0.9%) | 0.687 Gy (1.3%) |
 | 3 mm (+1.5 mm origin shift) | 1.489 Gy (2.8%) | 1.828 Gy (3.4%) | 1.089 Gy (2.0%) | 1.228 Gy (2.3%) | ~0.85 Gy (1.6%) | 0.92 Gy (1.7%) |
 | 4 mm (+2 mm origin shift) | 2.029 Gy (3.8%) | 2.020 Gy (3.7%) | 1.329 Gy (2.5%) | 1.420 Gy (2.6%) | ~1.00 Gy (1.9%) | 1.22 Gy (2.3%) |
 
-**Table C. Gradient-conditioned FWHM of relative dose-difference histograms. Values are likely percentage points, although the original Table 3 labels them in cGy.**
+#### Table C. Gradient-conditioned FWHM of relative dose-difference histograms. Values are likely percentage points, although the original Table 3 labels them in cGy
 
-| Grid size | Shallow 0-5% mm\(^{-1}\) | Shallow 5-10% mm\(^{-1}\) | Shallow 10-15% mm\(^{-1}\) | Deep 0-5% mm\(^{-1}\) | Deep 5-10% mm\(^{-1}\) | Deep 10-15% mm\(^{-1}\) |
-|---|---:|---:|---:|---:|---:|---:|
+| Grid size | Shallow 0-5% mm$^{-1}$ | Shallow 5-10% mm$^{-1}$ | Shallow 10-15% mm$^{-1}$ | Deep 0-5% mm$^{-1}$ | Deep 5-10% mm$^{-1}$ | Deep 10-15% mm$^{-1}$ |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2 mm | 2.27 | 6.14 | 7.02 | 1.74 | 5.11 | 8.78 |
 | 3 mm | 4.23 | 10.35 | 12.55 | 2.60 | 5.92 | 9.44 |
 | 4 mm | 5.69 | 10.90 | 16.83 | 4.08 | 10.72 | 21.34 |
 
-**Table D. Shallow-phantom cumulative dose-difference thresholds versus radiochromic film, prescription 54 Gy.**
+#### Table D. Shallow-phantom cumulative dose-difference thresholds versus radiochromic film, prescription 54 Gy
 
 | Grid size | 95% threshold | 90% threshold | 85% threshold |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | 1.5 mm | 6.812 Gy (12.6%) | 3.812 Gy (7.1%) | 2.612 Gy (4.8%) |
 | 2 mm | 7.067 Gy (13.1%) | 3.868 Gy (7.2%) | 2.668 Gy (4.9%) |
 | 3 mm | 7.667 Gy (14.2%) | 4.668 Gy (8.6%) | 2.868 Gy (5.3%) |
 | 4 mm | 7.677 Gy (14.2%) | 4.268 Gy (7.9%) | 3.068 Gy (5.7%) |
 
-**Table E. Clinical-case cumulative dose-difference thresholds versus 1.5 mm reference. Table percentages use an implied 72 Gy prescription.**
+#### Table E. Clinical-case cumulative dose-difference thresholds versus 1.5 mm reference. Table percentages use an implied 72 Gy prescription
 
 | Grid size | Case 1 95% | Case 1 90% | Case 2 95% | Case 2 90% | Case 3 95% | Case 3 90% |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2 mm | 0.50 Gy (0.7%) | 0.28 Gy (0.4%) | 0.70 Gy (1.0%) | 0.40 Gy (0.6%) | 0.38 Gy (0.5%) | 0.18 Gy (0.3%) |
 | 3 mm | 2.36 Gy (3.3%) | 0.62 Gy (0.9%) | 2.22 Gy (3.1%) | 0.66 Gy (0.9%) | 0.78 Gy (1.1%) | 0.44 Gy (0.6%) |
 | 4 mm | 3.24 Gy (4.5%) | 0.95 Gy (1.3%) | 2.96 Gy (4.1%) | 1.06 Gy (1.5%) | 3.60 Gy (5.0%) | 0.46 Gy (0.6%) |
@@ -1316,37 +1322,37 @@ The paper is excellent for exposing **mechanisms** of disagreement, but the exac
 
 The paper contains substantial quantitative data suitable for extraction. The tables below summarise the benchmark geometry and the main reported variability results.
 
-**Table 9A. Benchmark phantom geometry and imaging datasets**
+#### Table 9A. Benchmark phantom geometry and imaging datasets
 
 | Structure | Dimensions | True volume (cc) | Intended clinical analogue |
-|---|---:|---:|---|
+| --- | ---: | ---: | --- |
 | Small cylinder | 80 mm length, 8 mm diameter | 4.02 | Urethra-like small organ |
 | Large cylinder | 80 mm length, 30 mm diameter | 56.54 | Rectum-like organ |
 | Truncated cone | 45 mm length, 28-55 mm diameter | 63.02 | Bladder-like organ |
-| CT dataset 1 | 2 mm slice thickness | ;  | Volume comparison |
-| CT dataset 2 | 4 mm slice thickness | ;  | Volume comparison; DVH comparison |
-| CT dataset 3 | 4 mm spiral CT | ;  | Volume comparison |
-| MRI dataset | 5 mm slice thickness | ;  | Volume comparison |
+| CT dataset 1 | 2 mm slice thickness | ; | Volume comparison |
+| CT dataset 2 | 4 mm slice thickness | ; | Volume comparison; DVH comparison |
+| CT dataset 3 | 4 mm spiral CT | ; | Volume comparison |
+| MRI dataset | 5 mm slice thickness | ; | Volume comparison |
 
-**Table 9B. Inter-system volume variability**
+#### Table 9B. Inter-system volume variability
 
 *Standard deviation = relative standard deviation across the seven TPSs. Offset = difference between the across-system mean volume and the analytic true volume, relative to the true volume.*
 
 | Dataset | Small cylinder SD / offset | Large cylinder SD / offset | Cone SD / offset |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | CT 2 mm | 3% / -1.7% | 1% / +0.5% | 2% / +8.3% |
 | CT 4 mm | 7% / +0.4% | 2% / +2.2% | 5% / +3.6% |
 | CT 4 mm spiral | 4% / -3.1% | 3% / -1.2% | 4% / +2.3% |
 | MRI 5 mm | 9% / +5.5% | 3% / +2.2% | 6% / +1.8% |
 
-**Table 9C. DVH variability**
+#### Table 9C. DVH variability
 
 *“Maximum” is the maximum deviation between two TPS dose values as reported by the authors; percentage denominator [DETAIL NOT REPORTED].*
 
-**Treatment plan 1: large cylinder and cone**
+#### Treatment plan 1: large cylinder and cone
 
 | Structure | Metric | Inter-system 1 SD | Inter-system maximum | Inter-observer 1 SD | Inter-observer maximum |
-|---|---|---:|---:|---:|---:|
+| --- | --- | ---: | ---: | ---: | ---: |
 | Large cylinder | D0.1cc | 3% | 8% | 5% | 11% |
 | Large cylinder | D1cc | 1% | 2% | 1% | 1% |
 | Large cylinder | D2cc | 1% | 3% | 1% | 3% |
@@ -1354,10 +1360,10 @@ The paper contains substantial quantitative data suitable for extraction. The ta
 | Cone | D1cc | 5% | 11% | 2% | 5% |
 | Cone | D2cc | 5% | 12% | 3% | 7% |
 
-**Treatment plan 2: small cylinder and large cylinder**
+#### Treatment plan 2: small cylinder and large cylinder
 
 | Structure | Metric | Inter-system 1 SD | Inter-system maximum | Inter-observer 1 SD | Inter-observer maximum |
-|---|---|---:|---:|---:|---:|
+| --- | --- | ---: | ---: | ---: | ---: |
 | Small cylinder | D0.1cc | 4% | 8% | 0% | 1% |
 | Small cylinder | D1cc | 4% | 7% | 2% | 5% |
 | Small cylinder | D2cc | 4% | 7% | 3% | 9% |
@@ -1365,10 +1371,10 @@ The paper contains substantial quantitative data suitable for extraction. The ta
 | Large cylinder | D1cc | 8% | 15% | 4% | 10% |
 | Large cylinder | D2cc | 5% | 10% | 4% | 9% |
 
-**Additional perturbation results**
+#### Additional perturbation results
 
 | Perturbation | Endpoint | Change |
-|---|---|---:|
+| --- | --- | ---: |
 | 2 mm concentric expansion of large cylinder | D0.1cc | +15% |
 | 2 mm concentric expansion of large cylinder | D1cc | +14% |
 | 2 mm concentric expansion of large cylinder | D2cc | +12% |
@@ -1498,10 +1504,10 @@ The numerical magnitudes also do not generalise cleanly. The fixed **3.6%** unce
 
 ### 9. Data extraction table
 
-**Table 9A. Largest-difference example per ROI from paper Tables 1-4; doses converted from cGy to Gy; arrows denote DVH $\to$ DeVH.**
+#### Table 9A. Largest-difference example per ROI from paper Tables 1-4; doses converted from cGy to Gy; arrows denote DVH $\to$ DeVH
 
 | Site | ROI | Mean dose (Gy) | Maximum dose (Gy) | Minimum dose (Gy) |
-|---|---|---:|---:|---:|
+| --- | --- | ---: | ---: | ---: |
 | Conventional prostate | PTV | 49.20 → 49.07 | 49.88 → 52.61 | 47.25 → 44.25 |
 | Conventional prostate | Bladder | 42.72 → 42.59 | 49.69 → 52.15 | 26.00 → 24.25 |
 | Conventional prostate | Rectum | 36.81 → 36.69 | 49.20 → 51.04 | 27.25 → 25.50 |
@@ -1517,10 +1523,10 @@ The numerical magnitudes also do not generalise cleanly. The fixed **3.6%** unce
 | Brain | PTV | 60.10 → 59.94 | 62.31 → 66.03 | 36.58 → 34.10 |
 | Brain | Brain stem | 25.74 → 25.58 | 55.80 → 59.21 | 2.79 → 2.48 |
 
-**Table 9B. V95 coverage changes from paper Table 5; pp = percentage points.**
+#### Table 9B. V95 coverage changes from paper Table 5; pp = percentage points
 
 | Site | Case | DVH V95 (%) | DeVH V95 (%) | Δ V95 (pp) | DeVH uncertainty (pp) |
-|---|---|---:|---:|---:|---:|
+| --- | --- | ---: | ---: | ---: | ---: |
 | Prostate | min difference | 99.95 | 81.1 | -18.85 | 3.0 |
 | Prostate | max difference | 99.8 | 72.9 | -26.9 | 3.5 |
 | Prostate IMRT | min difference | 100.0 | 88.9 | -11.1 | 2.6 |
@@ -1530,10 +1536,10 @@ The numerical magnitudes also do not generalise cleanly. The fixed **3.6%** unce
 | Brain | min difference | 97.7 | 90.0 | -7.7 | 5.6 |
 | Brain | max difference | 99.9 | 83.2 | -16.7 | 3.0 |
 
-**Table 9C. OAR Vx changes from paper Table 5.**
+#### Table 9C. OAR Vx changes from paper Table 5
 
 | Site | Metric | Case | DVH | DeVH | Δ | DeVH uncertainty |
-|---|---|---|---:|---:|---:|---:|
+| --- | --- | --- | ---: | ---: | ---: | ---: |
 | Prostate | Bladder V40 (cc) | min difference | 34.95 | 34.91 | -0.04 | 0.59 |
 | Prostate | Bladder V40 (cc) | max difference | 46.8 | 45.3 | -1.5 | 1.2 |
 | Prostate | Rectum V40 (cc) | min difference | 19.47 | 19.30 | -0.17 | 0.88 |
@@ -1664,29 +1670,29 @@ The study does **not** isolate DVH computation error from all other influences. 
 
 ### 9. Data extraction table
 
-**Table 9.1. TPS representation and nominal acquisition/calculation parameters reported in the study.**
+#### Table 9.1. TPS representation and nominal acquisition/calculation parameters reported in the study
 
 | TPS | Number in study | CT slice thickness (mm) | CT pixel width (mm) | Dose-grid voxel width (mm) | DVH dose resolution (Gy [cGy]) |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | XiO | 9 | 2.5-3.0 | 0.80-0.89 | 2.5-3.0 | 0.10-0.15 [10-15] |
 | Plato | 2 | 3.0 | 0.98 | 1.95 | 0.06-0.11 [6-11] |
 | Theraplan Plus | 1 | 3.0 | 0.94 | 5.0 | 0.70 [70] |
 | Pinnacle | 13 | 2.5-5.0 | 0.78-1.25 | 3.5-4.0 | 0.05-0.15 [5-15] |
 | Eclipse | 8 | 2.5-3.0 | 0.86-0.98 | 2.5 | 0.01-0.15 [1-15] |
 
-**Table 9.2. Percentage of all 227 DVHs with at least 95% of bins satisfying $\gamma < 1$ for each DVH gamma criterion pair.**
+#### Table 9.2. Percentage of all 227 DVHs with at least 95% of bins satisfying $\gamma < 1$ for each DVH gamma criterion pair
 
 | ΔV (% of total structure volume) | ΔD = 1% of max dose | ΔD = 2% | ΔD = 5% | ΔD = 10% |
-|---|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: |
 | 1% | 78% | 82% | 85% | 88% |
 | 2% | 88% | 89% | 93% | 94% |
 | 5% | 96% | 99% | 99% | 99% |
 | 10% | 100% | 100% | 100% | 100% |
 
-**Table 9.3. Additional extracted quantitative findings.**
+#### Table 9.3. Additional extracted quantitative findings
 
 | Metric | Value | Notes |
-|---|---:|---|
+| --- | ---: | --- |
 | Total structures compared | 227 | Approximate volume range **2-1500 cc** |
 | Target volumes with separate dose analysis | 50 | From **25 prostate plans** |
 | Significant predictor of percentage volume difference | TPS manufacturer, **p = 0.011** | Other tested variables not independently significant for this endpoint |
@@ -1802,7 +1808,7 @@ The following tables extract benchmark parameters and quantitative results from 
 #### Table 9a. Benchmark setup
 
 | Parameter | Value |
-|---|---|
+| --- | --- |
 | Phantom | Artificial homogeneous water CT; density 1.0; HU 0 |
 | CT slice spacing | **1.25 mm** |
 | Known structure | Rectangular parallelepiped, **2 × 2 × 10 cm³ = 40.0 cc** |
@@ -1819,7 +1825,7 @@ The following tables extract benchmark parameters and quantitative results from 
 #### Table 9b. Per-depth comparison for 6 MV
 
 | Phantom depth (cm) | Calc volume with OAR (%) | Calc relative dose (%) | TPS DVH relative dose (%) | TPS DVH volume (%) | D/V deviation (%) |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | 6 | 10.01 | 119.8 | 120.5 | 9.9 | -1.7 |
 | 7 | 20.02 | 114.5 | 115.1 | 20.0 | -0.8 |
 | 8 | 30.04 | 109.4 | 110.1 | 29.9 | -0.9 |
@@ -1834,7 +1840,7 @@ The following tables extract benchmark parameters and quantitative results from 
 #### Table 9c. Per-depth comparison for 18 MV
 
 | Phantom depth (cm) | Calc volume with OAR (%) | Calc relative dose (%) | TPS DVH relative dose (%) | TPS DVH volume (%) | D/V deviation (%) |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | 6 | 10.00 | 116.3 | 117.1 | 9.9 | -1.3 |
 | 7 | 20.00 | 112.0 | 112.6 | 20.1 | -0.2 |
 | 8 | 30.00 | 107.9 | 108.3 | 30.0 | -0.4 |
@@ -1849,7 +1855,7 @@ The following tables extract benchmark parameters and quantitative results from 
 #### Table 9d. Whole-structure DVH summary statistics from Figure 3
 
 | Energy | TPS volume (cc) | Min dose (%) | Max dose (%) | Mean dose (%) | Std dev (%) |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | 6 MV | 40.8 | 79.1 | 126.4 | 101.4 | 13.6 |
 | 18 MV | 40.8 | 82.6 | 121.7 | 100.9 | 11.2 |
 
@@ -1934,7 +1940,7 @@ This conclusion is mostly well supported. The paper clearly demonstrates heterog
 
 ### 7. Implications for reference DVH calculator design
 
-**7a. Algorithm and implementation recommendations**
+#### 7a. Algorithm and implementation recommendations
 
 The reference calculator should support more than standard cumulative DVH queries. Grimm et al. show clinically used SBRT rules expressed as maximum point dose, hottest $x$ cc, hottest $x\%$, and “critical volume must be spared” constraints. A benchmark tool therefore needs first-class support for all of these forms, including spared-volume logic for liver, kidney, and lung. Fractionation and schedule metadata must also be attached to the metric itself.
 
@@ -1942,19 +1948,19 @@ Sub-cc endpoints are common. The implementation should compute robustly for volu
 
 Finally, the calculator should preserve spatial information. Grimm et al. explicitly warn that DVH compliance can hide clinically dangerous circumferential irradiation of serial organs. A reference system should therefore retain hotspot topology or slice-wise spatial maps, not just cumulative histograms.
 
-**7b. Validation recommendations**
+#### 7b. Validation recommendations
 
-This paper motivates several benchmark classes. First, use serial-organ phantoms such as spinal cord cylinders with focal versus circumferential hotspots that produce similar DVHs but different spatial risk. Second, test small structures and hotspots on coarse and fine dose grids to assess stability of $D_{0.035\text{cc}}$, D0.1cc, $D_{0.25\text{cc}}$, and $D_{1.2\text{cc}}$. Third, validate spared-volume logic with liver, kidney, and lung phantoms, including cases where some protocols allow subtraction of GTV.
+This paper motivates several benchmark classes. First, use serial-organ phantoms such as spinal cord cylinders with focal versus circumferential hotspots that produce similar DVHs but different spatial risk. Second, test small structures and hotspots on coarse and fine dose grids to assess stability of $D_{0.035\text{cc}}$, $D_{0.1\text{cc}}$, $D_{0.25\text{cc}}$, and $D_{1.2\text{cc}}$. Third, validate spared-volume logic with liver, kidney, and lung phantoms, including cases where some protocols allow subtraction of GTV.
 
 Fourth, include motion-sensitive bowel-like test cases. The paper notes that the dose to **1 cc** of bowel is more uncertain than the dose to **1/3** of the bowel, so uncertainty-perturbed or deforming benchmarks are appropriate. Fifth, include skin-surface buildup tests with couch or immobilisation material, because the cited posterior skin dose error reached **80%**. Grimm’s table plus publicly accessible protocol constraints from RTOG 0631, RTOG 0915, and RTOG 0813 provide a practical semantic validation library.
 
-**7c. Extensibility considerations**
+#### 7c. Extensibility considerations
 
 Constraint objects should carry provenance and context, not just organ, volume, and dose. This review makes clear that modality, prior radiotherapy, fractionation, and whether a rule is “allowed volume above dose” versus “critical volume below dose” all matter. The data model should also support optional biological overlays such as BED or EQD2, with explicit $\alpha/\beta$ assumptions and schedule metadata.
 
 The paper does not directly develop DSH, DMH, dosiomics, or formal EUD/gEUD models, but it strongly motivates interfaces that can attach toxicity evidence, exposed-patient denominators, and uncertainty descriptors to standard DVH endpoints.
 
-**7d. Caveats and limitations**
+#### 7d. Caveats and limitations
 
 This paper compiles clinical usage, not validated truth. Many source constraints come from mixed technologies, mixed disease sites, and short-survival populations. Some are single-case observations or retreatment-like scenarios. A reference DVH calculator should therefore use this paper primarily as a map of metric semantics and known failure modes, not as a final source of biologically validated tolerance thresholds.
 
@@ -1971,10 +1977,10 @@ This paper compiles clinical usage, not validated truth. Many source constraints
 
 ### 9. Data extraction table
 
-**Table 1. Summary-level quantitative extractions from Grimm 2011**
+#### Table 1. Summary-level quantitative extractions from Grimm 2011
 
 | Extracted item | Value | Notes |
-|---|---:|---|
+| --- | ---: | --- |
 | Compiled SBRT normal-tissue dose tolerance limits | **500** | Broad literature-derived catalogue, not a validated consensus set |
 | Fractionation coverage | Mainly **1-5 fractions** | Some **6-fraction** and post-conventional or HDR-like entries also included |
 | Limits with exposed-patient denominator reported | **4%** | Column nine was populated for only a small minority of entries |
@@ -1983,10 +1989,10 @@ This paper compiles clinical usage, not validated truth. Many source constraints
 | Delayed GI toxicity after permissive single-fraction duodenal dosing | **2** Grade **3-4** complications at **8-10 months** | Delayed toxicity despite initially negative acute signal |
 | Posterior skin dose error from couch or immobilisation bolus effect | Up to **80% higher** than expected | Confounds tolerance assessment with dose calculation accuracy |
 
-**Table 2. Selected constraint forms relevant to DVH implementation**
+#### Table 2. Selected constraint forms relevant to DVH implementation
 
 | Organ | Fractions | Endpoint form | Extracted constraint(s) | Implementation relevance |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Composite kidney | 1 / 3 / 5 | Critical volume spared | Spare **200 cc** below **8.4 / 14.4 / 17.5 Gy** | Requires “must spare” logic |
 | Liver | 1 / 3 / 5 | Critical volume spared | Spare **700 cc** of normal liver below **9.1 / 15-17.1 / 21 Gy** | Requires normal-parenchyma accounting |
 | Lungs | 1 / 3 / 5 | Critical volume spared | Spare **1500 cc** below **7.0 / 10.5 / 12.5 Gy** spare **1000 cc** below **7.4 / 11.4 / 13.5 Gy** | Requires absolute-volume spared metrics |
@@ -2068,9 +2074,9 @@ Those conclusions are well-supported for the paper’s narrow claim: **target-DV
 
 A reference calculator should support **weighted ROIs** as a first-class object, not just binary masks. This paper’s method can be implemented as a weighted cumulative DVH,
 
-\[
+$$
 V_w(D \ge d)=\frac{\sum_i w_i v_i \mathbf{1}(D_i \ge d)}{\sum_i w_i v_i},
-\]
+$$
 
 where $w_i$ is the temporal occupancy probability of voxel or sub-voxel $i$. That is the cleanest engineering expression of their temporal-to-spatial weighting concept. The calculator should allow both **voxel-wise weights** and **non-overlapping occupancy shells** (100%, 90%, …, 10%) because the paper’s planning logic depends on shell priority. It should also expose a distinct approximation mode, for example occupancy_weighted_dvh, rather than conflating it with true 4D accumulation. The study supports a **fast two-phase mode** as an optional approximation for target DVHs, because the reported mean RMS was **0.44 ± 0.21** versus **0.43 ± 0.25** for 10 phases, but only as long as the extreme phases still overlap.
 
@@ -2101,10 +2107,10 @@ For a gold-standard DVH calculator, this method is best viewed as a **useful app
 
 ### 9. Data extraction table
 
-**Table 9a. Case-level geometry and occupancy characteristics extracted from Table 1.**
+#### Table 9a. Case-level geometry and occupancy characteristics extracted from Table 1
 
 | Case | Site | Total motion (cm) | ICTV (cc) | mwCTV (cc) | CTV for 4D (cc) | VR100% |
-|---|---|---:|---:|---:|---:|---:|
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
 | 1 | RLL | 1.7 | 99.6 | 60.0 | 54.6 | 0.25 |
 | 2 | RLL | 1.5 | 357.2 | 240.7 | 255.6 | 0.41 |
 | 3 | RUL | 0.5 | 54.5 | 40.5 | 37.4 | 0.53 |
@@ -2116,10 +2122,10 @@ For a gold-standard DVH calculator, this method is best viewed as a **useful app
 | 9 | LUL | 0.4 | 108.8 | 83.2 | 85.8 | 0.56 |
 | 10 | RLL | 1.0 | 610.75 | 471.6 | 432.1 | 0.60 |
 
-**Table 9b. Case-level RMS difference in target DVH versus full 4D reference (smaller = closer to full 4D), extracted from Table 2.**
+#### Table 9b. Case-level RMS difference in target DVH versus full 4D reference (smaller = closer to full 4D), extracted from Table 2
 
 | Case | 4D-3D RMS | 4D-mw 10ph RMS | 4D-mw 2ph RMS |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | 1 | 1.68 | 0.87 | 0.88 |
 | 2 | 1.29 | 0.70 | 0.40 |
 | 3 | 1.15 | 0.67 | 0.65 |
@@ -2135,10 +2141,10 @@ For a gold-standard DVH calculator, this method is best viewed as a **useful app
 | **Max** | **4.25** | **0.87** | **0.88** |
 | **Mean ± 1 SD** | **1.70 ± 1.06** | **0.43 ± 0.25** | **0.44 ± 0.21** |
 
-**Table 9c. Summary target-coverage differences at 70 Gy relative to full 4D. Differences are in percentage points of % target volume covered by 70 Gy (denominator = total target volume for the compared DVH).**
+#### Table 9c. Summary target-coverage differences at 70 Gy relative to full 4D. Differences are in percentage points of % target volume covered by 70 Gy (denominator = total target volume for the compared DVH)
 
 | Comparison versus full 4D | Mean difference ± 1 SD |
-|---|---:|
+| --- | ---: |
 | 3D - 4D | **-2.8 ± 0.8** |
 | mwCTV-10ph - 4D | **0.3 ± 0.7** |
 | mwCTV-2ph - 4D | **0.5 ± 0.5** |
@@ -2253,10 +2259,10 @@ These findings should not be universalised without care. They derive from **15**
 
 The paper contains extractable quantitative data. Dose values below are converted to **Gy** for consistency; the original paper reported Table 1 dose values in **cGy**.
 
-**Table 9a. Whole-curve DVH sensitivity summary**
+#### Table 9a. Whole-curve DVH sensitivity summary
 
 | Grid increment | Mean whole-DVH volume difference vs 1 mm | Worst patient-specific difference across full curve | Mean % of curve with >1 cc difference | Notes |
-|---|---:|---:|---:|---|
+| --- | ---: | ---: | ---: | --- |
 | 1.5 mm | <1 cc | ≤1 cc for every patient | 0% | Only grid meeting the per-patient full-curve criterion |
 | 2.0 mm | <1 cc | up to 2.5 cc | 1% | Mean acceptable, but local failures remain |
 | 2.5 mm | <1 cc | up to 5 cc | [DETAIL NOT REPORTED separately] | Substantial worst-case error despite acceptable mean |
@@ -2268,12 +2274,12 @@ The paper contains extractable quantitative data. Dose values below are converte
 
 Note: the paper also states that “for **2 to 4 mm**” the percentage of the curve with >1 cc difference was **7%-9%**, which conflicts with its explicit **2 mm = 1%** statement; the exact per-grid breakdown for **2.5, 3, and 4 mm** is therefore ambiguous as printed.
 
-**Table 9b. Mean pairwise differences from the 1 mm benchmark (Δ = grid − 1 mm)**
+#### Table 9b. Mean pairwise differences from the 1 mm benchmark (Δ = grid − 1 mm)
 
 1 mm benchmark means (SD): **Dmax 80.33 Gy (0.86)**, **D2cc 78.87 Gy (0.84)**, **D5cc 77.53 Gy (1.32)**, **V77.8 Gy 5 cc (2)**, **V65 Gy 12 cc (4)**, **V30 Gy 22 cc (7)**. Entries below are **mean difference (SD)**. * indicates **P ≤ .001** in the original paper.
 
 | Grid | ΔDmax (Gy) | ΔD2cc (Gy) | ΔD5cc (Gy) | ΔV77.8 (cc) | ΔV65 (cc) | ΔV30 (cc) |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1.5 mm | -0.20 (0.90) | -0.15 (0.86) | -0.16 (1.36) | -0.4 (2.4) | -0.1 (3.8) | 0.0 (6.9) |
 | 2.0 mm | -0.25 (0.90) | -0.39 (0.96) | -0.23 (1.31) | -0.6 (2.3) | -0.1 (3.8) | 0.0 (7.1) |
 | 2.5 mm | -0.61 (0.79) | -0.49 (0.88) | -0.61 (1.48) | -0.9 (3.3) | -0.2 (3.9) | 0.1 (7.0) |
@@ -2389,10 +2395,10 @@ The following are the key adjacent papers explicitly cited or discussed by Nelms
 
 ### 9. Data extraction table
 
-**Table 1. Test 1 summary: constant 0.2 mm contour spacing, variable dose-grid resolution.**
+#### Table 1. Test 1 summary: constant 0.2 mm contour spacing, variable dose-grid resolution
 
 | Parameter | Pinnacle n >3% | Pinnacle range (%) | PlanIQ n >3% | PlanIQ range (%) |
-|---|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: |
 | Volume | 0 | -2.0 to 1.9 | 0 | -0.4 to 0.9 |
 | Dmin | 20 | -7.5 to 2.6 | 0 | 0.0 |
 | Dmax | 0 | -1.1 to 1.1 | 0 | 0.0 |
@@ -2403,10 +2409,10 @@ The following are the key adjacent papers explicitly cited or discussed by Nelms
 | D1 | 0 | -0.9 to 2.2 | 0 | -0.4 to 0.4 |
 | D0.03 cc | 0 | -0.9 to 1.3 | 0 | -0.4 to 0.3 |
 
-**Table 2. Test 2 summary: matched contour spacing and dose-grid resolution at 1, 2, and 3 mm.**
+#### Table 2. Test 2 summary: matched contour spacing and dose-grid resolution at 1, 2, and 3 mm
 
 | Parameter | Pinnacle n >3% | Pinnacle range (%) | PlanIQ n >3% | PlanIQ range (%) |
-|---|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: |
 | Volume | 0 | -2.8 to 2.1 | 1 | -4.2 to 0.6 |
 | Dmin | 30 | -7.5 to 60.0 | 0 | 0.0 |
 | Dmax | 10 | -5.1 to 1.1 | 0 | 0.0 |
@@ -2422,7 +2428,7 @@ The following are the key adjacent papers explicitly cited or discussed by Nelms
 **Table 3. Average whole-curve volume-error statistics across five shapes (Test 3).** Values shown as **minimum to maximum (mean, SD)** in percent volume error.
 
 | Resolution (mm) | Gradient | Pinnacle volume error (%) | PlanIQ volume error (%) |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | Superior/inferior | -4.4 to 2.2 (mean -0.3, SD 1.3) | -0.4 to 0.4 (mean 0.0, SD 0.2) |
 | 1 | Anterior/posterior | -3.5 to 0.8 (mean -0.8, SD 1.0) | -0.4 to 0.6 (mean 0.1, SD 0.2) |
 | 3 | Superior/inferior | -11.2 to 7.9 (mean -0.7, SD 3.5) | -1.5 to 0.6 (mean -0.5, SD 0.5) |
@@ -2431,7 +2437,7 @@ The following are the key adjacent papers explicitly cited or discussed by Nelms
 **Table 4. Selected worst-case whole-curve Test 3 datasets.** Values shown as **minimum to maximum (mean, SD)** in percent volume error.
 
 | Dataset | Resolution (mm) | Gradient | Pinnacle volume error (%) | PlanIQ volume error (%) |
-|---|---:|---|---|---|
+| --- | ---: | --- | --- | --- |
 | Cone | 3 | Superior/inferior | -16.7 to 13.0 (mean 0.9, SD 4.4) | -0.7 to 1.4 (mean 0.5, SD 0.2) |
 | Rotated cylinder | 3 | Superior/inferior | -9.9 to 5.0 (mean -2.1, SD 3.3) | -4.2 to 0.0 (mean -2.2, SD 1.0) |
 | Rotated cylinder | 3 | Anterior/posterior | -5.7 to 0.0 (mean -3.0, SD 1.3) | -4.2 to 0.7 (mean -1.8, SD 1.5) |
@@ -2553,7 +2559,7 @@ Fifth, the implicit-function phantoms include **infinitely sharp Boolean edges**
 Extracted from Table 1 of the paper. All rows compare the stated **reference voxel size** against a **2.5 mm** clinical voxel size.
 
 | Structure | Ref voxel (mm) | Hausdorff distance (mm) | Dice | Agreement acceptance % (1% DTA) | Agreement acceptance % (3% DTA) |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | GTV (Head Phantom) | 0.150 | 2.970 | 0.946 | 97.77 | 100.0 |
 | CTV (Head Phantom) | 0.150 | 2.783 | 0.970 | 100.0 | 100.0 |
 | PTV (Head Phantom) | 0.150 | 2.920 | 0.956 | 100.0 | 100.0 |
@@ -2672,10 +2678,10 @@ Several aspects may not generalise. This is a **single-institution**, **single-v
 
 The following tables extract the paper’s quantitative results; where noted, counts were derived by counting entries in Table 1.
 
-**Table 9.1. Study cohort and planning characteristics**
+#### Table 9.1. Study cohort and planning characteristics
 
 | Parameter | Value |
-|---|---|
+| --- | --- |
 | Number of plans | 50 |
 | Site distribution | 36 thoracic / 1 cervical / 13 lumbar |
 | Target class distribution | A: 12 / B: 21 / C: 17 *(derived from Table 1)* |
@@ -2691,10 +2697,10 @@ The following tables extract the paper’s quantitative results; where noted, co
 | Original clinical grid distribution | 19 plans at 1.0 mm / 14 at 1.5 mm / 17 at 2.5 mm |
 | Partial cord definition | MR-visible cord from 6 mm below to 6 mm above PTV |
 
-**Table 9.2. Effect of dose-grid size on key dosimetric metrics**
+#### Table 9.2. Effect of dose-grid size on key dosimetric metrics
 
 | Metric | 1.0 mm | 1.5 mm | 2.5 mm | 1.5 mm vs 1.0 mm | 2.5 mm vs 1.0 mm |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | $\text{PTV}_{D99\%}$ (Gy) | 17.03 ± 1.24 | 17.31 ± 1.25 | 16.93 ± 1.22 | +1.7% | -0.54% |
 | $\text{PTV}_{D95\%}$ (Gy) | 17.72 ± 1.20 | 18.11 ± 1.20 | 17.84 ± 1.17 | +2.2% | +0.7% |
 | $\text{PTV}_{D5\%}$ (Gy) | 20.09 ± 1.54 | 20.34 ± 1.54 | 20.05 ± 1.52 | +1.3% | -0.2% |
@@ -2705,20 +2711,20 @@ The following tables extract the paper’s quantitative results; where noted, co
 
 *Note:* All reported grid-to-grid dosimetric comparisons were statistically significant at **$p < 0.001$**. Worst casewise differences for **2.5 mm vs 1.0 mm** were **+23.2%** for Cord_D10% and **+22.7%** for Cord_D0.03cc (absolute differences **1.8 Gy** and **2.0 Gy**).
 
-**Table 9.3. Velocity versus Eclipse DVH differences**
+#### Table 9.3. Velocity versus Eclipse DVH differences
 
 | Grid | Mean Velocity - Eclipse $\text{PTV}_{D99\%}$ | Mean Velocity - Eclipse Cord_D0.03cc | Reported range for Cord_D0.03cc |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | 1.0 mm | -1.2% | -0.5% | -5.9% to +2.5% |
 | 1.5 mm | -1.0% | -0.8% | -3.4% to +2.5% |
 | 2.5 mm | -1.2% | +0.3% | -2.7% to +4.1% |
 
 *Note:* Methods state this comparison used the **10 cases with shortest DTF (1.5-2 mm)**, although the table caption says “all fifty cases”. Mean cross-system differences were generally within **±1.2%**.
 
-**Table 9.4. Film QA and computation time**
+#### Table 9.4. Film QA and computation time
 
 | Grid | Gamma pass rate (3%/1 mm) | Film-plan isocentre dose difference | Mean calculation time |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | 1.0 mm | 94.3 ± 6.0% | 1.22 ± 1.8% | 11 min 36 s ± 2 min 48 s |
 | 1.5 mm | 95.9 ± 5.4% | -0.06 ± 2.03% | 4 min 30 s ± 47 s |
 | 2.5 mm | 93.6 ± 5.4% | 0.40 ± 2.09% | 1 min 53 s ± 32 s |
@@ -2793,7 +2799,7 @@ Those conclusions are mostly well supported. The empirical data clearly demonstr
 
 ### 7. Implications for reference DVH calculator design
 
-**7a. Algorithm and implementation recommendations**
+#### 7a. Algorithm and implementation recommendations
 
 A reference calculator should not rely on naïve binary voxel inclusion or opaque structure rasterisation. This paper shows that for tiny SRS targets, errors near the target boundary dominate: some systems had near-zero mean structure-volume bias yet still showed **~10-13%** V100 underestimation for **3 mm** targets, proving that accurate contour volume alone is insufficient. The engine should therefore implement explicit, documented handling of: contour-to-volume conversion, end-capping, dose interpolation, partial-volume weighting, and Vx thresholding. It should expose these as provenance metadata with every metric, not bury them in a black box.
 
@@ -2801,19 +2807,19 @@ For small structures, the calculator should support either exact polygon/mesh in
 
 A particularly valuable design choice would be two operational modes: a **DICOM-faithful mode** that computes exactly from the encoded `RTSTRUCT`/`RTDOSE`, and a **continuous-estimate mode** that attempts subvoxel reconstruction or supersampled integration and reports uncertainty. This paper measures the end-to-end effect of both DICOM representation and vendor computation, so a gold-standard tool should help separate those components.
 
-**7b. Validation recommendations**
+#### 7b. Validation recommendations
 
 This paper’s supplementary DICOM dataset should be a core regression suite. At minimum, validation should replicate the full matrix used here: diameters **3, 5, 7, 10, 15, 20 mm** slice spacings **0.5 mm** and **1.0 mm** **50 random translations** per size; and metrics $TV$, V100, V50, CI, and GI. Crucially, pass/fail should examine both **mean error** and **range across placements**, because this paper shows that small mean bias can coexist with very large phase-dependent excursions, especially for V100.
 
 However, the Stanley benchmark should not be the only test. Because the inputs are contour-based `RTSTRUCT`s on finite slice spacing, the validation programme should add true analytical-shape tests that bypass DICOM contour discretisation altogether, plus oblique/rotated ellipsoids, irregular targets, non-spherical dose clouds, and heterogeneous media. The reference engine should also include unit tests for the exact derived quantities most exposed here: Vx isodose volumes, $CI_{\text{RTOG}}$, GI, and low-volume scalar metrics for structures below **0.1 cc**.
 
-**7c. Extensibility considerations**
+#### 7c. Extensibility considerations
 
 The paper motivates a calculator architecture that treats dose-cloud volumes as first-class objects, not merely outputs of a cumulative DVH. A reusable Vx/isodose-volume kernel would naturally support CI, GI, $R_{50}$, and later extensions such as D_x, differential DVH, cumulative DVH, gEUD/EUD, and biological overlays. Since the failure mode here is fundamentally one of geometric/discretisation sensitivity, the engine should also be able to report a **metric uncertainty band** or **grid-sensitivity estimate** for very small volumes.
 
 Mesh-aware data structures would also be useful. This study is about volumes, but the same need for traceable geometry handling will matter if the tool later supports dose-surface histograms, distance-to-isodose metrics, or dosiomics features extracted near structure boundaries. In other words, the extensibility lesson is not “add more metrics”, but “build the geometry/dose core so that advanced metrics inherit transparent, validated numerics.”
 
-**7d. Caveats and limitations**
+#### 7d. Caveats and limitations
 
 Generalisability is limited. The benchmark uses spheres, a radially symmetric analytic SRS dose model, and only two CT slice spacings. There is no anatomical irregularity, no heterogeneous density, no clinical beam model, and no full DVH-curve analysis. Results are version-specific, and one system (Elements) was assessed through a vendor engineering workflow on a prototype release. The systems were also deliberately anonymised, so algorithm-level attribution is limited.
 
@@ -2835,10 +2841,10 @@ The paper explicitly builds on or should be read alongside the following literat
 
 The tables below extract the paper’s quantitative results. Because the manuscript table header $\Delta V$ [cc] is inconsistent with the magnitudes for the smallest spheres, I interpret the tabulated values as **mean percentage difference relative to the analytical reference**, with the bracketed term as the reported range across the 50 random placements. The analytical reference table is derived from the paper’s sphere geometry and Eq. 1.
 
-**Table 9a. Analytical reference values derived from the paper’s geometry and dose model**
+#### Table 9a. Analytical reference values derived from the paper’s geometry and dose model
 
 | Diameter (mm) | Analytical target volume / V100 (cc) | Analytical V50 (cc) | Expected GI (V50/V100) |
-|---:|---:|---:|---:|
+| ---: | ---: | ---: | ---: |
 | 3 | 0.0141 | 0.0279 | 1.972 |
 | 5 | 0.0654 | 0.1002 | 1.530 |
 | 7 | 0.1796 | 0.2449 | 1.363 |
@@ -2846,10 +2852,10 @@ The tables below extract the paper’s quantitative results. Because the manuscr
 | 15 | 1.7671 | 2.0504 | 1.160 |
 | 20 | 4.1888 | 4.6860 | 1.119 |
 
-**Table 9b. Structure-volume error, mean % [range %]**
+#### Table 9b. Structure-volume error, mean % [range %]
 
 | Slice (mm) | Diameter (mm) | TPS-A | TPS-B | TPS-C | TPS-D | TPS-E |
-|---:|---:|:---|:---|:---|:---|:---|
+| ---: | ---: | :--- | :--- | :--- | :--- | :--- |
 | 0.5 | 3 | -9.8 [-16.4,-6.9] | +0.1 [-10.9,+8.2] | -1.5 [-12.1,+7.0] | -3.8 [-8.5,-0.8] | -1.0 [-1.0,-1.0] |
 | 0.5 | 5 | -3.1 [-5.7,-2.2] | -0.1 [-2.1,+1.8] | -0.4 [-2.6,+1.5] | -1.6 [-3.2,-0.8] | -0.5 [-0.7,+0.8] |
 | 0.5 | 7 | -1.3 [-2.6,-0.9] | +0.1 [-1.2,+1.2] | -0.1 [-1.3,+1.1] | -0.9 [-1.6,-0.3] | -0.1 [-0.3,+0.2] |
@@ -2863,10 +2869,10 @@ The tables below extract the paper’s quantitative results. Because the manuscr
 | 1.0 | 15 | -2.2 [-3.6,-1.8] | 0.0 [-1.2,+1.0] | -0.1 [-1.3,+0.7] | -0.8 [-1.5,-0.5] | -1.4 [-3.2,-0.3] |
 | 1.0 | 20 | -0.9 [-1.8,-0.7] | 0.0 [-0.5,+0.6] | -0.1 [-0.7,+0.5] | -0.5 [-0.8,-0.3] | -0.9 [-1.6,-0.2] |
 
-**Table 9c. V100% / V20 Gy error, mean % [range %]**
+#### Table 9c. V100% / V20 Gy error, mean % [range %]
 
 | Slice (mm) | Diameter (mm) | TPS-A | TPS-B | TPS-C | TPS-D | TPS-E |
-|---:|---:|:---|:---|:---|:---|:---|
+| ---: | ---: | :--- | :--- | :--- | :--- | :--- |
 | 0.5 | 3 | -0.2 [-24.5,+9.8] | -12.4 [-19.8,-5.8] | -13.1 [-20.7,-6.8] | -11.1 [-16.4,-6.6] | +0.2 [-22.2,+13.2] |
 | 0.5 | 5 | 0.0 [-6.5,+6.2] | -3.5 [-6.5,-2.1] | -3.9 [-7.1,-2.4] | -3.6 [-8.1,-1.5] | -0.2 [-3.7,+7.0] |
 | 0.5 | 7 | +0.1 [-3.0,+2.1] | -1.3 [-2.5,+0.3] | -1.5 [-2.8,0.0] | -1.6 [-3.8,-0.7] | -0.2 [-3.7,+3.0] |
@@ -2880,10 +2886,10 @@ The tables below extract the paper’s quantitative results. Because the manuscr
 | 1.0 | 15 | +0.2 [-2.3,+0.7] | -0.3 [-1.6,+0.8] | -0.5 [-1.8,+0.5] | +0.4 [-1.2,+1.3] | +0.2 [-4.7,+4.7] |
 | 1.0 | 20 | +0.2 [-0.2,+0.8] | 0.0 [-0.5,+0.7] | -0.2 [-0.7,+0.4] | +0.2 [-0.7,+0.9] | +0.1 [-1.3,+1.2] |
 
-**Table 9d. V50% / V10 Gy error, mean % [range %]**
+#### Table 9d. V50% / V10 Gy error, mean % [range %]
 
 | Slice (mm) | Diameter (mm) | TPS-A | TPS-B | TPS-C | TPS-D | TPS-E |
-|---:|---:|:---|:---|:---|:---|:---|
+| ---: | ---: | :--- | :--- | :--- | :--- | :--- |
 | 0.5 | 3 | 0.0 [-0.7,+0.6] | -0.6 [-1.2,+0.2] | -0.9 [-1.3,-0.2] | -0.7 [-1.5,-0.3] | +0.3 [-0.6,+1.6] |
 | 0.5 | 5 | 0.0 [-0.5,+0.5] | -0.3 [-0.9,+0.5] | -0.6 [-1.2,+0.2] | -0.3 [-0.6,0.0] | +0.1 [-1.1,+0.9] |
 | 0.5 | 7 | 0.0 [-0.3,+0.3] | -0.2 [-0.5,+0.4] | -0.4 [-0.7,+0.1] | -0.2 [-0.3,+0.1] | +0.1 [-0.2,+0.6] |
@@ -3008,29 +3014,29 @@ The reported commercial rankings are version-specific and partly dependent on ve
 
 ### 9. Data extraction table
 
-**Table 9a. Analytical ground-truth objects used in the benchmark.**
+#### Table 9a. Analytical ground-truth objects used in the benchmark
 
 | Structure | True volume (cc) | Dose gradient | Analytical Dmin (Gy) | Analytical Dmax (Gy) | Analytical mean dose (Gy) |
-|---|---:|---|---:|---:|---:|
+| --- | ---: | --- | ---: | ---: | ---: |
 | Cone | 3.62 | AP | 4 | 28 | 16 |
 | Cone | 3.62 | SI | 4 | 28 | 22 |
 | Cylinder | 10.86 | AP | 4 | 28 | 16 |
 | Cylinder | 10.86 | SI | 4 | 28 | 16 |
 
-**Table 9b. Precision-band width for derived metrics, expressed as percent difference relative to the best-fit metric value (median [IQR], %).**
+#### Table 9b. Precision-band width for derived metrics, expressed as percent difference relative to the best-fit metric value (median [IQR], %)
 
 | System | Cone AP | Cone SI | Cylinder AP | Cylinder SI | All |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | Eclipse | 2.86 [2.19-3.79] | 0.0470 [0.0217-0.143] | 2.79 [2.09-4.09] | 0.00733 [0.00237-0.0226] | 0.925 [0.022-2.86] |
 | Mobius3D | 1.56 [1.27-2.01] | 3.46 [1.61-5.10] | 1.56 [1.19-2.25] | 4.63 [1.78-8.54] | 1.96 [1.27-4.15] |
 | MIM Maestro | 0.627 [0.511-8.07] | 1.76 [1.01-3.77] | 0.626 [0.479-0.902] | 2.88 [1.26-5.98] | 0.902 [0.517-2.50] |
 | ProKnow DS | 1.21 [0.829-1.77] | 0.773 [0.61-1.16] | 1.01 [0.736-1.79] | 1.34 [0.724-2.59] | 1.05 [0.699-1.79] |
 | RayStation | 3.45 [2.33-6.81] | 2.16 [1.78-3.90] | 3.57 [2.15-6.84] | 3.61 [1.89-6.40] | 3.22 [1.95-5.86] |
 
-**Table 9c. Clinical uncertainty across nine CT/structure/dose resampling combinations, reported as $100\sigma/\mu$ (%).**
+#### Table 9c. Clinical uncertainty across nine CT/structure/dose resampling combinations, reported as $100\sigma/\mu$ (%)
 
 | Structure | System | Mean dose uncertainty (%) | Maximum dose uncertainty (%) |
-|---|---|---:|---:|
+| --- | --- | ---: | ---: |
 | Penile bulb | Eclipse | 6.17 | 0.85 |
 | Penile bulb | Mobius3D | 5.05 | - |
 | Penile bulb | MIM Maestro | 5.26 | 0.90 |
@@ -3160,7 +3166,7 @@ The main caveat is that Eclipse is **not** a ground truth. All conclusions are r
 **Table 9.1. Ratio to Eclipse by system (Table 2 extraction).** Values shown as **mean (SD)** with **median** in brackets.
 
 | System | All points | Dosimetric only | Volumetric only |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | Elements | 1.028 (0.166) [1.002] | 1.024 (0.193) [1.000] | 1.036 (0.062) [1.008] |
 | MIM | 1.035 (0.130) [1.003] | 1.026 (0.142) [1.000] | 1.057 (0.091) [1.016] |
 | Mobius3D | 1.062 (0.272) [1.003] | 1.050 (0.244) [1.000] | 1.091 (0.328) [1.016] |
@@ -3169,10 +3175,10 @@ The main caveat is that Eclipse is **not** a ground truth. All conclusions are r
 | RayStation | 1.043 (0.358) [1.002] | 1.046 (0.425) [1.000] | 1.037 (0.075) [1.007] |
 | Velocity | 1.037 (0.161) [1.002] | 1.022 (0.157) [1.000] | 1.072 (0.166) [1.016] |
 
-**Table 9.2. Grid-size sensitivity for dosimetric points only (Table 3 extraction).**
+#### Table 9.2. Grid-size sensitivity for dosimetric points only (Table 3 extraction)
 
 | System | 0.125 cm mean (SD) | 0.25 cm mean (SD) | Finer grid effect vs Eclipse |
-|---|---:|---:|---|
+| --- | ---: | ---: | --- |
 | Elements | 1.017 (0.262) | 1.031 (0.187) | Improved agreement |
 | MIM | 1.030 (0.173) | 1.022 (0.104) | Worse agreement |
 | Mobius3D | 1.047 (0.245) | 1.052 (0.243) | Improved agreement |
@@ -3181,7 +3187,8 @@ The main caveat is that Eclipse is **not** a ground truth. All conclusions are r
 | RayStation | 1.036 (0.425) | 1.056 (0.425) | Improved agreement |
 | Velocity | 1.022 (0.142) | 1.023 (0.172) | Slight improvement |
 
-**Additional extracted quantitative findings:**
+#### Additional extracted quantitative findings
+
 - Volume-only comparisons for **all systems** were significantly different from Eclipse at **P < .001**.
 - For all-points comparisons, the main text reports significant pairwise differences only for Pinnacle vs Elements and RayStation vs Velocity; other non-Eclipse pairwise comparisons were **P > .05**.
 - Grid-size differences were mostly non-significant; MIM worsening at finer grid was specifically reported as **P = .776**. Exact supplementary-table P values are [DETAIL NOT REPORTED] in the main text.
@@ -3297,29 +3304,29 @@ The paper’s thresholds are not vendor-agnostic. Monaco uses proprietary contou
 
 ### 9. Data extraction table
 
-**Table 9a. Analytical benchmark accuracy at 1 mm ST / 1 mm DG (mean percentage difference versus analytical values)**
+#### Table 9a. Analytical benchmark accuracy at 1 mm ST / 1 mm DG (mean percentage difference versus analytical values)
 
 | Sphere diameter (mm) | TPS target volume (%) | TPS V100% (%) | TPS V50% (%) | In-house target volume (%) | In-house V100% (%) | In-house V50% (%) |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 3 | 2.14 | 0.83 | 0.17 | 1.35 | 0.69 | 0.00 |
 | 7 | -0.31 | 0.15 | 0.11 | -0.18 | 0.00 | 0.00 |
 | 10 | 0.07 | 0.05 | 0.11 | 0.03 | 0.00 | 0.00 |
 | 15 | -0.02 | 0.06 | 0.08 | -0.01 | 0.00 | 0.00 |
 | 20 | 0.02 | 0.10 | 0.04 | 0.02 | 0.05 | -0.03 |
 
-**Table 9b. Size-dependent discretisation thresholds extracted from isodose-volume analysis**
+#### Table 9b. Size-dependent discretisation thresholds extracted from isodose-volume analysis
 
 | Perturbation relative to 1 mm reference | Central result | Region where >5% relative error emerged | Statistical pattern |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1.5 mm ST | $V_{\text{dose}}(\text{eval}) / V_{\text{dose}}(\text{ref})$ median **1.003 [0.972, 1.059]** | **9.4%** of points with $V_{\text{dose}}(\text{ref}) < 1$ cc (diameter **<12 mm**) | **$\rho$ < 0.04**, **p > 0.10** |
 | 2.0 mm ST | $V_{\text{dose}}(\text{eval}) / V_{\text{dose}}(\text{ref})$ median **1.000 [0.782, 1.080]** | **10.6%** of points with $V_{\text{dose}}(\text{ref}) < 7$ cc (diameter **<24 mm**) | **$\rho$ < 0.04**, **p > 0.10** |
 | 2.0 mm DG | $-0.089 x^{-0.664} + 1.003$ | Ratio >**0.95** only when $V_{\text{dose}}(\text{ref}) > 2$ cc (diameter **>16 mm**) | **$\rho$ = 0.53**, **p < 0.001** |
 | 3.0 mm DG | $-0.228 x^{-0.618} + 1.010$ | Ratio >**0.95** only when $V_{\text{dose}}(\text{ref}) > 10$ cc (diameter **>27 mm**) | **$\rho$ = 0.58**, **p < 0.001** |
 
-**Table 9c. Median percentage change in selected DVH indices for coarser dose grids, relative to 1 mm DG**
+#### Table 9c. Median percentage change in selected DVH indices for coarser dose grids, relative to 1 mm DG
 
 | PTV diameter (mm) | ΔV30Gy 2 mm (%) | ΔCI 2 mm (%) | ΔGI 2 mm (%) | ΔD95 2 mm (%) | ΔV30Gy 3 mm (%) | ΔCI 3 mm (%) | ΔGI 3 mm (%) | ΔD95 3 mm (%) |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 6 | -3.52 | 7.94 | 9.09 | -1.38 | -6.03 | 17.46 | 31.37 | -4.27 |
 | 10 | -0.98 | 5.63 | 7.12 | -1.10 | -3.70 | 11.27 | 17.15 | -3.16 |
 | 15 | -0.92 | 3.85 | 6.12 | -0.75 | -3.33 | 6.41 | 13.71 | -2.39 |
@@ -3433,10 +3440,10 @@ The exact numerical discrepancies in this paper should not be universalised. The
 
 ### 9. Data extraction table
 
-**Table 9a. High-value quantitative extracts**
+#### Table 9a. High-value quantitative extracts
 
 | Context | Size / volume | Extracted quantitative result | Reference / denominator |
-|---|---:|---:|---|
+| --- | ---: | ---: | --- |
 | Synthetic cumulative DVH | Smallest tested volumes | Up to **20 percentage points** deviation in cumulative % volume at specific dose points along the DVH curve | Difference in cumulative % volume vs analytical DVH |
 | RayStation synthetic DVH | **3 mm radius** (~**0.11 cc**) | **Close to 10%** average DVH difference | Authors’ textual summary; volume-at-dose difference |
 | RayStation synthetic DVH | **10 mm radius** (~**4.0 cc**) | **~1%** average DVH difference | Authors’ textual summary |
@@ -3448,18 +3455,18 @@ The exact numerical discrepancies in this paper should not be universalised. The
 | PCI error | Around **0.1 cc** | Up to **40%** | Relative to analytical truth |
 | MGI error | **<1 cc** | Up to **75%** | Relative to analytical truth |
 
-**Table 9b. Extracted PCI values from Table 2 (truth = PCI 1.00). Note: the paper text refers to "9 mm (3.03 cc)" but this is a minor misstatement; the correct volume of a 9 mm radius sphere is 3.05 cc, as given in the table header.**
+#### Table 9b. Extracted PCI values from Table 2 (truth = PCI 1.00). Note: the paper text refers to "9 mm (3.03 cc)" but this is a minor misstatement; the correct volume of a 9 mm radius sphere is 3.05 cc, as given in the table header
 
 | System | 2 mm radius on-slice | 2 mm radius between-slice | Relative error vs truth | 9 mm radius on-slice | 9 mm radius between-slice | Relative error vs truth |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | RayStation | 0.64 | 0.73 | **−36% to −27%** | 0.92 | 0.92 | **−8% to −8%** |
 | MasterPlan | 0.60 | 0.65 | **−40% to −35%** | 0.94 | 0.94 | **−6% to −6%** |
 | ProKnow | 0.71 | 0.72 | **−29% to −28%** | 0.95 | 0.94 | **−5% to −6%** |
 
-**Table 9c. Extracted MGI values from Table 2 (truth = MGI 3.69)**
+#### Table 9c. Extracted MGI values from Table 2 (truth = MGI 3.69)
 
 | System | 2 mm radius on-slice | 2 mm radius between-slice | Relative error vs truth | 9 mm radius on-slice | 9 mm radius between-slice | Relative error vs truth |
-|---|---:|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | RayStation | 5.24 | 4.93 | **+42.0% to +33.6%** | 3.83 | 3.84 | **+3.8% to +4.1%** |
 | MasterPlan | 5.67 | 6.34 | **+53.7% to +71.8%** | 3.86 | 3.83 | **+4.6% to +3.8%** |
 | ProKnow | 4.52 | 4.83 | **+22.5% to +30.9%** | 3.73 | 3.78 | **+1.1% to +2.4%** |
