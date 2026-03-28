@@ -174,10 +174,22 @@ def compute_dvh(
 
 | Module | Responsibility |
 | --- | --- |
-| `_types/` | All domain types. No computation logic. |
-| `_grammar.py` | `MetricSpec.parse()` implementation |
+| `_types/` | All domain types. No computation logic. Sub-modules below. |
+| `_types/_grid_frame.py` | `GridFrame` — 3D grid with affine transform |
+| `_types/_dose_ref.py` | `DoseReference`, `DoseReferenceSet` |
+| `_types/_roi_ref.py` | `ROIRef` — ROI identity + colour |
+| `_types/_issues.py` | `IssueLevel`, `IssueCode`, `Issue` |
+| `_types/_metrics.py` | `MetricSpec`, `MetricFamily`, enums, `ROIMetricRequest`, `MetricRequestSet` |
+| `_types/_config.py` | All config enums, `SupersamplingConfig`, `AlgorithmConfig`, `RuntimeConfig`, `PipelinePolicy`, `DVHConfig` |
+| `_types/_contour.py` | `Contour` (raw), `PlanarRegion`, `ContourROI` |
+| `_types/_dose.py` | `DoseGrid` |
+| `_types/_occupancy.py` | `OccupancyField` |
+| `_types/_sdf.py` | `SDFField` |
+| `_types/_results.py` | `DVHBins`, `MetricResult`, `ROIResult`, `DVHResultSet`, provenance types |
+| `_types/_inputs.py` | `DVHInputs` |
+| `_grammar.py` | `MetricSpec.parse()` implementation (lives on MetricSpec itself) |
 | `_serialisation.py` | JSON/TOML round-trip for all types |
-| `_protocols.py` | Strategy protocols (private) |
+| `_protocols.py` | Strategy protocols: `StructureModelBuilder`, `OccupancyComputer`, `DoseInterpolator` (private) |
 | `_geometry/` | Point-in-polygon, SDF, contour interpolation, end-capping |
 | `_occupancy/` | Voxelisation, supersampling, fractional occupancy |
 | `_dose/` | Dose interpolation, surface-point sampling |
@@ -188,6 +200,28 @@ def compute_dvh(
 | `_pipeline.py` | End-to-end DICOM pipeline |
 | `_benchmarks/` | Analytical geometry, dose fields, DVH formulas, DICOM generation |
 | `_cli.py` | CLI entry points |
+
+## Design Decisions (Phase 0)
+
+### ROIRef enrichment
+
+`ROIRef` carries `colour_rgb` in addition to `name` and `roi_number`. This was added to the RFC specification because:
+
+- Colour is DICOM ROI identity metadata (tag 3006,002A), not just display data
+- It needs to travel through the pipeline to results for DVH plotting
+- Without it, downstream code would need to look up the original structure data just to get the display colour
+
+### ContourROI carries geometry-interpretation fields
+
+`ContourROI` carries `combination_mode` and `coordinate_frame` (previously on a flat `Structure` type). These live on ContourROI rather than ROIRef because they govern how contours are combined during voxelisation, which is a geometry concern.
+
+### `cached_property` incompatibility with `slots=True`
+
+`functools.cached_property` does not work with `slots=True` dataclasses (no `__dict__`). For `DVHBins`, cumulative values are computed in `__post_init__` and stored as private `_cumulative_*` fields, exposed via regular `@property`.
+
+### Development workflow: TDD
+
+All development follows test-driven development: write tests first (Red), implement to pass (Green), refactor. Tests import from final module paths and are written before any implementation code.
 
 ---
 

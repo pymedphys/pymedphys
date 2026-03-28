@@ -687,20 +687,34 @@ class ROIRef:
     names are duplicated (which does occur in clinical practice).
     For raw-array inputs, roi_number is None.
 
-    Identity semantics: two ROIRefs are equal if their roi_number matches
+    The colour_rgb, when present, comes from DICOM ROI Display Color
+    (3006,002A) and is preserved through the pipeline to results,
+    enabling downstream plotting in the ROI's DICOM-specified colour
+    without requiring a back-reference to the original structure data.
+
+    Identity semantics: two ROIRefs match if their roi_number matches
     (when both have one), otherwise by name. This is the primary key
     throughout the system.
 
     Invariants:
 
         - name is non-empty
+        - colour_rgb values (when present) are in [0, 255]
     """
     name: str
     roi_number: Optional[int] = None
+    colour_rgb: Optional[tuple[int, int, int]] = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise ValueError("ROI name must be non-empty")
+        if self.colour_rgb is not None:
+            for i, c in enumerate(self.colour_rgb):
+                if not (0 <= c <= 255):
+                    raise ValueError(
+                        f"colour_rgb values must be in 0..255, "
+                        f"got {c} at index {i}"
+                    )
 
     def __str__(self) -> str:
         if self.roi_number is not None:
@@ -1337,6 +1351,11 @@ class ContourROI:
     normalised at import time using the policy's z_tolerance_mm to
     eliminate exact-float-equality brittleness from DICOM.
 
+    The combination_mode and coordinate_frame fields carry geometry-
+    interpretation metadata that was previously on a separate Structure
+    type. These live here rather than on ROIRef because they govern
+    how contours are combined during voxelisation, not ROI identity.
+
     Invariants:
 
         - slices are sorted by z_mm (ascending)
@@ -1346,6 +1365,8 @@ class ContourROI:
     """
     roi: ROIRef
     slices: tuple[tuple[float, tuple[PlanarRegion, ...]], ...]
+    combination_mode: str = "auto"       # "auto", "xor", "slice_union", "vendor_compat_xor"
+    coordinate_frame: str = "DICOM_PATIENT"
 
     def __post_init__(self) -> None:
         if not self.slices:
