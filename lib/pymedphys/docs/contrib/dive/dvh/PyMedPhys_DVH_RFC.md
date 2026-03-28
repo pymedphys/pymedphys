@@ -180,7 +180,7 @@
     - [Appendix B: Implementation Design Decisions](#appendix-b-implementation-design-decisions)
       - [B.1 ROIRef enriched with `colour_rgb` (Phase 0)](#b1-roiref-enriched-with-colour_rgb-phase-0)
       - [B.2 ContourROI carries geometry-interpretation fields (Phase 0)](#b2-contourroi-carries-geometry-interpretation-fields-phase-0)
-      - [B.3 `cached_property` replaced with private fields on DVHBins (Phase 0)](#b3-cached_property-replaced-with-private-fields-on-dvhbins-phase-0)
+      - [B.3 `cached_property` incompatibility with `slots=True` — precompute in `__post_init__` (Phase 0)](#b3-cached_property-incompatibility-with-slotstrueprecompute-in-__post_init__-phase-0)
       - [B.4 `_types/` subdirectory structure (Phase 0)](#b4-_types-subdirectory-structure-phase-0)
       - [B.5 Serialisation format split: TOML input, JSON output (Phase 0)](#b5-serialisation-format-split-toml-input-json-output-phase-0)
       - [B.6 `to_dict()`/`from_dict()` on each type (Phase 0)](#b6-to_dictfrom_dict-on-each-type-phase-0)
@@ -374,6 +374,7 @@ Grimm et al. [^11] compiled published SBRT normal-tissue dose tolerance limits a
 - Python API and CLI
 - DICOM RTDOSE DVH export (writing computed DVH curves into a valid DICOM RTDOSE object)
 - Per-ROI error handling (strict / repair_if_safe / skip_invalid)
+- Per-ROI algorithm config override (`config_override` on `ROIMetricRequest`): enables reference-mode computation only for small OARs where it matters, while using faster practical mode for large targets
 - Efficient CPU execution with `numba` JIT compilation, parallelisation, and batched memory management
 
 **ROI topology support:** Branching structures, holes, disconnected islands, and other topologies that can legitimately represent anatomy.
@@ -486,7 +487,11 @@ class GridFrame:
 
     For v1, only axis-aligned grids are supported. The affine is
     validated to be axis-aligned on construction. Future versions may
-    support oblique grids by relaxing this constraint.
+    support oblique grids by relaxing this constraint. If a supplied
+    dose grid is not axis-aligned with patient coordinates, the pipeline
+    raises `IssueCode.OBLIQUE_DOSE_GRID` with a clear error message
+    explaining the v1 limitation and recommending re-export with an
+    axis-aligned grid.
 
     Invariants:
 
@@ -872,10 +877,17 @@ class ROIMetricRequest:
         - metrics is non-empty
         - no duplicate metrics (by canonical_key)
         - dose_ref_id, if set, overrides the default for this ROI
+        - config_override, if set, overrides the global DVHConfig for this ROI
+
+    Per-ROI config override is a v1 feature motivated by clinical need: expensive
+    reference-mode computation is only required for small OARs where partial-volume
+    accuracy matters most, while faster practical mode is adequate for large targets.
+    This avoids applying expensive computation uniformly across all structures.
     """
     roi: ROIRef
     metrics: tuple[MetricSpec, ...]
     dose_ref_id: Optional[str] = None  # per-ROI dose reference override
+    config_override: Optional[DVHConfig] = None  # per-ROI algorithm config override (v1)
 
     def __post_init__(self) -> None:
         if not self.metrics:
@@ -889,11 +901,13 @@ class ROIMetricRequest:
         cls, name: str, metric_strings: list[str],
         roi_number: Optional[int] = None,
         dose_ref_id: Optional[str] = None,
+        config_override: Optional[DVHConfig] = None,
     ) -> ROIMetricRequest:
         return cls(
             roi=ROIRef(name=name, roi_number=roi_number),
             metrics=tuple(MetricSpec.parse(s) for s in metric_strings),
             dose_ref_id=dose_ref_id,
+            config_override=config_override,
         )
 
 @dataclass(frozen=True, slots=True)
@@ -1105,6 +1119,25 @@ class FloatingPointPrecision(str, Enum):
     FLOAT32 = "float32"
     FLOAT64 = "float64"
 
+class BinningStrategy(str, Enum):
+    """Controls how DVH bin edges are chosen.
+
+    UNIFORM_GY (default for practical mode): Uniform-width bins from 0 to
+        max_dose_gy * (1 + margin_fraction). Default bin width: 0.5 Gy
+        (per Drzymala et al. recommendation). Edges are NOT forced to align
+        with dose grid values.
+
+    DOSE_GRID_ALIGNED (default for reference mode): Bin edges coincide with
+        dose grid values present in the sampled set. Eliminates interpolation
+        artefacts in cumulative DVH.
+
+    CUSTOM: User supplies explicit dose_bin_edges_gy array via BinningConfig.
+        Must be strictly monotonically increasing.
+    """
+    UNIFORM_GY = "uniform_gy"
+    DOSE_GRID_ALIGNED = "dose_grid_aligned"
+    CUSTOM = "custom"
+
 @dataclass(frozen=True, slots=True)
 class SupersamplingConfig:
     """Controls supersampling behaviour.
@@ -1166,7 +1199,8 @@ class AlgorithmConfig:
     dose_interpolation: DoseInterpolationMethod = DoseInterpolationMethod.TRILINEAR
 
     # Histogram construction
-    dvh_bin_width_gy: float = 0.01
+    dvh_bin_width_gy: float = 0.5  # 0.5 Gy default per Drzymala et al. recommendation
+    dvh_binning_strategy: BinningStrategy = BinningStrategy.UNIFORM_GY
     dvh_type: DVHType = DVHType.BOTH
 
     # Precision
@@ -1507,7 +1541,6 @@ class OccupancyField:
 Key design decisions: (1) `DVHBins` is the canonical DVH storage primitive, storing dose bin edges + differential volume — cumulative and percentage views are derived, avoiding duplicated state; (2) `Issue` provides rich diagnostics with severity level, machine-parseable code, and a `path` tuple identifying the source; (3) `MetricResult` carries its own `MetricSpec` for self-describing results; (4) `ROIResult` carries `ROIRef` and explicit `status` (ok/skipped/failed); (5) `DVHResultSet` stores a tuple of `ROIResult` rather than a name-keyed dict, since ROI names may duplicate.
 
 ```python
-import functools
 from typing import Any
 
 class IssueLevel(str, Enum):
@@ -1531,6 +1564,12 @@ class IssueCode(str, Enum):
     ROI_FAILED = "ROI_FAILED"
     METRIC_UNAVAILABLE = "METRIC_UNAVAILABLE"
     Z_TOLERANCE_APPLIED = "Z_TOLERANCE_APPLIED"
+    DOSE_REFERENCE_MISSING = "DOSE_REFERENCE_MISSING"
+    # Raised when the supplied dose grid is not axis-aligned with patient
+    # coordinates. v1 does not support oblique dose grids. The error message
+    # must clearly explain this v1 limitation and suggest re-exporting with
+    # an axis-aligned grid.
+    OBLIQUE_DOSE_GRID = "OBLIQUE_DOSE_GRID"
 
 @dataclass(frozen=True, slots=True)
 class Issue:
@@ -1568,10 +1607,18 @@ class DVHBins:
         - differential_volume_cc has length N
         - differential_volume_cc values are non-negative
         - total_volume_cc is positive
+
+    Note: `functools.cached_property` cannot be used with `slots=True` (no
+    `__dict__`). Derived arrays are precomputed in `__post_init__` and stored
+    as private fields, exposed via regular `@property`. See Appendix B.3.
     """
     dose_bin_edges_gy: npt.NDArray[np.float64]   # (N+1,)
     differential_volume_cc: npt.NDArray[np.float64]  # (N,)
     total_volume_cc: float
+
+    # Precomputed derived arrays (slots=True requires explicit field declarations)
+    _cumulative_volume_cc: npt.NDArray[np.float64] = field(init=False, repr=False)
+    _cumulative_volume_pct: npt.NDArray[np.float64] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         edges = np.array(self.dose_bin_edges_gy, dtype=np.float64)
@@ -1587,32 +1634,35 @@ class DVHBins:
         dv.flags.writeable = False
         object.__setattr__(self, 'dose_bin_edges_gy', edges)
         object.__setattr__(self, 'differential_volume_cc', dv)
+        # Precompute cumulative arrays
+        cum = np.concatenate([
+            np.cumsum(dv[::-1])[::-1],
+            [0.0]
+        ])
+        cum.flags.writeable = False
+        object.__setattr__(self, '_cumulative_volume_cc', cum)
+        pct = cum / float(self.total_volume_cc) * 100.0
+        pct.flags.writeable = False
+        object.__setattr__(self, '_cumulative_volume_pct', pct)
 
     @property
     def bin_width_gy(self) -> float:
         """Uniform bin width (assumes uniform spacing)."""
         return float(self.dose_bin_edges_gy[1] - self.dose_bin_edges_gy[0])
 
-    @functools.cached_property
+    @property
     def cumulative_volume_cc(self) -> npt.NDArray[np.float64]:
         """Cumulative DVH: V(D) at each bin edge (N+1 values).
 
         cumulative_volume_cc[j] = total volume receiving >= dose_bin_edges_gy[j].
         """
-        cum = np.concatenate([
-            np.cumsum(self.differential_volume_cc[::-1])[::-1],
-            [0.0]
-        ])
-        cum.flags.writeable = False
-        return cum
+        return self._cumulative_volume_cc
 
-    @functools.cached_property
+    @property
     def cumulative_volume_pct(self) -> npt.NDArray[np.float64]:
         """Cumulative DVH as percentage of total volume.
         """
-        pct = self.cumulative_volume_cc / self.total_volume_cc * 100.0
-        pct.flags.writeable = False
-        return pct
+        return self._cumulative_volume_pct
 
     @property
     def min_dose_gy(self) -> float:
@@ -1994,28 +2044,46 @@ class SDFField:
     def __hash__(self) -> int:
         return hash((self.frame, self.roi.name, self.data.tobytes()))
 
+# StructureModel is a union of the two first-class structure representation types.
+# SDFBuilder produces SDFField; RightPrismBuilder produces RightPrismModel.
+# OccupancyComputer dispatches on the runtime type of the StructureModel it receives.
+StructureModel = SDFField | RightPrismModel
+
 @runtime_checkable
 class StructureModelBuilder(Protocol):
     """Builds a continuous 3D structure model from a ContourROI.
 
-    The structure model is an internal representation (SDF volume,
-    right-prism extruded contour stack, etc.) that can be sampled
+    The structure model is an internal representation that can be sampled
     at arbitrary resolution. This separates geometry construction
     (right-prism vs SDF interpolation) from grid rasterisation
     (supersampling, occupancy computation).
+
+    Two first-class implementations are supported (both fully validated):
+
+    - **SDFBuilder** (reference mode default): produces an `SDFField` — a 3D
+      signed-distance-field volume on a fine internal grid. Negative values =
+      inside, positive = outside, zero = boundary.
+
+    - **RightPrismBuilder** (practical/fast mode default): produces a
+      `RightPrismModel` — a stack of 2D contour polygons with z-extents.
+      This is NOT an SDF and does not return an `SDFField`.
+
+    The return type is `StructureModel = SDFField | RightPrismModel`. The
+    `OccupancyComputer` receives the `StructureModel` and dispatches to the
+    appropriate occupancy algorithm based on its runtime type.
     """
     def build(
         self,
         contour_roi: ContourROI,
         config: AlgorithmConfig,
-    ) -> SDFField:
-        """Return a 3D SDF on a sufficiently fine internal grid.
+    ) -> StructureModel:
+        """Return a continuous 3D structure model.
 
-        The returned SDFField carries both the SDF array and its
-        associated GridFrame, ensuring the spatial metadata is
-        never separated from the array data.
+        The concrete return type depends on the builder implementation:
+        - `SDFBuilder.build(...)` returns `SDFField`
+        - `RightPrismBuilder.build(...)` returns `RightPrismModel`
 
-        Negative values = inside, positive = outside, zero = boundary.
+        Both are variants of `StructureModel = SDFField | RightPrismModel`.
         """
         ...
 
@@ -2132,6 +2200,13 @@ A single DICOM RTSTRUCT slice may contain multiple contours, representing discon
 
 #### 7.2.1 Right-Prism Extrusion
 
+**Right-prism is a first-class method, not an emulation of SDF.** The `RightPrismBuilder` protocol implementation produces a `RightPrismModel` — a stack of 2D contour polygons with z-extents. This is architecturally distinct from the SDF representation and is not emulated via SDF approximation. Both methods are fully supported and independently validated:
+
+- **`RightPrismBuilder` → `RightPrismModel`**: default for practical/fast mode. Uses point-in-polygon directly for occupancy (no SDF needed).
+- **`SDFBuilder` → `SDFField`**: default for reference mode. Full 3D signed-distance field computation.
+
+The `OccupancyComputer` dispatches on the runtime type of the `StructureModel` it receives (`isinstance` check on `SDFField` vs `RightPrismModel`).
+
 Each contour is extruded perpendicular to its slice plane. For adjacent slices at $z_i$ and $z_{i+1}$, the midpoint $z_m = (z_i + z_{i+1})/2$ defines the transition.
 
 **Matches:** Mobius3D v3.1, MIM Maestro v6.9.6, ProKnow DS v1.22 [^18].
@@ -2200,7 +2275,25 @@ Step 1: Classify voxels via 8-corner testing. Step 2: Supersample boundary voxel
 
 #### 7.4.4 SDF-Derived Fractional Occupancy
 
+> See also: [SDF Explainer](./sdf_explainer.md) — a self-contained derivation of the 2D signed-distance-field computation, vectorised pseudocode, accuracy analysis, and worked examples.
+
 For boundary voxels, $\omega \approx \frac{1}{2} - \frac{\phi(\mathbf{p})}{2h}$ clamped to $[0, 1]$. Exact for planar boundaries, $O(h/R)$ for curved boundaries with radius $R$. *[Engineering inference]*
+
+**Volume-of-Fluid box-plane intersection (closed form, Scardovelli & Zaleski 1999 [^ScZ1999]):**
+
+For a voxel box $\mathcal{B}$ with half-width $h$ centred at grid point $\mathbf{p}$, and a planar boundary defined by the linearised SDF $\phi(\mathbf{x}) \approx \phi(\mathbf{p}) + \nabla\phi \cdot (\mathbf{x} - \mathbf{p})$, the exact fractional volume inside the boundary is:
+
+$$\omega = F(\phi(\mathbf{p}), \hat{n}, h)$$
+
+where $F$ is the clipped-box/plane volume function given in closed form by Scardovelli & Zaleski (1999), parameterised by the signed distance at the voxel centre and the unit normal $\hat{n} = \nabla\phi / \|\nabla\phi\|$. This is exact for planar boundaries (no approximation beyond floating-point precision).
+
+**Curvature correction:**
+
+For curved boundaries (radius $R$ from the SDF zero-crossing), the first-order correction to $\omega$ is:
+
+$$\Delta\omega = -\frac{\kappa_1 \Delta x^2 + \kappa_2 \Delta y^2}{24}$$
+
+where $\kappa_1, \kappa_2$ are the principal curvatures of the structure boundary and $\Delta x, \Delta y$ are the in-plane voxel spacings. This correction is $O(h^2/R)$ and becomes relevant for small structures (radius $R \lesssim 5h$). *[Engineering inference from curvature-corrected SDF literature]*
 
 ### 7.5 Dose Interpolation
 
@@ -2219,6 +2312,20 @@ Construct the sampling lattice to include every original dose-grid centre exactl
 ### 7.6 Histogram Construction
 
 The canonical storage is `DVHBins` (dose bin edges + differential volume). Cumulative DVH is derived, not stored independently.
+
+#### 7.6.0 Binning Strategy Specification
+
+DVH bin edges are fully configurable via `DVHBins.BinningConfig` (part of `AlgorithmConfig`). Three strategies are supported:
+
+1. **`UNIFORM_GY`** (default for practical mode): Uniform-width bins from 0 to `max_dose_gy * (1 + margin_fraction)`. Default bin width: 0.5 Gy (per Drzymala et al. recommendation). Bin edges are NOT forced to align with dose grid values.
+
+2. **`DOSE_GRID_ALIGNED`** (default for reference mode): Bin edges coincide with dose grid values present in the sampled set. Eliminates interpolation artefacts in cumulative DVH.
+
+3. **`CUSTOM`**: User supplies explicit `dose_bin_edges_gy` array. Must be strictly monotonically increasing.
+
+**Axis range:** By default, the lower bound is 0 Gy and the upper bound is `ceil(max_sampled_dose / bin_width) * bin_width`, ensuring the maximum sampled dose falls within the last bin.
+
+**Bin width guidance:** Drzymala et al. [^1] recommend ≤0.5 Gy for cumulative DVH. Pepin et al. note that bin width affects the precision band width — narrower bins increase precision-band sensitivity to histogram noise. 0.5 Gy is the default; research users may want to adjust via the `BinningConfig`. *[Design proposal]*
 
 #### 7.6.1 Differential Histogram
 
@@ -3462,13 +3569,31 @@ This appendix records design decisions made during implementation that diverge f
 
 **What changed:** RFC §6.7 code block updated to include both fields on `ContourROI`.
 
-#### B.3 `cached_property` replaced with private fields on DVHBins (Phase 0)
+#### B.3 `cached_property` incompatibility with `slots=True` — precompute in `__post_init__` (Phase 0)
 
-**RFC §6.9 specified:** `functools.cached_property` for `cumulative_volume_cc` and `cumulative_volume_pct` on `DVHBins`.
+**Rule:** `functools.cached_property` does not work with `slots=True` dataclasses because `slots=True` eliminates `__dict__`. For `slots=True` dataclasses, precompute derived values in `__post_init__` and store them as private fields (using `field(init=False, repr=False)`), then expose via regular `@property`. Only use `cached_property` on classes that intentionally carry a `__dict__` (i.e., non-slots classes).
 
-**Decision:** Use private `_cumulative_volume_cc` and `_cumulative_volume_pct` fields computed in `__post_init__`, exposed via regular `@property`.
+**Applied to DVHBins:** `cumulative_volume_cc` and `cumulative_volume_pct` are computed eagerly in `__post_init__` and stored as `_cumulative_volume_cc` / `_cumulative_volume_pct`, exposed via regular `@property`. Example:
 
-**Rationale:** `functools.cached_property` requires `__dict__` on the instance, which is unavailable when `slots=True` is set. Since the RFC also specifies `slots=True` for all dataclasses, these two requirements are incompatible. Computing cumulative values eagerly in `__post_init__` and storing them as private fields preserves the frozen/slots contract while still providing the derived values. The fields are excluded from `__init__` (via `field(init=False)`) and `__repr__`.
+```python
+@dataclass(frozen=True, slots=True)
+class DVHBins:
+    dose_bin_edges_gy: np.ndarray
+
+    # Precompute derived values in __post_init__
+    _cumulative_volume_cc: np.ndarray = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        # ... validation ...
+        cumulative = np.cumsum(...)
+        object.__setattr__(self, '_cumulative_volume_cc', cumulative)
+
+    @property
+    def cumulative_volume_cc(self) -> np.ndarray:
+        return self._cumulative_volume_cc
+```
+
+**Rationale:** `functools.cached_property` requires `__dict__` on the instance, which is unavailable when `slots=True` is set. Since the RFC specifies `slots=True` for all dataclasses, these two requirements are incompatible. Computing cumulative values eagerly in `__post_init__` and storing them as private fields preserves the frozen/slots contract while still providing the derived values. The fields are excluded from `__init__` (via `field(init=False)`) and `__repr__`.
 
 #### B.4 `_types/` subdirectory structure (Phase 0)
 
@@ -3672,3 +3797,7 @@ Ordered by estimated impact-to-effort ratio:
 [^27]: Sunday D. Inclusion of a point in a polygon. *Geometry Algorithms*. 2001. Available [here](https://web.archive.org/web/2021*/https://geomalgorithms.com/a03-_inclusion.html).
 
 [^28]: Kahan W. Pracniques: Further remarks on reducing truncation errors. *Commun ACM*. 1965;8(1):40. doi:10.1145/363707.363723.
+
+[^ScZ1999]: Scardovelli R, Zaleski S. Direct numerical simulation of free-surface and interfacial flow. *Annual Review of Fluid Mechanics*. 1999;31(1):567–603. doi:10.1146/annurev.fluid.31.1.567. (Source of the closed-form Volume-of-Fluid box-plane intersection formula used in §7.4.4.)
+
+[^Powell2015]: Powell D, Abel T. An exact general remeshing scheme applied to physically conservative voxelization. *Journal of Computational Physics*. 2015;297:340–356. doi:10.1016/j.jcp.2015.05.022. (Source of the `r3d` exact polyhedron–voxel intersection algorithm referenced in the accuracy comparison table.)
