@@ -175,15 +175,43 @@ class MetricSpec:
             return cls(family=family, output_unit=output_unit, raw=raw)
 
         # Pattern-based (threshold) metrics: (pattern, family, threshold_unit, output_unit)
-        _PATTERNS: list[
-            tuple[str, MetricFamily, ThresholdUnit, OutputUnit]
-        ] = [
-            (r"^D(\d+(?:\.\d+)?)%\[%Rx\]$", MetricFamily.DVH_DOSE, ThresholdUnit.PERCENT, OutputUnit.PERCENT_DOSE),
-            (r"^D(\d+(?:\.\d+)?)%$", MetricFamily.DVH_DOSE, ThresholdUnit.PERCENT, OutputUnit.GY),
-            (r"^D(\d+(?:\.\d+)?)cc$", MetricFamily.DVH_DOSE, ThresholdUnit.CC, OutputUnit.GY),
-            (r"^V(\d+(?:\.\d+)?)Gy\[%\]$", MetricFamily.DVH_VOLUME, ThresholdUnit.GY, OutputUnit.PERCENT_VOLUME),
-            (r"^V(\d+(?:\.\d+)?)Gy$", MetricFamily.DVH_VOLUME, ThresholdUnit.GY, OutputUnit.CC),
-            (r"^V(\d+(?:\.\d+)?)%$", MetricFamily.DVH_VOLUME, ThresholdUnit.PERCENT, OutputUnit.CC),
+        _PATTERNS: list[tuple[str, MetricFamily, ThresholdUnit, OutputUnit]] = [
+            (
+                r"^D(\d+(?:\.\d+)?)%\[%Rx\]$",
+                MetricFamily.DVH_DOSE,
+                ThresholdUnit.PERCENT,
+                OutputUnit.PERCENT_DOSE,
+            ),
+            (
+                r"^D(\d+(?:\.\d+)?)%$",
+                MetricFamily.DVH_DOSE,
+                ThresholdUnit.PERCENT,
+                OutputUnit.GY,
+            ),
+            (
+                r"^D(\d+(?:\.\d+)?)cc$",
+                MetricFamily.DVH_DOSE,
+                ThresholdUnit.CC,
+                OutputUnit.GY,
+            ),
+            (
+                r"^V(\d+(?:\.\d+)?)Gy\[%\]$",
+                MetricFamily.DVH_VOLUME,
+                ThresholdUnit.GY,
+                OutputUnit.PERCENT_VOLUME,
+            ),
+            (
+                r"^V(\d+(?:\.\d+)?)Gy$",
+                MetricFamily.DVH_VOLUME,
+                ThresholdUnit.GY,
+                OutputUnit.CC,
+            ),
+            (
+                r"^V(\d+(?:\.\d+)?)%$",
+                MetricFamily.DVH_VOLUME,
+                ThresholdUnit.PERCENT,
+                OutputUnit.CC,
+            ),
         ]
         for pattern, family, threshold_unit, output_unit in _PATTERNS:
             m = re.match(pattern, s)
