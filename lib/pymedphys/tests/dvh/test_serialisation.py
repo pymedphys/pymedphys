@@ -206,7 +206,7 @@ class TestGridFrameRoundTrip:
     def test_round_trip(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(2.5, 3.0, 1.5),
+            spacing_mm_xyz=(2.5, 3.0, 1.5),
             origin_xyz_mm=(-10.0, -20.0, -30.0),
         )
         d = gf.to_dict()
@@ -219,7 +219,7 @@ class TestGridFrameRoundTrip:
     def test_json_serialisable(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(5, 5, 5),
-            spacing_xyz_mm=(1.0, 1.0, 1.0),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         s = json.dumps(gf.to_dict())
@@ -363,7 +363,7 @@ def _make_full_result_set() -> DVHResultSet:
             rtdose_file_sha256="def456",
             dose_grid_frame=GridFrame.from_uniform(
                 shape_zyx=(10, 20, 30),
-                spacing_xyz_mm=(2.5, 2.5, 2.5),
+                spacing_mm_xyz=(2.5, 2.5, 2.5),
                 origin_xyz_mm=(0.0, 0.0, 0.0),
             ),
         ),

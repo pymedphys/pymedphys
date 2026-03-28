@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class InterpolationMethod(str, Enum):
@@ -85,7 +85,7 @@ class SupersamplingConfig:
         Whether to refine edge voxels adaptively.
     """
 
-    factor: Optional[int] = None
+    factor: int | None = None
     adaptive_min_voxels: int = 10000
     adaptive_convergence_tol: float = 0.002
     adaptive_edge_refinement: bool = True
@@ -154,7 +154,7 @@ class AlgorithmConfig:
 
     interpolation_method: InterpolationMethod = InterpolationMethod.SHAPE_BASED
     endcap_policy: EndCapPolicy = EndCapPolicy.HALF_SLICE
-    endcap_max_mm: Optional[float] = None
+    endcap_max_mm: float | None = None
     occupancy_method: OccupancyMethod = OccupancyMethod.ADAPTIVE_SUPERSAMPLED
     point_in_polygon: PointInPolygonRule = PointInPolygonRule.SCANLINE_EVEN_ODD
     supersampling: SupersamplingConfig = field(
@@ -226,7 +226,7 @@ class RuntimeConfig:
     """
 
     deterministic: bool = True
-    max_threads: Optional[int] = None
+    max_threads: int | None = None
     batch_size_gb: float = 12.0
 
     def __post_init__(self) -> None:
@@ -298,8 +298,20 @@ class DVHConfig:
     def reference(cls) -> DVHConfig:
         """High-accuracy reference mode.
 
-        TENTATIVE — pending benchmark calibration.
+        .. warning::
+
+            This profile is **TENTATIVE** — pending benchmark
+            calibration against analytical geometries (Phase 3).
+            Parameters may change. Do not use for clinical validation
+            until the benchmark suite confirms accuracy.
         """
+        warnings.warn(
+            "DVHConfig.reference() is TENTATIVE and has not yet been "
+            "calibrated against analytical benchmarks (Phase 3). "
+            "Parameters may change in future releases.",
+            UserWarning,
+            stacklevel=2,
+        )
         return cls(
             algorithm=AlgorithmConfig(
                 interpolation_method=InterpolationMethod.SHAPE_BASED,
@@ -325,8 +337,18 @@ class DVHConfig:
     def fast(cls) -> DVHConfig:
         """Speed-optimised practical mode.
 
-        TENTATIVE — pending benchmark calibration.
+        .. warning::
+
+            This profile is **TENTATIVE** — pending benchmark
+            calibration against analytical geometries (Phase 3).
         """
+        warnings.warn(
+            "DVHConfig.fast() is TENTATIVE and has not yet been "
+            "calibrated against analytical benchmarks (Phase 3). "
+            "Parameters may change in future releases.",
+            UserWarning,
+            stacklevel=2,
+        )
         return cls(
             algorithm=AlgorithmConfig(
                 interpolation_method=InterpolationMethod.RIGHT_PRISM,

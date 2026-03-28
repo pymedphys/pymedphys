@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,8 +30,8 @@ class ROIRef:
     """
 
     name: str
-    roi_number: Optional[int] = None
-    colour_rgb: Optional[tuple[int, int, int]] = None
+    roi_number: int | None = None
+    colour_rgb: tuple[int, int, int] | None = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():

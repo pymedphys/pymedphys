@@ -44,9 +44,14 @@ class OccupancyField:
 
     @property
     def volume_cc(self) -> float:
-        """Total structure volume in cc (mm^3 / 1000)."""
-        dz, dy, dx = self.frame.spacing_mm
-        voxel_volume_mm3 = dx * dy * dz
+        """Total structure volume in cc (mm³ / 1000).
+
+        Uses ``|det(affine[:3,:3])|`` for the voxel volume, which is
+        correct for any axis-aligned grid (the only type currently
+        supported by ``GridFrame``).
+        """
+        aff = self.frame.index_to_patient_mm
+        voxel_volume_mm3 = abs(float(np.linalg.det(aff[:3, :3])))
         return float(np.sum(self.data)) * voxel_volume_mm3 / 1000.0
 
     def __eq__(self, other: object) -> bool:

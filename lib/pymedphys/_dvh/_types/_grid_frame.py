@@ -1,4 +1,28 @@
-"""GridFrame — regular 3D grid in patient coordinates (RFC section 6.2)."""
+"""GridFrame — regular 3D grid in patient coordinates (RFC section 6.2).
+
+This implementation currently supports **axis-aligned grids only**, which
+covers all standard DICOM RTDOSE grids. Non-axis-aligned (tilted) grids
+may be supported in a future phase.
+
+DICOM construction notes
+------------------------
+When constructing a ``GridFrame`` from DICOM RTDOSE, the affine maps
+voxel indices ``(iz, iy, ix)`` to patient coordinates ``(x, y, z)`` in mm.
+For a standard HFS RTDOSE with ``ImageOrientationPatient = [1,0,0,0,1,0]``:
+
+.. code-block:: python
+
+    # dx = PixelSpacing[1], dy = PixelSpacing[0], dz = GridFrameOffsetVector spacing
+    # origin = ImagePositionPatient
+    gf = GridFrame.from_uniform(
+        shape_zyx=(nz, ny, nx),
+        spacing_mm_xyz=(dx, dy, dz),
+        origin_xyz_mm=(origin_x, origin_y, origin_z),
+    )
+
+The affine columns are ordered ``[iz_step | iy_step | ix_step | origin]``
+which maps the ``(iz, iy, ix)`` index tuple to ``(x, y, z)`` patient mm.
+"""
 
 from __future__ import annotations
 
@@ -10,24 +34,27 @@ import numpy.typing as npt
 
 @dataclass(frozen=True, slots=True, eq=False)
 class GridFrame:
-    """Defines a regular 3D grid in patient coordinates with an explicit
-    index-to-patient affine transform.
+    """Defines a regular, **axis-aligned** 3D grid in patient coordinates
+    with an explicit index-to-patient affine transform.
 
-    The canonical array axis order is (z, y, x) — matching the DICOM
+    The canonical array axis order is ``(z, y, x)`` — matching the DICOM
     convention where the z-axis (slice direction) is the slowest-varying
     index. All 3D arrays in the system (dose, occupancy, SDF) use this
     axis order.
 
-    The affine transform ``index_to_patient_mm`` is a 4x4 matrix mapping
-    integer voxel indices (iz, iy, ix) to patient coordinates (x, y, z)
-    in mm.
+    The affine transform ``index_to_patient_mm`` is a 4×4 matrix mapping
+    integer voxel indices ``(iz, iy, ix)`` to patient coordinates
+    ``(x, y, z)`` in mm. Only axis-aligned affines are currently
+    supported (off-diagonal elements of the 3×3 rotation sub-matrix
+    must be zero).
 
     Parameters
     ----------
     shape_zyx : tuple[int, int, int]
-        Grid dimensions (nz, ny, nx). All must be strictly positive.
+        Grid dimensions ``(nz, ny, nx)``. All must be strictly positive.
     index_to_patient_mm : npt.NDArray[np.float64]
-        4x4 affine matrix mapping voxel indices to patient mm.
+        4×4 affine matrix mapping voxel indices to patient mm.
+        Must be axis-aligned (no off-diagonal rotation terms).
     """
 
     shape_zyx: tuple[int, int, int]
@@ -41,12 +68,42 @@ class GridFrame:
                 f"Affine must be (4, 4), got {self.index_to_patient_mm.shape}"
             )
         aff = np.array(self.index_to_patient_mm, dtype=np.float64)
+
+        # Validate bottom row is [0, 0, 0, 1]
+        if not np.allclose(aff[3, :], [0, 0, 0, 1]):
+            raise ValueError(
+                f"Bottom row of affine must be [0, 0, 0, 1], got {aff[3, :]}"
+            )
+
+        # Check spacing is positive (before axis-alignment check, since
+        # zero spacing would make the rotation matrix singular)
+        col_norms = tuple(float(np.linalg.norm(aff[:3, i])) for i in range(3))
+        if any(s <= 0 for s in col_norms):
+            raise ValueError(
+                f"Derived spacing must be positive, got "
+                f"(dz={col_norms[0]}, dy={col_norms[1]}, dx={col_norms[2]})"
+            )
+
+        # Validate axis-aligned: the 3x3 rotation sub-matrix must have
+        # exactly one non-zero entry per row and per column.
+        rot = aff[:3, :3]
+        mask = np.abs(rot) > 1e-12
+        for i in range(3):
+            if np.count_nonzero(mask[i, :]) != 1:
+                raise ValueError(
+                    "Only axis-aligned grids are currently supported. "
+                    f"Row {i} of the affine rotation sub-matrix has "
+                    f"multiple non-zero entries: {rot[i, :]}"
+                )
+            if np.count_nonzero(mask[:, i]) != 1:
+                raise ValueError(
+                    "Only axis-aligned grids are currently supported. "
+                    f"Column {i} of the affine rotation sub-matrix has "
+                    f"multiple non-zero entries: {rot[:, i]}"
+                )
+
         aff.flags.writeable = False
         object.__setattr__(self, "index_to_patient_mm", aff)
-
-        sp = self.spacing_mm
-        if any(s <= 0 for s in sp):
-            raise ValueError(f"Derived spacing must be positive, got {sp}")
 
     @property
     def spacing_mm(self) -> tuple[float, float, float]:
@@ -88,21 +145,33 @@ class GridFrame:
     def from_uniform(
         cls,
         shape_zyx: tuple[int, int, int],
-        spacing_xyz_mm: tuple[float, float, float],
-        origin_xyz_mm: tuple[float, float, float],
+        spacing_mm_xyz: tuple[float, float, float] | None = None,
+        origin_xyz_mm: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        *,
+        spacing_xyz_mm: tuple[float, float, float] | None = None,
     ) -> GridFrame:
         """Convenience constructor for axis-aligned uniform grids.
 
         Parameters
         ----------
         shape_zyx : tuple[int, int, int]
-            (nz, ny, nx) grid dimensions.
-        spacing_xyz_mm : tuple[float, float, float]
-            (dx, dy, dz) voxel spacing in mm.
+            ``(nz, ny, nx)`` grid dimensions.
+        spacing_mm_xyz : tuple[float, float, float]
+            ``(dx, dy, dz)`` voxel spacing in mm, in patient-coordinate
+            (x, y, z) order.
         origin_xyz_mm : tuple[float, float, float]
-            (x, y, z) of voxel [0, 0, 0] centre in mm.
+            ``(x, y, z)`` of voxel ``[0, 0, 0]`` centre in mm.
+        spacing_xyz_mm : tuple[float, float, float], optional
+            Deprecated alias for ``spacing_mm_xyz``. Will be removed in
+            a future release.
         """
-        dx, dy, dz = spacing_xyz_mm
+        if spacing_mm_xyz is not None and spacing_xyz_mm is not None:
+            raise TypeError("Cannot specify both spacing_mm_xyz and spacing_xyz_mm")
+        if spacing_mm_xyz is None and spacing_xyz_mm is None:
+            raise TypeError("spacing_mm_xyz is required")
+        if spacing_mm_xyz is None:
+            spacing_mm_xyz = spacing_xyz_mm  # type: ignore[assignment]
+        dx, dy, dz = spacing_mm_xyz  # type: ignore[misc]
         ox, oy, oz = origin_xyz_mm
         aff = np.array(
             [

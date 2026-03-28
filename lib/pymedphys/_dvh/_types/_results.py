@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import FrozenSet, Literal, Optional
+from datetime import datetime, timezone
+from enum import Enum
 
 import numpy as np
 import numpy.typing as npt
@@ -14,6 +16,14 @@ from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue
 from pymedphys._dvh._types._metrics import MetricSpec
 from pymedphys._dvh._types._roi_ref import ROIRef
+
+
+class ROIStatus(str, Enum):
+    """Status of an ROI computation result."""
+
+    OK = "ok"
+    SKIPPED = "skipped"
+    FAILED = "failed"
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -53,6 +63,25 @@ class DVHBins:
                 f"differential_volume_cc length {len(dv)} != "
                 f"dose_bin_edges_gy length {len(edges)} - 1"
             )
+        # A1: Bin edges must be strictly increasing
+        diffs = np.diff(edges)
+        if not np.all(diffs > 0):
+            raise ValueError("dose_bin_edges_gy must be strictly increasing")
+        # A2: Uniform bin spacing required (non-uniform may be supported later)
+        widths = diffs
+        if not np.allclose(widths, widths[0]):
+            raise ValueError(
+                "dose_bin_edges_gy must have uniform spacing. "
+                "Non-uniform bin widths are not yet supported."
+            )
+        # A1: Differential volumes must be non-negative
+        if np.any(dv < 0):
+            raise ValueError("differential_volume_cc values must be non-negative")
+        # A1: Total volume must be strictly positive
+        if self.total_volume_cc <= 0:
+            raise ValueError(
+                f"total_volume_cc must be strictly positive, got {self.total_volume_cc}"
+            )
         edges.flags.writeable = False
         dv.flags.writeable = False
         object.__setattr__(self, "dose_bin_edges_gy", edges)
@@ -68,7 +97,7 @@ class DVHBins:
 
     @property
     def bin_width_gy(self) -> float:
-        """Uniform bin width (assumes uniform spacing)."""
+        """Uniform bin width in Gy (uniform spacing is enforced at construction)."""
         return float(self.dose_bin_edges_gy[1] - self.dose_bin_edges_gy[0])
 
     @property
@@ -151,9 +180,9 @@ class MetricResult:
     """
 
     spec: MetricSpec
-    value: Optional[float]
+    value: float | None
     unit: str
-    convergence_estimate: Optional[float] = None
+    convergence_estimate: float | None = None
     issues: tuple[Issue, ...] = ()
 
     def to_dict(self) -> dict:
@@ -183,13 +212,13 @@ class MetricResult:
 class ROIDiagnostics:
     """Per-ROI computation diagnostics."""
 
-    effective_supersampling: Optional[int] = None
-    boundary_voxel_count: Optional[int] = None
-    interior_voxel_count: Optional[int] = None
-    mean_boundary_gradient_gy_per_mm: Optional[float] = None
+    effective_supersampling: int | None = None
+    boundary_voxel_count: int | None = None
+    interior_voxel_count: int | None = None
+    mean_boundary_gradient_gy_per_mm: float | None = None
     contour_slice_count: int = 0
-    endcap_volume_fraction: Optional[float] = None
-    computation_time_s: Optional[float] = None
+    endcap_volume_fraction: float | None = None
+    computation_time_s: float | None = None
 
     def to_dict(self) -> dict:
         d: dict = {"contour_slice_count": self.contour_slice_count}
@@ -227,17 +256,21 @@ class ROIResult:
     """
 
     roi: ROIRef
-    status: Literal["ok", "skipped", "failed"]
-    volume_cc: Optional[float] = None
+    status: ROIStatus
+    volume_cc: float | None = None
     metrics: tuple[MetricResult, ...] = ()
-    dvh: Optional[DVHBins] = None
-    diagnostics: Optional[ROIDiagnostics] = None
+    dvh: DVHBins | None = None
+    diagnostics: ROIDiagnostics | None = None
     issues: tuple[Issue, ...] = ()
+
+    def __post_init__(self) -> None:
+        if isinstance(self.status, str):
+            object.__setattr__(self, "status", ROIStatus(self.status))
 
     def to_dict(self) -> dict:
         d: dict = {
             "roi": self.roi.to_dict(),
-            "status": self.status,
+            "status": self.status.value,
         }
         if self.volume_cc is not None:
             d["volume_cc"] = self.volume_cc
@@ -257,7 +290,7 @@ class ROIResult:
         diag_d = d.get("diagnostics")
         return cls(
             roi=ROIRef.from_dict(d["roi"]),
-            status=d["status"],
+            status=ROIStatus(d["status"]),
             volume_cc=d.get("volume_cc"),
             metrics=tuple(MetricResult.from_dict(m) for m in d.get("metrics", ())),
             dvh=DVHBins.from_dict(dvh_d) if dvh_d is not None else None,
@@ -272,9 +305,9 @@ class ROIResult:
 class InputMetadata:
     """Metadata about the computation inputs, for provenance."""
 
-    rtstruct_file_sha256: Optional[str] = None
-    rtdose_file_sha256: Optional[str] = None
-    dose_grid_frame: Optional[GridFrame] = None
+    rtstruct_file_sha256: str | None = None
+    rtdose_file_sha256: str | None = None
+    dose_grid_frame: GridFrame | None = None
 
     def to_dict(self) -> dict:
         d: dict = {}
@@ -325,15 +358,32 @@ class PlatformInfo:
         )
 
 
+_ISO8601_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
+
+
 @dataclass(frozen=True, slots=True)
 class ProvenanceRecord:
-    """Complete provenance for a computation run."""
+    """Complete provenance for a computation run.
+
+    Parameters
+    ----------
+    timestamp_utc : str
+        ISO 8601 UTC timestamp ending in 'Z', e.g.
+        ``"2024-01-15T10:30:00Z"``.
+    """
 
     pymedphys_version: str = ""
     timestamp_utc: str = ""
-    config: Optional[DVHConfig] = None
-    input_metadata: Optional[InputMetadata] = None
-    platform: Optional[PlatformInfo] = None
+    config: DVHConfig | None = None
+    input_metadata: InputMetadata | None = None
+    platform: PlatformInfo | None = None
+
+    def __post_init__(self) -> None:
+        if self.timestamp_utc and not _ISO8601_UTC_RE.match(self.timestamp_utc):
+            raise ValueError(
+                f"timestamp_utc must be ISO 8601 UTC (ending in 'Z'), "
+                f"got '{self.timestamp_utc}'"
+            )
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -362,6 +412,9 @@ class ProvenanceRecord:
         )
 
 
+_SUPPORTED_SCHEMA_VERSIONS = frozenset({"1.0"})
+
+
 @dataclass(frozen=True, slots=True)
 class DVHResultSet:
     """Top-level result object.
@@ -374,8 +427,19 @@ class DVHResultSet:
     results: tuple[ROIResult, ...]
     provenance: ProvenanceRecord
     computation_time_s: float
-    dose_refs: Optional[DoseReferenceSet] = None
+    dose_refs: DoseReferenceSet | None = None
     issues: tuple[Issue, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.schema_version not in _SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError(
+                f"Unsupported schema_version '{self.schema_version}'. "
+                f"Supported: {sorted(_SUPPORTED_SCHEMA_VERSIONS)}"
+            )
+        if self.computation_time_s < 0:
+            raise ValueError(
+                f"computation_time_s must be >= 0, got {self.computation_time_s}"
+            )
 
     def by_name(self, name: str) -> ROIResult:
         """Look up an ROIResult by name.
@@ -409,7 +473,7 @@ class DVHResultSet:
         return self.by_name(key)
 
     @property
-    def roi_names(self) -> FrozenSet[str]:
+    def roi_names(self) -> frozenset[str]:
         """All ROI names in the result set."""
         return frozenset(r.roi.name for r in self.results)
 
@@ -442,7 +506,19 @@ class DVHResultSet:
 
     @classmethod
     def from_dict(cls, d: dict) -> DVHResultSet:
-        """Deserialise from a plain dict."""
+        """Deserialise from a plain dict.
+
+        Raises
+        ------
+        ValueError
+            If the schema_version is not supported.
+        """
+        sv = d.get("schema_version", "")
+        if sv not in _SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError(
+                f"Unsupported schema_version '{sv}'. "
+                f"Supported: {sorted(_SUPPORTED_SCHEMA_VERSIONS)}"
+            )
         refs_d = d.get("dose_refs")
         return cls(
             schema_version=d["schema_version"],

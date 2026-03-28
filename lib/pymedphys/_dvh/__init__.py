@@ -23,10 +23,11 @@ from pymedphys._dvh._types import (
     DoseReferenceSet,
     GridFrame,
     MetricRequestSet,
+    MetricResult,
     MetricSpec,
     ROIRef,
+    ROIResult,
 )
-from pymedphys._dvh._types._results import MetricResult, ROIResult
 
 __all__ = [
     "AlgorithmConfig",

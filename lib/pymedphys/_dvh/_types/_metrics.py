@@ -1,11 +1,23 @@
-"""Metric request types (RFC section 6.5)."""
+"""Metric request types (RFC section 6.5).
+
+Grammar design note
+-------------------
+``MetricSpec.parse()`` currently has **no syntax for attaching a
+``dose_ref_id`` inline** (e.g. ``D95%[%Rx:ptv60]``). In a SIB plan a
+single ROI may need different metrics bound to different dose refs —
+the current grammar cannot express this. The ``dose_ref_id`` must be
+set at the ``ROIMetricRequest`` or ``MetricRequestSet`` level.
+
+This is a known Phase 0 limitation. As the grammar expands in later
+phases, an inline ``@ref_id`` suffix (e.g. ``D95%[%Rx]@ptv60``) is
+the intended design direction.
+"""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import FrozenSet, Optional
 
 from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._roi_ref import ROIRef
@@ -18,6 +30,45 @@ class MetricFamily(str, Enum):
     DVH_VOLUME = "dvh_volume"
     SCALAR = "scalar"
     INDEX = "index"
+
+
+class IndexMetric(str, Enum):
+    """Specific index metric identifiers.
+
+    These carry clinical definitions so that results are reproducible
+    and auditable.
+
+    Definitions
+    -----------
+    HI : Homogeneity Index
+        ICRU 83 definition: ``(D2% − D98%) / D50%``.
+        Does **not** require a dose reference.
+    CI : Conformity Index
+        Paddick conformity index:
+        ``CI = (TV_PIV)² / (TV × PIV)``
+        where TV = target volume, PIV = prescription isodose volume,
+        TV_PIV = target volume within PIV.
+        Requires a dose reference.
+    PCI : Paddick Conformity Index
+        Alias for CI using the Paddick formulation. Requires a dose
+        reference.
+    GI : Gradient Index
+        Paddick gradient index:
+        ``GI = PIV_half / PIV``
+        where PIV_half = volume of half-prescription isodose,
+        PIV = prescription isodose volume.
+        Requires a dose reference.
+    """
+
+    HI = "HI"
+    CI = "CI"
+    PCI = "PCI"
+    GI = "GI"
+
+    @property
+    def requires_dose_ref(self) -> bool:
+        """Whether this index metric requires a dose reference."""
+        return self in {IndexMetric.CI, IndexMetric.PCI, IndexMetric.GI}
 
 
 class ThresholdUnit(str, Enum):
@@ -59,15 +110,19 @@ class MetricSpec:
         Unit of the metric output.
     dose_ref_id : str, optional
         Binds to a DoseReferenceSet entry.
+    index_metric : IndexMetric, optional
+        For INDEX family metrics, specifies which index. Required when
+        ``family == MetricFamily.INDEX``.
     raw : str
         Original string, preserved for display/provenance.
     """
 
     family: MetricFamily
-    threshold: Optional[float] = None
+    threshold: float | None = None
     threshold_unit: ThresholdUnit = ThresholdUnit.NONE
     output_unit: OutputUnit = OutputUnit.GY
-    dose_ref_id: Optional[str] = None
+    dose_ref_id: str | None = None
+    index_metric: IndexMetric | None = None
     raw: str = ""
 
     def __post_init__(self) -> None:
@@ -75,6 +130,10 @@ class MetricSpec:
             raise ValueError(
                 f"Metric threshold must be non-negative, got {self.threshold}"
             )
+        if self.family == MetricFamily.INDEX and self.index_metric is None:
+            # Auto-derive from raw for backward compatibility
+            if self.raw in {m.value for m in IndexMetric}:
+                object.__setattr__(self, "index_metric", IndexMetric(self.raw))
 
     @property
     def requires_dose_ref(self) -> bool:
@@ -86,11 +145,7 @@ class MetricSpec:
             return True
         if self.output_unit == OutputUnit.PERCENT_DOSE:
             return True
-        if self.family == MetricFamily.INDEX and self.raw in {
-            "CI",
-            "PCI",
-            "GI",
-        }:
+        if self.index_metric is not None and self.index_metric.requires_dose_ref:
             return True
         return False
 
@@ -99,9 +154,11 @@ class MetricSpec:
         """A canonical string key for deduplication."""
         parts = [self.family.value]
         if self.threshold is not None:
-            parts.append(f"{self.threshold}")
+            parts.append(f"{self.threshold:.10g}")
         parts.append(self.threshold_unit.value)
         parts.append(self.output_unit.value)
+        if self.index_metric is not None:
+            parts.append(f"idx={self.index_metric.value}")
         if self.dose_ref_id:
             parts.append(f"ref={self.dose_ref_id}")
         return "|".join(parts)
@@ -118,17 +175,21 @@ class MetricSpec:
             d["threshold"] = self.threshold
         if self.dose_ref_id is not None:
             d["dose_ref_id"] = self.dose_ref_id
+        if self.index_metric is not None:
+            d["index_metric"] = self.index_metric.value
         return d
 
     @classmethod
     def from_dict(cls, d: dict) -> MetricSpec:
         """Deserialise from a plain dict."""
+        idx_str = d.get("index_metric")
         return cls(
             family=MetricFamily(d["family"]),
             threshold=d.get("threshold"),
             threshold_unit=ThresholdUnit(d["threshold_unit"]),
             output_unit=OutputUnit(d["output_unit"]),
             dose_ref_id=d.get("dose_ref_id"),
+            index_metric=IndexMetric(idx_str) if idx_str else None,
             raw=d.get("raw", ""),
         )
 
@@ -146,8 +207,14 @@ class MetricSpec:
             V{x}Gy             -> DVH_VOLUME, threshold=x, unit=GY, out=CC
             V{x}Gy[%]          -> DVH_VOLUME, threshold=x, unit=GY, out=PERCENT_VOLUME
             V{x}%              -> DVH_VOLUME, threshold=x, unit=PERCENT, out=CC
-            mean|median|min|max -> SCALAR
+            mean               -> SCALAR, out=GY
+            mean[%Rx]          -> SCALAR, out=PERCENT_DOSE (requires dose ref)
+            median|min|max     -> SCALAR
             HI|CI|PCI|GI       -> INDEX
+
+        Note: ``dose_ref_id`` cannot be attached inline. Use
+        ``ROIMetricRequest.dose_ref_id`` or ``MetricRequestSet``-level
+        dose refs to bind a specific reference. See module docstring.
 
         Raises
         ------
@@ -159,22 +226,36 @@ class MetricSpec:
 
         s = raw.strip()
 
-        # Named (no-threshold) metrics
-        _NAMED: dict[str, tuple[MetricFamily, OutputUnit]] = {
+        # Index metrics — use IndexMetric enum for unambiguous identification
+        _INDEX_METRICS: dict[str, IndexMetric] = {m.value: m for m in IndexMetric}
+        if s in _INDEX_METRICS:
+            return cls(
+                family=MetricFamily.INDEX,
+                output_unit=OutputUnit.DIMENSIONLESS,
+                index_metric=_INDEX_METRICS[s],
+                raw=raw,
+            )
+
+        # Named scalar metrics
+        _SCALAR_NAMED: dict[str, tuple[MetricFamily, OutputUnit]] = {
             "mean": (MetricFamily.SCALAR, OutputUnit.GY),
             "median": (MetricFamily.SCALAR, OutputUnit.GY),
             "min": (MetricFamily.SCALAR, OutputUnit.GY),
             "max": (MetricFamily.SCALAR, OutputUnit.GY),
-            "HI": (MetricFamily.INDEX, OutputUnit.DIMENSIONLESS),
-            "CI": (MetricFamily.INDEX, OutputUnit.DIMENSIONLESS),
-            "PCI": (MetricFamily.INDEX, OutputUnit.DIMENSIONLESS),
-            "GI": (MetricFamily.INDEX, OutputUnit.DIMENSIONLESS),
         }
-        if s in _NAMED:
-            family, output_unit = _NAMED[s]
+        if s in _SCALAR_NAMED:
+            family, output_unit = _SCALAR_NAMED[s]
             return cls(family=family, output_unit=output_unit, raw=raw)
 
-        # Pattern-based (threshold) metrics: (pattern, family, threshold_unit, output_unit)
+        # mean[%Rx] — mean dose as percentage of prescription (E3)
+        if s == "mean[%Rx]":
+            return cls(
+                family=MetricFamily.SCALAR,
+                output_unit=OutputUnit.PERCENT_DOSE,
+                raw=raw,
+            )
+
+        # Pattern-based (threshold) metrics
         _PATTERNS: list[tuple[str, MetricFamily, ThresholdUnit, OutputUnit]] = [
             (
                 r"^D(\d+(?:\.\d+)?)%\[%Rx\]$",
@@ -243,7 +324,7 @@ class ROIMetricRequest:
 
     roi: ROIRef
     metrics: tuple[MetricSpec, ...]
-    dose_ref_id: Optional[str] = None
+    dose_ref_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.metrics:
@@ -257,8 +338,8 @@ class ROIMetricRequest:
         cls,
         name: str,
         metric_strings: list[str],
-        roi_number: Optional[int] = None,
-        dose_ref_id: Optional[str] = None,
+        roi_number: int | None = None,
+        dose_ref_id: str | None = None,
     ) -> ROIMetricRequest:
         """Convenience constructor from raw metric strings."""
         return cls(
@@ -300,15 +381,25 @@ class MetricRequestSet:
     """
 
     roi_requests: tuple[ROIMetricRequest, ...]
-    dose_refs: Optional[DoseReferenceSet] = None
+    dose_refs: DoseReferenceSet | None = None
 
     def __post_init__(self) -> None:
-        for i, a in enumerate(self.roi_requests):
-            for b in self.roi_requests[i + 1 :]:
-                if a.roi.matches(b.roi):
+        # F2: Set-based duplicate ROI detection for O(n) average case.
+        # We check by name (for ROIs without numbers) and by number
+        # (for ROIs with numbers) separately.
+        seen_names: set[str] = set()
+        seen_numbers: set[int] = set()
+        for rr in self.roi_requests:
+            if rr.roi.roi_number is not None:
+                if rr.roi.roi_number in seen_numbers:
                     raise ValueError(
-                        f"Duplicate ROI in request: '{a.roi}' and '{b.roi}'"
+                        f"Duplicate ROI in request: roi_number={rr.roi.roi_number}"
                     )
+                seen_numbers.add(rr.roi.roi_number)
+            else:
+                if rr.roi.name in seen_names:
+                    raise ValueError(f"Duplicate ROI in request: '{rr.roi.name}'")
+                seen_names.add(rr.roi.name)
         for rr in self.roi_requests:
             for m in rr.metrics:
                 if m.requires_dose_ref:
@@ -352,7 +443,7 @@ class MetricRequestSet:
         return d
 
     @property
-    def roi_refs(self) -> FrozenSet[ROIRef]:
+    def roi_refs(self) -> frozenset[ROIRef]:
         """All ROIRefs in the request."""
         return frozenset(rr.roi for rr in self.roi_requests)
 

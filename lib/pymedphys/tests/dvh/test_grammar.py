@@ -126,3 +126,39 @@ class TestMetricSpecParse:
     def test_raw_string_preserved(self) -> None:
         spec = MetricSpec.parse("D95%")
         assert spec.raw == "D95%"
+
+    # E3: mean[%Rx] support
+    def test_mean_percent_rx(self) -> None:
+        spec = MetricSpec.parse("mean[%Rx]")
+        assert spec.family == MetricFamily.SCALAR
+        assert spec.output_unit == OutputUnit.PERCENT_DOSE
+        assert spec.requires_dose_ref is True
+
+    # E2/A5: Index metrics carry IndexMetric enum
+    def test_ci_carries_index_metric(self) -> None:
+        from pymedphys._dvh._types._metrics import IndexMetric
+
+        spec = MetricSpec.parse("CI")
+        assert spec.index_metric == IndexMetric.CI
+        assert spec.requires_dose_ref is True
+
+    def test_hi_carries_index_metric(self) -> None:
+        from pymedphys._dvh._types._metrics import IndexMetric
+
+        spec = MetricSpec.parse("HI")
+        assert spec.index_metric == IndexMetric.HI
+        assert spec.requires_dose_ref is False
+
+    def test_gi_carries_index_metric(self) -> None:
+        from pymedphys._dvh._types._metrics import IndexMetric
+
+        spec = MetricSpec.parse("GI")
+        assert spec.index_metric == IndexMetric.GI
+        assert spec.requires_dose_ref is True
+
+    def test_pci_carries_index_metric(self) -> None:
+        from pymedphys._dvh._types._metrics import IndexMetric
+
+        spec = MetricSpec.parse("PCI")
+        assert spec.index_metric == IndexMetric.PCI
+        assert spec.requires_dose_ref is True

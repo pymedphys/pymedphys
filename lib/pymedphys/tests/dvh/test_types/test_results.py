@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+import warnings
 
 import numpy as np
 import pytest
@@ -19,6 +19,7 @@ from pymedphys._dvh._types._results import (
     ProvenanceRecord,
     ROIDiagnostics,
     ROIResult,
+    ROIStatus,
 )
 from pymedphys._dvh._types._roi_ref import ROIRef
 
@@ -171,6 +172,18 @@ def _make_provenance() -> ProvenanceRecord:
     )
 
 
+def _make_result_set(**kwargs: object) -> DVHResultSet:
+    """Helper to create a minimal DVHResultSet with sensible defaults."""
+    defaults: dict = {
+        "schema_version": "1.0",
+        "results": (),
+        "provenance": _make_provenance(),
+        "computation_time_s": 1.0,
+    }
+    defaults.update(kwargs)
+    return DVHResultSet(**defaults)  # type: ignore[arg-type]
+
+
 class TestDVHResultSet:
     """Tests for DVHResultSet."""
 
@@ -178,7 +191,7 @@ class TestDVHResultSet:
         self,
         name: str,
         number: int | None = None,
-        status: Literal["ok", "skipped", "failed"] = "ok",
+        status: ROIStatus = ROIStatus.OK,
     ) -> ROIResult:
         return ROIResult(
             roi=ROIRef(name=name, roi_number=number),
@@ -205,7 +218,7 @@ class TestDVHResultSet:
             provenance=_make_provenance(),
             computation_time_s=1.0,
         )
-        with pytest.raises(KeyError, match="Missing"):
+        with pytest.raises(KeyError, match="No ROI named"):
             rs.by_name("Missing")
 
     def test_by_name_raises_on_ambiguity(self) -> None:
@@ -298,3 +311,151 @@ class TestDVHResultSet:
         assert all_issues[0].message == "global"
         assert all_issues[1].message == "roi-level"
         assert all_issues[2].message == "metric-level"
+
+    # D4: Test by_ref raises KeyError on missing match
+    def test_by_ref_raises_on_missing(self) -> None:
+        rs = DVHResultSet(
+            schema_version="1.0",
+            results=(self._make_result("PTV", number=1),),
+            provenance=_make_provenance(),
+            computation_time_s=1.0,
+        )
+        with pytest.raises(KeyError, match="No ROI matching"):
+            rs.by_ref(ROIRef(name="Nonexistent", roi_number=99))
+
+    # B7/F3: schema_version and computation_time validation
+    def test_rejects_unsupported_schema_version(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported schema_version"):
+            DVHResultSet(
+                schema_version="99.0",
+                results=(),
+                provenance=_make_provenance(),
+                computation_time_s=1.0,
+            )
+
+    def test_rejects_negative_computation_time(self) -> None:
+        with pytest.raises(ValueError, match="computation_time_s"):
+            DVHResultSet(
+                schema_version="1.0",
+                results=(),
+                provenance=_make_provenance(),
+                computation_time_s=-1.0,
+            )
+
+
+class TestDVHBinsValidation:
+    """Tests for DVHBins construction-time validation (A1, A2)."""
+
+    def test_rejects_non_increasing_edges(self) -> None:
+        """A1: Reversed bin edges must be rejected."""
+        with pytest.raises(ValueError, match="strictly increasing"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([3.0, 2.0, 1.0, 0.0]),
+                differential_volume_cc=np.array([1.0, 1.0, 1.0]),
+                total_volume_cc=3.0,
+            )
+
+    def test_rejects_equal_adjacent_edges(self) -> None:
+        """A1: Equal adjacent edges are not strictly increasing."""
+        with pytest.raises(ValueError, match="strictly increasing"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([1.0, 1.0, 1.0]),
+                total_volume_cc=3.0,
+            )
+
+    def test_rejects_negative_differential_volume(self) -> None:
+        """A1: Negative differential volumes are physically meaningless."""
+        with pytest.raises(ValueError, match="non-negative"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([1.0, -0.5]),
+                total_volume_cc=1.0,
+            )
+
+    def test_rejects_zero_total_volume(self) -> None:
+        """A1: Zero total volume causes division by zero."""
+        with pytest.raises(ValueError, match="strictly positive"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([0.0, 0.0]),
+                total_volume_cc=0.0,
+            )
+
+    def test_rejects_negative_total_volume(self) -> None:
+        """A1: Negative total volume is physically meaningless."""
+        with pytest.raises(ValueError, match="strictly positive"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([1.0, 1.0]),
+                total_volume_cc=-1.0,
+            )
+
+    def test_rejects_nonuniform_spacing(self) -> None:
+        """A2: Non-uniform bin spacing is not yet supported."""
+        with pytest.raises(ValueError, match="uniform spacing"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 3.0]),
+                differential_volume_cc=np.array([1.0, 1.0]),
+                total_volume_cc=2.0,
+            )
+
+    def test_all_zero_differential_volume(self) -> None:
+        """D2: All-zero differential volume is valid (empty structure)
+        but mean_dose_gy returns 0.0 (no volume to average over).
+        """
+        dvh = DVHBins(
+            dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+            differential_volume_cc=np.array([0.0, 0.0]),
+            total_volume_cc=1.0,  # Must be positive
+        )
+        assert dvh.min_dose_gy == 0.0
+        assert dvh.max_dose_gy == 0.0
+        assert dvh.mean_dose_gy == pytest.approx(0.0)
+        assert dvh.cumulative_volume_cc[0] == 0.0
+
+
+class TestROIStatusEnum:
+    """Tests for ROIStatus enum (C2)."""
+
+    def test_status_values(self) -> None:
+        assert ROIStatus.OK == "ok"
+        assert ROIStatus.SKIPPED == "skipped"
+        assert ROIStatus.FAILED == "failed"
+
+    def test_roi_result_coerces_string_to_enum(self) -> None:
+        result = ROIResult(roi=ROIRef(name="PTV"), status="ok")
+        assert isinstance(result.status, ROIStatus)
+        assert result.status == ROIStatus.OK
+
+    def test_roi_result_accepts_enum(self) -> None:
+        result = ROIResult(roi=ROIRef(name="PTV"), status=ROIStatus.SKIPPED)
+        assert result.status == ROIStatus.SKIPPED
+
+    def test_roi_result_rejects_invalid_status(self) -> None:
+        with pytest.raises(ValueError):
+            ROIResult(roi=ROIRef(name="PTV"), status="invalid_status")
+
+
+class TestProvenanceTimestampValidation:
+    """Tests for ProvenanceRecord timestamp validation (C4)."""
+
+    def test_valid_timestamp(self) -> None:
+        prov = ProvenanceRecord(timestamp_utc="2024-01-15T10:30:00Z")
+        assert prov.timestamp_utc == "2024-01-15T10:30:00Z"
+
+    def test_valid_timestamp_with_fractional_seconds(self) -> None:
+        prov = ProvenanceRecord(timestamp_utc="2024-01-15T10:30:00.123Z")
+        assert prov.timestamp_utc == "2024-01-15T10:30:00.123Z"
+
+    def test_empty_timestamp_allowed(self) -> None:
+        prov = ProvenanceRecord(timestamp_utc="")
+        assert prov.timestamp_utc == ""
+
+    def test_rejects_non_utc_timestamp(self) -> None:
+        with pytest.raises(ValueError, match="ISO 8601 UTC"):
+            ProvenanceRecord(timestamp_utc="2024-01-15T10:30:00+05:00")
+
+    def test_rejects_malformed_timestamp(self) -> None:
+        with pytest.raises(ValueError, match="ISO 8601 UTC"):
+            ProvenanceRecord(timestamp_utc="not-a-timestamp")

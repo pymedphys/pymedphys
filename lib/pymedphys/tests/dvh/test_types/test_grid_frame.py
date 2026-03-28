@@ -14,7 +14,7 @@ class TestGridFrameFromUniform:
     def test_constructs_correct_affine(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(2.5, 3.0, 1.5),
+            spacing_mm_xyz=(2.5, 3.0, 1.5),
             origin_xyz_mm=(-10.0, -20.0, -30.0),
         )
         expected = np.array(
@@ -31,7 +31,7 @@ class TestGridFrameFromUniform:
     def test_spacing_mm_returns_zyx_order(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(2.5, 3.0, 1.5),
+            spacing_mm_xyz=(2.5, 3.0, 1.5),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         dz, dy, dx = gf.spacing_mm
@@ -42,7 +42,7 @@ class TestGridFrameFromUniform:
     def test_spacing_xyz_mm_returns_xyz_order(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(2.5, 3.0, 1.5),
+            spacing_mm_xyz=(2.5, 3.0, 1.5),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         dx, dy, dz = gf.spacing_xyz_mm
@@ -53,7 +53,7 @@ class TestGridFrameFromUniform:
     def test_origin_mm_returns_xyz(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(5, 5, 5),
-            spacing_xyz_mm=(1.0, 1.0, 1.0),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
             origin_xyz_mm=(-10.0, -20.0, -30.0),
         )
         ox, oy, oz = gf.origin_mm
@@ -64,7 +64,7 @@ class TestGridFrameFromUniform:
     def test_num_voxels(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(1.0, 1.0, 1.0),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         assert gf.num_voxels == 10 * 20 * 30
@@ -77,7 +77,7 @@ class TestGridFrameValidation:
         with pytest.raises(ValueError, match="positive"):
             GridFrame.from_uniform(
                 shape_zyx=(0, 20, 30),
-                spacing_xyz_mm=(1.0, 1.0, 1.0),
+                spacing_mm_xyz=(1.0, 1.0, 1.0),
                 origin_xyz_mm=(0.0, 0.0, 0.0),
             )
 
@@ -85,7 +85,7 @@ class TestGridFrameValidation:
         with pytest.raises(ValueError, match="positive"):
             GridFrame.from_uniform(
                 shape_zyx=(10, -5, 30),
-                spacing_xyz_mm=(1.0, 1.0, 1.0),
+                spacing_mm_xyz=(1.0, 1.0, 1.0),
                 origin_xyz_mm=(0.0, 0.0, 0.0),
             )
 
@@ -100,7 +100,7 @@ class TestGridFrameValidation:
         with pytest.raises(ValueError, match="positive"):
             GridFrame.from_uniform(
                 shape_zyx=(10, 20, 30),
-                spacing_xyz_mm=(0.0, 1.0, 1.0),
+                spacing_mm_xyz=(0.0, 1.0, 1.0),
                 origin_xyz_mm=(0.0, 0.0, 0.0),
             )
 
@@ -111,7 +111,7 @@ class TestGridFrameImmutability:
     def test_affine_is_read_only(self) -> None:
         gf = GridFrame.from_uniform(
             shape_zyx=(5, 5, 5),
-            spacing_xyz_mm=(1.0, 1.0, 1.0),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         with pytest.raises(ValueError, match="read-only"):
@@ -132,18 +132,45 @@ class TestGridFrameImmutability:
         assert gf.index_to_patient_mm[0, 0] != 999.0
 
 
+class TestGridFrameAxisAligned:
+    """Tests for axis-aligned grid restriction (A3)."""
+
+    def test_rejects_tilted_affine(self) -> None:
+        """A tilted grid (rotation in the xy-plane) must be rejected."""
+        cos45 = 0.7071067811865476
+        aff = np.array(
+            [
+                [0, cos45, cos45, 0],
+                [0, cos45, -cos45, 0],
+                [1.0, 0, 0, 0],
+                [0, 0, 0, 1],
+            ],
+            dtype=np.float64,
+        )
+        with pytest.raises(ValueError, match="axis-aligned"):
+            GridFrame(shape_zyx=(5, 5, 5), index_to_patient_mm=aff)
+
+    def test_accepts_axis_aligned_affine(self) -> None:
+        gf = GridFrame.from_uniform(
+            shape_zyx=(5, 5, 5),
+            spacing_mm_xyz=(1.0, 2.0, 3.0),
+            origin_xyz_mm=(0.0, 0.0, 0.0),
+        )
+        assert gf.spacing_mm == pytest.approx((3.0, 2.0, 1.0))
+
+
 class TestGridFrameEquality:
     """Tests for __eq__ and __hash__."""
 
     def test_equal_frames_are_equal(self) -> None:
         gf1 = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(1.0, 2.0, 3.0),
+            spacing_mm_xyz=(1.0, 2.0, 3.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         gf2 = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(1.0, 2.0, 3.0),
+            spacing_mm_xyz=(1.0, 2.0, 3.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         assert gf1 == gf2
@@ -151,12 +178,12 @@ class TestGridFrameEquality:
     def test_different_frames_are_not_equal(self) -> None:
         gf1 = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(1.0, 2.0, 3.0),
+            spacing_mm_xyz=(1.0, 2.0, 3.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         gf2 = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(1.0, 2.0, 3.0),
+            spacing_mm_xyz=(1.0, 2.0, 3.0),
             origin_xyz_mm=(1.0, 0.0, 0.0),
         )
         assert gf1 != gf2
@@ -164,12 +191,12 @@ class TestGridFrameEquality:
     def test_hash_consistent_with_eq(self) -> None:
         gf1 = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(1.0, 2.0, 3.0),
+            spacing_mm_xyz=(1.0, 2.0, 3.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         gf2 = GridFrame.from_uniform(
             shape_zyx=(10, 20, 30),
-            spacing_xyz_mm=(1.0, 2.0, 3.0),
+            spacing_mm_xyz=(1.0, 2.0, 3.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         assert hash(gf1) == hash(gf2)
@@ -177,12 +204,12 @@ class TestGridFrameEquality:
     def test_can_be_used_in_set(self) -> None:
         gf1 = GridFrame.from_uniform(
             shape_zyx=(5, 5, 5),
-            spacing_xyz_mm=(1.0, 1.0, 1.0),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         gf2 = GridFrame.from_uniform(
             shape_zyx=(5, 5, 5),
-            spacing_xyz_mm=(1.0, 1.0, 1.0),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
             origin_xyz_mm=(0.0, 0.0, 0.0),
         )
         assert len({gf1, gf2}) == 1

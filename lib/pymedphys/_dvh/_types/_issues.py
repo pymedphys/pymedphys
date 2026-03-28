@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class IssueLevel(str, Enum):
@@ -55,7 +55,7 @@ class Issue:
     code: IssueCode
     message: str
     path: tuple[str, ...] = ()
-    context: Optional[dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a plain dict."""

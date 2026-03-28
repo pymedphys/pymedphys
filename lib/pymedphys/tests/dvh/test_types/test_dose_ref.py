@@ -31,9 +31,9 @@ class TestDoseReference:
         with pytest.raises(ValueError, match="non-empty"):
             DoseReference(dose_gy=42.0, source="   ")
 
-    def test_rejects_source_shorter_than_5_chars(self) -> None:
-        with pytest.raises(ValueError, match="5 characters"):
-            DoseReference(dose_gy=42.0, source="abc")
+    def test_rejects_source_without_alphabetic_word(self) -> None:
+        with pytest.raises(ValueError, match="3\\+ alphabetic"):
+            DoseReference(dose_gy=42.0, source="12345")
 
 
 class TestDoseReferenceSet:
@@ -101,3 +101,12 @@ class TestDoseReferenceSet:
     def test_default_property_returns_none_when_no_default(self) -> None:
         drs = DoseReferenceSet(refs={"ptv60": self._make_ref(60.0)})
         assert drs.default is None
+
+    def test_refs_is_defensively_copied(self) -> None:
+        """A4: External mutation of the refs dict must not affect the set."""
+        refs_dict: dict[str, DoseReference] = {
+            "ptv60": self._make_ref(60.0),
+        }
+        drs = DoseReferenceSet(refs=refs_dict)
+        refs_dict["sneaky"] = self._make_ref(99.0)
+        assert "sneaky" not in drs.refs

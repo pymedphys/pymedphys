@@ -255,6 +255,31 @@ class TestMetricRequestSet:
         assert mrs.dose_refs is not None
         assert "ptv60" in mrs.dose_refs.refs
 
+    def test_dose_ref_resolution_fails_when_no_default_and_no_explicit_ref(
+        self,
+    ) -> None:
+        """D5: When requires_dose_ref=True, dose_refs is provided, but
+        both m.dose_ref_id and rr.dose_ref_id are None and
+        DoseReferenceSet.default_id is also None, validation must fail.
+        """
+        # V95% requires a dose ref (threshold_unit=PERCENT for DVH_VOLUME)
+        spec = MetricSpec(
+            family=MetricFamily.DVH_VOLUME,
+            threshold=95.0,
+            threshold_unit=ThresholdUnit.PERCENT,
+            raw="V95%",
+        )
+        req = ROIMetricRequest(roi=ROIRef(name="PTV"), metrics=(spec,))
+        # Provide a DoseReferenceSet with NO default_id
+        dose_refs = DoseReferenceSet(
+            refs={
+                "ptv60": DoseReference(60.0, "PTV60 prescription dose"),
+            },
+            default_id=None,
+        )
+        with pytest.raises(ValueError, match="No ref_id"):
+            MetricRequestSet(roi_requests=(req,), dose_refs=dose_refs)
+
     def test_roi_refs_returns_frozenset(self) -> None:
         spec = MetricSpec(family=MetricFamily.SCALAR, raw="mean")
         req = ROIMetricRequest(roi=ROIRef(name="PTV"), metrics=(spec,))

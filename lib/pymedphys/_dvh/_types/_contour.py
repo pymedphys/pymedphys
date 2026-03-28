@@ -3,12 +3,39 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from enum import Enum
 
 import numpy as np
 import numpy.typing as npt
 
 from pymedphys._dvh._types._roi_ref import ROIRef
+
+
+class CombinationMode(str, Enum):
+    """How overlapping contours on the same slice are combined.
+
+    AUTO
+        Automatically detect the appropriate combination based on
+        contour winding and overlap.
+    UNION
+        Combine all contours as a union (logical OR).
+    XOR
+        Combine contours using the even-odd rule (XOR).
+    """
+
+    AUTO = "auto"
+    UNION = "union"
+    XOR = "xor"
+
+
+class CoordinateFrame(str, Enum):
+    """Coordinate frame of contour data.
+
+    DICOM_PATIENT
+        DICOM patient coordinate system (IEC 61217 / DICOM C.7.6.2).
+    """
+
+    DICOM_PATIENT = "DICOM_PATIENT"
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -54,13 +81,19 @@ class Contour:
         return hash((self.z_mm, self.points_xy.tobytes()))
 
 
+def _signed_area(pts: npt.NDArray[np.float64]) -> float:
+    """Shoelace formula signed area. Positive = CCW, negative = CW."""
+    x, y = pts[:, 0], pts[:, 1]
+    return float(0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+
+
 @dataclass(frozen=True, slots=True, eq=False)
 class PlanarRegion:
     """A validated 2D region on a single slice: one exterior boundary
     with zero or more holes.
 
-    The exterior is CCW (positive signed area). Each hole is CW
-    (negative signed area).
+    The exterior must be CCW (positive signed area). Each hole must be
+    CW (negative signed area).
 
     Parameters
     ----------
@@ -75,12 +108,26 @@ class PlanarRegion:
 
     def __post_init__(self) -> None:
         ext = np.array(self.exterior_xy_mm, dtype=np.float64)
+        # D7: Validate exterior is CCW (positive signed area)
+        ext_area = _signed_area(ext)
+        if ext_area <= 0:
+            raise ValueError(
+                f"PlanarRegion exterior must be CCW (positive area), "
+                f"got signed area {ext_area:.6f}"
+            )
         ext.flags.writeable = False
         object.__setattr__(self, "exterior_xy_mm", ext)
 
         validated_holes = []
-        for h in self.holes_xy_mm:
+        for i, h in enumerate(self.holes_xy_mm):
             hc = np.array(h, dtype=np.float64)
+            # D7: Validate each hole is CW (negative signed area)
+            hole_area = _signed_area(hc)
+            if hole_area >= 0:
+                raise ValueError(
+                    f"PlanarRegion hole {i} must be CW (negative area), "
+                    f"got signed area {hole_area:.6f}"
+                )
             hc.flags.writeable = False
             validated_holes.append(hc)
         object.__setattr__(self, "holes_xy_mm", tuple(validated_holes))
@@ -100,6 +147,11 @@ class PlanarRegion:
         return hash(self.exterior_xy_mm.tobytes())
 
 
+# C3: Type alias for a single contour slice
+ContourSlice = tuple[float, tuple[PlanarRegion, ...]]
+"""A single contour slice: ``(z_mm, regions)``."""
+
+
 @dataclass(frozen=True, slots=True)
 class ContourROI:
     """A validated, z-sorted ROI defined by planar regions on axial slices.
@@ -108,20 +160,29 @@ class ContourROI:
     ----------
     roi : ROIRef
         ROI identity.
-    slices : tuple[tuple[float, tuple[PlanarRegion, ...]], ...]
-        (z_mm, regions) pairs, sorted ascending by z_mm.
-    combination_mode : str
+    slices : tuple[ContourSlice, ...]
+        ``(z_mm, regions)`` pairs, sorted ascending by z_mm.
+    combination_mode : CombinationMode
         How overlapping contours on the same slice are combined.
-    coordinate_frame : str
+    coordinate_frame : CoordinateFrame
         Coordinate frame of the contour data.
     """
 
     roi: ROIRef
-    slices: tuple[tuple[float, tuple[PlanarRegion, ...]], ...]
-    combination_mode: str = "auto"
-    coordinate_frame: str = "DICOM_PATIENT"
+    slices: tuple[ContourSlice, ...]
+    combination_mode: CombinationMode = CombinationMode.AUTO
+    coordinate_frame: CoordinateFrame = CoordinateFrame.DICOM_PATIENT
 
     def __post_init__(self) -> None:
+        # Coerce strings to enum for backward compatibility
+        if isinstance(self.combination_mode, str):
+            object.__setattr__(
+                self, "combination_mode", CombinationMode(self.combination_mode)
+            )
+        if isinstance(self.coordinate_frame, str):
+            object.__setattr__(
+                self, "coordinate_frame", CoordinateFrame(self.coordinate_frame)
+            )
         if not self.slices:
             raise ValueError(f"ContourROI '{self.roi}' has no slices")
         z_values = [s[0] for s in self.slices]
@@ -150,8 +211,32 @@ class ContourROI:
         return zs[-1] - zs[0]
 
     @property
-    def mean_slice_spacing_mm(self) -> Optional[float]:
-        """Mean spacing between slices, or None for single-slice ROI."""
+    def mean_slice_spacing_mm(self) -> float | None:
+        """Mean spacing between slices, or None for single-slice ROI.
+
+        For non-uniform slice spacing (common in DICOM exports), this
+        returns the arithmetic mean of inter-slice gaps. Check
+        ``is_uniform_spacing`` to determine if slices are evenly spaced.
+        """
         if self.num_slices < 2:
             return None
         return self.z_extent_mm / (self.num_slices - 1)
+
+    @property
+    def slice_spacings_mm(self) -> tuple[float, ...] | None:
+        """Individual inter-slice spacings, or None for single-slice ROI."""
+        if self.num_slices < 2:
+            return None
+        zs = self.z_values_mm
+        return tuple(zs[i + 1] - zs[i] for i in range(len(zs) - 1))
+
+    @property
+    def is_uniform_spacing(self) -> bool | None:
+        """Whether slices are uniformly spaced (within 0.01 mm tolerance).
+
+        Returns None for single-slice ROIs.
+        """
+        spacings = self.slice_spacings_mm
+        if spacings is None:
+            return None
+        return all(abs(s - spacings[0]) < 0.01 for s in spacings)

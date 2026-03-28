@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -30,7 +29,7 @@ class DoseGrid:
 
     dose_gy: npt.NDArray[np.float64]
     frame: GridFrame
-    uncertainty_gy: Optional[npt.NDArray[np.float64]] = None
+    uncertainty_gy: npt.NDArray[np.float64] | None = None
 
     def __post_init__(self) -> None:
         expected = self.frame.shape_zyx

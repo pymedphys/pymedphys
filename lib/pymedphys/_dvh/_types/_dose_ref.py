@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from typing import Mapping, Optional
+from typing import Mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +26,8 @@ class DoseReference:
     dose_gy: float
     source: str
 
+    _SOURCE_RE = re.compile(r"[a-zA-Z]{3,}")
+
     def __post_init__(self) -> None:
         if self.dose_gy <= 0:
             raise ValueError(f"Reference dose must be positive, got {self.dose_gy}")
@@ -34,11 +37,12 @@ class DoseReference:
                 "DoseReference.source must be non-empty. Document where "
                 "this value came from (e.g. 'prescription: 3 fx x 14 Gy')."
             )
-        if len(stripped) < 5:
+        if not self._SOURCE_RE.search(stripped):
             raise ValueError(
-                f"DoseReference.source must be at least 5 characters "
-                f"(got '{stripped}'). Provide a meaningful description of "
-                f"where this dose reference comes from."
+                f"DoseReference.source must contain at least one word "
+                f"with 3+ alphabetic characters (got '{stripped}'). "
+                f"Provide a meaningful description of where this dose "
+                f"reference comes from."
             )
 
     def to_dict(self) -> dict:
@@ -67,9 +71,11 @@ class DoseReferenceSet:
     """
 
     refs: Mapping[str, DoseReference]
-    default_id: Optional[str] = None
+    default_id: str | None = None
 
     def __post_init__(self) -> None:
+        # Defensive copy to preserve immutability
+        object.__setattr__(self, "refs", dict(self.refs))
         if not self.refs:
             raise ValueError("DoseReferenceSet must contain at least one reference")
         if self.default_id is not None and self.default_id not in self.refs:
@@ -79,13 +85,13 @@ class DoseReferenceSet:
             )
 
     @property
-    def default(self) -> Optional[DoseReference]:
+    def default(self) -> DoseReference | None:
         """The default DoseReference, or None if no default is set."""
         if self.default_id is None:
             return None
         return self.refs[self.default_id]
 
-    def get(self, ref_id: Optional[str] = None) -> DoseReference:
+    def get(self, ref_id: str | None = None) -> DoseReference:
         """Resolve a reference by id, falling back to the default.
 
         Raises

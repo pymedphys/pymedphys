@@ -19,13 +19,21 @@ from pymedphys._dvh._types._config import (
     RuntimeConfig,
     SupersamplingConfig,
 )
-from pymedphys._dvh._types._contour import Contour, ContourROI, PlanarRegion
+from pymedphys._dvh._types._contour import (
+    CombinationMode,
+    Contour,
+    ContourROI,
+    ContourSlice,
+    CoordinateFrame,
+    PlanarRegion,
+)
 from pymedphys._dvh._types._dose import DoseGrid
 from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._inputs import DVHInputs
 from pymedphys._dvh._types._issues import Issue, IssueCode, IssueLevel
 from pymedphys._dvh._types._metrics import (
+    IndexMetric,
     MetricFamily,
     MetricRequestSet,
     MetricSpec,
@@ -43,14 +51,18 @@ from pymedphys._dvh._types._results import (
     ProvenanceRecord,
     ROIDiagnostics,
     ROIResult,
+    ROIStatus,
 )
 from pymedphys._dvh._types._roi_ref import ROIRef
 from pymedphys._dvh._types._sdf import SDFField
 
 __all__ = [
     "AlgorithmConfig",
+    "CombinationMode",
     "Contour",
     "ContourROI",
+    "ContourSlice",
+    "CoordinateFrame",
     "DVHBins",
     "DVHConfig",
     "DVHInputs",
@@ -63,6 +75,7 @@ __all__ = [
     "EndCapPolicy",
     "FloatingPointPrecision",
     "GridFrame",
+    "IndexMetric",
     "InputMetadata",
     "InterpolationMethod",
     "InvalidROIPolicy",
@@ -85,6 +98,7 @@ __all__ = [
     "ROIMetricRequest",
     "ROIResult",
     "ROIRef",
+    "ROIStatus",
     "RuntimeConfig",
     "SDFField",
     "SupersamplingConfig",
