@@ -23,7 +23,7 @@ from pymedphys._dvh._types._results import (
 from pymedphys._dvh._types._roi_ref import ROIRef
 
 
-class TestDVHBins:
+class TestDVHBins:  # pylint: disable=too-many-public-methods
     """Tests for the canonical DVH storage type."""
 
     def _make_simple_dvh(self) -> DVHBins:
@@ -189,7 +189,7 @@ class TestDVHBins:
             total_volume_cc=2.0,
         )
         with pytest.raises(ValueError, match="non-uniform"):
-            dvh.bin_width_gy
+            _ = dvh.bin_width_gy
 
 
 class TestMetricResult:

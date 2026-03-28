@@ -13,13 +13,9 @@ import pytest
 
 from pymedphys._dvh._serialisation import from_json, to_json
 from pymedphys._dvh._types._config import (
-    AlgorithmConfig,
     DVHConfig,
     EndCapPolicy,
     InterpolationMethod,
-    PipelinePolicy,
-    RuntimeConfig,
-    SupersamplingConfig,
 )
 from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
@@ -130,7 +126,7 @@ class TestIssueRoundTrip:
         )
         d = issue.to_dict()
         restored = Issue.from_dict(d)
-        assert restored.path == ()
+        assert not restored.path
         assert restored.context is None
 
 

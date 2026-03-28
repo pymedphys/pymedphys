@@ -172,71 +172,28 @@ class MetricSpec:
                 raw=raw,
             )
 
-        # D{x}%[%Rx]
-        m = re.match(r"^D(\d+(?:\.\d+)?)%\[%Rx\]$", s)
-        if m:
-            return cls(
-                family=MetricFamily.DVH_DOSE,
-                threshold=float(m.group(1)),
-                threshold_unit=ThresholdUnit.PERCENT,
-                output_unit=OutputUnit.PERCENT_DOSE,
-                raw=raw,
-            )
+        # Parametric DVH metrics: (pattern, family, threshold_unit, output_unit)
+        _dvh_patterns: tuple[
+            tuple[str, MetricFamily, ThresholdUnit, OutputUnit], ...
+        ] = (
+            (r"^D(\d+(?:\.\d+)?)%\[%Rx\]$", MetricFamily.DVH_DOSE, ThresholdUnit.PERCENT, OutputUnit.PERCENT_DOSE),
+            (r"^D(\d+(?:\.\d+)?)%$", MetricFamily.DVH_DOSE, ThresholdUnit.PERCENT, OutputUnit.GY),
+            (r"^D(\d+(?:\.\d+)?)cc$", MetricFamily.DVH_DOSE, ThresholdUnit.CC, OutputUnit.GY),
+            (r"^V(\d+(?:\.\d+)?)Gy\[%\]$", MetricFamily.DVH_VOLUME, ThresholdUnit.GY, OutputUnit.PERCENT_VOLUME),
+            (r"^V(\d+(?:\.\d+)?)Gy$", MetricFamily.DVH_VOLUME, ThresholdUnit.GY, OutputUnit.CC),
+            (r"^V(\d+(?:\.\d+)?)%$", MetricFamily.DVH_VOLUME, ThresholdUnit.PERCENT, OutputUnit.CC),
+        )
 
-        # D{x}%
-        m = re.match(r"^D(\d+(?:\.\d+)?)%$", s)
-        if m:
-            return cls(
-                family=MetricFamily.DVH_DOSE,
-                threshold=float(m.group(1)),
-                threshold_unit=ThresholdUnit.PERCENT,
-                output_unit=OutputUnit.GY,
-                raw=raw,
-            )
-
-        # D{x}cc
-        m = re.match(r"^D(\d+(?:\.\d+)?)cc$", s)
-        if m:
-            return cls(
-                family=MetricFamily.DVH_DOSE,
-                threshold=float(m.group(1)),
-                threshold_unit=ThresholdUnit.CC,
-                output_unit=OutputUnit.GY,
-                raw=raw,
-            )
-
-        # V{x}Gy[%]
-        m = re.match(r"^V(\d+(?:\.\d+)?)Gy\[%\]$", s)
-        if m:
-            return cls(
-                family=MetricFamily.DVH_VOLUME,
-                threshold=float(m.group(1)),
-                threshold_unit=ThresholdUnit.GY,
-                output_unit=OutputUnit.PERCENT_VOLUME,
-                raw=raw,
-            )
-
-        # V{x}Gy
-        m = re.match(r"^V(\d+(?:\.\d+)?)Gy$", s)
-        if m:
-            return cls(
-                family=MetricFamily.DVH_VOLUME,
-                threshold=float(m.group(1)),
-                threshold_unit=ThresholdUnit.GY,
-                output_unit=OutputUnit.CC,
-                raw=raw,
-            )
-
-        # V{x}%
-        m = re.match(r"^V(\d+(?:\.\d+)?)%$", s)
-        if m:
-            return cls(
-                family=MetricFamily.DVH_VOLUME,
-                threshold=float(m.group(1)),
-                threshold_unit=ThresholdUnit.PERCENT,
-                output_unit=OutputUnit.CC,
-                raw=raw,
-            )
+        for pattern, family, t_unit, o_unit in _dvh_patterns:
+            m = re.match(pattern, s)
+            if m:
+                return cls(
+                    family=family,
+                    threshold=float(m.group(1)),
+                    threshold_unit=t_unit,
+                    output_unit=o_unit,
+                    raw=raw,
+                )
 
         raise ValueError(f"Cannot parse metric string: '{raw}'")
 

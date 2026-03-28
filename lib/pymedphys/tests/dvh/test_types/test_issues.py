@@ -70,7 +70,7 @@ class TestIssue:
             code=IssueCode.Z_TOLERANCE_APPLIED,
             message="Z tolerance applied",
         )
-        assert issue.path == ()
+        assert not issue.path
 
     def test_context_defaults_to_none(self) -> None:
         issue = Issue(
