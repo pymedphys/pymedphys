@@ -23,13 +23,14 @@ MM3_PER_CC: float = 1000.0
 """Conversion factor: 1 cc = 1000 mm³."""
 
 
-def _validate_positive(**kwargs: float) -> None:
+def _validate_positive(**kwargs: float | np.ndarray) -> None:
     """Validate that all named arguments are strictly positive.
 
     Parameters
     ----------
-    **kwargs : float
-        Named dimension values to validate.
+    **kwargs : float | numpy.ndarray
+        Named dimension values to validate. Each value may be a scalar
+        or an array-like object; all elements must be strictly positive.
 
     Raises
     ------
@@ -37,7 +38,8 @@ def _validate_positive(**kwargs: float) -> None:
         If any value is not strictly positive (> 0).
     """
     for name, value in kwargs.items():
-        if value <= 0:
+        array_value = np.asarray(value)
+        if np.any(array_value <= 0):
             raise ValueError(f"{name} must be strictly positive, got {value}")
 
 
