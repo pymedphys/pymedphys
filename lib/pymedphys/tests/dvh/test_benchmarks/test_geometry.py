@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pymedphys._dvh._benchmarks._geometry import (
+from pymedphys._dvh._benchmarks import (
     MM3_PER_CC,
     cone_volume,
     cylinder_volume,
@@ -78,6 +78,10 @@ class TestCylinderVolume:
     def test_rejects_zero_radius(self) -> None:
         with pytest.raises(ValueError, match="radius_mm"):
             cylinder_volume(0.0, 10.0)
+
+    def test_rejects_negative_radius(self) -> None:
+        with pytest.raises(ValueError, match="radius_mm"):
+            cylinder_volume(-5.0, 10.0)
 
     def test_rejects_negative_height(self) -> None:
         with pytest.raises(ValueError, match="height_mm"):
@@ -257,3 +261,6 @@ class TestMm3ToCc:
 
     def test_mm3_per_cc_constant(self) -> None:
         assert MM3_PER_CC == 1000.0
+
+    def test_round_trip_with_mm3_per_cc(self) -> None:
+        assert mm3_to_cc(1234.5 * MM3_PER_CC) == pytest.approx(1234.5)
