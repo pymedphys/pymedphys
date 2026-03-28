@@ -3508,6 +3508,22 @@ This appendix records design decisions made during implementation that diverge f
 - `Optional` fields serialise as `null` (JSON) or are omitted (TOML)
 - DVHBins cumulative fields are NOT serialised — they're derived from differential volume and recomputed in `__post_init__`
 
+#### B.7 Analytical geometry library: pure functions, no ShapeSpec (Phase 1)
+
+**RFC §9 Task 1.1 specified:** Analytical volume formulas for all benchmark shapes.
+
+**Decision:** Implement as standalone pure functions (e.g., `sphere_volume(radius_mm)`) rather than shape classes or a `ShapeSpec` dataclass registry. Use `numpy` (`np.pi`) for consistency with the rest of the DVH module.
+
+**Rationale:**
+- Each formula is a single stateless computation — a class hierarchy adds indirection with no benefit.
+- A `ShapeSpec` dataclass for parameterising shapes would be premature abstraction: the only consumer in Task 1.1 is the test suite. When Task 1.3 (DICOM generator) and Task 1.5 (benchmark manifest) need a shape registry, `ShapeSpec` can be defined there and call these volume functions.
+- Contour generation (2D cross-sections of shapes at arbitrary z positions) is deferred to Task 1.3 (`_dicom_generator.py`), keeping Task 1.1 focused on closed-form volume formulas only.
+- All inputs are in mm, all outputs in mm³, following DICOM convention. A `MM3_PER_CC = 1000.0` constant and `mm3_to_cc()` helper provide unit conversion.
+- Input validation enforces strictly positive dimensions via a shared `_validate_positive()` helper, matching Phase 0's boundary-enforced invariant pattern.
+- Surface area formulas are not included (not specified by any benchmark case). Can be added later if needed.
+
+**What changed:** Created `_benchmarks/__init__.py` and `_benchmarks/_geometry.py` with 7 volume functions + 1 conversion helper. 44 tests in `test_benchmarks/test_geometry.py`.
+
 ---
 
 ## 13. Future Research Directions: Computer Graphics Algorithms for DVH Computation

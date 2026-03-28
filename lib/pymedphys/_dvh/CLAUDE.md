@@ -223,6 +223,14 @@ def compute_dvh(
 
 All development follows test-driven development: write tests first (Red), implement to pass (Green), refactor. Tests import from final module paths and are written before any implementation code.
 
+## Design Decisions (Phase 1)
+
+### Analytical geometry as pure functions (Task 1.1)
+
+Benchmark volume formulas are standalone pure functions (e.g., `sphere_volume(radius_mm)`) rather than shape classes or a `ShapeSpec` dataclass. Each takes dimensions in mm and returns volume in mm³. A `_validate_positive()` helper enforces positive inputs at the boundary.
+
+Contour generation and `ShapeSpec` parameterisation are deferred to Tasks 1.3/1.5 — Task 1.1 is strictly closed-form volume formulas.
+
 ---
 
 ## Key Design Invariants
