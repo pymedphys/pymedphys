@@ -246,6 +246,30 @@ class TestRectangularParallelepipedVolume:
             rectangular_parallelepiped_volume(10.0, -5.0, 5.0)
 
 
+class TestValidatePositiveRejectsNonFinite:
+    """Tests that _validate_positive rejects NaN, +Inf, -Inf."""
+
+    def test_rejects_nan_radius(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            sphere_volume(float("nan"))
+
+    def test_rejects_inf_radius(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            sphere_volume(float("inf"))
+
+    def test_rejects_neg_inf_radius(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            sphere_volume(float("-inf"))
+
+    def test_rejects_nan_height(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            cylinder_volume(5.0, float("nan"))
+
+    def test_rejects_inf_semi_axis(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            ellipsoid_volume(float("inf"), 5.0, 3.0)
+
+
 class TestMm3ToCc:
     """Tests for mm3_to_cc unit conversion."""
 

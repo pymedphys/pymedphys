@@ -177,6 +177,8 @@ class TestMetricRequestSetRoundTrip:
             }
         )
         d = mrs.to_dict()
+        # Round-trip uses list format with roi_requests key
+        assert "roi_requests" in d
         restored = MetricRequestSet.from_dict(d)
         assert len(restored.roi_requests) == 2
         assert restored.dose_refs is not None
@@ -199,6 +201,17 @@ class TestMetricRequestSetRoundTrip:
         restored = MetricRequestSet.from_dict(d)
         assert len(restored.roi_requests) == 2
         assert "ptv60" in restored.dose_refs.refs
+
+    def test_round_trip_preserves_roi_number(self) -> None:
+        """to_dict() must preserve roi_number for identity."""
+        req = ROIMetricRequest(
+            roi=ROIRef(name="PTV", roi_number=7),
+            metrics=(MetricSpec.parse("D95%"),),
+        )
+        mrs = MetricRequestSet(roi_requests=(req,))
+        d = mrs.to_dict()
+        restored = MetricRequestSet.from_dict(d)
+        assert restored.roi_requests[0].roi.roi_number == 7
 
 
 # ---------------------------------------------------------------------------

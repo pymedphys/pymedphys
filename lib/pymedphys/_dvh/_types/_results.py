@@ -14,6 +14,11 @@ from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue
 from pymedphys._dvh._types._metrics import MetricSpec
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import (
+    _validate_nonneg_array,
+    _validate_nonneg_finite,
+    _validate_strictly_increasing,
+)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -23,14 +28,26 @@ class DVHBins:
     ``dose_bin_edges_gy`` has length N+1 for N bins.
     ``differential_volume_cc`` has length N.
 
+    Invariants enforced at construction:
+
+    - Edges are finite and strictly increasing.
+    - Differential volumes are finite and non-negative.
+    - ``total_volume_cc`` is finite and non-negative.
+
+    When ``total_volume_cc == 0`` (zero-volume ROI), cumulative
+    percentage values are all 0.0 and ``binned_mean_dose_gy``
+    returns 0.0.
+
     Parameters
     ----------
     dose_bin_edges_gy : npt.NDArray[np.float64]
-        Bin edges in Gy, length N+1.
+        Bin edges in Gy, length N+1. Must be finite and strictly
+        increasing.
     differential_volume_cc : npt.NDArray[np.float64]
-        Differential volume per bin in cc, length N.
+        Differential volume per bin in cc, length N. Must be finite
+        and non-negative.
     total_volume_cc : float
-        Total ROI volume in cc.
+        Total ROI volume in cc. Must be finite and non-negative.
     """
 
     dose_bin_edges_gy: npt.NDArray[np.float64]
@@ -53,6 +70,10 @@ class DVHBins:
                 f"differential_volume_cc length {len(dv)} != "
                 f"dose_bin_edges_gy length {len(edges)} - 1"
             )
+        _validate_strictly_increasing(edges, "dose_bin_edges_gy")
+        _validate_nonneg_array(dv, "differential_volume_cc")
+        _validate_nonneg_finite(self.total_volume_cc, "total_volume_cc")
+
         edges.flags.writeable = False
         dv.flags.writeable = False
         object.__setattr__(self, "dose_bin_edges_gy", edges)
@@ -62,14 +83,30 @@ class DVHBins:
         cum.flags.writeable = False
         object.__setattr__(self, "_cumulative_volume_cc", cum)
 
-        pct = cum / self.total_volume_cc * 100.0
+        if self.total_volume_cc == 0:
+            pct = np.zeros_like(cum)
+        else:
+            pct = cum / self.total_volume_cc * 100.0
         pct.flags.writeable = False
         object.__setattr__(self, "_cumulative_volume_pct", pct)
 
     @property
     def bin_width_gy(self) -> float:
-        """Uniform bin width (assumes uniform spacing)."""
-        return float(self.dose_bin_edges_gy[1] - self.dose_bin_edges_gy[0])
+        """Uniform bin width in Gy.
+
+        Raises
+        ------
+        ValueError
+            If bin widths are not uniform (relative tolerance 1e-9).
+        """
+        widths = np.diff(self.dose_bin_edges_gy)
+        w0 = widths[0]
+        if len(widths) > 1 and not np.allclose(widths, w0, rtol=1e-9):
+            raise ValueError(
+                "bin_width_gy requires uniform bin widths, but edges are "
+                "non-uniform. Use np.diff(dose_bin_edges_gy) for per-bin widths."
+            )
+        return float(w0)
 
     @property
     def cumulative_volume_cc(self) -> npt.NDArray[np.float64]:
@@ -82,28 +119,53 @@ class DVHBins:
 
     @property
     def cumulative_volume_pct(self) -> npt.NDArray[np.float64]:
-        """Cumulative DVH as percentage of total volume."""
+        """Cumulative DVH as percentage of total volume.
+
+        Returns all zeros when ``total_volume_cc == 0``.
+        """
         return self._cumulative_volume_pct
 
     @property
-    def min_dose_gy(self) -> float:
-        """Minimum dose (lowest bin edge with nonzero volume)."""
+    def binned_min_dose_gy(self) -> float:
+        """Histogram-derived minimum dose approximation.
+
+        Returns the lower edge of the lowest bin with nonzero volume.
+        This is a binned approximation — the true minimum dose lies
+        somewhere within that bin.
+
+        Returns 0.0 for zero-volume ROIs.
+        """
         nonzero = np.nonzero(self.differential_volume_cc)[0]
         if len(nonzero) == 0:
             return 0.0
         return float(self.dose_bin_edges_gy[nonzero[0]])
 
     @property
-    def max_dose_gy(self) -> float:
-        """Maximum dose (upper edge of highest occupied bin)."""
+    def binned_max_dose_gy(self) -> float:
+        """Histogram-derived maximum dose approximation.
+
+        Returns the upper edge of the highest bin with nonzero volume.
+        This is a binned approximation — the true maximum dose lies
+        somewhere within that bin.
+
+        Returns 0.0 for zero-volume ROIs.
+        """
         nonzero = np.nonzero(self.differential_volume_cc)[0]
         if len(nonzero) == 0:
             return 0.0
         return float(self.dose_bin_edges_gy[nonzero[-1] + 1])
 
     @property
-    def mean_dose_gy(self) -> float:
-        """Volume-weighted mean dose from bin centres."""
+    def binned_mean_dose_gy(self) -> float:
+        """Histogram-derived volume-weighted mean dose approximation.
+
+        Computed from bin centres weighted by differential volume.
+        This is a binned approximation that depends on bin width.
+
+        Returns 0.0 for zero-volume ROIs.
+        """
+        if self.total_volume_cc == 0:
+            return 0.0
         bin_centres = (self.dose_bin_edges_gy[:-1] + self.dose_bin_edges_gy[1:]) / 2.0
         return float(
             np.sum(bin_centres * self.differential_volume_cc) / self.total_volume_cc
@@ -270,11 +332,29 @@ class ROIResult:
 
 @dataclass(frozen=True, slots=True)
 class InputMetadata:
-    """Metadata about the computation inputs, for provenance."""
+    """Metadata about the computation inputs, for provenance.
+
+    Parameters
+    ----------
+    rtstruct_file_sha256 : str, optional
+        SHA-256 hash of the RTSTRUCT file.
+    rtdose_file_sha256 : str, optional
+        SHA-256 hash of the RTDOSE file.
+    dose_grid_frame : GridFrame, optional
+        Grid frame of the dose input.
+    input_pathway : str, optional
+        How the inputs were provided. One of ``"from_dicom"``,
+        ``"from_arrays"``, or ``"direct"``.
+    structure_representation : str, optional
+        How structures were represented. One of ``"contour"``,
+        ``"mask"``, or ``"sdf"``.
+    """
 
     rtstruct_file_sha256: Optional[str] = None
     rtdose_file_sha256: Optional[str] = None
     dose_grid_frame: Optional[GridFrame] = None
+    input_pathway: Optional[str] = None
+    structure_representation: Optional[str] = None
 
     def to_dict(self) -> dict:
         d: dict = {}
@@ -284,6 +364,10 @@ class InputMetadata:
             d["rtdose_file_sha256"] = self.rtdose_file_sha256
         if self.dose_grid_frame is not None:
             d["dose_grid_frame"] = self.dose_grid_frame.to_dict()
+        if self.input_pathway is not None:
+            d["input_pathway"] = self.input_pathway
+        if self.structure_representation is not None:
+            d["structure_representation"] = self.structure_representation
         return d
 
     @classmethod
@@ -295,6 +379,8 @@ class InputMetadata:
             dose_grid_frame=(
                 GridFrame.from_dict(frame_d) if frame_d is not None else None
             ),
+            input_pathway=d.get("input_pathway"),
+            structure_representation=d.get("structure_representation"),
         )
 
 
@@ -327,13 +413,32 @@ class PlatformInfo:
 
 @dataclass(frozen=True, slots=True)
 class ProvenanceRecord:
-    """Complete provenance for a computation run."""
+    """Complete provenance for a computation run.
+
+    Parameters
+    ----------
+    pymedphys_version : str
+        Version of pymedphys that produced the results.
+    timestamp_utc : str
+        ISO 8601 timestamp of computation start.
+    config : DVHConfig, optional
+        Configuration used for this run.
+    input_metadata : InputMetadata, optional
+        Metadata about the inputs.
+    platform : PlatformInfo, optional
+        Platform and dependency versions.
+    inapplicable_settings : tuple[str, ...], optional
+        Settings that are irrelevant for the given input pathway.
+        For example, contour interpolation and end-capping are
+        inapplicable when inputs are mask-derived via ``from_arrays``.
+    """
 
     pymedphys_version: str = ""
     timestamp_utc: str = ""
-    config: DVHConfig = None  # type: ignore[assignment]
-    input_metadata: InputMetadata = None  # type: ignore[assignment]
-    platform: PlatformInfo = None  # type: ignore[assignment]
+    config: Optional[DVHConfig] = None
+    input_metadata: Optional[InputMetadata] = None
+    platform: Optional[PlatformInfo] = None
+    inapplicable_settings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -346,6 +451,8 @@ class ProvenanceRecord:
             d["input_metadata"] = self.input_metadata.to_dict()
         if self.platform is not None:
             d["platform"] = self.platform.to_dict()
+        if self.inapplicable_settings:
+            d["inapplicable_settings"] = list(self.inapplicable_settings)
         return d
 
     @classmethod
@@ -359,6 +466,7 @@ class ProvenanceRecord:
             config=DVHConfig.from_dict(config_d) if config_d else None,
             input_metadata=(InputMetadata.from_dict(meta_d) if meta_d else None),
             platform=PlatformInfo.from_dict(plat_d) if plat_d else None,
+            inapplicable_settings=tuple(d.get("inapplicable_settings", ())),
         )
 
 

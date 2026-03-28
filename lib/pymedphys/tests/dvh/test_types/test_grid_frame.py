@@ -97,12 +97,66 @@ class TestGridFrameValidation:
             )
 
     def test_rejects_zero_spacing(self) -> None:
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError):
             GridFrame.from_uniform(
                 shape_zyx=(10, 20, 30),
                 spacing_xyz_mm=(0.0, 1.0, 1.0),
                 origin_xyz_mm=(0.0, 0.0, 0.0),
             )
+
+
+class TestGridFrameAffineValidation:
+    """Tests for v1 axis-aligned affine enforcement."""
+
+    def test_rejects_non_axis_aligned_affine(self) -> None:
+        """Affine with shear (multiple nonzeros per column) is rejected."""
+        aff = np.array(
+            [
+                [1.0, 0.5, 0, 0],
+                [0, 1.0, 0, 0],
+                [0, 0, 1.0, 0],
+                [0, 0, 0, 1],
+            ],
+            dtype=np.float64,
+        )
+        with pytest.raises(ValueError, match="one non-zero"):
+            GridFrame(shape_zyx=(5, 5, 5), index_to_patient_mm=aff)
+
+    def test_rejects_bad_last_row(self) -> None:
+        """Last row must be [0, 0, 0, 1]."""
+        aff = np.array(
+            [
+                [0, 0, 1.0, 0],
+                [0, 1.0, 0, 0],
+                [1.0, 0, 0, 0],
+                [0, 0, 1, 1],  # bad last row
+            ],
+            dtype=np.float64,
+        )
+        with pytest.raises(ValueError, match="last row"):
+            GridFrame(shape_zyx=(5, 5, 5), index_to_patient_mm=aff)
+
+    def test_rejects_nan_in_affine(self) -> None:
+        aff = np.array(
+            [
+                [0, 0, float("nan"), 0],
+                [0, 1.0, 0, 0],
+                [1.0, 0, 0, 0],
+                [0, 0, 0, 1],
+            ],
+            dtype=np.float64,
+        )
+        with pytest.raises(ValueError, match="non-finite"):
+            GridFrame(shape_zyx=(5, 5, 5), index_to_patient_mm=aff)
+
+    def test_accepts_valid_axis_aligned_affine(self) -> None:
+        """Standard axis-permuted affine should be accepted."""
+        gf = GridFrame.from_uniform(
+            shape_zyx=(5, 5, 5),
+            spacing_xyz_mm=(1.0, 2.0, 3.0),
+            origin_xyz_mm=(10.0, 20.0, 30.0),
+        )
+        assert gf.shape_zyx == (5, 5, 5)
 
 
 class TestGridFrameImmutability:

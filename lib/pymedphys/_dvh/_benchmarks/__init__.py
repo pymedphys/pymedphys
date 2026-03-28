@@ -1,7 +1,9 @@
 """Analytical benchmark utilities for DVH validation.
 
-Provides analytical volume formulas, dose field generators, DVH formulas,
-and DICOM test object generators for the Tier 1 benchmark suite.
+Currently provides closed-form volume formulas for geometric primitives
+(sphere, cylinder, cone, ellipsoid, torus, cylindrical shell,
+rectangular parallelepiped) used in the Tier 1 analytical benchmark
+suite. All inputs are in mm, all outputs are in mm³.
 
 See RFC §8.1 and §9 (Phase 1) for design rationale.
 """

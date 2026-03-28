@@ -7,6 +7,54 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
+from pymedphys._dvh._types._validators import _validate_finite_array
+
+
+def _validate_axis_aligned_affine(aff: npt.NDArray[np.float64]) -> None:
+    """Enforce v1 axis-aligned affine constraints.
+
+    Parameters
+    ----------
+    aff : npt.NDArray[np.float64]
+        4x4 affine matrix.
+
+    Raises
+    ------
+    ValueError
+        If the affine violates axis-aligned constraints: last row
+        must be [0, 0, 0, 1], the 3x3 linear submatrix must have
+        exactly one non-zero entry per column (axis-aligned, no shear),
+        and axes must be orthogonal.
+    """
+    # Last row must be [0, 0, 0, 1]
+    expected_last_row = np.array([0.0, 0.0, 0.0, 1.0])
+    if not np.allclose(aff[3, :], expected_last_row):
+        raise ValueError(
+            f"Affine last row must be [0, 0, 0, 1], got {aff[3, :].tolist()}"
+        )
+
+    # Each column of the 3x3 linear part must have exactly one non-zero entry
+    linear = aff[:3, :3]
+    for col_idx in range(3):
+        col = linear[:, col_idx]
+        nonzero_count = np.count_nonzero(col)
+        if nonzero_count != 1:
+            raise ValueError(
+                f"Affine column {col_idx} must have exactly one non-zero "
+                f"spatial entry (axis-aligned), got {col.tolist()}"
+            )
+
+    # Each row of the 3x3 linear part must have exactly one non-zero entry
+    # (ensures orthogonality with no shear)
+    for row_idx in range(3):
+        row = linear[row_idx, :]
+        nonzero_count = np.count_nonzero(row)
+        if nonzero_count != 1:
+            raise ValueError(
+                f"Affine row {row_idx} must have exactly one non-zero "
+                f"spatial entry (no shear), got {row.tolist()}"
+            )
+
 
 @dataclass(frozen=True, slots=True, eq=False)
 class GridFrame:
@@ -21,6 +69,11 @@ class GridFrame:
     The affine transform ``index_to_patient_mm`` is a 4x4 matrix mapping
     integer voxel indices (iz, iy, ix) to patient coordinates (x, y, z)
     in mm.
+
+    v1 restriction: axis-aligned grids only. The affine must have
+    orthogonal axes with exactly one non-zero spatial term per index
+    axis (no shear, no rotation other than axis permutation), and
+    the last row must be ``[0, 0, 0, 1]``.
 
     Parameters
     ----------
@@ -41,6 +94,8 @@ class GridFrame:
                 f"Affine must be (4, 4), got {self.index_to_patient_mm.shape}"
             )
         aff = np.array(self.index_to_patient_mm, dtype=np.float64)
+        _validate_finite_array(aff, "index_to_patient_mm")
+        _validate_axis_aligned_affine(aff)
         aff.flags.writeable = False
         object.__setattr__(self, "index_to_patient_mm", aff)
 

@@ -81,19 +81,19 @@ class TestDVHBins:
         dvh = self._make_simple_dvh()
         assert dvh.bin_width_gy == pytest.approx(1.0)
 
-    def test_min_dose_gy(self) -> None:
+    def test_binned_min_dose_gy(self) -> None:
         dvh = self._make_simple_dvh()
-        assert dvh.min_dose_gy == pytest.approx(0.0)
+        assert dvh.binned_min_dose_gy == pytest.approx(0.0)
 
-    def test_max_dose_gy(self) -> None:
+    def test_binned_max_dose_gy(self) -> None:
         dvh = self._make_simple_dvh()
-        assert dvh.max_dose_gy == pytest.approx(3.0)
+        assert dvh.binned_max_dose_gy == pytest.approx(3.0)
 
-    def test_mean_dose_gy(self) -> None:
+    def test_binned_mean_dose_gy(self) -> None:
         dvh = self._make_simple_dvh()
         # bin centres: 0.5, 1.5, 2.5; volumes: 3, 2, 1; total: 6
         # mean = (0.5*3 + 1.5*2 + 2.5*1) / 6 = (1.5 + 3.0 + 2.5) / 6 = 7/6
-        assert dvh.mean_dose_gy == pytest.approx(7.0 / 6.0)
+        assert dvh.binned_mean_dose_gy == pytest.approx(7.0 / 6.0)
 
     def test_arrays_are_read_only(self) -> None:
         dvh = self._make_simple_dvh()
@@ -101,6 +101,79 @@ class TestDVHBins:
             dvh.dose_bin_edges_gy[0] = 999.0
         with pytest.raises(ValueError, match="read-only"):
             dvh.differential_volume_cc[0] = 999.0
+
+    def test_rejects_non_increasing_edges(self) -> None:
+        with pytest.raises(ValueError, match="strictly increasing"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 2.0, 1.0, 3.0]),
+                differential_volume_cc=np.array([1.0, 1.0, 1.0]),
+                total_volume_cc=3.0,
+            )
+
+    def test_rejects_nan_in_edges(self) -> None:
+        with pytest.raises(ValueError, match="non-finite"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, float("nan"), 2.0]),
+                differential_volume_cc=np.array([1.0, 1.0]),
+                total_volume_cc=2.0,
+            )
+
+    def test_rejects_inf_in_diff_volume(self) -> None:
+        with pytest.raises(ValueError, match="non-finite"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([1.0, float("inf")]),
+                total_volume_cc=2.0,
+            )
+
+    def test_rejects_negative_diff_volume(self) -> None:
+        with pytest.raises(ValueError, match="negative"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([1.0, -0.5]),
+                total_volume_cc=2.0,
+            )
+
+    def test_rejects_nan_total_volume(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([1.0, 1.0]),
+                total_volume_cc=float("nan"),
+            )
+
+    def test_rejects_negative_total_volume(self) -> None:
+        with pytest.raises(ValueError, match="non-negative"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([1.0, 1.0]),
+                total_volume_cc=-1.0,
+            )
+
+    def test_zero_volume_cumulative_pct_is_zero(self) -> None:
+        dvh = DVHBins(
+            dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+            differential_volume_cc=np.array([0.0, 0.0]),
+            total_volume_cc=0.0,
+        )
+        assert np.all(dvh.cumulative_volume_pct == 0.0)
+
+    def test_zero_volume_binned_mean_is_zero(self) -> None:
+        dvh = DVHBins(
+            dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+            differential_volume_cc=np.array([0.0, 0.0]),
+            total_volume_cc=0.0,
+        )
+        assert dvh.binned_mean_dose_gy == 0.0
+
+    def test_bin_width_gy_raises_for_nonuniform(self) -> None:
+        dvh = DVHBins(
+            dose_bin_edges_gy=np.array([0.0, 1.0, 3.0]),
+            differential_volume_cc=np.array([1.0, 1.0]),
+            total_volume_cc=2.0,
+        )
+        with pytest.raises(ValueError, match="non-uniform"):
+            dvh.bin_width_gy
 
 
 class TestMetricResult:
