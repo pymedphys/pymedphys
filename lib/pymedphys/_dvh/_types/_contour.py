@@ -144,7 +144,12 @@ class PlanarRegion:
         )
 
     def __hash__(self) -> int:
-        return hash(self.exterior_xy_mm.tobytes())
+        return hash(
+            (
+                self.exterior_xy_mm.tobytes(),
+                tuple(h.tobytes() for h in self.holes_xy_mm),
+            )
+        )
 
 
 # C3: Type alias for a single contour slice

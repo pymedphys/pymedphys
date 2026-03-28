@@ -39,6 +39,8 @@ class SDFField:
         if self.data.shape != expected:
             raise ValueError(f"SDF shape {self.data.shape} != frame shape {expected}")
         d = np.array(self.data, dtype=np.float64)
+        if np.any(~np.isfinite(d)):
+            raise ValueError("SDF values must all be finite (no NaN or Inf)")
         d.flags.writeable = False
         object.__setattr__(self, "data", d)
 

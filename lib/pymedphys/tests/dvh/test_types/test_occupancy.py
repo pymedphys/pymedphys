@@ -10,6 +10,42 @@ from pymedphys._dvh._types._occupancy import OccupancyField
 from pymedphys._dvh._types._roi_ref import ROIRef
 
 
+class TestOccupancyFieldValidation:
+    """A2: OccupancyField must reject out-of-range values."""
+
+    def _make_frame(self) -> GridFrame:
+        return GridFrame.from_uniform(
+            shape_zyx=(1, 1, 1),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
+        )
+
+    def test_rejects_values_greater_than_one(self) -> None:
+        with pytest.raises(ValueError, match=r"\[0\.0, 1\.0\]"):
+            OccupancyField(
+                data=np.array([[[1.5]]]),
+                frame=self._make_frame(),
+                roi=ROIRef(name="Test"),
+            )
+
+    def test_rejects_negative_values(self) -> None:
+        with pytest.raises(ValueError, match=r"\[0\.0, 1\.0\]"):
+            OccupancyField(
+                data=np.array([[[-0.1]]]),
+                frame=self._make_frame(),
+                roi=ROIRef(name="Test"),
+            )
+
+    def test_accepts_boundary_values(self) -> None:
+        """0.0 and 1.0 are valid boundary values."""
+        data = np.array([[[0.0]]])
+        occ = OccupancyField(data=data, frame=self._make_frame(), roi=ROIRef(name="T"))
+        assert occ.data[0, 0, 0] == 0.0
+
+        data = np.array([[[1.0]]])
+        occ = OccupancyField(data=data, frame=self._make_frame(), roi=ROIRef(name="T"))
+        assert occ.data[0, 0, 0] == 1.0
+
+
 class TestOccupancyFieldVolume:
     """D3: Numerical correctness of volume_cc."""
 

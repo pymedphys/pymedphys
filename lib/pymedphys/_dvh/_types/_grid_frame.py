@@ -145,10 +145,8 @@ class GridFrame:
     def from_uniform(
         cls,
         shape_zyx: tuple[int, int, int],
-        spacing_mm_xyz: tuple[float, float, float] | None = None,
+        spacing_mm_xyz: tuple[float, float, float],
         origin_xyz_mm: tuple[float, float, float] = (0.0, 0.0, 0.0),
-        *,
-        spacing_xyz_mm: tuple[float, float, float] | None = None,
     ) -> GridFrame:
         """Convenience constructor for axis-aligned uniform grids.
 
@@ -161,17 +159,8 @@ class GridFrame:
             (x, y, z) order.
         origin_xyz_mm : tuple[float, float, float]
             ``(x, y, z)`` of voxel ``[0, 0, 0]`` centre in mm.
-        spacing_xyz_mm : tuple[float, float, float], optional
-            Deprecated alias for ``spacing_mm_xyz``. Will be removed in
-            a future release.
         """
-        if spacing_mm_xyz is not None and spacing_xyz_mm is not None:
-            raise TypeError("Cannot specify both spacing_mm_xyz and spacing_xyz_mm")
-        if spacing_mm_xyz is None and spacing_xyz_mm is None:
-            raise TypeError("spacing_mm_xyz is required")
-        if spacing_mm_xyz is None:
-            spacing_mm_xyz = spacing_xyz_mm  # type: ignore[assignment]
-        dx, dy, dz = spacing_mm_xyz  # type: ignore[misc]
+        dx, dy, dz = spacing_mm_xyz
         ox, oy, oz = origin_xyz_mm
         aff = np.array(
             [
@@ -195,6 +184,6 @@ class GridFrame:
     def from_dict(cls, d: dict) -> GridFrame:
         """Deserialise from a plain dict."""
         return cls(
-            shape_zyx=tuple(d["shape_zyx"]),
+            shape_zyx=tuple(int(v) for v in d["shape_zyx"]),  # type: ignore[arg-type]
             index_to_patient_mm=np.array(d["index_to_patient_mm"], dtype=np.float64),
         )

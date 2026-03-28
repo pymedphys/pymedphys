@@ -6,6 +6,7 @@ import pytest
 
 from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._metrics import (
+    IndexMetric,
     MetricFamily,
     MetricRequestSet,
     MetricSpec,
@@ -105,6 +106,20 @@ class TestMetricSpec:
             raw="D95%[%Rx]",
         )
         assert spec.requires_dose_ref is True
+
+    def test_rejects_index_with_unrecognised_raw(self) -> None:
+        """A1: INDEX family with unknown raw must raise ValueError."""
+        with pytest.raises(ValueError, match="recognised IndexMetric"):
+            MetricSpec(family=MetricFamily.INDEX, raw="UNKNOWN_INDEX")
+
+    def test_accepts_index_with_explicit_index_metric(self) -> None:
+        """INDEX family with explicit index_metric should succeed."""
+        spec = MetricSpec(
+            family=MetricFamily.INDEX,
+            index_metric=IndexMetric.HI,
+            raw="custom",
+        )
+        assert spec.index_metric == IndexMetric.HI
 
     def test_requires_dose_ref_true_for_ci(self) -> None:
         spec = MetricSpec(family=MetricFamily.INDEX, raw="CI")

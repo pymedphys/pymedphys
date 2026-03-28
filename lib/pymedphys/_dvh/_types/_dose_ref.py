@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,13 +63,13 @@ class DoseReferenceSet:
 
     Parameters
     ----------
-    refs : Mapping[str, DoseReference]
+    refs : dict[str, DoseReference]
         Named dose references. Must be non-empty.
     default_id : str, optional
         Key into ``refs`` for the default reference.
     """
 
-    refs: Mapping[str, DoseReference]
+    refs: dict[str, DoseReference]
     default_id: str | None = None
 
     def __post_init__(self) -> None:

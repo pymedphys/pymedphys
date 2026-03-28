@@ -81,6 +81,14 @@ class DVHBins:
             raise ValueError(
                 f"total_volume_cc must be strictly positive, got {self.total_volume_cc}"
             )
+        # A4: Sum of differential volumes must not exceed total volume
+        dv_sum = float(np.sum(dv))
+        if dv_sum > self.total_volume_cc * (1.0 + 1e-9):
+            raise ValueError(
+                f"sum(differential_volume_cc) = {dv_sum:.6f} exceeds "
+                f"total_volume_cc = {self.total_volume_cc:.6f}. "
+                f"The total volume must be >= the binned volume."
+            )
         edges.flags.writeable = False
         dv.flags.writeable = False
         object.__setattr__(self, "dose_bin_edges_gy", edges)
@@ -149,7 +157,9 @@ class DVHBins:
         )
 
     def __hash__(self) -> int:
-        return hash(self.dose_bin_edges_gy.tobytes())
+        return hash(
+            (self.dose_bin_edges_gy.tobytes(), self.differential_volume_cc.tobytes())
+        )
 
     def to_dict(self) -> dict:
         """Serialise to a plain dict. Cumulative values are NOT included."""

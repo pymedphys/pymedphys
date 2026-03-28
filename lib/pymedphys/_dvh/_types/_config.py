@@ -199,20 +199,44 @@ class AlgorithmConfig:
 
     @classmethod
     def from_dict(cls, d: dict) -> AlgorithmConfig:
-        """Deserialise from a plain dict."""
+        """Deserialise from a plain dict.
+
+        Uses ``d.get(key, default)`` for forward-compatibility: a stored
+        config missing a newly-added field will fall back to the class
+        default rather than raising ``KeyError``.
+        """
+        _defaults = cls()
+        ss_d = d.get("supersampling")
         return cls(
-            interpolation_method=InterpolationMethod(d["interpolation_method"]),
-            endcap_policy=EndCapPolicy(d["endcap_policy"]),
+            interpolation_method=InterpolationMethod(
+                d.get("interpolation_method", _defaults.interpolation_method.value)
+            ),
+            endcap_policy=EndCapPolicy(
+                d.get("endcap_policy", _defaults.endcap_policy.value)
+            ),
             endcap_max_mm=d.get("endcap_max_mm"),
-            occupancy_method=OccupancyMethod(d["occupancy_method"]),
-            point_in_polygon=PointInPolygonRule(d["point_in_polygon"]),
-            supersampling=SupersamplingConfig.from_dict(d["supersampling"]),
-            surface_sampling=d["surface_sampling"],
-            dose_interpolation=DoseInterpolationMethod(d["dose_interpolation"]),
-            dvh_bin_width_gy=d["dvh_bin_width_gy"],
-            dvh_type=DVHType(d["dvh_type"]),
+            occupancy_method=OccupancyMethod(
+                d.get("occupancy_method", _defaults.occupancy_method.value)
+            ),
+            point_in_polygon=PointInPolygonRule(
+                d.get("point_in_polygon", _defaults.point_in_polygon.value)
+            ),
+            supersampling=(
+                SupersamplingConfig.from_dict(ss_d)
+                if ss_d is not None
+                else _defaults.supersampling
+            ),
+            surface_sampling=d.get("surface_sampling", _defaults.surface_sampling),
+            dose_interpolation=DoseInterpolationMethod(
+                d.get("dose_interpolation", _defaults.dose_interpolation.value)
+            ),
+            dvh_bin_width_gy=d.get("dvh_bin_width_gy", _defaults.dvh_bin_width_gy),
+            dvh_type=DVHType(d.get("dvh_type", _defaults.dvh_type.value)),
             floating_point_precision=FloatingPointPrecision(
-                d["floating_point_precision"]
+                d.get(
+                    "floating_point_precision",
+                    _defaults.floating_point_precision.value,
+                )
             ),
         )
 

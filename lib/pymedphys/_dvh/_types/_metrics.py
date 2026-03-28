@@ -134,6 +134,13 @@ class MetricSpec:
             # Auto-derive from raw for backward compatibility
             if self.raw in {m.value for m in IndexMetric}:
                 object.__setattr__(self, "index_metric", IndexMetric(self.raw))
+            else:
+                raise ValueError(
+                    f"MetricSpec with family=INDEX requires a valid "
+                    f"index_metric, but raw='{self.raw}' is not a "
+                    f"recognised IndexMetric value. "
+                    f"Valid values: {[m.value for m in IndexMetric]}"
+                )
 
     @property
     def requires_dose_ref(self) -> bool:
@@ -436,6 +443,8 @@ class MetricRequestSet:
             entry: dict = {
                 "metrics": [m.raw for m in rr.metrics],
             }
+            if rr.roi.roi_number is not None:
+                entry["roi_number"] = rr.roi.roi_number
             if rr.dose_ref_id is not None:
                 entry["dose_ref"] = rr.dose_ref_id
             metrics[rr.roi.name] = entry
@@ -480,6 +489,7 @@ class MetricRequestSet:
                     ROIMetricRequest.from_strings(
                         roi_key,
                         spec["metrics"],
+                        roi_number=spec.get("roi_number"),
                         dose_ref_id=spec.get("dose_ref"),
                     )
                 )

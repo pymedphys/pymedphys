@@ -401,6 +401,8 @@ class TestDVHBinsValidation:
     def test_all_zero_differential_volume(self) -> None:
         """D2: All-zero differential volume is valid (empty structure)
         but mean_dose_gy returns 0.0 (no volume to average over).
+        total_volume_cc > sum(differential) is permitted: some volume
+        may receive dose outside the binned range.
         """
         dvh = DVHBins(
             dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
@@ -411,6 +413,15 @@ class TestDVHBinsValidation:
         assert dvh.max_dose_gy == 0.0
         assert dvh.mean_dose_gy == pytest.approx(0.0)
         assert dvh.cumulative_volume_cc[0] == 0.0
+
+    def test_rejects_differential_exceeding_total(self) -> None:
+        """A4: sum(differential_volume_cc) must not exceed total_volume_cc."""
+        with pytest.raises(ValueError, match="exceeds"):
+            DVHBins(
+                dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
+                differential_volume_cc=np.array([3.0, 3.0]),
+                total_volume_cc=5.0,  # sum=6 > 5
+            )
 
 
 class TestROIStatusEnum:

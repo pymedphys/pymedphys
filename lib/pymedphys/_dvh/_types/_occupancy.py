@@ -39,6 +39,11 @@ class OccupancyField:
                 f"Occupancy shape {self.data.shape} != frame shape {expected}"
             )
         d = np.array(self.data, dtype=np.float64)
+        if np.any((d < 0.0) | (d > 1.0)):
+            raise ValueError(
+                "Occupancy values must be in [0.0, 1.0], "
+                f"got range [{float(np.min(d))}, {float(np.max(d))}]"
+            )
         d.flags.writeable = False
         object.__setattr__(self, "data", d)
 
