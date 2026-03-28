@@ -177,6 +177,7 @@
     - [11.2 Key Experiments This Tool Enables](#112-key-experiments-this-tool-enables)
   - [12. Appendices](#12-appendices)
     - [Appendix A: Glossary of Metric Semantics](#appendix-a-glossary-of-metric-semantics)
+    - [Appendix B: Implementation Design Decisions](#appendix-b-implementation-design-decisions)
   - [13. Future Research Directions: Computer Graphics Algorithms for DVH Computation](#13-future-research-directions-computer-graphics-algorithms-for-dvh-computation)
     - [13.1 SDF-First Architecture](#131-sdf-first-architecture)
     - [13.2 Exact Analytical Partial-Volume Computation](#132-exact-analytical-partial-volume-computation)
@@ -3430,6 +3431,82 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 | GI | V_50%Rx / V_100%Rx (Paddick gradient index) | dimensionless | Paddick & Lippitz [^23] |
 
 **Terminological note:** Walker and Byrne [^21] use "Modified Gradient Index (MGI)" for the same quantity defined as GI above. This RFC uses "GI" throughout for consistency with Paddick's original terminology [^23].
+
+### Appendix B: Implementation Design Decisions
+
+This appendix records design decisions made during implementation that diverge from or extend the original RFC specification. Each decision includes its rationale and the phase in which it was made.
+
+#### B.1 ROIRef enriched with `colour_rgb` (Phase 0)
+
+**RFC §6.4 originally specified:** `ROIRef(name, roi_number)` — a minimal identity token.
+
+**Decision:** Add `colour_rgb: Optional[tuple[int, int, int]] = None` to `ROIRef`.
+
+**Rationale:** Colour is DICOM ROI identity metadata (tag 3006,002A), not just display data. Without it on `ROIRef`, downstream code that wants to plot DVH curves in the ROI's DICOM-specified colour would need to look up the original structure data — breaking the self-describing property of result objects. Since `ROIRef` travels through `OccupancyField`, `SDFField`, `MetricResult`, and `ROIResult`, adding colour here makes it available everywhere it's needed for display.
+
+**What changed:** RFC §6.4 code block updated to include `colour_rgb` with validation (values in 0–255).
+
+#### B.2 ContourROI carries geometry-interpretation fields (Phase 0)
+
+**RFC §6.7 originally specified:** `ContourROI(roi, slices)` — geometry only.
+
+**Decision:** Add `combination_mode: str = "auto"` and `coordinate_frame: str = "DICOM_PATIENT"` to `ContourROI`.
+
+**Rationale:** These fields govern how contours are combined during voxelisation (e.g., XOR vs union for overlapping contours on the same slice) and which coordinate frame applies. They are geometry-interpretation concerns, not identity concerns, so they belong on `ContourROI` rather than `ROIRef`. The prior flat `Structure` type carried these fields; splitting them between `ROIRef` (identity + display) and `ContourROI` (geometry + interpretation) preserves the information while maintaining clean separation.
+
+**What changed:** RFC §6.7 code block updated to include both fields on `ContourROI`.
+
+#### B.3 `cached_property` replaced with private fields on DVHBins (Phase 0)
+
+**RFC §6.9 specified:** `functools.cached_property` for `cumulative_volume_cc` and `cumulative_volume_pct` on `DVHBins`.
+
+**Decision:** Use private `_cumulative_volume_cc` and `_cumulative_volume_pct` fields computed in `__post_init__`, exposed via regular `@property`.
+
+**Rationale:** `functools.cached_property` requires `__dict__` on the instance, which is unavailable when `slots=True` is set. Since the RFC also specifies `slots=True` for all dataclasses, these two requirements are incompatible. Computing cumulative values eagerly in `__post_init__` and storing them as private fields preserves the frozen/slots contract while still providing the derived values. The fields are excluded from `__init__` (via `field(init=False)`) and `__repr__`.
+
+#### B.4 `_types/` subdirectory structure (Phase 0)
+
+**Decision:** Place all domain types in `_dvh/_types/` with one file per type group (13 files), rather than a single flat `types.py`.
+
+**Rationale:** The RFC §9 Task 0.1 explicitly specifies this structure. A single `types.py` file (as in the prior attempt) would grow to 2000+ lines and make it difficult to navigate or review changes to individual types. The subdirectory structure keeps each file focused (<150 lines typically), makes imports explicit, and allows test files to mirror the production structure.
+
+#### B.5 Serialisation format split: TOML input, JSON output (Phase 0)
+
+**Decision:** Use TOML for human-edited inputs (metric requests, configuration). Use JSON for machine-generated outputs (computation results).
+
+**Rationale:**
+
+*TOML for inputs:*
+- Physicists write metric request files by hand. TOML supports comments (documenting why specific metrics were chosen), has clean syntax without excessive punctuation, and is the standard format for Python config files.
+- DVH configuration (algorithm settings, runtime config) is similarly human-edited and benefits from comments and readability.
+- `tomlkit` is already a pymedphys dependency and supports read/write with comment preservation.
+
+*JSON for results:*
+- Computation results (`DVHResultSet`) are machine-generated and machine-consumed. No one edits them by hand.
+- JSON handles arrays natively (DVH bin edges, differential volumes), supports deeply nested structures (results → metrics → spec), and is universally readable by every language and tool.
+- TOML's array-of-tables syntax (`[[results]]`) becomes awkward with nested sub-objects and long 1D arrays (hundreds of DVH bin values).
+
+*Not YAML:*
+- YAML has no role in DVH. PyYAML is in pyproject.toml for other pymedphys modules but is whitespace-sensitive, has security concerns with arbitrary object loading, and offers no advantage over TOML (for config) or JSON (for data interchange).
+
+*Not HDF5/npz (Phase 0):*
+- Large 3D arrays (DoseGrid, OccupancyField, SDFField) are internal computation intermediates. Text formats are inappropriate for millions of voxels. Binary serialisation (HDF5, numpy `.npz`, or DICOM) is deferred to Phase 1+.
+
+#### B.6 `to_dict()`/`from_dict()` on each type (Phase 0)
+
+**Decision:** Each serialisable type gets `to_dict() -> dict` and `from_dict(cls, d: dict) -> Self` methods. The top-level `_serialisation.py` provides thin wrappers (`to_json`, `from_json`, `to_toml`, `from_toml`) that dispatch to these.
+
+**Rationale:** Keeping serialisation logic on the type itself (rather than in a central serialiser) means:
+- Each type's round-trip can be tested independently
+- Adding a new type doesn't require modifying a central dispatch table
+- The serialisation contract is visible in the same file as the type definition
+- `MetricRequestSet.from_dict()` already follows this pattern (implemented in Task 0.1)
+
+**Conventions:**
+- Enums serialise as their `.value` string (e.g., `"dvh_dose"` not `"MetricFamily.DVH_DOSE"`)
+- Numpy arrays serialise via `.tolist()` and reconstruct with `np.array(..., dtype=np.float64)`
+- `Optional` fields serialise as `null` (JSON) or are omitted (TOML)
+- DVHBins cumulative fields are NOT serialised — they're derived from differential volume and recomputed in `__post_init__`
 
 ---
 

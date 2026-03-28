@@ -123,6 +123,27 @@ class SupersamplingConfig:
         """Create a fixed-factor supersampling config."""
         return cls(factor=factor)
 
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        d: dict = {
+            "adaptive_min_voxels": self.adaptive_min_voxels,
+            "adaptive_convergence_tol": self.adaptive_convergence_tol,
+            "adaptive_edge_refinement": self.adaptive_edge_refinement,
+        }
+        if self.factor is not None:
+            d["factor"] = self.factor
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> SupersamplingConfig:
+        """Deserialise from a plain dict."""
+        return cls(
+            factor=d.get("factor"),
+            adaptive_min_voxels=d.get("adaptive_min_voxels", 10000),
+            adaptive_convergence_tol=d.get("adaptive_convergence_tol", 0.002),
+            adaptive_edge_refinement=d.get("adaptive_edge_refinement", True),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class AlgorithmConfig:
@@ -158,6 +179,43 @@ class AlgorithmConfig:
                 "endcap_max_mm is required when endcap_policy is 'half_slice_capped'"
             )
 
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        d: dict = {
+            "interpolation_method": self.interpolation_method.value,
+            "endcap_policy": self.endcap_policy.value,
+            "occupancy_method": self.occupancy_method.value,
+            "point_in_polygon": self.point_in_polygon.value,
+            "supersampling": self.supersampling.to_dict(),
+            "surface_sampling": self.surface_sampling,
+            "dose_interpolation": self.dose_interpolation.value,
+            "dvh_bin_width_gy": self.dvh_bin_width_gy,
+            "dvh_type": self.dvh_type.value,
+            "floating_point_precision": self.floating_point_precision.value,
+        }
+        if self.endcap_max_mm is not None:
+            d["endcap_max_mm"] = self.endcap_max_mm
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> AlgorithmConfig:
+        """Deserialise from a plain dict."""
+        return cls(
+            interpolation_method=InterpolationMethod(d["interpolation_method"]),
+            endcap_policy=EndCapPolicy(d["endcap_policy"]),
+            endcap_max_mm=d.get("endcap_max_mm"),
+            occupancy_method=OccupancyMethod(d["occupancy_method"]),
+            point_in_polygon=PointInPolygonRule(d["point_in_polygon"]),
+            supersampling=SupersamplingConfig.from_dict(d["supersampling"]),
+            surface_sampling=d["surface_sampling"],
+            dose_interpolation=DoseInterpolationMethod(d["dose_interpolation"]),
+            dvh_bin_width_gy=d["dvh_bin_width_gy"],
+            dvh_type=DVHType(d["dvh_type"]),
+            floating_point_precision=FloatingPointPrecision(
+                d["floating_point_precision"]
+            ),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class RuntimeConfig:
@@ -179,6 +237,25 @@ class RuntimeConfig:
         if self.max_threads is not None and self.max_threads < 1:
             raise ValueError(f"max_threads must be >= 1, got {self.max_threads}")
 
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        d: dict = {
+            "deterministic": self.deterministic,
+            "batch_size_gb": self.batch_size_gb,
+        }
+        if self.max_threads is not None:
+            d["max_threads"] = self.max_threads
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> RuntimeConfig:
+        """Deserialise from a plain dict."""
+        return cls(
+            deterministic=d.get("deterministic", True),
+            max_threads=d.get("max_threads"),
+            batch_size_gb=d.get("batch_size_gb", 12.0),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class PipelinePolicy:
@@ -187,6 +264,23 @@ class PipelinePolicy:
     invalid_roi_policy: InvalidROIPolicy = InvalidROIPolicy.REPAIR_IF_SAFE
     anonymise_provenance: bool = False
     z_tolerance_mm: float = 0.01
+
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        return {
+            "invalid_roi_policy": self.invalid_roi_policy.value,
+            "anonymise_provenance": self.anonymise_provenance,
+            "z_tolerance_mm": self.z_tolerance_mm,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> PipelinePolicy:
+        """Deserialise from a plain dict."""
+        return cls(
+            invalid_roi_policy=InvalidROIPolicy(d["invalid_roi_policy"]),
+            anonymise_provenance=d.get("anonymise_provenance", False),
+            z_tolerance_mm=d.get("z_tolerance_mm", 0.01),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,4 +339,21 @@ class DVHConfig:
                 dvh_type=DVHType.CUMULATIVE,
             ),
             runtime=RuntimeConfig(deterministic=True),
+        )
+
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        return {
+            "algorithm": self.algorithm.to_dict(),
+            "runtime": self.runtime.to_dict(),
+            "policy": self.policy.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> DVHConfig:
+        """Deserialise from a plain dict."""
+        return cls(
+            algorithm=AlgorithmConfig.from_dict(d["algorithm"]),
+            runtime=RuntimeConfig.from_dict(d["runtime"]),
+            policy=PipelinePolicy.from_dict(d["policy"]),
         )

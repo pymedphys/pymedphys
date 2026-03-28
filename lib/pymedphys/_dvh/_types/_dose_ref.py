@@ -41,6 +41,15 @@ class DoseReference:
                 f"where this dose reference comes from."
             )
 
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        return {"dose_gy": self.dose_gy, "source": self.source}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> DoseReference:
+        """Deserialise from a plain dict."""
+        return cls(dose_gy=d["dose_gy"], source=d["source"])
+
 
 @dataclass(frozen=True, slots=True)
 class DoseReferenceSet:
@@ -102,3 +111,18 @@ class DoseReferenceSet:
         """Convenience for the common single-prescription case."""
         ref = DoseReference(dose_gy=dose_gy, source=source)
         return cls(refs={"default": ref}, default_id="default")
+
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        d: dict = {
+            "refs": {k: v.to_dict() for k, v in self.refs.items()},
+        }
+        if self.default_id is not None:
+            d["default_id"] = self.default_id
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> DoseReferenceSet:
+        """Deserialise from a plain dict."""
+        refs = {k: DoseReference.from_dict(v) for k, v in d["refs"].items()}
+        return cls(refs=refs, default_id=d.get("default_id"))

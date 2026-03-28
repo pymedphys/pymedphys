@@ -114,3 +114,18 @@ class GridFrame:
             dtype=np.float64,
         )
         return cls(shape_zyx=shape_zyx, index_to_patient_mm=aff)
+
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        return {
+            "shape_zyx": list(self.shape_zyx),
+            "index_to_patient_mm": self.index_to_patient_mm.tolist(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> GridFrame:
+        """Deserialise from a plain dict."""
+        return cls(
+            shape_zyx=tuple(d["shape_zyx"]),
+            index_to_patient_mm=np.array(d["index_to_patient_mm"], dtype=np.float64),
+        )

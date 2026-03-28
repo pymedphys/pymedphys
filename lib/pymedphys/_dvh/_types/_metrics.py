@@ -106,6 +106,32 @@ class MetricSpec:
             parts.append(f"ref={self.dose_ref_id}")
         return "|".join(parts)
 
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        d: dict = {
+            "family": self.family.value,
+            "threshold_unit": self.threshold_unit.value,
+            "output_unit": self.output_unit.value,
+            "raw": self.raw,
+        }
+        if self.threshold is not None:
+            d["threshold"] = self.threshold
+        if self.dose_ref_id is not None:
+            d["dose_ref_id"] = self.dose_ref_id
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> MetricSpec:
+        """Deserialise from a plain dict."""
+        return cls(
+            family=MetricFamily(d["family"]),
+            threshold=d.get("threshold"),
+            threshold_unit=ThresholdUnit(d["threshold_unit"]),
+            output_unit=OutputUnit(d["output_unit"]),
+            dose_ref_id=d.get("dose_ref_id"),
+            raw=d.get("raw", ""),
+        )
+
     @classmethod
     def parse(cls, raw: str) -> MetricSpec:
         """Parse a metric string into a typed MetricSpec.
@@ -258,6 +284,25 @@ class ROIMetricRequest:
             dose_ref_id=dose_ref_id,
         )
 
+    def to_dict(self) -> dict:
+        """Serialise to a plain dict."""
+        d: dict = {
+            "roi": self.roi.to_dict(),
+            "metrics": [m.to_dict() for m in self.metrics],
+        }
+        if self.dose_ref_id is not None:
+            d["dose_ref_id"] = self.dose_ref_id
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ROIMetricRequest:
+        """Deserialise from a plain dict."""
+        return cls(
+            roi=ROIRef.from_dict(d["roi"]),
+            metrics=tuple(MetricSpec.from_dict(m) for m in d["metrics"]),
+            dose_ref_id=d.get("dose_ref_id"),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class MetricRequestSet:
@@ -297,6 +342,31 @@ class MetricRequestSet:
                         raise ValueError(
                             f"Metric '{m.raw}' for ROI '{rr.roi}': {e}"
                         ) from e
+
+    def to_dict(self) -> dict:
+        """Serialise to a dict compatible with ``from_dict()``.
+
+        Uses the rich format with explicit dose_refs and per-ROI
+        metric dicts.
+        """
+        d: dict = {}
+        if self.dose_refs is not None:
+            d["dose_refs"] = {
+                k: {"dose_gy": v.dose_gy, "source": v.source}
+                for k, v in self.dose_refs.refs.items()
+            }
+            if self.dose_refs.default_id is not None:
+                d["default_dose_ref"] = self.dose_refs.default_id
+        metrics: dict = {}
+        for rr in self.roi_requests:
+            entry: dict = {
+                "metrics": [m.raw for m in rr.metrics],
+            }
+            if rr.dose_ref_id is not None:
+                entry["dose_ref"] = rr.dose_ref_id
+            metrics[rr.roi.name] = entry
+        d["metrics"] = metrics
+        return d
 
     @property
     def roi_refs(self) -> FrozenSet[ROIRef]:
