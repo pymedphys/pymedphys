@@ -64,4 +64,9 @@ def radial_gaussian_dose(
     """
     _validate_positive(amplitude_gy=amplitude_gy, sigma_mm=sigma_mm)
     r = np.atleast_1d(np.asarray(r_mm, dtype=np.float64))
+    if np.any(r < 0.0):
+        raise ValueError(
+            "r_mm must be non-negative (radial distance is always >= 0), "
+            f"got minimum value {float(np.min(r))}"
+        )
     return amplitude_gy * np.exp(-(r**2) / (2.0 * sigma_mm**2))

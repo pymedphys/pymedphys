@@ -83,3 +83,15 @@ class TestRadialGaussianDose:
     def test_rejects_negative_sigma(self) -> None:
         with pytest.raises(ValueError, match="sigma_mm"):
             radial_gaussian_dose(5.0, amplitude_gy=60.0, sigma_mm=-1.0)
+
+    def test_rejects_negative_radius(self) -> None:
+        """Negative radial distance is semantically invalid."""
+        with pytest.raises(ValueError, match="r_mm must be non-negative"):
+            radial_gaussian_dose(-5.0, amplitude_gy=60.0, sigma_mm=10.0)
+
+    def test_rejects_negative_in_array(self) -> None:
+        """Array containing any negative r_mm is rejected."""
+        with pytest.raises(ValueError, match="r_mm must be non-negative"):
+            radial_gaussian_dose(
+                np.array([0.0, 5.0, -1.0]), amplitude_gy=60.0, sigma_mm=10.0
+            )
