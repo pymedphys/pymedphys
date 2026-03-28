@@ -176,12 +176,42 @@ class MetricSpec:
         _dvh_patterns: tuple[
             tuple[str, MetricFamily, ThresholdUnit, OutputUnit], ...
         ] = (
-            (r"^D(\d+(?:\.\d+)?)%\[%Rx\]$", MetricFamily.DVH_DOSE, ThresholdUnit.PERCENT, OutputUnit.PERCENT_DOSE),
-            (r"^D(\d+(?:\.\d+)?)%$", MetricFamily.DVH_DOSE, ThresholdUnit.PERCENT, OutputUnit.GY),
-            (r"^D(\d+(?:\.\d+)?)cc$", MetricFamily.DVH_DOSE, ThresholdUnit.CC, OutputUnit.GY),
-            (r"^V(\d+(?:\.\d+)?)Gy\[%\]$", MetricFamily.DVH_VOLUME, ThresholdUnit.GY, OutputUnit.PERCENT_VOLUME),
-            (r"^V(\d+(?:\.\d+)?)Gy$", MetricFamily.DVH_VOLUME, ThresholdUnit.GY, OutputUnit.CC),
-            (r"^V(\d+(?:\.\d+)?)%$", MetricFamily.DVH_VOLUME, ThresholdUnit.PERCENT, OutputUnit.CC),
+            (
+                r"^D(\d+(?:\.\d+)?)%\[%Rx\]$",
+                MetricFamily.DVH_DOSE,
+                ThresholdUnit.PERCENT,
+                OutputUnit.PERCENT_DOSE,
+            ),
+            (
+                r"^D(\d+(?:\.\d+)?)%$",
+                MetricFamily.DVH_DOSE,
+                ThresholdUnit.PERCENT,
+                OutputUnit.GY,
+            ),
+            (
+                r"^D(\d+(?:\.\d+)?)cc$",
+                MetricFamily.DVH_DOSE,
+                ThresholdUnit.CC,
+                OutputUnit.GY,
+            ),
+            (
+                r"^V(\d+(?:\.\d+)?)Gy\[%\]$",
+                MetricFamily.DVH_VOLUME,
+                ThresholdUnit.GY,
+                OutputUnit.PERCENT_VOLUME,
+            ),
+            (
+                r"^V(\d+(?:\.\d+)?)Gy$",
+                MetricFamily.DVH_VOLUME,
+                ThresholdUnit.GY,
+                OutputUnit.CC,
+            ),
+            (
+                r"^V(\d+(?:\.\d+)?)%$",
+                MetricFamily.DVH_VOLUME,
+                ThresholdUnit.PERCENT,
+                OutputUnit.CC,
+            ),
         )
 
         for pattern, family, t_unit, o_unit in _dvh_patterns:
