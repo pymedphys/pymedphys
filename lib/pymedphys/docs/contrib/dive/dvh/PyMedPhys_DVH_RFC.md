@@ -2,7 +2,7 @@
 
 **Document type:** Hybrid technical RFC and research protocol
 **Target audience:** PyMedPhys maintainers and AI coding agents (Claude Code, GPT-5)
-**Version:** 0.6
+**Version:** 0.7
 **Module path:** `pymedphys._dvh`
 
 ---
@@ -229,7 +229,7 @@ The literature consistently identifies the following as desirable properties for
 - Drzymala et al. [^1] argued that structure discretisation should be decoupled from dose-grid resolution and that cumulative bins finer than 2 Gy are needed; they recommended 0.5 Gy.
 - Nelms et al. [^14] showed that internal consistency between geometric definition and dose tally is essential, and that whole-curve validation against analytical truth exposes failure modes that endpoint-only checks miss.
 - Pepin et al. [^18] demonstrated that precision-band analysis reveals discretisation-driven uncertainty that single-point metrics conceal. The better-performing systems in their study achieved median precision bands around 1%.
-- Multiple studies [^2][^5][^15][^16][^17][^21] showed that small structures in steep gradients are the most demanding regime, with errors growing rapidly as structure volume decreases below approximately 1 cc.
+- Multiple studies [^2], [^5], [^15], [^16], [^17], [^21] showed that small structures in steep gradients are the most demanding regime, with errors growing rapidly as structure volume decreases below approximately 1 cc.
 - Penoncello et al. [^19] showed that geometry handling (interpolation, end-capping, voxel inclusion) matters at least as much as dose-grid resolution.
 
 ---
@@ -244,7 +244,7 @@ The computational foundations of DVH calculation were established by Drzymala et
 
 AAPM TG-53 [^3] formalised DVH generation as a QA-sensitive computational process and identified the algorithmic decision points: VROI construction, Boolean operations, dose interpolation, grid interactions, histogram binning, and plan normalisation. TG-53 deliberately did not prescribe a numeric DVH tolerance [^3]. The IAEA Technical Report Series No. 430 [^25] reinforced this by treating DVH generation as a distinct QA problem, separate from dose calculation, requiring independent commissioning of anatomy modelling, dose sampling, histogram construction, and structure logic. It further documented that a 5% dose change can alter response by roughly 10–30%, supporting a target of about 3% dose-calculation accuracy [^25]. Panitsa et al. [^4] provided early quality control testing of DVH computation using simple geometric phantoms, showing that high-gradient regions are far more demanding than low-gradient regions and that the number of sampling points materially affects DVH accuracy.
 
-**Consensus:** DVH computation depends on multiple interacting algorithmic choices. Structure discretisation should be decoupled from dose-grid resolution [^1][^3][^25]. Validation must include synthetic phantoms with known truth [^1][^3][^4]. Binary voxel-centre inclusion is a historical baseline, not a gold standard [^1][^15].
+**Consensus:** DVH computation depends on multiple interacting algorithmic choices. Structure discretisation should be decoupled from dose-grid resolution [^1], [^3], [^25]. Validation must include synthetic phantoms with known truth [^1], [^3], [^4]. Binary voxel-centre inclusion is a historical baseline, not a gold standard [^1], [^15].
 
 **Design implication:** Every algorithmic choice identified by Drzymala [^1], TG-53 [^3], and the IAEA [^25] must be explicit, configurable, and documented in provenance.
 
@@ -262,9 +262,9 @@ Walker and Byrne [^21] used spherical/Gaussian analytical cases and explicitly q
 
 Gossman et al. [^10] demonstrated a complementary approach using a synthetic benchmark with known depth-dose characteristics against Eclipse AAA v8.6, achieving approximately 0.4–0.6% mean deviation and 2.0% total-volume deviation [^10].
 
-**Consensus:** Analytical benchmarks are indispensable. Whole-curve validation is necessary [^14][^18]. End-capping and between-slice interpolation are major sources of cross-system disagreement [^14][^18].
+**Consensus:** Analytical benchmarks are indispensable. Whole-curve validation is necessary [^14], [^18]. End-capping and between-slice interpolation are major sources of cross-system disagreement [^14], [^18].
 
-**Design implication:** All available analytical benchmark datasets [^14][^17][^20][^21] should be incorporated into the validation corpus. Precision-band analysis per Pepin [^18] should be a standard diagnostic output.
+**Design implication:** All available analytical benchmark datasets [^14], [^17], [^20], [^21] should be incorporated into the validation corpus. Precision-band analysis per Pepin [^18] should be a standard diagnostic output.
 
 ### 3.3 Cross-System Variability
 
@@ -272,7 +272,7 @@ Ebert et al. [^9] compared DVH data from multiple radiotherapy treatment plannin
 
 Penoncello et al. [^19] evaluated eight commercial systems given identical imported DICOM data. Structure-volume ratios relative to Eclipse ranged from 1.036 to 1.101, all significantly different at P < .001. Dose-grid refinement from 2.5 mm to 1.25 mm produced only modest improvement, whereas differences in end-capping, interpolation, and voxel inclusion explained much of the remaining spread [^19].
 
-**Consensus:** Cross-system disagreement is real, persistent, and clinically relevant. It arises primarily from geometry handling rather than dose-grid sampling alone [^9][^19]. Ebert et al. [^9] and Penoncello et al. [^19] independently confirm that volume-related effects are a larger source of inter-system DVH disagreement than dose-related effects.
+**Consensus:** Cross-system disagreement is real, persistent, and clinically relevant. It arises primarily from geometry handling rather than dose-grid sampling alone [^9], [^19]. Ebert et al. [^9] and Penoncello et al. [^19] independently confirm that volume-related effects are a larger source of inter-system DVH disagreement than dose-related effects.
 
 ### 3.4 Voxelisation and Slice-Thickness Effects
 
@@ -282,7 +282,7 @@ Corbett et al. [^5] showed that V200 in prostate brachytherapy was far more disc
 
 Kirisits et al. [^7] found volume reconstruction variability increasing from approximately 1–3% SD at CT 2 mm slices to 3–9% at MRI 5 mm slices [^7].
 
-**Consensus:** Coarse voxelisation disproportionately affects small structures and high-gradient regions [^5][^15][^17]. Binary centre-inclusion is fundamentally limited [^15].
+**Consensus:** Coarse voxelisation disproportionately affects small structures and high-gradient regions [^5], [^15], [^17]. Binary centre-inclusion is fundamentally limited [^15].
 
 **Design implication:** The tool should support fractional-occupancy or exact sub-voxel integration as its primary mode, with binary centre-inclusion as a legacy/emulation option.
 
@@ -294,7 +294,7 @@ Rosewall et al. [^13] showed that for bladder-wall DVHs in prostate IMRT (Pinnac
 
 Snyder et al. [^16] showed that in spine SRS (Eclipse v11, AAA v11), moving from 1.0 mm to 2.5 mm increased mean Cord_D10% by 13.0% and Cord_D0.03cc by 10.1%, with worst-case increases of 23.2% and 22.7% [^16].
 
-**Consensus:** Dose-grid resolution materially affects DVH outputs, especially for small structures and steep gradients [^6][^13][^16]. Grid-origin phase contributes errors of similar magnitude [^6].
+**Consensus:** Dose-grid resolution materially affects DVH outputs, especially for small structures and steep gradients [^6], [^13], [^16]. Grid-origin phase contributes errors of similar magnitude [^6].
 
 **Design implication:** The tool should warn when input dose-grid spacing is likely inadequate. Grid-phase sensitivity analysis should be supported. The tool should distinguish its own interpolation/integration error from error already embedded in the imported dose grid [^6]. *[Engineering inference]*
 
@@ -336,19 +336,19 @@ Grimm et al. [^11] compiled published SBRT normal-tissue dose tolerance limits a
 
 | Design choice | Literature consensus | Key references |
 | --- | --- | --- |
-| Structure-dose grid decoupling | Strong consensus | [^1][^3][^6][^25] |
-| Sub-voxel/fractional occupancy | Strong consensus | [^15][^17][^18] |
-| Configurable end-capping | Essential; no single "correct" method | [^14][^18][^19] |
-| Configurable between-slice interpolation | Essential; shape-based is theoretically preferred | [^18][^19][^24] |
-| Fine histogram binning | Strong consensus | [^1][^14][^18] |
-| Analytical benchmark validation | Strong consensus | [^14][^17][^18][^20][^21] |
-| Whole-curve validation, not just endpoints | Strong consensus | [^14][^18] |
-| Small-structure uncertainty reporting | Strong consensus | [^17][^21] |
-| Phase-sensitivity testing | Supported but under-practised | [^6][^17] |
-| Grid-resolution warnings | Strong consensus | [^6][^13][^16] |
-| Surface-aware extrema and near-extrema | Supported | [^14][^18] |
-| Geometry handling $\geq$ dose handling in priority | Strong consensus | [^9][^19] |
-| GI as a sentinel validation metric | Supported | [^20][^21] |
+| Structure-dose grid decoupling | Strong consensus | [^1], [^3], [^6], [^25] |
+| Sub-voxel/fractional occupancy | Strong consensus | [^15], [^17], [^18] |
+| Configurable end-capping | Essential; no single "correct" method | [^14], [^18], [^19] |
+| Configurable between-slice interpolation | Essential; shape-based is theoretically preferred | [^18], [^19], [^24] |
+| Fine histogram binning | Strong consensus | [^1], [^14], [^18] |
+| Analytical benchmark validation | Strong consensus | [^14], [^17], [^18], [^20], [^21] |
+| Whole-curve validation, not just endpoints | Strong consensus | [^14], [^18] |
+| Small-structure uncertainty reporting | Strong consensus | [^17], [^21] |
+| Phase-sensitivity testing | Supported but under-practised | [^6], [^17] |
+| Grid-resolution warnings | Strong consensus | [^6], [^13], [^16] |
+| Surface-aware extrema and near-extrema | Supported | [^14], [^18] |
+| Geometry handling $\geq$ dose handling in priority | Strong consensus | [^9], [^19] |
+| GI as a sentinel validation metric | Supported | [^20], [^21] |
 
 ---
 
@@ -2375,7 +2375,7 @@ The `repair_if_safe` mode attempts: (1) close open contours, (2) remove zero-are
 
 The validation strategy is a first-class deliverable, split into five tiers.
 
-**Literature-validated methodological principle:** The literature consistently demonstrates that analytical ground truth is essential but insufficient alone [^14][^17][^18][^20][^21]. Simple convex shapes in smooth gradients are excellent for diagnosing algorithmic failure modes, but they do not reproduce the full complexity of clinical anatomy: concavities, thin shells, multiply connected structures, heterogeneous media, and modulated dose fields remain untested by analytical benchmarks. A robust validation strategy therefore requires both analytical phantoms for algorithm verification and clinical datasets for real-world stress testing. The five-tier structure below operationalises this principle.
+**Literature-validated methodological principle:** The literature consistently demonstrates that analytical ground truth is essential but insufficient alone [^14], [^17], [^18], [^20], [^21]. Simple convex shapes in smooth gradients are excellent for diagnosing algorithmic failure modes, but they do not reproduce the full complexity of clinical anatomy: concavities, thin shells, multiply connected structures, heterogeneous media, and modulated dose fields remain untested by analytical benchmarks. A robust validation strategy therefore requires both analytical phantoms for algorithm verification and clinical datasets for real-world stress testing. The five-tier structure below operationalises this principle.
 
 ### 8.1 Tier 1: Analytical Ground-Truth Tests
 
@@ -2409,7 +2409,7 @@ The validation strategy is a first-class deliverable, split into five tiers.
 | Disconnected islands (two separated spheres) | Multi-component ROI | Sum of individual analytical DVHs |
 | Nested concentric spheres with different dose | Boundary logic and dose-volume assignment | Analytical per-shell DVH |
 | Structure at dose-grid edge | Incomplete dose coverage | Analytical with explicit zero-dose region |
-| Phase-shift sweep (structure translated 0–1 voxels) | Grid-phase sensitivity [^6][^17] | Analytical DVH should be phase-independent for large structures |
+| Phase-shift sweep (structure translated 0–1 voxels) | Grid-phase sensitivity [^6], [^17] | Analytical DVH should be phase-independent for large structures |
 | Anisotropic dose grid (e.g. $1 \times 1 \times 3$ mm) | Non-isotropic grid handling | Analytical adjustment |
 | Adversarial contours: near-zero-area slices, reversed winding, duplicate slices | Robustness | Expected failures and repairs |
 
@@ -2701,7 +2701,7 @@ lib/pymedphys/_dvh/_benchmarks/
 
 **Implement:** Given a geometry and dose field, generate a sweep of $N$ test cases where the structure is translated by $[0,\, 1/N,\, 2/N,\, \ldots,\, (N{-}1)/N] \times \text{voxel\_size}$ in each axis, keeping the dose field fixed.
 
-**Purpose:** Directly tests grid-phase sensitivity [^6][^17].
+**Purpose:** Directly tests grid-phase sensitivity [^6], [^17].
 
 **Tests:**
 
@@ -3509,7 +3509,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 
 ### 11.1 Key Gaps in the Literature
 
-1. **Irregular geometry validation.** Nearly all validation uses spheres, cylinders, and cones [^14][^17][^18][^20][^21]. Concave, branching, multi-component, and topologically complex structures are unvalidated.
+1. **Irregular geometry validation.** Nearly all validation uses spheres, cylinders, and cones [^14], [^17], [^18], [^20], [^21]. Concave, branching, multi-component, and topologically complex structures are unvalidated.
 2. **Quantitative algorithm-to-impact mapping.** No complete, controlled mapping from each algorithmic choice to its quantitative impact on each metric for each anatomy class.
 3. **Phase-sensitivity beyond spheres.** Stanley [^17] characterised phase-sensitivity for spheres; extension to irregular anatomies is needed.
 4. **Uncertainty-predictive models.** Can DVH uncertainty be predicted from geometry, dose field, and parameters without computing at multiple settings? *[Open question]*
