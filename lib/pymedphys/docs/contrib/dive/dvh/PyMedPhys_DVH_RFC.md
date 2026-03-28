@@ -2,7 +2,7 @@
 
 **Document type:** Hybrid technical RFC and research protocol
 **Target audience:** PyMedPhys maintainers and AI coding agents (Claude Code, GPT-5)
-**Version:** 0.5-draft (v7)
+**Version:** 0.6
 **Module path:** `pymedphys._dvh`
 
 ---
@@ -13,6 +13,7 @@
 > This document was produced with the liberal help of Claude (Anthropic), including literature synthesis, algorithmic specification, data model design, and prose drafting. While every effort was made to minimise hallucinations and other LLM artefacts — including systematic cross-referencing of all citations against source summaries, independent verification of algorithmic descriptions, and explicit labelling of uncertain or inferred claims — the reader should be mindful that not all claims have yet been carefully confirmed by a human domain expert against primary sources. Statements derived from literature are cited; statements reflecting engineering judgement, design choices, or interpolations are labelled as such (see labelling conventions below). Corrections, clarifications, and challenges are graciously welcomed and can be submitted via GitHub issue or pull request.
 >
 > **Labelling conventions for non-literature-derived statements:**
+>
 > - *[Design proposal]* — an engineering choice made by the RFC authors, not directly prescribed by the literature.
 > - *[Engineering inference]* — a claim derived from standard computational/mathematical knowledge or interpolated from cited evidence, but not explicitly stated in a cited source.
 > - *[Assumption]* — a working assumption that has not been validated.
@@ -27,78 +28,164 @@
 
 ## Table of Contents
 
-- [1. Executive Summary](#1-executive-summary)
-- [2. Evidence-Bounded Positioning Statement](#2-evidence-bounded-positioning-statement)
-  - [2.1 Project Aims](#21-project-aims)
-  - [2.2 What the Literature Indicates Is Needed](#22-what-the-literature-indicates-is-needed)
-- [3. Literature Synthesis and Design Implications](#3-literature-synthesis-and-design-implications)
-  - [3.1 Foundational DVH Computation and QA Expectations](#31-foundational-dvh-computation-and-qa-expectations)
-  - [3.2 Analytical Benchmark Datasets and Whole-Curve Validation](#32-analytical-benchmark-datasets-and-whole-curve-validation)
-  - [3.3 Cross-System Variability](#33-cross-system-variability)
-  - [3.4 Voxelisation and Slice-Thickness Effects](#34-voxelisation-and-slice-thickness-effects)
-  - [3.5 Dose-Grid Resolution and Grid-Origin Effects](#35-dose-grid-resolution-and-grid-origin-effects)
-  - [3.6 Small-Volume Stereotactic Behaviour](#36-small-volume-stereotactic-behaviour)
-  - [3.7 Between-Slice Interpolation](#37-between-slice-interpolation)
-  - [3.8 SBRT Constraint Semantics](#38-sbrt-constraint-semantics)
-  - [3.9 Further Concepts Noted for Future Work](#39-further-concepts-noted-for-future-work)
-  - [3.10 Summary: What the Literature Implies for Design](#310-summary-what-the-literature-implies-for-design)
-- [4. Product Scope](#4-product-scope)
-  - [4.1 v1 Scope](#41-v1-scope)
-  - [4.2 Explicitly Out of Scope for v1](#42-explicitly-out-of-scope-for-v1)
-  - [4.3 Future Extensions](#43-future-extensions)
-- [5. Design Principles](#5-design-principles)
-- [6. Detailed Tool Specification and Architecture](#6-detailed-tool-specification-and-architecture)
-  - [6.1 Design Philosophy for Data Types](#61-design-philosophy-for-data-types)
-  - [6.2 Grid Frame and Spatial Model](#62-grid-frame-and-spatial-model)
-  - [6.3 Dose Reference Types](#63-dose-reference-types)
-  - [6.4 ROI Identity Type](#64-roi-identity-type)
-  - [6.5 Metric Request Types](#65-metric-request-types)
-  - [6.6 Configuration Types](#66-configuration-types)
-  - [6.7 Geometry / Structure Types](#67-geometry--structure-types)
-  - [6.8 Dose and Occupancy Types](#68-dose-and-occupancy-types)
-  - [6.9 Result Types](#69-result-types)
-  - [6.10 Public API](#610-public-api)
-  - [6.11 Strategy Protocols (Private/Internal)](#611-strategy-protocols-privateinternal)
-- [7. Algorithmic Design: Detailed Specification](#7-algorithmic-design-detailed-specification)
-  - [7.0 Contour Area, Winding Order, and Geometric Validation](#70-contour-area-winding-order-and-geometric-validation)
-  - [7.1 Point-in-Polygon Algorithms](#71-point-in-polygon-algorithms)
-  - [7.2 Contour Interpolation / Structure Reconstruction](#72-contour-interpolation--structure-reconstruction)
-  - [7.3 End-Capping](#73-end-capping)
-  - [7.4 Voxelisation and Partial-Volume Occupancy](#74-voxelisation-and-partial-volume-occupancy)
-  - [7.5 Dose Interpolation](#75-dose-interpolation)
-  - [7.6 Histogram Construction](#76-histogram-construction)
-  - [7.7 Metric Extraction](#77-metric-extraction)
-  - [7.8 Extrema and Near-Extrema Handling](#78-extrema-and-near-extrema-handling)
-  - [7.9 Invalid-ROI Handling](#79-invalid-roi-handling)
-- [8. Validation and Benchmark Strategy](#8-validation-and-benchmark-strategy)
-  - [8.1 Tier 1: Analytical Ground-Truth Tests](#81-tier-1-analytical-ground-truth-tests)
-  - [8.2 Tier 2: Numerical Convergence Tests](#82-tier-2-numerical-convergence-tests)
-  - [8.3 Tier 3: Cross-Tool Comparisons](#83-tier-3-cross-tool-comparisons)
-  - [8.4 Tier 4: Clinical-Case Benchmarking](#84-tier-4-clinical-case-benchmarking)
-  - [8.5 Tier 5: Sensitivity Analysis](#85-tier-5-sensitivity-analysis)
-- [9. Development Plan](#9-development-plan)
-  - [Phase 0: Scaffolding, Core Types, and Test Infrastructure](#phase-0-scaffolding-core-types-and-test-infrastructure)
-  - [Phase 1: Synthetic Benchmark Generation](#phase-1-synthetic-benchmark-generation)
-  - [Phase 2a: Core Geometry Engine — Basic Methods](#phase-2a-core-geometry-engine--basic-methods)
-  - [Phase 2b: Core Geometry Engine — Advanced Methods](#phase-2b-core-geometry-engine--advanced-methods)
-  - [Phase 3: DVH Computation Engine](#phase-3-dvh-computation-engine)
-  - [Phase 4a: DICOM Integration and Pipeline](#phase-4a-dicom-integration-and-pipeline)
-  - [Phase 4b: DVH Export, CLI, and Provenance](#phase-4b-dvh-export-cli-and-provenance)
-  - [Phase 5: Cross-Tool Comparison, Clinical Validation, and Performance](#phase-5-cross-tool-comparison-clinical-validation-and-performance)
-  - [Phase 6: Documentation and Release Preparation](#phase-6-documentation-and-release-preparation)
-- [10. Risk Register and Open Technical Questions](#10-risk-register-and-open-technical-questions)
-- [11. Research Agenda](#11-research-agenda)
-- [12. Appendices](#12-appendices)
-  - [Appendix A: Glossary of Metric Semantics](#appendix-a-glossary-of-metric-semantics)
-- [13. Future Research Directions: Computer Graphics Algorithms for DVH Computation](#13-future-research-directions-computer-graphics-algorithms-for-dvh-computation)
-  - [13.1 SDF-First Architecture](#131-sdf-first-architecture)
-  - [13.2 Exact Analytical Partial-Volume Computation](#132-exact-analytical-partial-volume-computation)
-  - [13.3 GPU-Accelerated DVH Computation](#133-gpu-accelerated-dvh-computation)
-  - [13.4 Sparse Volumetric Storage](#134-sparse-volumetric-storage)
-  - [13.5 Neural Implicit Structure Representations](#135-neural-implicit-structure-representations)
-  - [13.6 Advanced Surface Reconstruction](#136-advanced-surface-reconstruction)
-  - [13.7 Recommended Research Priorities](#137-recommended-research-priorities)
-- [Bibliography](#bibliography)
+- [PyMedPhys DVH Calculator: Technical RFC and Research Protocol](#pymedphys-dvh-calculator-technical-rfc-and-research-protocol)
+  - [Table of Contents](#table-of-contents)
+  - [1. Executive Summary](#1-executive-summary)
+  - [2. Evidence-Bounded Positioning Statement](#2-evidence-bounded-positioning-statement)
+    - [2.1 Project Aims](#21-project-aims)
+    - [2.2 What the Literature Indicates Is Needed](#22-what-the-literature-indicates-is-needed)
+  - [3. Literature Synthesis and Design Implications](#3-literature-synthesis-and-design-implications)
+    - [3.1 Foundational DVH Computation and QA Expectations](#31-foundational-dvh-computation-and-qa-expectations)
+    - [3.2 Analytical Benchmark Datasets and Whole-Curve Validation](#32-analytical-benchmark-datasets-and-whole-curve-validation)
+    - [3.3 Cross-System Variability](#33-cross-system-variability)
+    - [3.4 Voxelisation and Slice-Thickness Effects](#34-voxelisation-and-slice-thickness-effects)
+    - [3.5 Dose-Grid Resolution and Grid-Origin Effects](#35-dose-grid-resolution-and-grid-origin-effects)
+    - [3.6 Small-Volume Stereotactic Behaviour](#36-small-volume-stereotactic-behaviour)
+    - [3.7 Between-Slice Interpolation](#37-between-slice-interpolation)
+    - [3.8 SBRT Constraint Semantics](#38-sbrt-constraint-semantics)
+    - [3.9 Further Concepts Noted for Future Work](#39-further-concepts-noted-for-future-work)
+    - [3.10 Summary: What the Literature Implies for Design](#310-summary-what-the-literature-implies-for-design)
+  - [4. Product Scope](#4-product-scope)
+    - [4.1 v1 Scope](#41-v1-scope)
+    - [4.2 Explicitly Out of Scope for v1](#42-explicitly-out-of-scope-for-v1)
+    - [4.3 Future Extensions](#43-future-extensions)
+  - [5. Design Principles](#5-design-principles)
+  - [6. Detailed Tool Specification and Architecture](#6-detailed-tool-specification-and-architecture)
+    - [6.1 Design Philosophy for Data Types](#61-design-philosophy-for-data-types)
+    - [6.2 Grid Frame and Spatial Model](#62-grid-frame-and-spatial-model)
+    - [6.3 Dose Reference Types](#63-dose-reference-types)
+    - [6.4 ROI Identity Type](#64-roi-identity-type)
+    - [6.5 Metric Request Types](#65-metric-request-types)
+    - [6.6 Configuration Types](#66-configuration-types)
+    - [6.7 Geometry / Structure Types](#67-geometry--structure-types)
+    - [6.8 Dose and Occupancy Types](#68-dose-and-occupancy-types)
+    - [6.9 Result Types](#69-result-types)
+    - [6.10 Public API](#610-public-api)
+    - [6.11 Strategy Protocols (Private/Internal)](#611-strategy-protocols-privateinternal)
+  - [7. Algorithmic Design: Detailed Specification](#7-algorithmic-design-detailed-specification)
+    - [7.0 Contour Area, Winding Order, and Geometric Validation](#70-contour-area-winding-order-and-geometric-validation)
+      - [7.0.1 Signed Area via the Shoelace Formula](#701-signed-area-via-the-shoelace-formula)
+      - [7.0.2 Self-Intersection Detection](#702-self-intersection-detection)
+    - [7.1 Point-in-Polygon Algorithms](#71-point-in-polygon-algorithms)
+      - [7.1.1 Ray Casting (Even-Odd Rule)](#711-ray-casting-even-odd-rule)
+      - [7.1.2 Winding Number Algorithm](#712-winding-number-algorithm)
+      - [7.1.3 Handling Multi-Component Contours (Holes)](#713-handling-multi-component-contours-holes)
+    - [7.2 Contour Interpolation / Structure Reconstruction](#72-contour-interpolation--structure-reconstruction)
+      - [7.2.1 Right-Prism Extrusion](#721-right-prism-extrusion)
+      - [7.2.2 Shape-Based Interpolation (Signed Distance Field)](#722-shape-based-interpolation-signed-distance-field)
+        - [SDF Computation Methods](#sdf-computation-methods)
+    - [7.3 End-Capping](#73-end-capping)
+      - [7.3.1 No End-Cap (`none`)](#731-no-end-cap-none)
+      - [7.3.2 Half-Slice Extension (`half_slice`)](#732-half-slice-extension-half_slice)
+      - [7.3.3 Half-Slice Capped (`half_slice_capped`)](#733-half-slice-capped-half_slice_capped)
+      - [7.3.4 Rounded End-Cap (`rounded`)](#734-rounded-end-cap-rounded)
+    - [7.4 Voxelisation and Partial-Volume Occupancy](#74-voxelisation-and-partial-volume-occupancy)
+      - [7.4.1 Binary Centre-Inclusion](#741-binary-centre-inclusion)
+      - [7.4.2 Fractional Occupancy via Supersampling](#742-fractional-occupancy-via-supersampling)
+      - [7.4.3 Adaptive Supersampling with Gradient-Aware Refinement](#743-adaptive-supersampling-with-gradient-aware-refinement)
+      - [7.4.4 SDF-Derived Fractional Occupancy](#744-sdf-derived-fractional-occupancy)
+    - [7.5 Dose Interpolation](#75-dose-interpolation)
+      - [7.5.1 Trilinear Interpolation](#751-trilinear-interpolation)
+      - [7.5.2 Surface-Point Dose Sampling](#752-surface-point-dose-sampling)
+      - [7.5.3 Dose-Grid-Point Preservation](#753-dose-grid-point-preservation)
+    - [7.6 Histogram Construction](#76-histogram-construction)
+      - [7.6.1 Differential Histogram](#761-differential-histogram)
+      - [7.6.2 Cumulative DVH (derived)](#762-cumulative-dvh-derived)
+    - [7.7 Metric Extraction](#77-metric-extraction)
+      - [7.7.1 Dose-at-Volume Metrics (Dx%, Dxcc)](#771-dose-at-volume-metrics-dx-dxcc)
+      - [7.7.2 Volume-at-Dose Metrics (VxGy, Vx%)](#772-volume-at-dose-metrics-vxgy-vx)
+      - [7.7.3 Stereotactic Indices](#773-stereotactic-indices)
+    - [7.8 Extrema and Near-Extrema Handling](#78-extrema-and-near-extrema-handling)
+    - [7.9 Invalid-ROI Handling](#79-invalid-roi-handling)
+  - [8. Validation and Benchmark Strategy](#8-validation-and-benchmark-strategy)
+    - [8.1 Tier 1: Analytical Ground-Truth Tests](#81-tier-1-analytical-ground-truth-tests)
+      - [8.1.1 Available Analytical Benchmark Datasets](#811-available-analytical-benchmark-datasets)
+      - [8.1.2 Novel Analytical Benchmarks (Project-Specific)](#812-novel-analytical-benchmarks-project-specific)
+    - [8.2 Tier 2: Numerical Convergence Tests](#82-tier-2-numerical-convergence-tests)
+    - [8.3 Tier 3: Cross-Tool Comparisons](#83-tier-3-cross-tool-comparisons)
+      - [8.3.1 Open-Source Comparators](#831-open-source-comparators)
+      - [8.3.2 Commercial Comparator Matrix](#832-commercial-comparator-matrix)
+    - [8.4 Tier 4: Clinical-Case Benchmarking](#84-tier-4-clinical-case-benchmarking)
+    - [8.5 Tier 5: Sensitivity Analysis](#85-tier-5-sensitivity-analysis)
+  - [9. Development Plan](#9-development-plan)
+    - [Development Practices (applies to all phases)](#development-practices-applies-to-all-phases)
+    - [Phase 0: Scaffolding, Core Types, and Test Infrastructure](#phase-0-scaffolding-core-types-and-test-infrastructure)
+      - [Task 0.1: Module skeleton and packaging](#task-01-module-skeleton-and-packaging)
+    - [Phase 1: Synthetic Benchmark Generation](#phase-1-synthetic-benchmark-generation)
+      - [Task 1.1: Analytical geometry library](#task-11-analytical-geometry-library)
+      - [Task 1.2: Analytical DVH formulas](#task-12-analytical-dvh-formulas)
+      - [Task 1.3: DICOM RTSTRUCT generator](#task-13-dicom-rtstruct-generator)
+      - [Task 1.4: DICOM RTDOSE generator](#task-14-dicom-rtdose-generator)
+      - [Task 1.5: Benchmark manifest and published dataset integration](#task-15-benchmark-manifest-and-published-dataset-integration)
+      - [Task 1.6: Phase-shift sweep generator](#task-16-phase-shift-sweep-generator)
+      - [Task 1.7: Novel benchmark case generation](#task-17-novel-benchmark-case-generation)
+    - [Phase 2a: Core Geometry Engine — Basic Methods](#phase-2a-core-geometry-engine--basic-methods)
+      - [Task 2a.0: `numba` compilation strategy and infrastructure](#task-2a0-numba-compilation-strategy-and-infrastructure)
+      - [Task 2a.1: DICOM RTSTRUCT importer](#task-2a1-dicom-rtstruct-importer)
+      - [Task 2a.2: Contour validation and repair](#task-2a2-contour-validation-and-repair)
+      - [Task 2a.3: Right-prism interpolation](#task-2a3-right-prism-interpolation)
+      - [Task 2a.4: End-capping — none and half-slice](#task-2a4-end-capping--none-and-half-slice)
+      - [Task 2a.5: Scanline point-in-polygon (even-odd rule)](#task-2a5-scanline-point-in-polygon-even-odd-rule)
+      - [Task 2a.5b: Winding number point-in-polygon](#task-2a5b-winding-number-point-in-polygon)
+      - [Task 2a.6: Binary centre-inclusion occupancy](#task-2a6-binary-centre-inclusion-occupancy)
+      - [Task 2a.7: Fractional occupancy via fixed supersampling](#task-2a7-fractional-occupancy-via-fixed-supersampling)
+      - [Task 2a.8: Volume computation golden-data tests](#task-2a8-volume-computation-golden-data-tests)
+    - [Phase 2b: Core Geometry Engine — Advanced Methods](#phase-2b-core-geometry-engine--advanced-methods)
+      - [Task 2b.1: 2D signed distance field computation](#task-2b1-2d-signed-distance-field-computation)
+      - [Task 2b.2: Shape-based interpolation (SDF lofting)](#task-2b2-shape-based-interpolation-sdf-lofting)
+      - [Task 2b.3: Rounded and half-slice-capped end-caps](#task-2b3-rounded-and-half-slice-capped-end-caps)
+      - [Task 2b.4: Adaptive supersampling with gradient-aware refinement](#task-2b4-adaptive-supersampling-with-gradient-aware-refinement)
+      - [Task 2b.5: Comprehensive volume golden-data expansion](#task-2b5-comprehensive-volume-golden-data-expansion)
+    - [Phase 3: DVH Computation Engine](#phase-3-dvh-computation-engine)
+      - [Task 3.1: DICOM RTDOSE importer](#task-31-dicom-rtdose-importer)
+      - [Task 3.2: Trilinear dose interpolation](#task-32-trilinear-dose-interpolation)
+      - [Task 3.3: Surface-point dose sampling](#task-33-surface-point-dose-sampling)
+      - [Task 3.4: Histogram construction](#task-34-histogram-construction)
+      - [Task 3.5: Metric extraction](#task-35-metric-extraction)
+      - [Task 3.6: Issue system integration](#task-36-issue-system-integration)
+      - [Task 3.7: Raw-array `compute_dvh()` orchestrator](#task-37-raw-array-compute_dvh-orchestrator)
+      - [Task 3.8: Full analytical benchmark validation](#task-38-full-analytical-benchmark-validation)
+      - [Task 3.9: Convergence study (Tier 2 benchmarks)](#task-39-convergence-study-tier-2-benchmarks)
+    - [Phase 4a: DICOM Integration and Pipeline](#phase-4a-dicom-integration-and-pipeline)
+      - [Task 4a.1: DICOM coordinate system handling](#task-4a1-dicom-coordinate-system-handling)
+      - [Task 4a.2: End-to-end DICOM pipeline](#task-4a2-end-to-end-dicom-pipeline)
+      - [Task 4a.3: Invalid-ROI policy framework](#task-4a3-invalid-roi-policy-framework)
+    - [Phase 4b: DVH Export, CLI, and Provenance](#phase-4b-dvh-export-cli-and-provenance)
+      - [Task 4b.1: DICOM RTDOSE DVH export](#task-4b1-dicom-rtdose-dvh-export)
+      - [Task 4b.2: CLI implementation](#task-4b2-cli-implementation)
+      - [Task 4b.3: Provenance implementation and anonymisation](#task-4b3-provenance-implementation-and-anonymisation)
+    - [Phase 5: Cross-Tool Comparison, Clinical Validation, and Performance](#phase-5-cross-tool-comparison-clinical-validation-and-performance)
+      - [Task 5.1: dicompyler-core algorithm documentation](#task-51-dicompyler-core-algorithm-documentation)
+      - [Task 5.2: Automated cross-tool comparison framework](#task-52-automated-cross-tool-comparison-framework)
+      - [Task 5.3: Clinical case library](#task-53-clinical-case-library)
+      - [Task 5.4: Full sensitivity analysis (Tier 5)](#task-54-full-sensitivity-analysis-tier-5)
+      - [Task 5.5: Performance benchmarking](#task-55-performance-benchmarking)
+    - [Phase 6: Documentation and Release Preparation](#phase-6-documentation-and-release-preparation)
+      - [Task 6.1: API documentation](#task-61-api-documentation)
+      - [Task 6.2: CLI documentation](#task-62-cli-documentation)
+      - [Task 6.3: Benchmark report](#task-63-benchmark-report)
+      - [Task 6.4: Algorithm reference document](#task-64-algorithm-reference-document)
+      - [Task 6.5: Migration guide from dicompyler-core](#task-65-migration-guide-from-dicompyler-core)
+      - [Task 6.6: Contributing guide](#task-66-contributing-guide)
+      - [Task 6.7: Gallery and demo outputs](#task-67-gallery-and-demo-outputs)
+      - [Task 6.8: Release preparation](#task-68-release-preparation)
+  - [10. Risk Register and Open Technical Questions](#10-risk-register-and-open-technical-questions)
+    - [10.1 Technical Risks](#101-technical-risks)
+    - [10.2 Open Technical Questions](#102-open-technical-questions)
+  - [11. Research Agenda](#11-research-agenda)
+    - [11.1 Key Gaps in the Literature](#111-key-gaps-in-the-literature)
+    - [11.2 Key Experiments This Tool Enables](#112-key-experiments-this-tool-enables)
+  - [12. Appendices](#12-appendices)
+    - [Appendix A: Glossary of Metric Semantics](#appendix-a-glossary-of-metric-semantics)
+  - [13. Future Research Directions: Computer Graphics Algorithms for DVH Computation](#13-future-research-directions-computer-graphics-algorithms-for-dvh-computation)
+    - [13.1 SDF-First Architecture](#131-sdf-first-architecture)
+    - [13.2 Exact Analytical Partial-Volume Computation](#132-exact-analytical-partial-volume-computation)
+    - [13.3 GPU-Accelerated DVH Computation](#133-gpu-accelerated-dvh-computation)
+    - [13.4 Sparse Volumetric Storage](#134-sparse-volumetric-storage)
+    - [13.5 Neural Implicit Structure Representations](#135-neural-implicit-structure-representations)
+    - [13.6 Advanced Surface Reconstruction](#136-advanced-surface-reconstruction)
+    - [13.7 Recommended Research Priorities](#137-recommended-research-priorities)
+  - [Bibliography](#bibliography)
 
 ---
 
@@ -106,7 +193,7 @@
 
 This document specifies the design, development plan, validation strategy, and research agenda for a benchmark-grade, open-source dose-volume histogram (DVH) calculator to be integrated into PyMedPhys as a first-class public API. The tool will accept DICOM RTSTRUCT and RTDOSE inputs via pydicom, as well as raw NumPy arrays for research and synthetic test generation, and will target conventional photon, VMAT, SRS, and SBRT plan evaluation in its first release.
 
-The design is motivated by a 35-year evidence base showing that DVH computation is not a solved problem. Cross-system disagreement persists even when dose calculation is held constant: Penoncello et al. found mean structure-volume ratios varying from 1.036 to 1.101 across eight commercial systems given identical DICOM inputs [19], and Pepin et al. measured median DVH precision-band widths ranging from 0.90% to 3.22% across five systems (Eclipse v15.5, Mobius3D v3.1, MIM Maestro v6.9.6, ProKnow DS v1.22, RayStation v9A) for simple analytical phantoms [18]. For small stereotactic targets, Stanley et al. showed volume errors up to −23.7% and V100% errors up to −20.1% for 3 mm spheres across five anonymised commercial systems [17], while Walker and Byrne reported PCI errors up to 40% and GI errors up to approximately 71.8% for sub-cc structures in synthetic analytical tests [21].
+The design is motivated by a 35-year evidence base showing that DVH computation is not a solved problem. Cross-system disagreement persists even when dose calculation is held constant: Penoncello et al. found mean structure-volume ratios varying from 1.036 to 1.101 across eight commercial systems given identical DICOM inputs \[19], and Pepin et al. measured median DVH precision-band widths ranging from 0.90% to 3.22% across five systems (Eclipse v15.5, Mobius3D v3.1, MIM Maestro v6.9.6, ProKnow DS v1.22, RayStation v9A) for simple analytical phantoms \[18]. For small stereotactic targets, Stanley et al. showed volume errors up to −23.7% and V100% errors up to −20.1% for 3 mm spheres across five anonymised commercial systems \[17], while Walker and Byrne reported PCI errors up to 40% and GI errors up to approximately 71.8% (termed Modified Gradient Index, MGI, by the authors) for sub-cc structures in synthetic analytical tests \[21].
 
 The proposed tool addresses this by making every algorithmic choice explicit, configurable, and validated against analytical ground truth. It provides a slow, high-accuracy reference mode as part of its validation architecture, alongside faster practical modes with documented accuracy-speed tradeoffs. All results carry comprehensive provenance metadata, convergence diagnostics, and warnings when settings are likely inadequate for the anatomy or metric at hand. v1 targets efficient CPU execution with liberal use of `numba` JIT compilation and parallelisation.
 
@@ -132,11 +219,11 @@ This project aims to produce a DVH calculator that is:
 
 The literature consistently identifies the following as desirable properties for a reference-quality DVH implementation:
 
-- Drzymala et al. [1] argued that structure discretisation should be decoupled from dose-grid resolution and that cumulative bins finer than 2 Gy are needed; they recommended 0.5 Gy.
-- Nelms et al. [14] showed that internal consistency between geometric definition and dose tally is essential, and that whole-curve validation against analytical truth exposes failure modes that endpoint-only checks miss.
-- Pepin et al. [18] demonstrated that precision-band analysis reveals discretisation-driven uncertainty that single-point metrics conceal. The better-performing systems in their study achieved median precision bands around 1%.
-- Multiple studies [2][5][15][16][17][21] showed that small structures in steep gradients are the most demanding regime, with errors growing rapidly as structure volume decreases below approximately 1 cc.
-- Penoncello et al. [19] showed that geometry handling (interpolation, end-capping, voxel inclusion) matters at least as much as dose-grid resolution.
+- Drzymala et al. \[1] argued that structure discretisation should be decoupled from dose-grid resolution and that cumulative bins finer than 2 Gy are needed; they recommended 0.5 Gy.
+- Nelms et al. \[14] showed that internal consistency between geometric definition and dose tally is essential, and that whole-curve validation against analytical truth exposes failure modes that endpoint-only checks miss.
+- Pepin et al. \[18] demonstrated that precision-band analysis reveals discretisation-driven uncertainty that single-point metrics conceal. The better-performing systems in their study achieved median precision bands around 1%.
+- Multiple studies \[2]\[5]\[15]\[16]\[17]\[21] showed that small structures in steep gradients are the most demanding regime, with errors growing rapidly as structure volume decreases below approximately 1 cc.
+- Penoncello et al. \[19] showed that geometry handling (interpolation, end-capping, voxel inclusion) matters at least as much as dose-grid resolution.
 
 ---
 
@@ -146,111 +233,115 @@ This section synthesises 21 publications spanning 1991–2025 into actionable de
 
 ### 3.1 Foundational DVH Computation and QA Expectations
 
-The computational foundations of DVH calculation were established by Drzymala et al. [1], who documented the core pipeline: contour-based structure definition on CT slices, rasterisation via scanline odd-even crossing rules, dose assignment by trilinear interpolation from a separate grid, and histogram construction via equispaced binning. They recommended 0.5 Gy cumulative bins and called 2 Gy crude [1]. They demonstrated that very small differences in the low-dose DVH tail can reverse biological plan rankings when propagated into TCP/NTCP models [1].
+The computational foundations of DVH calculation were established by Drzymala et al. \[1], who documented the core pipeline: contour-based structure definition on CT slices, rasterisation via scanline odd-even crossing rules, dose assignment by trilinear interpolation from a separate grid, and histogram construction via equispaced binning. They recommended 0.5 Gy cumulative bins and called 2 Gy crude \[1]. They demonstrated that very small differences in the low-dose DVH tail can reverse biological plan rankings when propagated into TCP/NTCP models \[1].
 
-AAPM TG-53 [3] formalised DVH generation as a QA-sensitive computational process and identified the algorithmic decision points: VROI construction, Boolean operations, dose interpolation, grid interactions, histogram binning, and plan normalisation. TG-53 deliberately did not prescribe a numeric DVH tolerance [3]. The IAEA Technical Report Series No. 430 [25] reinforced this by treating DVH generation as a distinct QA problem, separate from dose calculation, requiring independent commissioning of anatomy modelling, dose sampling, histogram construction, and structure logic. It further documented that a 5% dose change can alter response by roughly 10–30%, supporting a target of about 3% dose-calculation accuracy [25]. Panitsa et al. [4] provided early quality control testing of DVH computation using simple geometric phantoms, showing that high-gradient regions are far more demanding than low-gradient regions and that the number of sampling points materially affects DVH accuracy.
+AAPM TG-53 \[3] formalised DVH generation as a QA-sensitive computational process and identified the algorithmic decision points: VROI construction, Boolean operations, dose interpolation, grid interactions, histogram binning, and plan normalisation. TG-53 deliberately did not prescribe a numeric DVH tolerance \[3]. The IAEA Technical Report Series No. 430 \[25] reinforced this by treating DVH generation as a distinct QA problem, separate from dose calculation, requiring independent commissioning of anatomy modelling, dose sampling, histogram construction, and structure logic. It further documented that a 5% dose change can alter response by roughly 10–30%, supporting a target of about 3% dose-calculation accuracy \[25]. Panitsa et al. \[4] provided early quality control testing of DVH computation using simple geometric phantoms, showing that high-gradient regions are far more demanding than low-gradient regions and that the number of sampling points materially affects DVH accuracy.
 
-**Consensus:** DVH computation depends on multiple interacting algorithmic choices. Structure discretisation should be decoupled from dose-grid resolution [1][3][25]. Validation must include synthetic phantoms with known truth [1][3][4]. Binary voxel-centre inclusion is a historical baseline, not a gold standard [1][15].
+**Consensus:** DVH computation depends on multiple interacting algorithmic choices. Structure discretisation should be decoupled from dose-grid resolution \[1]\[3]\[25]. Validation must include synthetic phantoms with known truth \[1]\[3]\[4]. Binary voxel-centre inclusion is a historical baseline, not a gold standard \[1]\[15].
 
-**Design implication:** Every algorithmic choice identified by Drzymala [1], TG-53 [3], and the IAEA [25] must be explicit, configurable, and documented in provenance.
+**Design implication:** Every algorithmic choice identified by Drzymala \[1], TG-53 \[3], and the IAEA \[25] must be explicit, configurable, and documented in provenance.
 
 ### 3.2 Analytical Benchmark Datasets and Whole-Curve Validation
 
-Nelms et al. [14] created synthetic DICOM RTSTRUCT and RTDOSE datasets for spheres, cylinders, and cones with closed-form analytical cumulative DVHs. Their benchmark revealed that Pinnacle v9.8 had 52/340 endpoint deviations exceeding 3% versus 5/340 for PlanIQ v2.1 in the fine-contour test, with Pinnacle Dmin errors reaching 60% under SI gradients due to an end-cap inconsistency where the structure volume included half-slice end-caps but dose voxels in the added region were omitted from the DVH tally [14].
+Nelms et al. \[14] created synthetic DICOM RTSTRUCT and RTDOSE datasets for spheres, cylinders, and cones with closed-form analytical cumulative DVHs. Their benchmark revealed that Pinnacle v9.8 had 52/340 endpoint deviations exceeding 3% versus 5/340 for PlanIQ v2.1 in the fine-contour test, with Pinnacle Dmin errors reaching 60% under SI gradients due to an end-cap inconsistency where the structure volume included half-slice end-caps but dose voxels in the added region were omitted from the DVH tally \[14].
 
-Pepin et al. [18] extended this by introducing a precision concept: staircase artefacts in computed DVHs interpreted as discretisation-driven uncertainty bands. Their vendor survey revealed heterogeneous implementations (detailed in Section 7). Median precision-band widths: MIM Maestro v6.9.6: 0.90%, Eclipse v15.5: 0.93%, ProKnow DS v1.22: 1.05%, Mobius3D v3.1: 1.96%, RayStation v9A: 3.22% [18]. Eclipse showed strong directional bimodality: cone AP precision 2.86% versus cone SI 0.047% [18]. (Note: the Pepin paper reports the Eclipse version as v15.5.52 in §2.2 but v15.1.52 in Table 3; this internal inconsistency in the source is noted for transparency.)
+Pepin et al. \[18] extended this by introducing a precision concept: staircase artefacts in computed DVHs interpreted as discretisation-driven uncertainty bands. Their vendor survey revealed heterogeneous implementations (detailed in Section 7). Median precision-band widths: MIM Maestro v6.9.6: 0.90%, Eclipse v15.5: 0.93%, ProKnow DS v1.22: 1.05%, Mobius3D v3.1: 1.96%, RayStation v9A: 3.22% \[18]. Eclipse showed strong directional bimodality: cone AP precision 2.86% versus cone SI 0.047% \[18]. (Note: the Pepin paper reports the Eclipse version as v15.5.52 in §2.2 but v15.1.52 in Table 3; this internal inconsistency in the source is noted for transparency.)
 
-Stanley et al. [17] created analytically generated DICOM data for spheres from 3–20 mm diameter with 50 random placements per size across five anonymised commercial systems. Their downloadable benchmark is valuable for phase-sensitivity characterisation.
+Stanley et al. \[17] created analytically generated DICOM data for spheres from 3–20 mm diameter with 50 random placements per size across five anonymised commercial systems. Their downloadable benchmark is valuable for phase-sensitivity characterisation.
 
-Grammatikou et al. [20] provided modern validation for intracranial SRS with VMAT, with publicly available synthetic datasets on Mendeley Data under CC BY 4.0 (DOI 10.17632/pb55hjf5y3.1).
+Grammatikou et al. \[20] provided modern validation for intracranial SRS with VMAT, with publicly available synthetic datasets on Mendeley Data under CC BY 4.0 (DOI 10.17632/pb55hjf5y3.1).
 
-Walker and Byrne [21] used spherical/Gaussian analytical cases and explicitly quantified small-volume stereotactic metric errors (PCI, GI) across multiple systems including RayStation, MasterPlan, and ProKnow.
+Walker and Byrne \[21] used spherical/Gaussian analytical cases and explicitly quantified small-volume stereotactic metric errors (PCI, GI) across multiple systems including RayStation, MasterPlan, and ProKnow.
 
-Gossman et al. [10] demonstrated a complementary approach using a synthetic benchmark with known depth-dose characteristics against Eclipse AAA v8.6, achieving approximately 0.4–0.6% mean deviation and 2.0% total-volume deviation [10].
+Gossman et al. \[10] demonstrated a complementary approach using a synthetic benchmark with known depth-dose characteristics against Eclipse AAA v8.6, achieving approximately 0.4–0.6% mean deviation and 2.0% total-volume deviation \[10].
 
-**Consensus:** Analytical benchmarks are indispensable. Whole-curve validation is necessary [14][18]. End-capping and between-slice interpolation are major sources of cross-system disagreement [14][18].
+**Consensus:** Analytical benchmarks are indispensable. Whole-curve validation is necessary \[14]\[18]. End-capping and between-slice interpolation are major sources of cross-system disagreement \[14]\[18].
 
-**Design implication:** All available analytical benchmark datasets [14][17][20][21] should be incorporated into the validation corpus. Precision-band analysis per Pepin [18] should be a standard diagnostic output.
+**Design implication:** All available analytical benchmark datasets \[14]\[17]\[20]\[21] should be incorporated into the validation corpus. Precision-band analysis per Pepin \[18] should be a standard diagnostic output.
 
 ### 3.3 Cross-System Variability
 
-Ebert et al. [9] compared DVH data from multiple radiotherapy treatment planning systems using the SWAN software as a consistent reference, finding that volume-definition and boundary-handling effects were a major source of disagreement, especially for small structures. Kirisits et al. [7] found inter-system volume variability with standard deviations of 3–9% and D0.1cc standard deviations of 3–6% across seven brachytherapy planning systems, identifying end-slice and reconstruction algorithm effects as major contributors [7]. (Note: the 3–9% SD range spans CT 4 mm and MRI 5 mm datasets, which differ in both slice thickness and imaging modality; this confound should be kept in mind.)
+Ebert et al. \[9] compared DVH data from multiple radiotherapy treatment planning systems using the SWAN software as a consistent reference, finding that volume-definition and boundary-handling effects were a major source of disagreement, especially for small structures. Notably, Ebert et al. found that relaxing the volume criterion from 1% to 5% increased the DVH gamma pass rate from 78% to 96%, whereas relaxing the dose criterion from 1% to 5% improved it only from 78% to 85% \[9] — a clear quantitative indication that volumetric/boundary-related disagreement dominated over dose-bin-related disagreement for these datasets. Kirisits et al. \[7] found inter-system volume variability with standard deviations of 3–9% and D0.1cc standard deviations of 3–6% across seven brachytherapy planning systems, identifying end-slice and reconstruction algorithm effects as major contributors \[7]. (Note: the 3–9% SD range spans CT 4 mm and MRI 5 mm datasets, which differ in both slice thickness and imaging modality; this confound should be kept in mind.)
 
-Penoncello et al. [19] evaluated eight commercial systems given identical imported DICOM data. Structure-volume ratios relative to Eclipse ranged from 1.036 to 1.101, all significantly different at P < .001. Dose-grid refinement from 2.5 mm to 1.25 mm produced only modest improvement, whereas differences in end-capping, interpolation, and voxel inclusion explained much of the remaining spread [19].
+Penoncello et al. \[19] evaluated eight commercial systems given identical imported DICOM data. Structure-volume ratios relative to Eclipse ranged from 1.036 to 1.101, all significantly different at P < .001. Dose-grid refinement from 2.5 mm to 1.25 mm produced only modest improvement, whereas differences in end-capping, interpolation, and voxel inclusion explained much of the remaining spread \[19].
 
-**Consensus:** Cross-system disagreement is real, persistent, and clinically relevant. It arises primarily from geometry handling rather than dose-grid sampling alone [19].
+**Consensus:** Cross-system disagreement is real, persistent, and clinically relevant. It arises primarily from geometry handling rather than dose-grid sampling alone \[9]\[19]. Ebert et al. \[9] and Penoncello et al. \[19] independently confirm that volume-related effects are a larger source of inter-system DVH disagreement than dose-related effects.
 
 ### 3.4 Voxelisation and Slice-Thickness Effects
 
-Sunderland et al. [15] showed that binary centre-inclusion voxelisation at 2.5 mm could degrade DVH agreement to as low as 28.48% (1% acceptance criteria) for small structures in steep gradients, despite Dice coefficients of 0.884 [15]. Geometric overlap metrics are poor surrogates for DVH fidelity [15].
+Sunderland et al. \[15] showed that binary centre-inclusion voxelisation at 2.5 mm could degrade DVH agreement to as low as 28.48% (1% acceptance criteria) for small structures in steep gradients, despite Dice coefficients of 0.884 \[15]. Geometric overlap metrics are poor surrogates for DVH fidelity \[15].
 
-Corbett et al. [5] showed that V200 in prostate brachytherapy was far more discretisation-sensitive than V100: V200 RMS error reached 27% at 2.5 mm voxels and 69% at 5 mm, while V100 remained within approximately 1% even at 5 mm [5].
+Corbett et al. \[5] showed that V200 in prostate brachytherapy was far more discretisation-sensitive than V100: V200 RMS error reached 27% at 2.5 mm voxels and 69% at 5 mm, while V100 remained within approximately 1% even at 5 mm \[5].
 
-Kirisits et al. [7] found volume reconstruction variability increasing from approximately 1–3% SD at CT 2 mm slices to 3–9% at MRI 5 mm slices [7].
+Kirisits et al. \[7] found volume reconstruction variability increasing from approximately 1–3% SD at CT 2 mm slices to 3–9% at MRI 5 mm slices \[7].
 
-**Consensus:** Coarse voxelisation disproportionately affects small structures and high-gradient regions [5][15][17]. Binary centre-inclusion is fundamentally limited [15].
+**Consensus:** Coarse voxelisation disproportionately affects small structures and high-gradient regions \[5]\[15]\[17]. Binary centre-inclusion is fundamentally limited \[15].
 
 **Design implication:** The tool should support fractional-occupancy or exact sub-voxel integration as its primary mode, with binary centre-inclusion as a legacy/emulation option.
 
 ### 3.5 Dose-Grid Resolution and Grid-Origin Effects
 
-Chung et al. [6] found that for H&N IMRT in Pinnacle, moving from 1.5 mm to 4 mm grids produced 95th-percentile dose differences of approximately 3.0 Gy, and that grid-origin shifts of half a voxel alone produced differences up to approximately 2.0 Gy [6].
+Chung et al. \[6] found that for H&N IMRT in Pinnacle, moving from 1.5 mm to 4 mm grids produced 95th-percentile dose differences of approximately 3.0 Gy, and that grid-origin shifts of half a voxel alone produced differences up to approximately 2.0 Gy \[6].
 
-Rosewall et al. [13] showed that for bladder-wall DVHs in prostate IMRT (Pinnacle v9.0), 1.5 mm was the only grid keeping the full DVH within 1 cc of the 1 mm benchmark for every patient; at 2.0 mm, worst-patient differences reached 2.5 cc [13].
+Rosewall et al. \[13] showed that for bladder-wall DVHs in prostate IMRT (Pinnacle v9.0), 1.5 mm was the only grid spacing that kept the full DVH within 1 cc of the 1 mm benchmark for *every* patient (i.e. the worst-patient threshold); at 2.0 mm, worst-patient differences reached 2.5 cc, although average performance was better \[13].
 
-Snyder et al. [16] showed that in spine SRS (Eclipse v11, AAA v11), moving from 1.0 mm to 2.5 mm increased mean Cord_D10% by 13.0% and Cord_D0.03cc by 10.1%, with worst-case increases of 23.2% and 22.7% [16].
+Snyder et al. \[16] showed that in spine SRS (Eclipse v11, AAA v11), moving from 1.0 mm to 2.5 mm increased mean Cord_D10% by 13.0% and Cord_D0.03cc by 10.1%, with worst-case increases of 23.2% and 22.7% \[16].
 
-**Consensus:** Dose-grid resolution materially affects DVH outputs, especially for small structures and steep gradients [6][13][16]. Grid-origin phase contributes errors of similar magnitude [6].
+**Consensus:** Dose-grid resolution materially affects DVH outputs, especially for small structures and steep gradients \[6]\[13]\[16]. Grid-origin phase contributes errors of similar magnitude \[6].
 
-**Design implication:** The tool should warn when input dose-grid spacing is likely inadequate. Grid-phase sensitivity analysis should be supported. The tool should distinguish its own interpolation/integration error from error already embedded in the imported dose grid [6]. *[Engineering inference]*
+**Design implication:** The tool should warn when input dose-grid spacing is likely inadequate. Grid-phase sensitivity analysis should be supported. The tool should distinguish its own interpolation/integration error from error already embedded in the imported dose grid \[6]. *[Engineering inference]*
 
 ### 3.6 Small-Volume Stereotactic Behaviour
 
-Stanley et al. [17] found that for 3 mm spheres at 1 mm slice spacing, mean volume errors across five anonymised systems ranged from −23.7% to +1.3%, with V100% errors of −4.3% to +2.0% in mean but individual-placement ranges to −36.3% to +20.3% [17]. V50% was far more stable (means within approximately 1%) [17]. Derived indices (CI, GI) amplified discrepancies [17].
+Stanley et al. \[17] found that for 3 mm spheres at 1 mm slice spacing, mean volume errors across five anonymised systems ranged from −23.7% to +1.3%, with V100% errors of −4.3% to +2.0% in mean but individual-placement ranges to −36.3% to +20.3% \[17]. V50% was far more stable (means within approximately 1%) \[17]. Derived indices (CI, GI) amplified discrepancies \[17].
 
-Walker and Byrne [21] found, in synthetic analytical tests, cumulative DVH deviations up to 20 percentage points for the smallest tested volumes, with PCI errors up to 40% and GI errors up to approximately 71.8% for sub-cc structures [21]. RayStation showed approximately 10% average DVH difference for a 3 mm radius sphere, dropping to approximately 1% at 10 mm and approximately 0.1% at 20 mm [21].
+Walker and Byrne \[21] found, in synthetic analytical tests, cumulative DVH deviations up to 20 percentage points for the smallest tested volumes, with PCI errors up to 40% and GI errors up to approximately 71.8% for sub-cc structures \[21]. RayStation showed approximately 10% average DVH difference for a 3 mm radius sphere, dropping to approximately 1% at 10 mm and approximately 0.1% at 20 mm \[21].
 
-**Consensus:** Sub-cc structures in steep gradients are where all current systems struggle. Phase sensitivity can dominate mean bias [17].
+**Consensus:** Sub-cc structures in steep gradients are where all current systems struggle. Phase sensitivity can dominate mean bias \[17]. Kooy et al. \[2] showed that even with their spatially targeted Monte Carlo approach, 1–2 mm thick shells near small intracranial targets exhibited approximately 7% sampling error, demonstrating that thin-walled structures are an especially demanding subclass of the small-structure problem.
 
 **Under-validated:** The literature tests almost exclusively spheres. Irregular, concave, branching, and multi-component small structures remain unvalidated. This is a major gap.
 
+**Derived index sensitivity:** Grammatikou et al. \[20] confirmed that among all tested stereotactic indices, GI was the most sensitive to discretisation changes — more so than D95 or CI. This is consistent with Walker and Byrne's finding \[21] that small underlying DVH deviations are amplified into large GI/PCI errors for sub-cc structures. For validation, this means GI should be treated as a sentinel metric: if GI is accurate, other indices are likely also well-behaved.
+
 ### 3.7 Between-Slice Interpolation
 
-Pepin et al. [18] found that Mobius3D v3.1, MIM Maestro v6.9.6, and ProKnow DS v1.22 treated contour slices as right prisms between slices, while Eclipse v15.5 and RayStation v9A used shape-based interpolation [18]. The choice materially affected DVH curves, especially for tapered structures like cones where the cross-section changes rapidly between slices [18].
+Pepin et al. \[18] found that Mobius3D v3.1, MIM Maestro v6.9.6, and ProKnow DS v1.22 treated contour slices as right prisms between slices, while Eclipse v15.5 and RayStation v9A used shape-based interpolation \[18]. The choice materially affected DVH curves, especially for tapered structures like cones where the cross-section changes rapidly between slices \[18].
 
-Shape-based interpolation (originally described by Herman et al. [24] using discrete chamfer-distance transforms; the modern form uses continuous signed-distance-field interpolation between slices) is more theoretically sound than right-prism extrusion because it produces smooth surfaces that better approximate the continuous anatomy between imaged slices, rather than introducing artificial stair-stepped discontinuities. It also handles tapered and tapering-to-point structures more naturally. However, it is more computationally expensive and introduces its own assumptions about the surface trajectory between slices that may not always match the true anatomy. *[Engineering inference — the continuous SDF formulation described in §7.2.2 is a modern generalisation of the discrete distance-transform approach in Herman et al. [24]]*
+Shape-based interpolation (originally described by Herman et al. \[24] using discrete chamfer-distance transforms; the modern form uses continuous signed-distance-field interpolation between slices) is more theoretically sound than right-prism extrusion because it produces smooth surfaces that better approximate the continuous anatomy between imaged slices, rather than introducing artificial stair-stepped discontinuities. It also handles tapered and tapering-to-point structures more naturally. However, it is more computationally expensive and introduces its own assumptions about the surface trajectory between slices that may not always match the true anatomy. *[Engineering inference — the continuous SDF formulation described in §7.2.2 is a modern generalisation of the discrete distance-transform approach in Herman et al. \[24]]*
 
 **Design implication:** The tool should support both methods. Shape-based interpolation is the theoretically preferred default for reference mode. Right-prism is the more common commercial approach and should be available for emulation and comparison.
 
 ### 3.8 SBRT Constraint Semantics
 
-Grimm et al. [11] compiled published SBRT normal-tissue dose tolerance limits and found that clinically used constraints are expressed in heterogeneous forms: maximum point dose, dose-to-cc, dose-to-%, and "critical volume must be spared" rules [11]. Sub-cc endpoints are common: spinal cord constraints use 0.25 cc and 1.2 cc hotspot volumes [11].
+Grimm et al. \[11] compiled published SBRT normal-tissue dose tolerance limits and found that clinically used constraints are expressed in heterogeneous forms: maximum point dose, dose-to-cc, dose-to-%, and "critical volume must be spared" rules \[11]. Sub-cc endpoints are common: spinal cord constraints use 0.25 cc and 1.2 cc hotspot volumes \[11].
 
 **Design implication:** The metric grammar must support all constraint forms found in clinical practice, including spared-volume logic.
 
 ### 3.9 Further Concepts Noted for Future Work
 
-**Uncertainty-propagated DVH.** Henriquez and Castrillon [8] proposed the dose-expected volume histogram (DeVH), a probabilistic extension that accounts for point-dose calculation uncertainty. The formulation is computationally efficient, operating as a dose-bin redistribution on the differential DVH [8]. This is noted as a potential future extension; the architecture should not preclude it, but it is not a v1 deliverable.
+**Uncertainty-propagated DVH.** Henriquez and Castrillon \[8] proposed the dose-expected volume histogram (DeVH), a probabilistic extension that accounts for point-dose calculation uncertainty. The formulation is computationally efficient, operating as a dose-bin redistribution on the differential DVH \[8]. This is noted as a potential future extension; the architecture should not preclude it, but it is not a v1 deliverable.
 
-**Motion-weighted DVH.** Zhang et al. [12] proposed motion-weighted target volumes using temporal occupancy probability. This is noted as a future extension.
+**Motion-weighted DVH.** Zhang et al. \[12] proposed motion-weighted target volumes using temporal occupancy probability. This is noted as a future extension.
 
 **Dose-mass histograms.** The concept of weighting histogram contributions by tissue mass (or electron density) rather than volume has been discussed in the broader literature. *[Assumption — no specific citation; the concept is well-known but the RFC authors have not identified a single canonical source.]* The architecture should support per-voxel weighting to enable this in future.
 
 ### 3.10 Summary: What the Literature Implies for Design
 
 | Design choice | Literature consensus | Key references |
-|---|---|---|
-| Structure-dose grid decoupling | Strong consensus | [1][3][6][25] |
-| Sub-voxel/fractional occupancy | Strong consensus | [15][17][18] |
-| Configurable end-capping | Essential; no single "correct" method | [14][18][19] |
-| Configurable between-slice interpolation | Essential; shape-based is theoretically preferred | [18][19][24] |
-| Fine histogram binning | Strong consensus | [1][14][18] |
-| Analytical benchmark validation | Strong consensus | [14][17][18][20][21] |
-| Whole-curve validation, not just endpoints | Strong consensus | [14][18] |
-| Small-structure uncertainty reporting | Strong consensus | [17][21] |
-| Phase-sensitivity testing | Supported but under-practised | [6][17] |
-| Grid-resolution warnings | Strong consensus | [6][13][16] |
-| Surface-aware extrema and near-extrema | Supported | [14][18] |
+| --- | --- | --- |
+| Structure-dose grid decoupling | Strong consensus | \[1]\[3]\[6]\[25] |
+| Sub-voxel/fractional occupancy | Strong consensus | \[15]\[17]\[18] |
+| Configurable end-capping | Essential; no single "correct" method | \[14]\[18]\[19] |
+| Configurable between-slice interpolation | Essential; shape-based is theoretically preferred | \[18]\[19]\[24] |
+| Fine histogram binning | Strong consensus | \[1]\[14]\[18] |
+| Analytical benchmark validation | Strong consensus | \[14]\[17]\[18]\[20]\[21] |
+| Whole-curve validation, not just endpoints | Strong consensus | \[14]\[18] |
+| Small-structure uncertainty reporting | Strong consensus | \[17]\[21] |
+| Phase-sensitivity testing | Supported but under-practised | \[6]\[17] |
+| Grid-resolution warnings | Strong consensus | \[6]\[13]\[16] |
+| Surface-aware extrema and near-extrema | Supported | \[14]\[18] |
+| Geometry handling ≥ dose handling in priority | Strong consensus | \[9]\[19] |
+| GI as a sentinel validation metric | Supported | \[20]\[21] |
 
 ---
 
@@ -261,10 +352,12 @@ Grimm et al. [11] compiled published SBRT normal-tissue dose tolerance limits an
 **Modalities:** Conventional photon, VMAT, SRS, and SBRT plan evaluation.
 
 **Inputs:**
+
 - DICOM RTSTRUCT + RTDOSE via pydicom
 - Raw NumPy arrays (structure mask or contour coordinates + 3D dose array)
 
 **Core capabilities:**
+
 - Full cumulative and differential DVH computation
 - Comprehensive metric extraction (Dx%, Dxcc, VxGy, Vx%, mean, median, min, max, and stereotactic indices)
 - Per-ROI dose references supporting SIB and multi-target radiosurgery
@@ -284,18 +377,18 @@ Grimm et al. [11] compiled published SBRT normal-tissue dose tolerance limits an
 - Proton, brachytherapy
 - Biological metrics (EUD, gEUD, NTCP, TCP)
 - Derived ROI Boolean algebra (union, intersection, subtraction, rings, cropped structures)
-- Weighted or motion-aware ROIs [12] (architecture should not preclude)
+- Weighted or motion-aware ROIs \[12] (architecture should not preclude)
 - Dose-surface histograms (DSH), dose-mass histograms (architecture should support per-voxel weighting)
-- Uncertainty-propagated DVH / DeVH [8] (architecture should support)
+- Uncertainty-propagated DVH / DeVH \[8] (architecture should support)
 - GPU acceleration (architecture uses array-oriented patterns amenable to future GPU extension; see Section 13)
 
 ### 4.3 Future Extensions
 
 1. Boolean ROI algebra (SDF-based; see Section 13.2)
-2. Uncertainty-propagated DVH [8]
+2. Uncertainty-propagated DVH \[8]
 3. Biological metrics (EUD, gEUD, NTCP, TCP)
 4. Dose-surface and dose-mass histograms
-5. Motion-weighted DVH [12]
+5. Motion-weighted DVH \[12]
 6. Proton-specific considerations
 7. Multi-plan dose accumulation with deformable registration hooks
 8. Brachytherapy support
@@ -363,7 +456,6 @@ import numpy.typing as npt
 from dataclasses import dataclass
 from typing import Literal
 
-
 @dataclass(frozen=True, slots=True, eq=False)
 class GridFrame:
     """Defines a regular 3D grid in patient coordinates with an explicit
@@ -390,6 +482,7 @@ class GridFrame:
     support oblique grids by relaxing this constraint.
 
     Invariants:
+
         - shape_zyx has three strictly positive elements
         - index_to_patient_mm is a (4, 4) matrix
         - the affine is axis-aligned (v1 constraint)
@@ -481,7 +574,6 @@ A single global dose reference is insufficient for SIB, multi-target radiosurger
 ```python
 from typing import Mapping, Optional
 
-
 @dataclass(frozen=True, slots=True)
 class DoseReference:
     """An explicit dose reference for percentage-dose metric computation.
@@ -490,6 +582,7 @@ class DoseReference:
     on the dose axis must have a DoseReference supplied.
 
     Invariants:
+
         - dose_gy is strictly positive
         - source is non-empty (forces the user to document provenance)
     """
@@ -499,12 +592,19 @@ class DoseReference:
     def __post_init__(self) -> None:
         if self.dose_gy <= 0:
             raise ValueError(f"Reference dose must be positive, got {self.dose_gy}")
-        if not self.source.strip():
+        stripped = self.source.strip()
+        if not stripped:
             raise ValueError(
                 "DoseReference.source must be non-empty. Document where "
                 "this value came from (e.g. 'prescription: 3 fx × 14 Gy')."
             )
-
+        if len(stripped) < 5:
+            raise ValueError(
+                f"DoseReference.source must be at least 5 characters "
+                f"(got '{stripped}'). Provide a meaningful description of "
+                f"where this dose reference comes from, e.g. "
+                f"'prescription: 3 fx × 14 Gy to 80% IDL'."
+            )
 
 @dataclass(frozen=True, slots=True)
 class DoseReferenceSet:
@@ -522,6 +622,7 @@ class DoseReferenceSet:
         )
 
     Invariants:
+
         - If default_id is set, it must exist in refs
         - refs is non-empty
     """
@@ -591,6 +692,7 @@ class ROIRef:
     throughout the system.
 
     Invariants:
+
         - name is non-empty
     """
     name: str
@@ -622,14 +724,12 @@ Note: HI = (D2% − D98%) / D50% depends only on volume-percentage dose queries,
 from enum import Enum
 from typing import FrozenSet
 
-
 class MetricFamily(str, Enum):
     """The family of metric being requested."""
     DVH_DOSE = "dvh_dose"        # Dx% → dose at volume, Dxcc → dose at volume
     DVH_VOLUME = "dvh_volume"    # VxGy → volume at dose, Vx% → volume at dose
     SCALAR = "scalar"            # mean, median, min, max
     INDEX = "index"              # HI, CI, PCI, GI
-
 
 class ThresholdUnit(str, Enum):
     """Unit of the threshold/input axis."""
@@ -638,7 +738,6 @@ class ThresholdUnit(str, Enum):
     GY = "Gy"
     NONE = "none"   # for scalars/indices
 
-
 class OutputUnit(str, Enum):
     """Unit of the metric output."""
     GY = "Gy"
@@ -646,7 +745,6 @@ class OutputUnit(str, Enum):
     CC = "cc"
     PERCENT_VOLUME = "percent_vol"  # output as % of total volume
     DIMENSIONLESS = "dimensionless"
-
 
 @dataclass(frozen=True, slots=True)
 class MetricSpec:
@@ -672,6 +770,7 @@ class MetricSpec:
         MetricSpec.parse("D95%[%Rx]") → output as % of dose reference
 
     Invariants:
+
         - threshold is non-negative when present
         - threshold_unit and output_unit are consistent with family
     """
@@ -742,12 +841,12 @@ class MetricSpec:
         # Implementation omitted for brevity; see tests for expected behaviour
         ...
 
-
 @dataclass(frozen=True, slots=True)
 class ROIMetricRequest:
     """Metrics requested for a single ROI.
 
     Invariants:
+
         - roi is a valid ROIRef
         - metrics is non-empty
         - no duplicate metrics (by canonical_key)
@@ -776,7 +875,6 @@ class ROIMetricRequest:
             dose_ref_id=dose_ref_id,
         )
 
-
 @dataclass(frozen=True, slots=True)
 class MetricRequestSet:
     """Complete specification of what to compute.
@@ -785,6 +883,7 @@ class MetricRequestSet:
     from Python code, a dict, or TOML.
 
     Invariants:
+
         - If any requested metric requires a dose reference, dose_refs must resolve it
         - No duplicate ROIs (by ROIRef.matches)
     """
@@ -903,6 +1002,7 @@ class MetricRequestSet:
 **TOML format examples:**
 
 Simple single-prescription case:
+
 ```toml
 dose_ref_gy = 42.0
 dose_ref_source = "prescription: 3 fx × 14 Gy to 80% IDL"
@@ -914,6 +1014,7 @@ Duodenum = ["D0.03cc", "D5cc"]
 ```
 
 SIB / multi-target format:
+
 ```toml
 default_dose_ref = "ptv60"
 
@@ -944,7 +1045,6 @@ Configuration is separated into three distinct groups: `AlgorithmConfig` (choice
 ```python
 from enum import Enum
 from dataclasses import field
-
 
 class InterpolationMethod(str, Enum):
     RIGHT_PRISM = "right_prism"
@@ -983,7 +1083,6 @@ class InvalidROIPolicy(str, Enum):
 class FloatingPointPrecision(str, Enum):
     FLOAT32 = "float32"
     FLOAT64 = "float64"
-
 
 @dataclass(frozen=True, slots=True)
 class SupersamplingConfig:
@@ -1026,7 +1125,6 @@ class SupersamplingConfig:
     def fixed(cls, factor: int) -> SupersamplingConfig:
         return cls(factor=factor)
 
-
 @dataclass(frozen=True, slots=True)
 class AlgorithmConfig:
     """Settings that affect computed results. Any change here can
@@ -1064,7 +1162,6 @@ class AlgorithmConfig:
                 "endcap_max_mm is required when endcap_policy is 'half_slice_capped'"
             )
 
-
 @dataclass(frozen=True, slots=True)
 class RuntimeConfig:
     """Settings that affect performance but not results (when
@@ -1081,7 +1178,6 @@ class RuntimeConfig:
         if self.max_threads is not None and self.max_threads < 1:
             raise ValueError(f"max_threads must be >= 1, got {self.max_threads}")
 
-
 @dataclass(frozen=True, slots=True)
 class PipelinePolicy:
     """Settings controlling import behaviour, error handling, and output
@@ -1090,7 +1186,6 @@ class PipelinePolicy:
     invalid_roi_policy: InvalidROIPolicy = InvalidROIPolicy.REPAIR_IF_SAFE
     anonymise_provenance: bool = False
     z_tolerance_mm: float = 0.01  # tolerance for normalising slice z-coordinates
-
 
 @dataclass(frozen=True, slots=True)
 class DVHConfig:
@@ -1159,6 +1254,7 @@ class Contour:
     contain defects. Use PlanarRegion for validated geometry.
 
     Invariants:
+
         - points has shape (N, 2) with N >= 3
         - z_mm is finite
     """
@@ -1188,7 +1284,6 @@ class Contour:
 
     def __hash__(self) -> int:
         return hash((self.z_mm, self.points_xy.tobytes()))
-
 
 @dataclass(frozen=True, slots=True, eq=False)
 class PlanarRegion:
@@ -1231,7 +1326,6 @@ class PlanarRegion:
     def __hash__(self) -> int:
         return hash(self.exterior_xy_mm.tobytes())
 
-
 @dataclass(frozen=True, slots=True)
 class ContourROI:
     """A validated, z-sorted ROI defined by planar regions on axial slices.
@@ -1244,6 +1338,7 @@ class ContourROI:
     eliminate exact-float-equality brittleness from DICOM.
 
     Invariants:
+
         - slices are sorted by z_mm (ascending)
         - no duplicate z values (after normalisation)
         - at least one slice
@@ -1295,6 +1390,7 @@ class DoseGrid:
     Values are in Gy.
 
     Invariants:
+
         - dose_gy shape matches frame.shape_zyx
         - all values are finite
     """
@@ -1330,7 +1426,6 @@ class DoseGrid:
     def __hash__(self) -> int:
         return hash((self.frame, self.dose_gy.tobytes()))
 
-
 @dataclass(frozen=True, slots=True, eq=False)
 class OccupancyField:
     """A 3D float array representing fractional voxel occupancy.
@@ -1341,6 +1436,7 @@ class OccupancyField:
     Shape is (nz, ny, nx) matching frame.shape_zyx.
 
     Invariants:
+
         - data shape matches frame.shape_zyx
         - all values in [0.0, 1.0]
     """
@@ -1383,15 +1479,14 @@ class OccupancyField:
 Key design decisions: (1) `DVHBins` is the canonical DVH storage primitive, storing dose bin edges + differential volume — cumulative and percentage views are derived, avoiding duplicated state; (2) `Issue` provides rich diagnostics with severity level, machine-parseable code, and a `path` tuple identifying the source; (3) `MetricResult` carries its own `MetricSpec` for self-describing results; (4) `ROIResult` carries `ROIRef` and explicit `status` (ok/skipped/failed); (5) `DVHResultSet` stores a tuple of `ROIResult` rather than a name-keyed dict, since ROI names may duplicate.
 
 ```python
+import functools
 from typing import Any
-
 
 class IssueLevel(str, Enum):
     """Severity level for diagnostic issues."""
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
-
 
 class IssueCode(str, Enum):
     """Machine-parseable issue codes."""
@@ -1403,11 +1498,11 @@ class IssueCode(str, Enum):
     ENDCAP_LARGE_FRACTION = "ENDCAP_LARGE_FRACTION"
     DOSE_COVERAGE_INCOMPLETE = "DOSE_COVERAGE_INCOMPLETE"
     CONTOUR_REPAIRED = "CONTOUR_REPAIRED"
+    CONTOUR_STAGE_BYPASSED = "CONTOUR_STAGE_BYPASSED"
     ROI_SKIPPED = "ROI_SKIPPED"
     ROI_FAILED = "ROI_FAILED"
     METRIC_UNAVAILABLE = "METRIC_UNAVAILABLE"
     Z_TOLERANCE_APPLIED = "Z_TOLERANCE_APPLIED"
-
 
 @dataclass(frozen=True, slots=True)
 class Issue:
@@ -1426,7 +1521,6 @@ class Issue:
     path: tuple[str, ...] = ()
     context: Optional[dict[str, Any]] = None
 
-
 @dataclass(frozen=True, slots=True, eq=False)
 class DVHBins:
     """Canonical DVH storage: dose bin edges + differential volume.
@@ -1440,6 +1534,7 @@ class DVHBins:
     dose_bin_edges_gy[j+1]).
 
     Invariants:
+
         - dose_bin_edges_gy has length N+1 with N >= 1
         - dose_bin_edges_gy is strictly monotonically increasing
         - differential_volume_cc has length N
@@ -1470,7 +1565,7 @@ class DVHBins:
         """Uniform bin width (assumes uniform spacing)."""
         return float(self.dose_bin_edges_gy[1] - self.dose_bin_edges_gy[0])
 
-    @property
+    @functools.cached_property
     def cumulative_volume_cc(self) -> npt.NDArray[np.float64]:
         """Cumulative DVH: V(D) at each bin edge (N+1 values).
 
@@ -1480,12 +1575,43 @@ class DVHBins:
             np.cumsum(self.differential_volume_cc[::-1])[::-1],
             [0.0]
         ])
+        cum.flags.writeable = False
         return cum
 
-    @property
+    @functools.cached_property
     def cumulative_volume_pct(self) -> npt.NDArray[np.float64]:
-        """Cumulative DVH as percentage of total volume."""
-        return self.cumulative_volume_cc / self.total_volume_cc * 100.0
+        """Cumulative DVH as percentage of total volume.
+        """
+        pct = self.cumulative_volume_cc / self.total_volume_cc * 100.0
+        pct.flags.writeable = False
+        return pct
+
+    @property
+    def min_dose_gy(self) -> float:
+        """Minimum dose in the DVH (lowest bin edge with nonzero volume)."""
+        nonzero = np.nonzero(self.differential_volume_cc)[0]
+        if len(nonzero) == 0:
+            return 0.0
+        return float(self.dose_bin_edges_gy[nonzero[0]])
+
+    @property
+    def max_dose_gy(self) -> float:
+        """Maximum dose in the DVH (upper edge of highest occupied bin)."""
+        nonzero = np.nonzero(self.differential_volume_cc)[0]
+        if len(nonzero) == 0:
+            return 0.0
+        return float(self.dose_bin_edges_gy[nonzero[-1] + 1])
+
+    @property
+    def mean_dose_gy(self) -> float:
+        """Volume-weighted mean dose, computed from bin centres."""
+        bin_centres = (
+            self.dose_bin_edges_gy[:-1] + self.dose_bin_edges_gy[1:]
+        ) / 2.0
+        return float(
+            np.sum(bin_centres * self.differential_volume_cc)
+            / self.total_volume_cc
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, DVHBins):
@@ -1498,7 +1624,6 @@ class DVHBins:
 
     def __hash__(self) -> int:
         return hash(self.dose_bin_edges_gy.tobytes())
-
 
 @dataclass(frozen=True, slots=True)
 class MetricResult:
@@ -1515,7 +1640,6 @@ class MetricResult:
     convergence_estimate: Optional[float] = None
     issues: tuple[Issue, ...] = ()
 
-
 @dataclass(frozen=True, slots=True)
 class ROIDiagnostics:
     """Per-ROI computation diagnostics."""
@@ -1526,7 +1650,6 @@ class ROIDiagnostics:
     contour_slice_count: int = 0
     endcap_volume_fraction: Optional[float] = None
     computation_time_s: Optional[float] = None
-
 
 @dataclass(frozen=True, slots=True)
 class ROIResult:
@@ -1546,14 +1669,12 @@ class ROIResult:
     diagnostics: Optional[ROIDiagnostics] = None
     issues: tuple[Issue, ...] = ()
 
-
 @dataclass(frozen=True, slots=True)
 class InputMetadata:
     """Metadata about the computation inputs, for provenance."""
     rtstruct_file_sha256: Optional[str] = None
     rtdose_file_sha256: Optional[str] = None
     dose_grid_frame: Optional[GridFrame] = None
-
 
 @dataclass(frozen=True, slots=True)
 class PlatformInfo:
@@ -1563,7 +1684,6 @@ class PlatformInfo:
     numba_version: str
     os: str
 
-
 @dataclass(frozen=True, slots=True)
 class ProvenanceRecord:
     """Complete provenance for a computation run."""
@@ -1572,7 +1692,6 @@ class ProvenanceRecord:
     config: DVHConfig
     input_metadata: InputMetadata
     platform: PlatformInfo
-
 
 @dataclass(frozen=True, slots=True)
 class DVHResultSet:
@@ -1690,6 +1809,36 @@ class DVHInputs:
 
         Returns:
             DVHInputs ready for compute_dvh().
+
+        Notes:
+            When masks are provided as pre-computed float [0,1] arrays,
+            the contour-stage pipeline is bypassed entirely: no contour
+            validation, interpolation, or end-capping is performed.
+            The mask is used directly as an OccupancyField. In this
+            case, the following provenance and diagnostic implications
+            apply:
+
+            - ROIDiagnostics fields that derive from contour data
+              (contour_slice_count, endcap_volume_fraction) will be
+              None, since no contour stack exists.
+
+            - The ProvenanceRecord will record that the input pathway
+              was 'from_arrays' (not 'from_dicom'), and the
+              AlgorithmConfig fields for interpolation_method and
+              endcap_policy will be recorded but noted as inapplicable.
+
+            - An Issue with code CONTOUR_STAGE_BYPASSED (level INFO)
+              will be attached to each ROIResult whose input was a
+              pre-voxelised mask, so downstream consumers can
+              distinguish contour-derived from mask-derived results.
+
+            - Boolean masks (dtype bool) are converted to float
+              occupancy (0.0/1.0) and proceed through the standard
+              supersampling pathway only if the user explicitly sets
+              occupancy_method to a supersampling variant; otherwise
+              they are treated as final binary occupancy.
+        """
+            DVHInputs ready for compute_dvh().
         """
         dose = DoseGrid(dose_gy=dose_gy, frame=frame)
         contour_rois = []
@@ -1698,7 +1847,6 @@ class DVHInputs:
             # directly to OccupancyField (bypass contour stage)
             ...
         return cls(dose=dose, structures=tuple(contour_rois))
-
 
 def compute_dvh(
     inputs: DVHInputs,
@@ -1776,6 +1924,47 @@ These protocols are documented here for implementor reference but are not part o
 ```python
 from typing import Protocol, runtime_checkable
 
+@dataclass(frozen=True, slots=True, eq=False)
+class SDFField:
+    """A 3D signed distance field on a regular grid.
+
+    Values represent the signed distance to the structure boundary:
+    negative inside, positive outside, zero on the boundary.
+    The gradient magnitude is approximately 1 everywhere for an
+    exact distance field.
+
+    Shape is (nz, ny, nx) matching frame.shape_zyx.
+
+    Invariants:
+
+        - data shape matches frame.shape_zyx
+        - all values are finite
+    """
+    data: npt.NDArray[np.float64]  # (nz, ny, nx)
+    frame: GridFrame
+    roi: ROIRef
+
+    def __post_init__(self) -> None:
+        expected = self.frame.shape_zyx
+        if self.data.shape != expected:
+            raise ValueError(
+                f"SDF shape {self.data.shape} != frame shape {expected}"
+            )
+        d = np.array(self.data, dtype=np.float64)
+        d.flags.writeable = False
+        object.__setattr__(self, 'data', d)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SDFField):
+            return NotImplemented
+        return (
+            self.frame == other.frame
+            and self.roi == other.roi
+            and np.array_equal(self.data, other.data)
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.frame, self.roi.name, self.data.tobytes()))
 
 @runtime_checkable
 class StructureModelBuilder(Protocol):
@@ -1791,26 +1980,27 @@ class StructureModelBuilder(Protocol):
         self,
         contour_roi: ContourROI,
         config: AlgorithmConfig,
-    ) -> npt.NDArray[np.float64]:
+    ) -> SDFField:
         """Return a 3D SDF on a sufficiently fine internal grid.
+
+        The returned SDFField carries both the SDF array and its
+        associated GridFrame, ensuring the spatial metadata is
+        never separated from the array data.
 
         Negative values = inside, positive = outside, zero = boundary.
         """
         ...
-
 
 @runtime_checkable
 class OccupancyComputer(Protocol):
     """Computes fractional voxel occupancy from a structure model."""
     def compute(
         self,
-        structure_sdf: npt.NDArray[np.float64],
-        structure_frame: GridFrame,
+        structure_sdf: SDFField,
         target_frame: GridFrame,
         config: AlgorithmConfig,
     ) -> OccupancyField:
         ...
-
 
 @runtime_checkable
 class DoseInterpolator(Protocol):
@@ -1822,7 +2012,6 @@ class DoseInterpolator(Protocol):
     ) -> npt.NDArray[np.float64]:  # (N,)
         ...
 ```
-
 
 ---
 
@@ -1851,6 +2040,7 @@ $$A_{\text{signed}} = \frac{1}{2} \sum_{i=1}^{n} ((x_i - \bar{x})(y_{i+1} - \bar
 This is algebraically equivalent but numerically superior. *[Engineering inference]*
 
 **Usage in validation:**
+
 - Contour with $|A_{\text{signed}}| < \epsilon$ (configurable, e.g. $10^{-6}$ mm²) is flagged as degenerate (zero-area slice)
 - Winding order sign determines whether a contour is an outer boundary (CCW by convention) or a hole (CW)
 - Inconsistent winding within a slice may indicate data corruption
@@ -1882,7 +2072,7 @@ Cast a semi-infinite ray from $\mathbf{p}$ in any fixed direction (conventionall
 2. Compute the $x$-coordinate of the intersection: $x_{\text{int}} = x_i + (p_y - y_i) \cdot \frac{x_{i+1} - x_i}{y_{i+1} - y_i}$
 3. If $x_{\text{int}} > p_x$, the ray crosses this edge; toggle inside/outside
 
-**Vertex handling (the "half-plane" convention):** When the ray passes exactly through a vertex, the vertex is treated as belonging to the upper half-plane only. Concretely, an edge is crossed only if $\min(y_i, y_{i+1}) \leq p_y < \max(y_i, y_{i+1})$ — note the strict inequality on the upper bound. This ensures that a shared vertex between two edges is counted exactly once. This convention was described by Drzymala et al. [1] as the scanline even-odd crossing rule.
+**Vertex handling (the "half-plane" convention):** When the ray passes exactly through a vertex, the vertex is treated as belonging to the upper half-plane only. Concretely, an edge is crossed only if $\min(y_i, y_{i+1}) \leq p_y < \max(y_i, y_{i+1})$ — note the strict inequality on the upper bound. This ensures that a shared vertex between two edges is counted exactly once. This convention was described by Drzymala et al. \[1] as the scanline even-odd crossing rule.
 
 **Complexity:** $O(n)$ per query. No preprocessing.
 
@@ -1894,7 +2084,7 @@ Cast a semi-infinite ray from $\mathbf{p}$ in any fixed direction (conventionall
 
 The winding number $w(\mathbf{p}, P)$ counts how many times the polygon $P$ winds around point $\mathbf{p}$ in the counter-clockwise direction. If $w \neq 0$, $\mathbf{p}$ is inside $P$.
 
-**Efficient implementation (per Sunday [27]):** Rather than computing angles (which requires expensive $\arctan$ calls), the winding number can be computed using the same edge-crossing framework as ray casting, but tracking direction.
+**Efficient implementation (per Sunday \[27]):** Rather than computing angles (which requires expensive $\arctan$ calls), the winding number can be computed using the same edge-crossing framework as ray casting, but tracking direction.
 
 **Complexity:** $O(n)$ per query. Same as ray casting — no trigonometry needed.
 
@@ -1904,7 +2094,7 @@ The winding number $w(\mathbf{p}, P)$ counts how many times the polygon $P$ wind
 
 #### 7.1.3 Handling Multi-Component Contours (Holes)
 
-A single DICOM RTSTRUCT slice may contain multiple contours, representing disconnected islands or structures with holes. With v7's `PlanarRegion` type, holes are explicitly typed rather than inferred from winding order at query time. For the even-odd rule, holes work automatically via the crossing count. For the winding number, the outer boundary contributes $w = +1$ and the hole contributes $w = -1$.
+A single DICOM RTSTRUCT slice may contain multiple contours, representing disconnected islands or structures with holes. With the `PlanarRegion` type, holes are explicitly typed rather than inferred from winding order at query time. For the even-odd rule, holes work automatically via the crossing count. For the winding number, the outer boundary contributes $w = +1$ and the hole contributes $w = -1$.
 
 **Recommendation for v1:** Support both ray casting and winding number, with winding number as the default for reference mode due to its superior robustness for pathological contours. Ray casting is the default for practical mode. *[Design proposal]*
 
@@ -1916,11 +2106,11 @@ A single DICOM RTSTRUCT slice may contain multiple contours, representing discon
 
 Each contour is extruded perpendicular to its slice plane. For adjacent slices at $z_i$ and $z_{i+1}$, the midpoint $z_m = (z_i + z_{i+1})/2$ defines the transition.
 
-**Matches:** Mobius3D v3.1, MIM Maestro v6.9.6, ProKnow DS v1.22 [18].
+**Matches:** Mobius3D v3.1, MIM Maestro v6.9.6, ProKnow DS v1.22 \[18].
 
 #### 7.2.2 Shape-Based Interpolation (Signed Distance Field)
 
-Originally described by Herman et al. [24]. The modern form uses continuous Euclidean signed distance fields (SDFs) with linear interpolation between slices.
+Originally described by Herman et al. \[24]. The modern form uses continuous Euclidean signed distance fields (SDFs) with linear interpolation between slices.
 
 **Step 1:** Compute 2D SDF on each contour slice. For multi-component contours (exterior + holes via `PlanarRegion`), the sign convention uses the winding number: $\phi < 0$ where the winding number is non-zero.
 
@@ -1928,7 +2118,7 @@ Originally described by Herman et al. [24]. The modern form uses continuous Eucl
 
 **Step 3:** The 3D structure boundary is the zero-level isosurface $\phi(x, y, z) = 0$. Points with $\phi < 0$ are inside.
 
-**Matches:** Eclipse v15.5, RayStation v9A [18].
+**Matches:** Eclipse v15.5, RayStation v9A \[18].
 
 **Note on inter-slice default:** Vertex-blending approaches (linear vertex loft) are not suitable as a default due to the vertex-correspondence problem. SDF-based shape interpolation is the reference-mode default and right-prism is the fast-mode default. Linear vertex loft is deferred to future work.
 
@@ -1936,7 +2126,7 @@ Originally described by Herman et al. [24]. The modern form uses continuous Eucl
 
 **Method A: Brute-force nearest-edge distance.** $O(M \cdot n)$, exact, numba-friendly. Recommended for v1.
 
-**Method B: Rasterise-then-EDT.** $O(M)$ via scipy `distance_transform_edt` (Maurer et al. [26]). Fast but introduces grid-alignment error up to $h\sqrt{2}/2$.
+**Method B: Rasterise-then-EDT.** $O(M)$ via scipy `distance_transform_edt` (Maurer et al. \[26]). Fast but introduces grid-alignment error up to $h\sqrt{2}/2$.
 
 **Method C: AABB-tree accelerated.** $O(M \cdot \log n)$. Deferred to future work.
 
@@ -1952,17 +2142,17 @@ The structure terminates exactly at terminal slice z-coordinates.
 
 #### 7.3.2 Half-Slice Extension (`half_slice`)
 
-The structure extends by $\Delta z / 2$ beyond each terminal contour. Matches: Mobius3D, MIM, RayStation [18].
+The structure extends by $\Delta z / 2$ beyond each terminal contour. Matches: Mobius3D, MIM, RayStation \[18].
 
 #### 7.3.3 Half-Slice Capped (`half_slice_capped`)
 
-Same as half-slice but capped at a configurable maximum. Matches: ProKnow DS v1.22 at 1.5 mm [18].
+Same as half-slice but capped at a configurable maximum. Matches: ProKnow DS v1.22 at 1.5 mm \[18].
 
 #### 7.3.4 Rounded End-Cap (`rounded`)
 
-SDF extrapolated beyond terminal slices produces a dome-shaped cap. Matches: Eclipse v15.5 [18].
+SDF extrapolated beyond terminal slices produces a dome-shaped cap. Matches: Eclipse v15.5 \[18].
 
-**Critical invariant (the "Pinnacle constraint"):** The dose tally MUST include dose samples from the end-capped region. Nelms et al. [14] documented that Pinnacle v9.8 included end-cap volume in the structure volume but excluded end-cap voxels from dose sampling, causing Dmin errors up to 60%. Our implementation enforces geometric identity: the occupancy field used for volume computation and dose sampling is the same `OccupancyField` instance.
+**Critical invariant (the "Pinnacle constraint"):** The dose tally MUST include dose samples from the end-capped region. Nelms et al. \[14] documented that Pinnacle v9.8 included end-cap volume in the structure volume but excluded end-cap voxels from dose sampling, causing Dmin errors up to 60%. Our implementation enforces geometric identity: the occupancy field used for volume computation and dose sampling is the same `OccupancyField` instance.
 
 ### 7.4 Voxelisation and Partial-Volume Occupancy
 
@@ -1992,11 +2182,11 @@ Standard trilinear interpolation with $O(h^2)$ error for smooth dose fields.
 
 #### 7.5.2 Surface-Point Dose Sampling
 
-After standard DVH computation, additionally sample dose at every original contour vertex by trilinear interpolation for extrema/near-extrema metrics. Used by PlanIQ v2.1 [14].
+After standard DVH computation, additionally sample dose at every original contour vertex by trilinear interpolation for extrema/near-extrema metrics. Used by PlanIQ v2.1 \[14].
 
 #### 7.5.3 Dose-Grid-Point Preservation
 
-Construct the sampling lattice to include every original dose-grid centre exactly. Used by PlanIQ v2.1 [14].
+Construct the sampling lattice to include every original dose-grid centre exactly. Used by PlanIQ v2.1 \[14].
 
 ### 7.6 Histogram Construction
 
@@ -2008,7 +2198,7 @@ For bin boundaries $D_0 < D_1 < \cdots < D_B$ with spacing $\delta$:
 
 $$h_j = \sum_{k : D_j \leq d_k < D_{j+1}} w_k$$
 
-**Numerical stability:** Kahan (compensated) summation [28] for accumulation. For deterministic reproducibility, accumulation order is fixed to index order when `runtime.deterministic=True`. *[Design proposal]*
+**Numerical stability:** Kahan (compensated) summation \[28] for accumulation. For deterministic reproducibility, accumulation order is fixed to index order when `runtime.deterministic=True`. *[Design proposal]*
 
 #### 7.6.2 Cumulative DVH (derived)
 
@@ -2028,9 +2218,9 @@ $V_{x\text{Gy}} = V(x)$ — direct lookup. $V_{x\%}$ requires a dose reference: 
 
 #### 7.7.3 Stereotactic Indices
 
-**Paddick Conformity Index [22]:** $\text{PCI} = (\text{TV}_{\text{PIV}})^2 / (\text{TV} \times \text{PIV})$
+**Paddick Conformity Index \[22]:** $\text{PCI} = (\text{TV}_{\text{PIV}})^2 / (\text{TV} \times \text{PIV})$
 
-**Paddick Gradient Index [23]:** $\text{GI} = V_{50\%\text{Rx}} / V_{100\%\text{Rx}}$
+**Paddick Gradient Index \[23]:** $\text{GI} = V_{50\%\text{Rx}} / V_{100\%\text{Rx}}$
 
 **Homogeneity Index (ICRU 83):** $\text{HI} = (D_{2\%} - D_{98\%}) / D_{50\%}$
 
@@ -2050,39 +2240,41 @@ The `repair_if_safe` mode attempts: (1) close open contours, (2) remove zero-are
 
 The validation strategy is a first-class deliverable, split into five tiers.
 
+**Literature-validated methodological principle:** The literature consistently demonstrates that analytical ground truth is essential but insufficient alone \[14]\[17]\[18]\[20]\[21]. Simple convex shapes in smooth gradients are excellent for diagnosing algorithmic failure modes, but they do not reproduce the full complexity of clinical anatomy: concavities, thin shells, multiply connected structures, heterogeneous media, and modulated dose fields remain untested by analytical benchmarks. A robust validation strategy therefore requires both analytical phantoms for algorithm verification and clinical datasets for real-world stress testing. The five-tier structure below operationalises this principle.
+
 ### 8.1 Tier 1: Analytical Ground-Truth Tests
 
 #### 8.1.1 Available Analytical Benchmark Datasets
 
-**Nelms et al. [14]:** Sphere (7.3 cc), cylinder (10.86 cc), cone (3.62 cc) with linear gradients at multiple contour spacings. Closed-form analytical cumulative DVHs.
+**Nelms et al. \[14]:** Sphere (7.3 cc), cylinder (10.86 cc), cone (3.62 cc) with linear gradients at multiple contour spacings. Closed-form analytical cumulative DVHs.
 
-**Pepin et al. [18]:** Reuses Nelms shapes with precision-band analysis methodology and vendor-algorithm survey.
+**Pepin et al. \[18]:** Reuses Nelms shapes with precision-band analysis methodology and vendor-algorithm survey.
 
-**Stanley et al. [17]:** Spheres 3–20 mm diameter, 50 random placements per size. Best for small-volume SRS and phase-sensitivity.
+**Stanley et al. \[17]:** Spheres 3–20 mm diameter, 50 random placements per size. Best for small-volume SRS and phase-sensitivity.
 
-**Grammatikou et al. [20]:** Spheres 2–9 mm radius, Mendeley Data CC BY 4.0.
+**Grammatikou et al. \[20]:** Spheres 2–9 mm radius, Mendeley Data CC BY 4.0.
 
-**Walker and Byrne [21]:** Spherical/Gaussian with analytical PCI and GI truth at very small volumes.
+**Walker and Byrne \[21]:** Spherical/Gaussian with analytical PCI and GI truth at very small volumes.
 
-**Gossman et al. [10]:** Rectangular parallelepiped with depth-dose profile.
+**Gossman et al. \[10]:** Rectangular parallelepiped with depth-dose profile.
 
-**Corbett et al. [5]:** Brachytherapy benchmarks (stress test only for v1).
+**Corbett et al. \[5]:** Brachytherapy benchmarks (stress test only for v1).
 
-**Drzymala et al. [1]:** Nested concentric cubes, notched cube, cylinder (must be recreated).
+**Drzymala et al. \[1]:** Nested concentric cubes, notched cube, cylinder (must be recreated).
 
 **Decision:** All are included. Each targets different failure modes.
 
 #### 8.1.2 Novel Analytical Benchmarks (Project-Specific)
 
 | Test case | Purpose | Ground truth |
-|---|---|---|
+| --- | --- | --- |
 | Rotated ellipsoid (oblique axes) | Non-axis-aligned geometry | Analytical volume and DVH in linear gradient |
 | Torus (axis perpendicular to slice direction) | Branching/reconverging topology, hole stress test | Analytical volume; DVH in uniform and gradient fields |
-| Thin cylindrical shell (wall thickness 1–4 mm) | Rosewall-type slender-OAR test [13] | Analytical volume and DVH in sigmoid gradient |
+| Thin cylindrical shell (wall thickness 1–4 mm) | Rosewall-type slender-OAR test \[13] | Analytical volume and DVH in sigmoid gradient |
 | Disconnected islands (two separated spheres) | Multi-component ROI | Sum of individual analytical DVHs |
 | Nested concentric spheres with different dose | Boundary logic and dose-volume assignment | Analytical per-shell DVH |
 | Structure at dose-grid edge | Incomplete dose coverage | Analytical with explicit zero-dose region |
-| Phase-shift sweep (structure translated 0–1 voxels) | Grid-phase sensitivity [6][17] | Analytical DVH should be phase-independent for large structures |
+| Phase-shift sweep (structure translated 0–1 voxels) | Grid-phase sensitivity \[6]\[17] | Analytical DVH should be phase-independent for large structures |
 | Anisotropic dose grid (e.g. 1×1×3 mm) | Non-isotropic grid handling | Analytical adjustment |
 | Adversarial contours: near-zero-area slices, reversed winding, duplicate slices | Robustness | Expected failures and repairs |
 
@@ -2098,21 +2290,51 @@ The validation strategy is a first-class deliverable, split into five tiers.
 #### 8.3.1 Open-Source Comparators
 
 | Tool | Status | Notes |
-|---|---|---|
+| --- | --- | --- |
 | dicompyler-core | Active | TODO: infer DVH algorithms from source code |
-| SlicerRT (3D Slicer) | Active | Binary centre-inclusion [15] |
+| SlicerRT (3D Slicer) | Active | Binary centre-inclusion \[15] |
 | CERR | Active | MATLAB-based |
 
 #### 8.3.2 Commercial Comparator Matrix
 
-| System | Version(s) | Interpolation | End-capping | Supersampling | Source |
-|---|---|---|---|---|---|
-| Eclipse | v15.5 | Shape-based | Rounded | 100,000 points | [18] |
-| RayStation | v9A | Shape-based | Half-slice | 3x axial | [18] |
-| Mobius3D | v3.1 | Right-prism | Half-slice | None | [18] |
-| MIM Maestro | v6.9.6 | Right-prism | Half-slice | ~1 mm³ subvoxels | [18] |
-| ProKnow DS | v1.22 | Right-prism | Half-slice capped 1.5 mm | >10,000 points | [18] |
-| Pinnacle | v9.8 | Not reported | Half-slice auto | Regular on dose grid | [14] |
+The following table synthesises vendor DVH construction behaviour from two key multi-system studies. Where both studies tested the same product family, entries are listed separately by version to avoid conflation; algorithmic behaviour may differ between versions. Private-communication-sourced details are noted.
+
+**From Pepin et al. \[18] (five systems, synthetic analytical benchmarks):**
+
+| System | Version | Interpolation | End-capping | Supersampling | Source |
+| --- | --- | --- | --- | --- | --- |
+| Eclipse | v15.5 | Shape-based | Rounded | 100,000 points | \[18] |
+| RayStation | v9A | Shape-based | Half-slice | 3x axial | \[18] |
+| Mobius3D | v3.1 | Right-prism | Half-slice | None | \[18] |
+| MIM Maestro | v6.9.6 | Right-prism | Half-slice | ~1 mm³ subvoxels | \[18] |
+| ProKnow DS | v1.22 | Right-prism | Half-slice capped 1.5 mm | >10,000 points | \[18] |
+
+**From Nelms et al. \[14] (two systems, analytical benchmarks):**
+
+| System | Version | End-capping | Supersampling | Source |
+| --- | --- | --- | --- | --- |
+| Pinnacle | v9.8 | Half-slice auto | Regular on dose grid | \[14] |
+| PlanIQ | v2.1 | Half-slice | Odd-factor adaptive ≥40,000 voxels + surface-point sampling | \[14] |
+
+**From Penoncello et al. \[19] (eight systems, clinical DICOM imports — selected details from their Table 1, some sourced from vendor private communication):**
+
+| System | Version | Interpolation | End-capping | Voxel inclusion | Source |
+| --- | --- | --- | --- | --- | --- |
+| Eclipse | v16.1 | Shape-based | Rounded | 100,000 structure points | \[19] |
+| RayStation | v9B | Shape-based | Half-slice | Sub-voxel (3x axial) | \[19] |
+| Pinnacle | v16.2 | Right-prism | "Coarse" inclusion (any touched voxel) | Native grid | \[19] |
+| MIM | v7.0.4 | Right-prism | Half-slice | ~1 mm³ subvoxels | \[19] |
+| Mobius3D | v3.0 | Right-prism | Half-slice | Native grid | \[19] |
+| ProKnow | v1.22.2 | Right-prism | Half-slice capped 1.5 mm | >10,000 points | \[19] |
+| Elements | v3.0.0.4 | Contours in 3D (no classical end-capping) | N/A | 0.5 mm subvoxels | \[19] |
+| Velocity | v4.1 | Not reported | Not reported | Not reported | \[19] |
+
+**Notes:**
+
+- Penoncello et al. \[19] compiled the most detailed published table of vendor DVH construction behaviour; many details were obtained through vendor private communication rather than public documentation.
+- Elements' approach of allowing contours to exist in 3D space effectively avoids classical end-capping entirely \[19].
+- Pinnacle v16.2 used a coarse inclusion rule counting any voxel touched by the structure, producing the largest volume ratios (mean 1.101 relative to Eclipse) \[19].
+- Across all eight systems in Penoncello et al., dosimetric medians were all 1.000, confirming that central tendency for dose metrics was essentially identical while volume reporting differed materially \[19].
 
 ### 8.4 Tier 4: Clinical-Case Benchmarking
 
@@ -2144,12 +2366,13 @@ Systematic single-variable sensitivity analysis for every configurable parameter
 
 **Objectives:** Establish the module skeleton, all core data types, metric grammar parser, serialisation, and test harness. No computation logic.
 
-The type system includes: `GridFrame`, `DoseReferenceSet`, `ROIRef`, `MetricSpec` (metric AST), `PlanarRegion`, `ContourROI`, `DVHBins`, `Issue`, `ROIResult` with status, `DVHInputs`, and the separated config types (`AlgorithmConfig`, `RuntimeConfig`, `PipelinePolicy`, `DVHConfig`).
+The type system includes: `GridFrame`, `DoseReferenceSet`, `ROIRef`, `MetricSpec` (metric AST), `PlanarRegion`, `ContourROI`, `SDFField`, `DVHBins`, `Issue`, `ROIResult` with status, `DVHInputs`, and the separated config types (`AlgorithmConfig`, `RuntimeConfig`, `PipelinePolicy`, `DVHConfig`).
 
 #### Task 0.1: Module skeleton and packaging
 
 **Files to create:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/
     __init__.py
     _types/
@@ -2161,6 +2384,7 @@ lib/pymedphys/_dvh/
         _config.py           # AlgorithmConfig, RuntimeConfig, PipelinePolicy, DVHConfig, all enums, SupersamplingConfig
         _contour.py          # Contour (raw), PlanarRegion, ContourROI
         _occupancy.py        # OccupancyField
+        _sdf.py              # SDFField
         _dose.py             # DoseGrid
         _results.py          # MetricResult, ROIResult, DVHResultSet, DVHBins
         _issues.py           # IssueLevel, IssueCode, Issue
@@ -2215,7 +2439,8 @@ tests/dvh/
 #### Task 1.1: Analytical geometry library
 
 **Files:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/_benchmarks/
     __init__.py
     _geometry.py          # Analytical volume formulas for all shapes
@@ -2225,6 +2450,7 @@ lib/pymedphys/_dvh/_benchmarks/
 ```
 
 **Implement analytical volume formulas for:**
+
 - Sphere: `V = (4/3)πr³`
 - Cylinder: `V = πr²h`
 - Cone: `V = (1/3)πr²h`
@@ -2234,10 +2460,11 @@ lib/pymedphys/_dvh/_benchmarks/
 - Rectangular parallelepiped: `V = lwh`
 
 **Tests (unit):**
+
 - Each formula verified against at least 3 hand-calculated values
 - Sphere(r=10mm): V = 4188.79 mm³ = 4.189 cc
-- Cylinder(r=12mm, h=24mm): V = 10857.34 mm³ = 10.857 cc (matches Nelms [14])
-- Cone(r=12mm, h=24mm): V = 3619.11 mm³ = 3.619 cc (matches Nelms [14])
+- Cylinder(r=12mm, h=24mm): V = 10857.34 mm³ = 10.857 cc (matches Nelms \[14])
+- Cone(r=12mm, h=24mm): V = 3619.11 mm³ = 3.619 cc (matches Nelms \[14])
 
 #### Task 1.2: Analytical DVH formulas
 
@@ -2256,14 +2483,16 @@ lib/pymedphys/_dvh/_benchmarks/
 
 - **Sphere in radial Gaussian** D(r) = A·exp(-r²/(2σ²)):
   - V(D) = (4π/3)r(D)³ where r(D) = σ√(2·ln(A/D)), capped at sphere radius
-  - This is the Stanley [17] / Walker [21] benchmark model
+  - This is the Stanley \[17] / Walker \[21] benchmark model
 
 **Tests (unit):**
+
 - For sphere in uniform dose: V(D≤Duniform) = full volume, V(D>Duniform) = 0
 - For cylinder in linear gradient: V at midpoint dose = half volume
 - Each formula agrees with numerical integration (scipy.integrate) to < 0.01% for 5 representative parameter sets
 
 **Tests (property-based):**
+
 - V(Dmin) = total volume
 - V(Dmax) = 0 (or near-zero for continuous distributions)
 - V is monotonically non-increasing in D
@@ -2274,14 +2503,16 @@ lib/pymedphys/_dvh/_benchmarks/
 **Implement:** Generate synthetic DICOM RTSTRUCT files from analytical geometry definitions.
 
 **Specific capabilities:**
+
 - Generate contour points for: sphere, cylinder, cone, ellipsoid, torus, shell, parallelepiped
 - Configurable slice spacing (0.2, 0.5, 1.0, 2.0, 3.0 mm)
 - Configurable in-plane point density
 - Configurable centre position (for phase-shift testing)
 - Output valid DICOM RTSTRUCT that passes pydicom validation
-- Support for on-slice and between-slice sphere positioning (per Walker [21])
+- Support for on-slice and between-slice sphere positioning (per Walker \[21])
 
 **Tests:**
+
 - Generated RTSTRUCT is valid DICOM (pydicom.dcmread succeeds, no warnings)
 - Generated sphere contours have correct radius at each slice (within discretisation tolerance)
 - Generated structures can be imported by dicompyler-core without error
@@ -2293,12 +2524,14 @@ lib/pymedphys/_dvh/_benchmarks/
 **Implement:** Generate synthetic DICOM RTDOSE files with known dose distributions.
 
 **Supported dose fields:**
+
 - Uniform: D(x,y,z) = D₀
 - Linear gradient (any axis): D = D₀ + g·{x,y,z}
 - Radial Gaussian: D(r) = A·exp(-r²/(2σ²))
 - Sigmoid: D(z) = Dmax / (1 + exp(-k(z-z₀)))
 
 **Configurable parameters:**
+
 - Grid spacing (0.1 to 5 mm)
 - Grid extent
 - Gradient magnitude and direction
@@ -2306,6 +2539,7 @@ lib/pymedphys/_dvh/_benchmarks/
 - Grid origin (for phase-shift testing)
 
 **Tests:**
+
 - Generated RTDOSE is valid DICOM
 - Dose values at known points match analytical formula to machine precision
 - Grid geometry in DICOM headers matches specified parameters
@@ -2314,14 +2548,16 @@ lib/pymedphys/_dvh/_benchmarks/
 #### Task 1.5: Benchmark manifest and published dataset integration
 
 **Implement:**
+
 - JSON manifest format for each test case
 - Integration scripts for downloading/importing published datasets:
-  - Nelms et al. [14] supplementary DICOM
-  - Stanley et al. [17] downloadable DICOM
-  - Grammatikou et al. [20] Mendeley Data (DOI 10.17632/pb55hjf5y3.1)
-  - Walker and Byrne [21] Mendeley Data
+  - Nelms et al. \[14] supplementary DICOM
+  - Stanley et al. \[17] downloadable DICOM
+  - Grammatikou et al. \[20] Mendeley Data (DOI 10.17632/pb55hjf5y3.1)
+  - Walker and Byrne \[21] Mendeley Data
 
 **Tests:**
+
 - All manifests validate against a JSON schema
 - All integrated published datasets load without error
 - Published dataset volumes match reported values within stated tolerance
@@ -2330,9 +2566,10 @@ lib/pymedphys/_dvh/_benchmarks/
 
 **Implement:** Given a geometry and dose field, generate a sweep of N test cases where the structure is translated by [0, 1/N, 2/N, ..., (N-1)/N] × voxel_size in each axis, keeping the dose field fixed.
 
-**Purpose:** Directly tests grid-phase sensitivity [6][17].
+**Purpose:** Directly tests grid-phase sensitivity \[6]\[17].
 
 **Tests:**
+
 - Sweep generates exactly N cases
 - Each case has the correct translation offset in its manifest
 - Analytical DVH is identical across all phase shifts (since the analytical formula is continuous)
@@ -2342,11 +2579,13 @@ lib/pymedphys/_dvh/_benchmarks/
 **Implement the project-specific novel benchmarks from Section 8.1.2.**
 
 **Tests:**
+
 - Each novel case has a validated analytical ground truth
 - Each case generates valid DICOM
 - Adversarial cases trigger appropriate validation errors in contour types
 
 **Phase 1 exit criteria:**
+
 - Complete benchmark corpus with ≥ 30 distinct test cases
 - All test cases have JSON manifests with analytical ground truth
 - All generated DICOM files import correctly in pydicom and dicompyler-core
@@ -2363,7 +2602,8 @@ lib/pymedphys/_dvh/_benchmarks/
 #### Task 2a.0: `numba` compilation strategy and infrastructure
 
 **Files:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/_numba_utils.py
 tests/dvh/test_numba_utils.py
 ```
@@ -2371,6 +2611,7 @@ tests/dvh/test_numba_utils.py
 **Implement:** Establish the project-wide `numba` JIT compilation pattern that all subsequent phases will follow.
 
 **Specific deliverables:**
+
 - Module `_numba_utils.py` with: project-wide `@njit` decorator wrapper that handles `cache=True`, `nogil=True`, `error_model="numpy"` defaults
 - Ahead-of-time (AOT) compilation support: a script or entry point that pre-compiles all `@njit` functions
 - Cache directory configuration: respect `PYMEDPHYS_NUMBA_CACHE_DIR` environment variable, defaulting to a package-local `__pycache__/numba` directory
@@ -2378,19 +2619,22 @@ tests/dvh/test_numba_utils.py
 - Documentation of the pattern: how to write a new numba-accelerated function, how to test it, how to benchmark it
 
 **Tests:**
+
 - `@njit`-decorated function compiles and runs correctly
 - Cached compilation produces identical results to uncached
 - Warm-up function completes without error and reports timing
 - Pure-Python fallback works when numba is not installed (via a `try/except` import pattern)
 
 **Acceptance criteria:**
+
 - All subsequent phases use this pattern exclusively for numba acceleration
 - No direct `@numba.njit` decorators outside `_numba_utils.py`
 
 #### Task 2a.1: DICOM RTSTRUCT importer
 
 **Files:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/_io/
     __init__.py
     _rtstruct.py          # DICOM RTSTRUCT → ContourROI
@@ -2399,6 +2643,7 @@ lib/pymedphys/_dvh/_io/
 **Implement:** Parse DICOM RTSTRUCT into `ContourROI` objects.
 
 **Specific requirements:**
+
 - Extract ROI name, ROI number, contour data, referenced frame of reference UID
 - Construct `ROIRef` with both name and roi_number from DICOM
 - Handle multiple contours per slice (disconnected islands)
@@ -2409,8 +2654,9 @@ lib/pymedphys/_dvh/_io/
 - Log and handle gracefully: empty ROIs, single-point contours, open contours
 
 **Tests:**
+
 - Import the Phase 1 generated DICOM: resulting `ContourROI` has correct `num_slices`, z values, and point counts
-- Import a real DICOM RTSTRUCT from the Nelms [14] published data (if available)
+- Import a real DICOM RTSTRUCT from the Nelms \[14] published data (if available)
 - ROI names and ROI numbers match DICOM ROI sequence
 - Disconnected-island ROIs produce multiple `PlanarRegion` objects per slice
 - Invalid/pathological structures handled per `invalid_roi_policy`
@@ -2420,6 +2666,7 @@ lib/pymedphys/_dvh/_io/
 **Implement:** Validation and optional repair logic, converting raw `Contour` objects into validated `PlanarRegion` / `ContourROI` objects.
 
 **Validation checks:**
+
 - Contour closure (first point == last point, or auto-close)
 - Winding orientation consistency (all outer contours CCW, all holes CW)
 - Self-intersection detection (per §7.0.2 orientation test)
@@ -2427,12 +2674,14 @@ lib/pymedphys/_dvh/_io/
 - Duplicate slice detection (after z-tolerance normalisation)
 
 **Repair actions (for `repair_if_safe` mode):**
+
 - Auto-close open contours (connect first and last point)
 - Remove zero-area slices with issue
 - Fix reversed winding order
 - Remove minor self-intersections (< 5% of contour area) *[Design proposal]*
 
 **Tests:**
+
 - Valid contour passes validation silently
 - Open contour: strict mode raises, repair mode closes and logs an `Issue`
 - Reversed winding: detected and repaired with `Issue`
@@ -2445,6 +2694,7 @@ lib/pymedphys/_dvh/_io/
 **Implement:** Right-prism extrusion between contour slices.
 
 **Tests:**
+
 - For a cylinder (constant cross-section), right-prism produces identical contours at all z
 - For a cone (tapering cross-section), right-prism produces step-like transitions at midpoints
 - Volume of right-prism-interpolated cylinder matches analytical cylinder volume within 1 slice-thickness × area
@@ -2455,15 +2705,17 @@ lib/pymedphys/_dvh/_io/
 **Implement:** `none` and `half_slice` end-cap policies.
 
 **Tests:**
+
 - `none` produces strictly less volume than `half_slice` for all structures
 - For a cylinder with uniform slice spacing dz, `half_slice` adds approximately terminal_area × dz/2 × 2 (one cap at each end)
 - Volume with `half_slice` is closer to analytical sphere volume than `none`
 
 #### Task 2a.5: Scanline point-in-polygon (even-odd rule)
 
-**Implement:** Scanline even-odd crossing rule for 2D point-in-polygon testing [1].
+**Implement:** Scanline even-odd crossing rule for 2D point-in-polygon testing \[1].
 
-**Specific edge-case handling (per Drzymala [1]):**
+**Specific edge-case handling (per Drzymala \[1]):**
+
 - Tangency: a contour vertex that touches the scanline without crossing → not a crossing
 - Reversal: two consecutive edges that approach and recede from the scanline → not a crossing
 - Collinear: contour edge that lies exactly on the scanline → handled by perturbation or explicit rule
@@ -2471,6 +2723,7 @@ lib/pymedphys/_dvh/_io/
 **Implementation in numba:** The inner loop must use the project `@njit` pattern (Task 2a.0). Input: 2D point, contour vertices. Output: bool.
 
 **Tests:**
+
 - Square contour: centre is inside, corners are inside, points outside are outside
 - Triangle: standard test points
 - L-shaped (concave) contour: points in the concavity are correctly outside
@@ -2480,13 +2733,14 @@ lib/pymedphys/_dvh/_io/
 
 #### Task 2a.5b: Winding number point-in-polygon
 
-**Implement:** Winding number algorithm for 2D point-in-polygon testing, per Sunday [27].
+**Implement:** Winding number algorithm for 2D point-in-polygon testing, per Sunday \[27].
 
 **Algorithm:** As specified in §7.1.2 — edge-crossing framework tracking upward/downward crossings with left-of-edge cross-product test.
 
 **Implementation in numba:** Same `@njit` pattern as Task 2a.5.
 
 **Tests:**
+
 - All tests from Task 2a.5 must also pass with winding number (both algorithms agree on simple polygons)
 - Self-intersecting polygon: even-odd and winding number produce different results (verify both are correct per their respective semantics)
 - Multi-wound polygon (figure-8): winding number correctly identifies enclosed regions
@@ -2497,6 +2751,7 @@ lib/pymedphys/_dvh/_io/
 **Implement:** For each voxel in the dose grid, test whether its centre is inside the structure. Support both even-odd and winding number via the `point_in_polygon` config setting. The output is an `OccupancyField` on the target `GridFrame`.
 
 **Tests:**
+
 - For a large sphere on a fine grid, volume matches analytical to within 5%
 - For a small sphere on a coarse grid, volume can deviate by > 20% (expected; this validates the known limitation)
 - All occupancy values are exactly 0 or 1
@@ -2507,6 +2762,7 @@ lib/pymedphys/_dvh/_io/
 **Implement:** For each boundary voxel, subdivide into N×N×N sub-voxels and compute occupancy fraction.
 
 **Tests:**
+
 - At supersampling factor 1, result matches binary centre-inclusion exactly
 - At increasing factors (3, 5, 7, 9), volume converges monotonically toward analytical
 - For a known sphere, volume at factor 7 is within 1% of analytical
@@ -2515,6 +2771,7 @@ lib/pymedphys/_dvh/_io/
 - Boundary voxels have 0 < occupancy < 1
 
 **Performance tests:**
+
 - Numba-accelerated supersampling is ≥ 10× faster than pure Python
 - 100 cc structure on 2.5 mm grid at 5× supersampling completes in < 5 seconds
 
@@ -2525,13 +2782,15 @@ lib/pymedphys/_dvh/_io/
 **Store results as golden data:** JSON files with computed volumes, analytical volumes, and percentage errors.
 
 **Tests:**
+
 - Every golden-data file is generated and stored in the test fixtures
 - No volume error exceeds the expected bound for the method/geometry combination
 - Volume error decreases with increasing supersampling factor
 
 **Phase 2a exit criteria:**
+
 - DICOM RTSTRUCT import works for generated and published datasets
-- Right-prism + half-slice + fractional-7x achieves ≤ 2% volume error on Nelms [14] analytical geometries
+- Right-prism + half-slice + fractional-7x achieves ≤ 2% volume error on Nelms \[14] analytical geometries
 - Both even-odd and winding number PIP algorithms functional and tested
 - All golden-data tests pass
 - numba acceleration verified via the project pattern from Task 2a.0
@@ -2548,10 +2807,12 @@ lib/pymedphys/_dvh/_io/
 **Implement:** Given a `PlanarRegion` (validated 2D polygon with explicit exterior and holes), compute the signed distance at every pixel of a 2D grid. Negative inside, positive outside, zero on the boundary.
 
 **Implementation options (evaluate both, select based on accuracy/speed):**
+
 - Option A: Brute-force nearest-edge distance (O(M×N), simple, exact, numba-friendly)
-- Option B: Rasterise + exact Euclidean distance transform via Maurer et al. [26] (O(M) via scipy.ndimage.distance_transform_edt, fast but approximate for non-grid-aligned contours)
+- Option B: Rasterise + exact Euclidean distance transform via Maurer et al. \[26] (O(M) via scipy.ndimage.distance_transform_edt, fast but approximate for non-grid-aligned contours)
 
 **Tests:**
+
 - For a circular contour of radius r centred at origin: SDF at (0,0) = -r, SDF at (r,0) = 0, SDF at (2r,0) = +r
 - SDF is negative inside, positive outside, zero on boundary
 - SDF gradient magnitude ≈ 1 everywhere (property of exact distance fields)
@@ -2562,6 +2823,7 @@ lib/pymedphys/_dvh/_io/
 **Implement:** For each contour slice, compute 2D SDF. Linearly interpolate SDFs between slices in z. Extract the 3D structure as the zero-level set of the interpolated SDF. The output is a 3D SDF array on the target `GridFrame`, which the `OccupancyComputer` protocol implementations then rasterise to an `OccupancyField`.
 
 **Tests:**
+
 - For a cylinder (constant radius), SDF interpolation produces a smooth cylinder (occupancy nearly identical to right-prism)
 - For a cone (linearly tapering radius), SDF interpolation produces a smooth taper (not a stair-step)
 - Cone volume with SDF interpolation is closer to analytical than right-prism
@@ -2571,23 +2833,27 @@ lib/pymedphys/_dvh/_io/
 #### Task 2b.3: Rounded and half-slice-capped end-caps
 
 **Implement:**
-- `half_slice_capped`: same as half_slice but capped at configurable max mm (default: 1.5 mm per ProKnow [18])
+
+- `half_slice_capped`: same as half_slice but capped at configurable max mm (default: 1.5 mm per ProKnow \[18])
 - `rounded`: extrapolate SDF beyond terminal slices to produce smooth dome-shaped cap
 
 **Tests:**
+
 - `half_slice_capped(max_mm=1.5)` with 3mm slice spacing produces 1.5mm cap (not 1.5mm)
 - `half_slice_capped(max_mm=10)` with 3mm slice spacing produces 1.5mm cap (same as half_slice, since 1.5 < 10)
 - `rounded` cap volume is between `none` and `half_slice` for most geometries
-- **Critical test:** Dose sampling includes end-capped regions (verifying the Pinnacle [14] inconsistency is not reproduced)
+- **Critical test:** Dose sampling includes end-capped regions (verifying the Pinnacle \[14] inconsistency is not reproduced)
 
 #### Task 2b.4: Adaptive supersampling with gradient-aware refinement
 
 **Implement:**
+
 1. First pass: classify each voxel as interior / exterior / boundary (by corner testing)
 2. Boundary voxels: start at base factor (e.g. 5x), increase until convergence
 3. Gradient-aware: compute |grad(D)| at each boundary voxel; increase supersampling where gradient × voxel_size exceeds threshold
 
 **Tests:**
+
 - Adaptive produces volume within convergence_tol of fine fixed-factor result
 - Adaptive uses fewer total sub-voxel evaluations than uniform supersampling at the same accuracy
 - Gradient-aware refinement concentrates effort at high-gradient boundaries
@@ -2598,12 +2864,14 @@ lib/pymedphys/_dvh/_io/
 **Extend golden data:** Compute volume for all benchmark geometries using all methods × all end-caps × adaptive supersampling.
 
 **Key comparisons:**
+
 - Shape-based + rounded + adaptive vs analytical → target < 0.5% for all convex geometries
 - Right-prism + half_slice + binary vs analytical → quantify the baseline degradation
 - Shape-based vs right-prism difference, as a function of slice spacing (0.2 to 3 mm) and structure taper
 
 **Phase 2b exit criteria:**
-- Shape-based interpolation produces volumes within 0.5% of analytical for Nelms [14] geometries at 0.2 mm slice spacing
+
+- Shape-based interpolation produces volumes within 0.5% of analytical for Nelms \[14] geometries at 0.2 mm slice spacing
 - Adaptive supersampling converges to within specified tolerance for all benchmark cases
 - Golden-data tests pass for all method combinations
 - Performance: reference-mode volume computation for a 10 cc structure on 1 mm dose grid completes in < 30 seconds
@@ -2617,7 +2885,8 @@ lib/pymedphys/_dvh/_io/
 #### Task 3.1: DICOM RTDOSE importer
 
 **Files:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/_io/_rtdose.py
 tests/dvh/test_io/test_rtdose.py
 ```
@@ -2625,6 +2894,7 @@ tests/dvh/test_io/test_rtdose.py
 **Implement:** Parse DICOM RTDOSE into a `DoseGrid` object.
 
 **Specific requirements:**
+
 - Extract 3D dose array from Pixel Data (7FE0,0010) via pydicom
 - Apply Dose Grid Scaling (3004,000E) to convert stored integers to physical dose in Gy
 - Build a `GridFrame` from Image Position Patient (0020,0032), Pixel Spacing (0028,0030), Grid Frame Offset Vector (3004,000C), Rows (0028,0010), Columns (0028,0011)
@@ -2635,8 +2905,9 @@ tests/dvh/test_io/test_rtdose.py
 - Handle missing or malformed optional tags gracefully
 
 **Tests:**
+
 - Import Phase 1 generated RTDOSE: dose values at grid centres match analytical formula to float64 precision
-- Import published Nelms [14] RTDOSE: loads without error, grid geometry matches published parameters
+- Import published Nelms \[14] RTDOSE: loads without error, grid geometry matches published parameters
 - `GridFrame` constructed from DICOM headers matches expected affine and shape
 - Dose units correctly detected and converted to Gy
 - Frame of Reference UID mismatch between RTSTRUCT and RTDOSE raises `IncompatibleGrids` error
@@ -2647,6 +2918,7 @@ tests/dvh/test_io/test_rtdose.py
 **Evaluate `pymedphys._interp` for reuse.** If it meets requirements (correct trilinear, numba-accelerated, handles boundary conditions), use it. Otherwise implement standalone.
 
 **Tests:**
+
 - At grid centres, interpolated value equals the grid value exactly
 - For a linear dose field, interpolation is exact everywhere
 - For a quadratic dose field, interpolation error is bounded by O(h²) where h is grid spacing
@@ -2657,6 +2929,7 @@ tests/dvh/test_io/test_rtdose.py
 **Implement:** After standard occupancy-based DVH computation, additionally sample dose at every original contour vertex (3D) for extrema/near-extrema computation.
 
 **Tests:**
+
 - Surface samples capture dose values that voxel-centre sampling misses
 - For a sphere in a linear SI gradient: surface-sampled Dmin is at the inferior pole (correct), not at the closest voxel centre
 - Dmin/Dmax from surface sampling are at least as extreme as from voxel-centre sampling
@@ -2666,6 +2939,7 @@ tests/dvh/test_io/test_rtdose.py
 **Implement:** Build `DVHBins` (dose bin edges + differential volume) from (dose, volume_weight) pairs. Cumulative DVH and percentage views are derived from `DVHBins` properties.
 
 **Tests (property-based):**
+
 - `DVHBins.cumulative_volume_cc` is monotonically non-increasing
 - Cumulative DVH starts at total volume (at dose = 0)
 - Cumulative DVH ends at 0 (at dose > max_dose)
@@ -2674,17 +2948,19 @@ tests/dvh/test_io/test_rtdose.py
 
 #### Task 3.5: Metric extraction
 
-**Implement:** All v1 metrics: Dx%, Dxcc, VxGy, Vx%, mean, median, min, max, HI, CI, PCI [22], GI [23]. Each metric is extracted from a `DVHBins` object and returns a `MetricResult` carrying its own `MetricSpec`.
+**Implement:** All v1 metrics: Dx%, Dxcc, VxGy, Vx%, mean, median, min, max, HI, CI, PCI \[22], GI \[23]. Each metric is extracted from a `DVHBins` object and returns a `MetricResult` carrying its own `MetricSpec`.
 
 **Tests (unit, one per metric type):**
+
 - D50% of a uniform-dose structure = the uniform dose value
 - Mean of a uniform-dose structure = the uniform dose value
 - V(dose = uniform_dose) of a uniform structure = total volume
 - HI of a perfectly uniform structure = 0
 - PCI of a perfectly conformal plan = 1.0
-- GI of a known Gaussian sphere matches Walker [21] analytical value
+- GI of a known Gaussian sphere matches Walker \[21] analytical value
 
 **Tests (property-based):**
+
 - Dmin ≤ D99% ≤ D95% ≤ D50% ≤ D5% ≤ D1% ≤ Dmax (monotonicity)
 - Dmin ≤ mean ≤ Dmax
 - 0 ≤ V(any dose) ≤ total volume
@@ -2696,6 +2972,7 @@ tests/dvh/test_io/test_rtdose.py
 **Implement:** Trigger `Issue` objects based on computed diagnostics.
 
 **Tests:**
+
 - Small structure (< 1 cc) triggers `STRUCTURE_VOLUME_SMALL`
 - Coarse dose grid (> 2.5 mm) with SRS metrics triggers `DOSE_GRID_COARSE`
 - Few contour slices (< 5) triggers `SPARSE_CONTOUR_STACK`
@@ -2706,7 +2983,8 @@ tests/dvh/test_io/test_rtdose.py
 #### Task 3.7: Raw-array `compute_dvh()` orchestrator
 
 **Files:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/_compute.py
 tests/dvh/test_compute.py
 ```
@@ -2714,12 +2992,14 @@ tests/dvh/test_compute.py
 **Implement:** The `compute_dvh()` function for raw NumPy array inputs via `DVHInputs.from_arrays()`. This is the core computation pathway used by all Phase 1/2/3 benchmarks.
 
 **Specific requirements:**
+
 - Accept `DVHInputs` built from 3D boolean or float [0,1] structure masks, 3D float dose array, and `GridFrame`
 - Construct internal `OccupancyField` and `DoseGrid` from raw arrays
 - Run the full pipeline: occupancy → dose sampling → histogram → metrics
 - Return `DVHResultSet` with full provenance, with each `ROIResult` carrying its `ROIRef` and explicit status
 
 **Tests:**
+
 - Sphere mask + uniform dose → correct volume, mean, and DVH
 - Sphere mask + linear gradient → DVH matches analytical formula from Phase 1
 - Multiple ROIs (separate masks) → correct independent `ROIResult` per ROI
@@ -2728,28 +3008,32 @@ tests/dvh/test_compute.py
 #### Task 3.8: Full analytical benchmark validation
 
 **Run the complete Tier 1 benchmark suite:**
-- All Nelms [14] geometries at all slice spacings and gradient directions
-- All Pepin [18] tests (precision-band analysis)
-- All Stanley [17] small-sphere tests
-- All Walker [21] PCI and GI analytical values
+
+- All Nelms \[14] geometries at all slice spacings and gradient directions
+- All Pepin \[18] tests (precision-band analysis)
+- All Stanley \[17] small-sphere tests
+- All Walker \[21] PCI and GI analytical values
 - All novel project-specific benchmarks
 
 **Generate comparison report:**
+
 - Per-test: computed vs analytical for volume, Dmean, Dmin, Dmax, D95%, D0.03cc
-- Per-test: full-curve comparison at ≥ 301 points (CurveCompare methodology [14])
+- Per-test: full-curve comparison at ≥ 301 points (CurveCompare methodology \[14])
 - Aggregate: summary statistics by geometry type, method, and slice spacing
 
-**Exit criteria:** Reference mode achieves < 1% whole-curve volume error on all Nelms [14] geometries at 0.2 mm slice spacing. < 2% at 1 mm slice spacing. All property-based metric tests pass.
+**Exit criteria:** Reference mode achieves < 1% whole-curve volume error on all Nelms \[14] geometries at 0.2 mm slice spacing. < 2% at 1 mm slice spacing. All property-based metric tests pass.
 
 #### Task 3.9: Convergence study (Tier 2 benchmarks)
 
 **Run and document:**
+
 - Supersampling convergence curves (1x to 11x)
 - Bin-width convergence (0.005 to 1.0 Gy)
 - Dose-grid refinement convergence (0.1 to 3.0 mm)
 - Interpolation method comparison (right_prism vs shape_based)
 
 **Phase 3 exit criteria:**
+
 - All Tier 1 and Tier 2 benchmarks pass
 - Full-curve analytical agreement characterised and documented
 - Reference mode and practical mode both functional
@@ -2765,12 +3049,14 @@ tests/dvh/test_compute.py
 #### Task 4a.1: DICOM coordinate system handling
 
 **Files:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/_io/_coordinates.py
 tests/dvh/test_io/test_coordinates.py
 ```
 
 **Implement:**
+
 - Parse Patient Position (0018,5100): HFS, HFP, FFS, FFP, HFDR, HFDL, FFDR, FFDL
 - Parse Image Orientation Patient (0020,0037) to validate axis alignment
 - Build the `GridFrame` affine transform from DICOM spatial tags
@@ -2778,6 +3064,7 @@ tests/dvh/test_io/test_coordinates.py
 - Handle the common case: HFS with standard axial acquisition
 
 **Tests:**
+
 - HFS: DICOM x increases to patient left, y increases to patient posterior, z increases to patient superior — all preserved correctly in `GridFrame`
 - FFS: z-axis direction is reversed relative to HFS — transform handles this
 - Contour points from RTSTRUCT and dose grid from RTDOSE are correctly aligned after coordinate handling
@@ -2787,7 +3074,8 @@ tests/dvh/test_io/test_coordinates.py
 #### Task 4a.2: End-to-end DICOM pipeline
 
 **Files:**
-```
+
+```plaintext
 lib/pymedphys/_dvh/_pipeline.py
 tests/dvh/test_pipeline.py
 ```
@@ -2795,8 +3083,9 @@ tests/dvh/test_pipeline.py
 **Implement:** Wire together RTSTRUCT importer, RTDOSE importer, coordinate validation, geometry engine, DVH computation, and metric extraction into the `DVHInputs.from_dicom()` pathway, feeding into `compute_dvh(inputs, request, config)`.
 
 **Tests:**
+
 - End-to-end: Phase 1 generated DICOM → `DVHInputs.from_dicom()` → `compute_dvh()` → `DVHResultSet` with correct metrics
-- End-to-end: published Nelms [14] DICOM → `compute_dvh()` → metrics within documented tolerance of published PlanIQ values
+- End-to-end: published Nelms \[14] DICOM → `compute_dvh()` → metrics within documented tolerance of published PlanIQ values
 - Multiple ROIs in a single RTSTRUCT processed correctly (one `ROIResult` per ROI)
 - `ROIRef` objects in `DVHResultSet` contain both name and roi_number from DICOM
 - Invalid ROI handling: `strict` mode halts, `skip_invalid` skips and continues, `repair_if_safe` attempts repair
@@ -2809,6 +3098,7 @@ tests/dvh/test_pipeline.py
 **Implement:** Per-ROI error isolation using the `PipelinePolicy.invalid_roi_policy` setting.
 
 **Behaviour per policy:**
+
 - `strict`: Any invalid contour → raise `InvalidContour` immediately, halt all computation
 - `repair_if_safe`: Attempt repair → if successful, proceed with `Issue`; if repair fails, mark ROI as `status="failed"`, continue with remaining ROIs
 - `skip_invalid`: Skip the invalid ROI (mark as `status="skipped"`), record an `Issue` with code and details, continue with remaining ROIs
@@ -2816,6 +3106,7 @@ tests/dvh/test_pipeline.py
 **Critical invariant:** One bad ROI never silently corrupts results for other ROIs. Each ROI is processed independently with its own error handling.
 
 **Tests:**
+
 - `strict` mode: one invalid ROI among three valid ROIs → computation halts, no results returned
 - `repair_if_safe` mode: one repairable ROI (open contour) → repaired, results for all three ROIs returned, `Issue` attached to repaired ROI
 - `repair_if_safe` mode: one unrepairable ROI (catastrophically self-intersecting) → two `ROIResult` with `status="ok"`, third with `status="failed"`
@@ -2823,6 +3114,7 @@ tests/dvh/test_pipeline.py
 - Valid ROIs produce identical results regardless of what happens to invalid ROIs in the same computation
 
 **Phase 4a exit criteria:**
+
 - DICOM end-to-end pipeline functional
 - Coordinate system handling correct for HFS and FFS
 - Invalid-ROI policy correctly isolates errors
@@ -2839,6 +3131,7 @@ tests/dvh/test_pipeline.py
 **Implement:** Write computed DVH curves into a valid DICOM RTDOSE object conforming to the DVH Module (C.8.8.1) of the DICOM standard. DVH data is derived from the canonical `DVHBins` representation.
 
 **Tests:**
+
 - Exported DICOM is valid: `pydicom.dcmread()` succeeds, no warnings
 - Round-trip: compute DVH → export → re-import → compare dose/volume arrays to float64 precision
 - DVH Type correctly written as CUMULATIVE or DIFFERENTIAL
@@ -2851,6 +3144,7 @@ tests/dvh/test_pipeline.py
 **Implement three CLI commands:**
 
 **`pymedphys dvh compute`:**
+
 ```bash
 pymedphys dvh compute \
     --rtstruct RS.dcm \
@@ -2862,16 +3156,19 @@ pymedphys dvh compute \
 ```
 
 **`pymedphys dvh export-dicom`:**
+
 ```bash
 pymedphys dvh export-dicom --results results.json --rtstruct RS.dcm --output dvh_dose.dcm
 ```
 
 **`pymedphys dvh benchmark`:**
+
 ```bash
 pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 ```
 
 **Tests (subprocess-based):**
+
 - `pymedphys dvh compute --help` exits 0 and prints usage
 - `pymedphys dvh compute` with Phase 1 generated DICOM produces correct JSON output
 - JSON output matches expected schema
@@ -2883,12 +3180,14 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 4b.3: Provenance implementation and anonymisation
 
 **Implement:**
+
 - `ProvenanceRecord` construction: automatically capture pymedphys version, timestamp, platform info, config, input metadata
 - Input metadata: SHA-256 hashes of input DICOM files, `GridFrame` of the dose grid
 - `verify_provenance(result: DVHResultSet, rtstruct_path, rtdose_path) -> bool`: re-run computation with stored config, compare outputs bit-for-bit
 - `anonymise(result: DVHResultSet) -> DVHResultSet`: produce a new `DVHResultSet` with patient-identifying data removed
 
 **Tests:**
+
 - `ProvenanceRecord` contains correct pymedphys version
 - `ProvenanceRecord` timestamp is a valid ISO 8601 string
 - `verify_provenance` returns True for an unmodified result
@@ -2897,6 +3196,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 - Anonymised result retains file hashes, grid geometry, config, and platform info
 
 **Phase 4b exit criteria:**
+
 - CLI produces correct results for all three commands
 - DICOM DVH export round-trips correctly
 - Provenance-based recomputation produces bit-identical results
@@ -2907,26 +3207,31 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 ### Phase 5: Cross-Tool Comparison, Clinical Validation, and Performance
 
 #### Task 5.1: dicompyler-core algorithm documentation
+
 - Read dicompyler-core source code
 - Document: interpolation method, end-capping, voxelisation, dose interpolation, supersampling, binning, extrema handling
 - Write comparison report
 
 #### Task 5.2: Automated cross-tool comparison framework
+
 - Scripts to compute DVH with pymedphys._dvh and dicompyler-core on same inputs
 - Full-curve comparison with statistical summary
 - Per-metric comparison tables
 
 #### Task 5.3: Clinical case library
+
 - Curate representative cases per Section 8.4
 - Compute reference-mode and practical-mode DVHs
 - Compare against available cross-tool results
 
 #### Task 5.4: Full sensitivity analysis (Tier 5)
+
 - Single-variable sweeps per Section 8.5
 - Generate publication-quality figures
 - Calibrate issue thresholds from sensitivity data
 
 #### Task 5.5: Performance benchmarking
+
 - Timing benchmarks: small SRS target (< 1 cc), medium prostate PTV (~50 cc), large lung (~1000 cc), full clinical plan (20+ ROIs)
 - Memory profiling for each case
 - Thread scaling (1, 2, 4, 8 threads)
@@ -2940,6 +3245,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.1: API documentation
 
 **Deliverables:**
+
 - Complete API reference auto-generated from docstrings (Sphinx autodoc)
 - Types reference: every dataclass, enum, and protocol with examples
 - Metric grammar reference: every metric form with parsing examples and edge cases
@@ -2947,6 +3253,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 - Profile rationale: why `reference()` and `fast()` have the settings they do, with citations
 
 **Acceptance criteria:**
+
 - `sphinx-build` completes without errors or warnings
 - Every public function, class, and method has a docstring
 - Every docstring includes Args, Returns, Raises, and at least one Example
@@ -2955,6 +3262,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.2: CLI documentation
 
 **Deliverables:**
+
 - Complete CLI reference for all three commands
 - Worked examples with sample commands and expected output
 - TOML configuration file examples (including nested sub-config format)
@@ -2963,9 +3271,10 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.3: Benchmark report
 
 **Deliverables:**
+
 - Full Tier 1 results: per-test computed vs analytical for volume, Dmean, Dmin, Dmax, D95%, D0.03cc
 - Full-curve comparison plots (computed vs analytical DVH overlays)
-- Precision-band analysis per Pepin [18] methodology
+- Precision-band analysis per Pepin \[18] methodology
 - Tier 2 convergence curves (supersampling, bin-width, dose-grid refinement)
 - Tier 3 cross-tool comparison tables (vs dicompyler-core)
 - Tier 5 sensitivity analysis results with figures
@@ -2975,6 +3284,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.4: Algorithm reference document
 
 **Deliverables:**
+
 - Detailed description of every algorithmic choice, matching Section 7 of this RFC
 - Mathematical formulas with derivations
 - Diagrams illustrating each method (right-prism vs SDF, end-capping policies, supersampling geometry)
@@ -2984,6 +3294,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.5: Migration guide from dicompyler-core
 
 **Deliverables:**
+
 - Side-by-side API comparison: dicompyler-core → pymedphys._dvh
 - Algorithmic differences explained (what dicompyler-core does vs what pymedphys._dvh does)
 - Expected numerical differences and why they occur
@@ -2993,6 +3304,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.6: Contributing guide
 
 **Deliverables:**
+
 - How to add a new benchmark test case to the corpus
 - How to add a new interpolation method (implement the Protocol, register, test)
 - How to add a new metric type to the grammar
@@ -3003,6 +3315,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.7: Gallery and demo outputs
 
 **Deliverables:**
+
 - Publication-quality DVH curve plots for representative cases
 - Side-by-side comparison visualisations (reference vs practical mode, pymedphys vs dicompyler-core)
 - Sensitivity analysis heatmaps (parameter vs metric impact)
@@ -3011,6 +3324,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 #### Task 6.8: Release preparation
 
 **Deliverables:**
+
 - CHANGELOG entry with complete feature list
 - Release notes with known limitations
 - Version bump in `pyproject.toml`
@@ -3020,6 +3334,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 - README.md updated with DVH module description and quickstart link
 
 **Phase 6 exit criteria:**
+
 - Documentation complete and builds without errors
 - All tests pass on all CI platforms
 - Package installs cleanly via `pip install pymedphys[dvh]`
@@ -3034,13 +3349,14 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 ### 10.1 Technical Risks
 
 | Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Shape-based interpolation artefacts for complex topology | Medium | High | Extensive testing with adversarial geometries; right-prism fallback |
 | Analytical formula errors for novel geometries | Medium | High | Independent numerical verification at very high resolution |
 | Performance inadequate for clinical workflows | High | Medium | `numba` acceleration; batched processing; reference mode is explicitly slow |
 | DICOM RTSTRUCT encoding inconsistencies across vendors | High | Medium | Robust parser; multi-vendor test set |
-| Floating-point non-reproducibility across platforms | Low | High | Fixed accumulation order; Kahan summation [28]; CI on multiple platforms |
+| Floating-point non-reproducibility across platforms | Low | High | Fixed accumulation order; Kahan summation \[28]; CI on multiple platforms |
 | `numba` compilation overhead for small jobs | Medium | Low | Ahead-of-time compilation option; caching |
+| `numba` thread-safety for histogram accumulation | Medium | High | `numba.prange` with `nogil=True` and shared mutable accumulation buffers (e.g. histogram bins) requires careful design to avoid race conditions. Mitigation: use per-thread accumulation buffers with a final reduction step; verify determinism by comparing single-threaded and multi-threaded outputs bit-for-bit; gate all parallel accumulation paths with explicit `deterministic` flag checks |
 | Type system too rigid for unforeseen clinical edge cases | Medium | Medium | Private protocol layer allows internal flexibility without breaking public API |
 
 ### 10.2 Open Technical Questions
@@ -3058,12 +3374,12 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 
 ### 11.1 Key Gaps in the Literature
 
-1. **Irregular geometry validation.** Nearly all validation uses spheres, cylinders, and cones [14][17][18][20][21]. Concave, branching, multi-component, and topologically complex structures are unvalidated.
+1. **Irregular geometry validation.** Nearly all validation uses spheres, cylinders, and cones \[14]\[17]\[18]\[20]\[21]. Concave, branching, multi-component, and topologically complex structures are unvalidated.
 2. **Quantitative algorithm-to-impact mapping.** No complete, controlled mapping from each algorithmic choice to its quantitative impact on each metric for each anatomy class.
-3. **Phase-sensitivity beyond spheres.** Stanley [17] characterised phase-sensitivity for spheres; extension to irregular anatomies is needed.
+3. **Phase-sensitivity beyond spheres.** Stanley \[17] characterised phase-sensitivity for spheres; extension to irregular anatomies is needed.
 4. **Uncertainty-predictive models.** Can DVH uncertainty be predicted from geometry, dose field, and parameters without computing at multiple settings? *[Open question]*
 5. **Clinical outcome impact.** No study has demonstrated actual outcome differences attributable to DVH computation method.
-6. **Inter-fraction and intra-fraction motion effects on DVH computation.** Zhang [12] addresses the motion-weighted concept; no study validates DVH accuracy for moving targets.
+6. **Inter-fraction and intra-fraction motion effects on DVH computation.** Zhang \[12] addresses the motion-weighted concept; no study validates DVH accuracy for moving targets.
 
 ### 11.2 Key Experiments This Tool Enables
 
@@ -3080,7 +3396,7 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 ### Appendix A: Glossary of Metric Semantics
 
 | Metric | Definition | Unit | Source |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Dx% | Minimum dose received by the hottest x% of the structure volume | Gy | Standard |
 | Dxcc | Minimum dose received by the hottest x cc of the structure | Gy | Standard |
 | VxGy | Absolute volume receiving at least x Gy | cc | Standard |
@@ -3089,10 +3405,10 @@ pymedphys dvh benchmark --test-suite all --output benchmark_report.json
 | Dmedian | Dose at which the cumulative DVH crosses 50% of the structure volume; equivalent to D50% | Gy | Standard |
 | HI | (D2% − D98%) / D50% | dimensionless | ICRU 83 |
 | CI | V_Rx / TV (RTOG conformity index) | dimensionless | RTOG |
-| PCI | (TV_PIV)² / (TV × PIV) | dimensionless | Paddick [22] |
-| GI | V_50%Rx / V_100%Rx (Paddick gradient index) | dimensionless | Paddick & Lippitz [23] |
+| PCI | (TV_PIV)² / (TV × PIV) | dimensionless | Paddick \[22] |
+| GI | V_50%Rx / V_100%Rx (Paddick gradient index) | dimensionless | Paddick & Lippitz \[23] |
 
-**Terminological note:** Walker and Byrne [21] use "Modified Gradient Index (MGI)" for the same quantity defined as GI above. This RFC uses "GI" throughout for consistency with Paddick's original terminology [23].
+**Terminological note:** Walker and Byrne \[21] use "Modified Gradient Index (MGI)" for the same quantity defined as GI above. This RFC uses "GI" throughout for consistency with Paddick's original terminology \[23].
 
 ---
 
@@ -3114,7 +3430,7 @@ The most impactful medium-term architectural evolution would be replacing the cu
 
 **Key libraries:** scikit-fmm (fast marching), fastsweep (CUDA fast sweeping), pysdf and mesh2sdf (mesh-to-SDF conversion).
 
-**Integration path:** v7's `StructureModelBuilder` protocol already returns an SDF. A full SDF-first architecture would compute 2D SDFs per contour slice, interpolate in z, perform boolean operations as array arithmetic, and derive occupancy from the SDF — replacing the chain of mesh construction → ray-casting → binary inclusion with robust, composable, GPU-friendly array operations.
+**Integration path:** v8's `StructureModelBuilder` protocol already returns an `SDFField`. A full SDF-first architecture would compute 2D SDFs per contour slice, interpolate in z, perform boolean operations as array arithmetic, and derive occupancy from the SDF — replacing the chain of mesh construction → ray-casting → binary inclusion with robust, composable, GPU-friendly array operations.
 
 ### 13.2 Exact Analytical Partial-Volume Computation
 
@@ -3144,7 +3460,7 @@ Five Python-accessible GPU libraries stand out for future DVH acceleration:
 
 **Performance target:** For a 256×256×100 dose grid with 20 structures (~130M queries), BVH-accelerated GPU computation should achieve sub-second total DVH computation — 100–1000× over naive CPU. Wald et al. (HPG 2019) demonstrated that NVIDIA RT cores can be repurposed for point-in-mesh queries via infinitesimally short rays, faster than pure CUDA BVH.
 
-**Integration path:** v7's array-oriented architecture (NumPy arrays, GridFrame, OccupancyField) is directly amenable to CuPy drop-in replacement. A GPU backend would implement the `OccupancyComputer` protocol.
+**Integration path:** v8's array-oriented architecture (NumPy arrays, GridFrame, OccupancyField) is directly amenable to CuPy drop-in replacement. A GPU backend would implement the `OccupancyComputer` protocol.
 
 ### 13.4 Sparse Volumetric Storage
 
@@ -3243,6 +3559,6 @@ Ordered by estimated impact-to-effort ratio:
 
 [26] Maurer CR, Qi R, Raghavan V. A linear time algorithm for computing exact Euclidean distance transforms of binary images in arbitrary dimensions. *IEEE Trans Pattern Anal Mach Intell*. 2003;25(2):265-270. doi:10.1109/TPAMI.2003.1177156.
 
-[27] Sunday D. Inclusion of a point in a polygon. *Geometry Algorithms*. 2001. Available at: https://web.archive.org/web/2021*/https://geomalgorithms.com/a03-_inclusion.html.
+[27] Sunday D. Inclusion of a point in a polygon. *Geometry Algorithms*. 2001. Available [here](https://web.archive.org/web/2021*/https://geomalgorithms.com/a03-_inclusion.html).
 
 [28] Kahan W. Pracniques: Further remarks on reducing truncation errors. *Commun ACM*. 1965;8(1):40. doi:10.1145/363707.363723.
