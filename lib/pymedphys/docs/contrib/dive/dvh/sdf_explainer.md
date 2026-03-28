@@ -8,7 +8,7 @@ $$
 \text{DVH}(d) = \frac{1}{V_S} \sum_{\text{voxels}} v_{ijk} \cdot \mathbf{1}[D(i,j,k) \geq d]
 $$
 
-where $V_S = \sum v_{ijk}$ is the total structure volume and $v_{ijk}$ is **the volume of voxel $(i,j,k)$ that lies inside $S$**.
+where $`V_S = \sum v_{ijk}`$ is the total structure volume and $v_{ijk}$ is **the volume of voxel $(i,j,k)$ that lies inside $S$**.
 
 The entire DVH accuracy problem reduces to computing $v_{ijk}$ correctly for every voxel. For voxels fully inside or fully outside the structure, this is trivial ($v_{ijk} = \Delta x \Delta y \Delta z$ or $0$). The hard part is **boundary voxels** — those that the structure surface passes through.
 
@@ -21,7 +21,7 @@ But there is actually a second, subtler problem: even if you know $v_{ijk}$ perf
 The standard approach (dicompyler, plastimatch, etc.) does this per CT slice:
 
 1. Rasterise the contour polygon to a binary mask on the dose grid
-2. For each dose-grid point $(x_i, y_j)$, test: is the centre point inside the polygon?
+2. For each dose-grid point $`(x_i, y_j)`$, test: is the centre point inside the polygon?
 3. If yes, assign $v_{ijk} = \Delta x \Delta y \Delta z$. If no, assign $v_{ijk} = 0$.
 
 This is a **centre-point sampling** scheme. It makes a catastrophic binary decision at every boundary voxel: a voxel that is 99% inside the structure gets $v = \Delta V$, but a voxel that is 49% inside gets $v = 0$. The error per boundary voxel can be up to $\pm \Delta V$.
@@ -55,7 +55,7 @@ At $k=4$, you get 64 samples per boundary voxel. The fractional volume estimate 
 
 ## The key insight: contour polygons encode exact boundary positions
 
-Here's what everyone seems to miss. Your DICOM RT Structure Set contains polygon vertices with coordinates specified to sub-millimetre precision. A contour polygon edge between vertices $(x_1, y_1)$ and $(x_2, y_2)$ defines the **exact** boundary of the structure at that slice height. The boundary position is known analytically — it's a piecewise-linear curve.
+Here's what everyone seems to miss. Your DICOM RT Structure Set contains polygon vertices with coordinates specified to sub-millimetre precision. A contour polygon edge between vertices $`(x_1, y_1)`$ and $`(x_2, y_2)`$ defines the **exact** boundary of the structure at that slice height. The boundary position is known analytically — it's a piecewise-linear curve.
 
 When you rasterise to a binary mask, you **destroy** this information. You replace a boundary known to ~0.1 mm precision with one known to ${\sim}\Delta x/2 \approx 1.25$ mm precision. Supersampling recovers some of it ($\Delta x / 2k$), but you're still approximating a known line with a staircase.
 
@@ -79,7 +79,7 @@ The zero level set $\{\mathbf{p} : \phi(\mathbf{p}) = 0\}$ is precisely the boun
 
 ### Computing it exactly from polygon edges (2D, per slice)
 
-Consider a single contour polygon with $N$ vertices $\{\mathbf{v}_0, \mathbf{v}_1, \ldots, \mathbf{v}_{N-1}\}$ and $N$ edges. For a query point $\mathbf{p} = (p_x, p_y)$, we need:
+Consider a single contour polygon with $N$ vertices $`\{\mathbf{v}_0, \mathbf{v}_1, \ldots, \mathbf{v}_{N-1}\}`$ and $N$ edges. For a query point $`\mathbf{p} = (p_x, p_y)`$, we need:
 
 **Step 1: Unsigned distance to the polygon boundary.**
 
@@ -123,7 +123,7 @@ $$
 
 ### The 2D computation is fully vectorisable
 
-For a dose grid slice with $M = M_x \times M_y$ points and a contour with $N$ edges:
+For a dose grid slice with $`M = M_x \times M_y`$ points and a contour with $N$ edges:
 
 ```python
 import numpy as np
@@ -159,19 +159,19 @@ For $M = 256 \times 256 = 65{,}536$ and $N = 100$, this is 6.5M point-to-segment
 
 ## Extending to 3D: inter-slice interpolation
 
-RT contours are defined on discrete CT slices at heights $z_0, z_1, \ldots, z_K$. Between slices, the structure boundary is undefined — DICOM provides no inter-slice geometry. You have 2D SDFs $\phi(x, y; z_k)$ at each contour slice.
+RT contours are defined on discrete CT slices at heights $`z_0, z_1, \ldots, z_K`$. Between slices, the structure boundary is undefined — DICOM provides no inter-slice geometry. You have 2D SDFs $\phi(x, y; z_k)$ at each contour slice.
 
 The dose grid has its own $z$-coordinates, which generally don't coincide with CT slice positions. You need $\phi$ at dose grid $z$-values.
 
 ### Linear interpolation in z
 
-For a dose grid point at height $z$ where $z_k \leq z < z_{k+1}$:
+For a dose grid point at height $z$ where $`z_k \leq z < z_{k+1}`$:
 
 $$
 \phi(x, y, z) = (1 - \alpha)\,\phi(x, y; z_k) + \alpha\,\phi(x, y; z_{k+1})
 $$
 
-where $\alpha = (z - z_k) / (z_{k+1} - z_k)$.
+where $`\alpha = (z - z_k) / (z_{k+1} - z_k)`$.
 
 This produces a smooth 3D SDF whose zero level set **linearly morphs** between the contour shapes on adjacent slices. This is physically reasonable — organ boundaries don't jump discontinuously between 2–3 mm CT slices.
 
@@ -193,7 +193,7 @@ $$
 
 The linear SDF interpolation scheme above assumes contours are present on both adjacent slices. Several edge cases require special treatment:
 
-**1. Structure appears or disappears at a slice boundary.** When a structure is present on slice $k$ but absent on slice $k-1$, linear SDF interpolation is undefined — there is no prior-slice SDF to interpolate from. The standard approach is to extrapolate from the first/last contour slice using the linear end-capping formula above (i.e., $\phi(x, y, z) = \phi(x, y; z_0) + (z_0 - z)$ for $z < z_0$). This is geometrically equivalent to a conical closure at the top and bottom of the structure. The PyMedPhys DVH calculator applies this rule automatically at the terminal slices of every structure.
+**1. Structure appears or disappears at a slice boundary.** When a structure is present on slice $k$ but absent on slice $k-1$, linear SDF interpolation is undefined — there is no prior-slice SDF to interpolate from. The standard approach is to extrapolate from the first/last contour slice using the linear end-capping formula above (i.e., $`\phi(x, y, z) = \phi(x, y; z_0) + (z_0 - z)`$ for $z < z_0$). This is geometrically equivalent to a conical closure at the top and bottom of the structure. The PyMedPhys DVH calculator applies this rule automatically at the terminal slices of every structure.
 
 **2. Structure splits into two disconnected components between slices.** SDF linear interpolation between a single-component slice and a two-component slice does not correctly represent the topology change. The zero crossing morphs continuously — the level set stretches and pinches rather than branching. This is a known limitation of implicit surface interpolation (the level set cannot change topology by construction). *Mitigation:* detect topology changes by comparing connected-component count between adjacent slices using `scipy.ndimage.label` on the sign field. When a topology change is detected, either issue an `IssueCode.TOPOLOGY_CHANGE` warning and fall back to right-prism for the affected inter-slice interval, or alert the user to review the reconstruction visually.
 
@@ -227,7 +227,7 @@ This is exact. If $\phi = 0$ (boundary passes through the centre), $f = 0.5$. If
 
 **Arbitrary normal direction:**
 
-For a plane with normal $\hat{\mathbf{n}} = (n_x, n_y, n_z)$ at signed distance $\phi$ from the voxel centre, the fractional interior volume is:
+For a plane with normal $`\hat{\mathbf{n}} = (n_x, n_y, n_z)`$ at signed distance $\phi$ from the voxel centre, the fractional interior volume is:
 
 $$
 f(\phi) = \frac{1}{\Delta x \Delta y \Delta z} \int\int\int_{\text{voxel}} \mathbf{1}\left[\hat{\mathbf{n}} \cdot (\mathbf{r} - \mathbf{r}_c) < -\phi\right] \, dx\, dy\, dz
@@ -372,17 +372,17 @@ $$
 \int_{\text{voxel} \cap S} D(\mathbf{r}) \, d^3r
 $$
 
-rather than approximating it as $D(\mathbf{r}_c) \times v_{ijk}$. There are three approaches, in order of increasing sophistication.
+rather than approximating it as $`D(\mathbf{r}_c) \times v_{ijk}`$. There are three approaches, in order of increasing sophistication.
 
 #### Approach 1: Analytical correction using dose gradient (fast, first-order)
 
-Under the planar boundary approximation, the interior region is a half-voxel bounded by a plane. The integral of a linear dose field $D(\mathbf{r}) = D_c + \nabla D \cdot (\mathbf{r} - \mathbf{r}_c)$ over this region can be computed analytically:
+Under the planar boundary approximation, the interior region is a half-voxel bounded by a plane. The integral of a linear dose field $`D(\mathbf{r}) = D_c + \nabla D \cdot (\mathbf{r} - \mathbf{r}_c)`$ over this region can be computed analytically:
 
 $$
 \int_{\text{voxel} \cap S} D(\mathbf{r}) \, d^3r = D_c \cdot v_{ijk} + \nabla D \cdot \langle \mathbf{r} - \mathbf{r}_c \rangle_{\cap} \cdot v_{ijk}
 $$
 
-where $\langle \mathbf{r} - \mathbf{r}_c \rangle_{\cap}$ is the centroid offset of the interior region relative to the voxel centre. For a planar boundary, this centroid offset is a function of $\phi$ and $\hat{\mathbf{n}}$ that can be computed in closed form alongside the volume fraction. The **effective dose** for the voxel is then:
+where $`\langle \mathbf{r} - \mathbf{r}_c \rangle_{\cap}`$ is the centroid offset of the interior region relative to the voxel centre. For a planar boundary, this centroid offset is a function of $\phi$ and $\hat{\mathbf{n}}$ that can be computed in closed form alongside the volume fraction. The **effective dose** for the voxel is then:
 
 $$
 \bar{D}_{ijk} = D_c + \nabla D \cdot \Delta\mathbf{r}_{\text{centroid}}
@@ -495,7 +495,7 @@ $$
 \kappa = \nabla \cdot \hat{\mathbf{n}} = \nabla \cdot \frac{\nabla \phi}{|\nabla \phi|}
 $$
 
-In practice, this is computed via finite differences on the SDF grid. The mean curvature $H = (\kappa_1 + \kappa_2)/2$ is:
+In practice, this is computed via finite differences on the SDF grid. The mean curvature $`H = (\kappa_1 + \kappa_2)/2`$ is:
 
 $$
 H = \frac{\phi_{xx}(\phi_y^2 + \phi_z^2) + \phi_{yy}(\phi_x^2 + \phi_z^2) + \phi_{zz}(\phi_x^2 + \phi_y^2) - 2(\phi_x \phi_y \phi_{xy} + \phi_x \phi_z \phi_{xz} + \phi_y \phi_z \phi_{yz})}{2|\nabla\phi|^3}
@@ -561,21 +561,21 @@ This dispatch costs essentially nothing — you're computing the SDF Hessian (a 
 
 Consider a 1D "voxel" from $x = 0$ to $x = \Delta x = 2.5$ mm. The structure boundary is at $x_b = 1.8$ mm (known exactly from the contour vertex interpolation). The dose is $D = 60$ Gy uniform across the voxel (for simplicity).
 
-**Binary method:** The voxel centre is at $x_c = 1.25$ mm. Since $x_c < x_b$, the centre is inside, so $v = \Delta x = 2.5$ mm. Actual interior length: $1.8$ mm. **Error: +0.7 mm (+39%).**
+**Binary method:** The voxel centre is at $x_c = 1.25$ mm. Since $`x_c < x_b`$, the centre is inside, so $v = \Delta x = 2.5$ mm. Actual interior length: $1.8$ mm. **Error: +0.7 mm (+39%).**
 
 **4× supersampled binary:** Sub-centres at 0.3125, 0.9375, 1.5625, 2.1875 mm. The first three are inside ($< 1.8$), so $v = 3/4 \times 2.5 = 1.875$ mm. **Error: +0.075 mm (+4.2%).**
 
-**SDF method:** $\phi(x_c) = x_c - x_b = 1.25 - 1.8 = -0.55$ mm (negative = inside). Fractional volume $= 1/2 - \phi/\Delta x = 0.5 + 0.55/2.5 = 0.72$. So $v = 0.72 \times 2.5 = 1.8$ mm. **Error: 0. Exact.**
+**SDF method:** $`\phi(x_c) = x_c - x_b = 1.25 - 1.8 = -0.55`$ mm (negative = inside). Fractional volume $= 1/2 - \phi/\Delta x = 0.5 + 0.55/2.5 = 0.72$. So $v = 0.72 \times 2.5 = 1.8$ mm. **Error: 0. Exact.**
 
 The SDF method is exact in 1D because the boundary *is* planar (it's a point). In 2D and 3D with curved boundaries, it's approximate but the error is controlled by the curvature term derived above.
 
 ### Extended 1D example: non-uniform dose
 
-Same geometry, but now dose varies linearly: $D(x) = 60 + 4(x - x_c)$ Gy (a gradient of 4 Gy/mm, steep but not extreme).
+Same geometry, but now dose varies linearly: $`D(x) = 60 + 4(x - x_c)`$ Gy (a gradient of 4 Gy/mm, steep but not extreme).
 
 **Binary centre-point method:** Reports $D = 60$ Gy for the entire voxel, volume $= 2.5$ mm. Dose-volume contribution: 60 Gy × 2.5 mm.
 
-**True integral:** $\int_0^{1.8} D(x)\, dx = \int_0^{1.8} [60 + 4(x - 1.25)]\, dx$. Evaluating: $= [60x + 2x^2 - 5x]_0^{1.8} = [55x + 2x^2]_0^{1.8} = 55(1.8) + 2(1.8)^2 = 99 + 6.48 = 105.48$ Gy·mm.
+**True integral:** $`\int_0^{1.8} D(x)\, dx = \int_0^{1.8} [60 + 4(x - 1.25)]\, dx`$. Evaluating: $`= [60x + 2x^2 - 5x]_0^{1.8} = [55x + 2x^2]_0^{1.8} = 55(1.8) + 2(1.8)^2 = 99 + 6.48 = 105.48`$ Gy·mm.
 
 **SDF + centroid correction:** Interior fraction $= 0.72$, volume $= 1.8$ mm. Interior centroid at $x = 1.8/2 = 0.9$ mm. Dose at centroid: $D(0.9) = 60 + 4(0.9 - 1.25) = 58.6$ Gy. Dose-volume contribution: $58.6 \times 1.8 = 105.48$ Gy·mm. **Exact.** (Because the dose is linear and the geometry is 1D — the centroid correction is sufficient for linear dose fields.)
 
