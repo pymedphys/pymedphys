@@ -2181,6 +2181,7 @@ name = "pymedphys"
 version = "0.42.0.dev0"
 source = { editable = "." }
 dependencies = [
+    { name = "hypothesis" },
     { name = "setuptools" },
     { name = "tomlkit" },
     { name = "typing-extensions" },
@@ -2393,6 +2394,7 @@ requires-dist = [
     { name = "dicompyler-core", marker = "extra == 'user'" },
     { name = "doc8", marker = "extra == 'all'" },
     { name = "doc8", marker = "extra == 'dev'" },
+    { name = "hypothesis", specifier = ">=6.151.9" },
     { name = "hypothesis", marker = "extra == 'tests'" },
     { name = "imageio", marker = "extra == 'tests'" },
     { name = "imageio", extras = ["tifffile"], marker = "extra == 'all'" },

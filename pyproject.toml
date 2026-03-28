@@ -19,6 +19,7 @@ dependencies = [
   "typing-extensions",
   "setuptools",
   "tomlkit",
+  "hypothesis>=6.151.9",
 ]
 
 [project.urls]
