@@ -36,6 +36,7 @@ from pymedphys._dvh._types._results import (
     ProvenanceRecord,
     ROIDiagnostics,
     ROIResult,
+    ROIStatus,
 )
 from pymedphys._dvh._types._roi_ref import ROIRef
 
@@ -337,7 +338,7 @@ def _make_full_result_set() -> DVHResultSet:
     )
     roi_result = ROIResult(
         roi=ROIRef(name="PTV", roi_number=3, colour_rgb=(255, 0, 0)),
-        status="ok",
+        status=ROIStatus.OK,
         volume_cc=6.0,
         metrics=(metric_result,),
         dvh=dvh,

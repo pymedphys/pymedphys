@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import pytest
 
@@ -136,24 +134,24 @@ class TestROIResult:
     def test_status_ok(self) -> None:
         result = ROIResult(
             roi=ROIRef(name="PTV"),
-            status="ok",
+            status=ROIStatus.OK,
             volume_cc=45.0,
         )
-        assert result.status == "ok"
+        assert result.status == ROIStatus.OK
 
     def test_status_skipped(self) -> None:
         result = ROIResult(
             roi=ROIRef(name="BadROI"),
-            status="skipped",
+            status=ROIStatus.SKIPPED,
         )
-        assert result.status == "skipped"
+        assert result.status == ROIStatus.SKIPPED
 
     def test_status_failed(self) -> None:
         result = ROIResult(
             roi=ROIRef(name="ErrorROI"),
-            status="failed",
+            status=ROIStatus.FAILED,
         )
-        assert result.status == "failed"
+        assert result.status == ROIStatus.FAILED
 
 
 def _make_provenance() -> ProvenanceRecord:
@@ -295,7 +293,7 @@ class TestDVHResultSet:
         )
         roi_result = ROIResult(
             roi=ROIRef(name="PTV"),
-            status="ok",
+            status=ROIStatus.OK,
             metrics=(metric_result,),
             issues=(roi_issue,),
         )
@@ -424,7 +422,7 @@ class TestROIStatusEnum:
         assert ROIStatus.FAILED == "failed"
 
     def test_roi_result_coerces_string_to_enum(self) -> None:
-        result = ROIResult(roi=ROIRef(name="PTV"), status="ok")
+        result = ROIResult(roi=ROIRef(name="PTV"), status="ok")  # type: ignore[arg-type]
         assert isinstance(result.status, ROIStatus)
         assert result.status == ROIStatus.OK
 
@@ -434,7 +432,7 @@ class TestROIStatusEnum:
 
     def test_roi_result_rejects_invalid_status(self) -> None:
         with pytest.raises(ValueError):
-            ROIResult(roi=ROIRef(name="PTV"), status="invalid_status")
+            ROIResult(roi=ROIRef(name="PTV"), status="invalid_status")  # type: ignore[arg-type]
 
 
 class TestProvenanceTimestampValidation:

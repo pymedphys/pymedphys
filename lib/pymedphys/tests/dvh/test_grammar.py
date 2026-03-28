@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from pymedphys._dvh._types._metrics import (
+    IndexMetric,
     MetricFamily,
     MetricSpec,
     OutputUnit,
@@ -115,7 +116,9 @@ class TestMetricSpecParse:
         with pytest.raises(ValueError):
             MetricSpec.parse("notametric")
 
-    # --- Round-trip stability ---
+
+class TestMetricSpecParseExtended:
+    """Extended grammar tests: round-trips, mean[%Rx], IndexMetric enum."""
 
     def test_canonical_key_stable(self) -> None:
         spec = MetricSpec.parse("D95%")
@@ -136,29 +139,21 @@ class TestMetricSpecParse:
 
     # E2/A5: Index metrics carry IndexMetric enum
     def test_ci_carries_index_metric(self) -> None:
-        from pymedphys._dvh._types._metrics import IndexMetric
-
         spec = MetricSpec.parse("CI")
         assert spec.index_metric == IndexMetric.CI
         assert spec.requires_dose_ref is True
 
     def test_hi_carries_index_metric(self) -> None:
-        from pymedphys._dvh._types._metrics import IndexMetric
-
         spec = MetricSpec.parse("HI")
         assert spec.index_metric == IndexMetric.HI
         assert spec.requires_dose_ref is False
 
     def test_gi_carries_index_metric(self) -> None:
-        from pymedphys._dvh._types._metrics import IndexMetric
-
         spec = MetricSpec.parse("GI")
         assert spec.index_metric == IndexMetric.GI
         assert spec.requires_dose_ref is True
 
     def test_pci_carries_index_metric(self) -> None:
-        from pymedphys._dvh._types._metrics import IndexMetric
-
         spec = MetricSpec.parse("PCI")
         assert spec.index_metric == IndexMetric.PCI
         assert spec.requires_dose_ref is True
