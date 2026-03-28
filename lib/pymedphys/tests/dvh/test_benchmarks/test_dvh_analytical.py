@@ -262,9 +262,9 @@ class TestSphereLinearGradientDVH:
         for i, d in enumerate(doses):
             numerical = _numerical_sphere_linear_dvh(d, r, d0, g)
             if numerical > 1e-6:
-                assert float(analytical[i]) == pytest.approx(numerical, rel=1e-4), (
-                    f"Mismatch at D={d:.2f} Gy"
-                )
+                assert float(analytical[i]) == pytest.approx(
+                    numerical, rel=1e-4
+                ), f"Mismatch at D={d:.2f} Gy"
 
     @given(
         dose_frac=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
@@ -346,9 +346,9 @@ class TestCylinderLinearGradientDVH:
         for i, d in enumerate(doses):
             numerical = _numerical_cylinder_linear_dvh(d, r, h, d0, g)
             if numerical > 1e-6:
-                assert float(analytical[i]) == pytest.approx(numerical, rel=1e-4), (
-                    f"Mismatch at D={d:.2f} Gy"
-                )
+                assert float(analytical[i]) == pytest.approx(
+                    numerical, rel=1e-4
+                ), f"Mismatch at D={d:.2f} Gy"
 
     @given(dose_frac=st.floats(min_value=0.0, max_value=1.0, allow_nan=False))
     @settings(max_examples=50)
@@ -431,9 +431,9 @@ class TestConeLinearGradientDVH:
         for i, d in enumerate(doses):
             numerical = _numerical_cone_linear_dvh(d, r, h, d0, g)
             if numerical > 1e-6:
-                assert float(analytical[i]) == pytest.approx(numerical, rel=1e-4), (
-                    f"Mismatch at D={d:.2f} Gy"
-                )
+                assert float(analytical[i]) == pytest.approx(
+                    numerical, rel=1e-4
+                ), f"Mismatch at D={d:.2f} Gy"
 
     @given(dose_frac=st.floats(min_value=0.0, max_value=1.0, allow_nan=False))
     @settings(max_examples=50)
@@ -499,9 +499,9 @@ class TestSphereRadialGaussianDVH:
         for i, d in enumerate(doses):
             numerical = _numerical_sphere_gaussian_dvh(d, r, A, sigma)
             if numerical > 1e-6:
-                assert float(analytical[i]) == pytest.approx(numerical, rel=1e-4), (
-                    f"Mismatch at D={d:.2f} Gy"
-                )
+                assert float(analytical[i]) == pytest.approx(
+                    numerical, rel=1e-4
+                ), f"Mismatch at D={d:.2f} Gy"
 
     @given(dose_frac=st.floats(min_value=0.01, max_value=0.99, allow_nan=False))
     @settings(max_examples=50)
