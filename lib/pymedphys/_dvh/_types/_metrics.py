@@ -399,12 +399,49 @@ class MetricRequestSet:
             object.__setattr__(self, "roi_requests", tuple(self.roi_requests))
         # Duplicate ROI detection using ROIRef.matches() semantics:
         # match by roi_number if both have one, otherwise by name.
-        for i, a in enumerate(self.roi_requests):
-            for b in self.roi_requests[i + 1 :]:
-                if a.roi.matches(b.roi):
+        #
+        # Set-based O(n) approach with three buckets:
+        #   seen_numbers: numbered ROIs keyed by roi_number
+        #   seen_unnumbered_names: unnumbered ROIs keyed by name
+        #   seen_numbered_names: names claimed by numbered ROIs
+        #
+        # matches() logic:
+        #   Both numbered → compare numbers (same name, different number = OK)
+        #   One or both unnumbered → compare names
+        seen_numbers: dict[int, ROIRef] = {}
+        seen_unnumbered_names: dict[str, ROIRef] = {}
+        seen_numbered_names: dict[str, ROIRef] = {}
+        for rr in self.roi_requests:
+            ref = rr.roi
+            if ref.roi_number is not None:
+                # Check against other numbered ROIs by number
+                if ref.roi_number in seen_numbers:
                     raise ValueError(
-                        f"Duplicate ROI in request: '{a.roi}' and '{b.roi}'"
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_numbers[ref.roi_number]}'"
                     )
+                # Check against unnumbered ROIs by name (mixed case)
+                if ref.name in seen_unnumbered_names:
+                    raise ValueError(
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_unnumbered_names[ref.name]}'"
+                    )
+                seen_numbers[ref.roi_number] = ref
+                seen_numbered_names[ref.name] = ref
+            else:
+                # Check against other unnumbered ROIs by name
+                if ref.name in seen_unnumbered_names:
+                    raise ValueError(
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_unnumbered_names[ref.name]}'"
+                    )
+                # Check against numbered ROIs by name (mixed case)
+                if ref.name in seen_numbered_names:
+                    raise ValueError(
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_numbered_names[ref.name]}'"
+                    )
+                seen_unnumbered_names[ref.name] = ref
         for rr in self.roi_requests:
             for m in rr.metrics:
                 if m.requires_dose_ref:
@@ -441,10 +478,12 @@ class MetricRequestSet:
         input convenience in ``from_dict()``.
         """
         d: dict = {
-            "dose_refs": self.dose_refs.to_dict() if self.dose_refs else None,
-            "default_dose_ref": self.default_dose_ref,
             "roi_requests": [rr.to_dict() for rr in self.roi_requests],
         }
+        if self.dose_refs is not None:
+            d["dose_refs"] = self.dose_refs.to_dict()
+        if self.default_dose_ref is not None:
+            d["default_dose_ref"] = self.default_dose_ref
         return d
 
     @property

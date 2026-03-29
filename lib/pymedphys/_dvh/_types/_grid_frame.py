@@ -118,7 +118,7 @@ class GridFrame:
         for col, expected_row in expected_rows.items():
             nonzero_row = int(np.argmax(mask[:, col]))
             if nonzero_row != expected_row:
-                axis_names = {0: "z", 1: "y", 2: "x"}
+                axis_names = {0: "x", 1: "y", 2: "z"}
                 idx_names = {0: "iz", 1: "iy", 2: "ix"}
                 raise ValueError(
                     f"Axis permutation not allowed: column {col} "

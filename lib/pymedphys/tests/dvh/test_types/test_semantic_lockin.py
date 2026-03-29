@@ -110,6 +110,14 @@ class TestMetricRequestSetCanonicalRoundTrip:
         assert "roi_requests" in d
         assert "metrics" not in d
 
+    def test_omits_none_dose_refs(self) -> None:
+        """to_dict() must not emit dose_refs/default_dose_ref when unset."""
+        req = ROIMetricRequest.from_strings("PTV", ["mean"])
+        mrs = MetricRequestSet(roi_requests=(req,))
+        d = mrs.to_dict()
+        assert "dose_refs" not in d
+        assert "default_dose_ref" not in d
+
     def test_legacy_metrics_format_still_accepted(self) -> None:
         """from_dict() still accepts the legacy name-keyed format."""
         d = {
