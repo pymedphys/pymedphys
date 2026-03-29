@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Mapping, Optional
+
+import numpy as np
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,16 +20,19 @@ class DoseReference:
     Parameters
     ----------
     dose_gy : float
-        Reference dose in Gy. Must be strictly positive.
+        Reference dose in Gy. Must be strictly positive and finite.
     source : str
-        Human-readable provenance string (>= 5 characters). Forces the
-        user to document where the reference dose came from.
+        Human-readable provenance string (>= 5 characters). Must
+        contain at least one alphabetic character. Forces the user to
+        document where the reference dose came from.
     """
 
     dose_gy: float
     source: str
 
     def __post_init__(self) -> None:
+        if not np.isfinite(self.dose_gy):
+            raise ValueError(f"Reference dose must be finite, got {self.dose_gy}")
         if self.dose_gy <= 0:
             raise ValueError(f"Reference dose must be positive, got {self.dose_gy}")
         stripped = self.source.strip()
@@ -39,6 +46,11 @@ class DoseReference:
                 f"DoseReference.source must be at least 5 characters "
                 f"(got '{stripped}'). Provide a meaningful description of "
                 f"where this dose reference comes from."
+            )
+        if not re.search(r"[a-zA-Z]", stripped):
+            raise ValueError(
+                f"DoseReference.source must contain at least one "
+                f"alphabetic character, got '{stripped}'"
             )
 
     def to_dict(self) -> dict:
@@ -72,11 +84,18 @@ class DoseReferenceSet:
     def __post_init__(self) -> None:
         if not self.refs:
             raise ValueError("DoseReferenceSet must contain at least one reference")
+        # Validate all keys before freezing
+        for key in self.refs:
+            if not key or not key.strip():
+                raise ValueError("DoseReferenceSet ref keys must be non-empty")
         if self.default_id is not None and self.default_id not in self.refs:
             raise ValueError(
                 f"default_id '{self.default_id}' not found in refs: "
                 f"{list(self.refs.keys())}"
             )
+        # Defensive copy + freeze with MappingProxyType
+        frozen = MappingProxyType(dict(self.refs))
+        object.__setattr__(self, "refs", frozen)
 
     @property
     def default(self) -> Optional[DoseReference]:

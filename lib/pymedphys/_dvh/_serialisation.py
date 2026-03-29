@@ -1,10 +1,11 @@
-"""JSON/TOML serialisation for DVH types.
+"""JSON wrappers over per-type ``to_dict()`` / ``from_dict()`` methods.
 
-- **TOML** for human-edited inputs (metric requests, configuration).
-- **JSON** for machine-generated results (DVHResultSet output).
+Each serialisable DVH type defines its own ``to_dict()`` and
+``from_dict()`` round-trip methods. This module provides thin
+convenience wrappers for converting to and from JSON strings.
 
-Each serialisable type has its own ``to_dict()`` and ``from_dict()``
-methods. This module provides thin wrappers for JSON string conversion.
+TOML input (where supported) is handled by type-specific loaders
+such as ``MetricRequestSet.from_toml()``, not by this module.
 """
 
 from __future__ import annotations

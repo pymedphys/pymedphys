@@ -20,6 +20,25 @@ class MetricFamily(str, Enum):
     INDEX = "index"
 
 
+class IndexMetric(str, Enum):
+    """Typed enumeration of conformity/homogeneity index metrics.
+
+    Using a typed enum instead of raw strings makes the
+    ``requires_dose_ref`` check structural rather than string-based,
+    and prevents typos from silently creating unknown index metrics.
+    """
+
+    HI = "HI"
+    CI = "CI"
+    PCI = "PCI"
+    GI = "GI"
+
+    @property
+    def requires_dose_ref(self) -> bool:
+        """Whether this index metric needs a DoseReference."""
+        return self in {IndexMetric.CI, IndexMetric.PCI, IndexMetric.GI}
+
+
 class ThresholdUnit(str, Enum):
     """Unit of the threshold/input axis."""
 
@@ -46,11 +65,9 @@ class MetricSpec:
     This is the metric AST — a structured representation that is
     unambiguous about what is being computed and in what unit.
 
-    Dose reference binding is handled at the ROI level
-    (``ROIMetricRequest.dose_ref_id``) or at the global level
-    (``MetricRequestSet.dose_refs.default_id``), not per-metric.
-    This simplifies the v1 semantics and avoids partial
-    implementation of per-metric dose references.
+    Dose reference resolution precedence (most specific wins)::
+
+        metric.dose_ref_id  or  roi_request.dose_ref_id  or  dose_refs.default_id
 
     Parameters
     ----------
@@ -64,6 +81,12 @@ class MetricSpec:
         Unit of the metric output.
     raw : str
         Original string, preserved for display/provenance.
+    index_metric : IndexMetric, optional
+        Typed index metric kind. Set when ``family == INDEX``.
+    dose_ref_id : str, optional
+        Per-metric dose reference override. Takes precedence over
+        ``ROIMetricRequest.dose_ref_id`` and
+        ``DoseReferenceSet.default_id``.
     """
 
     family: MetricFamily
@@ -71,12 +94,23 @@ class MetricSpec:
     threshold_unit: ThresholdUnit = ThresholdUnit.NONE
     output_unit: OutputUnit = OutputUnit.GY
     raw: str = ""
+    index_metric: Optional[IndexMetric] = None
+    dose_ref_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.threshold is not None and self.threshold < 0:
             raise ValueError(
                 f"Metric threshold must be non-negative, got {self.threshold}"
             )
+        if self.family == MetricFamily.INDEX and self.index_metric is None:
+            if self.raw in {m.value for m in IndexMetric}:
+                object.__setattr__(self, "index_metric", IndexMetric(self.raw))
+            else:
+                raise ValueError(
+                    f"MetricSpec with family=INDEX requires a known "
+                    f"index_metric, but raw={self.raw!r} does not match "
+                    f"any IndexMetric value: {[m.value for m in IndexMetric]}"
+                )
 
     @property
     def requires_dose_ref(self) -> bool:
@@ -88,12 +122,8 @@ class MetricSpec:
             return True
         if self.output_unit == OutputUnit.PERCENT_DOSE:
             return True
-        if self.family == MetricFamily.INDEX and self.raw in {
-            "CI",
-            "PCI",
-            "GI",
-        }:
-            return True
+        if self.family == MetricFamily.INDEX and self.index_metric is not None:
+            return self.index_metric.requires_dose_ref
         return False
 
     @property
@@ -104,6 +134,8 @@ class MetricSpec:
             parts.append(f"{self.threshold}")
         parts.append(self.threshold_unit.value)
         parts.append(self.output_unit.value)
+        if self.index_metric is not None:
+            parts.append(self.index_metric.value)
         return "|".join(parts)
 
     def to_dict(self) -> dict:
@@ -116,17 +148,24 @@ class MetricSpec:
         }
         if self.threshold is not None:
             d["threshold"] = self.threshold
+        if self.index_metric is not None:
+            d["index_metric"] = self.index_metric.value
+        if self.dose_ref_id is not None:
+            d["dose_ref_id"] = self.dose_ref_id
         return d
 
     @classmethod
     def from_dict(cls, d: dict) -> MetricSpec:
         """Deserialise from a plain dict."""
+        idx = d.get("index_metric")
         return cls(
             family=MetricFamily(d["family"]),
             threshold=d.get("threshold"),
             threshold_unit=ThresholdUnit(d["threshold_unit"]),
             output_unit=OutputUnit(d["output_unit"]),
             raw=d.get("raw", ""),
+            index_metric=IndexMetric(idx) if idx is not None else None,
+            dose_ref_id=d.get("dose_ref_id"),
         )
 
     @classmethod
@@ -143,7 +182,8 @@ class MetricSpec:
             V{x}Gy             -> DVH_VOLUME, threshold=x, unit=GY, out=CC
             V{x}Gy[%]          -> DVH_VOLUME, threshold=x, unit=GY, out=PERCENT_VOLUME
             V{x}%              -> DVH_VOLUME, threshold=x, unit=PERCENT, out=CC
-            mean|median|min|max -> SCALAR
+            mean|median|min|max -> SCALAR, out=GY
+            mean[%Rx]           -> SCALAR, out=PERCENT_DOSE
             HI|CI|PCI|GI       -> INDEX
 
         Raises
@@ -156,6 +196,14 @@ class MetricSpec:
 
         s = raw.strip()
 
+        # Scalar metrics with optional %Rx output modifier
+        if s == "mean[%Rx]":
+            return cls(
+                family=MetricFamily.SCALAR,
+                output_unit=OutputUnit.PERCENT_DOSE,
+                raw=raw,
+            )
+
         # Scalar metrics
         if s in {"mean", "median", "min", "max"}:
             return cls(
@@ -164,13 +212,17 @@ class MetricSpec:
                 raw=raw,
             )
 
-        # Index metrics
-        if s in {"HI", "CI", "PCI", "GI"}:
+        # Index metrics — use typed IndexMetric enum
+        try:
+            idx = IndexMetric(s)
             return cls(
                 family=MetricFamily.INDEX,
                 output_unit=OutputUnit.DIMENSIONLESS,
                 raw=raw,
+                index_metric=idx,
             )
+        except ValueError:
+            pass
 
         # Parametric DVH metrics: (pattern, family, threshold_unit, output_unit)
         _dvh_patterns: tuple[
@@ -313,7 +365,8 @@ class MetricRequestSet:
         for rr in self.roi_requests:
             for m in rr.metrics:
                 if m.requires_dose_ref:
-                    ref_id = rr.dose_ref_id
+                    # Resolution precedence: metric > ROI > global default
+                    ref_id = m.dose_ref_id or rr.dose_ref_id
                     if self.dose_refs is None:
                         raise ValueError(
                             f"Metric '{m.raw}' for ROI '{rr.roi}' requires a "
@@ -337,12 +390,7 @@ class MetricRequestSet:
         """
         d: dict = {}
         if self.dose_refs is not None:
-            d["dose_refs"] = {
-                k: {"dose_gy": v.dose_gy, "source": v.source}
-                for k, v in self.dose_refs.refs.items()
-            }
-            if self.dose_refs.default_id is not None:
-                d["default_dose_ref"] = self.dose_refs.default_id
+            d["dose_refs"] = self.dose_refs.to_dict()
         d["roi_requests"] = [rr.to_dict() for rr in self.roi_requests]
         return d
 
@@ -369,13 +417,19 @@ class MetricRequestSet:
         """
         dose_refs = None
         if "dose_refs" in d:
-            refs = {
-                k: DoseReference(dose_gy=v["dose_gy"], source=v["source"])
-                for k, v in d["dose_refs"].items()
-            }
-            dose_refs = DoseReferenceSet(
-                refs=refs, default_id=d.get("default_dose_ref")
-            )
+            raw_refs = d["dose_refs"]
+            if "refs" in raw_refs:
+                # Canonical format from DoseReferenceSet.to_dict()
+                dose_refs = DoseReferenceSet.from_dict(raw_refs)
+            else:
+                # Legacy inline format: flat dict of {id: {dose_gy, source}}
+                refs = {
+                    k: DoseReference(dose_gy=v["dose_gy"], source=v["source"])
+                    for k, v in raw_refs.items()
+                }
+                dose_refs = DoseReferenceSet(
+                    refs=refs, default_id=d.get("default_dose_ref")
+                )
         elif "dose_ref_gy" in d:
             source = d.get("dose_ref_source")
             if not source or not source.strip():

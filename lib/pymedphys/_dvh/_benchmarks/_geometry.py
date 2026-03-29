@@ -60,7 +60,7 @@ def sphere_volume(radius_mm: float) -> float:
         Volume in mm³: ``(4/3) * π * r³``.
     """
     _validate_positive(radius_mm=radius_mm)
-    return (4.0 / 3.0) * np.pi * radius_mm**3
+    return float((4.0 / 3.0) * np.pi * radius_mm**3)
 
 
 def cylinder_volume(radius_mm: float, height_mm: float) -> float:
@@ -79,7 +79,7 @@ def cylinder_volume(radius_mm: float, height_mm: float) -> float:
         Volume in mm³: ``π * r² * h``.
     """
     _validate_positive(radius_mm=radius_mm, height_mm=height_mm)
-    return np.pi * radius_mm**2 * height_mm
+    return float(np.pi * radius_mm**2 * height_mm)
 
 
 def cone_volume(radius_mm: float, height_mm: float) -> float:
@@ -98,7 +98,7 @@ def cone_volume(radius_mm: float, height_mm: float) -> float:
         Volume in mm³: ``(1/3) * π * r² * h``.
     """
     _validate_positive(radius_mm=radius_mm, height_mm=height_mm)
-    return (1.0 / 3.0) * np.pi * radius_mm**2 * height_mm
+    return float((1.0 / 3.0) * np.pi * radius_mm**2 * height_mm)
 
 
 def ellipsoid_volume(semi_a_mm: float, semi_b_mm: float, semi_c_mm: float) -> float:
@@ -119,16 +119,23 @@ def ellipsoid_volume(semi_a_mm: float, semi_b_mm: float, semi_c_mm: float) -> fl
         Volume in mm³: ``(4/3) * π * a * b * c``.
     """
     _validate_positive(semi_a_mm=semi_a_mm, semi_b_mm=semi_b_mm, semi_c_mm=semi_c_mm)
-    return (4.0 / 3.0) * np.pi * semi_a_mm * semi_b_mm * semi_c_mm
+    return float((4.0 / 3.0) * np.pi * semi_a_mm * semi_b_mm * semi_c_mm)
 
 
 def torus_volume(major_radius_mm: float, minor_radius_mm: float) -> float:
-    """Volume of a torus.
+    """Volume of a simple (non-self-intersecting) torus.
+
+    Only simple tori (``major_radius_mm > minor_radius_mm``) are
+    supported. Horn tori (``R == r``) and spindle tori (``R < r``)
+    are rejected because they are not useful benchmark shapes and
+    their volume formula yields the same algebraic result but their
+    geometry is self-intersecting.
 
     Parameters
     ----------
     major_radius_mm : float
-        Distance from torus centre to tube centre, in mm. Must be > 0.
+        Distance from torus centre to tube centre, in mm. Must be
+        strictly greater than ``minor_radius_mm``.
     minor_radius_mm : float
         Tube radius in mm. Must be > 0.
 
@@ -136,9 +143,20 @@ def torus_volume(major_radius_mm: float, minor_radius_mm: float) -> float:
     -------
     float
         Volume in mm³: ``2 * π² * R * r²``.
+
+    Raises
+    ------
+    ValueError
+        If ``major_radius_mm <= minor_radius_mm``.
     """
     _validate_positive(major_radius_mm=major_radius_mm, minor_radius_mm=minor_radius_mm)
-    return 2.0 * np.pi**2 * major_radius_mm * minor_radius_mm**2
+    if major_radius_mm <= minor_radius_mm:
+        raise ValueError(
+            f"major_radius_mm ({major_radius_mm}) must be strictly greater "
+            f"than minor_radius_mm ({minor_radius_mm}) for a simple "
+            f"(non-self-intersecting) torus"
+        )
+    return float(2.0 * np.pi**2 * major_radius_mm * minor_radius_mm**2)
 
 
 def cylindrical_shell_volume(
@@ -175,7 +193,7 @@ def cylindrical_shell_volume(
             f"outer_radius_mm ({outer_radius_mm}) must be strictly greater "
             f"than inner_radius_mm ({inner_radius_mm})"
         )
-    return np.pi * (outer_radius_mm**2 - inner_radius_mm**2) * height_mm
+    return float(np.pi * (outer_radius_mm**2 - inner_radius_mm**2) * height_mm)
 
 
 def rectangular_parallelepiped_volume(

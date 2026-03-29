@@ -21,6 +21,7 @@ from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue, IssueCode, IssueLevel
 from pymedphys._dvh._types._metrics import (
+    IndexMetric,
     MetricFamily,
     MetricRequestSet,
     MetricSpec,
@@ -158,6 +159,33 @@ class TestMetricSpecRoundTrip:
         restored = MetricSpec.from_dict(d)
         assert restored.family == MetricFamily.SCALAR
         assert restored.threshold is None
+
+    def test_index_metric_preserved(self) -> None:
+        """TEST-2: index_metric field survives round-trip."""
+        spec = MetricSpec(
+            family=MetricFamily.INDEX,
+            output_unit=OutputUnit.DIMENSIONLESS,
+            raw="CI",
+            index_metric=IndexMetric.CI,
+        )
+        d = spec.to_dict()
+        restored = MetricSpec.from_dict(d)
+        assert restored.index_metric == IndexMetric.CI
+        assert restored.family == MetricFamily.INDEX
+        assert restored.raw == "CI"
+
+    def test_dose_ref_id_preserved(self) -> None:
+        """TEST-3: dose_ref_id field survives round-trip."""
+        spec = MetricSpec(
+            family=MetricFamily.SCALAR,
+            output_unit=OutputUnit.GY,
+            raw="mean",
+            dose_ref_id="ptv42",
+        )
+        d = spec.to_dict()
+        assert d["dose_ref_id"] == "ptv42"
+        restored = MetricSpec.from_dict(d)
+        assert restored.dose_ref_id == "ptv42"
 
 
 class TestMetricRequestSetRoundTrip:

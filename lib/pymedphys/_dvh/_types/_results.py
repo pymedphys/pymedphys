@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
 from typing import FrozenSet, Literal, Optional, get_args
 
 import numpy as np
@@ -12,13 +14,28 @@ from pymedphys._dvh._types._config import DVHConfig
 from pymedphys._dvh._types._dose_ref import DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue
-from pymedphys._dvh._types._metrics import MetricSpec
+from pymedphys._dvh._types._metrics import MetricSpec, OutputUnit
 from pymedphys._dvh._types._roi_ref import ROIRef
 from pymedphys._dvh._types._validators import (
     _validate_nonneg_array,
     _validate_nonneg_finite,
     _validate_strictly_increasing,
 )
+
+_SUPPORTED_SCHEMA_VERSIONS = frozenset({"1.0"})
+
+
+class ROIStatus(str, Enum):
+    """Status of an ROI computation result."""
+
+    OK = "ok"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
+# Valid unit strings for MetricResult, derived from OutputUnit enum
+# plus "" for metrics where no unit applies (e.g. failed computations).
+_VALID_METRIC_UNITS = frozenset({u.value for u in OutputUnit} | {""})
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -183,7 +200,13 @@ class DVHBins:
         )
 
     def __hash__(self) -> int:
-        return hash(self.dose_bin_edges_gy.tobytes())
+        return hash(
+            (
+                self.dose_bin_edges_gy.tobytes(),
+                self.differential_volume_cc.tobytes(),
+                self.total_volume_cc,
+            )
+        )
 
     def to_dict(self) -> dict:
         """Serialise to a plain dict. Cumulative values are NOT included."""
@@ -217,6 +240,22 @@ class MetricResult:
     unit: str
     convergence_estimate: Optional[float] = None
     issues: tuple[Issue, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.value is not None and not np.isfinite(self.value):
+            raise ValueError(f"MetricResult.value must be finite, got {self.value}")
+        if self.convergence_estimate is not None and not np.isfinite(
+            self.convergence_estimate
+        ):
+            raise ValueError(
+                f"MetricResult.convergence_estimate must be finite, "
+                f"got {self.convergence_estimate}"
+            )
+        if self.unit not in _VALID_METRIC_UNITS:
+            raise ValueError(
+                f"MetricResult.unit must be one of {sorted(_VALID_METRIC_UNITS)}, "
+                f"got {self.unit!r}"
+            )
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -253,6 +292,53 @@ class ROIDiagnostics:
     endcap_volume_fraction: Optional[float] = None
     computation_time_s: Optional[float] = None
 
+    def __post_init__(self) -> None:
+        # Validate integer counts are non-negative
+        for name in (
+            "effective_supersampling",
+            "boundary_voxel_count",
+            "interior_voxel_count",
+        ):
+            val = getattr(self, name)
+            if val is not None:
+                if isinstance(val, bool) or not isinstance(val, int) or val < 0:
+                    raise ValueError(
+                        f"ROIDiagnostics.{name} must be a non-negative "
+                        f"integer, got {val!r}"
+                    )
+
+        if self.contour_slice_count < 0:
+            raise ValueError(
+                f"ROIDiagnostics.contour_slice_count must be non-negative, "
+                f"got {self.contour_slice_count}"
+            )
+
+        # Validate finite non-negative floats
+        if self.mean_boundary_gradient_gy_per_mm is not None:
+            _validate_nonneg_finite(
+                self.mean_boundary_gradient_gy_per_mm,
+                "ROIDiagnostics.mean_boundary_gradient_gy_per_mm",
+            )
+
+        if self.computation_time_s is not None:
+            _validate_nonneg_finite(
+                self.computation_time_s,
+                "ROIDiagnostics.computation_time_s",
+            )
+
+        # Validate endcap_volume_fraction in [0, 1]
+        if self.endcap_volume_fraction is not None:
+            if not np.isfinite(self.endcap_volume_fraction):
+                raise ValueError(
+                    f"ROIDiagnostics.endcap_volume_fraction must be finite, "
+                    f"got {self.endcap_volume_fraction}"
+                )
+            if not 0.0 <= self.endcap_volume_fraction <= 1.0:
+                raise ValueError(
+                    f"ROIDiagnostics.endcap_volume_fraction must be in "
+                    f"[0, 1], got {self.endcap_volume_fraction}"
+                )
+
     def to_dict(self) -> dict:
         d: dict = {"contour_slice_count": self.contour_slice_count}
         for field_name in (
@@ -286,20 +372,36 @@ class ROIResult:
     """Complete result for a single ROI.
 
     Self-describing: carries its own ROIRef and explicit status.
+
+    The ``status`` field accepts both ``ROIStatus`` enum values and
+    plain strings (``"ok"``, ``"skipped"``, ``"failed"``), coercing
+    strings to enum values at construction time for backward
+    compatibility with serialised data.
     """
 
     roi: ROIRef
-    status: Literal["ok", "skipped", "failed"]
+    status: ROIStatus
     volume_cc: Optional[float] = None
     metrics: tuple[MetricResult, ...] = ()
     dvh: Optional[DVHBins] = None
     diagnostics: Optional[ROIDiagnostics] = None
     issues: tuple[Issue, ...] = ()
 
+    def __post_init__(self) -> None:
+        # Coerce string to ROIStatus enum for backward compatibility
+        if isinstance(self.status, str) and not isinstance(self.status, ROIStatus):
+            try:
+                object.__setattr__(self, "status", ROIStatus(self.status))
+            except ValueError:
+                raise ValueError(
+                    f"ROIResult.status must be one of "
+                    f"{[s.value for s in ROIStatus]}, got {self.status!r}"
+                ) from None
+
     def to_dict(self) -> dict:
         d: dict = {
             "roi": self.roi.to_dict(),
-            "status": self.status,
+            "status": self.status.value,
         }
         if self.volume_cc is not None:
             d["volume_cc"] = self.volume_cc
@@ -466,6 +568,28 @@ class ProvenanceRecord:
     platform: Optional[PlatformInfo] = None
     inapplicable_settings: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        if self.timestamp_utc:
+            # Normalise 'Z' → '+00:00' for Python 3.10 compatibility
+            # (datetime.fromisoformat only accepts 'Z' from 3.11+).
+            ts = self.timestamp_utc
+            if ts.endswith("Z"):
+                ts = ts[:-1] + "+00:00"
+            try:
+                dt = datetime.fromisoformat(ts)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"ProvenanceRecord.timestamp_utc must be a valid ISO 8601 "
+                    f"timestamp (e.g. '2024-01-15T10:30:00Z'), "
+                    f"got {self.timestamp_utc!r}"
+                ) from None
+            if dt.tzinfo is None:
+                raise ValueError(
+                    f"ProvenanceRecord.timestamp_utc must include a timezone "
+                    f"designator (e.g. 'Z' or '+05:30'), "
+                    f"got {self.timestamp_utc!r}"
+                )
+
     def to_dict(self) -> dict:
         d: dict = {
             "pymedphys_version": self.pymedphys_version,
@@ -510,6 +634,14 @@ class DVHResultSet:
     computation_time_s: float
     dose_refs: Optional[DoseReferenceSet] = None
     issues: tuple[Issue, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.schema_version not in _SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError(
+                f"Unsupported schema_version {self.schema_version!r}. "
+                f"Supported: {sorted(_SUPPORTED_SCHEMA_VERSIONS)}"
+            )
+        _validate_nonneg_finite(self.computation_time_s, "computation_time_s")
 
     def by_name(self, name: str) -> ROIResult:
         """Look up an ROIResult by name.
