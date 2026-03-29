@@ -1,14 +1,9 @@
-"""PyMedPhys DVH Calculator.
+"""PyMedPhys DVH Module — Phase 0: Type Layer.
 
-A transparent, configurable DVH calculator with analytical benchmarks
-and comprehensive validation.
+Provides typed domain objects, metric/request grammar, configuration,
+serialisation, and result containers for DVH computation.
 
-Public API
-----------
-compute_dvh : callable
-    Single entry point for DVH computation (not yet implemented).
-
-All domain types are available via ``pymedphys._dvh._types``.
+Computation entry points will be added in later phases.
 """
 
 from pymedphys._dvh._types import (

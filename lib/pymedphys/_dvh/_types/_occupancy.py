@@ -9,6 +9,7 @@ import numpy.typing as npt
 
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import validate_finite_array
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -39,6 +40,7 @@ class OccupancyField:
                 f"Occupancy shape {self.data.shape} != frame shape {expected}"
             )
         d = np.array(self.data, dtype=np.float64)
+        validate_finite_array("OccupancyField.data", d)
         if np.any((d < 0.0) | (d > 1.0)):
             raise ValueError(
                 "Occupancy values must be in [0.0, 1.0], "

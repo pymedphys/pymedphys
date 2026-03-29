@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass, field
 from enum import Enum
@@ -13,8 +14,15 @@ from pymedphys._dvh._types._config import DVHConfig
 from pymedphys._dvh._types._dose_ref import DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue
-from pymedphys._dvh._types._metrics import MetricSpec
+from pymedphys._dvh._types._metrics import MetricSpec, OutputUnit
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import (
+    validate_finite,
+    validate_finite_array,
+    validate_in_range,
+    validate_nonneg_finite,
+    validate_positive_finite,
+)
 
 
 class ROIStatus(str, Enum):
@@ -55,6 +63,9 @@ class DVHBins:
     def __post_init__(self) -> None:
         edges = np.array(self.dose_bin_edges_gy, dtype=np.float64)
         dv = np.array(self.differential_volume_cc, dtype=np.float64)
+        validate_finite_array("dose_bin_edges_gy", edges, ndim=1)
+        validate_finite_array("differential_volume_cc", dv, ndim=1)
+        validate_positive_finite("total_volume_cc", self.total_volume_cc)
         if len(edges) < 2:
             raise ValueError("DVHBins needs at least 2 bin edges (1 bin)")
         if len(dv) != len(edges) - 1:
@@ -76,11 +87,6 @@ class DVHBins:
         # A1: Differential volumes must be non-negative
         if np.any(dv < 0):
             raise ValueError("differential_volume_cc values must be non-negative")
-        # A1: Total volume must be strictly positive
-        if self.total_volume_cc <= 0:
-            raise ValueError(
-                f"total_volume_cc must be strictly positive, got {self.total_volume_cc}"
-            )
         # A4: Sum of differential volumes must not exceed total volume
         dv_sum = float(np.sum(dv))
         if dv_sum > self.total_volume_cc * (1.0 + 1e-9):
@@ -181,6 +187,9 @@ class DVHBins:
         )
 
 
+_VALID_UNITS = frozenset(u.value for u in OutputUnit)
+
+
 @dataclass(frozen=True, slots=True)
 class MetricResult:
     """Result for a single computed metric.
@@ -193,6 +202,22 @@ class MetricResult:
     unit: str
     convergence_estimate: float | None = None
     issues: tuple[Issue, ...] = ()
+
+    def __post_init__(self) -> None:
+        # Coerce list to tuple
+        if isinstance(self.issues, list):
+            object.__setattr__(self, "issues", tuple(self.issues))
+        if self.value is not None:
+            validate_finite("MetricResult.value", self.value)
+        if self.convergence_estimate is not None:
+            validate_nonneg_finite(
+                "MetricResult.convergence_estimate", self.convergence_estimate
+            )
+        if self.unit not in _VALID_UNITS:
+            raise ValueError(
+                f"MetricResult.unit must be one of {sorted(_VALID_UNITS)}, "
+                f"got {self.unit!r}"
+            )
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -228,6 +253,42 @@ class ROIDiagnostics:
     contour_slice_count: int = 0
     endcap_volume_fraction: float | None = None
     computation_time_s: float | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            self.effective_supersampling is not None
+            and self.effective_supersampling < 1
+        ):
+            raise ValueError(
+                f"effective_supersampling must be >= 1, "
+                f"got {self.effective_supersampling}"
+            )
+        if self.boundary_voxel_count is not None and self.boundary_voxel_count < 0:
+            raise ValueError(
+                f"boundary_voxel_count must be non-negative, "
+                f"got {self.boundary_voxel_count}"
+            )
+        if self.interior_voxel_count is not None and self.interior_voxel_count < 0:
+            raise ValueError(
+                f"interior_voxel_count must be non-negative, "
+                f"got {self.interior_voxel_count}"
+            )
+        if self.mean_boundary_gradient_gy_per_mm is not None:
+            validate_nonneg_finite(
+                "mean_boundary_gradient_gy_per_mm",
+                self.mean_boundary_gradient_gy_per_mm,
+            )
+        if self.contour_slice_count < 0:
+            raise ValueError(
+                f"contour_slice_count must be non-negative, "
+                f"got {self.contour_slice_count}"
+            )
+        if self.endcap_volume_fraction is not None:
+            validate_in_range(
+                "endcap_volume_fraction", self.endcap_volume_fraction, 0.0, 1.0
+            )
+        if self.computation_time_s is not None:
+            validate_nonneg_finite("computation_time_s", self.computation_time_s)
 
     def to_dict(self) -> dict:
         d: dict = {"contour_slice_count": self.contour_slice_count}
@@ -275,6 +336,11 @@ class ROIResult:
     def __post_init__(self) -> None:
         if isinstance(self.status, str):
             object.__setattr__(self, "status", ROIStatus(self.status))
+        # Coerce lists to tuples for true immutability
+        if isinstance(self.metrics, list):
+            object.__setattr__(self, "metrics", tuple(self.metrics))
+        if isinstance(self.issues, list):
+            object.__setattr__(self, "issues", tuple(self.issues))
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -388,11 +454,22 @@ class ProvenanceRecord:
     platform: PlatformInfo | None = None
 
     def __post_init__(self) -> None:
-        if self.timestamp_utc and not _ISO8601_UTC_RE.match(self.timestamp_utc):
-            raise ValueError(
-                f"timestamp_utc must be ISO 8601 UTC (ending in 'Z'), "
-                f"got '{self.timestamp_utc}'"
-            )
+        if self.timestamp_utc:
+            if not _ISO8601_UTC_RE.match(self.timestamp_utc):
+                raise ValueError(
+                    f"timestamp_utc must be ISO 8601 UTC (ending in 'Z'), "
+                    f"got '{self.timestamp_utc}'"
+                )
+            # Parse to verify it is a valid datetime, not just pattern match
+            try:
+                datetime.datetime.fromisoformat(
+                    self.timestamp_utc.replace("Z", "+00:00")
+                )
+            except ValueError as e:
+                raise ValueError(
+                    f"timestamp_utc is not a valid ISO 8601 datetime: "
+                    f"'{self.timestamp_utc}': {e}"
+                ) from e
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -445,10 +522,12 @@ class DVHResultSet:
                 f"Unsupported schema_version '{self.schema_version}'. "
                 f"Supported: {sorted(_SUPPORTED_SCHEMA_VERSIONS)}"
             )
-        if self.computation_time_s < 0:
-            raise ValueError(
-                f"computation_time_s must be >= 0, got {self.computation_time_s}"
-            )
+        validate_nonneg_finite("computation_time_s", self.computation_time_s)
+        # Coerce lists to tuples for true immutability
+        if isinstance(self.results, list):
+            object.__setattr__(self, "results", tuple(self.results))
+        if isinstance(self.issues, list):
+            object.__setattr__(self, "issues", tuple(self.issues))
 
     def by_name(self, name: str) -> ROIResult:
         """Look up an ROIResult by name.

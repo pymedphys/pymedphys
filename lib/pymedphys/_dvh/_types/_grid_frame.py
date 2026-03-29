@@ -31,6 +31,8 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
+from pymedphys._dvh._types._validators import validate_finite_array
+
 
 @dataclass(frozen=True, slots=True, eq=False)
 class GridFrame:
@@ -68,6 +70,7 @@ class GridFrame:
                 f"Affine must be (4, 4), got {self.index_to_patient_mm.shape}"
             )
         aff = np.array(self.index_to_patient_mm, dtype=np.float64)
+        validate_finite_array("index_to_patient_mm", aff)
 
         # Validate bottom row is [0, 0, 0, 1]
         if not np.allclose(aff[3, :], [0, 0, 0, 1]):
@@ -84,10 +87,15 @@ class GridFrame:
                 f"(dz={col_norms[0]}, dy={col_norms[1]}, dx={col_norms[2]})"
             )
 
-        # Validate axis-aligned: the 3x3 rotation sub-matrix must have
-        # exactly one non-zero entry per row and per column.
+        # Validate axis-aligned with fixed semantic mapping:
+        #   column 0 (iz) -> patient z (row 2)
+        #   column 1 (iy) -> patient y (row 1)
+        #   column 2 (ix) -> patient x (row 0)
+        # Sign flips are allowed; axis permutation is not.
         rot = aff[:3, :3]
         mask = np.abs(rot) > 1e-12
+
+        # First check basic axis-alignment: one nonzero per row/column
         for i in range(3):
             if np.count_nonzero(mask[i, :]) != 1:
                 raise ValueError(
@@ -100,6 +108,24 @@ class GridFrame:
                     "Only axis-aligned grids are currently supported. "
                     f"Column {i} of the affine rotation sub-matrix has "
                     f"multiple non-zero entries: {rot[:, i]}"
+                )
+
+        # Enforce fixed axis semantics (no permutation):
+        # col 0 (iz step) must have its nonzero in row 2 (patient z)
+        # col 1 (iy step) must have its nonzero in row 1 (patient y)
+        # col 2 (ix step) must have its nonzero in row 0 (patient x)
+        expected_rows = {0: 2, 1: 1, 2: 0}  # col -> expected row
+        for col, expected_row in expected_rows.items():
+            nonzero_row = int(np.argmax(mask[:, col]))
+            if nonzero_row != expected_row:
+                axis_names = {0: "z", 1: "y", 2: "x"}
+                idx_names = {0: "iz", 1: "iy", 2: "ix"}
+                raise ValueError(
+                    f"Axis permutation not allowed: column {col} "
+                    f"({idx_names[col]}) must map to patient "
+                    f"{axis_names[expected_row]}, but maps to patient "
+                    f"{axis_names[nonzero_row]}. "
+                    f"Use from_uniform() to construct standard grids."
                 )
 
         aff.flags.writeable = False

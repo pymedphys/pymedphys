@@ -1,4 +1,9 @@
-"""Geometry / structure types (RFC section 6.7)."""
+"""Geometry / structure types (RFC section 6.7).
+
+Validation covers structural correctness and orientation normalisation.
+Full geometric validation (self-intersection, repeated vertices, hole
+containment) is not yet implemented.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,7 @@ import numpy as np
 import numpy.typing as npt
 
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import validate_finite_array
 
 
 class CombinationMode(str, Enum):
@@ -67,6 +73,7 @@ class Contour:
         if not np.isfinite(self.z_mm):
             raise ValueError(f"z_mm must be finite, got {self.z_mm}")
         pts = np.array(self.points_xy, dtype=np.float64)
+        validate_finite_array("Contour.points_xy", pts, ndim=2)
         pts.flags.writeable = False
         object.__setattr__(self, "points_xy", pts)
 
@@ -108,6 +115,7 @@ class PlanarRegion:
 
     def __post_init__(self) -> None:
         ext = np.array(self.exterior_xy_mm, dtype=np.float64)
+        validate_finite_array("PlanarRegion.exterior_xy_mm", ext, ndim=2)
         # D7: Validate exterior is CCW (positive signed area)
         ext_area = _signed_area(ext)
         if ext_area <= 0:
@@ -121,6 +129,7 @@ class PlanarRegion:
         validated_holes = []
         for i, h in enumerate(self.holes_xy_mm):
             hc = np.array(h, dtype=np.float64)
+            validate_finite_array(f"PlanarRegion.holes_xy_mm[{i}]", hc, ndim=2)
             # D7: Validate each hole is CW (negative signed area)
             hole_area = _signed_area(hc)
             if hole_area >= 0:

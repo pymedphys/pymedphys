@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Mapping
+
+from pymedphys._dvh._types._validators import validate_positive_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,8 +32,7 @@ class DoseReference:
     _SOURCE_RE = re.compile(r"[a-zA-Z]{3,}")
 
     def __post_init__(self) -> None:
-        if self.dose_gy <= 0:
-            raise ValueError(f"Reference dose must be positive, got {self.dose_gy}")
+        validate_positive_finite("DoseReference.dose_gy", self.dose_gy)
         stripped = self.source.strip()
         if not stripped:
             raise ValueError(
@@ -69,12 +72,12 @@ class DoseReferenceSet:
         Key into ``refs`` for the default reference.
     """
 
-    refs: dict[str, DoseReference]
+    refs: Mapping[str, DoseReference]
     default_id: str | None = None
 
     def __post_init__(self) -> None:
-        # Defensive copy to preserve immutability
-        object.__setattr__(self, "refs", dict(self.refs))
+        # Defensive copy wrapped in MappingProxyType for true immutability
+        object.__setattr__(self, "refs", MappingProxyType(dict(self.refs)))
         if not self.refs:
             raise ValueError("DoseReferenceSet must contain at least one reference")
         if self.default_id is not None and self.default_id not in self.refs:
