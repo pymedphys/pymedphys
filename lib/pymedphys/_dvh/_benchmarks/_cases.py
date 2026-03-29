@@ -10,6 +10,7 @@ See RFC §8.1.1, §8.1.2 for specification.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Mapping
 
 import numpy as np
@@ -68,7 +69,7 @@ def _make_case(
     return BenchmarkCase(
         case_id=case_id,
         shape=shape,
-        parameters=dict(parameters),
+        parameters=MappingProxyType(dict(parameters)),
         expected_volume_mm3=volume_mm3,
         expected_volume_cc=mm3_to_cc(volume_mm3),
         tolerance_policy=tolerance_policy,

@@ -194,7 +194,17 @@ class GridFrame:
     @classmethod
     def from_dict(cls, d: dict) -> GridFrame:
         """Deserialise from a plain dict."""
+        raw_shape = d["shape_zyx"]
+        coerced = []
+        for v in raw_shape:
+            fv = float(v)
+            iv = int(fv)
+            if fv != iv:
+                raise ValueError(f"shape_zyx values must be integers, got {v!r}")
+            if iv <= 0:
+                raise ValueError(f"shape_zyx values must be positive, got {iv}")
+            coerced.append(iv)
         return cls(
-            shape_zyx=tuple(int(v) for v in d["shape_zyx"]),
+            shape_zyx=tuple(coerced),
             index_to_patient_mm=np.array(d["index_to_patient_mm"], dtype=np.float64),
         )

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from typing import FrozenSet, Literal, Optional, get_args
 
@@ -14,7 +14,7 @@ from pymedphys._dvh._types._config import DVHConfig
 from pymedphys._dvh._types._dose_ref import DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue
-from pymedphys._dvh._types._metrics import MetricSpec
+from pymedphys._dvh._types._metrics import MetricSpec, OutputUnit
 from pymedphys._dvh._types._roi_ref import ROIRef
 from pymedphys._dvh._types._validators import (
     _validate_nonneg_array,
@@ -25,10 +25,6 @@ from pymedphys._dvh._types._validators import (
 
 _SUPPORTED_SCHEMA_VERSIONS = frozenset({"1.0"})
 
-_ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
-)
-
 
 class ROIStatus(str, Enum):
     """Status of an ROI computation result."""
@@ -38,8 +34,9 @@ class ROIStatus(str, Enum):
     FAILED = "failed"
 
 
-# Valid unit families for MetricResult validation
-_VALID_METRIC_UNITS = frozenset({"Gy", "%Rx", "cc", "%vol", "dimensionless", ""})
+# Valid unit strings for MetricResult, derived from OutputUnit enum
+# plus "" for metrics where no unit applies (e.g. failed computations).
+_VALID_METRIC_UNITS = frozenset({u.value for u in OutputUnit} | {""})
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -575,12 +572,21 @@ class ProvenanceRecord:
     inapplicable_settings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if self.timestamp_utc and not _ISO8601_PATTERN.match(self.timestamp_utc):
-            raise ValueError(
-                f"ProvenanceRecord.timestamp_utc must be a valid ISO 8601 "
-                f"timestamp (e.g. '2024-01-15T10:30:00Z'), "
-                f"got {self.timestamp_utc!r}"
-            )
+        if self.timestamp_utc:
+            try:
+                dt = datetime.fromisoformat(self.timestamp_utc)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"ProvenanceRecord.timestamp_utc must be a valid ISO 8601 "
+                    f"timestamp (e.g. '2024-01-15T10:30:00Z'), "
+                    f"got {self.timestamp_utc!r}"
+                ) from None
+            if dt.tzinfo is None:
+                raise ValueError(
+                    f"ProvenanceRecord.timestamp_utc must include a timezone "
+                    f"designator (e.g. 'Z' or '+05:30'), "
+                    f"got {self.timestamp_utc!r}"
+                )
 
     def to_dict(self) -> dict:
         d: dict = {

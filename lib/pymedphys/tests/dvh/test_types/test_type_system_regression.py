@@ -109,9 +109,51 @@ class TestIndexMetricParsing:
         )
         assert spec.requires_dose_ref is True
 
+    def test_implicit_index_metric_inference_from_raw(self) -> None:
+        """__post_init__ infers IndexMetric from raw when not explicitly set."""
+        spec = MetricSpec(
+            family=MetricFamily.INDEX,
+            output_unit=OutputUnit.DIMENSIONLESS,
+            raw="CI",
+        )
+        assert spec.index_metric == IndexMetric.CI
+        assert spec.requires_dose_ref is True
+
+    def test_implicit_hi_inference_does_not_require_dose_ref(self) -> None:
+        """HI inferred from raw should not require a dose ref."""
+        spec = MetricSpec(
+            family=MetricFamily.INDEX,
+            output_unit=OutputUnit.DIMENSIONLESS,
+            raw="HI",
+        )
+        assert spec.index_metric == IndexMetric.HI
+        assert spec.requires_dose_ref is False
+
 
 class TestPerMetricDoseRef:
     """Tests for per-metric dose_ref_id override."""
+
+    def test_metric_level_invalid_dose_ref_id_raises(self) -> None:
+        """MetricSpec with unknown dose_ref_id should raise ValueError."""
+        dose_refs = DoseReferenceSet(
+            refs={
+                "ptv60": DoseReference(60.0, "PTV60 prescription dose"),
+            },
+            default_id="ptv60",
+        )
+        spec = MetricSpec(
+            family=MetricFamily.INDEX,
+            output_unit=OutputUnit.DIMENSIONLESS,
+            raw="CI",
+            index_metric=IndexMetric.CI,
+            dose_ref_id="missing",
+        )
+        req = ROIMetricRequest(
+            roi=ROIRef(name="PTV"),
+            metrics=(spec,),
+        )
+        with pytest.raises(ValueError, match="missing.*not found"):
+            MetricRequestSet(roi_requests=(req,), dose_refs=dose_refs)
 
     def test_metric_level_dose_ref_overrides_roi(self) -> None:
         """metric.dose_ref_id takes precedence over roi_request.dose_ref_id."""
@@ -313,11 +355,11 @@ class TestProvenanceTimestampValidation:
             ProvenanceRecord(timestamp_utc="not-a-timestamp")
 
     def test_rejects_date_only(self) -> None:
-        with pytest.raises(ValueError, match="ISO 8601"):
+        with pytest.raises(ValueError, match="timezone"):
             ProvenanceRecord(timestamp_utc="2024-01-15")
 
     def test_rejects_timestamp_without_timezone(self) -> None:
-        with pytest.raises(ValueError, match="ISO 8601"):
+        with pytest.raises(ValueError, match="timezone"):
             ProvenanceRecord(timestamp_utc="2024-01-15T10:30:00")
 
 
@@ -356,7 +398,8 @@ class TestMetricResultValidation:
             MetricResult(spec=self._make_spec(), value=1.0, unit="invalid_unit")
 
     def test_accepts_valid_units(self) -> None:
-        for unit in ("Gy", "%Rx", "cc", "%vol", "dimensionless", ""):
+        # Valid units are derived from OutputUnit enum values plus ""
+        for unit in ("Gy", "percent_dose", "cc", "percent_vol", "dimensionless", ""):
             r = MetricResult(spec=self._make_spec(), value=1.0, unit=unit)
             assert r.unit == unit
 
@@ -452,6 +495,14 @@ class TestDoseReferenceSetImmutability:
                 10.0, "should not work"
             )
 
+    def test_rejects_empty_string_key(self) -> None:
+        with pytest.raises(ValueError, match="non-empty"):
+            DoseReferenceSet(refs={"": DoseReference(60.0, "valid source text")})
+
+    def test_rejects_whitespace_only_key(self) -> None:
+        with pytest.raises(ValueError, match="non-empty"):
+            DoseReferenceSet(refs={"   ": DoseReference(60.0, "valid source text")})
+
 
 # ── Item 5: GridFrame.from_dict() integer coercion ────────────────
 
@@ -486,6 +537,33 @@ class TestGridFrameFromDictIntegerCoercion:
         }
         gf = GridFrame.from_dict(d)
         assert gf.shape_zyx == (5, 5, 5)
+
+    def test_rejects_non_integer_shape(self) -> None:
+        """Non-integer shape values (e.g. 5.5) should be rejected, not truncated."""
+        d = {
+            "shape_zyx": [5.5, 10, 20],
+            "index_to_patient_mm": [
+                [0, 0, 1.0, 0],
+                [0, 1.0, 0, 0],
+                [1.0, 0, 0, 0],
+                [0, 0, 0, 1],
+            ],
+        }
+        with pytest.raises(ValueError, match="integers"):
+            GridFrame.from_dict(d)
+
+    def test_rejects_negative_shape_in_from_dict(self) -> None:
+        d = {
+            "shape_zyx": [-5, 10, 20],
+            "index_to_patient_mm": [
+                [0, 0, 1.0, 0],
+                [0, 1.0, 0, 0],
+                [1.0, 0, 0, 0],
+                [0, 0, 0, 1],
+            ],
+        }
+        with pytest.raises(ValueError, match="positive"):
+            GridFrame.from_dict(d)
 
 
 class TestGridFrameAxisPermutationPolicy:
