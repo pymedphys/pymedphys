@@ -373,7 +373,7 @@ class TestDVHBinsValidation:
 
     def test_rejects_zero_total_volume(self) -> None:
         """A1: Zero total volume causes division by zero."""
-        with pytest.raises(ValueError, match="strictly positive"):
+        with pytest.raises(ValueError, match="positive"):
             DVHBins(
                 dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
                 differential_volume_cc=np.array([0.0, 0.0]),
@@ -382,7 +382,7 @@ class TestDVHBinsValidation:
 
     def test_rejects_negative_total_volume(self) -> None:
         """A1: Negative total volume is physically meaningless."""
-        with pytest.raises(ValueError, match="strictly positive"):
+        with pytest.raises(ValueError, match="positive"):
             DVHBins(
                 dose_bin_edges_gy=np.array([0.0, 1.0, 2.0]),
                 differential_volume_cc=np.array([1.0, 1.0]),

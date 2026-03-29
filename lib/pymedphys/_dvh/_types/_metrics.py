@@ -21,6 +21,7 @@ from enum import Enum
 
 from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import validate_nonneg_finite
 
 
 class MetricFamily(str, Enum):
@@ -126,10 +127,8 @@ class MetricSpec:
     raw: str = ""
 
     def __post_init__(self) -> None:
-        if self.threshold is not None and self.threshold < 0:
-            raise ValueError(
-                f"Metric threshold must be non-negative, got {self.threshold}"
-            )
+        if self.threshold is not None:
+            validate_nonneg_finite("MetricSpec.threshold", self.threshold)
         if self.family == MetricFamily.INDEX and self.index_metric is None:
             # Auto-derive from raw for backward compatibility
             if self.raw in {m.value for m in IndexMetric}:
@@ -334,6 +333,9 @@ class ROIMetricRequest:
     dose_ref_id: str | None = None
 
     def __post_init__(self) -> None:
+        # Coerce list to tuple for true immutability
+        if isinstance(self.metrics, list):
+            object.__setattr__(self, "metrics", tuple(self.metrics))
         if not self.metrics:
             raise ValueError(f"ROI '{self.roi}' must have at least one metric")
         keys = [m.canonical_key for m in self.metrics]
@@ -391,22 +393,55 @@ class MetricRequestSet:
     dose_refs: DoseReferenceSet | None = None
 
     def __post_init__(self) -> None:
-        # F2: Set-based duplicate ROI detection for O(n) average case.
-        # We check by name (for ROIs without numbers) and by number
-        # (for ROIs with numbers) separately.
-        seen_names: set[str] = set()
-        seen_numbers: set[int] = set()
+        # Coerce list to tuple for true immutability
+        if isinstance(self.roi_requests, list):
+            object.__setattr__(self, "roi_requests", tuple(self.roi_requests))
+        # Duplicate ROI detection using ROIRef.matches() semantics:
+        # match by roi_number if both have one, otherwise by name.
+        #
+        # O(n) set-based approach — provably equivalent to pairwise
+        # matches() for all (A, B) pairs:
+        #   Case 1: both numbered → collision iff same number →
+        #           caught by seen_numbers.
+        #   Case 2: both unnumbered → collision iff same name →
+        #           caught by seen_unnumbered_names.
+        #   Case 3: one numbered, one not → collision iff same name →
+        #           caught by cross-checks between seen_numbered_names
+        #           and seen_unnumbered_names.
+        seen_numbers: dict[int, ROIRef] = {}
+        seen_unnumbered_names: dict[str, ROIRef] = {}
+        seen_numbered_names: dict[str, ROIRef] = {}
         for rr in self.roi_requests:
-            if rr.roi.roi_number is not None:
-                if rr.roi.roi_number in seen_numbers:
+            ref = rr.roi
+            if ref.roi_number is not None:
+                # Check against other numbered ROIs by number
+                if ref.roi_number in seen_numbers:
                     raise ValueError(
-                        f"Duplicate ROI in request: roi_number={rr.roi.roi_number}"
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_numbers[ref.roi_number]}'"
                     )
-                seen_numbers.add(rr.roi.roi_number)
+                # Check against unnumbered ROIs by name (mixed case)
+                if ref.name in seen_unnumbered_names:
+                    raise ValueError(
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_unnumbered_names[ref.name]}'"
+                    )
+                seen_numbers[ref.roi_number] = ref
+                seen_numbered_names[ref.name] = ref
             else:
-                if rr.roi.name in seen_names:
-                    raise ValueError(f"Duplicate ROI in request: '{rr.roi.name}'")
-                seen_names.add(rr.roi.name)
+                # Check against other unnumbered ROIs by name
+                if ref.name in seen_unnumbered_names:
+                    raise ValueError(
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_unnumbered_names[ref.name]}'"
+                    )
+                # Check against numbered ROIs by name (mixed case)
+                if ref.name in seen_numbered_names:
+                    raise ValueError(
+                        f"Duplicate ROI in request: '{ref}' and "
+                        f"'{seen_numbered_names[ref.name]}'"
+                    )
+                seen_unnumbered_names[ref.name] = ref
         for rr in self.roi_requests:
             for m in rr.metrics:
                 if m.requires_dose_ref:
@@ -424,31 +459,29 @@ class MetricRequestSet:
                             f"Metric '{m.raw}' for ROI '{rr.roi}': {e}"
                         ) from e
 
-    def to_dict(self) -> dict:
-        """Serialise to a dict compatible with ``from_dict()``.
+    @property
+    def default_dose_ref(self) -> str | None:
+        """Default dose reference id, if any."""
+        if self.dose_refs is None:
+            return None
+        return self.dose_refs.default_id
 
-        Uses the rich format with explicit dose_refs and per-ROI
-        metric dicts.
+    def to_dict(self) -> dict:
+        """Serialise to a lossless canonical dict.
+
+        The canonical format uses ``roi_requests`` — a list of explicit
+        ``ROIMetricRequest.to_dict()`` entries — so that duplicate ROI
+        names, per-metric metadata, and per-ROI dose_ref_ids are all
+        preserved without loss.
+
+        The legacy ``metrics`` name-keyed format is accepted only as an
+        input convenience in ``from_dict()``.
         """
-        d: dict = {}
+        d: dict = {
+            "roi_requests": [rr.to_dict() for rr in self.roi_requests],
+        }
         if self.dose_refs is not None:
-            d["dose_refs"] = {
-                k: {"dose_gy": v.dose_gy, "source": v.source}
-                for k, v in self.dose_refs.refs.items()
-            }
-            if self.dose_refs.default_id is not None:
-                d["default_dose_ref"] = self.dose_refs.default_id
-        metrics: dict = {}
-        for rr in self.roi_requests:
-            entry: dict = {
-                "metrics": [m.raw for m in rr.metrics],
-            }
-            if rr.roi.roi_number is not None:
-                entry["roi_number"] = rr.roi.roi_number
-            if rr.dose_ref_id is not None:
-                entry["dose_ref"] = rr.dose_ref_id
-            metrics[rr.roi.name] = entry
-        d["metrics"] = metrics
+            d["dose_refs"] = self.dose_refs.to_dict()
         return d
 
     @property
@@ -458,20 +491,37 @@ class MetricRequestSet:
 
     @classmethod
     def from_dict(cls, d: dict) -> MetricRequestSet:
-        """Construct from a compact dict representation.
+        """Construct from a dict representation.
 
-        Supports both simple (single dose ref) and rich (SIB) formats.
-        See RFC section 6.5 for full schema.
+        Accepts two formats:
+
+        **Canonical** (lossless, emitted by ``to_dict()``):
+            ``{"dose_refs": ..., "default_dose_ref": ..., "roi_requests": [...]}``
+
+        **Legacy/compact** (for hand-authored TOML or backwards compat):
+            ``{"metrics": {roi_name: [metric_strings] | {metrics: [...], ...}}, ...}``
+            with optional ``dose_refs``, ``dose_ref_gy``, ``dose_ref_source``.
         """
+        # --- Dose references ---
         dose_refs = None
-        if "dose_refs" in d:
-            refs = {
-                k: DoseReference(dose_gy=v["dose_gy"], source=v["source"])
-                for k, v in d["dose_refs"].items()
-            }
-            dose_refs = DoseReferenceSet(
-                refs=refs, default_id=d.get("default_dose_ref")
-            )
+        dose_refs_raw = d.get("dose_refs")
+        if dose_refs_raw is not None:
+            # Canonical format: dose_refs is a DoseReferenceSet.to_dict()
+            # which has {"refs": {id: {...}, ...}, "default_id": ...}.
+            # Legacy format has {id: {"dose_gy": ..., "source": ...}}.
+            # Distinguish by checking whether "refs" maps to a dict of
+            # dicts (canonical) vs a flat value dict (legacy ID named "refs").
+            if "refs" in dose_refs_raw and isinstance(dose_refs_raw["refs"], dict):
+                dose_refs = DoseReferenceSet.from_dict(dose_refs_raw)
+            else:
+                # Legacy format: dose_refs is {id: {dose_gy, source}}
+                refs = {
+                    k: DoseReference(dose_gy=v["dose_gy"], source=v["source"])
+                    for k, v in dose_refs_raw.items()
+                }
+                dose_refs = DoseReferenceSet(
+                    refs=refs, default_id=d.get("default_dose_ref")
+                )
         elif "dose_ref_gy" in d:
             source = d.get("dose_ref_source")
             if not source or not source.strip():
@@ -480,21 +530,36 @@ class MetricRequestSet:
                 )
             dose_refs = DoseReferenceSet.single(dose_gy=d["dose_ref_gy"], source=source)
 
-        roi_requests = []
-        for roi_key, spec in d["metrics"].items():
-            if isinstance(spec, list):
-                roi_requests.append(ROIMetricRequest.from_strings(roi_key, spec))
-            elif isinstance(spec, dict):
-                roi_requests.append(
-                    ROIMetricRequest.from_strings(
-                        roi_key,
-                        spec["metrics"],
-                        roi_number=spec.get("roi_number"),
-                        dose_ref_id=spec.get("dose_ref"),
+        # --- ROI requests ---
+        if "roi_requests" in d:
+            # Canonical format
+            roi_requests = tuple(
+                ROIMetricRequest.from_dict(rr) for rr in d["roi_requests"]
+            )
+        elif "metrics" in d:
+            # Legacy compact format
+            roi_list: list[ROIMetricRequest] = []
+            for roi_key, spec in d["metrics"].items():
+                if isinstance(spec, list):
+                    roi_list.append(ROIMetricRequest.from_strings(roi_key, spec))
+                elif isinstance(spec, dict):
+                    roi_list.append(
+                        ROIMetricRequest.from_strings(
+                            roi_key,
+                            spec["metrics"],
+                            roi_number=spec.get("roi_number"),
+                            dose_ref_id=spec.get("dose_ref"),
+                        )
                     )
-                )
+            roi_requests = tuple(roi_list)
+        else:
+            raise ValueError(
+                "MetricRequestSet.from_dict() requires either 'roi_requests' "
+                "(canonical) or 'metrics' (legacy) key"
+            )
+
         return cls(
-            roi_requests=tuple(roi_requests),
+            roi_requests=roi_requests,
             dose_refs=dose_refs,
         )
 

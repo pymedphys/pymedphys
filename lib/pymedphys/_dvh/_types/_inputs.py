@@ -4,19 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy.typing as npt
-
 from pymedphys._dvh._types._contour import ContourROI
 from pymedphys._dvh._types._dose import DoseGrid
-from pymedphys._dvh._types._grid_frame import GridFrame
 
 
 @dataclass(frozen=True, slots=True)
 class DVHInputs:
     """Typed input bundle for DVH computation.
 
-    Use the named constructors to build inputs from DICOM paths
-    or raw NumPy arrays.
+    Construction from DICOM files or raw arrays will be added in a
+    later phase. For now, build instances directly.
 
     Parameters
     ----------
@@ -35,37 +32,6 @@ class DVHInputs:
     rtstruct_path: str | None = None
     rtdose_path: str | None = None
 
-    @classmethod
-    def from_dicom(
-        cls,
-        rtstruct_path: str,
-        rtdose_path: str,
-        roi_names: list[str] | None = None,
-        # TODO (Phase 4): policy should be PipelinePolicy, not object
-        policy: object | None = None,
-    ) -> DVHInputs:
-        """Load from DICOM RTSTRUCT + RTDOSE files.
-
-        Not yet implemented — requires Phase 4.
-        """
-        raise NotImplementedError(
-            "DVHInputs.from_dicom() is not yet implemented (Phase 4)"
-        )
-
-    @classmethod
-    def from_arrays(
-        cls,
-        # TODO (Phase 4): dose_gy should be npt.NDArray[np.float64]
-        dose_gy: npt.ArrayLike,
-        # TODO (Phase 4): structures should be dict[str, ContourROI]
-        structures: dict[str, object],
-        # TODO (Phase 4): frame should be GridFrame
-        frame: GridFrame | object,
-    ) -> DVHInputs:
-        """Build from raw NumPy arrays.
-
-        Not yet implemented — requires Phase 4.
-        """
-        raise NotImplementedError(
-            "DVHInputs.from_arrays() is not yet implemented (Phase 4)"
-        )
+    def __post_init__(self) -> None:
+        if isinstance(self.structures, list):
+            object.__setattr__(self, "structures", tuple(self.structures))

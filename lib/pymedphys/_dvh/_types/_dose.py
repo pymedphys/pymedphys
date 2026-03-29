@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 
 from pymedphys._dvh._types._grid_frame import GridFrame
+from pymedphys._dvh._types._validators import validate_finite_array
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -38,12 +39,14 @@ class DoseGrid:
                 f"Dose shape {self.dose_gy.shape} != frame shape {expected}"
             )
         d = np.array(self.dose_gy, dtype=np.float64)
+        validate_finite_array("DoseGrid.dose_gy", d, ndim=3)
         d.flags.writeable = False
         object.__setattr__(self, "dose_gy", d)
         if self.uncertainty_gy is not None:
             if self.uncertainty_gy.shape != expected:
                 raise ValueError("Uncertainty shape must match dose shape")
             u = np.array(self.uncertainty_gy, dtype=np.float64)
+            validate_finite_array("DoseGrid.uncertainty_gy", u, ndim=3)
             u.flags.writeable = False
             object.__setattr__(self, "uncertainty_gy", u)
 

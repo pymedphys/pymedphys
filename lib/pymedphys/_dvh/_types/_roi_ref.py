@@ -37,6 +37,11 @@ class ROIRef:
         if not self.name.strip():
             raise ValueError("ROI name must be non-empty")
         if self.colour_rgb is not None:
+            if len(self.colour_rgb) != 3:
+                raise ValueError(
+                    f"colour_rgb must have exactly 3 elements, "
+                    f"got {len(self.colour_rgb)}"
+                )
             for i, c in enumerate(self.colour_rgb):
                 if not (0 <= c <= 255):
                     raise ValueError(

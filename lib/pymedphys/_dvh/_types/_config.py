@@ -6,6 +6,11 @@ import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 
+from pymedphys._dvh._types._validators import (
+    validate_nonneg_finite,
+    validate_positive_finite,
+)
+
 
 class InterpolationMethod(str, Enum):
     """Between-slice contour interpolation method."""
@@ -100,8 +105,9 @@ class SupersamplingConfig:
             raise ValueError(f"Supersampling factor must be >= 1, got {self.factor}")
         if self.adaptive_min_voxels < 1:
             raise ValueError("adaptive_min_voxels must be >= 1")
-        if self.adaptive_convergence_tol <= 0:
-            raise ValueError("adaptive_convergence_tol must be positive")
+        validate_positive_finite(
+            "adaptive_convergence_tol", self.adaptive_convergence_tol
+        )
 
     @classmethod
     def adaptive(
@@ -167,10 +173,7 @@ class AlgorithmConfig:
     floating_point_precision: FloatingPointPrecision = FloatingPointPrecision.FLOAT64
 
     def __post_init__(self) -> None:
-        if self.dvh_bin_width_gy <= 0:
-            raise ValueError(
-                f"dvh_bin_width_gy must be positive, got {self.dvh_bin_width_gy}"
-            )
+        validate_positive_finite("dvh_bin_width_gy", self.dvh_bin_width_gy)
         if (
             self.endcap_policy == EndCapPolicy.HALF_SLICE_CAPPED
             and self.endcap_max_mm is None
@@ -254,10 +257,7 @@ class RuntimeConfig:
     batch_size_gb: float = 12.0
 
     def __post_init__(self) -> None:
-        if self.batch_size_gb <= 0:
-            raise ValueError(
-                f"batch_size_gb must be positive, got {self.batch_size_gb}"
-            )
+        validate_positive_finite("batch_size_gb", self.batch_size_gb)
         if self.max_threads is not None and self.max_threads < 1:
             raise ValueError(f"max_threads must be >= 1, got {self.max_threads}")
 
@@ -288,6 +288,9 @@ class PipelinePolicy:
     invalid_roi_policy: InvalidROIPolicy = InvalidROIPolicy.REPAIR_IF_SAFE
     anonymise_provenance: bool = False
     z_tolerance_mm: float = 0.01
+
+    def __post_init__(self) -> None:
+        validate_nonneg_finite("z_tolerance_mm", self.z_tolerance_mm)
 
     def to_dict(self) -> dict:
         """Serialise to a plain dict."""
