@@ -14,19 +14,16 @@ regress:
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 import pytest
 
 from pymedphys._dvh._types._config import (
     AlgorithmConfig,
-    DVHConfig,
     PipelinePolicy,
     RuntimeConfig,
     SupersamplingConfig,
 )
-from pymedphys._dvh._types._contour import Contour, PlanarRegion
+from pymedphys._dvh._types._contour import Contour
 from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue, IssueCode, IssueLevel
