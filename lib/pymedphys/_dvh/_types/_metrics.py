@@ -21,6 +21,7 @@ from enum import Enum
 
 from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._roi_ref import ROIRef
+from pymedphys._dvh._types._validators import validate_nonneg_finite
 
 
 class MetricFamily(str, Enum):
@@ -126,10 +127,8 @@ class MetricSpec:
     raw: str = ""
 
     def __post_init__(self) -> None:
-        if self.threshold is not None and self.threshold < 0:
-            raise ValueError(
-                f"Metric threshold must be non-negative, got {self.threshold}"
-            )
+        if self.threshold is not None:
+            validate_nonneg_finite("MetricSpec.threshold", self.threshold)
         if self.family == MetricFamily.INDEX and self.index_metric is None:
             # Auto-derive from raw for backward compatibility
             if self.raw in {m.value for m in IndexMetric}:
@@ -400,14 +399,15 @@ class MetricRequestSet:
         # Duplicate ROI detection using ROIRef.matches() semantics:
         # match by roi_number if both have one, otherwise by name.
         #
-        # Set-based O(n) approach with three buckets:
-        #   seen_numbers: numbered ROIs keyed by roi_number
-        #   seen_unnumbered_names: unnumbered ROIs keyed by name
-        #   seen_numbered_names: names claimed by numbered ROIs
-        #
-        # matches() logic:
-        #   Both numbered → compare numbers (same name, different number = OK)
-        #   One or both unnumbered → compare names
+        # O(n) set-based approach — provably equivalent to pairwise
+        # matches() for all (A, B) pairs:
+        #   Case 1: both numbered → collision iff same number →
+        #           caught by seen_numbers.
+        #   Case 2: both unnumbered → collision iff same name →
+        #           caught by seen_unnumbered_names.
+        #   Case 3: one numbered, one not → collision iff same name →
+        #           caught by cross-checks between seen_numbered_names
+        #           and seen_unnumbered_names.
         seen_numbers: dict[int, ROIRef] = {}
         seen_unnumbered_names: dict[str, ROIRef] = {}
         seen_numbered_names: dict[str, ROIRef] = {}
@@ -482,8 +482,6 @@ class MetricRequestSet:
         }
         if self.dose_refs is not None:
             d["dose_refs"] = self.dose_refs.to_dict()
-        if self.default_dose_ref is not None:
-            d["default_dose_ref"] = self.default_dose_ref
         return d
 
     @property
@@ -509,7 +507,11 @@ class MetricRequestSet:
         dose_refs_raw = d.get("dose_refs")
         if dose_refs_raw is not None:
             # Canonical format: dose_refs is a DoseReferenceSet.to_dict()
-            if "refs" in dose_refs_raw:
+            # which has {"refs": {id: {...}, ...}, "default_id": ...}.
+            # Legacy format has {id: {"dose_gy": ..., "source": ...}}.
+            # Distinguish by checking whether "refs" maps to a dict of
+            # dicts (canonical) vs a flat value dict (legacy ID named "refs").
+            if "refs" in dose_refs_raw and isinstance(dose_refs_raw["refs"], dict):
                 dose_refs = DoseReferenceSet.from_dict(dose_refs_raw)
             else:
                 # Legacy format: dose_refs is {id: {dose_gy, source}}

@@ -116,6 +116,7 @@ class GridFrame:
         # col 2 (ix step) must have its nonzero in row 0 (patient x)
         expected_rows = {0: 2, 1: 1, 2: 0}  # col -> expected row
         for col, expected_row in expected_rows.items():
+            # Safe: prior loop guarantees exactly one True per column
             nonzero_row = int(np.argmax(mask[:, col]))
             if nonzero_row != expected_row:
                 axis_names = {0: "x", 1: "y", 2: "z"}

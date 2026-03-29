@@ -66,8 +66,9 @@ class DoseReferenceSet:
 
     Parameters
     ----------
-    refs : dict[str, DoseReference]
-        Named dose references. Must be non-empty.
+    refs : Mapping[str, DoseReference]
+        Named dose references. Must be non-empty. Wrapped in
+        ``MappingProxyType`` at construction for true immutability.
     default_id : str, optional
         Key into ``refs`` for the default reference.
     """

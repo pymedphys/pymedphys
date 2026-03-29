@@ -188,6 +188,9 @@ class ContourROI:
     coordinate_frame: CoordinateFrame = CoordinateFrame.DICOM_PATIENT
 
     def __post_init__(self) -> None:
+        # Coerce list to tuple for true immutability
+        if isinstance(self.slices, list):
+            object.__setattr__(self, "slices", tuple(self.slices))
         # Coerce strings to enum for backward compatibility
         if isinstance(self.combination_mode, str):
             object.__setattr__(

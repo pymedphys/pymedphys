@@ -2,6 +2,10 @@
 
 Provides helpers to reject NaN, Inf, and out-of-range values
 consistently across all domain types.
+
+All scalar validators coerce via ``float()`` for numpy scalar
+compatibility, and return the validated value so callers can use
+``x = validate_positive_finite('x', x)`` patterns.
 """
 
 from __future__ import annotations
@@ -32,6 +36,7 @@ def validate_positive_finite(name: str, value: float) -> float:
     ValueError
         If *value* is non-finite or <= 0.
     """
+    value = float(value)
     if not math.isfinite(value):
         raise ValueError(f"{name} must be finite, got {value!r}")
     if value <= 0:
@@ -59,6 +64,7 @@ def validate_nonneg_finite(name: str, value: float) -> float:
     ValueError
         If *value* is non-finite or < 0.
     """
+    value = float(value)
     if not math.isfinite(value):
         raise ValueError(f"{name} must be finite, got {value!r}")
     if value < 0:
@@ -80,7 +86,13 @@ def validate_finite(name: str, value: float) -> float:
     -------
     float
         The validated value.
+
+    Raises
+    ------
+    ValueError
+        If *value* is non-finite.
     """
+    value = float(value)
     if not math.isfinite(value):
         raise ValueError(f"{name} must be finite, got {value!r}")
     return value
@@ -104,7 +116,13 @@ def validate_in_range(name: str, value: float, lo: float, hi: float) -> float:
     -------
     float
         The validated value.
+
+    Raises
+    ------
+    ValueError
+        If *value* is non-finite or outside [lo, hi].
     """
+    value = float(value)
     if not math.isfinite(value):
         raise ValueError(f"{name} must be finite, got {value!r}")
     if value < lo or value > hi:

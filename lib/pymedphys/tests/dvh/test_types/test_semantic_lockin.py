@@ -31,10 +31,13 @@ from pymedphys._dvh._types._dose_ref import DoseReference, DoseReferenceSet
 from pymedphys._dvh._types._grid_frame import GridFrame
 from pymedphys._dvh._types._issues import Issue, IssueCode, IssueLevel
 from pymedphys._dvh._types._metrics import (
+    MetricFamily,
     MetricRequestSet,
     MetricSpec,
     ROIMetricRequest,
+    ThresholdUnit,
 )
+from pymedphys._dvh._types._dose import DoseGrid
 from pymedphys._dvh._types._occupancy import OccupancyField
 from pymedphys._dvh._types._results import (
     DVHBins,
@@ -491,3 +494,153 @@ class TestROIDiagnosticsValidation:
             computation_time_s=1.5,
         )
         assert diag.contour_slice_count == 10
+
+
+# ---------------------------------------------------------------------------
+# 9. MetricSpec threshold NaN/Inf rejection (review A1)
+# ---------------------------------------------------------------------------
+
+
+class TestMetricSpecThresholdValidation:
+    def test_rejects_nan_threshold(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            MetricSpec(
+                family=MetricFamily.DVH_DOSE,
+                threshold=float("nan"),
+                threshold_unit=ThresholdUnit.PERCENT,
+                raw="test",
+            )
+
+    def test_rejects_inf_threshold(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            MetricSpec(
+                family=MetricFamily.DVH_DOSE,
+                threshold=float("inf"),
+                threshold_unit=ThresholdUnit.PERCENT,
+                raw="test",
+            )
+
+
+# ---------------------------------------------------------------------------
+# 10. DoseGrid NaN/Inf rejection (review A2)
+# ---------------------------------------------------------------------------
+
+
+class TestDoseGridFiniteValidation:
+    @pytest.fixture()
+    def frame(self) -> GridFrame:
+        return GridFrame.from_uniform(
+            shape_zyx=(2, 2, 2),
+            spacing_mm_xyz=(1.0, 1.0, 1.0),
+        )
+
+    def test_rejects_nan_dose(self, frame: GridFrame) -> None:
+        data = np.zeros((2, 2, 2))
+        data[0, 0, 0] = float("nan")
+        with pytest.raises(ValueError, match="non-finite"):
+            DoseGrid(dose_gy=data, frame=frame)
+
+    def test_rejects_inf_dose(self, frame: GridFrame) -> None:
+        data = np.zeros((2, 2, 2))
+        data[0, 0, 0] = float("inf")
+        with pytest.raises(ValueError, match="non-finite"):
+            DoseGrid(dose_gy=data, frame=frame)
+
+    def test_rejects_nan_uncertainty(self, frame: GridFrame) -> None:
+        dose = np.ones((2, 2, 2))
+        unc = np.zeros((2, 2, 2))
+        unc[0, 0, 0] = float("nan")
+        with pytest.raises(ValueError, match="non-finite"):
+            DoseGrid(dose_gy=dose, frame=frame, uncertainty_gy=unc)
+
+
+# ---------------------------------------------------------------------------
+# 11. ROIResult.volume_cc validation (review A3)
+# ---------------------------------------------------------------------------
+
+
+class TestROIResultVolumeValidation:
+    def test_rejects_nan_volume(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            ROIResult(
+                roi=ROIRef(name="PTV"),
+                status=ROIStatus.OK,
+                volume_cc=float("nan"),
+            )
+
+    def test_rejects_negative_volume(self) -> None:
+        with pytest.raises(ValueError, match="non-negative"):
+            ROIResult(
+                roi=ROIRef(name="PTV"),
+                status=ROIStatus.OK,
+                volume_cc=-1.0,
+            )
+
+    def test_accepts_zero_volume(self) -> None:
+        r = ROIResult(roi=ROIRef(name="PTV"), status=ROIStatus.OK, volume_cc=0.0)
+        assert r.volume_cc == 0.0
+
+
+# ---------------------------------------------------------------------------
+# 12. Issue.context immutability (review B1)
+# ---------------------------------------------------------------------------
+
+
+class TestIssueContextImmutability:
+    def test_context_mutation_does_not_leak(self) -> None:
+        ctx = {"spacing_mm": 4.0}
+        issue = Issue(
+            level=IssueLevel.WARNING,
+            code=IssueCode.STRUCTURE_VOLUME_SMALL,
+            message="test",
+            context=ctx,
+        )
+        ctx["evil"] = True
+        assert "evil" not in issue.context
+
+    def test_context_is_immutable(self) -> None:
+        issue = Issue(
+            level=IssueLevel.WARNING,
+            code=IssueCode.STRUCTURE_VOLUME_SMALL,
+            message="test",
+            context={"spacing_mm": 4.0},
+        )
+        with pytest.raises(TypeError):
+            issue.context["new_key"] = True  # type: ignore[index]
+
+
+# ---------------------------------------------------------------------------
+# 13. MetricRequestSet default_id round-trip (review C5)
+# ---------------------------------------------------------------------------
+
+
+class TestMetricRequestSetDefaultIdRoundTrip:
+    def test_default_id_survives_canonical_round_trip(self) -> None:
+        dose_refs = DoseReferenceSet(
+            refs={
+                "ptv60": DoseReference(dose_gy=60.0, source="prescription dose"),
+                "ptv42": DoseReference(dose_gy=42.0, source="boost prescription"),
+            },
+            default_id="ptv60",
+        )
+        req = ROIMetricRequest.from_strings("PTV60", ["D95%"], dose_ref_id="ptv60")
+        mrs = MetricRequestSet(roi_requests=(req,), dose_refs=dose_refs)
+        d = mrs.to_dict()
+        restored = MetricRequestSet.from_dict(d)
+        assert restored.dose_refs is not None
+        assert restored.dose_refs.default_id == "ptv60"
+
+
+# ---------------------------------------------------------------------------
+# 14. ROIRef colour_rgb length validation (review E2)
+# ---------------------------------------------------------------------------
+
+
+class TestROIRefColourValidation:
+    def test_rejects_too_few_elements(self) -> None:
+        with pytest.raises(ValueError, match="3 elements"):
+            ROIRef(name="PTV", colour_rgb=(255, 0))  # type: ignore[arg-type]
+
+    def test_rejects_too_many_elements(self) -> None:
+        with pytest.raises(ValueError, match="3 elements"):
+            ROIRef(name="PTV", colour_rgb=(255, 0, 0, 128))  # type: ignore[arg-type]

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 
 class IssueLevel(str, Enum):
@@ -57,7 +58,11 @@ class Issue:
     code: IssueCode
     message: str
     path: tuple[str, ...] = ()
-    context: dict[str, Any] | None = None
+    context: Mapping[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if self.context is not None:
+            object.__setattr__(self, "context", MappingProxyType(dict(self.context)))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a plain dict."""
@@ -69,7 +74,7 @@ class Issue:
         if self.path:
             d["path"] = list(self.path)
         if self.context is not None:
-            d["context"] = self.context
+            d["context"] = dict(self.context)
         return d
 
     @classmethod

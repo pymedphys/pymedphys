@@ -31,3 +31,7 @@ class DVHInputs:
     structures: tuple[ContourROI, ...]
     rtstruct_path: str | None = None
     rtdose_path: str | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.structures, list):
+            object.__setattr__(self, "structures", tuple(self.structures))

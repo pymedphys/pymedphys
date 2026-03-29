@@ -87,7 +87,9 @@ class DVHBins:
         # A1: Differential volumes must be non-negative
         if np.any(dv < 0):
             raise ValueError("differential_volume_cc values must be non-negative")
-        # A4: Sum of differential volumes must not exceed total volume
+        # A4: Sum of differential volumes must not exceed total volume.
+        # Relative tolerance (1e-9) accommodates floating-point
+        # accumulation error in np.sum.
         dv_sum = float(np.sum(dv))
         if dv_sum > self.total_volume_cc * (1.0 + 1e-9):
             raise ValueError(
@@ -336,6 +338,8 @@ class ROIResult:
     def __post_init__(self) -> None:
         if isinstance(self.status, str):
             object.__setattr__(self, "status", ROIStatus(self.status))
+        if self.volume_cc is not None:
+            validate_nonneg_finite("ROIResult.volume_cc", self.volume_cc)
         # Coerce lists to tuples for true immutability
         if isinstance(self.metrics, list):
             object.__setattr__(self, "metrics", tuple(self.metrics))
