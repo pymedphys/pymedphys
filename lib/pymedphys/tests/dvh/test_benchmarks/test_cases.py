@@ -31,9 +31,9 @@ class TestBenchmarkCaseRegistry:
     def test_cc_consistent_with_mm3(self) -> None:
         for case in BENCHMARK_CASES:
             expected_cc = mm3_to_cc(case.expected_volume_mm3)
-            assert case.expected_volume_cc == pytest.approx(expected_cc, rel=1e-12), (
-                f"Case {case.case_id}: cc mismatch"
-            )
+            assert case.expected_volume_cc == pytest.approx(
+                expected_cc, rel=1e-12
+            ), f"Case {case.case_id}: cc mismatch"
 
     def test_verify_registry_consistency_passes(self) -> None:
         """All registered cases must match their volume formulas."""

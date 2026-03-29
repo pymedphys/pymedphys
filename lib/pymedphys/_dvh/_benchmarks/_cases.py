@@ -179,6 +179,6 @@ def verify_registry_consistency() -> None:
             f"Case {case.case_id}: formula gives {computed} mm³ but "
             f"registry says {case.expected_volume_mm3} mm³"
         )
-        assert np.isclose(mm3_to_cc(computed), case.expected_volume_cc, rtol=1e-12), (
-            f"Case {case.case_id}: cc conversion mismatch"
-        )
+        assert np.isclose(
+            mm3_to_cc(computed), case.expected_volume_cc, rtol=1e-12
+        ), f"Case {case.case_id}: cc conversion mismatch"
