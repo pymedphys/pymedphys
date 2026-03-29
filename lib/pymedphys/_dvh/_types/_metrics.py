@@ -105,6 +105,12 @@ class MetricSpec:
         if self.family == MetricFamily.INDEX and self.index_metric is None:
             if self.raw in {m.value for m in IndexMetric}:
                 object.__setattr__(self, "index_metric", IndexMetric(self.raw))
+            else:
+                raise ValueError(
+                    f"MetricSpec with family=INDEX requires a known "
+                    f"index_metric, but raw={self.raw!r} does not match "
+                    f"any IndexMetric value: {[m.value for m in IndexMetric]}"
+                )
 
     @property
     def requires_dose_ref(self) -> bool:
@@ -128,6 +134,8 @@ class MetricSpec:
             parts.append(f"{self.threshold}")
         parts.append(self.threshold_unit.value)
         parts.append(self.output_unit.value)
+        if self.index_metric is not None:
+            parts.append(self.index_metric.value)
         return "|".join(parts)
 
     def to_dict(self) -> dict:
@@ -382,12 +390,7 @@ class MetricRequestSet:
         """
         d: dict = {}
         if self.dose_refs is not None:
-            d["dose_refs"] = {
-                k: {"dose_gy": v.dose_gy, "source": v.source}
-                for k, v in self.dose_refs.refs.items()
-            }
-            if self.dose_refs.default_id is not None:
-                d["default_dose_ref"] = self.dose_refs.default_id
+            d["dose_refs"] = self.dose_refs.to_dict()
         d["roi_requests"] = [rr.to_dict() for rr in self.roi_requests]
         return d
 
@@ -414,13 +417,19 @@ class MetricRequestSet:
         """
         dose_refs = None
         if "dose_refs" in d:
-            refs = {
-                k: DoseReference(dose_gy=v["dose_gy"], source=v["source"])
-                for k, v in d["dose_refs"].items()
-            }
-            dose_refs = DoseReferenceSet(
-                refs=refs, default_id=d.get("default_dose_ref")
-            )
+            raw_refs = d["dose_refs"]
+            if "refs" in raw_refs:
+                # Canonical format from DoseReferenceSet.to_dict()
+                dose_refs = DoseReferenceSet.from_dict(raw_refs)
+            else:
+                # Legacy inline format: flat dict of {id: {dose_gy, source}}
+                refs = {
+                    k: DoseReference(dose_gy=v["dose_gy"], source=v["source"])
+                    for k, v in raw_refs.items()
+                }
+                dose_refs = DoseReferenceSet(
+                    refs=refs, default_id=d.get("default_dose_ref")
+                )
         elif "dose_ref_gy" in d:
             source = d.get("dose_ref_source")
             if not source or not source.strip():

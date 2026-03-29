@@ -84,18 +84,18 @@ class DoseReferenceSet:
     def __post_init__(self) -> None:
         if not self.refs:
             raise ValueError("DoseReferenceSet must contain at least one reference")
-        # Defensive copy + freeze with MappingProxyType
-        frozen = MappingProxyType(dict(self.refs))
-        object.__setattr__(self, "refs", frozen)
+        # Validate all keys before freezing
+        for key in self.refs:
+            if not key or not key.strip():
+                raise ValueError("DoseReferenceSet ref keys must be non-empty")
         if self.default_id is not None and self.default_id not in self.refs:
             raise ValueError(
                 f"default_id '{self.default_id}' not found in refs: "
                 f"{list(self.refs.keys())}"
             )
-        # Validate all keys are non-empty strings
-        for key in self.refs:
-            if not key or not key.strip():
-                raise ValueError("DoseReferenceSet ref keys must be non-empty")
+        # Defensive copy + freeze with MappingProxyType
+        frozen = MappingProxyType(dict(self.refs))
+        object.__setattr__(self, "refs", frozen)
 
     @property
     def default(self) -> Optional[DoseReference]:

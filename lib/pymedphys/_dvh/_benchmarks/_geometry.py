@@ -60,7 +60,7 @@ def sphere_volume(radius_mm: float) -> float:
         Volume in mm³: ``(4/3) * π * r³``.
     """
     _validate_positive(radius_mm=radius_mm)
-    return (4.0 / 3.0) * np.pi * radius_mm**3
+    return float((4.0 / 3.0) * np.pi * radius_mm**3)
 
 
 def cylinder_volume(radius_mm: float, height_mm: float) -> float:
@@ -79,7 +79,7 @@ def cylinder_volume(radius_mm: float, height_mm: float) -> float:
         Volume in mm³: ``π * r² * h``.
     """
     _validate_positive(radius_mm=radius_mm, height_mm=height_mm)
-    return np.pi * radius_mm**2 * height_mm
+    return float(np.pi * radius_mm**2 * height_mm)
 
 
 def cone_volume(radius_mm: float, height_mm: float) -> float:
@@ -98,7 +98,7 @@ def cone_volume(radius_mm: float, height_mm: float) -> float:
         Volume in mm³: ``(1/3) * π * r² * h``.
     """
     _validate_positive(radius_mm=radius_mm, height_mm=height_mm)
-    return (1.0 / 3.0) * np.pi * radius_mm**2 * height_mm
+    return float((1.0 / 3.0) * np.pi * radius_mm**2 * height_mm)
 
 
 def ellipsoid_volume(semi_a_mm: float, semi_b_mm: float, semi_c_mm: float) -> float:
@@ -119,7 +119,7 @@ def ellipsoid_volume(semi_a_mm: float, semi_b_mm: float, semi_c_mm: float) -> fl
         Volume in mm³: ``(4/3) * π * a * b * c``.
     """
     _validate_positive(semi_a_mm=semi_a_mm, semi_b_mm=semi_b_mm, semi_c_mm=semi_c_mm)
-    return (4.0 / 3.0) * np.pi * semi_a_mm * semi_b_mm * semi_c_mm
+    return float((4.0 / 3.0) * np.pi * semi_a_mm * semi_b_mm * semi_c_mm)
 
 
 def torus_volume(major_radius_mm: float, minor_radius_mm: float) -> float:
@@ -156,7 +156,7 @@ def torus_volume(major_radius_mm: float, minor_radius_mm: float) -> float:
             f"than minor_radius_mm ({minor_radius_mm}) for a simple "
             f"(non-self-intersecting) torus"
         )
-    return 2.0 * np.pi**2 * major_radius_mm * minor_radius_mm**2
+    return float(2.0 * np.pi**2 * major_radius_mm * minor_radius_mm**2)
 
 
 def cylindrical_shell_volume(
@@ -193,7 +193,7 @@ def cylindrical_shell_volume(
             f"outer_radius_mm ({outer_radius_mm}) must be strictly greater "
             f"than inner_radius_mm ({inner_radius_mm})"
         )
-    return np.pi * (outer_radius_mm**2 - inner_radius_mm**2) * height_mm
+    return float(np.pi * (outer_radius_mm**2 - inner_radius_mm**2) * height_mm)
 
 
 def rectangular_parallelepiped_volume(

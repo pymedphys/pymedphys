@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import FrozenSet, Literal, Optional, get_args
 
@@ -19,7 +19,6 @@ from pymedphys._dvh._types._roi_ref import ROIRef
 from pymedphys._dvh._types._validators import (
     _validate_nonneg_array,
     _validate_nonneg_finite,
-    _validate_positive_finite,
     _validate_strictly_increasing,
 )
 
@@ -205,7 +204,7 @@ class DVHBins:
             (
                 self.dose_bin_edges_gy.tobytes(),
                 self.differential_volume_cc.tobytes(),
-                float(self.total_volume_cc),
+                self.total_volume_cc,
             )
         )
 
@@ -302,7 +301,7 @@ class ROIDiagnostics:
         ):
             val = getattr(self, name)
             if val is not None:
-                if not isinstance(val, int) or val < 0:
+                if isinstance(val, bool) or not isinstance(val, int) or val < 0:
                     raise ValueError(
                         f"ROIDiagnostics.{name} must be a non-negative "
                         f"integer, got {val!r}"
@@ -402,9 +401,7 @@ class ROIResult:
     def to_dict(self) -> dict:
         d: dict = {
             "roi": self.roi.to_dict(),
-            "status": self.status.value
-            if isinstance(self.status, ROIStatus)
-            else self.status,
+            "status": self.status.value,
         }
         if self.volume_cc is not None:
             d["volume_cc"] = self.volume_cc
@@ -573,8 +570,13 @@ class ProvenanceRecord:
 
     def __post_init__(self) -> None:
         if self.timestamp_utc:
+            # Normalise 'Z' → '+00:00' for Python 3.10 compatibility
+            # (datetime.fromisoformat only accepts 'Z' from 3.11+).
+            ts = self.timestamp_utc
+            if ts.endswith("Z"):
+                ts = ts[:-1] + "+00:00"
             try:
-                dt = datetime.fromisoformat(self.timestamp_utc)
+                dt = datetime.fromisoformat(ts)
             except (ValueError, TypeError):
                 raise ValueError(
                     f"ProvenanceRecord.timestamp_utc must be a valid ISO 8601 "

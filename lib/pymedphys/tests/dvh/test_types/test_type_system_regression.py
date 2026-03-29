@@ -675,3 +675,83 @@ class TestTorusValidityPolicy:
     def test_rejects_spindle_torus_R_less_than_r(self) -> None:
         with pytest.raises(ValueError, match="strictly greater"):
             torus_volume(5.0, 10.0)
+
+
+# ── Additional regression tests (review round 2) ─────────────────
+
+
+class TestIndexMetricCanonicalKeyDistinct:
+    """TEST-1: Multiple index metrics must coexist in same ROI."""
+
+    def test_hi_and_ci_have_different_canonical_keys(self) -> None:
+        hi = MetricSpec.parse("HI")
+        ci = MetricSpec.parse("CI")
+        assert hi.canonical_key != ci.canonical_key
+
+    def test_multiple_index_metrics_in_same_roi(self) -> None:
+        hi = MetricSpec.parse("HI")
+        ci = MetricSpec.parse("CI")
+        pci = MetricSpec.parse("PCI")
+        gi = MetricSpec.parse("GI")
+        dose_refs = DoseReferenceSet.single(60.0, "prescription: 30 fx x 2 Gy")
+        req = ROIMetricRequest(roi=ROIRef(name="PTV"), metrics=(hi, ci, pci, gi))
+        mrs = MetricRequestSet(roi_requests=(req,), dose_refs=dose_refs)
+        assert len(mrs.roi_requests[0].metrics) == 4
+
+
+class TestMeanAndMeanPercentRxCoexistence:
+    """TEST-4: mean and mean[%Rx] can coexist in same ROI."""
+
+    def test_mean_and_mean_percent_rx_different_canonical_keys(self) -> None:
+        m1 = MetricSpec.parse("mean")
+        m2 = MetricSpec.parse("mean[%Rx]")
+        assert m1.canonical_key != m2.canonical_key
+
+    def test_mean_and_mean_percent_rx_in_same_roi(self) -> None:
+        m1 = MetricSpec.parse("mean")
+        m2 = MetricSpec.parse("mean[%Rx]")
+        dose_refs = DoseReferenceSet.single(60.0, "prescription: 30 fx x 2 Gy")
+        req = ROIMetricRequest(roi=ROIRef(name="PTV"), metrics=(m1, m2))
+        mrs = MetricRequestSet(roi_requests=(req,), dose_refs=dose_refs)
+        assert len(mrs.roi_requests[0].metrics) == 2
+
+
+class TestROIDiagnosticsRejectsBool:
+    """TEST-7 + DESIGN-5: bool values rejected for integer count fields."""
+
+    def test_rejects_bool_boundary_voxel_count(self) -> None:
+        with pytest.raises(ValueError, match="non-negative integer"):
+            ROIDiagnostics(boundary_voxel_count=True)
+
+    def test_rejects_bool_false_as_voxel_count(self) -> None:
+        with pytest.raises(ValueError, match="non-negative integer"):
+            ROIDiagnostics(interior_voxel_count=False)
+
+
+class TestGridFrameFromDictZeroShape:
+    """TEST-7: GridFrame.from_dict rejects zero shape elements."""
+
+    def test_rejects_zero_shape_element(self) -> None:
+        d = {
+            "shape_zyx": [0, 10, 20],
+            "index_to_patient_mm": [
+                [0, 0, 1.0, 0],
+                [0, 1.0, 0, 0],
+                [1.0, 0, 0, 0],
+                [0, 0, 0, 1],
+            ],
+        }
+        with pytest.raises(ValueError, match="positive"):
+            GridFrame.from_dict(d)
+
+
+class TestUnknownIndexMetricRejected:
+    """DESIGN-2: Unknown index metric raw string is rejected."""
+
+    def test_rejects_unknown_index_metric(self) -> None:
+        with pytest.raises(ValueError, match="known index_metric"):
+            MetricSpec(
+                family=MetricFamily.INDEX,
+                output_unit=OutputUnit.DIMENSIONLESS,
+                raw="UNKNOWN_INDEX",
+            )
