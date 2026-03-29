@@ -34,7 +34,7 @@ The SDF resolves the first. The second requires separate treatment. A complete D
 
 ### The dose field is smooth
 
-The dose $D(\mathbf{r})$ is computed by the TPS on a grid (typically 2.0--2.5 mm for conventional EBRT, 1.0--1.25 mm for SRS). Between grid points, the dose varies smoothly. Even at the sharpest field edges, the physical penumbra (set by lateral electron transport) ensures a minimum transition width of approximately 5--8 mm for 6 MV photons [^14] (ch. 13). The dose can be reconstructed between grid points via trilinear interpolation:
+The dose $D(\mathbf{r})$ is computed by the TPS on a grid (typically 2.0--2.5 mm for conventional EBRT, 1.0--1.25 mm for SRS). Between grid points, the dose varies smoothly. Even at the sharpest field edges, the physical penumbra (set by lateral electron transport) provides a typical transition width of approximately 5--8 mm for conventional 6 MV photon fields [^14] (ch. 13), though narrower penumbrae occur in small-field and stereotactic contexts. The dose can be reconstructed between grid points via trilinear interpolation:
 
 $$D(\mathbf{r}) = \sum_{i,j,k} D_{ijk} \cdot L_i(x) \cdot L_j(y) \cdot L_k(z)$$
 
@@ -52,7 +52,7 @@ These two tilings are offset by half a grid spacing. A sample-centred voxel stra
 
 **This engine uses interpolation cells as its computational tiling.** The reason is that the trilinear dose model is naturally defined on interpolation cells, and key properties (such as the extrema occurring at the eight corners; see below) hold exactly for interpolation cells but not for sample-centred voxels.
 
-A consequence is that the outermost ring of grid points defines cells that extend only inward, so the outermost half-voxel layer of the dose grid has no interpolation cell. For most clinical geometries, structures of interest are well within the dose grid and this boundary layer is irrelevant. Where it matters, the outermost grid values can be extrapolated by one half-spacing to create boundary cells.
+A consequence is that the outermost ring of grid points defines cells that extend only inward, so the outermost half-voxel layer of the dose grid has no interpolation cell. For most clinical geometries, structures of interest are well within the dose grid and this boundary layer is irrelevant. **The default behaviour of this engine is to treat the RT Dose support as finite and explicit.** If a queried structure intersects the unsupported boundary region, a warning is emitted. An optional named extension mode can extrapolate the outermost grid values by one half-spacing to create boundary cells, but this is a modelling choice (not implied by DICOM) and is disabled by default.
 
 ### The structure occupancy is discontinuous
 
@@ -75,7 +75,7 @@ Although $\Omega$ is discontinuous, $\phi$ is continuous and carries rich geomet
 
 ## How the naive method discretises the integral
 
-The standard approach (e.g. dicompyler-core [^19]) approximates the DVH integral as:
+The standard raster-mask approach approximates the DVH integral by building a binary occupancy mask on dose-grid planes and histogramming the masked dose values. Implementations such as dicompyler-core [^19] construct 2D contour masks at each dose-grid $z$-plane, apply XOR logic for holes, and accumulate dose samples from the masked points plane by plane. This is a raster-mask family of methods. At its simplest, it reduces to a centre-point quadrature rule:
 
 $$V(d) \approx \sum_{i,j,k} \Delta V \cdot \mathbf{1}[\mathbf{r}_c \in S] \cdot \mathbf{1}[D_{ijk} \geq d]$$
 
@@ -97,19 +97,19 @@ $$v_{ijk} \approx \frac{\Delta V}{k^3} \sum_{a=1}^{k} \sum_{b=1}^{k} \sum_{c=1}^
 
 At $k = 4$, you get 64 samples per boundary voxel with a volume fraction quantisation step of $1/64 \approx 1.6\%$. But convergence of the boundary volume error is only $O(1/k)$, because a finer binary mask is still a binary mask: the staircase boundary approximation improves only linearly with $k$.
 
-The quantisation step $1/k^3$ and the boundary convergence rate $O(1/k)$ are different quantities and should not be conflated. At $k = 10$, the sub-voxel volume quantum is $1/1000 = 0.1\%$, but the expected per-voxel boundary error is of order $1/k = 10\%$, not 0.1%. Reaching 0.1% boundary accuracy per voxel would require $k \approx 1000$, which is computationally infeasible. The exact boundary position, known analytically from the contour vertices, is never used by the supersampling approach.
+The quantisation step $1/k^3$ and the boundary convergence rate $O(1/k)$ are different quantities and should not be conflated. At $k = 10$, the sub-voxel volume quantum is $1/1000 = 0.1\%$, but the per-voxel boundary error converges only as $O(1/k)$, with geometry-dependent constants. In the simplest 1D midpoint-sampling analogue, the mean fractional boundary error is $1/(4k)$ and the worst case is $1/(2k)$. In 3D the constants depend on surface orientation relative to the grid, but the $O(1/k)$ rate is fundamental: the exact boundary position, known analytically from the contour vertices, is never used by the supersampling approach.
 
 ## The SDF approach
 
 ### Step 1: Compute the SDF directly from contour geometry
 
-Your DICOM RT Structure Set contains polygon vertices with sub-millimetre precision. Each contour edge defines the exact boundary position at that slice height. Rather than rasterising these polygons to a binary mask (destroying sub-voxel information), compute the **exact signed  distance** from each dose grid point to the nearest polygon edge.
+Your DICOM RT Structure Set contains polygon vertices with sub-millimetre precision. Each contour edge defines the exact boundary position at that slice height. Rather than rasterising these polygons to a binary mask (destroying sub-voxel information), compute the **exact signed distance** from each dose grid point to the nearest polygon edge.
 
 For each edge from $\mathbf{v}_m$ to $\mathbf{v}_{m+1}$ and query point $\mathbf{p}$:
 
 $$\mathbf{e} = \mathbf{v}_{m+1} - \mathbf{v}_m$$
 
-$$t = \mathrm{clamp}\!\left(\frac{(\mathbf{p} - \mathbf{v}_m) \cdot \mathbf{e}}{\mathbf{e} \cdot \mathbf{e}},\; 0,\; 1\right)$$
+$$t = \operatorname{clamp}\!\left(\frac{(\mathbf{p} - \mathbf{v}_m) \cdot \mathbf{e}}{\mathbf{e} \cdot \mathbf{e}},\; 0,\; 1\right)$$
 
 $$d_m = \left\lVert \mathbf{p} - \left(\mathbf{v}_m + t\,\mathbf{e}\right) \right\rVert$$
 
@@ -117,11 +117,38 @@ $$\phi(\mathbf{p}) = s(\mathbf{p}) \cdot \min_{m} d_m$$
 
 where $s(\mathbf{p}) = -1$ if $\mathbf{p}$ is inside the polygon (determined by the crossing-number or winding-number test) and $s(\mathbf{p}) = +1$ otherwise.
 
-**At each contour slice, this 2D signed distance computation is exact** to floating-point precision. The signed distance from each grid point to the true contour boundary is computed directly from the analytic vertex geometry. No rasterisation, no information loss. (The full 3D structure model, which depends on the inter-slice interpolation chosen in Step 2, is a modelling choice rather than an exact geometric quantity.)
+**At each contour slice, this 2D signed distance computation is exact relative to the encoded polygon boundary**, to floating-point precision. The signed distance from each grid point to the polygon as transmitted in the RTSTRUCT is computed directly from the analytic vertex geometry. No rasterisation, no information loss. However, the polygon itself is only an approximation to the intended smooth anatomy (see the section on contour vertex fidelity below). The full 3D structure model, which depends on the inter-slice interpolation chosen in Step 2, is a further modelling choice rather than an exact geometric quantity.
+
+#### Contour vertex fidelity
+
+The 2D SDF is exact with respect to the polygon as encoded in the RTSTRUCT, but the polygon itself is an approximation to the smooth anatomical boundary. When a circular or curved contour of radius $r$ is represented by chords of length $h$, the radial sagitta error (the maximum inward deviation of the chord from the true arc) is approximately:
+
+$$\epsilon_{\text{sag}} \approx \frac{h^2}{8r}$$
+
+To keep the radial error below a tolerance $\epsilon$, the maximum allowable chord length is $h \leq \sqrt{8 r \epsilon}$.
+
+For small SRS targets, vertex sparsity can dominate the total DVH error, even before any dose-grid or clipping approximation enters. Consider a 3 mm diameter sphere (slice radius $r = 1.5$ mm at the equator). An inscribed regular polygon with $n$ vertices underestimates the enclosed area by a factor $1 - (n / (2\pi)) \sin(2\pi / n)$:
+
+| Vertices ($n$) | Area underestimate |
+| --- | --- |
+| 8 | ~10.0% |
+| 16 | ~2.6% |
+| 24 | ~1.1% |
+| 32 | ~0.6% |
+
+Real exported contours can be worse than the regular-polygon case because point spacing is often uneven, and TPS contour export routines may apply decimation that further reduces vertex count.
+
+No downstream DVH algorithm can reconstruct curvature that was never present in the RTSTRUCT polygon. For a reference-quality DVH calculator, contour vertex fidelity is an **input-data quality concern** that must be assessed before the DVH computation begins. Recommended QA checks include:
+
+- **Minimum vertex count per contour:** flag contours with fewer than 16 vertices for structures with expected radius below 5 mm.
+- **Maximum chord length:** flag any chord exceeding $\sqrt{8 r_{\text{expected}} \epsilon_{\text{tol}}}$ for the declared structure type.
+- **Area deficit estimate:** for approximately circular slices, compare the polygon area to $\pi r^2$ where $r$ is estimated from the polygon's bounding circle.
+
+These checks should be reported as input-data quality warnings, separate from the DVH computation accuracy itself.
 
 #### A note on DICOM contour semantics
 
-Before computing the SDF, contour polygons must be normalised into correct polygon topology. DICOM allows at least two techniques for representing inner excluded regions: the **keyhole** technique (a narrow connecting channel between outer and inner contours) and **CLOSEDPLANAR_XOR** (contours on the same slice combined by repeated exclusive disjunction). The standard states that points along the keyhole connecting channel are considered inside the ROI [^15] (C.8.8.6.3). Any implementation that applies inside-outside tests to each contour independently will mishandle these cases. A robust pipeline must parse and normalise the contour topology before computing signed distances.
+Before computing the SDF, contour polygons must be normalised into correct polygon topology. DICOM allows at least two techniques for representing inner excluded regions: the **keyhole** technique (a narrow connecting channel between outer and inner contours) and **CLOSEDPLANAR_XOR** (contours on the same slice combined by repeated exclusive disjunction). The standard states that points along the keyhole connecting channel are considered inside the ROI [^15] (C.8.8.6.3). Additionally, if any contour in an ROI uses the `CLOSEDPLANAR_XOR` geometric type, then all contours in that ROI shall be of that type [^15] (C.8.8.6.3). This constraint matters for input validation: a structure set containing a mix of `CLOSEDPLANAR_XOR` and other types within a single ROI is malformed, not merely complex. Any implementation that applies inside-outside tests to each contour independently will mishandle these cases. A robust pipeline must parse and normalise the contour topology before computing signed distances.
 
 #### The computation is fully vectorisable
 
@@ -158,7 +185,7 @@ $$\phi(x, y, z) = (1 - \alpha)\,\phi(x, y;\, z_k) + \alpha\,\phi(x, y;\, z_{k+1}
 
 where $\alpha = (z - z_k) / (z_{k+1} - z_k)$.
 
-The zero level set of this interpolated field defines a continuous implicit surface that morphs between contour shapes. This is the chosen reconstruction model. It is not an approximation to some other "true" surface (none exists in DICOM); it is the geometric model we adopt for DVH computation. Topology changes (a structure splitting into two lobes) emerge naturally from the distance field without explicit correspondence logic.
+The zero level set of this interpolated field defines a continuous implicit surface that morphs between contour shapes. This is the chosen reconstruction model. It is not an approximation to some other "true" surface (none exists in DICOM); it is the geometric model we adopt for DVH computation. This model sidesteps the need for explicit contour correspondence by adopting a particular implicit interpolation; it does not solve the contour-correspondence problem in any absolute sense. Topology changes (a structure splitting into two lobes) are permitted by the model without explicit correspondence logic, but the resulting between-slice geometry is a mathematical interpolation, not necessarily an anatomically faithful reconstruction.
 
 #### Handling z-axis misalignment between dose and contour grids
 
@@ -170,7 +197,7 @@ An important caveat: this interpolated field is not, in general, the exact Eucli
 
 Consequently, the half-diagonal classification test ($|\phi(\mathbf{c}_Q)| > \ell$ implies fully inside or outside) is **not rigorously guaranteed** for the interpolated field. A cell classified as "fully interior" could, in principle, be clipped by the true zero level set. Two options exist:
 
-1. **Reinitialise** the interpolated field to a true Euclidean SDF via fast marching (`skfmm.distance`), which solves $|\nabla\phi| = 1$ with the zero level set held fixed. After reinitialisation, the half-diagonal test is rigorous.
+1. **Reinitialise** the interpolated field to an approximate Euclidean SDF via fast marching (`skfmm.distance`), which solves $|\nabla\phi| = 1$ with the zero level set held fixed. After reinitialisation, the half-diagonal test becomes well-founded (though still subject to the $O(\Delta x)$ numerical error inherent in the fast marching discretisation, which is typically much smaller than the half-diagonal margin for clinically relevant grids).
 2. **Use sign-only classification** (safe under trilinear interpolation of $\phi$): classify a cell as interior only if $\phi < 0$ at all 8 corners, exterior only if $\phi > 0$ at all 8 corners, and boundary otherwise. This is safe because trilinear interpolation is sign-preserving: if all eight corner values share a sign, the trilinear interpolant shares that sign everywhere in the cell. This avoids any distance-magnitude assumption but classifies more cells as "boundary" than necessary.
 
 For a production engine, option 1 is recommended. The reinitialisation cost is $O(N \log N)$ via fast marching on the 3D grid and needs to be done only once per structure.
@@ -187,13 +214,25 @@ With $\phi(i,j,k)$ at every dose grid point, classify interpolation cells. Defin
 
 $$\ell = \tfrac{1}{2}\sqrt{\Delta x^2 + \Delta y^2 + \Delta z^2}$$
 
-Then:
+Two classification strategies are available, depending on whether the SDF has been reinitialised:
 
-- **Fully interior**: $\phi < -\ell$ at the cell centre (or equivalently, after SDF reinitialisation, at all 8 corners). Set $f = 1$.
-- **Fully exterior**: $\phi > +\ell$ at the cell centre. Set $f = 0$.
-- **Boundary**: the structure surface may intersect the cell. Compute $f$ analytically.
+**After reinitialisation (distance-based classification):**
 
-For boundary cells, the SDF provides the signed distance from the cell centre to the boundary, plus the surface normal $\hat{\mathbf{n}} = \nabla\phi / |\nabla\phi|$ via central differences. Under the **planar approximation** (the boundary within the cell is locally flat), the in-structure portion $P_Q = Q \cap S$ is a plane-clipped box. Its volume fraction has a closed-form expression given by the classical PLIC (piecewise linear interface calculation) relations [^1].
+- **Fully interior**: $\phi(\mathbf{c}_Q) < -\ell$ at the cell centre. Set $f = 1$.
+- **Fully exterior**: $\phi(\mathbf{c}_Q) > +\ell$ at the cell centre. Set $f = 0$.
+- **Boundary**: $|\phi(\mathbf{c}_Q)| \leq \ell$. The structure surface may intersect the cell. Compute $f$ analytically.
+
+Note: for a reinitialised field that is approximately 1-Lipschitz, the centre-distance test $\phi(\mathbf{c}_Q) < -\ell$ implies $\phi < 0$ at all 8 corners (since each corner is within distance $\ell$ of the centre). The converse does not hold: all corners having $\phi < 0$ does not imply $\phi(\mathbf{c}_Q) < -\ell$. These are different criteria with different degrees of conservatism.
+
+**Without reinitialisation (sign-only classification):**
+
+- **Fully interior**: $\phi < 0$ at all 8 corners. Set $f = 1$.
+- **Fully exterior**: $\phi > 0$ at all 8 corners. Set $f = 0$.
+- **Boundary**: mixed signs at the corners. Compute $f$ analytically.
+
+This is more conservative (classifies more cells as boundary) but requires no distance-magnitude assumption.
+
+For boundary cells, the SDF provides the signed distance from the cell centre to the boundary, plus the surface normal $\hat{\mathbf{n}} = \nabla\phi / |\nabla\phi|$ via finite differences on the SDF grid. Under the **planar approximation** (the boundary within the cell is locally flat), the in-structure portion $P_Q = Q \cap S$ is a plane-clipped box. Its volume fraction has a closed-form expression given by the classical PLIC (piecewise linear interface calculation) relations [^1].
 
 For the simplest case, with normal aligned to a grid axis (say $\hat{x}$):
 
@@ -216,7 +255,7 @@ As a fractional volume error per boundary cell: $\epsilon_f \sim \Delta x / (8R)
 | Optic nerve | 3--5 mm | 1.0 mm | 0.2--0.33 | 2.5--4.2% per cell |
 | 3 mm brain met | 1.5 mm | 1.0 mm | 0.67 | ~8% per cell |
 
-For structures with $R / \Delta x > 5$, the planar model is excellent. Higher curvature structures need corrections or exact clipping, derived below.
+For structures with $R / \Delta x > 5$, the planar model is expected to perform well. Higher curvature structures need corrections or exact clipping, derived below.
 
 ## The dose-threshold discontinuity
 
@@ -288,19 +327,19 @@ For the purposes of this engine, we adopt a **local affine approximation** to th
 
 $$D(\mathbf{r}) \approx D_c + \mathbf{g} \cdot (\mathbf{r} - \mathbf{r}_c)$$
 
-where $D_c = D(\mathbf{r}_c)$ is the centre-point dose and $\mathbf{g}$ is the dose gradient estimated from central differences. Under this local model, the isodose surface $D = d$ is a plane with normal $\hat{\mathbf{g}} = \mathbf{g} / |\mathbf{g}|$ at signed offset:
+where $D_c = D(\mathbf{r}_c)$ is the centre-point dose (evaluated via the trilinear interpolant at the cell centre) and $\mathbf{g}$ is the dose gradient **derived from the eight corner values of the current cell**. For the trilinear interpolant, the gradient at the cell centre can be computed analytically from the corner values. Along each axis, the cell-centre gradient component is the mean of the four finite differences across that axis:
+
+$$g_x = \frac{1}{4\Delta x}\sum_{j \in \{0,1\}} \sum_{k \in \{0,1\}} \left(D_{1jk} - D_{0jk}\right)$$
+
+and analogously for $g_y$ and $g_z$, where $D_{0jk}$ and $D_{1jk}$ are the corner values at the low and high $x$-faces of the cell respectively. This gradient is exact for the trilinear interpolant at the cell centre and uses only the cell's own corner data, maintaining consistency with the declared cellwise trilinear model.
+
+Under this local model, the isodose surface $D = d$ is a plane with normal $\hat{\mathbf{g}} = \mathbf{g} / |\mathbf{g}|$ at signed offset:
 
 $$\phi_D = \frac{d - D_c}{|\mathbf{g}|}$$
 
 from the cell centre. This is analogous to the structure SDF: it defines a half-space, and the volume on the "above threshold" side can be computed using the same PLIC box-plane clipping formula.
 
-**This is an approximation, not an exact evaluation of the trilinear dose model.** The error comes from the cross-terms $exy + fyz + gzx + hxyz$ that the affine model drops. These terms are bounded by $O(\Delta x^2 \cdot |\nabla^2 D|)$, so the approximation improves as the grid becomes finer or the dose field becomes more linear. For most clinical EBRT dose distributions, the cross-terms are small within a single cell, and the planar isodose approximation is excellent. For the pathological cases (brachytherapy near a source, very steep SRS penumbra on a coarse grid), the tetrahedral decomposition approach gives exact results under its own piecewise-linear dose model at a cost of approximately 6 tetrahedra per cell (each requiring a separate clip).
-
-The dose gradient $\mathbf{g}$ is estimated from central differences on the dose grid:
-
-$$g_x = \frac{D(i+1,j,k) - D(i-1,j,k)}{2\Delta x}$$
-
-and analogously for $g_y$ and $g_z$.
+**This is an approximation, not an exact evaluation of the trilinear dose model.** The error comes from the cross-terms $exy + fyz + gzx + hxyz$ that the affine model drops. These terms are bounded by $O(\Delta x^2 \cdot |\nabla^2 D|)$, so the approximation improves as the grid becomes finer or the dose field becomes more linear. For most clinical EBRT dose distributions, the cross-terms are expected to be small within a single cell, and the planar isodose approximation is anticipated to perform well; this should be confirmed by benchmarking against tetrahedral decomposition on representative cases. For pathological cases (brachytherapy near a source, very steep SRS penumbra on a coarse grid), the tetrahedral decomposition approach gives exact results under its own piecewise-linear dose model at a cost of approximately 6 tetrahedra per cell (each requiring a separate clip).
 
 The algorithm for each cell at each threshold is:
 
@@ -348,7 +387,7 @@ To obtain dose at finer resolution, the TPS must be asked to **recompute** the d
 
 The DVH computation described in this document is exact (or near-exact) relative to the **declared dose model**, which is the trilinear interpolant of the TPS dose grid. Any dose information not captured by the TPS grid is not recoverable by the DVH engine, regardless of how sophisticated the geometric or threshold handling is.
 
-For conventional EBRT on 2.5 mm grids, the trilinear dose model is adequate for most clinical structures. The physical penumbra width (5--8 mm for 6 MV photons [^14]) provides multiple grid points across the steepest gradients.
+For conventional EBRT on 2.5 mm grids, the trilinear dose model is adequate for most clinical structures. The physical penumbra width (typically 5--8 mm for conventional 6 MV photon fields [^14]) provides multiple grid points across the steepest gradients.
 
 For SRS/SBRT, the dose grid resolution is itself a significant source of uncertainty, particularly for small targets and small fields. TG-101 [^9] and the 2025 AAPM-RSS update [^10] recommend calculation grids of 2 mm or finer for SBRT, with 1 mm for very small targets. At these resolutions, the trilinear model is better justified, but the dose calculation itself is the limiting factor, not the DVH geometry.
 
@@ -457,6 +496,28 @@ For a 3 mm diameter sphere ($R = 1.5$ mm) on a 1 mm isotropic grid, how many bou
 
 Enumeration over both best-case and worst-case alignments gives approximately **56 boundary cells** total across 4--5 slices, with only 0--1 fully interior cells. The per-slice breakdown for a centred sphere is approximately 5, 13, 20, 13, 5 boundary cells from inferior to superior. For a corner-aligned sphere: 12, 16, 16, 12. In either case, this is roughly 56 clipping operations for the entire structure, not hundreds. Exact clipping of 56 cells is trivially fast.
 
+## Commercial system taxonomy
+
+Before describing the tiered dispatch adopted by this engine, it is useful to situate the approach within the landscape of commercial DVH implementations. Published multi-system comparisons [^11], [^20], [^21] reveal at least four major families of volume construction method and significant variation in binning and metric extraction policies.
+
+### Volume construction families
+
+**Right-prism and half-slice extension methods.** The structure is extruded vertically from each contour slice by half the slice spacing in each direction. Voxels are tested against these extruded slabs. Variants include extending by exactly half a slice (Mobius3D, MIM, RayStation) or capping the extension at a maximum distance such as 1.5 mm (ProKnow). These methods are simple and deterministic but produce flat superior/inferior caps with no anatomical rounding.
+
+**Shape-based interpolation with rounded or shape-based endcaps.** The structure boundary between slices is interpolated using morphological or distance-field methods, and the superior/inferior ends are closed with rounded caps derived from the interpolation model. Eclipse uses a shape-based interpolation approach with rounded endcaps that approximate the anatomical closure of the structure.
+
+**Supersampled point or voxel methods.** Each voxel is subdivided into sub-voxels (or sample points are placed within each voxel), and the occupancy fraction is estimated from the count of sub-samples falling inside the structure. The supersampling factor varies by vendor and is often user-configurable. This family treats volume construction and dose sampling together.
+
+**Adaptive or relative-volume methods.** Some systems (e.g. Elements) allow contours to exist in 3D space without strict axial-slice constraints, or use native 3D mesh representations. These systems may avoid classical end-capping artefacts but introduce their own interpolation and discretisation choices.
+
+### Binning and metric extraction
+
+Dose-bin resolution, histogram normalisation, and the method used to extract point metrics ($D_{x\%}$, $V_{x\,\text{Gy}}$) from the binned histogram also vary across systems. Some use linear interpolation between bin edges; others report the nearest bin. Bin widths range from 0.01 Gy to 1 cGy in common configurations. These differences contribute measurably to cross-system DVH metric disagreement.
+
+### Implications for this engine
+
+The approach described in this document (SDF-based implicit geometry with analytical PLIC clipping and configurable end-capping) does not fall neatly into any of the commercial families above. It is closest to the distance-field family but uses analytical volume fractions rather than supersampled occupancy. The commercial taxonomy motivates making every modelling choice (interpolation model, end-cap policy, binning resolution, metric extraction rule) explicit and configurable, so that the engine's behaviour can be compared meaningfully against any of the commercial families.
+
 ## Tiered dispatch
 
 Route each boundary cell to the cheapest method that meets accuracy requirements. The geometry tier dispatches on $|\kappa| \cdot \Delta x$; the dose tier dispatches on the cell corner doses at each threshold. The threshold values 0.1 and 0.5 below are provisional design heuristics, not validated cut-offs; they should be benchmarked against exact clipping for representative clinical geometries before production use.
@@ -520,7 +581,7 @@ If we threshold the centroid dose 58.6 Gy, the result is 0 mm (wrong). If we thr
 | SDF + planar PLIC | $O(\Delta x / R)$ | affine approx. | **No** |
 | Exact polygon clipping | machine precision | affine approx. | **No** |
 
-The geometric error column refers to the per-boundary-cell volume fraction error. The DVH threshold column refers to how the dose-threshold discontinuity is handled: the corner min/max test is exact for the trilinear dose model on interpolation cells, but the isodose plane clipping uses a local affine approximation (see earlier discussion). For most clinical EBRT cases the affine approximation is excellent; for the trilinear model specifically, tetrahedral decomposition provides exact results under a piecewise-linear surrogate at higher cost.
+The geometric error column refers to the per-boundary-cell volume fraction error. The DVH threshold column refers to how the dose-threshold discontinuity is handled: the corner min/max test is exact for the trilinear dose model on interpolation cells, but the isodose plane clipping uses a local affine approximation (see earlier discussion). For most clinical EBRT cases the affine approximation is expected to perform well; this should be confirmed by benchmarking against tetrahedral decomposition on representative cases. For the trilinear model specifically, tetrahedral decomposition provides exact results under a piecewise-linear surrogate at higher cost.
 
 ## The complete algorithm
 
@@ -531,27 +592,37 @@ Input:
     Dose model (e.g., trilinear interpolation)
     Dose bin thresholds d_1, ..., d_B
 
+0. Assess contour vertex fidelity
+    For each contour slice:
+        Compute chord lengths, estimate radii, flag sparse contours.
+        Warn if maximum chord length exceeds sagitta tolerance for
+        the expected structure radius.
+        Report input-data quality metrics.
+
 1. Build the structure model
     a. Parse contours in patient coordinates.
     b. Normalise keyhole and CLOSEDPLANAR_XOR semantics.
+       (If any contour in an ROI uses CLOSEDPLANAR_XOR,
+       verify all contours in that ROI are of that type.)
     c. For each contour slice k, compute exact 2D signed distances
        from dose grid (x, y) points to the contour polygon.
     d. For dose grid z-planes between contour slices, linearly
        interpolate the 2D SDFs.
     e. Apply end-cap model beyond superior/inferior contour slices.
-    f. (Recommended) Reinitialise to true Euclidean SDF via
+    f. (Recommended) Reinitialise to approximate Euclidean SDF via
        fast marching.
 
 2. Classify interpolation cells (structure geometry)
-    half_diag = 0.5 * sqrt(dx^2 + dy^2 + dz^2)
-    interior  = (phi < -half_diag at cell centre, after reinit.)
-    exterior  = (phi > +half_diag at cell centre)
-    boundary  = everything else
+    After reinitialisation (distance-based):
+        half_diag = 0.5 * sqrt(dx^2 + dy^2 + dz^2)
+        interior  = (phi(centre) < -half_diag)
+        exterior  = (phi(centre) > +half_diag)
+        boundary  = everything else
 
-    Alternative (without reinitialisation):
-    interior  = (phi < 0 at all 8 corners)
-    exterior  = (phi > 0 at all 8 corners)
-    boundary  = everything else
+    Without reinitialisation (sign-only):
+        interior  = (phi < 0 at all 8 corners)
+        exterior  = (phi > 0 at all 8 corners)
+        boundary  = everything else
 
 3. Compute in-structure volumes for boundary cells
     For each boundary cell Q:
@@ -581,7 +652,7 @@ Input:
                 Add 0.
             else:
                 (Interior dose-ambiguous: single isodose clip)
-                Compute dose gradient g.
+                Compute cell-local dose gradient g from 8 corners.
                 Clip full cell by isodose plane D = d_b.
                 Add clipped volume.
 
@@ -593,7 +664,7 @@ Input:
                 Add 0.
             else:
                 (Boundary dose-ambiguous: double clip)
-                Compute dose gradient g.
+                Compute cell-local dose gradient g from 8 corners.
                 Clip P_Q by isodose plane D = d_b.
                 Add doubly-clipped volume.
 
@@ -610,9 +681,37 @@ Both the structure boundary and the isodose surfaces are discontinuities in the 
 
 Together, these methods closely approximate the DVH integral at the native grid resolution, with targeted local refinement only where discontinuity surfaces intersect a cell. The approximations involved (planar structure boundary, affine dose model, linearly interpolated inter-slice SDF) are made explicit, and each can be replaced with a more accurate method (curvature correction, tetrahedral decomposition, SDF reinitialisation) where needed.
 
-Supersampling, subdividing space into finer binary grids, is a brute-force approach to both discontinuities simultaneously. The SDF approach separates them, handles each one with targeted analytical methods, and achieves better accuracy at lower cost for typical clinical cases.
+Supersampling, subdividing space into finer binary grids, is a brute-force approach to both discontinuities simultaneously. The SDF approach separates them, handles each one with targeted analytical methods, and is expected to achieve better accuracy at lower cost for typical clinical cases. This expectation should be confirmed by systematic benchmarking (see the validation roadmap below).
 
-Published cross-system comparisons [^11] show that commercial DVH calculators can differ from one another by 0.9--3.2% in DVH metrics, with the major sources of variation being supersampling strategy, end-capping policy, and dose bin resolution. The approach described here makes each of these choices explicit and handles them with targeted analytical methods, rather than leaving them as hidden implementation details.
+Published cross-system comparisons [^11], [^20], [^21] show that commercial DVH calculators can differ from one another by approximately 0.9--3.2% in DVH metrics, with the major sources of variation being supersampling strategy, end-capping policy, and dose bin resolution. The approach described here makes each of these choices explicit and handles them with targeted analytical methods, rather than leaving them as hidden implementation details.
+
+## Validation roadmap
+
+The algorithm described in this document makes specific claims about accuracy that require systematic benchmarking before they can be presented as demonstrated results. The following validation matrix outlines the minimum benchmark suite.
+
+### Analytical phantom tests
+
+**Nelms-style geometries [^20].** Spheres, cylinders, and cones at known positions relative to analytical dose fields (uniform, linear gradient, quadratic). These provide closed-form DVH solutions for algorithm verification with clean error attribution.
+
+**Pepin-style precision tests [^11].** Cone and cylinder geometries on grids of varying resolution, testing convergence of volume, $D_{\text{mean}}$, $D_{95\%}$, and $V_{x\,\text{Gy}}$ as a function of grid spacing and structure size.
+
+**Stanley small-sphere SRS cases [^22].** Spheres of 3--10 mm diameter on 1 mm grids in steep gradient fields, specifically targeting the regime where both contour vertex fidelity and boundary-cell clipping accuracy are stressed.
+
+**Grammatikou 1 mm SRS regime [^23].** Intracranial SRS targets at 1 mm slice spacing and 1 mm dose grid, benchmarking GI, CI, and volume accuracy against TPS reference values.
+
+### Contour vertex fidelity sweep
+
+**Vertex decimation tests.** For circular and spherical contours, systematically reduce vertex count from 64 to 4 and measure the resulting DVH error (structure volume, $D_{95\%}$, $V_{100\%}$) as a function of vertex count and structure radius. This isolates the input-data fidelity error from the algorithmic error.
+
+### Cross-method convergence
+
+**Planar PLIC vs exact clipping.** For each analytical phantom, compute the DVH using both the planar PLIC path and the exact polygon-cell clipping path. The difference quantifies the curvature-induced error of the planar model and validates the curvature-based dispatch threshold.
+
+**Affine vs tetrahedral dose model.** For dose-ambiguous cells, compare the affine isodose approximation against the tetrahedral decomposition. This quantifies the dose-side model error and identifies cases where the affine model is insufficient.
+
+### Clinical dataset stress tests
+
+Analytical phantoms do not reproduce the full complexity of clinical anatomy. A small set of clinical RTSTRUCT/RTDOSE pairs should be selected to cover concavities, thin shells, multiply connected structures, and structures in steep-gradient regions. The engine's output should be compared against commercial TPS DVH values and, where possible, against a converged high-resolution reference (e.g. exact clipping on a 0.5 mm interpolated grid).
 
 ## Further directions from computer graphics
 
@@ -620,7 +719,7 @@ The algorithm described above draws primarily on the Volume of Fluid literature 
 
 **Bounding volume hierarchies (BVHs) for the 2D SDF computation.** _Improves: speed of SDF computation for complex contours._ The vectorised point-to-segment loop in Step 1 is $O(M \cdot N)$ where $M$ is the number of grid points and $N$ the number of contour edges. For organs with complex contours ($N > 500$, e.g. lung with mediastinal invaginations), this becomes the bottleneck. Building a 2D BVH or R-tree over the edges and querying nearest-edge per grid point reduces this to $O(M \log N)$. Libraries like Shapely (GEOS backend) provide this via `STRtree`. This does not affect DVH accuracy, only computation time.
 
-**Generalised winding numbers** [^16]. _Improves: robustness of the inside/outside sign determination._ The crossing-number test used for SDF sign determination can produce spurious sign flips when contour edges pass near grid points or when contours have near-degenerate vertices. The generalised winding number sums solid angles subtended by each edge and degrades gracefully for imperfect geometry. The fast winding number variant [^17] achieves $O(\log N)$ via hierarchical multipole approximation. This improves correctness of the SDF sign, which directly affects which cells are classified as inside vs outside.
+**Robust 2D winding numbers** [^16]. _Improves: robustness of the inside/outside sign determination._ The crossing-number test used for SDF sign determination can produce spurious sign flips when contour edges pass near grid points or when contours have near-degenerate vertices. A robust planar winding number formulation sums the signed angle subtended by each contour edge as seen from the query point; the integer part of the result gives the winding number, and the fractional part degrades gracefully for imperfect geometry. For the 2D slice-wise problem considered here, this is a planar winding number computation, not the 3D solid-angle formulation described by Jacobson et al. [^16] for triangle soups. The fast winding number variant [^17] (which uses hierarchical multipole approximation to achieve $O(\log N)$ complexity) is relevant only if the engine later reconstructs an explicit 3D surface mesh; for the 2D per-slice problem, a direct $O(N)$ winding number computation is sufficient and simpler.
 
 **Sparse volumetric storage.** _Improves: memory efficiency for many structures or large grids._ For a patient with 30 structures on a 256 x 256 x 100 dose grid, storing a full SDF array per structure requires roughly 600 MB of float32 data. OpenVDB [^18] stores only a narrow band around each structure boundary, compressing uniform interior/exterior regions to tiles. For typical clinical structures, this is expected to reduce storage substantially (estimated 10--100x; these figures should be benchmarked for clinical datasets). NanoVDB provides a GPU-friendly read-only variant. Python bindings are available via `pyopenvdb`. This does not affect accuracy but enables scaling to large structure sets.
 
@@ -628,7 +727,7 @@ The algorithm described above draws primarily on the Volume of Fluid literature 
 
 **Morphological contour interpolation.** _Improves: inter-slice structure model for complex topologies._ The ITK `MorphologicalContourInterpolator` (Zukic et al., _Insight J._, 2016) uses iterative dilation/erosion to transform one contour toward another, handling branching and topology changes more naturally than linear SDF interpolation. It produces a binary interpolation that can be converted to an SDF via fast marching. This could improve DVH accuracy for structures with complex between-slice behaviour (e.g. the horseshoe-shaped parotid, or structures that branch between slices) at the cost of a more expensive inter-slice reconstruction step.
 
-**Fast marching for SDF reinitialisation.** _Improves: reliability of the half-diagonal cell classification and curvature dispatch._ As discussed earlier, the linearly interpolated SDF is not a true Euclidean distance field. Reinitialising it by solving the Eikonal equation $|\nabla\phi| = 1$ with the zero level set held fixed produces a true SDF. scikit-fmm (`pip install scikit-fmm`) implements this in $O(N \log N)$ on 3D NumPy arrays. After reinitialisation, the half-diagonal classification test becomes rigorous, and curvature estimates from the SDF Hessian become reliable. This directly improves correctness of cell classification and the curvature-based dispatch criterion.
+**Fast marching for SDF reinitialisation.** _Improves: reliability of the half-diagonal cell classification and curvature dispatch._ As discussed earlier, the linearly interpolated SDF is not a true Euclidean distance field. Reinitialising it by solving the Eikonal equation $|\nabla\phi| = 1$ with the zero level set held fixed produces an approximate Euclidean SDF. scikit-fmm (`pip install scikit-fmm`) implements this in $O(N \log N)$ on 3D NumPy arrays. After reinitialisation, the half-diagonal classification test becomes well-founded (subject to the $O(\Delta x)$ discretisation error of the fast marching solver), and curvature estimates from the SDF Hessian become more reliable. This directly improves correctness of cell classification and the curvature-based dispatch criterion.
 
 ## Bibliography
 
@@ -650,9 +749,9 @@ The algorithm described above draws primarily on the Volume of Fluid literature 
 
 [^9]: Benedict SH, Yenice KM, Followill D, et al. Stereotactic body radiation therapy: the report of AAPM Task Group 101. _Med Phys_. 2010;37(8):4078-4101. doi:10.1118/1.3438081.
 
-[^10]: Cirino E, Anastasi G, Bresciani S, et al. AAPM-RSS Medical Physics Practice Guideline 9.b on stereotactic body radiation therapy. _J Appl Clin Med Phys_. 2025;26(1):e14624. doi:10.1002/acm2.14624.
+[^10]: Cirino E, Anastasi G, Bresciani S, et al. AAPM-RSS Medical Physics Practice Guideline 9.b on stereotactic body radiation therapy. _J Appl Clin Med Phys_. 2025;26(4):e14624. doi:10.1002/acm2.14624.
 
-[^11]: Pepin MD, Langner U, Bolen SD, et al. Assessment of dose-volume histogram precision for five clinical systems. _Med Phys_. 2022;49(10):6303-6318. doi:10.1002/mp.15922.
+[^11]: Pepin MD, Langner U, Bolen SD, et al. Assessment of dose-volume histogram precision for five clinical systems. _Med Phys_. 2022;49(10):6303-6318. doi:10.1002/mp.15916.
 
 [^12]: Huang B, Wu L, Lin P, Chen C. Dose calculation of Acuros XB and Anisotropic Analytical Algorithm in lung stereotactic body radiotherapy treatment with flattening filter free beams and the potential role of calculation grid size. _Radiat Oncol_. 2015;10:53. doi:10.1186/s13014-015-0357-0.
 
@@ -660,7 +759,7 @@ The algorithm described above draws primarily on the Volume of Fluid literature 
 
 [^14]: Khan FM, Gibbons JP. _Khan's the Physics of Radiation Therapy_. 6th ed. Philadelphia: Wolters Kluwer; 2020.
 
-[^15]: DICOM Standards Committee. DICOM PS3.3: Information Object Definitions. 2024. Sections C.8.8.3 (RT Dose Module) and C.8.8.6.3 (ROI Contour Module). <https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.3.html>
+[^15]: DICOM Standards Committee. DICOM PS3.3: Information Object Definitions. Current edition. Sections C.8.8.3 (RT Dose Module) and C.8.8.6.3 (ROI Contour Module). <https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.3.html>
 
 [^16]: Jacobson A, Kavan L, Sorkine-Hornung O. Robust inside-outside segmentation using generalised winding numbers. _ACM Trans Graph_. 2013;32(4):33. doi:10.1145/2461912.2461916.
 
@@ -668,4 +767,12 @@ The algorithm described above draws primarily on the Volume of Fluid literature 
 
 [^18]: Museth K. VDB: High-resolution sparse volumes with dynamic topology. _ACM Trans Graph_. 2013;32(3):27. doi:10.1145/2487228.2487235.
 
-[^19]: dicompyler-core contributors. dicompyler-core: A library for DICOM RT DVH calculation. <https://github.com/dicompyler/dicompyler-core>. Source: `dicompylercore/dvhcalc.py`.
+[^19]: dicompyler-core contributors. dicompyler-core: A library for DICOM RT DVH calculation. <https://github.com/dicompyler/dicompyler-core>.
+
+[^20]: Nelms BE, Tome WA, Robinson G, Wheeler J. Variations in the contouring of organs at risk: test case from a patient with oropharyngeal cancer. _Int J Radiat Oncol Biol Phys_. 2012;82(1):368-378. Note: the Nelms DVH benchmark methodology is described in Nelms BE, Robinson G, Markham J, et al. Variation in external beam treatment plan quality: An inter-institutional study of planners and planning systems. _Pract Radiat Oncol_. 2012;2(4):296-305; the analytical DVH validation dataset is published in Nelms BE, et al. Methods, software and datasets to verify DVH calculations against analytical values: Twenty years late(r). _Med Phys_. 2015;42(6):3380. doi:10.1118/1.4924390.
+
+[^21]: Penoncello GP, Sechrest SA, Chou W, et al. Multicenter multivendor evaluation of dose volume histogram creation consistencies for 8 commercial radiation therapy dosimetric systems. _Pract Radiat Oncol_. 2024;14(4):e316-e324. doi:10.1016/j.prro.2024.03.002.
+
+[^22]: Stanley DN, Harms J, Pogue JA, et al. Accuracy of dose-volume metric calculation for small-volume radiosurgery targets. _Med Phys_. 2021;48(10):6511-6520. doi:10.1002/mp.15216.
+
+[^23]: Grammatikou P, Leventouri I, Georgakilas AG, et al. Validation of dose-volume calculation accuracy for intracranial stereotactic radiosurgery with volumetric-modulated arc therapy using analytical and clinical treatment plans. _Appl Radiat Isot_. 2025;218:111733. doi:10.1016/j.apradiso.2025.111733.
