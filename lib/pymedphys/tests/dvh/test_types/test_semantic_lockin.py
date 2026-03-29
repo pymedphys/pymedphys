@@ -596,6 +596,7 @@ class TestIssueContextImmutability:
             context=ctx,
         )
         ctx["evil"] = True
+        assert issue.context is not None
         assert "evil" not in issue.context
 
     def test_context_is_immutable(self) -> None:
