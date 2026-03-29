@@ -123,12 +123,19 @@ def ellipsoid_volume(semi_a_mm: float, semi_b_mm: float, semi_c_mm: float) -> fl
 
 
 def torus_volume(major_radius_mm: float, minor_radius_mm: float) -> float:
-    """Volume of a torus.
+    """Volume of a simple (non-self-intersecting) torus.
+
+    Only simple tori (``major_radius_mm > minor_radius_mm``) are
+    supported. Horn tori (``R == r``) and spindle tori (``R < r``)
+    are rejected because they are not useful benchmark shapes and
+    their volume formula yields the same algebraic result but their
+    geometry is self-intersecting.
 
     Parameters
     ----------
     major_radius_mm : float
-        Distance from torus centre to tube centre, in mm. Must be > 0.
+        Distance from torus centre to tube centre, in mm. Must be
+        strictly greater than ``minor_radius_mm``.
     minor_radius_mm : float
         Tube radius in mm. Must be > 0.
 
@@ -136,8 +143,19 @@ def torus_volume(major_radius_mm: float, minor_radius_mm: float) -> float:
     -------
     float
         Volume in mm³: ``2 * π² * R * r²``.
+
+    Raises
+    ------
+    ValueError
+        If ``major_radius_mm <= minor_radius_mm``.
     """
     _validate_positive(major_radius_mm=major_radius_mm, minor_radius_mm=minor_radius_mm)
+    if major_radius_mm <= minor_radius_mm:
+        raise ValueError(
+            f"major_radius_mm ({major_radius_mm}) must be strictly greater "
+            f"than minor_radius_mm ({minor_radius_mm}) for a simple "
+            f"(non-self-intersecting) torus"
+        )
     return 2.0 * np.pi**2 * major_radius_mm * minor_radius_mm**2
 
 

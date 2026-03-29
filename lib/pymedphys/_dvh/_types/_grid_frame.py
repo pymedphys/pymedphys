@@ -13,6 +13,13 @@ from pymedphys._dvh._types._validators import _validate_finite_array
 def _validate_axis_aligned_affine(aff: npt.NDArray[np.float64]) -> None:
     """Enforce v1 axis-aligned affine constraints.
 
+    The affine must be axis-aligned with no shear. Each column and
+    each row of the 3x3 linear submatrix must have exactly one
+    non-zero entry. Sign flips (negative spacing) are allowed.
+    Axis permutation is allowed because the standard
+    ``from_uniform()`` constructor maps (iz, iy, ix) index axes to
+    (x, y, z) patient axes, which requires a permutation.
+
     Parameters
     ----------
     aff : npt.NDArray[np.float64]
@@ -23,8 +30,8 @@ def _validate_axis_aligned_affine(aff: npt.NDArray[np.float64]) -> None:
     ValueError
         If the affine violates axis-aligned constraints: last row
         must be [0, 0, 0, 1], the 3x3 linear submatrix must have
-        exactly one non-zero entry per column (axis-aligned, no shear),
-        and axes must be orthogonal.
+        exactly one non-zero entry per column and per row (axis-aligned,
+        no shear), and axes must be orthogonal.
     """
     # Last row must be [0, 0, 0, 1]
     expected_last_row = np.array([0.0, 0.0, 0.0, 1.0])
@@ -77,8 +84,10 @@ class GridFrame:
 
     v1 restriction: axis-aligned grids only. The affine must have
     orthogonal axes with exactly one non-zero spatial term per index
-    axis (no shear, no rotation other than axis permutation), and
-    the last row must be ``[0, 0, 0, 1]``.
+    axis and per output axis (no shear). Sign flips and axis
+    permutation are allowed (the standard ``from_uniform()``
+    constructor uses a permutation to map (iz, iy, ix) to (x, y, z)).
+    The last row must be ``[0, 0, 0, 1]``.
 
     Parameters
     ----------
@@ -186,6 +195,6 @@ class GridFrame:
     def from_dict(cls, d: dict) -> GridFrame:
         """Deserialise from a plain dict."""
         return cls(
-            shape_zyx=tuple(d["shape_zyx"]),
+            shape_zyx=tuple(int(v) for v in d["shape_zyx"]),
             index_to_patient_mm=np.array(d["index_to_patient_mm"], dtype=np.float64),
         )
