@@ -146,7 +146,6 @@ def test_sum_doses_in_datasets():
     }
 
     ds1 = create.dicom_dataset_from_dict(test_dicom_dict)
-    ds1.fix_meta_info(enforce_standard=False)
 
     ds2 = copy.deepcopy(ds1)
     ds2.PixelData = data2.tobytes()

@@ -13,28 +13,50 @@ on:
 jobs:
   claude:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
+
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: true
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           fetch-depth: 1
 
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
+
+      # Use the same pinned setup-uv action as the rest of CI.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # 5.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@ff9acae5886d41a99ed4ec14b7dc147d55834722 # 1.0.77
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: claude-opus-4-20250514
+          # Allowed tools — read-only git operations, safe dev tooling,
+          # and controlled write operations via MCP.
+          # Destructive commands (git reset --hard, git branch -D, force push)
+          # are intentionally excluded.
           allowed_tools: >
             View,
             Edit,
@@ -56,15 +78,11 @@ jobs:
             Bash(git fetch origin),
             Bash(git checkout -b),
             Bash(git checkout),
-            Bash(git branch -D),
             Bash(git merge),
             Bash(git add),
             Bash(git add .),
             Bash(git add -A),
             Bash(git commit -m),
-            Bash(git commit --amend),
-            Bash(git reset),
-            Bash(git reset --hard),
             Bash(git push),
             Bash(git push origin),
             Bash(git push -u origin),
@@ -75,25 +93,6 @@ jobs:
             Bash(gh pr view),
             Bash(gh pr comment),
             Bash(gh issue comment),
-            Bash(poetry install),
-            Bash(poetry install -E all),
-            Bash(poetry run pymedphys:*),
-            Bash(poetry run pytest),
-            Bash(poetry run pre-commit run),
-            Bash(poetry run pre-commit run --all-files),
-            Bash(poetry add),
-            Bash(poetry remove),
-            Bash(poetry update),
-            Bash(poetry lock),
-            Bash(poetry lock --no-update),
-            Bash(poetry show),
-            Bash(poetry show --tree),
-            Bash(poetry show --outdated),
-            Bash(poetry check),
-            Bash(poetry version),
-            Bash(poetry env info),
-            Bash(poetry env use),
-            Bash(poetry cache clear),
             Bash(uv pip install),
             Bash(uv pip install -e),
             Bash(uv pip install -r),
@@ -105,11 +104,6 @@ jobs:
             Bash(uv remove),
             Bash(uv tool install),
             Bash(uv tool run),
-            Bash(poetry run ruff check),
-            Bash(poetry run ruff check --fix),
-            Bash(poetry run ruff format),
-            Bash(poetry run pyright),
-            Bash(poetry run mypy),
             Bash(uv run ruff check),
             Bash(uv run ruff check --fix),
             Bash(uv run ruff format),

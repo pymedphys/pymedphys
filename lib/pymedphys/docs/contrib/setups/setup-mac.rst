@@ -6,8 +6,7 @@ Overview
 ========
 
 * Install Python 3.12.3
-* Install `pipx` with ``pip install pipx``
-* Install ``poetry`` with ``pipx install poetry``
+* Install ``uv`` with ``curl -LsSf https://astral.sh/uv/install.sh | sh``
 * Install freetds
 
   * Can be done with `Homebrew`_; ``brew install freetds``
@@ -15,8 +14,8 @@ Overview
 
   * eg. ``pip install cython``
 * Clone the PyMedPhys git repo
-* Run ``poetry install -E all`` within the root of the repo
-* Run ``poetry run pre-commit install``
+* Run ``uv sync --extra all --group dev`` within the root of the repo
+* Run ``uv run -- pre-commit install``
 * Install pandoc
 
   * Can be done with `Homebrew`_; ``brew install pandoc``

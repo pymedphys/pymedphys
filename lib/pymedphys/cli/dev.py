@@ -53,7 +53,7 @@ def add_propagate_parser(dev_subparsers):
 
     parser.add_argument(
         "--update",
-        help="Run poetry update first.",
+        help="Run uv lock --upgrade first.",
         action="store_true",
     )
 

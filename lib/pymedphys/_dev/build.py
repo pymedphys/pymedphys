@@ -44,7 +44,7 @@ def build_binary(args):
         pass
 
     subprocess.check_call(
-        ["poetry", "run", "pyoxidizer", "build", "install"], cwd=REPO_ROOT
+        ["uv", "run", "--", "pyoxidizer", "build", "install"], cwd=REPO_ROOT
     )
     shutil.move(PYOXIDIZER_DIST, PYTHON_APP_DESTINATION)
 

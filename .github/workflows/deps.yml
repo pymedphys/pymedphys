@@ -1,0 +1,80 @@
+name: Update Dependencies
+
+on:
+  schedule:
+    - cron: '17 3 * * MON'  # Staggered to avoid top-of-hour congestion
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # 5.3.2
+
+      - name: Update dependencies
+        id: update
+        run: |
+          # Save current lock
+          cp uv.lock uv.lock.old
+
+          # Update
+          uv lock --upgrade
+
+          # Check if changed
+          if diff -q uv.lock uv.lock.old > /dev/null; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+
+            # Generate changelog
+            {
+              echo "## Dependency Updates"
+              echo
+              echo '```diff'
+              diff uv.lock.old uv.lock | grep "^[><]" | head -50 || true
+              echo '```'
+            } > updates.md
+          fi
+
+      - name: Run validation
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          set -euxo pipefail
+
+          uv sync --frozen --extra user --extra tests --extra docs
+
+          # Run the full non-slow test suite rather than a hand-curated
+          # subset — ensures new test directories are covered automatically.
+          uv run pytest -q --maxfail=3 \
+            -m "not slow and not cypress and not mosaiqdb and not anthropic_key"
+
+          uv run pymedphys dev docs
+
+          uv build --wheel
+          uv venv .wheel-test
+          source .wheel-test/bin/activate
+          uv pip install dist/*.whl
+          pymedphys --help
+          python -c "import pymedphys; print(pymedphys.__version__)"
+
+      - name: Create PR
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
+        with:
+          title: "chore: update dependencies"
+          body-path: updates.md
+          branch: deps/update-${{ github.run_number }}
+          commit-message: "chore: update dependencies"
+          labels: dependencies

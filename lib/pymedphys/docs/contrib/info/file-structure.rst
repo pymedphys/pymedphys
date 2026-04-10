@@ -32,7 +32,7 @@ PyMedPhys contains a series of top-level files. These include:
                    source code library. ``changelog.md`` determines the text
                    presented on the `Release Notes`_ documentation page.
 
-:``pyproject.toml``: The poetry configuration file that designates dependencies
+:``pyproject.toml``: The uv configuration file that designates dependencies
                      and other library related details.
 
 You'll quickly note from a cursory look through PyMedPhys that there are

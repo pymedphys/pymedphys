@@ -30,10 +30,10 @@ def test_structure_dedupe():
     input_paths = [path for path in data_paths if path.parent.name == "input"]
 
     for input_path in input_paths:
-        input_dcm = pydicom.read_file(str(input_path), force=True)
+        input_dcm = pydicom.dcmread(str(input_path), force=True)
 
         baseline_path = input_path.parent.parent.joinpath("baseline", input_path.name)
-        baseline_dcm = pydicom.read_file(str(baseline_path), force=True)
+        baseline_dcm = pydicom.dcmread(str(baseline_path), force=True)
 
         # NOTE: Sorting was added in due to an upgrade in shapely which
         # resulted in a different structure insertion order. See
@@ -62,7 +62,7 @@ def test_structure_dedupe():
             ]
             subprocess.check_call(command)
 
-            cli_dcm = pydicom.read_file(output_filename, force=True)
+            cli_dcm = pydicom.dcmread(output_filename, force=True)
 
         cli_dcm = _sort_ds(cli_dcm)
         assert str(cli_dcm) == str(baseline_dcm)

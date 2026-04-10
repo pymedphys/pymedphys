@@ -143,7 +143,7 @@ class DicomListener(DicomConnectBase):
         if filepath.exists():
             # If the file already exists, open it up and compare the contents
             # (converting to JSON string to perform comparison)
-            existing_ds = pydicom.read_file(filepath)
+            existing_ds = pydicom.dcmread(filepath)
 
             if not existing_ds.to_json() == dataset.to_json():
                 # If the contents don't match, save conflicting incoming file in an

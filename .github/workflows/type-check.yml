@@ -1,0 +1,51 @@
+name: Type Check
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pyright:
+    name: Pyright
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+
+      - name: Run pyright
+        run: |
+          uv run -- pyright
+
+  mypy:
+    name: MyPy (optional)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # continue-on-error lets the workflow succeed even if mypy fails,
+    # but the step and job will show as failed (yellow warning) so
+    # issues are visible. Do NOT also add || true on the command —
+    # that would hide failures entirely.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+
+      - name: Run mypy
+        run: |
+          uv run \
+            --with mypy \
+            --with types-PyYAML \
+            --with types-python-dateutil \
+            --with types-requests \
+            --with types-tabulate \
+            --with types-toml \
+            mypy lib/pymedphys

@@ -1,0 +1,24 @@
+name: Lint & Format
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Pylint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'all'
+
+      - name: Run pylint
+        run: |
+          uv run pymedphys dev lint

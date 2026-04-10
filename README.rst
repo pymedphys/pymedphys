@@ -27,26 +27,17 @@ and open source distribution. Open code is better science.**
 What is PyMedPhys?
 ==================
 
-PyMedPhys is an open-source Medical Physics python library built by an open
-community that values and prioritises code sharing, review, improvement, and
-learning from each other. It is inspired by the collaborative work of our
-physics peers in astronomy and the `Astropy Project`_. PyMedPhys is available
-on `PyPI`_ and `GitHub`_.
+PyMedPhys is an open-source Medical Physics Python library built by an open
+community that values code sharing, review, improvement, and learning from each
+other. It is inspired by the collaborative work of our physics peers in
+astronomy and the `Astropy Project`_. PyMedPhys is available on `PyPI`_ and
+`GitHub`_.
 
-PyMedPhys first paper in the Journal of Open Source Software contains more
-background information, including a statement of need. You can access the paper
-`here <https://joss.theoj.org/papers/10.21105/joss.04555>`_. When referencing
-PyMedPhys, please cite this paper as follows:
+PyMedPhys supports three main ways of working:
 
-*Biggs, S., Jennings, M., Swerdloff, S., Chlap, P., Lane, D., Rembish, J.,
-McAloney, J., King, P., Ayala, R., Guan, F., Lambri, N., Crewson, C., Sobolewski, M. (2022).
-PyMedPhys: A community effort to develop an open, Python-based standard
-library for medical physics applications. Journal of Open Source Software,
-7(78), 4555, https://doi.org/10.21105/joss.04555*
-
-.. _`Astropy Project`: http://www.astropy.org/
-.. _`PyPI`: https://pypi.org/project/pymedphys/
-.. _`GitHub`: https://github.com/pymedphys/pymedphys
+* a Python library for notebooks, scripts, and clinic-specific tooling
+* a command line interface (CLI) for repeatable automation
+* a point-and-click app layer for selected workflows
 
 Beta level of development
 *************************
@@ -54,61 +45,119 @@ Beta level of development
 PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
 stay in this stage until the version number leaves ``0.x.x`` and enters
 ``1.x.x``. While PyMedPhys is in ``beta`` stage, **no API is guaranteed to be
-stable from one release to the next.** In fact, it is very likely that the
-entire API will change multiple times before a ``1.0.0`` release. In practice,
-this means that upgrading ``pymedphys`` to a new version will possibly break
-any code that was using the old version of pymedphys. We try to be abreast of
-this by providing details of any breaking changes from one release to the next
-within the `Release Notes`_.
+stable from one release to the next.** Upgrading ``pymedphys`` can therefore
+break existing scripts or workflows. We try to stay ahead of that by
+documenting breaking changes in the `Release Notes`_.
 
-Community
-**************
+Start here
+**********
 
-PyMedPhys has a `GitHub Discussions <https://github.com/pymedphys/pymedphys/discussions>`_
-page to both help you find your feet using PyMedPhys and to facilitate collaboration
-and general discussion. Please reach out over there and we'd love to get to
-know you!
+If you are new to PyMedPhys, start with these four questions in order:
+
+1. `What PyMedPhys can do`_
+2. `Choose your path`_
+3. `Installation options`_
+4. `Quick Start Guide`_
+
+Common task areas
+*****************
+
+PyMedPhys is often used to:
+
+* compare dose or fluence-like data with gamma, interpolation, and MetersetMap
+* work with DICOM and pseudonymisation workflows
+* work with delivery, logfile, and iCom data
+* query or integrate with Mosaiq
+* use point-and-click apps for selected workflows
+
+Install PyMedPhys
+*****************
+
+PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+
+For most users, we recommend using ``uv`` to create an environment and install
+PyMedPhys:
+
+.. code:: bash
+
+    uv python install 3.12
+    uv venv --python 3.12
+    uv pip install "pymedphys[user]"
+
+If you cannot use ``uv`` on your workstation, the `Quick Start Guide`_ also
+includes a standard Python + ``venv`` + ``pip`` fallback path.
+
+Choose the right interface
+**************************
+
+Use the **Python library** when you want notebooks, analysis, plots, and
+clinic-specific workflows.
+
+Use the **CLI** when you want repeatable commands, scheduled jobs, or shell
+automation.
+
+Use the **app layer** when you want the least coding and a graphical workflow.
+
+For a fuller comparison, read `Choose your path`_.
 
 Documentation
 =============
 
-PyMedPhys can be installed with:
+The PyMedPhys documentation has two overarching guides:
 
-.. code:: bash
+1. **The Users Guide**: where you can `get started`_ with the library, the CLI,
+   and the app layer; read task-focused `how-to guides`_; find
+   `background information`_ on larger projects and concepts; and browse the
+   `Technical Reference`_ when you already know the feature you need.
 
-    pip install pymedphys[user]
+2. **The Contributors Guide**: for those who want to contribute to PyMedPhys.
+   This includes the `Contributors Guide`_ landing page, detailed
+   `workstation setup guides`_, important `repository information`_, and some
+   `tips & tricks`_ for common problems.
 
-Further user installation instructions can be found in the `Quick Start Guide`_.
+Community
+*********
 
-The PyMedPhys documentation contains two overarching guides:
+PyMedPhys has a
+`GitHub Discussions <https://github.com/pymedphys/pymedphys/discussions>`_
+page to help users find their feet and to support collaboration and general
+discussion.
 
-1. **The Users Guide**: where you can find instructions to `get started`_ with
-   the library and the CLI, in-depth `how-to guides`_ (examples for users) on PyMedPhys' various
-   tools, some `background information`_ on individual PyMedPhys projects as
-   well as the `Technical Reference`_.
+.. END_OF_DOCS_IMPORT
 
-2. **The Contributors Guide**: for those who wish to make new contributions
-   to the PyMedPhys library, CLI or app. Here you'll find detailed `workstation
-   setup guides`_ to enable contributions, important `repository information`_,
-   and some `tips & tricks`_ to overcome common issues.
+Citing PyMedPhys
+================
+
+PyMedPhys' first paper in the Journal of Open Source Software contains more
+background information, including the `Statement of Need`_. You can access the
+paper `here <https://joss.theoj.org/papers/10.21105/joss.04555>`_.
+
+When referencing PyMedPhys, please cite this paper as follows:
+
+*Biggs, S., Jennings, M., Swerdloff, S., Chlap, P., Lane, D., Rembish, J.,
+McAloney, J., King, P., Ayala, R., Guan, F., Lambri, N., Crewson, C.,
+Sobolewski, M. (2022). PyMedPhys: A community effort to develop an open,
+Python-based standard library for medical physics applications. Journal of Open
+Source Software, 7(78), 4555, https://doi.org/10.21105/joss.04555*
 
 Development
-=============
+===========
 
-The PyMedPhys project is managed using `Poetry`_.
+PyMedPhys uses `uv`_ for package and project management.
 
-After cloning the repository, install the PyMedPhys dependencies and set up pre-commit by running:
+After cloning the repository, install the PyMedPhys dependencies and set up
+pre-commit by running:
 
 .. code:: bash
 
-    poetry install -E all
-    poetry run pre-commit install
+    uv sync --extra all --group dev
+    uv run -- pre-commit install
 
 Run automated tests with:
 
 .. code:: bash
 
-    poetry run pymedphys dev tests
+    uv run -- pymedphys dev tests
 
 
 Our Team
@@ -131,7 +180,7 @@ Maintainers
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 * `Matthew Jennings`_
-    * `Royal Adelaide Hospital`_, Australia
+    * `Icon Group`_, Australia
 
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
@@ -145,7 +194,7 @@ Maintainers
 |sjs| |rah|
 
 Active contributors
-****************************
+*******************
 
 * `Derek Lane`_
     * `ELEKTA AB`_, Houston TX
@@ -186,7 +235,7 @@ Active contributors
 |uth| |ccr|
 
 Past contributors
-****************************
+*****************
 
 * `Matthew Cooper <https://github.com/matthewdeancooper>`_
 * `Pedro Martinez <https://github.com/peterg1t>`_
@@ -218,7 +267,7 @@ Past contributors
 
 .. _`ELEKTA AB`: https://www.elekta.com/
 
-.. _`Royal Adelaide Hospital`: https://www.rah.sa.gov.au/
+.. _`Icon Group`: https://icongroup.global/
 
 .. _`University of New South Wales`: https://www.unsw.edu.au/
 
@@ -252,17 +301,23 @@ Past contributors
 
 .. _`Cancer Care Riverina`: https://cancercare.com.au/clinics/cancer-care-riverina/
 
-.. END_OF_DOCS_IMPORT
+.. _`Astropy Project`: https://www.astropy.org/
+.. _`PyPI`: https://pypi.org/project/pymedphys/
+.. _`GitHub`: https://github.com/pymedphys/pymedphys
 
 .. _`Release Notes`: ./CHANGELOG.md
 
 .. _`Statement of Need`: https://docs.pymedphys.com/en/latest/statement-of-need.html
+.. _`What PyMedPhys can do`: https://docs.pymedphys.com/en/latest/users/get-started/what-pymedphys-can-do.html
+.. _`Choose your path`: https://docs.pymedphys.com/en/latest/users/get-started/choose-your-path.html
+.. _`Installation options`: https://docs.pymedphys.com/en/latest/users/get-started/installation-options.html
 .. _`Quick Start Guide`: https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html
 .. _`get started`: https://docs.pymedphys.com/en/latest/users/get-started/index.html
 .. _`how-to guides`: https://docs.pymedphys.com/en/latest/users/howto/index.html
 .. _`background information`: https://docs.pymedphys.com/en/latest/users/background/index.html
 .. _`Technical Reference`: https://docs.pymedphys.com/en/latest/users/ref/index.html
+.. _`Contributors Guide`: https://docs.pymedphys.com/en/latest/contrib/index.html
 .. _`workstation setup guides`: https://docs.pymedphys.com/en/latest/contrib/setups/index.html
 .. _`repository information`: https://docs.pymedphys.com/en/latest/contrib/info/index.html
 .. _`tips & tricks`: https://docs.pymedphys.com/en/latest/contrib/tips/index.html
-.. _`Poetry`: https://python-poetry.org/
+.. _`uv`: https://docs.astral.sh/uv/

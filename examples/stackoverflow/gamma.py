@@ -6,13 +6,14 @@ if __name__ == "__main__":
     os.system("pip install numpy scipy pydicom")
 
     import pydicom
+
     import pymedphys
 
     reference_filepath = pymedphys.data_path("original_dose_beam_4.dcm")
     evaluation_filepath = pymedphys.data_path("logfile_dose_beam_4.dcm")
 
-    reference = pydicom.read_file(str(reference_filepath), force=True)
-    evaluation = pydicom.read_file(str(evaluation_filepath), force=True)
+    reference = pydicom.dcmread(str(reference_filepath), force=True)
+    evaluation = pydicom.dcmread(str(evaluation_filepath), force=True)
 
     axes_reference, dose_reference = pymedphys.dicom.zyx_and_dose_from_dataset(
         reference

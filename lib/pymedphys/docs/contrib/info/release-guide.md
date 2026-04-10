@@ -27,18 +27,19 @@ git push --set-upstream origin VERSION-release-prep
 Update the version code near the top of the file:
 
 ```toml
-[tool.poetry]
+[project]
 name = "pymedphys"
 version = "VERSION"
 readme = "README.rst"
 ...
 ```
 
-Then run poetry update as well as propagate:
+Then run uv lock --upgrade as well as propagate:
 
 ```bash
-poetry update
-poetry run pymedphys dev propagate
+uv lock --upgrade
+uv sync --extra all --group dev
+uv run -- pymedphys dev propagate
 ```
 
 ## Update CHANGELOG
