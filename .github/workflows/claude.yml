@@ -52,7 +52,7 @@ jobs:
         uses: anthropics/claude-code-action@ff9acae5886d41a99ed4ec14b7dc147d55834722 # 1.0.77
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-opus-4-20250514
+          model: claude-opus-4-7
           # Allowed tools — read-only git operations, safe dev tooling,
           # and controlled write operations via MCP.
           # Destructive commands (git reset --hard, git branch -D, force push)
