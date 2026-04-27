@@ -44,6 +44,7 @@ import re
 import time
 
 from pymedphys._imports import pydicom
+from pymedphys._pinnacle.pinnacle_exceptions import MissingCTImageError
 
 from .constants import (
     GImplementationClassUID,
@@ -398,7 +399,7 @@ def convert_struct(plan, export_path, skip_pattern):
         plan.logger.error(
             "No primary image found for plan. Unable to generate RTSTRUCT."
         )
-        return
+        raise MissingCTImageError("Plan has no primary image associated with it.")
 
     patient_info = plan.pinnacle.patient_info
 
