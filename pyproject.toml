@@ -104,6 +104,7 @@ tests = [
   "pytest-sugar",
   "python-dateutil",
   "shapely",
+  "toml",
   "tqdm",
 ]
 

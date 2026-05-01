@@ -48,7 +48,7 @@ jobs:
 
           # Always exclude slow tests in unit test runs.
           # Extra pytest options come from PYTEST_ADDOPTS, which pytest parses.
-          uv run pytest -m "not slow" \
+          uv run -- pymedphys dev tests -m "not slow" \
             --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
 
       - name: Upload test results

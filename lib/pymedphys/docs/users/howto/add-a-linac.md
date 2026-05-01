@@ -77,8 +77,8 @@ Make sure to adjust the above versions appropriately to match what is current.
 
 ### The [physics-server](https://github.com/CCA-Physics/physics-server) git repository
 
-To facilitate SSH tunnelling between the sites there is
-a server with the hostname `physics-server` at each site. The relevant software
+To facilitate SSH tunnelling between the sites there is a server with the
+hostname `physics-server` at each site. The relevant software
 and configuration on these servers is stored within a public GitHub repository
 at <https://github.com/CCA-Physics/physics-server>. All of the code snippets
 presented within this iCom section are adapted from the code found within
