@@ -1,0 +1,143 @@
+@startuml act_compute_pipeline
+' SysML Activity Diagram
+' Compute-pipeline detail for the click(pseudonymise_button) transition.
+' Shows the internal-trace state progression and the side-effect-stream
+' labels emitted at each phase. Decomposes the third lane of
+' act_rerun_pipeline.svg.
+
+title <<act>> pseudonymise -- Compute Pipeline (click(pseudonymise_button) transition)
+
+skinparam activityBackgroundColor #fff3e0
+skinparam activityBorderColor #e65100
+skinparam activityFontColor #bf360c
+skinparam activityDiamondBackgroundColor #fce4ec
+skinparam activityDiamondBorderColor #c62828
+skinparam shadowing false
+skinparam Padding 4
+
+|Phase 1: compute_ops.pl (entry)|
+start
+:datetime_now;
+note right
+    PY:164
+end note
+:datetime_strftime "%Y%m%d_%H%M%S";
+note right
+    PY:165 -> "Pseudonymised_<stamp>"
+end note
+:tier := computing_chunking;
+
+|Phase 2: chunk_index_list.pl (chunking)|
+:compute_chunks(uploaded_files);
+note right
+    PY:201-229: 50 MByte threshold, strict `>`, post-loop tail-flush.
+    Pure compute; no side effects.
+end note
+
+|Phase 3: render_ops.pl (chunk-index render)|
+:st.write(index_to_fifty_mbyte_increment);
+note right
+    PY:173 -- side-effect label render_chunk_indices(indices)
+end note
+
+|Phase 4: compute_ops.pl (per-chunk loop)|
+repeat :tier := computing_per_chunk(I, N);
+    if (start_index == end_index?) then (yes -- PY:178-179 break)
+        break
+    else (no)
+    endif
+    :bytesio_new (zip_bytes_io);
+    :zipfile_open_write (ZipFile mode="w", DEFLATE);
+    note right
+        PY:101
+    end note
+
+    |Phase 4a: compute_ops.pl (per-file loop)|
+    repeat :tier := computing_per_file(I, J);
+        partition try {
+            :pydicom.dcmread(uploaded_file_buffer, force=True);
+            note right
+                PY:114 -- side-effect label dcmread(buf) -> ds
+            end note
+            :get_default_pseudonymisation_keywords;
+            note right
+                PY:96
+            end note
+            :remove "PatientSex" from keywords;
+            note right
+                PY:97
+            end note
+            :anonymise_dataset(ds, copy_dataset=False, ...);
+            note right
+                PY:118-125 -- in-place mutation
+                kernel: see python-algorithm-verification/anonymise/ (DEFERRED)
+            end note
+            :build_pseudonymised_filename(ds);
+            note right
+                PY:55-78 / call at PY:126
+                = "<sop_mode>.<pseudo_sop_uid>_Anonymised.dcm"
+            end note
+            :bytesio_new (in_memory_temp_file);
+            :pydicom.dcmwrite(in_memory_temp_file, ds);
+            note right
+                PY:129
+            end note
+            :myzip.writestr(anon_filename, bytes, DEFLATE);
+            note right
+                PY:135-139 -- side-effect label zipfile_writestr
+            end note
+            :bytesio_close (in_memory_temp_file);
+            note right
+                PY:140
+            end note
+        } catch (KeyError, OSError, ValueError) {
+            :python_print(e_info);
+            note right
+                PY:131
+            end note
+            :python_print("While processing <filename>");
+            note right
+                PY:132
+            end note
+            :compute.bad_data := True;
+            note right
+                PY:133
+            end note
+            break
+        }
+    repeat while (more files in chunk?)
+
+    if (bad_data?) then (yes)
+        :bytesio_close (zip_bytes_io);
+        note right
+            PY:189
+        end note
+        :st.text("Problem processing DICOM data");
+        note right
+            PY:193 -- side-effect label render_error_text
+        end note
+        :tier := error_bad_data;
+        stop
+    else (no)
+        :tier := computing_zip_assembled(I);
+        :zip_bytes_io.getvalue;
+        :base64.b64encode(zip_bytes).decode;
+        note right
+            PY:48
+        end note
+        :st.sidebar.markdown(href, unsafe_allow_html=True);
+        note right
+            PY:52 -- side-effect label render_download_link
+        end note
+        :bytesio_close (zip_bytes_io);
+        note right
+            PY:197
+        end note
+    endif
+repeat while (more chunks?)
+
+|Phase 5: terminal|
+:tier := displaying_results;
+stop
+
+@enduml

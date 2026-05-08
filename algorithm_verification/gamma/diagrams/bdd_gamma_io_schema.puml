@@ -1,0 +1,109 @@
+@startuml bdd_gamma_io_schema
+' SysML Block Definition Diagram
+' Input/output schema for pymedphys.gamma. Shows kernel signature with
+' types, constraints, and sentinel-handling contracts.
+
+title <<bdd>> pymedphys.gamma -- I/O Schema
+
+left to right direction
+
+hide circle
+hide empty methods
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+skinparam Padding 4
+
+skinparam class {
+    BackgroundColor<<input>>      #e3f2fd
+    BorderColor<<input>>          #1565c0
+
+    BackgroundColor<<output>>     #f9fbe7
+    BorderColor<<output>>         #827717
+
+    BackgroundColor<<recordType>> #e3f2fd
+    BorderColor<<recordType>>     #1565c0
+
+    BackgroundColor<<enumeration>> #fff9c4
+    BorderColor<<enumeration>>    #f9a825
+}
+
+package "Inputs" {
+    class "axes_reference" as axes_ref <<input>> {
+        type: tuple of monotonic ndarrays
+        constraint: each axis monotonic increasing
+        sentinel: empty tuple -> ValueError
+    }
+    class "dose_reference" as dose_ref <<input>> {
+        type: ndarray (any rank)
+        constraint: shape matches axes_reference
+        constraint: dtype float (cast at boundary)
+    }
+    class "axes_evaluation" as axes_eval <<input>>
+    class "dose_evaluation" as dose_eval <<input>>
+
+    class "GammaOptions" as GammaOpts <<recordType>> {
+        dose_percent_threshold: Number | List[Number]
+        distance_mm_threshold: Number | List[Number]
+        lower_percent_dose_cutoff: Number = 20
+        interp_fraction: Int = 10
+        max_gamma: Number = inf
+        local_gamma: Bool = false
+        global_normalisation: Number | None
+        skip_once_passed: Bool = false
+        random_subset: Int | None
+        ram_available: Int = 1.5GB
+        interp_algo: Atom = pymedphys
+    }
+}
+
+package "Outputs" {
+    class "gamma_array" as out_array <<output>> {
+        type: ndarray
+        shape: SAME as dose_reference
+        values: in [0, max_gamma] OR NaN
+        NaN-contract:
+            isnan(out[i]) <=> (ref[i] < cutoff)
+                              OR original was inf
+    }
+
+    class "gamma_dict" as out_dict <<output>> {
+        type: dict[(pct, dist) -> ndarray]
+        used when:
+            pct_thresh OR dist_thresh is List
+        values:
+            each ndarray as gamma_array
+    }
+}
+
+package "Kernel" {
+    class "pymedphys.gamma" as kernel <<recordType>> {
+        signature:
+          gamma_shell(axes_ref, dose_ref,
+                      axes_eval, dose_eval,
+                      pct, dist, **opts)
+        anchor:
+          PY: lib/pymedphys/_gamma/
+              implementation/shell.py:34
+    }
+}
+
+axes_ref     -right-> kernel
+dose_ref     -right-> kernel
+axes_eval    -right-> kernel
+dose_eval    -right-> kernel
+GammaOpts    -right-> kernel : kwargs
+
+kernel -right-> out_array  : when scalar pct + dist
+kernel -right-> out_dict   : when list pct OR dist
+
+note bottom of kernel
+    Pure deterministic input -> output function (modulo random_subset
+    seeding -- np.random.seed(42) gives byte-identical repeated outputs).
+    The kernel decomposes into:
+      from_user_inputs (validation + GammaInternalFixedOptions construction)
+      gamma_loop (per-voxel gamma search)
+      post-loop NaN/clamp handling at PY:174-178
+end note
+
+@enduml

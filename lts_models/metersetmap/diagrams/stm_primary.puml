@@ -1,0 +1,199 @@
+@startuml stm_primary
+' SysML State Machine Diagram
+' Primary state machine for the metersetmap orchestrator (orchestration-first
+' build). Shows ONLY user-receptive states (init / configuring / idle_* /
+' modal / displaying / error_*). The 5 input-method sub-LTSs are collapsed
+' to a single `idle_<role>_method_dispatched(Method)` super-state per role,
+' annotated with "see input_method_stubs.pl (DEFERRED -- Phase 2 expansion)".
+' Internal-trace states (computing_*) appear as notes on the
+' click(run_calculation_button) transition; their decomposition is in
+' act_compute_pipeline.svg.
+
+title <<stm>> metersetmap -- Primary State Machine (orchestration-first)
+
+top to bottom direction
+
+skinparam state {
+    BackgroundColor<<init>>      #e8eaf6
+    BorderColor<<init>>          #283593
+    FontColor<<init>>            #1a237e
+
+    BackgroundColor<<idle>>      #e3f2fd
+    BorderColor<<idle>>          #1565c0
+    FontColor<<idle>>            #0d47a1
+
+    BackgroundColor<<displaying>> #f9fbe7
+    BorderColor<<displaying>>     #827717
+    FontColor<<displaying>>       #827717
+
+    BackgroundColor<<modal>>     #e0f2f1
+    BorderColor<<modal>>         #00695c
+    FontColor<<modal>>           #004d40
+
+    BackgroundColor<<error>>     #fce4ec
+    BorderColor<<error>>         #c62828
+    FontColor<<error>>           #b71c1c
+
+    BackgroundColor<<sidelts>>   #f3e5f5
+    BorderColor<<sidelts>>       #6a1b9a
+    FontColor<<sidelts>>         #4a148c
+}
+
+' ============================================================
+' States (user-receptive only)
+' ============================================================
+
+[*] --> init
+
+state "init" as init <<init>>
+init : First execution at PY:571
+init : All widgets at constructor defaults
+
+state "configuring_mode" as configuring_mode <<idle>>
+configuring_mode : Config Mode radio rendered
+configuring_mode : config loaded from TOML
+
+state "Wizard: data selection" as DataSelection {
+    state "idle_reference_selecting_method" as idle_ref_select <<idle>>
+    idle_ref_select : Advanced mode only;\nin non-advanced, dispatch is\nimplicit on first render
+
+    state "idle_reference_method_dispatched" as idle_ref_dispatched <<idle>>
+    idle_ref_dispatched : DEFERRED sub-LTS\nsee input_method_stubs.pl\nMethod in {dicom, icom, trf,\n  mosaiq, monaco}
+
+    state "idle_evaluation_selecting_method" as idle_eval_select <<idle>>
+    idle_eval_select : Same shape as Reference
+
+    state "idle_evaluation_method_dispatched" as idle_eval_dispatched <<idle>>
+    idle_eval_dispatched : DEFERRED sub-LTS\nsees reference_results
+}
+
+state "Output config" as OutputConfig {
+    state "configuring_output_escan" as cfg_escan <<idle>>
+    cfg_escan : st_misc.get_site_and_directory\nPY:722
+
+    state "configuring_output_png" as cfg_png <<idle>>
+    cfg_png : Advanced only; text_input\nPY:746-748
+}
+
+state "ready_to_calculate" as ready <<idle>>
+ready : both_results_present\nAND output_config_complete\nRun Calculation button armed
+
+state "modal_warning_metersetmap_usage" as modal_warn <<modal>>
+modal_warn : st.warning(WARNING_MESSAGE)\nPY:771\nFirst-class modal state
+
+state "displaying_results" as displaying <<displaying>>
+displaying : st.pyplot(fig) rendered\nPDF download <a href> emitted\nfig + 4 PNGs saved to disk
+
+state "Errors" as ErrorTier {
+    state "error_pdf_conversion" as err_pdf <<error>>
+    err_pdf : magick + convert both fail\nUnableToCreatePDF rendered\nPY:553-568
+
+    state "error_config_missing" as err_cfg <<error>>
+    err_cfg : KeyError on iCOM/TRF\nbackup config; sidebar.write\nPY:111-116
+
+    state "error_file_not_found_baseline" as err_baseline <<error>>
+    err_baseline : Advanced debugging only\nimageio.imread fail\nPY:411-431
+}
+
+state "Sidebar side-LTS" as SidebarLts {
+    state "viewing_icom_status" as view_icom <<sidelts>>
+    view_icom : Per-linac iCOM scan rendered\nPY:128-129
+
+    state "viewing_trf_status" as view_trf <<sidelts>>
+    view_trf : Per-linac TRF scan rendered\nPY:137-138
+}
+
+state "Advanced debugging" as AdvancedDebug {
+    state "comparing_baseline_to_output" as comp_baseline <<sidelts>>
+    comp_baseline : Per-image imageio.imread\n+ np.allclose loop
+
+    state "displaying_baseline_diff" as display_baseline <<sidelts>>
+    display_baseline : Comparison results rendered
+}
+
+' ============================================================
+' Transitions
+' ============================================================
+
+init                  -down->  configuring_mode             : init
+
+configuring_mode      -down->  idle_ref_select              : select(config_mode, M)\n[any user-receptive]
+
+idle_ref_select       -down->  idle_ref_dispatched          : select(reference_method, M)\n[advanced_mode]\n  OR\n  input_method_returned(reference, M, R)
+
+idle_ref_dispatched   -down->  idle_eval_select             : input_method_returned(reference, M, R)\n[reference_results stored;\n derive_state evaluates next tier]
+
+idle_eval_select      -down->  idle_eval_dispatched         : select(evaluation_method, M)\n  OR\n  input_method_returned(evaluation, M, R)
+
+idle_eval_dispatched  -down->  cfg_escan                    : input_method_returned(evaluation, M, R)
+
+cfg_escan             -down->  cfg_png                      : select(escan_site, S)\n[advanced_mode]
+cfg_escan             -down->  ready                        : select(escan_site, S)\n[NOT advanced_mode]
+cfg_png               -down->  ready                        : text_change(png_output_directory, P)
+
+ready                 -down->  modal_warn                   : click(run_calculation_button)\n[can_run_calculation]\n/ {render warning}
+
+modal_warn            -down->  displaying                   : (same rerun;\n  modal is render-only;\n  pipeline runs through to results)\n/ {compute_ref_msm,\n   compute_eval_msm,\n   compute_gamma,\n   compute_plot,\n   plt_savefig,\n   subprocess(magick) -- success}
+
+modal_warn            -right-> err_pdf                      : (same rerun)\n/ {compute completes;\n   subprocess(magick) AND\n   subprocess(convert) BOTH fail\n   -> render UnableToCreatePDF}
+
+' Re-running with new inputs
+displaying            -up->    idle_ref_select              : (any user event\n  not click(run_calculation))
+err_pdf               -up->    idle_ref_select              : (any user event)
+
+' Sidebar side-LTS (independent of main wizard)
+configuring_mode      -right-> view_icom                    : click(status_check_button)\n/ {scan iCOM dirs}
+view_icom             -down->  view_trf                     : (same rerun)\n/ {scan TRF backup tree}
+view_trf              -up->    configuring_mode             : (any other event)
+
+configuring_mode      -right-> err_cfg                      : click(status_check_button)\n[KeyError on config]\n/ {render ConfigMissing}
+err_cfg               -up->    configuring_mode             : (any user event)
+
+' Advanced debugging side-LTS
+ready                 -right-> comp_baseline                : click(compare_baseline_button)\n[advanced_mode]\n/ {iterate baseline PNGs}
+comp_baseline         -down->  display_baseline             : (same rerun;\n  imageio.imread + np.allclose loop\n  completes successfully)
+comp_baseline         -right-> err_baseline                 : (same rerun;\n  imageio.imread fails for\n  some output PNG)
+display_baseline      -up->    ready                        : (any other event)
+err_baseline          -up->    ready                        : (any other event)
+
+' Advanced mode toggle works from any state
+note "toggle(advanced_mode, Bool) is legal\nfrom every user-receptive state.\nIt does NOT change the tier directly;\nit gates the legality of\nselect(<role>_method, ...) and\ntext_change(png_output_directory, ...)\nin subsequent steps." as N_advanced
+
+' ============================================================
+' Notes
+' ============================================================
+
+note right of idle_ref_dispatched
+    [DEFERRED -- Phase 2 expansion]
+    The 5 input-method sub-LTSs (DICOM, iCOM, TRF, Mosaiq, Monaco) each have
+    rich internal state machines:
+      * DICOM:   FILE_UPLOAD vs MONACO_SEARCH radio, SOPClassUID gate,
+                 fraction-group selector, 3 distinct error_wrong_dicom_type states
+      * iCOM:    patient_id text, multiselect, error_input_required
+      * TRF:     FILE_UPLOAD vs INDEXED_TRF_SEARCH radio, multiselect,
+                 Mosaiq patient-name lookup sub-pipeline
+      * Mosaiq:  site picker, patient_id, get_patient_name + get_patient_fields
+                 cache hits, field_id multiselect
+      * Monaco:  delegated to st_monaco.monaco_tel_files_picker;
+                 NoControlPointsFound error
+    See input_method_stubs.pl docstring for the per-method internal
+    state inventory.
+end note
+
+note right of modal_warn
+    The click(run_calculation_button) transition visits these
+    INTERNAL-TRACE STATES sequentially within a single rerun:
+      computing_reference_metersetmap
+        -> computing_per_delivery(reference, I)  (per ref delivery)
+      -> computing_evaluation_metersetmap
+        -> computing_per_delivery(evaluation, I) (per eval delivery)
+      -> computing_gamma
+      -> computing_plot
+      -> computing_png_save
+      -> computing_pdf_convert
+      -> displaying_results | error_pdf_conversion
+    See act_compute_pipeline.svg for the decomposition.
+    Internal-trace states are NOT user-event-receptive.
+end note
+
+@enduml
