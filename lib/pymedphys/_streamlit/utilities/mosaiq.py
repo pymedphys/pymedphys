@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pathlib
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import toml
@@ -293,7 +293,9 @@ def get_single_mosaiq_connection_with_config(config) -> _connect.Connection:
         chosen_site_config["alias"],
     )
 
-    return connection
+    # Streamlit's @st.cache_resource() decorator erases the wrapped function's
+    # return type to Any; cast at the call boundary so callers see Connection.
+    return cast(_connect.Connection, connection)
 
 
 def get_uncached_mosaiq_connection(
