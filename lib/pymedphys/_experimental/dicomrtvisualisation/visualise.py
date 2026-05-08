@@ -34,12 +34,12 @@ class CTSlice:
     def __post_init__(self):
         assert self.Rows > 0, "Rows must be positive."
         assert self.Columns > 0, "Columns must be positive."
-        assert (
-            len(self.ImagePositionPatient) == 3
-        ), "ImagePositionPatient must be a 3-tuple."
-        assert (
-            len(self.ImageOrientationPatient) == 6
-        ), "ImageOrientationPatient must be a 6-tuple."
+        assert len(self.ImagePositionPatient) == 3, (
+            "ImagePositionPatient must be a 3-tuple."
+        )
+        assert len(self.ImageOrientationPatient) == 6, (
+            "ImageOrientationPatient must be a 6-tuple."
+        )
         assert len(self.PixelSpacing) == 2, "PixelSpacing must be a 2-tuple."
 
 
@@ -145,7 +145,7 @@ def compute_patient_coordinates(
     height: int,
     width: int,
     ipp: Tuple[float, float, float],
-    iop: Tuple[float, float, float],
+    iop: Tuple[float, float, float, float, float, float],
     pixel_spacing: Tuple[float, float],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -916,10 +916,10 @@ else:
 z_coords = [header["ipp"][2] for header in ct_headers]
 
 # Load RTDOSE if provided and path exists
-dose_map = {}
+dose_map: Dict[int, np.ndarray] = {}
 dose_units = ""
-dose_X = {}
-dose_Y = {}
+dose_X: Dict[int, np.ndarray] = {}
+dose_Y: Dict[int, np.ndarray] = {}
 if rtdose_file:
     rtdose_path = pathlib.Path(rtdose_file)
     if rtdose_path.exists():

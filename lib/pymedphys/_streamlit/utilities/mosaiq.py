@@ -246,7 +246,7 @@ def get_mosaiq_connection_with_prompts() -> _connect.Connection:
     )
 
 
-def get_single_mosaiq_connection_with_config(config):
+def get_single_mosaiq_connection_with_config(config) -> _connect.Connection:
     valid_site_config = {}
     for site_config in config["site"]:
         try:
