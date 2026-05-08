@@ -145,7 +145,7 @@ def compute_patient_coordinates(
     height: int,
     width: int,
     ipp: Tuple[float, float, float],
-    iop: Tuple[float, float, float],
+    iop: Tuple[float, float, float, float, float, float],
     pixel_spacing: Tuple[float, float],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -916,10 +916,10 @@ else:
 z_coords = [header["ipp"][2] for header in ct_headers]
 
 # Load RTDOSE if provided and path exists
-dose_map = {}
+dose_map: Dict[int, np.ndarray] = {}
 dose_units = ""
-dose_X = {}
-dose_Y = {}
+dose_X: Dict[int, np.ndarray] = {}
+dose_Y: Dict[int, np.ndarray] = {}
 if rtdose_file:
     rtdose_path = pathlib.Path(rtdose_file)
     if rtdose_path.exists():

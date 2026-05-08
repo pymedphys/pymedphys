@@ -20,7 +20,7 @@ from pymedphys._imports import toml
 is_cli = False
 
 
-def get_config_dir():
+def get_config_dir() -> pathlib.Path:
     config_dir = pathlib.Path.home().joinpath(".pymedphys")
     config_dir.mkdir(exist_ok=True)
 

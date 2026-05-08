@@ -20,7 +20,7 @@ class TelFilePickerResults(TypedDict, total=False):
     patient_name: str
     monaco_site: str
     monaco_directory: pathlib.Path
-    selected_monaco_plan: str
+    selected_monaco_plan: Optional[str]
     tel_paths: List[pathlib.Path]
 
 
