@@ -91,6 +91,7 @@ tests = [
   "imageio",
   "matplotlib",
   "numba",
+  "pandas>=1.0.0",
   "Pillow",
   "psutil",
   "pydicom>=2.0.0",

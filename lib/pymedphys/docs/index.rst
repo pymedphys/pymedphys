@@ -6,14 +6,22 @@
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
+.. _`Astropy Project`: https://www.astropy.org/
+.. _`PyPI`: https://pypi.org/project/pymedphys/
+.. _`GitHub`: https://github.com/pymedphys/pymedphys
+
 .. _`Release Notes`: release-notes.html
 .. _`Statement of Need`: statement-of-need.html
 
+.. _`What PyMedPhys can do`: users/get-started/what-pymedphys-can-do.html
+.. _`Choose your path`: users/get-started/choose-your-path.html
+.. _`Installation options`: users/get-started/installation-options.html
 .. _`Quick Start Guide`: users/get-started/quick-start.html
 .. _`get started`: users/get-started/index.html
 .. _`how-to guides`: users/howto/index.html
 .. _`background information`: users/background/index.html
 .. _`Technical Reference`: users/ref/index.html
+.. _`Contributors Guide`: contrib/index.html
 .. _`workstation setup guides`: contrib/setups/index.html
 .. _`repository information`: contrib/info/index.html
 .. _`tips & tricks`: contrib/tips/index.html

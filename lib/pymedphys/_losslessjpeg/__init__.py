@@ -4,7 +4,7 @@ from pymedphys._imports import imageio, libjpeg
 from pymedphys._imports import numpy as np
 
 
-def imread(input_filepath) -> "np.array":
+def imread(input_filepath) -> "np.ndarray":
     with open(input_filepath, "rb") as f:
         im = libjpeg.decode(f.read())
 

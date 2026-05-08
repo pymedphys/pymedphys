@@ -51,7 +51,7 @@ in a different way.
 Your conversation with the user is occurring in markdown format, so
 please format your responses to the user with this in mind."""
 
-TOOLS_PROMPT: list[MessageParam] = [
+TOOLS_PROMPT: list[dict[str, Any]] = [
     {
         "name": "mosaiq_sql_agent",
         "description": """\
@@ -129,7 +129,7 @@ Messages = list[Message | MessageParam]
 async def recursively_append_message_responses(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[Message],
+    messages: list[dict[str, Any]],
 ):
     await _conversation_with_tool_use(
         anthropic_client=anthropic_client,
@@ -144,7 +144,7 @@ async def recursively_append_message_responses(
 def create_tools_mappings(
     anthropic_client: AsyncAnthropic,
     connection: pymedphys.mosaiq.Connection,
-    messages: list[MessageParam],
+    messages: list[dict[str, Any]],
 ):
     async def mosaiq_sql_agent(sub_agent_prompt: str):
         return await sql_tool_pipeline(
@@ -164,8 +164,8 @@ async def _conversation_with_tool_use(
     connection: pymedphys.mosaiq.Connection,
     model: str,
     system_prompt: str,
-    tools: list[MessageParam],
-    messages: list[Message],
+    tools: list[dict[str, Any]],
+    messages: list[dict[str, Any]],
 ):
     """Mutates messages in-place recursively.
     NOTE: This is probably not a good idea, likely worth refactoring."""
@@ -182,8 +182,8 @@ async def _conversation_with_tool_use(
         system=system_prompt,
         model=model,
         max_tokens=4096,
-        tools=tools,
-        messages=messages_to_submit,
+        tools=tools,  # type: ignore[arg-type]
+        messages=messages_to_submit,  # type: ignore[arg-type]
     )
 
     messages.append(api_response.to_dict())
