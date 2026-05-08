@@ -1,0 +1,226 @@
+@startuml bdd_state_dict
+' SysML Block Definition Diagram
+' Schema for the state{} dict threaded through every step//2 rule of the
+' metersetmap LTS. Substantially larger than pseudonymise's bdd because of
+' the multi-namespace input-method widget cache, the 13-slot cache registry,
+' and the in-flight compute pipeline state.
+
+title <<bdd>> metersetmap -- state{} Dict Schema
+
+left to right direction
+
+hide circle
+hide empty methods
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+skinparam Padding 4
+
+skinparam class {
+    BackgroundColor<<root>>       #ffe0b2
+    BorderColor<<root>>           #e65100
+
+    BackgroundColor<<recordType>> #e3f2fd
+    BorderColor<<recordType>>     #1565c0
+
+    BackgroundColor<<widgetType>> #fff3e0
+    BorderColor<<widgetType>>     #e65100
+
+    BackgroundColor<<cacheType>>  #fff8e1
+    BorderColor<<cacheType>>      #ff6f00
+
+    BackgroundColor<<uiCascade>>  #e8f5e9
+    BorderColor<<uiCascade>>      #2e7d32
+
+    BackgroundColor<<enumeration>> #fff9c4
+    BorderColor<<enumeration>>    #f9a825
+}
+
+package "Root" {
+    class "state" as state <<root>> {
+        tier         : Tier
+        rerun_count  : Int
+    }
+}
+
+package "Session" {
+    class "session" as session <<recordType>> {
+        (empty -- no st.session_state usage)
+    }
+}
+
+package "Widgets" {
+    class "widgets" as widgets <<widgetType>> {
+        config_mode : Atom
+        advanced_mode : Bool
+        status_check_button : Bool
+        compare_baseline_button : Bool
+        escan_site : Atom
+        png_output_directory : Atom
+        run_calculation_button : Bool
+    }
+
+    class "input_method_widgets" as imw <<widgetType>> {
+        data_method : Atom
+        --DICOM--
+        dicom_file_import_method : Atom
+        dicom_plan_uploader : Bytes
+        monaco_site : Atom
+        patient_id : Atom
+        select_monaco_export_plan : Atom
+        dicom_perscription_chooser : Atom
+        --iCOM--
+        icom_deliveries : List
+        --TRF--
+        trf_file_import_method : Atom
+        trf_file_uploader : List
+        trf_deliveries : List
+        --Mosaiq--
+        mosaiq_site : Atom
+        mosaiq_field_id : List
+    }
+}
+
+package "Caches (13 @st.cache_data slots)" {
+    class "caches" as caches <<cacheType>> {
+        to_tuple : CacheSlot
+        calculate_metersetmap : CacheSlot
+        calculate_gamma : CacheSlot
+        load_dicom_file_if_plan : CacheSlot
+        load_icom_stream : CacheSlot
+        get_patient_fields : CacheSlot
+        get_patient_name : CacheSlot
+        delivery_from_trf : CacheSlot
+        delivery_from_icom : CacheSlot
+        delivery_from_tel : CacheSlot
+        delivery_from_mosaiq : CacheSlot
+        read_trf : CacheSlot
+        get_mosaiq_configuration : CacheSlot
+    }
+
+    enum "CacheSlot" as CacheSlot <<enumeration>> {
+        _empty
+        stored(Key, Value)
+        evicted
+    }
+}
+
+package "Compute (in-flight pipeline state)" {
+    class "compute" as compute <<recordType>> {
+        reference_results : ResultsDict | none
+        evaluation_results : ResultsDict | none
+        gamma_options : GammaOptionsDict
+        reference_metersetmap : Array | none
+        evaluation_metersetmap : Array | none
+        gamma : Array | none
+        fig_handle : Term | none
+        png_record_directory : Path | none
+        pdf_filepath : Atom | none
+        png_filepath : Atom | none
+        pdf_success : Bool | none
+    }
+
+    class "ResultsDict" as ResultsDict <<recordType>> {
+        site : Atom
+        patient_id : Atom
+        patient_name : Atom
+        identifier : Atom
+        data_paths : List[Path]
+        deliveries : List[Delivery]
+        --method-specific--
+        selected_icom_deliveries : List
+        selected_monaco_plan : Atom
+    }
+
+    class "GammaOptionsDict" as GammaOpts <<recordType>> {
+        dose_percent_threshold : Number
+        distance_mm_threshold : Number
+        local_gamma : Bool
+    }
+}
+
+package "UI Cascade" {
+    class "sidebar" as sidebar <<uiCascade>> {
+        reference_overview : HtmlString
+        evaluation_overview : HtmlString
+        icom_status_lines : List
+        trf_status_lines : List
+    }
+
+    class "main" as main <<uiCascade>> {
+        rendered_sections : List[Atom]
+    }
+}
+
+package "Enumerations" {
+    enum "Tier" as Tier <<enumeration>> {
+        --user-receptive (orchestration)--
+        init
+        configuring_mode
+        idle_reference_selecting_method
+        idle_reference_method_dispatched(M)
+        idle_evaluation_selecting_method
+        idle_evaluation_method_dispatched(M)
+        configuring_output_escan
+        configuring_output_png
+        ready_to_calculate
+        modal_warning_metersetmap_usage
+        displaying_results
+        --user-receptive (errors)--
+        error_pdf_conversion
+        error_config_missing
+        error_file_not_found_baseline
+        --user-receptive (side-LTS)--
+        viewing_icom_status
+        viewing_trf_status
+        comparing_baseline_to_output
+        displaying_baseline_diff
+        --internal-trace--
+        computing_reference_metersetmap
+        computing_evaluation_metersetmap
+        computing_per_delivery(R, I)
+        computing_gamma
+        computing_plot
+        computing_png_save
+        computing_pdf_convert
+    }
+}
+
+' ============================================================
+' Composition (multiplicity from root outward)
+' ============================================================
+
+state "1" *-- "1" session     : session
+state "1" *-- "1" widgets     : widgets
+state "1" *-- "1" caches      : caches
+state "1" *-- "1" compute     : compute
+state "1" *-- "1" sidebar     : sidebar
+state "1" *-- "1" main        : main
+
+widgets "1" *-- "2" imw       : reference\nevaluation
+caches "1" o-- "*" CacheSlot  : (one per slot)
+compute "1" o-- "0..2" ResultsDict : reference_results\nevaluation_results
+compute "1" *-- "1" GammaOpts : gamma_options
+
+state -right- Tier : tier
+
+' ============================================================
+' Key insight
+' ============================================================
+
+note bottom of state
+    **Key insight (orchestration partition):**
+    metersetmap's state{} has THREE persistence regimes:
+      (1) widgets    -- Streamlit-runtime owned; survive every rerun
+      (2) caches     -- @st.cache_data; survive until manual clear or arg-key change
+      (3) compute    -- in-flight pipeline state; NOT carried across reruns
+                        (re-built from widgets+caches each time the user clicks
+                        Run Calculation). The DCG models compute as part of
+                        the click(run_calculation) transition body.
+    sidebar and main are pseudo-state (rendered DOM accumulators) for trace
+    fidelity. The sidebar overview placeholders use st.empty() and are
+    REPLACED each rerun, not appended; the icom/trf status lines DO
+    accumulate across reruns when the user clicks Check Status repeatedly.
+end note
+
+@enduml
