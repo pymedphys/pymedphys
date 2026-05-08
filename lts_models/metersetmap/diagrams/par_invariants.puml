@@ -1,0 +1,191 @@
+@startuml par_invariants
+' SysML Parametric Diagram
+' Constraints (validation-time gates) and invariants (state-time relations
+' preserved by every step//2 rule). Constraints are yellow; invariants
+' purple.
+
+title <<par>> metersetmap -- Constraints and Invariants
+
+top to bottom direction
+
+skinparam class {
+    BackgroundColor<<constraint>> #ffffcc
+    BorderColor<<constraint>>     #999900
+
+    BackgroundColor<<invariant>>  #f3e5f5
+    BorderColor<<invariant>>      #7b1fa2
+}
+
+hide circle
+hide empty methods
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam Padding 4
+
+' ============================================================
+' Constraints (validation-time)
+' ============================================================
+
+package "Constraints (validation-time)" {
+
+    class "can_run_calculation_gate" as can_run <<constraint>> {
+        + both_results_present(state)
+        +   AND output_config_complete(state)
+        + Predicate: browse_ops:can_run_calculation/1
+        + Anchor:    PY:764 (st.button("Run Calculation"))
+        + Effect on fail:
+        +   click(run_calculation_button) becomes a no-op
+        +   tier preserved
+    }
+
+    class "advanced_mode_gate" as advanced_gate <<constraint>> {
+        + widgets.advanced_mode == True
+        + Predicate: browse_ops:advanced_mode_active/1
+        + Anchor:    PY:636 (st.sidebar.checkbox)
+        + Gates these events:
+        +   select(reference_method, _)
+        +   select(evaluation_method, _)
+        +   text_change(png_output_directory, _)
+        +   click(compare_baseline_button)
+        + Effect on fail:
+        +   selectbox/text_input/debugging button NOT rendered;
+        +   the corresponding events cannot fire.
+    }
+
+    class "valid_dicom_sop_class" as valid_dicom <<constraint>> {
+        + dcm.SOPClassUID == DICOM_PLAN_UID
+        + Predicate: implicit in _dicom.py:33, :68
+        + Anchor:    PY:33 (load_dicom_file_if_plan -> None)
+        +            PY:68-74 (dicom_input_method gate)
+        + Effect on fail:
+        +   load_dicom_file_if_plan returns None (cached);
+        +   dicom_input_method renders WrongFileType + returns {}
+        +   [DEFERRED -- in stub-build, this gate is NOT modeled
+        +    as a tier transition]
+    }
+
+    class "no_mosaiq_entries_gate" as no_mosaiq <<constraint>> {
+        + mosaiq_get_logfile_info returns at least one row
+        + Predicate: implicit in _trf.py:_attempt_patient_name_from_mosaiq
+        + Anchor:    PY:102-110 (catch _NoMosaiqEntries)
+        + Effect on fail:
+        +   patient_name := "Unknown"; st.warning rendered
+        +   [DEFERRED -- TRF sub-LTS internal]
+    }
+
+    class "pdf_conversion_gate" as pdf_gate <<constraint>> {
+        + subprocess('magick convert') succeeds
+        +   OR subprocess('convert') succeeds
+        + Predicate: save_pipeline:save_pipeline_outcome/2
+        + Anchor:    PY:524-535 (try/except chain)
+        + Effect on fail:
+        +   tier := error_pdf_conversion;
+        +   render_unable_to_create_pdf with platform-specific URL
+    }
+
+}
+
+' ============================================================
+' Invariants (state-time, preserved by every step//2 rule)
+' ============================================================
+
+package "Invariants (state-time)" {
+
+    class "tier_widget_consistency" as tier_widget <<invariant>> {
+        + state.tier == ready_to_calculate
+        +   <=> can_run_calculation(state)
+        + state.tier == idle_<role>_method_dispatched(M)
+        +   => widgets.<role>.data_method == M
+        +   AND compute.<role>_results != none
+        + Re-applied by: browse_ops:derive_state/2
+        + after every widget_ops or input_method_stubs predicate
+    }
+
+    class "results_dict_keys" as results_keys <<invariant>> {
+        + For each role in {reference, evaluation}:
+        +   compute.<role>_results == none
+        +     OR has keys {site, patient_id, patient_name,
+        +                  data_paths, identifier, deliveries}
+        + Method-specific extras (selected_icom_deliveries,
+        + selected_monaco_plan) are also present when applicable.
+        + Held by: input_method_stubs:store_input_method_results/4
+        + Anchor:  contracts at PY:192-199, PY:216-224, PY:78-86, etc.
+    }
+
+    class "cache_hit_implies_kernel_skipped" as cache_kernel <<invariant>> {
+        + For each cache slot S in cache_registry:
+        +   cache_hit(S, K) ON state(C, ...) WHERE caches[S] = stored(K, V)
+        +   => the kernel for S is NOT invoked
+        +     AND the result V is the same as if the kernel HAD been invoked
+        +     (assuming kernel determinism)
+        + Held by: every @st.cache_data decorated wrapper at PY:218,
+        + PY:342, PY:360, PY:30, PY:27, PY:25, PY:30, PY:21, PY:28, PY:33,
+        + PY:38, PY:283, PY:30
+        + (13 sites total; see cache_registry.pl for the canonical list)
+    }
+
+    class "edge_triggered_buttons" as edge_triggered <<invariant>> {
+        + Across two consecutive reruns:
+        +   Each of {status_check_button, compare_baseline_button,
+        +            run_calculation_button} transitions True -> False
+        +   exactly once between any two click events.
+        + (Streamlit's button widget is edge-triggered.)
+        + Held by: widget_ops:*_clicked predicates' last clauses
+        + (which write False back to the widget slot).
+    }
+
+    class "config_invalidates_caches" as config_invalidates <<invariant>> {
+        + select(config_mode, M) where M != prior_M
+        +   => caches that depend on config (path locations,
+        +      Mosaiq topology, gamma defaults) SHOULD be re-keyed.
+        + In practice: _config.get_config(config_mode) returns a new
+        +   dict per call; cache hits depend on dict equality, so a
+        +   different config_mode naturally produces cache misses for
+        +   downstream config-keyed lookups.
+        + NOT explicitly enforced by the LTS in the orchestration-first
+        +   build; documented here for completeness.
+    }
+
+    class "side_lts_isolation" as side_lts <<invariant>> {
+        + state.tier in {viewing_icom_status, viewing_trf_status,
+        +                comparing_baseline_to_output, displaying_baseline_diff,
+        +                error_config_missing, error_file_not_found_baseline}
+        +   => compute.{reference,evaluation}_results, gamma_options,
+        +      reference_metersetmap, evaluation_metersetmap, gamma
+        +   are NOT touched by the side-LTS handler.
+        + Held by: compute_ops:run_status_check_pipeline/2
+        +          compute_ops:run_advanced_debugging_pipeline/2
+        + (Both predicates only mutate sidebar.*_status_lines and
+        + main.rendered_sections; they do not touch compute.)
+    }
+
+    class "no_session_state_usage" as no_session <<invariant>> {
+        + state.session == _{}
+        + (this app never writes st.session_state)
+        + Held by: every step//2 rule (none touch state.session)
+        + Anchor:  the absence of any st.session_state reference in
+        +          metersetmap source (verifiable via grep)
+    }
+
+    class "dose_units_preserved" as dose_units <<invariant>> {
+        + reference_metersetmap, evaluation_metersetmap are in MU units
+        +   (Monitor Units; preserved through the calculate_metersetmap
+        +    + numpy + numpy + ... fold)
+        + gamma is dimensionless (a passing-rate index)
+        + Held by: pymedphys library invariants on Delivery.metersetmap
+        + and pymedphys.gamma; see python-algorithm-verification/ (DEFERRED)
+    }
+
+}
+
+' ============================================================
+' Cross-references
+' ============================================================
+
+valid_dicom -down-> tier_widget : on fail, dicom sub-LTS error tier
+no_mosaiq -down-> tier_widget : on fail, trf sub-LTS warning tier
+pdf_gate -down-> side_lts : on fail, error_pdf_conversion isolated
+can_run -down-> tier_widget : enables ready_to_calculate tier
+advanced_gate -down-> tier_widget : gates several event terminals
+
+@enduml
