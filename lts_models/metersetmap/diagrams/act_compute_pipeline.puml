@@ -1,0 +1,189 @@
+@startuml act_compute_pipeline
+' SysML Activity Diagram
+' Compute-pipeline detail for the click(run_calculation_button) transition.
+' Shows the internal-trace state progression and the side-effect-stream
+' labels emitted at each phase.
+
+title <<act>> metersetmap -- Compute Pipeline (click(run_calculation_button))
+
+skinparam activityBackgroundColor #fff3e0
+skinparam activityBorderColor #e65100
+skinparam activityFontColor #bf360c
+skinparam activityDiamondBackgroundColor #fce4ec
+skinparam activityDiamondBorderColor #c62828
+skinparam shadowing false
+skinparam Padding 4
+
+|Phase 0: Modal warning|
+start
+:tier := modal_warning_metersetmap_usage;
+:st.write("### MetersetMap usage warning");
+:st.warning(pymedphys.metersetmap.WARNING_MESSAGE);
+note right
+    PY:765-771 -- first-class modal state.
+    Streamlit's st.warning does NOT pause execution;
+    the alert renders and the script continues.
+end note
+:st.write("### Calculation status");
+
+|Phase 1: Reference metersetmap|
+:tier := computing_reference_metersetmap;
+:st.write("Calculating Reference MetersetMap...");
+note right
+    PY:444-445
+end note
+repeat :tier := computing_per_delivery(reference, I);
+    if (calculate_metersetmap cache hit?) then (yes -- stored(Delivery, MetersetMap))
+        :cache_hit(calculate_metersetmap, Delivery);
+        note right
+            cache_registry: calculate_metersetmap;
+            hash by Delivery: hash (custom)
+        end note
+    else (no -- _empty or miss)
+        :cache_miss(calculate_metersetmap, Delivery);
+        :delivery.metersetmap(MAX_LEAF_GAP=410, GRID_RESOLUTION=1, LEAF_PAIR_WIDTHS);
+        note right
+            algorithm_kernels:delivery_metersetmap
+            kernel: see python-algorithm-verification/metersetmap/ (DEFERRED)
+        end note
+        :store(calculate_metersetmap, Delivery, MetersetMap);
+    endif
+    :Acc := Acc + MetersetMap (numpy +);
+repeat while (more reference deliveries?)
+
+|Phase 2: Evaluation metersetmap|
+:tier := computing_evaluation_metersetmap;
+:st.write("Calculating Evaluation MetersetMap...");
+note right
+    PY:447-450
+    Same per-delivery loop as Phase 1,
+    using evaluation_results.deliveries.
+end note
+repeat :tier := computing_per_delivery(evaluation, I);
+    :(per-delivery cache check + delivery.metersetmap, as Phase 1);
+repeat while (more evaluation deliveries?)
+
+|Phase 3: Gamma|
+:tier := computing_gamma;
+:st.write("Calculating Gamma...");
+note right
+    PY:452
+end note
+:to_tuple(reference_metersetmap);
+note right
+    PY:218-220, called from PY:364
+    cache_registry: to_tuple
+end note
+:to_tuple(evaluation_metersetmap);
+note right
+    PY:218-220, called from PY:366
+end note
+if (calculate_gamma cache hit?) then (yes)
+    :cache_hit(calculate_gamma, (ref_tup, eval_tup, options));
+else (no)
+    :cache_miss(calculate_gamma, args);
+    :pymedphys.gamma(COORDS, ref, COORDS, eval, **options);
+    note right
+        PY:362-368
+        algorithm_kernels:pymedphys_gamma
+        kernel: see python-algorithm-verification/gamma/ (DEFERRED)
+        --- THIS IS THE STAR ALGORITHM ---
+    end note
+    :store(calculate_gamma, args, Gamma);
+endif
+
+|Phase 4: Plot composition|
+:tier := computing_plot;
+:st.write("Creating figure...");
+note right
+    PY:459
+end note
+:plot_and_save_results(...);
+note right
+    PY:236-339
+    Heavy matplotlib + imageio composition.
+end note
+:imageio.imwrite(reference.png, normalize_to_uint8(ref));
+:imageio.imwrite(evaluation.png, normalize_to_uint8(eval));
+:imageio.imwrite(diff.png, normalize_to_uint8(eval - ref));
+:imageio.imwrite(gamma.png, normalize_to_uint8(gamma, 0, 2));
+note right
+    PY:257-278 -- 4 PNGs
+end note
+:plt.subplots(5, 2, figsize=(10, 16));
+:fig.add_subplot(header axis);
+:fig.add_subplot(hist axis);
+:fig.add_subplot(footer axis);
+:metersetmap.display(GRID, ref);
+:metersetmap.display(GRID, eval);
+:metersetmap.display(GRID, diff, cmap=seismic);
+:metersetmap.display(GRID, gamma, cmap=coolwarm);
+:plot_gamma_hist(gamma, dose_pct, dist_mm);
+
+|Phase 5: Results render|
+:st.write("## Results");
+:st.pyplot(fig);
+note right
+    PY:508-509
+end note
+
+|Phase 6: PNG save|
+:tier := computing_png_save;
+:st.write("## Saving reports");
+:st.write("### PNG");
+:st.write("Saving figure as PNG...");
+:plt.savefig(png_filepath, dpi=100);
+note right
+    PY:514
+end note
+:st.write("Saved: <png_filepath>");
+
+|Phase 7: PDF convert (subprocess)|
+:tier := computing_pdf_convert;
+:st.write("### PDF");
+:st.write("Converting PNG to PDF...");
+partition try {
+    :subprocess.check_call("magick convert ... ");
+    note right
+        PY:524-525
+        ImageMagick 7.x command
+    end note
+    :pdf_success := True;
+} catch (CalledProcessError) {
+    partition try {
+        :subprocess.check_call("convert ... ");
+        note right
+            PY:530-531
+            ImageMagick 6.x fallback
+        end note
+        :pdf_success := True;
+    } catch (CalledProcessError) {
+        :pdf_success := False;
+    }
+}
+
+if (pdf_success?) then (yes)
+    :open(pdf_filepath, "rb");
+    :base64.b64encode(pdf_contents).decode;
+    note right
+        PY:545
+    end note
+    :st.markdown("<a href='data:file/zip;base64,...'>Click to download</a>");
+    note right
+        PY:551
+        [!] Source quirk preserved verbatim:
+        MIME type literally "data:file/zip" even though payload is PDF.
+    end note
+    :tier := displaying_results;
+    stop
+else (no)
+    :sys.platform check;
+    :st.write(UnableToCreatePDF("Please install Image Magick..."));
+    note right
+        PY:563-568
+    end note
+    :tier := error_pdf_conversion;
+    stop
+endif
+
+@enduml

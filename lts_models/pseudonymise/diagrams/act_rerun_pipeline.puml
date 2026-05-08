@@ -1,0 +1,96 @@
+@startuml act_rerun_pipeline
+' SysML Activity Diagram
+' Per-rerun execution flow for pseudonymise.py. Shows the 4-phase pipeline
+' the script walks top-to-bottom on every rerun: widget render -> event
+' dispatch -> compute -> render. The compute swimlane is summarised here;
+' act_compute_pipeline.svg shows the full per-chunk decomposition.
+
+title <<act>> pseudonymise -- Per-Rerun Execution Pipeline
+
+skinparam activityBackgroundColor #f9fbe7
+skinparam activityBorderColor #827717
+skinparam activityFontColor #827717
+skinparam activityDiamondBackgroundColor #fff3e0
+skinparam activityDiamondBorderColor #e65100
+skinparam shadowing false
+skinparam Padding 4
+
+|Phase 1: streamlit_boundary.pl (widget render)|
+start
+:st.file_uploader("Files to pseudonymise", ["dcm"], accept_multiple_files=True);
+note right
+    PY:233-237
+    Returns the current upload list for this rerun.
+end note
+:st.button("Pseudonymise", key="PseudonymiseButton");
+note right
+    PY:239
+    Returns True only on the rerun immediately following a click.
+end note
+
+|Phase 2: widget_ops.pl (event dispatch)|
+if (button == True?) then (yes)
+    if (files present?) then (yes -- PY:163 guard passes)
+        :widget_ops:pseudonymise_button_click;
+        :tier := computing_chunking;
+    else (no -- PY:163 guard fails)
+        :no-op;
+        :tier preserved;
+        stop
+    endif
+else (no -- button == False)
+    if (uploaded list changed?) then (yes -- non-empty)
+        :widget_ops:upload_dicom_files;
+    elseif (uploaded list changed?) then (yes -- now empty)
+        :widget_ops:clear_dicom_files;
+    else (no widget event this rerun)
+        :tier preserved;
+        stop
+    endif
+    :derive_state -- idle sub-state;
+    stop
+endif
+
+|Phase 3: compute_ops.pl (compute pipeline)|
+:gen_chunk_indices;
+note right
+    PY:169-171
+    -> compute.chunks set
+end note
+:render_chunk_indices (st.write);
+note right
+    PY:173
+    Side-effect-stream label: render_chunk_indices(indices)
+end note
+repeat :process_chunk(I);
+    note right
+        PY:177-198
+        Per-chunk loop body. See act_compute_pipeline.svg for the per-file
+        decomposition (dcmread, anonymise, dcmwrite, zipfile_writestr).
+    end note
+    if (bad_data set?) then (yes)
+        :render_error_text (st.text);
+        :tier := error_bad_data;
+        stop
+    else (no)
+        :render_download_link (st.sidebar.markdown);
+        note right
+            PY:196 -- one <a href> per successful chunk
+        end note
+    endif
+repeat while (more chunks?)
+
+|Phase 4: render_ops.pl (terminal render)|
+:tier := displaying_results;
+
+|Output|
+:state{} after rerun;
+note right
+    sidebar.links populated (one per chunk, or partial if mid-error)
+    main.chunk_indices_rendered = true
+    main.error_text_rendered = (true iff bad_data path)
+    widgets.pseudonymise_button = false (edge-triggered reset)
+end note
+stop
+
+@enduml

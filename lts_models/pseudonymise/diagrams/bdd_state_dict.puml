@@ -1,0 +1,140 @@
+@startuml bdd_state_dict
+' SysML Block Definition Diagram
+' Schema for the state{} dict threaded through every step//2 rule of the
+' pseudonymise LTS. Composition arrows from the root outward; multiplicity
+' on each association.
+
+title <<bdd>> pseudonymise -- state{} Dict Schema
+
+left to right direction
+
+hide circle
+hide empty methods
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+skinparam Padding 4
+
+skinparam class {
+    BackgroundColor<<root>>       #ffe0b2
+    BorderColor<<root>>           #e65100
+
+    BackgroundColor<<recordType>> #e3f2fd
+    BorderColor<<recordType>>     #1565c0
+
+    BackgroundColor<<widgetType>> #fff3e0
+    BorderColor<<widgetType>>     #e65100
+
+    BackgroundColor<<cacheType>>  #fff8e1
+    BorderColor<<cacheType>>      #ff6f00
+
+    BackgroundColor<<uiCascade>>  #e8f5e9
+    BorderColor<<uiCascade>>      #2e7d32
+
+    BackgroundColor<<enumeration>> #fff9c4
+    BorderColor<<enumeration>>    #f9a825
+}
+
+package "Root" {
+    class "state" as state <<root>> {
+        tier         : Tier
+        rerun_count  : Int
+    }
+}
+
+package "Session" {
+    class "session" as session <<recordType>> {
+        (empty -- this app uses no st.session_state)
+    }
+}
+
+package "Widgets" {
+    class "widgets" as widgets <<widgetType>> {
+        dicom_uploader      : List[uploaded_file]
+        pseudonymise_button : Bool
+    }
+
+    class "uploaded_file" as uploaded_file <<recordType>> {
+        name   : Atom
+        size   : Int
+        buffer : BytesLike
+    }
+}
+
+package "Caches" {
+    class "caches" as caches <<cacheType>> {
+        (empty -- this app uses no @st.cache_*)
+    }
+}
+
+package "Compute (in-flight pipeline state)" {
+    class "compute" as compute <<recordType>> {
+        chunks            : List[Int]
+        current_chunk     : Int
+        current_file      : Int
+        chunk_count       : Int
+        file_count        : Int
+        zipfile_basename  : Atom
+        zip_buffer        : BytesIO_handle
+        bad_data          : Bool
+        last_exception    : Term
+    }
+}
+
+package "UI Cascade" {
+    class "sidebar" as sidebar <<uiCascade>> {
+        links : List[HtmlString]
+    }
+
+    class "main" as main <<uiCascade>> {
+        chunk_indices_rendered : Bool
+        error_text_rendered    : Bool
+    }
+}
+
+package "Enumerations" {
+    enum "Tier" as Tier <<enumeration>> {
+        init
+        idle_no_files
+        idle_files_uploaded
+        computing_chunking
+        computing_per_chunk(I, N)
+        computing_per_file(I, J)
+        computing_zip_assembled(I)
+        displaying_results
+        error_bad_data
+    }
+}
+
+' ============================================================
+' Composition (multiplicity from root outward)
+' ============================================================
+
+state "1" *-- "1" session    : session
+state "1" *-- "1" widgets    : widgets
+state "1" *-- "1" caches     : caches
+state "1" *-- "1" compute    : compute
+state "1" *-- "1" sidebar    : sidebar
+state "1" *-- "1" main       : main
+
+widgets "1" *-- "*" uploaded_file : dicom_uploader
+
+state -right- Tier : tier
+
+' ============================================================
+' Key insight
+' ============================================================
+
+note bottom of state
+    **Key insight (rerun-vs-persistent partition):**
+    Streamlit reruns the script top-to-bottom on every widget event. After
+    a rerun, only widgets, caches, and st.session_state survive in the
+    runtime; local function variables vanish. This LTS additionally tracks
+    `compute` (in-flight pipeline state visited within a single transition)
+    and `sidebar`/`main` (the rendered DOM accumulated across reruns) as
+    pseudo-state for trace fidelity. session and caches are empty because
+    pseudonymise.py uses neither -- this is why the schema is unusually
+    flat compared to metersetmap or any cs-ui-state-model deliverable.
+end note
+
+@enduml
