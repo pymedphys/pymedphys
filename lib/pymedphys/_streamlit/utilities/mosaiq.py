@@ -156,6 +156,7 @@ def save_mosaiq_config_to_file(
                 site_config["mosaiq"] = {}
             site_config["mosaiq"]["hostname"] = hostname
             site_config["mosaiq"]["port"] = port
+            site_config["mosaiq"]["database"] = database
             site_config["mosaiq"]["alias"] = f"{site_name} Mosaiq SQL Server"
             site_exists = True
             break
@@ -167,6 +168,7 @@ def save_mosaiq_config_to_file(
             "mosaiq": {
                 "hostname": hostname,
                 "port": port,
+                "database": database,
                 "alias": f"{site_name} Mosaiq SQL Server",
             },
         }
