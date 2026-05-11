@@ -18,6 +18,8 @@ from copy import deepcopy
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from .compat import ensure_transfer_syntax
+
 
 @functools.lru_cache(maxsize=1)
 def get_dicom_names():
@@ -30,14 +32,6 @@ def add_array_to_dataset(dataset, key, value):
     if isinstance(value, np.ndarray):
         value = value.tolist()
     setattr(dataset, key, value)
-
-
-def set_default_transfer_syntax(dataset):
-    if dataset.is_little_endian is None:
-        dataset.is_little_endian = True
-
-    if dataset.is_implicit_VR is None:
-        dataset.is_implicit_VR = True
 
 
 def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
@@ -67,6 +61,6 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
         else:
             add_array_to_dataset(dataset, key, value)
 
-    set_default_transfer_syntax(dataset)
+    ensure_transfer_syntax(dataset)
 
     return dataset
