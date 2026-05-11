@@ -301,3 +301,81 @@ def get_incomplete_qcls(connection, location):
     results = results.sort_values(by=["due"], ascending=True)
 
     return results
+
+
+def get_activity_schedule_by_location(connection, activity, location, start, end):
+    data = api.execute(
+        connection,
+        """
+        SELECT
+            Schedule.App_DtTm,
+            Schedule.Activity,
+            Staff.Last_Name,
+            Schedule.Notes
+        FROM Schedule, Staff
+        WHERE
+            Staff.Last_Name = %(location)s AND
+            Schedule.Location = Staff.Staff_ID AND
+            Schedule.Activity = %(activity)s AND
+            Schedule.App_DtTm > %(start)s AND
+            Schedule.App_DtTm < %(end)s AND
+            Schedule.Version = 0
+        """,
+        {
+            "location": str(location),
+            "activity": str(activity),
+            "start": str(start),
+            "end": str(end),
+        },
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=[
+            "date",
+            "activity",
+            "location",
+            "notes",
+        ],
+    )
+
+    results = results.sort_values(by=["date"], ascending=True)
+
+    return results
+
+
+def get_column_data_types(connection, table_name):
+    data = api.execute(
+        connection,
+        """
+        SELECT
+            COLUMN_NAME,
+            DATA_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE
+            TABLE_NAME = %(table_name)s
+        """,
+        {
+            "table_name": str(table_name),
+        },
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=[
+            "column name",
+            "data type",
+        ],
+    )
+
+    return results
+
+
+def mosaiq_table_to_type_map_dict(connection, table_name):
+    column_types = get_column_data_types(connection, table_name)
+
+    return {
+        table_name: pd.Series(
+            column_types["data type"].values, index=column_types["column name"]
+        ).to_dict()
+    }
