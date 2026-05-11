@@ -1,24 +1,20 @@
+:orphan:
+
 ####################
 Pinnacle Export Tool
 ####################
 
-*******
-Summary
-*******
+.. warning::
 
-.. automodule:: pymedphys.pinnacle
-    :no-members:
+   This page remains only as a legacy breadcrumb. The Pinnacle Export Tool is
+   now documented in the stable library reference at :doc:`../pinnacle`.
 
+.. note::
 
-***
-API
-***
+   Although ``pymedphys.pinnacle`` is part of the stable Python API surface,
+   the tool is still intended for research purposes only and not for clinical
+   use.
 
-.. autoclass:: pymedphys.pinnacle.PinnacleExport
-   :members:
+.. seealso::
 
-.. autoclass:: pymedphys.pinnacle.PinnaclePlan
-   :members:
-
-.. autoclass:: pymedphys.pinnacle.PinnacleImage
-   :members:
+   For the command line interface, see :doc:`../../cli/pinnacle`.
