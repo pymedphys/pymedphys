@@ -75,6 +75,41 @@ class TestConstraints:
         for name, c in HEAD_NECK_CONSTRAINTS.items():
             assert "source" in c, f"{name} missing source"
 
+    def test_modality_fallback_uses_conventional_limits(self):
+        """When SBRT limits are absent, check_constraint falls back to conventional."""
+        lens = HEAD_NECK_CONSTRAINTS["lens"]
+        assert "conventional" in lens
+        assert "sbrt_5fx" not in lens  # lens has no SBRT-specific limits
+
+        conventional_dmax = lens["conventional"]["dmax"]
+        dose_below = conventional_dmax - 5.0  # well under 10 Gy
+
+        # Check lens under SBRT_5FX modality → should use conventional dmax=10
+        r = check_constraint("lens", Modality.SBRT_5FX, {"dmax": dose_below})
+        assert r["overall"] == "pass", f"Expected pass, got {r['overall']}"
+
+        # Now a dose ABOVE conventional limit should fail
+        r2 = check_constraint("lens", Modality.SBRT_5FX, {"dmax": conventional_dmax + 5.0})
+        assert r2["overall"] != "pass", f"Expected violation, got {r2['overall']}"
+
+    def test_soft_constraint_levels(self):
+        """Non-hard OARs must be marked as 'soft' to prevent severity misclassification."""
+        soft_structures = [
+            "parotid_contralateral",
+            "parotid_ipsilateral",
+            "mandible",
+            "cochlea",
+            "pharyngeal_constrictors",
+            "lacrimal_gland",
+            "brachial_plexus",
+            "oral_cavity",
+            "larynx",
+        ]
+        for name in soft_structures:
+            assert name in HEAD_NECK_CONSTRAINTS, f"{name} missing"
+            assert HEAD_NECK_CONSTRAINTS[name]["level"] == "soft", \
+                f"{name} level={HEAD_NECK_CONSTRAINTS[name]['level']}, expected 'soft'"
+
 
 class TestCheckPlan:
     """Plan evaluation tests."""
