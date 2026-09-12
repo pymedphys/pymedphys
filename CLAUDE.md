@@ -108,6 +108,12 @@ When creating conda recipes, pull requests, or other metadata that requires main
 
 - Unit tests are in `lib/pymedphys/tests/` mirroring the source structure
 - Tests use pytest with fixtures defined in `conftest.py`
+- `pymedphys dev tests` changes the working directory to `lib/pymedphys` before
+  invoking pytest, so relative output paths (e.g. `--junitxml`) resolve there.
+  Use absolute paths in CI.
+- Tests marked `slow` (and `mosaiqdb`, `cypress`, `anthropic_key`) are skipped by
+  `conftest.py` unless the matching flag (e.g. `--slow`) is passed. `pytest -m slow`
+  alone selects them but still skips every one.
 - Mock data and fixtures are in `_mocks/` and test data directories
 - E2E tests use Cypress for Streamlit app testing
 
@@ -260,6 +266,12 @@ When updating dependencies:
 2. Run `uv lock --upgrade` and then `uv sync --extra all --group dev` to regenerate `uv.lock`
 3. Test changes to ensure nothing breaks
 4. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
+
+**Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
+resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.
+`uv lock --check` only validates `requires-dist` against `pyproject.toml`, so a
+hand-edited lockfile can pass the check while CI silently omits the package.
+Always regenerate the lockfile with `uv lock` after touching `pyproject.toml`.
 
 ### Working with Restricted Permissions
 
