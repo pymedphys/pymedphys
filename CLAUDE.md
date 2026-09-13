@@ -361,6 +361,11 @@ When asked to create GitHub workflow files (`.github/workflows/*.yml`):
    - Pull the branch locally
    - Move the file from `claude_created_workflows_preview/` to `.github/workflows/`
    - Push the change back using their own permissions
+   - Give the move command for both shells. Maintainers often work in
+     PowerShell, where `mv` is `Move-Item` and refuses to overwrite an
+     existing file unless `-Force` is passed:
+     - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+     - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
 4. **Provide the PR creation link** with the branch as-is
 
 **Recommended PR Workflow**: Create the PR first, then move the file. This approach:
