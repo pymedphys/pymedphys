@@ -45,7 +45,16 @@ runs:
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
       with:
         path: ~/.pymedphys
-        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+        # Every job runs this action, and a cache key is immutable once saved.
+        # A key shared across jobs is therefore claimed by whichever job
+        # finishes first (lint, type-check ...) with an empty ~/.pymedphys,
+        # and the data-heavy jobs re-download from Zenodo on every run.
+        # Keying per OS and job lets each job save the data it actually
+        # fetched. pymedphys.data_path hash-checks cached files and
+        # re-downloads on mismatch, so the prefix fallback is safe.
+        key: pymedphys-data-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/hashes.json') }}
+        restore-keys: |
+          pymedphys-data-${{ runner.os }}-${{ github.job }}-
 
     - name: Set up Node.js
       if: ${{ inputs.node-version != '' }}
