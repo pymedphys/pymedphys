@@ -11,8 +11,8 @@ and open source distribution. Open code is better science.**
 
 |build| |pypi| |python| |license|
 
-.. |build| image:: https://img.shields.io/github/actions/workflow/status/pymedphys/pymedphys/library.yml?branch=main
-    :target: https://github.com/pymedphys/pymedphys/actions?query=branch%3Amain
+.. |build| image:: https://github.com/pymedphys/pymedphys/actions/workflows/ci.yml/badge.svg?branch=main
+   :target: https://github.com/pymedphys/pymedphys/actions/workflows/ci.yml
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
     :target: https://pypi.org/project/pymedphys/

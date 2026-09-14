@@ -21,6 +21,7 @@ jobs:
       mosaiq: ${{ steps.filter.outputs.mosaiq }}
       docs: ${{ steps.filter.outputs.docs }}
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: filter
         with:
@@ -78,7 +79,7 @@ jobs:
       )
     uses: ./.github/workflows/integration-tests.yml
     with:
-      run-slow: ${{ github.event_name == 'push' }}
+      run-slow: ${{ github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
 
   # Database tests based on changes or labels — skip if auto-fix pushed.
   mosaiq-db-tests:
@@ -100,28 +101,12 @@ jobs:
       github.event_name == 'pull_request' &&
       needs.changes.outputs.docs == 'true'
     uses: ./.github/workflows/docs.yml
-    with:
-      publish: false
     permissions:
       contents: read
-      pages: write
-      id-token: write
-
-  # Docs publish on main — gated on the full core CI set.
-  docs-publish:
-    needs: [lint, type-check, unit-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/docs.yml
-    with:
-      publish: true
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
 
   # Summary job provides overall status.
   summary:
-    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish]
+    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -155,7 +140,7 @@ jobs:
           |-------|--------|
           | Integration Tests | ${{ needs.integration-tests.result || 'skipped' }} |
           | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
-          | Documentation | ${{ needs.docs-check.result || needs.docs-publish.result || 'skipped' }} |
+          | Documentation | ${{ needs.docs-check.result || 'skipped' }} |
 
           **Workflow:** ${{ github.workflow }}
           **Triggered by:** ${{ github.actor }}

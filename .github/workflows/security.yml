@@ -21,6 +21,9 @@ jobs:
     outputs:
       security: ${{ steps.filter.outputs.security }}
     steps:
+      # paths-filter uses git (not the API) on push and schedule events, so
+      # the repository must be checked out first.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: filter
         with:

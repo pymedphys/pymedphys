@@ -195,8 +195,17 @@ async def _conversation_with_tool_use(
             if item.type == "tool_use":
                 tool = tools_mappings[item.name]
 
+                # The SDK types ToolUseBlock.input as ``object``; the API
+                # contract is a JSON object, so narrow before unpacking.
+                tool_input = item.input
+                if not isinstance(tool_input, dict):
+                    raise TypeError(
+                        f"Tool input for {item.name!r} must be a mapping, "
+                        f"got {type(tool_input).__name__}"
+                    )
+
                 # TODO: Make this run in parallel
-                result = await tool(**item.input)
+                result = await tool(**tool_input)
 
                 response_message = {
                     "role": "user",
