@@ -30,7 +30,8 @@ Issue comment -> claude-assistant.yml / claude.yml
 #### `ci.yml` - Main Orchestrator
 Coordinates all CI checks based on file changes, labels, and event types.
 
-- **Triggers**: Push to main, pull requests (including label changes), workflow_call
+- **Triggers**: Push to main, pull requests (including label changes, which queue
+  behind an in-flight run rather than cancelling it), workflow_call
 - **Jobs**:
   - `changes`: Detects file changes using path filters
   - `pre-commit`: Auto-formatting and basic checks
