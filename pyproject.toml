@@ -252,7 +252,9 @@ known-first-party = ["pymedphys"]
 
 
 [tool.pyright]
-include = ["lib/pymedphys"]
+include = ["lib/pymedphys", ".github/scripts"]
+# Setting exclude replaces pyright's defaults, which skip every dot-directory.
+exclude = ["**/node_modules", "**/__pycache__"]
 
 # These have been set to False in order to be able to utilise pyright, but
 # future work would be to iteratively set these to true and fix the code base.

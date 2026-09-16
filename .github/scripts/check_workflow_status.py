@@ -3,17 +3,25 @@
 import argparse
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
+
+Needs = Mapping[str, Mapping[str, Any]]
 
 
-def check_jobs(needs, conditional_jobs):
+def _selection(needs: Needs) -> Mapping[str, Any]:
+    return needs.get("changes", {}).get("outputs", {})
+
+
+def check_jobs(needs: Needs, conditional_jobs: Mapping[str, str]) -> list[str]:
     """Return failures; unlisted dependencies are required to succeed.
 
     Conditional jobs may be skipped only when their selection output from the
     changes job is explicitly false. Missing outputs fail closed.
     """
-    failures = []
-    selection = needs.get("changes", {}).get("outputs", {})
+    failures: list[str] = []
+    selection = _selection(needs)
     if "changes" not in needs:
         failures.append("The changes job is missing from the summary dependencies.")
 
@@ -36,8 +44,13 @@ def check_jobs(needs, conditional_jobs):
     return failures
 
 
-def make_summary(title, needs, conditional_jobs, failures):
-    selection = needs.get("changes", {}).get("outputs", {})
+def make_summary(
+    title: str,
+    needs: Needs,
+    conditional_jobs: Mapping[str, str],
+    failures: list[str],
+) -> str:
+    selection = _selection(needs)
     lines = [f"## {title}", "", "| Check | Required | Status |", "|---|---|---|"]
     for job, details in needs.items():
         required = (
@@ -66,7 +79,18 @@ def make_summary(title, needs, conditional_jobs, failures):
     return "\n".join(lines) + "\n"
 
 
-def main():
+def parse_conditional(items: list[str]) -> dict[str, str]:
+    """Parse ``JOB=OUTPUT`` arguments, rejecting malformed ones clearly."""
+    conditional: dict[str, str] = {}
+    for item in items:
+        job, _, output = item.partition("=")
+        if not job or not output:
+            raise SystemExit(f"--conditional expects JOB=OUTPUT, got {item!r}")
+        conditional[job] = output
+    return conditional
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--title", required=True)
     parser.add_argument(
@@ -77,15 +101,15 @@ def main():
         help="Allow JOB to be skipped when changes.outputs.OUTPUT is false.",
     )
     args = parser.parse_args()
-    conditional_jobs = dict(item.split("=", 1) for item in args.conditional)
-    needs = json.loads(os.environ["NEEDS_JSON"])
+    conditional_jobs = parse_conditional(args.conditional)
+    needs: dict[str, dict[str, Any]] = json.loads(os.environ["NEEDS_JSON"])
     failures = check_jobs(needs, conditional_jobs)
     summary = make_summary(args.title, needs, conditional_jobs, failures)
     with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as output:
         output.write(summary)
     for failure in failures:
         print(f"::error::{failure}")
-    return bool(failures)
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
