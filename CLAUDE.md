@@ -66,6 +66,10 @@ Documentation notebooks must use declared, locked dependencies rather than
 installing packages while running. Add documentation dependencies to both the
 `docs` and `all` extras and regenerate the exported ReadTheDocs requirements.
 Unexpected notebook errors and documentation build warnings fail the build.
+An install cell kept for readers running a notebook elsewhere (for example on
+Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
+generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
+file is gitignored, so edit `_config.yml`.
 
 ## Architecture Overview
 
