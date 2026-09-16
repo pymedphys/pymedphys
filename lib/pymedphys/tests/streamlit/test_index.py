@@ -18,13 +18,15 @@
 
 from pymedphys._imports import pytest
 
-from pymedphys._experimental.streamlit import apps as _experimental_apps
-from pymedphys._streamlit import apps as _stable_apps
-from pymedphys._streamlit import index as _index
-
 from . import apptest_utilities as utl
 
 pytest.importorskip("streamlit")
+
+# The app registry imports every app, and the apps use Streamlit at import
+# time, so these imports must come after the skip guard.
+from pymedphys._experimental.streamlit import apps as _experimental_apps  # noqa: E402
+from pymedphys._streamlit import apps as _stable_apps  # noqa: E402
+from pymedphys._streamlit import index as _index  # noqa: E402
 
 
 def _registered_apps():
