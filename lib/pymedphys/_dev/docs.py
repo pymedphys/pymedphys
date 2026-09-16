@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 import shutil
 import subprocess
 
@@ -43,12 +44,12 @@ FILE_COPY_MAPPING = [
 
 def build_docs(args):
     if args.output:
-        output_directory = args.output
+        output_directory = pathlib.Path(args.output)
     else:
-        output_directory = str(DOCS_PATH)
+        output_directory = DOCS_PATH
 
     if args.clean:
-        subprocess.check_call(["jupyter-book", "clean", output_directory])
+        subprocess.check_call(["jupyter-book", "clean", str(output_directory)])
 
         return
 
@@ -60,20 +61,28 @@ def build_docs(args):
         # within the online doc notebooks
         pymedphys.data_path(file_name)
 
-    if args.prep:
-        subprocess.check_call(["jupyter-book", "config", "sphinx", output_directory])
+    # Use the same generated Sphinx configuration for local builds and ReadTheDocs.
+    subprocess.check_call(["jupyter-book", "config", "sphinx", str(DOCS_PATH)])
 
+    if args.prep:
         return
 
-    subprocess.check_call(
+    # Build in-process: the docs extra is only needed once a build is
+    # requested, so import here rather than at module import time.
+    import sphinx.cmd.build
+
+    status = sphinx.cmd.build.build_main(
         [
-            "jupyter-book",
-            "build",
-            # "-W",
-            # "-n",
-            # "--keep-going",
+            "-b",
+            "html",
+            "-W",
+            "-T",
+            "--keep-going",
+            "-d",
+            str(output_directory.joinpath("_build", ".doctrees")),
             str(DOCS_PATH),
-            "--path-output",
-            output_directory,
+            str(output_directory.joinpath("_build", "html")),
         ]
     )
+    if status:
+        raise SystemExit(status)

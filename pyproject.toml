@@ -104,10 +104,12 @@ tests = [
   "pytest-sugar",
   "python-dateutil",
   "shapely",
+  "toml",
   "tqdm",
 ]
 
 docs = [
+  "interpolation>=2.2.7,<3",
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
@@ -172,6 +174,7 @@ all = [
     "dicompyler-core",
     "doc8",
     "imageio[tifffile]",
+    "interpolation>=2.2.7,<3",
     "ipython>=7.31.1",
     "jupyter-book>=0.12.0,<2.0.0",
     "keyring",
@@ -249,7 +252,9 @@ known-first-party = ["pymedphys"]
 
 
 [tool.pyright]
-include = ["lib/pymedphys"]
+include = ["lib/pymedphys", ".github/scripts"]
+# Setting exclude replaces pyright's defaults, which skip every dot-directory.
+exclude = ["**/node_modules", "**/__pycache__"]
 
 # These have been set to False in order to be able to utilise pyright, but
 # future work would be to iteratively set these to true and fix the code base.

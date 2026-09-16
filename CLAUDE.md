@@ -62,6 +62,15 @@ uv run -- pymedphys dev docs
 # The docs use Jupyter Book and are located in lib/pymedphys/docs/
 ```
 
+Documentation notebooks must use declared, locked dependencies rather than
+installing packages while running. Add documentation dependencies to both the
+`docs` and `all` extras and regenerate the exported ReadTheDocs requirements.
+Unexpected notebook errors and documentation build warnings fail the build.
+An install cell kept for readers running a notebook elsewhere (for example on
+Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
+generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
+file is gitignored, so edit `_config.yml`.
+
 ## Architecture Overview
 
 ### Project Structure
@@ -108,6 +117,14 @@ When creating conda recipes, pull requests, or other metadata that requires main
 
 - Unit tests are in `lib/pymedphys/tests/` mirroring the source structure
 - Tests use pytest with fixtures defined in `conftest.py`
+- `pymedphys dev tests` changes the working directory to `lib/pymedphys` before
+  invoking pytest, so relative output paths (e.g. `--junitxml`) resolve there.
+  Use absolute paths in CI.
+- Tests marked `slow` (and `mosaiqdb`, `cypress`, `anthropic_key`) are skipped by
+  `conftest.py` unless the matching flag (e.g. `--slow`) is passed. `pytest -m slow`
+  alone selects them but still skips every one.
+- Data caches must not fall back across changes to `hashes.json`: ZIP archives
+  are checked, but previously extracted files are not refreshed automatically.
 - Mock data and fixtures are in `_mocks/` and test data directories
 - E2E tests use Cypress for Streamlit app testing
 
@@ -261,6 +278,12 @@ When updating dependencies:
 3. Test changes to ensure nothing breaks
 4. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
 
+**Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
+resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.
+`uv lock --check` only validates `requires-dist` against `pyproject.toml`, so a
+hand-edited lockfile can pass the check while CI silently omits the package.
+Always regenerate the lockfile with `uv lock` after touching `pyproject.toml`.
+
 ### Working with Restricted Permissions
 
 When working with restricted bash permissions:
@@ -349,6 +372,11 @@ When asked to create GitHub workflow files (`.github/workflows/*.yml`):
    - Pull the branch locally
    - Move the file from `claude_created_workflows_preview/` to `.github/workflows/`
    - Push the change back using their own permissions
+   - Give the move command for both shells. Maintainers often work in
+     PowerShell, where `mv` is `Move-Item` and refuses to overwrite an
+     existing file unless `-Force` is passed:
+     - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+     - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
 4. **Provide the PR creation link** with the branch as-is
 
 **Recommended PR Workflow**: Create the PR first, then move the file. This approach:

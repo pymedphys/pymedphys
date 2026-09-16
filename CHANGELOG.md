@@ -1311,7 +1311,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 ### New Features
 
 - A DICOM anonymisation CLI! See
-  [the DICOM Files CLI docs](../user/ref/cli/dicom.rst).
+  [the DICOM Files CLI docs](https://docs.pymedphys.com/users/ref/cli/dicom.html).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
     wrapper functions that take a DICOM file and a directory as respective

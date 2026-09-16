@@ -13,15 +13,20 @@ permissions:
   contents: read
 
 jobs:
-  # Detect whether security-relevant files changed. On PRs that only touch
-  # docs/markdown the downstream jobs will be skipped (but still reported,
-  # which satisfies required-status-check rules).
+  # Filter pull requests only. Scheduled, manual, and main runs always scan,
+  # because new vulnerabilities can appear without repository changes.
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
-      security: ${{ steps.filter.outputs.security }}
+      security: >-
+        ${{ github.event_name != 'pull_request' ||
+            steps.filter.outputs.security == 'true' }}
     steps:
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        if: github.event_name == 'pull_request'
         id: filter
         with:
           filters: |
@@ -31,6 +36,7 @@ jobs:
               - 'uv.lock'
               - '.github/workflows/*.yml'
               - '.github/actions/**/action.yml'
+              - '.github/scripts/**'
 
   secrets-scan:
     needs: [changes]
@@ -169,20 +175,26 @@ jobs:
     needs: [changes, secrets-scan, dependency-audit, python-security, container-scan, github-actions-security]
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Generate security report
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - name: Check required status and generate security report
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: >-
+          python .github/scripts/check_workflow_status.py
+          --title 'Security Scan Results'
+          --conditional secrets-scan=security
+          --conditional dependency-audit=security
+          --conditional python-security=security
+          --conditional container-scan=security
+          --conditional github-actions-security=security
+      - name: Explain advisory checks
+        if: always()
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
-          ## Security Scan Results
 
-          | Check | Status |
-          |-------|--------|
-          | Secrets Scan | ${{ needs.secrets-scan.result }} |
-          | Dependency Audit | ${{ needs.dependency-audit.result }} |
-          | Python Security | ${{ needs.python-security.result }} |
-          | Container Scan | ${{ needs.container-scan.result }} |
-          | GitHub Actions | ${{ needs.github-actions-security.result }} |
-
-          **Note:** On pull requests, dependency audit and Bandit are advisory (non-blocking).
-          On main and scheduled runs, they are blocking.
+          On pull requests, dependency audit and Bandit findings are advisory.
+          On main, scheduled, and manually dispatched runs, they are blocking.
           EOF
