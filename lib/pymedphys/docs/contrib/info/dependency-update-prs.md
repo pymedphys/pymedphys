@@ -94,7 +94,7 @@ If you want to reproduce the intended smoke suite locally:
 uv sync --frozen --extra user --extra tests --extra docs
 
 uv run pytest -q --maxfail=1 \
-  -m "not slow and not cypress and not mosaiqdb and not anthropic_key" \
+  -m "not slow and not mosaiqdb and not anthropic_key" \
   lib/pymedphys/tests/coordinates \
   lib/pymedphys/tests/delivery \
   lib/pymedphys/tests/dicom \

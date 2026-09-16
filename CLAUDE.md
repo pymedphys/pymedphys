@@ -31,9 +31,6 @@ uv run -- pymedphys dev tests -v -s -k "test_name"
 
 # Run doctests
 uv run -- pymedphys dev doctests
-
-# Run E2E tests with Cypress
-uv run -- pymedphys dev tests --cypress
 ```
 
 ### Code Quality
@@ -120,13 +117,17 @@ When creating conda recipes, pull requests, or other metadata that requires main
 - `pymedphys dev tests` changes the working directory to `lib/pymedphys` before
   invoking pytest, so relative output paths (e.g. `--junitxml`) resolve there.
   Use absolute paths in CI.
-- Tests marked `slow` (and `mosaiqdb`, `cypress`, `anthropic_key`) are skipped by
+- Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
   `conftest.py` unless the matching flag (e.g. `--slow`) is passed. `pytest -m slow`
   alone selects them but still skips every one.
 - Data caches must not fall back across changes to `hashes.json`: ZIP archives
   are checked, but previously extracted files are not refreshed automatically.
 - Mock data and fixtures are in `_mocks/` and test data directories
-- E2E tests use Cypress for Streamlit app testing
+- The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
+  `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
+  read the rendered markdown. Data-driven scenarios use the
+  `metersetmap-gui-e2e-data.zip` demo archive and run from a temporary working
+  directory because the apps extract it into the current directory.
 
 ### Dependencies and Extras
 
