@@ -18,7 +18,7 @@
 
 import pathlib
 
-from pymedphys._imports import pytest
+import pytest
 
 import pymedphys
 from pymedphys import _config as pmp_config
@@ -27,7 +27,7 @@ from . import apptest_utilities as utl
 
 
 @pytest.fixture(scope="session")
-def demo_directory(tmp_path_factory) -> pathlib.Path:
+def demo_directory(tmp_path_factory: pytest.TempPathFactory) -> pathlib.Path:
     """Extract the GUI demo data once per session.
 
     The metersetmap and electrons apps extract the same archive into the
@@ -40,14 +40,18 @@ def demo_directory(tmp_path_factory) -> pathlib.Path:
 
 
 @pytest.fixture
-def demo_working_directory(demo_directory, monkeypatch) -> pathlib.Path:
+def demo_working_directory(
+    demo_directory: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> pathlib.Path:
     monkeypatch.chdir(demo_directory.parent)
 
     return demo_directory
 
 
 @pytest.fixture
-def demo_config_on_disk(demo_directory, monkeypatch) -> pathlib.Path:
+def demo_config_on_disk(
+    demo_directory: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> pathlib.Path:
     """Serve the demo configuration to apps that read the user's config.toml."""
     original_get_config = pmp_config.get_config
 
