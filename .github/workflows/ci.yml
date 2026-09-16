@@ -49,6 +49,8 @@ jobs:
             docs:
               - 'docs/**'
               - 'lib/pymedphys/docs/**'
+              # Autodoc and notebooks import the package implementation.
+              - 'lib/pymedphys/**/*.py'
               - '*.md'
               - 'README.rst'
               - 'pyproject.toml'
@@ -59,8 +61,6 @@ jobs:
               - '.github/workflows/docs.yml'
               - '.github/actions/setup-project/**'
               - '.github/scripts/**'
-              - 'lib/pymedphys/_dev/docs.py'
-              - 'lib/pymedphys/cli/dev.py'
 
   # Pre-commit always runs. Needs write access for auto-fix pushes on PRs.
   pre-commit:

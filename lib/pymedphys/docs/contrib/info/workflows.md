@@ -97,7 +97,7 @@ SQL Server integration tests for Mosaiq database functionality.
 - **Features**: Automatic retries for connection stability
 
 #### `docs.yml`
-Builds documentation on PRs that change documentation sources or build tooling.
+Builds documentation on PRs that change documentation sources, package Python code, or build tooling.
 
 - **HTML build**: Sphinx warnings and unexpected notebook errors fail the build
 - **Link check**: Advisory external-link check with downloadable reports
