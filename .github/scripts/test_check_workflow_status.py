@@ -90,7 +90,7 @@ class WorkflowStatusTests(unittest.TestCase):
         self.assertNotIn("All required checks passed", summary)
 
     def test_security_scans_follow_shared_selection(self):
-        scans = ("secrets", "audit", "bandit", "container", "actions")
+        scans = ("dependency-audit", "python-security", "workflow-audit")
         conditional = dict.fromkeys(scans, "security")
         for selection in ("true", "false"):
             for result in ("success", "failure", "cancelled", "skipped"):

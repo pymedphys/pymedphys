@@ -32,9 +32,10 @@ runs:
 
     - name: Install dependencies
       shell: bash
+      env:
+        EXTRAS: ${{ inputs.extras }}
       run: |
         set -euxo pipefail
-        EXTRAS="${{ inputs.extras }}"
         if [ -n "$EXTRAS" ]; then
           uv sync --frozen $(echo $EXTRAS | xargs -n1 echo --extra)
         else

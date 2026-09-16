@@ -48,8 +48,8 @@ AUTOGEN_MESSAGE = [
 
 def propagate_all(args):
     if args.update:
-        subprocess.check_call("uv lock --upgrade", shell=True)
-        subprocess.check_call("uv sync --extra all --group dev", shell=True)
+        subprocess.check_call(["uv", "lock", "--upgrade"])
+        subprocess.check_call(["uv", "sync", "--extra", "all", "--group", "dev"])
 
     propagate_version()
     propagate_extras()
@@ -73,7 +73,7 @@ def propagate_lock_requirements_and_hash():
 
 
 def _update_uv_lock():
-    subprocess.check_call("uv lock", shell=True)
+    subprocess.check_call(["uv", "lock"])
 
 
 def _read_text_utf8(path):
