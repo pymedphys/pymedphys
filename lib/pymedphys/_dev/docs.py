@@ -15,7 +15,6 @@
 import pathlib
 import shutil
 import subprocess
-import sys
 
 import pymedphys
 
@@ -68,11 +67,12 @@ def build_docs(args):
     if args.prep:
         return
 
-    subprocess.check_call(
+    # Build in-process: the docs extra is only needed once a build is
+    # requested, so import here rather than at module import time.
+    import sphinx.cmd.build
+
+    status = sphinx.cmd.build.build_main(
         [
-            sys.executable,
-            "-m",
-            "sphinx",
             "-b",
             "html",
             "-W",
@@ -84,3 +84,5 @@ def build_docs(args):
             str(output_directory.joinpath("_build", "html")),
         ]
     )
+    if status:
+        raise SystemExit(status)
