@@ -30,11 +30,11 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
+          # Link-check settings live in _config.yml. Reuse the HTML build's
+          # environment: nothing is re-read or re-executed, and the report
+          # exists seconds after the step starts.
           uv run python -m sphinx -b linkcheck \
-            -D nb_execution_mode=off \
-            -D linkcheck_timeout=10 \
-            -D linkcheck_retries=1 \
-            -D linkcheck_rate_limit_timeout=30 \
+            -d lib/pymedphys/docs/_build/.doctrees \
             lib/pymedphys/docs lib/pymedphys/docs/_build/linkcheck
 
       - name: Validate link-check report

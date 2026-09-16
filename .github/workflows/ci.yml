@@ -13,7 +13,11 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Label changes queue behind an in-flight run instead of discarding it.
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request' &&
+        github.event.action != 'labeled' &&
+        github.event.action != 'unlabeled' }}
 
 jobs:
   changes:
@@ -50,7 +54,11 @@ jobs:
               - 'docs/**'
               - 'lib/pymedphys/docs/**'
               # Autodoc and notebooks import the package implementation.
-              - 'lib/pymedphys/**/*.py'
+              # Package modules only: tests cannot change the rendered docs.
+              - 'lib/pymedphys/*.py'
+              - 'lib/pymedphys/!(tests)/**/*.py'
+              # Notebooks fetch data files by name.
+              - 'lib/pymedphys/_data/**'
               - '*.md'
               - 'README.rst'
               - 'pyproject.toml'
@@ -107,7 +115,7 @@ jobs:
       needs.changes.outputs.run-integration == 'true'
     uses: ./.github/workflows/integration-tests.yml
     with:
-      run-slow: ${{ needs.changes.outputs.run-integration == 'true' }}
+      run-slow: true
 
   mosaiq-db-tests:
     needs: [pre-commit, changes]
