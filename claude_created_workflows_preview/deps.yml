@@ -60,7 +60,7 @@ jobs:
           # Run the full non-slow test suite rather than a hand-curated
           # subset — ensures new test directories are covered automatically.
           uv run pytest -q --maxfail=3 \
-            -m "not slow and not cypress and not mosaiqdb and not anthropic_key"
+            -m "not slow and not mosaiqdb and not anthropic_key"
 
           uv run pymedphys dev docs
 

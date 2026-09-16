@@ -73,6 +73,7 @@ Fast unit tests with smart matrix strategy.
 - **Features**:
   - Full OS matrix on main (Ubuntu, Windows, macOS)
   - Quick mode for PRs (Ubuntu + latest supported Python version)
+  - Installs the `user` extra so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labeled `full-test`
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
@@ -177,7 +178,6 @@ Standardized project setup for all workflows.
 - **Features**:
   - Python setup with configurable version
   - uv package manager with caching
-  - Optional Node.js setup
   - PyMedPhys data caching
   - Dependency installation with extras
 
@@ -302,7 +302,6 @@ uv run pymedphys dev docs
 ## Version Compatibility
 
 - **Python**: 3.10, 3.12 (tested in CI)
-- **Node.js**: 20.x (for Cypress and build tools)
 - **uv**: Latest version (auto-updated)
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)
