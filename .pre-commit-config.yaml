@@ -17,7 +17,7 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb", "500"]
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.11
+    rev: v1.7.12
     hooks:
       - id: actionlint
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
@@ -34,6 +34,7 @@ repos:
         args: [ --fix ]
       - id: ruff-format
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.8.17
+    # Keep in step with the setup-uv version in .github/actions/setup-project.
+    rev: 0.12.15
     hooks:
       - id: uv-lock
