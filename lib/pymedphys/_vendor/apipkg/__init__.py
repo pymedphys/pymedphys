@@ -58,14 +58,14 @@ def _py_abspath(path):
 def distribution_version(name):
     """try to get the version of the named distribution,
     returns None on failure"""
-    from pkg_resources import DistributionNotFound, get_distribution
+    # setuptools 81 removed pkg_resources; importlib.metadata is the
+    # standard-library replacement that upstream apipkg also moved to.
+    from importlib.metadata import PackageNotFoundError, version
 
     try:
-        dist = get_distribution(name)
-    except DistributionNotFound:
-        pass
-    else:
-        return dist.version
+        return version(name)
+    except PackageNotFoundError:
+        return None
 
 
 def initpkg(pkgname, exportdefs, attr=None, eager=False):

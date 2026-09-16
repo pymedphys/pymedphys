@@ -9,6 +9,14 @@ This project adheres to
 
 ## Unreleased
 
+### Dependency changes
+
+- `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. The newer
+  Streamlit no longer depends on GitPython, and Pillow 12, protobuf 7, and
+  pyarrow 25 follow; every dependency with a known vulnerability at the time
+  of the change was moved to a fixed release. `numpy<2` is now an explicit
+  constraint until the NumPy 2 migration is done.
+
 ### Contributor facing changes
 
 - **[Contributor facing only]** The Cypress end-to-end scaffolding under
