@@ -1,0 +1,243 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: '41 3 * * MON'  # Staggered to avoid top-of-hour congestion
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only by default. Jobs that upload SARIF or open issues add what they need.
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Scanner versions. The scanners run through uvx, so nothing here touches the
+  # project environment. Bump deliberately and keep the pre-commit zizmor hook
+  # on the same version.
+  PIP_AUDIT_VERSION: 2.10.1
+  BANDIT_VERSION: 1.9.4
+  ZIZMOR_VERSION: 1.30.1
+
+jobs:
+  # Filter pull requests only. Scheduled, manual, and main runs always scan,
+  # because new vulnerabilities can appear without repository changes.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      security: >-
+        ${{ github.event_name != 'pull_request' ||
+            steps.filter.outputs.security == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        if: github.event_name == 'pull_request'
+        id: filter
+        with:
+          filters: |
+            security:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.pre-commit-config.yaml'
+              - '.github/workflows/*.yml'
+              - '.github/actions/**/action.yml'
+              - '.github/scripts/**'
+
+  # Audits the lockfile rather than an installed environment, so every extra
+  # and platform marker is covered and nothing has to be installed.
+  dependency-audit:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # 7.6.0
+        with:
+          enable-cache: false
+
+      - name: Export the locked dependency set
+        run: >-
+          uv export --frozen --all-extras --no-emit-project --no-hashes
+          --output-file audit-requirements.txt
+
+      # Advisory on pull requests and pushes: an advisory published against a
+      # dependency must not turn an unrelated commit red. Blocking on scheduled
+      # and manual runs, which is where new advisories are meant to surface.
+      - name: Run pip-audit
+        continue-on-error: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+        run: |
+          # PYSEC-2025-183 (PyJWT "weak encryption") is disputed upstream and
+          # has no fixed version.
+          uvx "pip-audit==${PIP_AUDIT_VERSION}" \
+            --requirement audit-requirements.txt \
+            --no-deps --disable-pip --strict \
+            --desc on --progress-spinner off \
+            --ignore-vuln PYSEC-2025-183
+
+      - name: Open or update the tracking issue
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Weekly dependency audit found known vulnerabilities"
+          body="The scheduled pip-audit run failed. Report: ${RUN_URL}"
+          gh label create security-audit --force --color B60205 \
+            --description "Opened automatically by the weekly dependency audit"
+          number="$(gh issue list --label security-audit --state open --json number --jq '.[0].number')"
+          if [[ -n "${number}" ]]; then
+            gh issue comment "${number}" --body "${body}"
+          else
+            gh issue create --title "${title}" --label security-audit --body "${body}"
+          fi
+
+  # Configuration lives in [tool.bandit] in pyproject.toml. Blocking on every
+  # event: fix the finding or add a justified "nosec" comment.
+  python-security:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
+    name: Python Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # 7.6.0
+        with:
+          enable-cache: false
+
+      - name: Run Bandit
+        run: |
+          run_bandit() {
+            uvx --from "bandit[toml,sarif]==${BANDIT_VERSION}" bandit \
+              --configfile pyproject.toml --recursive lib/pymedphys --quiet "$@"
+          }
+          set +e
+          run_bandit
+          status=$?
+          set -e
+          run_bandit --format sarif --output bandit.sarif || true
+          exit "${status}"
+
+      - name: Upload Bandit SARIF
+        # Fork pull requests cannot write security events.
+        if: >-
+          ${{ !cancelled() &&
+              (github.event_name != 'pull_request' ||
+               github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
+        with:
+          sarif_file: bandit.sarif
+          category: bandit
+
+      - name: Upload Bandit report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
+        with:
+          name: bandit-results
+          path: bandit.sarif
+          retention-days: 14
+          if-no-files-found: error
+
+  # The same check runs offline through pre-commit. Findings below medium
+  # severity are style advice and do not block.
+  workflow-audit:
+    needs: [changes]
+    if: needs.changes.outputs.security == 'true'
+    name: Workflow Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # 7.6.0
+        with:
+          enable-cache: false
+
+      - name: Run zizmor
+        env:
+          # The online audits (impostor commits, known vulnerable actions)
+          # query the GitHub API.
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_zizmor() {
+            uvx "zizmor==${ZIZMOR_VERSION}" --min-severity medium "$@" .github
+          }
+          set +e
+          run_zizmor --format github
+          status=$?
+          set -e
+          run_zizmor --format sarif > zizmor.sarif || true
+          exit "${status}"
+
+      - name: Upload zizmor SARIF
+        # Fork pull requests cannot write security events.
+        if: >-
+          ${{ !cancelled() &&
+              (github.event_name != 'pull_request' ||
+               github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # 4.34.1
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor
+
+  security-summary:
+    name: Security Summary
+    needs: [changes, dependency-audit, python-security, workflow-audit]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          persist-credentials: false
+      - name: Check required status and generate security report
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: >-
+          python .github/scripts/check_workflow_status.py
+          --title 'Security Scan Results'
+          --conditional dependency-audit=security
+          --conditional python-security=security
+          --conditional workflow-audit=security
+      - name: Explain the gating policy
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
+
+          The dependency audit is advisory on pull requests and pushes, and
+          blocking on scheduled and manual runs, where a failure opens or
+          updates the issue labelled `security-audit`. Bandit and zizmor block
+          on every event. Secret scanning and push protection are GitHub-native
+          repository settings rather than workflow jobs.
+          EOF

@@ -94,7 +94,11 @@ def create_test_db(database=utilities.TEST_DB_NAME):
     ) as sql_sa_connection:
         sql_sa_connection.autocommit(True)
 
-        # create the test db
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", database):
+            raise ValueError(f"Invalid database identifier: {database!r}")
+
+        # create the test db. The identifier is validated above and this only
+        # ever creates the local test database.
         with sql_sa_connection.cursor() as cursor:
             cursor.execute(
                 f"""
@@ -102,7 +106,7 @@ def create_test_db(database=utilities.TEST_DB_NAME):
                 BEGIN
                     CREATE DATABASE {database};
                 END
-                """
+                """  # nosec B608
             )
 
 

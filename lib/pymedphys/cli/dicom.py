@@ -242,7 +242,8 @@ def listen(dicom_subparsers):
     parser.add_argument("port", type=int, help="The port on which to listen")
     parser.add_argument(
         "--host",
-        default="0.0.0.0",
+        # A DICOM listener binds all interfaces by design.
+        default="0.0.0.0",  # nosec B104
         type=str,
         help="The host/IP to bind to",
     )

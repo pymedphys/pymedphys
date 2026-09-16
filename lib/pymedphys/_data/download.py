@@ -19,6 +19,7 @@ import logging
 import os
 import pathlib
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -46,12 +47,19 @@ def create_download_progress_bar():
 
 @retry.retry((urllib.error.HTTPError, ConnectionResetError))
 def download_with_progress(url, filepath):
+    scheme = urllib.parse.urlsplit(url).scheme
+    if scheme not in ("http", "https"):
+        raise ValueError(f"Only http(s) downloads are supported, got {url!r}")
+
     DownloadProgressBar = create_download_progress_bar()
 
     with DownloadProgressBar(
         unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
     ) as t:
-        urllib.request.urlretrieve(url, filepath, reporthook=t.update_to)
+        # The scheme is validated above, so file: and custom schemes cannot reach here.
+        urllib.request.urlretrieve(  # nosec B310
+            url, filepath, reporthook=t.update_to
+        )
 
 
 def get_data_dir():
