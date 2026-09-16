@@ -62,6 +62,11 @@ uv run -- pymedphys dev docs
 # The docs use Jupyter Book and are located in lib/pymedphys/docs/
 ```
 
+Documentation notebooks must use declared, locked dependencies rather than
+installing packages while running. Add documentation dependencies to both the
+`docs` and `all` extras and regenerate the exported ReadTheDocs requirements.
+Unexpected notebook errors and documentation build warnings fail the build.
+
 ## Architecture Overview
 
 ### Project Structure
@@ -114,6 +119,8 @@ When creating conda recipes, pull requests, or other metadata that requires main
 - Tests marked `slow` (and `mosaiqdb`, `cypress`, `anthropic_key`) are skipped by
   `conftest.py` unless the matching flag (e.g. `--slow`) is passed. `pytest -m slow`
   alone selects them but still skips every one.
+- Data caches must not fall back across changes to `hashes.json`: ZIP archives
+  are checked, but previously extracted files are not refreshed automatically.
 - Mock data and fixtures are in `_mocks/` and test data directories
 - E2E tests use Cypress for Streamlit app testing
 

@@ -4,6 +4,8 @@ copyright: "2018-2025"
 logo: img/pymedphys.svg
 execute:
   execute_notebooks: cache
+  allow_errors: false
+  raise_on_error: true
 parse:
   myst_extended_syntax: []
 
@@ -31,12 +33,22 @@ launch_buttons:
 sphinx:
   config:
     language: en
-
-  extra_extensions:
-    - sphinx.ext.autodoc
-    - sphinx.ext.doctest
-    - sphinx.ext.viewcode
-    - sphinx.ext.autosummary
-    - sphinx.ext.napoleon
-    - sphinxarg.ext
-    - matplotlib.sphinxext.plot_directive
+    # Navigation is defined by the embedded toctrees in index pages. Keep the
+    # Jupyter Book extensions except sphinx_external_toc, which conflicts with them.
+    extensions:
+      - sphinx_togglebutton
+      - sphinx_copybutton
+      - myst_nb
+      - jupyter_book
+      - sphinx_thebe
+      - sphinx_comments
+      - sphinx.ext.intersphinx
+      - sphinx_design
+      - sphinx_book_theme
+      - sphinx.ext.autodoc
+      - sphinx.ext.doctest
+      - sphinx.ext.viewcode
+      - sphinx.ext.autosummary
+      - sphinx.ext.napoleon
+      - sphinxarg.ext
+      - matplotlib.sphinxext.plot_directive

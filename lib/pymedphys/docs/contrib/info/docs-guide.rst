@@ -26,6 +26,21 @@ build the documentation:
 
     uv run -- pymedphys dev docs
 
+The build fails on Sphinx warnings and unexpected notebook execution errors.
+Notebook dependencies belong in the project's ``docs`` extra; notebooks should
+not install or change dependencies while building the documentation.
+
+Successful notebook executions are cached. To validate every notebook from a
+fresh cache after changing dependencies, run:
+
+.. code:: bash
+
+    uv run -- jupyter-book clean --all lib/pymedphys/docs
+    uv run -- pymedphys dev docs
+
+Navigation is defined by the ``toctree`` directives in the index pages.
+Add new pages to the relevant index so they appear in the site navigation.
+
 
 Docstring extraction
 --------------------
