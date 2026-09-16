@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -35,13 +35,16 @@ jobs:
         run: |
           uv run pymedphys dev doctests -v
 
+      - name: Run the StackOverflow example
+        run: uv run python examples/stackoverflow/gamma.py
+
   slow-tests:
     name: Slow Tests
     if: ${{ inputs.run-slow }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -53,34 +56,12 @@ jobs:
         run: |
           uv run -- pymedphys dev tests --slow -v
 
-  stackoverflow:
-    name: StackOverflow Examples
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
-        with:
-          persist-credentials: false
-
-      - uses: ./.github/actions/setup-project
-        with:
-          extras: 'user'
-
-      - name: Run stackoverflow examples
-        run: |
-          if [[ -x scripts/stackoverflow.sh ]]; then
-            bash scripts/stackoverflow.sh
-          fi
-          if [[ -f examples/stackoverflow/gamma.py ]]; then
-            uv run python examples/stackoverflow/gamma.py
-          fi
-
   wheel-build:
     name: Wheel Build Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -93,23 +74,25 @@ jobs:
           uv run pymedphys --help
           uv run python -c "import pymedphys"
 
+  # The exported requirements files, dependency-extra.txt, pyproject.hash, and
+  # _version.py are generated from pyproject.toml and uv.lock; a commit that
+  # changes the sources without regenerating them fails here.
   propagate:
-    name: Propagate Scripts
+    name: Generated Files Are Current
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev'
 
-      - name: Run propagate scripts
+      - name: Regenerate the propagated files and check for drift
         run: |
-          if [[ -x scripts/propagate.sh ]]; then
-            bash scripts/propagate.sh
-          elif [[ -x tools/propagate.sh ]]; then
-            bash tools/propagate.sh
-          else
-            echo "No propagate script found, skipping."
-          fi
+          uv run pymedphys dev propagate
+          git diff --exit-code -- \
+            requirements.txt requirements-docs.txt pyproject.hash \
+            lib/pymedphys/dependency-extra.txt lib/pymedphys/_version.py

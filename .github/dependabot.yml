@@ -1,0 +1,37 @@
+# Dependabot owns two things here:
+# - the GitHub Actions pins (every action is SHA-pinned with the tag as a
+#   trailing comment; Dependabot updates both), grouped into one weekly PR;
+# - security-fix PRs for Python packages. Version updates for Python packages
+#   come from the weekly deps.yml workflow instead, which is why the uv entry
+#   keeps its open PR limit at zero.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+      - "/.github/actions/setup-project"
+    schedule:
+      interval: weekly
+      day: monday
+    # Wait a week after a release before adopting it: a compromised release
+    # is usually pulled within days.
+    cooldown:
+      default-days: 7
+    labels:
+      - dependencies
+      - "CI / CD"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 0
+    cooldown:
+      default-days: 7
+    labels:
+      - dependencies

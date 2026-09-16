@@ -20,7 +20,7 @@ Push / pull request -> ci.yml
 Schedule / manual run / main push / relevant PR -> security.yml
 Schedule -> deps.yml
 Release -> release.yml -> lint, type-check, unit and integration tests
-Issue comment -> claude-assistant.yml / claude.yml
+Issue comment -> claude.yml
 ```
 
 ## Workflow Structure
@@ -64,14 +64,14 @@ Static type checking for type safety.
 
 - **Jobs**:
   - `pyright`: Primary type checker
-  - `mypy`: Secondary checker (optional/non-blocking)
+  - `mypy`: Secondary checker (optional/non-blocking), run from the locked `dev` extra
 - **Always runs on PRs** to ensure type safety
 
 #### `unit-tests.yml`
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS matrix on main (Ubuntu, Windows, macOS)
+  - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
   - Quick mode for PRs (Ubuntu + latest supported Python version)
   - Installs the `user` extra so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labeled `full-test`
@@ -84,11 +84,12 @@ Fast unit tests with smart matrix strategy.
 Comprehensive testing beyond unit tests.
 
 - **Test Types**:
-  - `doctests`: Documentation code examples
+  - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
-  - `stackoverflow`: Example code validation
   - `wheel-build`: Package build verification
-  - `propagate`: Propagation script tests
+  - `propagate`: `pymedphys dev propagate` must leave the generated files
+    unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
+    `_version.py`)
 - **Triggers**: Main branch or `full-test` label
 
 #### `mosaiq-db-tests.yml`
@@ -144,13 +145,18 @@ into the project environment.
   raises dependency alerts from the same lockfiles
 
 #### `deps.yml`
-Automated dependency updates.
+Automated dependency updates for Python packages.
 
-- **Schedule**: Weekly (Mondays)
-- **Features**:
-  - Creates PR with uv lock updates
-  - Includes changelog in PR description
-  - Runs tests before creating PR
+- **Schedule**: Weekly (Mondays), or manually
+- **Steps**: `uv lock --upgrade`, `uv sync`, and `pymedphys dev propagate` (so
+  the exported requirements files, `dependency-extra.txt`, and `pyproject.hash`
+  stay current), then the unit tests, the docs build, and a wheel build and
+  install before a PR is opened
+- **PR**: opened with the CI bot's app token so the normal CI runs on it; a PR
+  opened with `GITHUB_TOKEN` triggers no workflows
+- **Dependabot** (`.github/dependabot.yml`) owns the GitHub Actions pins (one
+  grouped weekly PR) and raises security-fix PRs for Python packages; it does
+  not open version-update PRs for Python packages
 
 ### AI Assistance
 
@@ -160,15 +166,6 @@ Claude Code integration for automated code assistance.
 - **Triggers**: Comments with `@claude` mention
 - **Capabilities**: Code review, issue analysis, PR creation
 - **Tools**: File operations, git, uv package management
-
-#### `claude-assistant.yml`
-Claude chatbot for issue discussions.
-
-- **Triggers**: Comments with `!claude` mention
-- **Features**:
-  - Rate limiting protection
-  - Security filtering
-  - Context-aware responses
 
 ## Composite Actions
 
@@ -214,10 +211,10 @@ Core checks, plus:
 
 | Secret | Description | Used By |
 |--------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Claude AI API access | claude.yml, claude-assistant.yml |
+| `ANTHROPIC_API_KEY` | Claude AI API access | claude.yml |
 | `GITHUB_TOKEN` | GitHub API access (automatic) | All workflows |
-| `PYMEDPHYS_CI_BOT_ID` | Bot app ID for auto-commits | pre-commit.yml (optional) |
-| `PYMEDPHYS_CI_BOT_TOKEN` | Bot private key | pre-commit.yml (optional) |
+| `PYMEDPHYS_CI_BOT_ID` | Bot app ID for auto-commits and update PRs | pre-commit.yml (optional), deps.yml |
+| `PYMEDPHYS_CI_BOT_TOKEN` | Bot private key | pre-commit.yml (optional), deps.yml |
 
 ## Environments
 
@@ -289,7 +286,8 @@ uv run pymedphys dev docs
 - **Never commit secrets**: Use GitHub Secrets
 - **Review permissions**: Minimum required for each job; write permissions
   belong at the job level, never at the workflow level
-- **Enable Dependabot**: Keep actions updated
+- **Dependabot**: `.github/dependabot.yml` keeps the action pins current and
+  raises security-fix PRs for Python packages
 - **Audit third-party actions**: Pin to commit SHAs with a version comment
 - **Keep zizmor clean**: Pass inputs, matrix values, and step outputs to `run:`
   blocks through `env:`, set `persist-credentials: false` on checkouts that do
@@ -301,7 +299,7 @@ uv run pymedphys dev docs
 
 ## Version Compatibility
 
-- **Python**: 3.10, 3.12 (tested in CI)
-- **uv**: Latest version (auto-updated)
+- **Python**: 3.10, 3.11, 3.12 (tested in CI; 3.10 reaches end of life in October 2026)
+- **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)
