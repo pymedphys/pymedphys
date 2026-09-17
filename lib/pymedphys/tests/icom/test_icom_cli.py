@@ -49,11 +49,22 @@ def test_icom_cli():
             ["pymedphys", "icom", "listen", "127.0.0.1", temp_dir], env=env
         )
         icom_server_process.join()
-        time.sleep(1)
+        # The listener keeps writing after the mock server has sent its last
+        # byte, so wait for the expected number of files rather than a fixed
+        # time. The timeout only bounds a genuine failure.
+        live_files = _wait_for_live_files(temp_dir, expected=256, timeout=60)
         icom_listen_cli.terminate()
 
-        live_files = list(pathlib.Path(temp_dir).glob("**/*.txt"))
         assert len(live_files) == 256
+
+
+def _wait_for_live_files(directory, expected, timeout):
+    deadline = time.monotonic() + timeout
+    while True:
+        live_files = list(pathlib.Path(directory).glob("**/*.txt"))
+        if len(live_files) >= expected or time.monotonic() > deadline:
+            return live_files
+        time.sleep(0.5)
 
 
 def download_files():
