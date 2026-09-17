@@ -130,7 +130,9 @@ When creating conda recipes, pull requests, or other metadata that requires main
   directory because the apps extract it into the current directory. The apps
   memoise `get_config` with `st.cache_data` for the life of the pytest process,
   so a fixture that serves a different configuration must clear `st.cache_data`
-  on entry and exit.
+  on entry and exit. The root conftest also pins `MPLBACKEND=Agg`, because the
+  apps draw matplotlib figures on the AppTest worker thread and the GUI backends
+  abort the interpreter off the main thread.
 
 ### Dependencies and Extras
 
