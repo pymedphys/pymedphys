@@ -10,9 +10,10 @@ on:
         type: boolean
         default: true
 
+# Read-only by default. The publish jobs request id-token: write for trusted
+# publishing and the asset upload requests contents: write.
 permissions:
-  contents: write
-  id-token: write  # For PyPI trusted publishing
+  contents: read
 
 jobs:
   lint:
@@ -38,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
@@ -136,26 +139,37 @@ jobs:
       contents: read
     steps:
       - name: Create release summary
+        env:
+          VERSION: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN: ${{ inputs.dry_run || 'N/A (release event)' }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          TYPE_CHECK_RESULT: ${{ needs.type-check.result }}
+          UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}
+          INTEGRATION_TESTS_RESULT: ${{ needs.integration-tests.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TESTPYPI_RESULT: ${{ needs.publish-testpypi.result || 'skipped' }}
+          PYPI_RESULT: ${{ needs.publish-pypi.result || 'skipped' }}
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## Release Summary
 
-          **Version:** ${{ github.ref_name }}
-          **Event:** ${{ github.event_name }}
-          **Dry Run:** ${{ inputs.dry_run || 'N/A (release event)' }}
+          **Version:** ${VERSION}
+          **Event:** ${EVENT_NAME}
+          **Dry Run:** ${DRY_RUN}
 
           ### Quality Checks
           | Check | Status |
           |-------|--------|
-          | Lint | ${{ needs.lint.result }} |
-          | Type Check | ${{ needs.type-check.result }} |
-          | Unit Tests | ${{ needs.unit-tests.result }} |
-          | Integration Tests | ${{ needs.integration-tests.result }} |
-          | Build | ${{ needs.build.result }} |
+          | Lint | ${LINT_RESULT} |
+          | Type Check | ${TYPE_CHECK_RESULT} |
+          | Unit Tests | ${UNIT_TESTS_RESULT} |
+          | Integration Tests | ${INTEGRATION_TESTS_RESULT} |
+          | Build | ${BUILD_RESULT} |
 
           ### Publishing
           | Target | Status |
           |--------|--------|
-          | TestPyPI | ${{ needs.publish-testpypi.result || 'skipped' }} |
-          | PyPI | ${{ needs.publish-pypi.result || 'skipped' }} |
+          | TestPyPI | ${TESTPYPI_RESULT} |
+          | PyPI | ${PYPI_RESULT} |
           EOF
