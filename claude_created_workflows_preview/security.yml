@@ -27,6 +27,8 @@ env:
 jobs:
   # Filter pull requests only. Scheduled, manual, and main runs always scan,
   # because new vulnerabilities can appear without repository changes.
+  # Workflow files staged under claude_created_workflows_preview for a
+  # maintainer to move (see CLAUDE.md) count as workflow changes.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -51,6 +53,7 @@ jobs:
               - '.github/workflows/*.yml'
               - '.github/actions/**/action.yml'
               - '.github/scripts/**'
+              - 'claude_created_workflows_preview/*.yml'
 
   # Audits the lockfile rather than an installed environment, so every extra
   # and platform marker is covered and nothing has to be installed.
@@ -92,16 +95,21 @@ jobs:
             --ignore-vuln PYSEC-2025-183
 
       - name: Open or update the tracking issue
-        if: failure() && github.event_name == 'schedule'
+        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          title="Weekly dependency audit found known vulnerabilities"
-          body="The scheduled pip-audit run failed. Report: ${RUN_URL}"
+          title="Dependency audit found known vulnerabilities"
+          if [[ "${EVENT_NAME}" == "schedule" ]]; then
+            body="The weekly pip-audit run failed. Report: ${RUN_URL}"
+          else
+            body="A manually triggered pip-audit run failed. Report: ${RUN_URL}"
+          fi
           gh label create security-audit --force --color B60205 \
-            --description "Opened automatically by the weekly dependency audit"
+            --description "Opened automatically by the dependency audit"
           number="$(gh issue list --label security-audit --state open --json number --jq '.[0].number')"
           if [[ -n "${number}" ]]; then
             gh issue comment "${number}" --body "${body}"
@@ -188,8 +196,17 @@ jobs:
           # query the GitHub API.
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Workflow files staged under claude_created_workflows_preview for a
+          # maintainer to move (see CLAUDE.md) are audited in place so that
+          # they arrive clean. The loop is a no-op once they have been moved.
+          inputs=(.github)
+          for staged in claude_created_workflows_preview/*.yml; do
+            if [[ -f "${staged}" ]]; then
+              inputs+=("${staged}")
+            fi
+          done
           run_zizmor() {
-            uvx "zizmor==${ZIZMOR_VERSION}" --min-severity medium "$@" .github
+            uvx "zizmor==${ZIZMOR_VERSION}" --min-severity medium "$@" "${inputs[@]}"
           }
           set +e
           run_zizmor --format github
