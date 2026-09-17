@@ -9,6 +9,14 @@ This project adheres to
 
 ## Unreleased
 
+### Contributor facing changes
+
+- **[Contributor facing only]** The Cypress end-to-end scaffolding under
+  `lib/pymedphys/tests/e2e`, the `--cypress` option of `pymedphys dev tests`,
+  and the `pymedphys dev cypress` command have been removed. The Streamlit GUI
+  is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
+  normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
+
 ### News around this release
 
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and

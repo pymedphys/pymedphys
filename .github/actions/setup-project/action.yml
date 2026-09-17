@@ -8,9 +8,6 @@ inputs:
   extras:
     description: Space-separated list of extras to install
     default: ''
-  node-version:
-    description: Node.js version (optional)
-    default: ''
 
 runs:
   using: composite
