@@ -31,7 +31,8 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        # The Claude action pushes branches and needs the checkout credentials.
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2 # zizmor: ignore[artipacked]
         with:
           fetch-depth: 1
 
