@@ -36,6 +36,34 @@ def _registered_apps():
     }
 
 
+# Apps whose first screen needs infrastructure that the demo configuration
+# does not provide: its site defines Monaco and iCOM live-stream directories
+# only, and no Mosaiq server.
+FIRST_SCREEN_NEEDS = {
+    "icom": "the site's iCOM patient archive directory",
+    "iviewdb": "the site's iView database export directory",
+    "mosaiq-to-csv": "a Mosaiq SQL Server connection",
+}
+
+
+def _first_screen_cases():
+    cases = []
+    for app_key in sorted(_registered_apps()):
+        try:
+            reason = FIRST_SCREEN_NEEDS[app_key]
+        except KeyError:
+            cases.append(app_key)
+            continue
+
+        cases.append(
+            pytest.param(
+                app_key, marks=pytest.mark.skip(reason=f"first screen needs {reason}")
+            )
+        )
+
+    return cases
+
+
 def test_index_lists_every_registered_app():
     app_test = utl.load_app()
     utl.assert_no_exception(app_test)
@@ -62,8 +90,12 @@ def test_index_button_opens_the_app():
     assert [title.value for title in app_test.title] == ["DICOM Pseudonymisation"]
 
 
+def test_first_screen_exclusions_name_registered_apps():
+    assert set(FIRST_SCREEN_NEEDS) <= set(_registered_apps())
+
+
 @pytest.mark.usefixtures("demo_working_directory", "demo_config_on_disk")
-@pytest.mark.parametrize("app_key", sorted(_registered_apps()))
+@pytest.mark.parametrize("app_key", _first_screen_cases())
 def test_every_app_renders_its_first_screen(app_key):
     """Each app draws its first screen against the demo configuration."""
     app_test = utl.load_app(app_key, timeout=utl.DEMO_TIMEOUT_SECONDS)

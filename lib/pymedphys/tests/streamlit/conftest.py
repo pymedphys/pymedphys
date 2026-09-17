@@ -17,8 +17,11 @@
 # pylint: disable = redefined-outer-name
 
 import pathlib
+from typing import Iterator
 
 import pytest
+
+from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys import _config as pmp_config
@@ -51,13 +54,22 @@ def demo_working_directory(
 @pytest.fixture
 def demo_config_on_disk(
     demo_directory: pathlib.Path, monkeypatch: pytest.MonkeyPatch
-) -> pathlib.Path:
-    """Serve the demo configuration to apps that read the user's config.toml."""
+) -> Iterator[pathlib.Path]:
+    """Serve the demo configuration to apps that read the user's config.toml.
+
+    The apps memoise ``get_config`` with ``st.cache_data`` for the life of the
+    process, and an earlier test may already have cached another file (the
+    pseudonymisation strategy writes a minimal ``~/.pymedphys/config.toml``),
+    so the caches are cleared on the way in and again on the way out.
+    """
     original_get_config = pmp_config.get_config
 
     def get_config(path=None):
         return original_get_config(path=demo_directory if path is None else path)
 
+    st.cache_data.clear()
     monkeypatch.setattr(pmp_config, "get_config", get_config)
 
-    return demo_directory
+    yield demo_directory
+
+    st.cache_data.clear()
