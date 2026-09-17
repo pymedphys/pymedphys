@@ -131,7 +131,8 @@ into the project environment.
   - `python-security`: Bandit, configured in `[tool.bandit]` in
     `pyproject.toml`. Blocking on every event; the SARIF report is uploaded to
     code scanning
-  - `workflow-audit`: zizmor over `.github`, blocking at medium severity and
+  - `workflow-audit`: zizmor over `.github` and over any workflow files staged
+    in `claude_created_workflows_preview/`, blocking at medium severity and
     above. The same audit runs offline through pre-commit
 - **Triggers**: Weekly, manually, on main pushes, and on relevant PR changes
 - **Coverage**: Path filtering applies only to PRs; scheduled and manual runs scan
