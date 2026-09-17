@@ -135,7 +135,9 @@ into the project environment.
     code scanning
   - `workflow-audit`: zizmor over `.github` and over any workflow files staged
     in `claude_created_workflows_preview/`, blocking at medium severity and
-    above. The same audit runs offline through pre-commit
+    above. The offline audits also run through pre-commit; the online ones,
+    including the check that each pin's version comment names the tag that
+    carries the pinned commit, run only here
 - **Triggers**: Weekly, manually, on main pushes, and on relevant PR changes
 - **Coverage**: Path filtering applies only to PRs; scheduled and manual runs scan
   even when the last commit did not change security-related files
@@ -288,10 +290,14 @@ uv run pymedphys dev docs
   belong at the job level, never at the workflow level
 - **Dependabot**: `.github/dependabot.yml` keeps the action pins current and
   raises security-fix PRs for Python packages
-- **Audit third-party actions**: Pin to commit SHAs with a version comment
+- **Audit third-party actions**: Pin to commit SHAs with the exact upstream tag
+  name as the comment (`# v6.0.2`, never `# 6.0.2`); zizmor resolves the
+  comment as a ref and fails when it does not exist or points elsewhere
 - **Keep zizmor clean**: Pass inputs, matrix values, and step outputs to `run:`
   blocks through `env:`, set `persist-credentials: false` on checkouts that do
-  not push, and pin every action to a commit SHA
+  not push, and pin every action to a commit SHA. The pre-commit hook cannot
+  run the online audits, so confirm a pin's tag with
+  `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>`
 - **Rotate keys periodically**: Especially API keys
 - **Review security alerts**: Weekly scan results
 - **Limit workflow triggers**: Avoid `pull_request_target` misuse
