@@ -29,6 +29,20 @@ from pymedphys import _config as pmp_config
 from . import apptest_utilities as utl
 
 
+@pytest.fixture(scope="session", autouse=True)
+def headless_matplotlib() -> None:
+    """Draw with the non-interactive Agg backend.
+
+    ``AppTest`` runs the apps on a worker thread, and matplotlib's GUI
+    backends abort the interpreter when a figure is created off the main
+    thread. ``streamlit run`` forces Agg itself; the test harness does not,
+    and the ``MPLBACKEND`` default set in the root conftest only helps when
+    matplotlib has not already been imported with another backend.
+    """
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+
+
 @pytest.fixture(scope="session")
 def demo_directory(tmp_path_factory: pytest.TempPathFactory) -> pathlib.Path:
     """Extract the GUI demo data once per session.

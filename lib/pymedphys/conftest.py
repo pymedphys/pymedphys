@@ -2,7 +2,13 @@
 
 import os
 
-import pytest
+# Matplotlib reads MPLBACKEND once, when it is first imported. The GUI
+# backends it would otherwise pick on macOS and Windows (macosx, TkAgg) abort
+# the interpreter when a figure is created off the main thread, which is what
+# the Streamlit AppTest suite does, so the whole test run draws with Agg.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
+import pytest  # noqa: E402
 
 SKIPPING_CONFIG = {
     "slow": {
