@@ -253,10 +253,11 @@ def propagate_extras():
     for key in sorted(extras_map.keys(), key=str.lower):
         arr = tomlkit.array(extras_map[key]).multiline(True)
         tbl.add(key, arr)
+    text = tomlkit.dumps(tbl)
+    if not text.endswith("\n"):
+        text += "\n"
     with io.open(DEPENDENCY_EXTRA_PATH, "w", encoding="utf-8", newline="\n") as f:
-        f.write(tomlkit.dumps(tbl))
-        if not str(tbl).endswith("\n"):
-            f.write("\n")
+        f.write(text)
 
 
 def _propagate_pyproject_hash():

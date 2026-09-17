@@ -13,15 +13,15 @@ runs:
   using: composite
   steps:
     - name: Set up Python
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: ${{ inputs.python-version }}
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
-      env:
-        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       with:
+        # Keep in step with the uv-lock hook in .pre-commit-config.yaml.
+        version: "0.12.15"
         enable-cache: true
         cache-dependency-glob: |
           uv.lock
@@ -40,7 +40,7 @@ runs:
         fi
 
     - name: Cache PyMedPhys data
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.pymedphys
         # The exact key is per job, so the first job to finish cannot claim a
@@ -55,11 +55,3 @@ runs:
         restore-keys: |
           pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-
           pymedphys-data-v2-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/hashes.json') }}
-
-    - name: Set up Node.js
-      if: ${{ inputs.node-version != '' }}
-      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-      with:
-        node-version: ${{ inputs.node-version }}
-        cache: npm
-        cache-dependency-path: package-lock.json

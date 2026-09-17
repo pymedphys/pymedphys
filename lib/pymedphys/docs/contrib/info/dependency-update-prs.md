@@ -11,14 +11,17 @@ That workflow should:
 
 1. run on a schedule and also allow manual dispatch
 2. check out the repository
-3. run `uv lock --upgrade`
+3. run `uv lock --upgrade`, sync the environment, and run
+   `pymedphys dev propagate` so the exported requirements files,
+   `dependency-extra.txt`, and `pyproject.hash` match the new lock
 4. stop without opening a PR if `uv.lock` did not change
 5. run a focused validation suite if `uv.lock` changed
-6. open a PR only if that validation passes
+6. open a PR, with the CI bot's token so CI runs on it, only if that
+   validation passes
 
 The PR should usually have:
 
-- title: `⬆️ Update dependencies`
+- title: `chore: update dependencies`
 - branch: `deps/update-<run_number>`
 - label: `dependencies`
 
@@ -28,7 +31,7 @@ The dependency update workflow should run a focused smoke suite before opening a
 PR:
 
 - install from the updated lockfile
-- run a representative pytest subset
+- run the unit tests (`pymedphys dev tests -m "not slow"`)
 - build the docs
 - build a wheel and install it into a clean virtual environment
 
@@ -91,19 +94,10 @@ update manually.
 If you want to reproduce the intended smoke suite locally:
 
 ```bash
-uv sync --frozen --extra user --extra tests --extra docs
+uv sync --frozen --extra all --group dev
+uv run pymedphys dev propagate
 
-uv run pytest -q --maxfail=1 \
-  -m "not slow and not mosaiqdb and not anthropic_key" \
-  lib/pymedphys/tests/coordinates \
-  lib/pymedphys/tests/delivery \
-  lib/pymedphys/tests/dicom \
-  lib/pymedphys/tests/gamma \
-  lib/pymedphys/tests/interp \
-  lib/pymedphys/tests/logfiles \
-  lib/pymedphys/tests/metersetmap \
-  lib/pymedphys/tests/trf \
-  lib/pymedphys/tests/utilities
+uv run pymedphys dev tests -m "not slow" --maxfail=3
 
 uv run pymedphys dev docs
 

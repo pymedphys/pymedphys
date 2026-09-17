@@ -13,6 +13,7 @@ all = [
     'jupyter-book',
     'keyring',
     'matplotlib',
+    'mypy',
     'natsort',
     'networkx',
     'numba',
@@ -53,6 +54,11 @@ all = [
     'tqdm',
     'trio',
     'trio-asyncio',
+    'types-python-dateutil',
+    'types-PyYAML',
+    'types-requests',
+    'types-tabulate',
+    'types-toml',
     'watchdog',
     'xmltodict',
 ]
@@ -61,12 +67,18 @@ cli = [
 ]
 dev = [
     'doc8',
+    'mypy',
     'pre-commit',
     'pyright',
     'readme-renderer',
     'rope',
     'ruff',
     'tabulate',
+    'types-python-dateutil',
+    'types-PyYAML',
+    'types-requests',
+    'types-tabulate',
+    'types-toml',
 ]
 dicom = [
     'pydicom',

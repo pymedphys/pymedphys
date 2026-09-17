@@ -310,8 +310,24 @@ This ensures that:
 When updating dependencies:
 1. Update version constraints in `pyproject.toml`
 2. Run `uv lock --upgrade` and then `uv sync --extra all --group dev` to regenerate `uv.lock`
-3. Test changes to ensure nothing breaks
-4. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
+3. Run `uv run pymedphys dev propagate` to regenerate the exported requirements
+   files, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
+   fails when these drift from `pyproject.toml` and `uv.lock`
+4. Test changes to ensure nothing breaks
+5. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
+
+### GitHub Actions Pins and Dependabot
+
+- Every action is pinned to a commit SHA with the tag in a trailing comment
+  (`uses: owner/repo@<sha> # vX.Y.Z`). Dependabot (`.github/dependabot.yml`)
+  updates the SHA and the comment together in one grouped weekly PR, so the
+  comment must be exactly the tag name.
+- Dependabot only raises security-fix PRs for Python packages. Version updates
+  come from the weekly `deps.yml` run, which regenerates the propagated files
+  and opens its PR with the CI bot's token so CI runs on it.
+- CI pins uv (`version` on `setup-uv`) to the same version as the pre-commit
+  `uv-lock` hook. Bump both together and confirm `uv lock` leaves `uv.lock`
+  unchanged under the new version.
 
 **Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
 resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.
