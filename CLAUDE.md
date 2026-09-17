@@ -292,8 +292,14 @@ This ensures that:
 - Workflows must pass zizmor at medium severity: pass inputs, matrix values, and
   step outputs to `run:` blocks through `env:` rather than `${{ }}` expansions,
   set `persist-credentials: false` on checkouts that do not push, keep write
-  permissions at the job level, and pin every action to a commit SHA with a
-  version comment. The pre-commit zizmor hook runs the same audit offline.
+  permissions at the job level, and pin every action to a commit SHA with the
+  exact upstream tag name as the trailing comment (`# v6.0.2`, never `# 6.0.2`).
+  The online `ref-version-mismatch` audit resolves that comment as a ref in the
+  action's repository and fails the Workflow Audit job when it does not exist or
+  points at a different commit. The pre-commit zizmor hook runs the offline
+  audits only and cannot check this, so confirm a new pin with
+  `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>` before
+  pushing.
 - Secret scanning and push protection are GitHub repository settings, not
   workflow jobs.
 
