@@ -14,6 +14,9 @@
 
 """Unit tests for generating the mock Mosaiq database."""
 
+import sys
+import types
+
 from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.mock import generate
@@ -26,7 +29,8 @@ def test_invalid_database_name_fails_before_connecting(monkeypatch, database):
     def unexpected_connect(*_args, **_kwargs):
         pytest.fail("Invalid database names must not open a server connection")
 
-    monkeypatch.setattr(generate.pymssql, "connect", unexpected_connect)
+    fake_pymssql = types.SimpleNamespace(connect=unexpected_connect)
+    monkeypatch.setitem(sys.modules, "pymssql", fake_pymssql)
 
     with pytest.raises(ValueError, match="Invalid database identifier"):
         generate.create_test_db(database)
