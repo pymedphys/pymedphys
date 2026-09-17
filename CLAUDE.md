@@ -127,7 +127,10 @@ When creating conda recipes, pull requests, or other metadata that requires main
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
   read the rendered markdown. Data-driven scenarios use the
   `metersetmap-gui-e2e-data.zip` demo archive and run from a temporary working
-  directory because the apps extract it into the current directory.
+  directory because the apps extract it into the current directory. The apps
+  memoise `get_config` with `st.cache_data` for the life of the pytest process,
+  so a fixture that serves a different configuration must clear `st.cache_data`
+  on entry and exit.
 
 ### Dependencies and Extras
 
