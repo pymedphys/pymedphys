@@ -16,12 +16,12 @@ runs:
   using: composite
   steps:
     - name: Set up Python
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: ${{ inputs.python-version }}
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # 7.6.0
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
       env:
         FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       with:
@@ -32,9 +32,10 @@ runs:
 
     - name: Install dependencies
       shell: bash
+      env:
+        EXTRAS: ${{ inputs.extras }}
       run: |
         set -euxo pipefail
-        EXTRAS="${{ inputs.extras }}"
         if [ -n "$EXTRAS" ]; then
           uv sync --frozen $(echo $EXTRAS | xargs -n1 echo --extra)
         else
@@ -42,7 +43,7 @@ runs:
         fi
 
     - name: Cache PyMedPhys data
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: ~/.pymedphys
         # The exact key is per job, so the first job to finish cannot claim a
@@ -60,7 +61,7 @@ runs:
 
     - name: Set up Node.js
       if: ${{ inputs.node-version != '' }}
-      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
         cache: npm

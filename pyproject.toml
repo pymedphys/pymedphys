@@ -277,6 +277,16 @@ reportReturnType = false
 reportMissingModuleSource = false
 reportTypedDictNotRequiredAccess = false
 
+[tool.bandit]
+# The security workflow runs Bandit with this configuration and blocks on any
+# finding. Tests are excluded (they use assert by design). The skipped checks
+# were reviewed as non-security noise for this code base: B101 assert, B404,
+# B603, and B607 subprocess use without a shell, B105 password key names and
+# empty defaults, B311 non-cryptographic random, B110 try/except/pass that
+# pylint already annotates. Anything else needs a fix or a justified "nosec".
+exclude_dirs = ["lib/pymedphys/tests"]
+skips = ["B101", "B404", "B603", "B607", "B105", "B311", "B110"]
+
 [build-system]
 requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"

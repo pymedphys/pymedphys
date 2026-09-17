@@ -14,6 +14,13 @@ This project adheres to
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and
   collaboration has moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
 
+### (Potentially) breaking changes
+
+- The `url` argument of `pymedphys.data_path` and `pymedphys.zip_data_paths`
+  now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
+  any other scheme. Previously every scheme that `urllib` supports, including
+  `ftp`, was passed through unchecked.
+
 ## [0.41.0]
 
 ### New features and enhancements

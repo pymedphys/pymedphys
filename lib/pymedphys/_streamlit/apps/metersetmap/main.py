@@ -520,18 +520,21 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
     st.write("### PDF")
     st.write("Converting PNG to PDF...")
 
+    # Argument lists rather than shell strings: the paths come from user
+    # configuration and must never be interpreted by a shell. Without a
+    # shell, a missing executable raises FileNotFoundError instead of
+    # CalledProcessError, so both are treated as a failed conversion.
+    conversion_errors = (subprocess.CalledProcessError, FileNotFoundError)
     try:
         subprocess.check_call(
-            f'magick convert "{png_filepath}" "{pdf_filepath}"', shell=True
+            ["magick", "convert", str(png_filepath), str(pdf_filepath)]
         )
         success = True
-    except subprocess.CalledProcessError:
+    except conversion_errors:
         try:
-            subprocess.check_call(
-                f'convert "{png_filepath}" "{pdf_filepath}"', shell=True
-            )
+            subprocess.check_call(["convert", str(png_filepath), str(pdf_filepath)])
             success = True
-        except subprocess.CalledProcessError:
+        except conversion_errors:
             success = False
 
     if success:

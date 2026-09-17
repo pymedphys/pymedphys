@@ -214,10 +214,10 @@ def start_mssql_docker(args):
     if args.daemon:
         if args.stop:
             raise ValueError("Can't call stop and daemon flag together")
-        command = "docker-compose up -d"
+        command = ["docker-compose", "up", "-d"]
     elif args.stop:
-        command = "docker-compose down"
+        command = ["docker-compose", "down"]
     else:
-        command = "docker-compose up"
+        command = ["docker-compose", "up"]
 
-    subprocess.check_output(command, cwd=CWD, shell=True)
+    subprocess.check_output(command, cwd=CWD)

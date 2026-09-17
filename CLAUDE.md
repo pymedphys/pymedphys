@@ -270,6 +270,35 @@ This ensures that:
 - Maintainers don't need to repeatedly explain the same concepts
 - Knowledge is preserved across different workflow runs
 
+### Security Scanning Policy
+
+- `security.yml` runs three scanners through `uvx` at pinned versions: pip-audit
+  on the exported lockfile, Bandit on the package, and zizmor on the workflows.
+  The dependency audit is advisory on pull requests and pushes and blocking on
+  scheduled and manual runs, where a failure opens or updates the issue labelled
+  `security-audit`. Bandit and zizmor block on every event.
+- Workflow files staged in `claude_created_workflows_preview/` count as workflow
+  changes for the pull request path filter, and zizmor audits them in place, so
+  a staged workflow must be clean before a maintainer moves it.
+- Bandit is configured in `[tool.bandit]` in `pyproject.toml`: tests are excluded
+  and a reviewed list of low-severity checks is skipped. Fix any other finding.
+  Where a finding is a false positive, put the justification in a comment on the
+  line above and a bare `# nosec Bxxx` on the offending line (Bandit treats words
+  after the code as test names). Never widen the skip list to make a run green.
+- Workflows must pass zizmor at medium severity: pass inputs, matrix values, and
+  step outputs to `run:` blocks through `env:` rather than `${{ }}` expansions,
+  set `persist-credentials: false` on checkouts that do not push, keep write
+  permissions at the job level, and pin every action to a commit SHA with the
+  exact upstream tag name as the trailing comment (`# v6.0.2`, never `# 6.0.2`).
+  The online `ref-version-mismatch` audit resolves that comment as a ref in the
+  action's repository and fails the Workflow Audit job when it does not exist or
+  points at a different commit. The pre-commit zizmor hook runs the offline
+  audits only and cannot check this, so confirm a new pin with
+  `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>` before
+  pushing.
+- Secret scanning and push protection are GitHub repository settings, not
+  workflow jobs.
+
 ### Dependency Updates
 
 When updating dependencies:
