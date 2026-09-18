@@ -6,17 +6,14 @@ Pinnacle Export Tool
 Summary
 *******
 
+Export DICOM objects from raw Pinnacle patient data for research workflows.
+``pymedphys.pinnacle`` has been part of the public, non-experimental API since
+PyMedPhys 0.40.0; see the :doc:`release notes </release-notes>`.
+
 .. automodule:: pymedphys.pinnacle
-    :no-members:
+   :no-members:
 
-.. warning::
-
-   ``pymedphys.pinnacle`` is part of the stable Python API surface, but the
-   Pinnacle Export Tool remains intended for research purposes only.
-   Parts of the DICOM conversion are hard-coded and may ignore source data.
-   Compare its output against the ground truth exported by your Pinnacle
-   version before relying on it for research workflows, and do not use it
-   clinically.
+.. include:: /messages/warning-pinnacle.rst
 
 .. seealso::
 

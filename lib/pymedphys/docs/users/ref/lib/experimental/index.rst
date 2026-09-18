@@ -12,12 +12,11 @@ Experimental Modules
    that depends on them.
 
 Changes within the experimental module are not tracked within the
-`release notes`_.
+:doc:`release notes </release-notes>`.
 
 .. note::
 
-   The Pinnacle Export Tool is no longer documented as experimental. See
-   :doc:`../pinnacle`.
+   For the Pinnacle Export Tool, see :doc:`../pinnacle`.
 
 .. toctree::
    :maxdepth: 1
