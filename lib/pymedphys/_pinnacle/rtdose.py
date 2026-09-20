@@ -111,7 +111,7 @@ def convert_dose(plan, export_path):
     planInstanceUID = plan.plan_inst_uid
 
     # Populate required values for file meta information
-    file_meta = pydicom.dataset.Dataset()
+    file_meta = pydicom.dataset.FileMetaDataset()
     file_meta.MediaStorageSOPClassUID = RTDoseSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = doseInstanceUID

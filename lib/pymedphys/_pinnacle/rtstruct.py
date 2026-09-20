@@ -407,7 +407,7 @@ def convert_struct(plan, export_path, skip_pattern):
     struct_sop_instuid = plan.struct_inst_uid
 
     # Populate required values for file meta information
-    file_meta = pydicom.dataset.Dataset()
+    file_meta = pydicom.dataset.FileMetaDataset()
     file_meta.MediaStorageSOPClassUID = RTStructSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = struct_sop_instuid

@@ -17,36 +17,27 @@ from __future__ import annotations
 from pymedphys._imports import pydicom
 
 
-def ensure_transfer_syntax(
-    ds: pydicom.dataset.Dataset,
-    *,
-    default_transfer_syntax: str | None = None,
-) -> pydicom.dataset.Dataset:
+def ensure_transfer_syntax(ds: pydicom.dataset.Dataset) -> pydicom.dataset.Dataset:
     """
-    Ensure ds.file_meta.TransferSyntaxUID is present and consistent.
+    Ensure ``ds.file_meta.TransferSyntaxUID`` is present.
 
-    pydicom >= 3.0 requires a FileMetaDataset with a TransferSyntaxUID
-    to decode PixelData. Historical or programmatically constructed
-    datasets may lack this. We infer a suitable transfer syntax from
-    'is_little_endian' and 'is_implicit_VR' when available; otherwise
-    fall back to ``default_transfer_syntax``. An existing
-    TransferSyntaxUID is never modified.
+    pydicom >= 3.0 requires a FileMetaDataset with a TransferSyntaxUID to
+    decode PixelData, and gives it priority when choosing the encoding to
+    write. Historical or programmatically constructed datasets may lack
+    it. An existing TransferSyntaxUID is never modified.
 
-    Parameters
-    ----------
-    ds : pydicom.dataset.Dataset
-        The dataset to update in place.
-    default_transfer_syntax : str, optional
-        The transfer syntax assumed for any of the encoding flags that
-        ``ds`` does not set. Must be one of the uncompressed native
-        transfer syntaxes (Implicit VR Little Endian, Explicit VR Little
-        Endian or Explicit VR Big Endian). Defaults to Explicit VR Little
-        Endian.
+    When it is missing, the transfer syntax is inferred from the legacy
+    ``is_implicit_VR`` and ``is_little_endian`` flags if the dataset
+    carries them (pydicom sets both when it reads a file that has no file
+    meta information). Any flag that is unset defaults to Implicit VR
+    Little Endian, the DICOM default transfer syntax. Unlike the explicit
+    VR transfer syntaxes it has no 64 kB element length limit, which
+    matters for large programmatically built elements such as RT Structure
+    Set ContourData.
 
-    Returns
-    -------
-    pydicom.dataset.Dataset
-        ``ds``, for convenience.
+    The flags are only read, never written. pydicom 3 deprecates them and
+    pydicom 4 removes them, and every supported pydicom version derives
+    the write encoding from the Transfer Syntax UID when they are unset.
     """
     transfer_syntax_map = {
         (True, True): pydicom.uid.ImplicitVRLittleEndian,
@@ -55,27 +46,18 @@ def ensure_transfer_syntax(
         (False, False): pydicom.uid.ExplicitVRBigEndian,
     }
 
-    if default_transfer_syntax is None:
-        default_transfer_syntax = pydicom.uid.ExplicitVRLittleEndian
-    default_transfer_syntax = pydicom.uid.UID(default_transfer_syntax)
-    if default_transfer_syntax not in transfer_syntax_map.values():
-        supported = ", ".join(uid.name for uid in transfer_syntax_map.values())
-        raise ValueError(
-            f"default_transfer_syntax must be one of: {supported}. "
-            f"Got '{default_transfer_syntax}'."
-        )
-
     if not hasattr(ds, "file_meta"):
         ds.file_meta = pydicom.dataset.FileMetaDataset()
 
     if not hasattr(ds.file_meta, "TransferSyntaxUID"):
-        if not hasattr(ds, "is_implicit_VR") or ds.is_implicit_VR is None:
-            ds.is_implicit_VR = default_transfer_syntax.is_implicit_VR
-        if not hasattr(ds, "is_little_endian") or ds.is_little_endian is None:
-            ds.is_little_endian = default_transfer_syntax.is_little_endian
+        is_implicit_VR = getattr(ds, "is_implicit_VR", None)
+        is_little_endian = getattr(ds, "is_little_endian", None)
 
         ds.file_meta.TransferSyntaxUID = transfer_syntax_map[
-            (ds.is_implicit_VR, ds.is_little_endian)
+            (
+                True if is_implicit_VR is None else is_implicit_VR,
+                True if is_little_endian is None else is_little_endian,
+            )
         ]
 
     return ds

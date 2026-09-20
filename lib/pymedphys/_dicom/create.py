@@ -39,18 +39,11 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
 
     The returned dataset always carries file meta information with a
     Transfer Syntax UID, which pydicom >= 3 needs in order to decode pixel
-    data. A transfer syntax already declared by ``template_ds`` is kept.
-    Otherwise Implicit VR Little Endian is used: it is the DICOM default
-    transfer syntax, it is what datasets built here have always been
-    encoded with, and unlike the explicit VR transfer syntaxes it has no
-    64 kB element length limit, which matters for large programmatically
-    built elements such as RT Structure Set ContourData.
+    data. A transfer syntax already declared by ``template_ds`` is kept;
+    otherwise ``ensure_transfer_syntax`` chooses one.
     """
     dataset = _dataset_from_dict(input_dict, template_ds)
-
-    ensure_transfer_syntax(
-        dataset, default_transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
-    )
+    ensure_transfer_syntax(dataset)
 
     return dataset
 

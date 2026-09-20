@@ -89,8 +89,6 @@ def test_dicom_from_dict_sets_transfer_syntax(template, expected_transfer_syntax
     )
 
     assert dataset.file_meta.TransferSyntaxUID == expected_transfer_syntax_uid
-    assert dataset.is_implicit_VR is expected_transfer_syntax_uid.is_implicit_VR
-    assert dataset.is_little_endian is expected_transfer_syntax_uid.is_little_endian
 
 
 @pytest.mark.pydicom

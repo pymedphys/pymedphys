@@ -77,7 +77,7 @@ def convert_plan(plan, export_path):
     planInstanceUID = plan.plan_inst_uid
 
     # Populate required values for file meta information
-    file_meta = pydicom.dataset.Dataset()
+    file_meta = pydicom.dataset.FileMetaDataset()
     file_meta.MediaStorageSOPClassUID = RTPlanSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = planInstanceUID
