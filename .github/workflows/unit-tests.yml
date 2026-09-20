@@ -39,21 +39,27 @@ jobs:
           extras: 'dev tests mosaiq'
 
       - name: Run unit tests
+        id: tests
         shell: bash
         env:
-          PYTEST_EXTRA: ${{ inputs.extra-pytest-args }}
+          PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
 
-          # Always exclude slow tests in unit test runs
-          uv run pytest -m "not slow" ${PYTEST_EXTRA} \
-            --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+          # Always exclude slow tests in unit test runs.
+          # Extra pytest options come from PYTEST_ADDOPTS, which pytest parses.
+          # `pymedphys dev tests` changes directory to lib/pymedphys before
+          # invoking pytest, so the JUnit path must be absolute for the
+          # upload step (which looks in the workspace root) to find it.
+          uv run -- pymedphys dev tests -m "not slow" \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml"
 
       - name: Upload test results
-        if: always()
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
           path: test-results/*.xml
-          if-no-files-found: ignore
+          if-no-files-found: error
+          retention-days: 30

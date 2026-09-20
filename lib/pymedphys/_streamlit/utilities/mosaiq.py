@@ -145,6 +145,7 @@ def get_uncached_mosaiq_connection(
         st.rerun()
 
     st.stop()
+    raise RuntimeError("unreachable")  # pylint: disable=unreachable  # st.stop() always raises StopException
 
 
 @st.cache_resource()

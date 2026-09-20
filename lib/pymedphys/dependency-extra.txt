@@ -8,6 +8,7 @@ all = [
     'dicompyler-core',
     'doc8',
     'imageio',
+    'interpolation',
     'ipython',
     'jupyter-book',
     'keyring',
@@ -72,6 +73,7 @@ dicom = [
     'pynetdicom',
 ]
 docs = [
+    'interpolation',
     'ipython',
     'jupyter-book',
     'matplotlib',
@@ -86,12 +88,19 @@ docs = [
     'tqdm',
 ]
 doctests = [
+    'pytest',
     'ruff',
     'sphinx-book-theme',
     'tabulate',
+    'toml',
 ]
 icom = [
     'numpy',
+]
+lint = [
+    'astroid',
+    'pylint',
+    'ruff',
 ]
 mosaiq = [
     'attrs',
@@ -110,10 +119,12 @@ tests = [
     'imageio',
     'matplotlib',
     'numba',
+    'pandas',
     'Pillow',
     'psutil',
     'pydicom',
     'PyGithub',
+    'pylibjpeg-libjpeg',
     'pylint',
     'pynetdicom',
     'pytest',
@@ -121,6 +132,7 @@ tests = [
     'pytest-sugar',
     'python-dateutil',
     'shapely',
+    'toml',
     'tqdm',
 ]
 user = [

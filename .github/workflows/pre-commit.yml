@@ -2,6 +2,17 @@ name: Pre-commit
 
 on:
   workflow_call:
+    secrets:
+      PYMEDPHYS_CI_BOT_ID:
+        description: App ID for pymedphys-ci-bot GitHub App.
+        required: false
+      PYMEDPHYS_CI_BOT_TOKEN:
+        description: Private key for pymedphys-ci-bot GitHub App.
+        required: false
+    outputs:
+      autofix-pushed:
+        description: "'true' if an auto-fix commit was pushed (a new CI run is expected)"
+        value: ${{ jobs.pre-commit.outputs.autofix-pushed }}
   workflow_dispatch:
 
 jobs:
@@ -9,14 +20,34 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     timeout-minutes: 15
+    outputs:
+      autofix-pushed: ${{ steps.autofix.outputs.pushed }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - name: Check for bot credentials
+        id: check-bot
+        run: |
+          if [[ -n "$BOT_APP_ID" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          BOT_APP_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+
+      - name: Generate bot token
+        id: bot-token
+        if: steps.check-bot.outputs.available == 'true'
+        uses: actions/create-github-app-token@v1
         with:
+          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+          private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          token: ${{ steps.bot-token.outputs.token || github.token }}
 
       - uses: ./.github/actions/setup-project
         with:
@@ -34,16 +65,38 @@ jobs:
         run: |
           uv run pre-commit run --all-files --show-diff-on-failure
 
-      - name: Auto-fix if needed
-        if: steps.pre-commit.outcome == 'failure' && github.event_name == 'pull_request'
+      - name: Push auto-fixes
+        if: |
+          steps.pre-commit.outcome == 'failure' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        id: autofix
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          git config user.email "bot@pymedphys.com"
-          git config user.name "PyMedPhys Bot"
-
+          # Re-run pre-commit to apply auto-fixes (formatters, trailing whitespace, etc.)
           uv run pre-commit run --all-files || true
 
-          if [[ -n $(git status -s) ]]; then
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.email "bot@pymedphys.com"
+            git config user.name "PyMedPhys Bot"
             git add -A
-            git commit -m "🤖 Auto-fix pre-commit issues [skip ci]"
-            git push
+            git commit -m "style: auto-fix pre-commit issues"
+            git push origin "HEAD:${PR_BRANCH}"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Auto-fix commit pushed. A new CI run will validate the fixes."
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Pre-commit failed but no auto-fixable changes detected."
           fi
+
+      - name: Fail if pre-commit found issues
+        if: steps.pre-commit.outcome == 'failure'
+        run: |
+          if [[ "${{ steps.autofix.outputs.pushed }}" == "true" ]]; then
+            echo "::error::Pre-commit failed. Auto-fix commit has been pushed to this branch."
+            echo "A new CI run should start automatically."
+          else
+            echo "::error::Pre-commit failed. Some issues require manual fixes."
+          fi
+          exit 1

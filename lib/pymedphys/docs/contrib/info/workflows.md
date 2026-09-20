@@ -6,33 +6,21 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 
 ## Workflow Architecture
 
-```mermaid
-graph TD
-    A[Push/PR Event] --> B[ci.yml]
-    B --> C[pre-commit.yml]
-    B --> D[lint.yml]
-    B --> E[type-check.yml]
-    B --> F[unit-tests.yml]
-    B --> G[integration-tests.yml]
-    B --> H[mosaiq-db-tests.yml]
-    B --> I[docs.yml]
+```text
+Push / pull request -> ci.yml
+                       |-- pre-commit.yml
+                       |-- lint.yml
+                       |-- type-check.yml
+                       |-- unit-tests.yml
+                       |-- integration-tests.yml (selected runs)
+                       |-- mosaiq-db-tests.yml (selected runs)
+                       |-- docs.yml (documentation PRs)
+                       `-- summary
 
-    J[Schedule] --> K[deps.yml]
-    J --> L[security.yml]
-
-    M[Release] --> N[release.yml]
-    N --> D
-    N --> E
-    N --> F
-    N --> G
-
-    O[Issue Comment] --> P[claude-assistant.yml]
-    O --> Q[claude.yml]
-
-    style B fill:#f9f,stroke:#333,stroke-width:4px
-    style D fill:#bbf,stroke:#333,stroke-width:2px
-    style E fill:#bbf,stroke:#333,stroke-width:2px
-    style F fill:#bbf,stroke:#333,stroke-width:2px
+Schedule / manual run / main push / relevant PR -> security.yml
+Schedule -> deps.yml
+Release -> release.yml -> lint, type-check, unit and integration tests
+Issue comment -> claude-assistant.yml / claude.yml
 ```
 
 ## Workflow Structure
@@ -42,7 +30,8 @@ graph TD
 #### `ci.yml` - Main Orchestrator
 Coordinates all CI checks based on file changes, labels, and event types.
 
-- **Triggers**: Push to main, pull requests, workflow_call
+- **Triggers**: Push to main, pull requests (including label changes, which queue
+  behind an in-flight run rather than cancelling it), workflow_call
 - **Jobs**:
   - `changes`: Detects file changes using path filters
   - `pre-commit`: Auto-formatting and basic checks
@@ -51,9 +40,8 @@ Coordinates all CI checks based on file changes, labels, and event types.
   - `unit-tests`: Fast unit tests (always runs)
   - `integration-tests`: Extended tests (conditional)
   - `mosaiq-db-tests`: Database tests (conditional)
-  - `docs-check/publish`: Documentation (conditional)
-  - `cypress-e2e`: E2E tests (main only)
-  - `summary`: Generates comprehensive report
+  - `docs-check`: Documentation build and artifact (conditional)
+  - `summary`: Requires core checks and selected extended checks to succeed
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
@@ -67,8 +55,8 @@ Runs pre-commit hooks for code formatting and basic checks.
 Dedicated linting workflow for code quality.
 
 - **Jobs**:
-  - `ruff`: Fast Python linter and formatter
-  - `pylint`: Comprehensive Python linting
+  - `lint`: Comprehensive Python linting with Pylint
+- Ruff linting and formatting run through pre-commit
 - **Always runs on PRs** for early issue detection
 
 #### `type-check.yml`
@@ -84,7 +72,8 @@ Fast unit tests with smart matrix strategy.
 
 - **Features**:
   - Full OS matrix on main (Ubuntu, Windows, macOS)
-  - Quick mode for PRs (Ubuntu +  latest supported Python version)
+  - Quick mode for PRs (Ubuntu + latest supported Python version)
+  - Full OS and Python matrix for PRs labeled `full-test`
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
@@ -105,16 +94,17 @@ Comprehensive testing beyond unit tests.
 SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
-- **Triggers**: Database code changes or `database` label
+- **Triggers**: Main pushes, database code changes, or `database` / `full-test` labels
 - **Features**: Automatic retries for connection stability
 
 #### `docs.yml`
-Builds and deploys documentation to GitHub Pages.
+Builds documentation on PRs that change documentation sources, package Python code, or build tooling.
 
-- **Modes**:
-  - `docs-check`: Build verification on PRs with doc changes
-  - `docs-publish`: Deploy to GitHub Pages on main
-- **Deployment**: docs.pymedphys.com
+- **HTML build**: Sphinx warnings and unexpected notebook errors fail the build
+- **Link check**: Advisory external-link check with downloadable reports
+- **Artifact**: Built HTML is uploaded for inspection
+- **Publishing**: ReadTheDocs publishes docs.pymedphys.com independently using
+  `.readthedocs.yml`
 
 ### Release & Maintenance
 
@@ -137,7 +127,10 @@ Enhanced security scanning and vulnerability detection.
   - `python-security`: Bandit security linting
   - `container-scan`: Trivy filesystem scanning
   - `github-actions-security`: Workflow security patterns
-- **Schedule**: Weekly + on main pushes + PR changes
+- **Triggers**: Weekly, manually, on main pushes, and on relevant PR changes
+- **Coverage**: Path filtering applies only to PRs; scheduled and manual runs scan
+  even when the last commit did not change security-related files
+- **Summary**: Requires every selected scan to succeed
 
 #### `deps.yml`
 Automated dependency updates.
@@ -189,9 +182,9 @@ Always Run:
 ├── type-check       # Pyright
 └── unit-tests       # Quick mode (Ubuntu + latest supported Python version)
 
-Conditional:
-├── mosaiq-db-tests  # If database files changed
-├── docs-check       # If documentation changed
+Conditional (also recalculated when labels change):
+├── mosaiq-db-tests  # Database files changed, database or full-test label
+├── docs-check       # Documentation sources or build tooling changed
 └── security         # If Python/config files changed
 ```
 
@@ -200,11 +193,10 @@ Conditional:
 On merge to main:
 
 ```
-Everything from PR workflow, plus:
+Core checks, plus:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
-├── cypress-e2e        # Browser tests (if present)
-├── docs-publish       # Deploy to GitHub Pages
+├── mosaiq-db-tests    # Database tests
 └── security           # Full security scan
 ```
 
@@ -226,17 +218,18 @@ Everything from PR workflow, plus:
 
 ## Branch Protection Settings
 
-Required status checks for merge:
-- ✅ `pre-commit`
-- ✅ `lint`
-- ✅ `type-check`
-- ✅ `unit-tests`
+Configure branch protection to require the CI and security summary checks.
+These summaries fail when a core check or a selected extended check fails,
+is cancelled, or is unexpectedly skipped. The CI summary also prevents an
+outdated commit from passing after pre-commit pushes automatic fixes.
+
+The pre-commit workflow includes actionlint. Remove an obsolete standalone
+Actionlint requirement if it remains in the repository settings.
 
 ## Labels for Manual Triggers
 
-- `full-test` - Run integration tests on a PR
+- `full-test` - Run the full unit-test matrix, slow integration tests, and database tests on a PR
 - `database` - Force database tests to run
-- `skip-ci` - Skip CI checks (use sparingly)
 
 
 ## Testing Workflows Locally
@@ -261,7 +254,7 @@ act pull_request -W .github/workflows/ci.yml
 
 ```bash
 # Install with dev dependencies
-uv sync --frozen --extra dev --extra tests
+uv sync --frozen --extra all --group dev
 
 # Run all pre-commit hooks
 uv run pre-commit run --all-files
@@ -270,11 +263,11 @@ uv run pre-commit run --all-files
 uv run ruff check
 uv run ruff format --check
 uv run pyright
-uv run pytest -m "not slow"
 uv run pymedphys dev lint
+uv run pymedphys dev tests -m "not slow"
 
 # Run slow tests locally
-uv run pytest -m slow
+uv run pymedphys dev tests --slow -m slow
 
 # Build docs locally
 uv run pymedphys dev docs
@@ -297,5 +290,5 @@ uv run pymedphys dev docs
 - **Python**: 3.10, 3.12 (tested in CI)
 - **Node.js**: 20.x (for Cypress and build tools)
 - **uv**: Latest version (auto-updated)
-- **GitHub Actions**: Ubuntu 22.04, Windows 2022, macOS 12/13/14
+- **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)

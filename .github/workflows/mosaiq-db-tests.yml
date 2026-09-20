@@ -4,6 +4,9 @@ on:
   workflow_call:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test-mosaiq-db:
     runs-on: ubuntu-latest
@@ -28,13 +31,14 @@ jobs:
       - name: Wait for SQL Server startup
         run: |
           for i in $(seq 1 30); do
-            if /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'sqlServerPassw0rd' -Q 'SELECT 1' &>/dev/null; then
-              echo "SQL Server is ready"
+            if python3 -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('localhost',1433)); s.close()"; then
+              echo "SQL Server is accepting connections"
               exit 0
             fi
+            echo "Waiting for SQL Server... ($i/30)"
             sleep 2
           done
-          echo "SQL Server failed to start"
+          echo "::error::SQL Server failed to start within 60 seconds"
           exit 1
 
       - name: Run database tests with retry

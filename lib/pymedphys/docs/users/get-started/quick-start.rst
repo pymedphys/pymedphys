@@ -2,119 +2,219 @@
 Quick Start Guide
 ==================
 
-Install Python
-==============
+This page gets you to a working PyMedPhys installation quickly.
 
-In order to make use of the PyMedPhys library, you'll need Python installed on
-your workstation. Below are some recommended instructions for installing Python
-based upon your OS.
-
-Windows 10 or 11
-----------------
-
-Open up a command prompt and type:
+If you are unsure which installation to choose, read
+:doc:`Installation options <installation-options>` first.
+For most users, the recommended install is:
 
 .. code:: bash
 
-    python
+    uv python install 3.12
+    uv venv --python 3.12
+    uv pip install "pymedphys[user]"
 
-If python isn't already installed this will open the Windows store. At this
-point you can click the "Get" button. It will ask you to sign in, but you can
-skip the sign in step. It will still install.
+PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
 
-Once installed, open a new command prompt and test that it has installed by
-typing:
+We recommend using ``uv`` for this guide. It can install Python, create a
+virtual environment, and install packages with one tool.
 
-.. code:: bash
+Windows users: the commands below assume PowerShell.
+Linux and macOS users: the commands below assume a POSIX shell.
 
-    python --version
+Install uv
+==========
 
-Windows by default also can't utilise paths longer than 260 characters. This
-will likely be an issue for installing Python packages. As such follow the
-`enable Windows Long Paths guide`_ to enable long paths on your system.
+Any official uv installation method is fine. The standalone installer is shown
+here because it works without a pre-existing Python installation.
 
-.. _`enable Windows Long Paths guide`: https://www.microfocus.com/documentation/filr/filr-4/filr-desktop/t47bx2ogpfz7.html
+Windows
+-------
 
-Linux or MacOS
+.. code:: powershell
+
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+Open a new PowerShell window if ``uv`` is not found immediately, then confirm
+the installation:
+
+.. code:: powershell
+
+    uv --version
+
+Linux or macOS
 --------------
 
-On Linux or MacOS we recommend not using your system Python and instead
-managing your Python installation using `pyenv`_.
+.. code:: bash
 
-To achieve this first install `the python build environment`_, and then follow
-the `pyenv installation`_ steps. Once pyenv is installed first run the following:
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-.. code:: shell
-
-    pyenv install 3.9.7
-
-And then, after that is completed, follow it with:
-
-.. code:: shell
-
-    pyenv global 3.9.7
-
-You can choose to adjust the version number provided above to be the latest
-Python version if you wish.
-
-.. _`pyenv`: https://github.com/pyenv/pyenv/blob/master/README.md
-.. _`the python build environment`: https://github.com/pyenv/pyenv/wiki#suggested-build-environment
-.. _`pyenv installation`: https://github.com/pyenv/pyenv-installer#install
-
-
-Installing PyMedPhys
-====================
-
-Once you have Python you can now install PyMedPhys via pip by typing the
-following in a terminal or command prompt:
+Open a new terminal if ``uv`` is not found immediately, then confirm the
+installation:
 
 .. code:: bash
 
-    pip install pymedphys[user]
+    uv --version
 
-You can copy this command directly into a Windows command prompt.
-You can ``Right Click`` to paste.
+Create a Python environment
+===========================
 
-You may need to open and close your terminal if you have only just installed
-Python. The ``[user]`` option is needed to install pymedphys with its
-"batteries included" so-to-speak. It will go and install a range of
-dependencies which you may need during your use of pymedphys.
-
-SSL Issues
-----------
-
-Depending on your network set up you may see "SSL" warnings followed by an
-error message when trying to install PyMedPhys with the above command. This may
-be due to your network administrator filtering all packets through its own
-server. Pip by default protects against this as filtering of this sort can
-intercept the packages to be installed and provide you with something else.
-
-If you trust the network you are on to not be utilising this power maliciously
-then you can run the following to say that you trust your network's version of
-pypi.org and files.pythonhosted.org:
+From the folder where you want the environment to live, run:
 
 .. code:: bash
 
-    pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org pymedphys[user]
+    uv python install 3.12
+    uv venv --python 3.12
 
+This creates a ``.venv`` directory in the current folder.
 
-.. _`pypi.org`: https://pypi.org
-.. _`files.pythonhosted.org`: https://files.pythonhosted.org
+Install PyMedPhys
+=================
 
-Proxy Issues
+Recommended default
+-------------------
+
+For most users:
+
+.. code:: bash
+
+    uv pip install "pymedphys[user]"
+
+Other common installs
+---------------------
+
+If you need a narrower install, here are some common patterns:
+
+.. code:: bash
+
+    uv pip install "pymedphys[dicom,cli]"
+    uv pip install "pymedphys[mosaiq,cli]"
+    uv pip install "pymedphys[user,icom]"
+
+Because ``.venv`` exists in the current folder, ``uv pip install`` will
+install into that environment automatically.
+
+Read :doc:`Installation options <installation-options>` for guidance on which
+combination to choose.
+
+Use the environment
+===================
+
+Activate the environment so ``python`` and ``pymedphys`` resolve to the new
+install.
+
+Windows
+-------
+
+.. code:: powershell
+
+    .venv\Scripts\activate
+
+Linux or macOS
+--------------
+
+.. code:: bash
+
+    source .venv/bin/activate
+
+Once activated, confirm that Python can import PyMedPhys:
+
+.. code:: bash
+
+    python -c "import pymedphys; print(pymedphys.__version__)"
+
+Then confirm that the command line entry point is available:
+
+.. code:: bash
+
+    pymedphys --help
+
+If you plan to use command line workflows, continue to
+:doc:`Using the CLI <cli>`.
+
+Troubleshooting installation
+============================
+
+TLS or certificate issues
+-------------------------
+
+Some healthcare networks use a corporate trust root or HTTPS interception.
+In that case, try telling uv to use the operating system certificate store.
+
+Windows
+^^^^^^^
+
+.. code:: powershell
+
+    $env:UV_NATIVE_TLS = "true"
+    uv pip install "pymedphys[user]"
+
+Linux or macOS
+^^^^^^^^^^^^^^
+
+.. code:: bash
+
+    UV_NATIVE_TLS=true uv pip install "pymedphys[user]"
+
+Proxy issues
 ------------
 
-It's common for private networks, especially those in healthcare, to require
-outgoing traffic to be sent through a proxy server to reach any servers on the
-world wide web. If this is the case on your network, you will need to specify
-a proxy server when using pip.
+If your network requires an outbound proxy, define it before running
+``uv pip install``. For PyPI access, ``HTTPS_PROXY`` is the most common
+variable to set.
 
-The following command specifies the proxy server for pip. Ensure you insert
-your username and password used to authenticate on the proxy server, along with
-the host and port of the proxy server. If you are unsure of the host and port
-to use in your environment, reach out to a network administrator to obtain
-these:
+Windows
+^^^^^^^
+
+.. code:: powershell
+
+    $env:HTTPS_PROXY = "http://username:password@host:port"
+    uv pip install "pymedphys[user]"
+
+Linux or macOS
+^^^^^^^^^^^^^^
 
 .. code:: bash
 
-    pip install --proxy=http://username:password@host:port --trusted-host pypi.org --trusted-host files.pythonhosted.org pymedphys[user]
+    export HTTPS_PROXY="http://username:password@host:port"
+    uv pip install "pymedphys[user]"
+
+Replace ``username``, ``password``, ``host``, and ``port`` with the values
+used in your environment.
+If you do not know them, ask your network administrator.
+
+Fallback if you cannot use uv
+=============================
+
+If your workstation cannot install ``uv``, use a standard Python virtual
+environment instead. This fallback assumes Python is already installed and
+available on ``PATH``. If your existing installation uses ``py`` rather than
+``python``, substitute ``py`` in the commands below.
+
+Windows
+-------
+
+.. code:: powershell
+
+    python -m venv .venv
+    .venv\Scripts\activate
+    python -m pip install --upgrade pip
+    python -m pip install "pymedphys[user]"
+
+Linux or macOS
+--------------
+
+.. code:: bash
+
+    python -m venv .venv
+    source .venv/bin/activate
+    python -m pip install --upgrade pip
+    python -m pip install "pymedphys[user]"
+
+Next steps
+==========
+
+- Read :doc:`What PyMedPhys can do <what-pymedphys-can-do>` if you are still exploring.
+- Read :doc:`Choose your path <choose-your-path>` if you are deciding between the library, CLI, and app layer.
+- Read :doc:`Using the CLI <cli>` if you want scheduled or scripted workflows.
+- Browse the :doc:`How-to Guides <../howto/index>` if you already know the task you want to solve.

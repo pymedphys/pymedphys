@@ -21,7 +21,9 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # 7.6.0
+      env:
+        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       with:
         enable-cache: true
         cache-dependency-glob: |
@@ -43,7 +45,18 @@ runs:
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
       with:
         path: ~/.pymedphys
-        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+        # The exact key is per job, so the first job to finish cannot claim a
+        # shared key with an empty cache. A cold job first restores any
+        # populated cache for the same manifest on the same OS (including
+        # this job's cache under the previous key layout), so only the first
+        # run after a manifest change contacts Zenodo, and data_path verifies
+        # hashes on restored files. Never restore across manifest hashes:
+        # zip_data_paths preserves existing extracted files even when it
+        # replaces an outdated archive.
+        key: pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-${{ github.job }}
+        restore-keys: |
+          pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-
+          pymedphys-data-v2-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/hashes.json') }}
 
     - name: Set up Node.js
       if: ${{ inputs.node-version != '' }}

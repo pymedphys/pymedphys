@@ -222,14 +222,14 @@ def get_dose_grid_structure_mask(
         structure_name, structure_dataset
     )
 
-    structure_z_values = []
+    structure_z_list = []
     for item in z_structure:
-        item = np.unique(item)
-        if len(item) != 1:
+        unique_item = np.unique(item)
+        if len(unique_item) != 1:
             raise ValueError("Only one z value per contour supported")
-        structure_z_values.append(item[0])
+        structure_z_list.append(unique_item[0])
 
-    structure_z_values = np.sort(structure_z_values)
+    structure_z_values = np.sort(structure_z_list)
     unique_structure_z_values = np.unique(structure_z_values)
 
     if np.any(structure_z_values != unique_structure_z_values):
