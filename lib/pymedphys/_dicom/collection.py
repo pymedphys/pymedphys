@@ -18,7 +18,7 @@ from copy import deepcopy
 from packaging import version
 from pymedphys._imports import pydicom
 
-from . import anonymise, coords
+from . import anonymise, coords, create
 from .compat import ensure_transfer_syntax
 
 # pylint: disable=W0201
@@ -29,7 +29,12 @@ class DicomBase:
         if copy:
             dataset = deepcopy(dataset)
 
-        ensure_transfer_syntax(dataset)
+        # Same fallback as ``create.dicom_dataset_from_dict``: datasets that
+        # declare no transfer syntax have always been treated as Implicit
+        # VR Little Endian here.
+        ensure_transfer_syntax(
+            dataset, default_transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        )
 
         self.dataset = dataset
 

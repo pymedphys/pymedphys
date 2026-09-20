@@ -536,7 +536,12 @@ def convert_struct(plan, export_path, skip_pattern):
     # find out how to insert proper 'CodeString' here
     ds.ApprovalStatus = "UNAPPROVED"
 
-    # Set the transfer syntax using ensure_transfer_syntax
+    # ``file_meta`` already declares Implicit VR Little Endian (see
+    # ``GTransferSyntaxUID``). Unlike the explicit VR transfer syntaxes it
+    # has no 64 kB element length limit, so arbitrarily long ContourData can
+    # be written. ``ensure_transfer_syntax`` never overrides a declared
+    # transfer syntax; it is called here only to guarantee that one is
+    # present before the file is written.
     ensure_transfer_syntax(ds)
 
     # Save the RTDose Dicom File
