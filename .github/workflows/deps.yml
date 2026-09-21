@@ -78,3 +78,6 @@ jobs:
           branch: deps/update-${{ github.run_number }}
           commit-message: "chore: update dependencies"
           labels: dependencies
+          # Only commit the lockfile. uv.lock.old and updates.md are scratch
+          # files from the update step and must not land in the repository.
+          add-paths: uv.lock
