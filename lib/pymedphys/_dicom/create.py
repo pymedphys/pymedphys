@@ -18,6 +18,8 @@ from copy import deepcopy
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from .compat import ensure_transfer_syntax
+
 
 @functools.lru_cache(maxsize=1)
 def get_dicom_names():
@@ -32,16 +34,22 @@ def add_array_to_dataset(dataset, key, value):
     setattr(dataset, key, value)
 
 
-def set_default_transfer_syntax(dataset):
-    if dataset.is_little_endian is None:
-        dataset.is_little_endian = True
-
-    if dataset.is_implicit_VR is None:
-        dataset.is_implicit_VR = True
-
-
 def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
-    """Create a pydicom DICOM object from a dictionary"""
+    """Create a pydicom DICOM object from a dictionary.
+
+    The returned dataset always carries file meta information with a
+    Transfer Syntax UID, which pydicom >= 3 needs in order to decode pixel
+    data. A transfer syntax already declared by ``template_ds`` is kept;
+    otherwise ``ensure_transfer_syntax`` chooses one.
+    """
+    dataset = _dataset_from_dict(input_dict, template_ds)
+    ensure_transfer_syntax(dataset)
+
+    return dataset
+
+
+def _dataset_from_dict(input_dict: dict, template_ds=None):
+    """Recursively build a dataset (or sequence item) from a dictionary."""
     if template_ds is None:
         dataset = pydicom.Dataset()
     else:
@@ -52,13 +60,13 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
             raise ValueError("{} is not within the DICOM dictionary.".format(key))
 
         if isinstance(value, dict):
-            setattr(dataset, key, dicom_dataset_from_dict(value))
+            setattr(dataset, key, _dataset_from_dict(value))
         elif isinstance(value, list):
             # TODO: Check for DICOM SQ type on this attribute
             if np.all([not isinstance(item, dict) for item in value]):
                 add_array_to_dataset(dataset, key, value)
             elif np.all([isinstance(item, dict) for item in value]):
-                setattr(dataset, key, [dicom_dataset_from_dict(item) for item in value])
+                setattr(dataset, key, [_dataset_from_dict(item) for item in value])
             else:
                 raise ValueError(
                     "{} should contain either only dictionaries, or no "
@@ -66,7 +74,5 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
                 )
         else:
             add_array_to_dataset(dataset, key, value)
-
-    set_default_transfer_syntax(dataset)
 
     return dataset

@@ -15,7 +15,7 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._data import download
-from pymedphys._dicom import create
+from pymedphys._dicom import compat
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS_FILEPATH,
     anonymise_directory,
@@ -103,7 +103,7 @@ def _check_is_anonymised_dataset_file_and_dir(
     temp_filepath = str(tmp_path / "test.dcm")
 
     try:
-        create.set_default_transfer_syntax(ds)
+        compat.ensure_transfer_syntax(ds)
 
         ds.file_meta = pydicom.filereader.read_file_meta_info(test_file_path)
 
@@ -296,7 +296,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         with pytest.raises(AttributeError) as e_info:
             ds_anon_delete_unknown.PatientName  # pylint: disable = pointless-statement
         assert str(e_info.value).count(
-            "'Dataset' object has no attribute " "'PatientName'"
+            "'Dataset' object has no attribute 'PatientName'"
         )
 
         ds_anon_ignore_unknown = anonymise_dataset(ds, delete_unknown_tags=False)
@@ -597,3 +597,32 @@ def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=
         # "TemplateExtensionOrganizationUID",
         # "TransactionUID",
         # "UID",
+
+
+@pytest.mark.pydicom
+def test_anonymise_dataset_preserves_file_meta():
+    """Anonymisation must leave the declared transfer syntax untouched."""
+    ds = dicom_dataset_from_dict(
+        {"PatientName": "Test^Patient", "PatientID": "12345", "StudyDate": "20230101"}
+    )
+    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRBigEndian
+
+    anon_ds = anonymise_dataset(ds)
+
+    assert is_anonymised_dataset(anon_ds)
+    assert anon_ds.file_meta.TransferSyntaxUID == pydicom.uid.ExplicitVRBigEndian
+
+
+@pytest.mark.pydicom
+def test_anonymise_dataset_without_file_meta():
+    """Datasets built without file meta information anonymise cleanly."""
+    ds = pydicom.Dataset()
+    ds.PatientName = "Test^Patient"
+    ds.PatientID = "12345"
+    ds.StudyDate = "20230101"
+    assert not hasattr(ds, "file_meta")
+
+    anon_ds = anonymise_dataset(ds)
+
+    assert is_anonymised_dataset(anon_ds)
+    assert anon_ds.PatientName == "ANONYMOUS^PATIENT"
