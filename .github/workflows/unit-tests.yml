@@ -38,7 +38,9 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
-          extras: 'dev tests mosaiq'
+          # user is a superset of mosaiq and provides the Streamlit GUI tests
+          # with the app dependencies.
+          extras: 'dev tests user'
 
       - name: Run unit tests
         id: tests

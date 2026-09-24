@@ -8,9 +8,6 @@ inputs:
   extras:
     description: Space-separated list of extras to install
     default: ''
-  node-version:
-    description: Node.js version (optional)
-    default: ''
 
 runs:
   using: composite
@@ -58,11 +55,3 @@ runs:
         restore-keys: |
           pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-
           pymedphys-data-v2-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/hashes.json') }}
-
-    - name: Set up Node.js
-      if: ${{ inputs.node-version != '' }}
-      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-      with:
-        node-version: ${{ inputs.node-version }}
-        cache: npm
-        cache-dependency-path: package-lock.json
