@@ -31,7 +31,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
@@ -43,6 +45,8 @@ jobs:
         shell: bash
         env:
           PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_PYTHON: ${{ matrix.python-version }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
@@ -53,11 +57,11 @@ jobs:
           # invoking pytest, so the JUnit path must be absolute for the
           # upload step (which looks in the workspace root) to find it.
           uv run -- pymedphys dev tests -m "not slow" \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml"
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
           path: test-results/*.xml

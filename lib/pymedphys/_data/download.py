@@ -19,6 +19,7 @@ import logging
 import os
 import pathlib
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -44,14 +45,43 @@ def create_download_progress_bar():
     return DownloadProgressBar
 
 
+# Every URL comes from the package's own urls.json, a Zenodo record listing,
+# or the caller of data_path(url=...). file: is kept for local mirrors; the
+# caller already has filesystem access, so it grants nothing new. Every other
+# scheme, including the ftp: and data: schemes that urllib would accept, is
+# rejected.
+SUPPORTED_URL_SCHEMES = ("http", "https", "file")
+
+
 @retry.retry((urllib.error.HTTPError, ConnectionResetError))
-def download_with_progress(url, filepath):
+def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
+    """Download ``url`` to ``filepath`` while showing a progress bar.
+
+    Parameters
+    ----------
+    url : str
+        An ``http``, ``https``, or ``file`` URL. Any other scheme raises
+        ``ValueError``.
+    filepath : str or os.PathLike
+        Where the download is written.
+    """
+    scheme = urllib.parse.urlsplit(url).scheme
+    if scheme not in SUPPORTED_URL_SCHEMES:
+        raise ValueError(
+            f"Unsupported URL scheme {scheme!r} in {url!r}; "
+            f"expected one of {SUPPORTED_URL_SCHEMES}"
+        )
+
     DownloadProgressBar = create_download_progress_bar()
 
     with DownloadProgressBar(
         unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
     ) as t:
-        urllib.request.urlretrieve(url, filepath, reporthook=t.update_to)
+        # The scheme was checked against SUPPORTED_URL_SCHEMES above, and the
+        # note on that constant explains why file: is acceptable here.
+        urllib.request.urlretrieve(  # nosec B310
+            url, filepath, reporthook=t.update_to
+        )
 
 
 def get_data_dir():

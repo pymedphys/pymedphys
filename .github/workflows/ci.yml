@@ -38,10 +38,15 @@ jobs:
         ${{ github.event_name == 'pull_request' &&
             steps.filter.outputs.docs == 'true' }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Test workflow status validation
         run: python -m unittest discover -s .github/scripts -p 'test_*.py'
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+      # Only pull requests use the filter outputs: pushes run every selected
+      # check, so the step is skipped and the checkout needs no credentials.
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        if: github.event_name == 'pull_request'
         id: filter
         with:
           filters: |
@@ -143,7 +148,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Check required status and generate summary
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}

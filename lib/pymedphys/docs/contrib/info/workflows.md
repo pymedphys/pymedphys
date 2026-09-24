@@ -119,18 +119,30 @@ Handles PyPI package publishing with quality gates.
   - Installation verification
 
 #### `security.yml`
-Enhanced security scanning and vulnerability detection.
+Security scanning with pinned tools run through `uvx`, so nothing is installed
+into the project environment.
 
 - **Scans**:
-  - `secrets-scan`: API key exposure detection
-  - `dependency-audit`: pip-audit for vulnerabilities
-  - `python-security`: Bandit security linting
-  - `container-scan`: Trivy filesystem scanning
-  - `github-actions-security`: Workflow security patterns
+  - `dependency-audit`: pip-audit over the exported `uv.lock`, which covers
+    every extra and platform marker. Advisory on pull requests and pushes so a
+    newly published advisory cannot turn an unrelated commit red; blocking on
+    scheduled and manual runs, where a failure opens or updates the issue
+    labelled `security-audit`
+  - `python-security`: Bandit, configured in `[tool.bandit]` in
+    `pyproject.toml`. Blocking on every event; the SARIF report is uploaded to
+    code scanning
+  - `workflow-audit`: zizmor over `.github` and over any workflow files staged
+    in `claude_created_workflows_preview/`, blocking at medium severity and
+    above. The offline audits also run through pre-commit; the online ones,
+    including the check that each pin's version comment names the tag that
+    carries the pinned commit, run only here
 - **Triggers**: Weekly, manually, on main pushes, and on relevant PR changes
 - **Coverage**: Path filtering applies only to PRs; scheduled and manual runs scan
   even when the last commit did not change security-related files
 - **Summary**: Requires every selected scan to succeed
+- **Not in the workflow**: secret scanning and push protection are GitHub
+  repository settings (Settings, Code security and analysis), and Dependabot
+  raises dependency alerts from the same lockfiles
 
 #### `deps.yml`
 Automated dependency updates.
@@ -277,9 +289,17 @@ uv run pymedphys dev docs
 ## Security Considerations
 
 - **Never commit secrets**: Use GitHub Secrets
-- **Review permissions**: Minimum required for each workflow
+- **Review permissions**: Minimum required for each job; write permissions
+  belong at the job level, never at the workflow level
 - **Enable Dependabot**: Keep actions updated
-- **Audit third-party actions**: Pin to commit SHAs
+- **Audit third-party actions**: Pin to commit SHAs with the exact upstream tag
+  name as the comment (`# v6.0.2`, never `# 6.0.2`); zizmor resolves the
+  comment as a ref and fails when it does not exist or points elsewhere
+- **Keep zizmor clean**: Pass inputs, matrix values, and step outputs to `run:`
+  blocks through `env:`, set `persist-credentials: false` on checkouts that do
+  not push, and pin every action to a commit SHA. The pre-commit hook cannot
+  run the online audits, so confirm a pin's tag with
+  `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>`
 - **Rotate keys periodically**: Especially API keys
 - **Review security alerts**: Weekly scan results
 - **Limit workflow triggers**: Avoid `pull_request_target` misuse
