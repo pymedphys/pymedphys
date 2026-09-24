@@ -45,7 +45,7 @@ user = [
   "matplotlib",
   "natsort",
   "numba",
-  "numpy>=1.26",
+  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
   "packaging",
   "pandas>=1.0.0",
   "plotly",
@@ -60,7 +60,7 @@ user = [
   "scipy",
   "shapely>=1.7.0",
   "sqlalchemy",
-  "streamlit~=1.34.0",
+  "streamlit>=1.54",
   "timeago",
   "toml",
   "tqdm",
@@ -116,7 +116,7 @@ docs = [
   "matplotlib",
   "networkx",
   "numba",
-  "numpy",
+  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
   "pydicom",
   "scipy",
   "sphinx-argparse",
@@ -147,7 +147,7 @@ dicom = [
 ]
 
 icom = [
-    "numpy>=1.26",
+    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
 ]
 
 mosaiq = [
@@ -184,7 +184,7 @@ all = [
     "natsort",
     "networkx",
     "numba",
-    "numpy>=1.26",
+    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
     "packaging",
     "pandas>=1.0.0",
     "plotly",
@@ -212,7 +212,7 @@ all = [
     "sphinx-argparse",
     "sphinx-book-theme",
     "sqlalchemy",
-    "streamlit~=1.34.0",
+    "streamlit>=1.54",
     "tabulate",
     "timeago",
     "toml",
