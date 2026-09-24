@@ -72,12 +72,18 @@ user = [
 
 dev = [
   "doc8",
+  "mypy",
   "pre-commit",
   "pyright",
   "readme-renderer",
   "rope",
   "ruff",
   "tabulate",
+  "types-PyYAML",
+  "types-python-dateutil",
+  "types-requests",
+  "types-tabulate",
+  "types-toml",
 ]
 
 lint = [
@@ -181,6 +187,7 @@ all = [
     "jupyter-book>=0.12.0,<2.0.0",
     "keyring",
     "matplotlib",
+    "mypy",
     "natsort",
     "networkx",
     "numba",
@@ -219,6 +226,11 @@ all = [
     "tqdm",
     "trio",
     "trio-asyncio",
+    "types-PyYAML",
+    "types-python-dateutil",
+    "types-requests",
+    "types-tabulate",
+    "types-toml",
     "watchdog",
     "xmltodict",
 ]
