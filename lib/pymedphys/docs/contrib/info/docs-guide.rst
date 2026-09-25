@@ -80,8 +80,15 @@ by ``pymedphys dev docs --prep`` and by the normal build:
 * Edit the root ``CONTRIBUTING.md`` for the contributor landing page.
 * Edit the root ``CHANGELOG.md`` for release notes.
 
-Do not edit their generated copies. Use ``:doc:`` in reStructuredText or the
-MyST ``{doc}`` role in Markdown for links between documentation pages.
+Do not edit their generated copies. For links between pages in the built site,
+``:doc:`` roles in reStructuredText and MyST ``{doc}`` roles in Markdown provide
+Sphinx cross-references. Ordinary Markdown links to source pages can also be
+resolved by MyST.
+
+Use ordinary Markdown links in notebooks and other files that are also read in
+Jupyter, Colab, or GitHub. Those viewers do not interpret MyST roles. In notebooks,
+link to published documentation URLs so the links still work when a notebook is
+downloaded on its own.
 
 GitHub Actions builds and uploads ``docs-html`` and ``docs-linkcheck``
 artefacts for selected PRs. ReadTheDocs publishes the public site separately,
