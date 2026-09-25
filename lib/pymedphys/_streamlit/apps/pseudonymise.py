@@ -1,5 +1,6 @@
 """Streamlit Gui for Pseudonymise"""
 
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +27,24 @@ from pymedphys._imports import streamlit as st
 from pymedphys._dicom.anonymise import anonymise_dataset
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
+from pymedphys._experimental.pseudonymisation import (
+    get_default_pseudonymisation_keywords,
+)
 from pymedphys._streamlit import categories
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 
 CATEGORY = categories.BETA
 TITLE = "DICOM Pseudonymisation"
+
+DEPRECATION_WARNING = (
+    "**This app is deprecated** and will be removed in a future release. It "
+    "hashes UIDs and some numeric values without a secret key, so anyone who "
+    "holds the original data can re-link or recover them, and its output keeps "
+    "the original file preamble and the original SOP Instance UID in the File "
+    "Meta Information. Read "
+    "[DICOM de-identification](https://docs.pymedphys.com/en/latest/users/"
+    "background/dicom-deidentification.html) before sharing any output."
+)
 
 
 def link_to_zipbuffer_download(filename: str, zip_bytes: bytes):
@@ -93,7 +107,7 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
 
     bad_data = False
     file_count = 0
-    keywords = pseudonymisation_api.get_default_pseudonymisation_keywords()
+    keywords = get_default_pseudonymisation_keywords()
     keywords.remove("PatientSex")
     strategy = pseudonymisation_api.pseudonymisation_dispatch
     zip_stream = zip_bytes_io
@@ -230,6 +244,8 @@ def _gen_index_list_to_fifty_mbyte_increment(file_buffer_list):
 
 
 def main():
+    st.warning(DEPRECATION_WARNING)
+
     uploaded_file_buffer_list = st.file_uploader(
         "Files to pseudonymise, refresh page after downloading zip(s)",
         ["dcm"],

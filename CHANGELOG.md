@@ -96,6 +96,25 @@ This project adheres to
   removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
   that no workflow or release step used, and it no longer matched the build.
 
+### Deprecations
+
+- Experimental pseudonymisation is deprecated and will be removed in a future
+  release. `pymedphys.experimental.pseudonymisation.pseudonymise`,
+  `get_default_pseudonymisation_keywords`, and
+  `is_valid_strategy_for_keywords` emit a `DeprecationWarning`;
+  `pymedphys experimental dicom pseudonymise` prints a notice on standard
+  error; and the DICOM Pseudonymisation app shows a warning banner.
+  **[Security]** Do not rely on its output for sharing data: it hashes UIDs
+  and some numeric values, such as patient weight, without a secret key, so
+  anyone who holds the original data can re-link records or recover the
+  values; it shifts every patient's dates by the same offset; and its output
+  keeps the original file preamble and the original SOP Instance UID in the
+  File Meta Information. See
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
+- `pymedphys.experimental.pseudonymisation.pseudonymise` now leaves Patient's
+  Sex unchanged, as its documentation states. Previously it replaced the value
+  with a hash, which is not a valid DICOM code string.
+
 ### News around this release
 
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and

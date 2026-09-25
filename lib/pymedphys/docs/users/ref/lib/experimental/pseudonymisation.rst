@@ -5,6 +5,17 @@ Pseudonymisation Tool
 .. automodule:: pymedphys.experimental.pseudonymisation
     :no-members:
 
+.. deprecated:: 0.42.0
+
+    Experimental pseudonymisation will be removed in a future release. It
+    hashes UIDs and some numeric values, such as patient weight, without a
+    secret key, so anyone who holds the original data can re-link records or
+    recover the values. It shifts every patient's dates by the same offset. Its
+    output keeps the original file preamble and the original SOP Instance UID
+    in the File Meta Information. Read
+    :doc:`/users/background/dicom-deidentification` before sharing any output.
+    A standards-based replacement is being developed.
+
 *******
 Summary
 *******

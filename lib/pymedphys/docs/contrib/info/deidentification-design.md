@@ -20,7 +20,7 @@ One entry per pull request. Each pull request updates only its own entry, so tha
 
 - **PR 02.** Stop legacy de-identification code logging identifying values and original paths. Not started.
 
-- **PR 03.** Deprecate experimental pseudonymisation, with a security note. Not started.
+- **PR 03.** Deprecate experimental pseudonymisation, with a security note. In review. The public functions in `pymedphys.experimental.pseudonymisation` are wrapped with the vendored `deprecated` decorator at the public interface, so the private implementation calls them without repeating the warning; the command prints a notice on standard error because `DeprecationWarning` is hidden by default; the app shows a warning banner. `pseudonymise()` now keeps Patient's Sex, which a `list("PatientSex")` bug had hashed into an invalid code string. Known defects left in the deprecated code (reproduced): an age with unit `D` raises `UnboundLocalError`; a non-ASCII name raises `UnicodeEncodeError`; ages of 20 or under are jittered at random on every call, so one patient's studies can disagree; and a pseudonymised name exceeds the 64-character limit on a person name component group.
 
 - **PR 04.** Require pydicom 3.0 or later. Not started.
 

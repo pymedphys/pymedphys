@@ -42,7 +42,8 @@ shell-based workflow.
 If your goal is to share data outside the clinic, first read
 [DICOM de-identification](../background/dicom-deidentification.md), which
 explains the terms and the known limitations of the current anonymisation and
-pseudonymisation tools. Their references are the
+pseudonymisation tools. The experimental pseudonymisation tools are deprecated;
+their references are the
 [pseudonymisation library reference](../ref/lib/experimental/pseudonymisation.rst)
 and the
 [pseudonymisation CLI reference](../ref/cli/pseudonymisation.rst).
@@ -70,7 +71,8 @@ script, or a clinic-specific workflow.
 ## If you want point-and-click tools
 
 PyMedPhys also includes a Streamlit-based app layer for selected workflows.
-The current stable app registry includes MetersetMap and pseudonymisation, and
+The current stable app registry includes MetersetMap and the deprecated
+pseudonymisation app, and
 there are additional experimental apps.
 If you want a graphical workflow rather than code, continue to
 [Choose your path](choose-your-path.md).
