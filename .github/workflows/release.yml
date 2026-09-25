@@ -131,6 +131,7 @@ jobs:
         run: gh release upload "$TAG" dist/* --clobber
 
   summary:
+    name: Release Summary
     needs: [lint, type-check, unit-tests, integration-tests, build, publish-testpypi, publish-pypi]
     if: always()
     runs-on: ubuntu-latest

@@ -17,7 +17,7 @@ Push / pull request -> ci.yml
                        |-- docs.yml (documentation PRs)
                        `-- summary
 
-Schedule / manual run / main push / relevant PR -> security.yml
+Schedule / manual run / main push / PR -> security.yml
 Schedule -> deps.yml
 Release -> release.yml -> lint, type-check, unit and integration tests
 Issue comment -> claude.yml
@@ -31,7 +31,7 @@ Issue comment -> claude.yml
 Coordinates all CI checks based on file changes, labels, and event types.
 
 - **Triggers**: Push to main, pull requests (including label changes, which queue
-  behind an in-flight run rather than cancelling it), workflow_call
+  behind an in-flight run rather than cancelling it)
 - **Jobs**:
   - `changes`: Detects file changes using path filters
   - `pre-commit`: Auto-formatting and basic checks
@@ -72,7 +72,7 @@ Fast unit tests with smart matrix strategy.
 
 - **Features**:
   - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
-  - Quick mode for PRs (Ubuntu + latest supported Python version)
+  - Quick mode for PRs (Ubuntu + Python 3.12)
   - Installs the `user` extra so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labeled `full-test`
   - Excludes slow tests for rapid feedback
@@ -97,7 +97,8 @@ SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
 - **Triggers**: Main pushes, database code changes, or `database` / `full-test` labels
-- **Features**: Automatic retries for connection stability
+- **Features**: Waits for SQL Server to accept connections, then runs the tests once;
+  test failures are not hidden by retries
 
 #### `docs.yml`
 Builds documentation on PRs that change documentation sources, package Python code, or build tooling.
@@ -138,7 +139,8 @@ into the project environment.
     above. The offline audits also run through pre-commit; the online ones,
     including the check that each pin's version comment names the tag that
     carries the pinned commit, run only here
-- **Triggers**: Weekly, manually, on main pushes, and on relevant PR changes
+- **Triggers**: Weekly, manually, on main pushes, and on every PR; job-level path
+  filters select the scans, while `Security Summary` always runs
 - **Coverage**: Path filtering applies only to PRs; scheduled and manual runs scan
   even when the last commit did not change security-related files
 - **Summary**: Requires every selected scan to succeed
@@ -189,7 +191,7 @@ Always Run:
 ├── pre-commit       # Auto-formatting
 ├── lint             # Ruff + Pylint
 ├── type-check       # Pyright
-└── unit-tests       # Quick mode (Ubuntu + latest supported Python version)
+└── unit-tests       # Quick mode (Ubuntu + Python 3.12)
 
 Conditional (also recalculated when labels change):
 ├── mosaiq-db-tests  # Database files changed, database or full-test label
@@ -220,20 +222,122 @@ Core checks, plus:
 
 ## Environments
 
-| Environment | Description | Protection Rules |
-|-------------|-------------|------------------|
-| `pypi` | PyPI publishing | Required reviewers, main branch only |
-| `claude-api` | Claude API access | Rate limiting recommended |
+| Environment | Purpose | Required setup |
+|-------------|---------|----------------|
+| `pypi` | Production publishing | Configure trusted publishing, release approvers, and allowed `main` branch / `v*` tag refs |
+| `testpypi` | Manual release dry runs | Configure TestPyPI trusted publishing and allowed `main` branch / `v*` tag refs |
 
-## Branch Protection Settings
+Environment protection is configured in GitHub Settings, not by the workflow's
+`environment` field. Create and verify these environments before releasing;
+referencing an absent environment can create it without protection rules.
+The publisher registered with PyPI or TestPyPI must match this repository,
+`.github/workflows/release.yml`, and the corresponding environment name.
+See the [release guide](release-guide.md) for the release procedure.
 
-Configure branch protection to require the CI and security summary checks.
-These summaries fail when a core check or a selected extended check fails,
-is cancelled, or is unexpectedly skipped. The CI summary also prevents an
-outdated commit from passing after pre-commit pushes automatic fixes.
+## Required checks and pull request reviews
 
-The pre-commit workflow includes actionlint. Remove an obsolete standalone
-Actionlint requirement if it remains in the repository settings.
+### Why the summaries are required
+
+The required GitHub Actions check names for `main` are **`summary`** (from
+`ci.yml`) and **`Security Summary`** (from `security.yml`). Select GitHub Actions
+as their expected source in the `main-integrity` ruleset. The release workflow's
+**`Release Summary`** is a report, not a merge gate, and must not be required on
+pull requests.
+
+| Required check | Checks it covers |
+|----------------|------------------|
+| `summary` | Change selection, pre-commit, Pylint, the type-check workflow, unit tests, and selected integration, database, and documentation checks |
+| `Security Summary` | Change selection and selected dependency, Python security, and workflow security audits |
+
+These are executable gates, not just reports. Both use `if: always()` and
+`.github/scripts/check_workflow_status.py` to inspect their dependencies. A core
+check must succeed. A selected conditional check must also succeed; a skipped
+conditional check is accepted only when its selection output explicitly says
+`false`. Missing selection outputs, failures, cancellations, and unexpected skips
+fail the summary. A pre-commit auto-fix must pass a fresh run on its new commit.
+
+GitHub can accept a skipped individual job as a successful required check. The
+summaries close that gap and apply one consistent policy to conditional tests.
+They also provide stable required-check names when the OS/Python matrix or
+internal job names change. Requiring every constituent check separately does not
+add test coverage and can leave outdated names blocking otherwise valid PRs.
+See [GitHub's required-check troubleshooting guide](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks).
+
+### Seeing every constituent check
+
+Making only the summaries required does **not** hide, combine, or stop the other
+jobs. Expand the checks list in the PR's merge section to see individual results,
+including non-required checks. GitHub controls how that list is grouped or
+collapsed; the PR's **Checks** tab also lets you inspect each workflow and job.
+Open a check's details for its logs. The CI and security workflow run summaries
+include a table showing which checks were required for that run and their result.
+
+A skipped integration or database job can be expected on a small PR. The summary
+explains whether it was selected. The `full-test` and `database` labels below
+request broader coverage and trigger another CI run.
+
+### What a successful summary means
+
+- Ordinary PRs use Ubuntu and Python 3.12 for unit tests. The full OS/Python
+  matrix and integration tests run on main pushes and `full-test` PRs. A green
+  ordinary PR therefore does not mean the full matrix ran before merging.
+- Pyright is blocking. MyPy remains optional through `continue-on-error`.
+- Dependency vulnerabilities are advisory on PRs and pushes. Requiring either
+  `Dependency Audit` or `Security Summary` does not turn pip-audit findings into
+  a blocking policy; scheduled/manual scans handle them as described above.
+- Bandit and zizmor findings at the configured threshold are blocking when
+  selected. Documentation builds are blocking when selected; external link
+  failures remain advisory if the link checker produces its report.
+
+### The two main-branch rulesets
+
+| Ruleset | Policy | Bypass |
+|---------|--------|--------|
+| `main-integrity` | Require `summary` and `Security Summary`, require an up-to-date branch, block force pushes and branch deletion | None, including admins |
+| `main-reviews` | Require a PR, one approval by an eligible reviewer, and resolution of review conversations | Repository admins, for pull requests only |
+
+Contributors with Write access may merge once these requirements pass. Review is
+encouraged for admin-authored PRs too, but an admin may explicitly bypass the
+review ruleset. GitHub grants bypass to the person merging, regardless of the
+PR author. The bypass does not waive the separate CI ruleset or permit direct
+pushes to main.
+
+By maintainer choice, **Dismiss stale approvals when new commits are pushed**
+and **Require approval of the most recent reviewable push** remain **off**.
+An approval can therefore remain valid after later commits; authors should
+request another review for substantive changes. Required checks still need to
+pass for the current commit. Code Owner approval is not required. Keep the
+additional-approval setting for unattributed Copilot PRs enabled.
+
+### Maintaining the gates
+
+1. Add each new blocking job to the appropriate summary's `needs`. The helper
+   cannot inspect jobs omitted from that list. Existing dependencies are
+   required to succeed unless explicitly configured as conditional.
+2. For a conditional job, use the same selection output for the job's `if` and
+   the summary's `--conditional JOB=OUTPUT` argument. Add regression coverage
+   when changing the selection policy.
+3. Keep each required check name unique across workflows. The CI check retains
+   the name `summary` for compatibility with existing branch protection.
+4. If renaming a required check, first produce the new check on the change PR,
+   then replace the old required context in GitHub Settings before merging.
+   Update older PRs to use the new workflow. Never remove all required gates
+   just to merge a naming change.
+5. Run `python -m unittest discover -s .github/scripts -p 'test_*.py'` after
+   changing the summary policy, then verify the PR's CI and security results.
+
+Remove obsolete standalone requirements, such as the former Actionlint check;
+actionlint now runs through pre-commit. Do not add required checks for advisory
+review bots or for workflows that do not run on every PR.
+
+Historical branches are managed separately from main. The `legacy-read-only`
+ruleset freezes `master`, the existing `0.6.x` through `0.39.x` branches, and
+`revert-1460-0.36.x` using explicit targets and no bypass. It prevents updates,
+force pushes, and deletion. To resume maintenance, deliberately remove the
+specific branch from that ruleset and configure working branch-specific CI and
+review requirements first. Do not apply main's check names to an old branch
+whose workflows do not emit them. Publishing branches such as `docs` and
+`streamlit-app-staging` need a separate deployment review before retirement.
 
 ## Labels for Manual Triggers
 

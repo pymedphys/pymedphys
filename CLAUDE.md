@@ -276,6 +276,20 @@ This ensures that:
 - Maintainers don't need to repeatedly explain the same concepts
 - Knowledge is preserved across different workflow runs
 
+### CI Gates and Review Policy
+
+- Main requires the GitHub Actions checks `summary` (CI) and `Security Summary`.
+  Keep these names unique across workflows; the release report is named
+  `Release Summary`. Keep all constituent checks visible and add every new
+  blocking job to the appropriate summary's `needs`.
+- Document CI coverage, advisory exceptions, and check-name migrations in
+  `lib/pymedphys/docs/contrib/info/workflows.md`.
+- Non-admin collaborators with Write access may merge approved PRs. Admins may
+  bypass the review ruleset for PR merges but not the separate CI ruleset.
+- Keep stale-approval dismissal and last-push approval requirements off, as
+  requested by the maintainers. Encourage renewed review for substantive
+  changes without automatically discarding existing approvals.
+
 ### Security Scanning Policy
 
 - `security.yml` runs three scanners through `uvx` at pinned versions: pip-audit
