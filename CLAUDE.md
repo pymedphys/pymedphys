@@ -8,19 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Install with uv (required for development)
-uv sync --extra all --group dev
+uv sync --python 3.12 --locked --extra all --group dev
 
 # Install pre-commit hooks
 uv run -- pre-commit install
 
 # Install for user use only
-pip install pymedphys[user]
+python -m pip install "pymedphys[user]"
 ```
 
 ### Testing
 
 ```bash
-# Run all tests
+# Run default tests (slow/database selection has separate options)
 uv run -- pymedphys dev tests
 
 # Run specific test file or directory
@@ -323,7 +323,7 @@ This ensures that:
 
 When updating dependencies:
 1. Update version constraints in `pyproject.toml`
-2. Run `uv lock --upgrade` and then `uv sync --extra all --group dev` to regenerate `uv.lock`
+2. Run `uv lock --upgrade` and then `uv sync --python 3.12 --locked --extra all --group dev` to regenerate `uv.lock`
 3. Run `uv run pymedphys dev propagate` to regenerate the exported requirements
    files, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
