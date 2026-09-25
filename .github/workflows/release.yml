@@ -46,17 +46,25 @@ jobs:
         with:
           extras: 'dev tests'
 
+      # Plain uv build makes the sdist, then the wheel from it, so a file
+      # missing from the sdist also fails the wheel checks below.
       - name: Build distributions
         run: |
-          uv build --wheel --sdist
+          uv build
           uvx twine==7.0.0 check dist/*
 
-      - name: Test installation
+      # Checks both archives' contents, installs the wheel into a fresh venv,
+      # and, for a published release, requires the tag to be v<version>.
+      - name: Check distributions
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          uv venv test-env
-          uv pip install --python test-env/bin/python dist/*.whl
-          test-env/bin/pymedphys --version
-          test-env/bin/python -c "import pymedphys; print(pymedphys.__version__)"
+          if [ "$EVENT_NAME" = "release" ]; then
+            python .github/scripts/check_distributions.py dist --expected-version "$TAG"
+          else
+            python .github/scripts/check_distributions.py dist
+          fi
 
       - name: Upload built distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

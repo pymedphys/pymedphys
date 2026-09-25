@@ -92,7 +92,10 @@ Comprehensive testing beyond unit tests.
 - **Test Types**:
   - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
-  - `wheel-build`: Package build verification
+  - `wheel-build`: Builds the sdist and then the wheel from it, and runs
+    `.github/scripts/check_distributions.py`: both archives must contain the
+    package, and the wheel must install into a fresh virtual environment,
+    import, and report its version through `pymedphys --version`
   - `propagate`: `pymedphys dev propagate` must leave the generated files
     unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
     `_version.py`)
@@ -125,7 +128,8 @@ Handles PyPI package publishing with quality gates.
   - TestPyPI dry-run capability
   - PyPI trusted publishing (no API tokens)
   - Automatic release asset upload
-  - Installation verification
+  - The same distribution checks as `wheel-build`; a published release also
+    fails unless its tag is `v` followed by the package version
 
 #### `security.yml`
 Security scanning with pinned tools run through `uvx`, so nothing is installed
