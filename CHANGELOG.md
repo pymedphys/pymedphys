@@ -2,7 +2,10 @@
 
 # Release Notes
 
-All notable changes to are documented here.
+All notable changes are documented here. Older entries describe the project
+at the time of that release; references to former hosted apps, discussion
+forums, and CI services may no longer be available. For current setup and
+usage, see the [documentation](https://docs.pymedphys.com/en/latest/).
 
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -79,7 +82,7 @@ This project adheres to
 
 - PyMedPhys now includes its own custom, `numba`-accelerated implementation of
   multilinear interpolation. You can find the technical reference
-  [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  [here](https://docs.pymedphys.com/en/latest/users/ref/lib/interp.html).
   This was implemented for the following reasons:
     - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
      `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
@@ -375,7 +378,7 @@ this in the future should be considered a breaking change.
     [Thebe](https://thebelab.readthedocs.io/)
   - Discourse commenting now available directly within the hosted documentation
   - The ability to utilise the expanded
-    [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
+    [MyST](https://jupyterbook.org/v1/content/myst.html) Documentation formatting.
 - Increased docstring coverage of public functions
 - Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to [@termim](https://github.com/termim) who has taken
@@ -443,7 +446,7 @@ this in the future should be considered a breaking change.
   - The online demo GUI should not have sensitive information submitted to it.
 - [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
   Masters thesis on deep learning auto-segmentation to
-  [the docs](https://docs.pymedphys.com/background/autocontouring.html#details).
+  [the docs](https://docs.pymedphys.com/en/latest/users/background/autocontouring.html#details).
 - PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
   [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
   [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
@@ -559,7 +562,7 @@ this in the future should be considered a breaking change.
 
 - Within `pymedphys.experimental.pseudonymisation` both `pseudonymise` and
   `is_valid_strategy_for_keywords` were added. `pseudonymise` provides
-  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/ref/lib/experimental/pseudonymisation.html#api)
+  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pseudonymisation.html#api)
   for more information. Credit to [@sjswerdloff](https://github.com/sjswerdloff)
   for all his work here.
 
@@ -1292,9 +1295,9 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 - Pinnacle module providing a tool to export raw Pinnacle data to DICOM
   objects.
   - A CLI is provided: See
-    [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
+    [the Pinnacle CLI docs](https://docs.pymedphys.com/en/latest/users/ref/cli/pinnacle.html).
   - As well as an API: See
-    [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
+    [the Pinnacle library docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pinnacle.html).
 
 ## [0.9.0] -- 2019/06/06
 
