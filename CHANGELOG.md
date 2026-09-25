@@ -25,6 +25,8 @@ This project adheres to
   404 are raised at once instead of after 21 seconds of retries.
 - The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
   downloaded data cache, which defaults to `~/.pymedphys/data`.
+- `pymedphys --version` prints the installed version. Previously the option
+  was not recognised and the help text was printed instead.
 
 ### Dependency changes
 
@@ -66,6 +68,20 @@ This project adheres to
   and the `pymedphys dev cypress` command have been removed. The Streamlit GUI
   is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
   normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
+- **[Contributor facing only]** The source distribution contains the package
+  again. Since the move to hatchling, a build-wide include meant to add the
+  built HTML documentation had become the sdist's only content, so an sdist
+  held no code. Release and integration builds now make the wheel from the
+  sdist and check both archives, then install the wheel into a fresh virtual
+  environment and check its imports and `pymedphys --version`. A published
+  release fails unless its tag is `v` followed by the package version.
+- **[Contributor facing only]** The package version is written in canonical
+  PEP 440 form (`0.42.0.dev0`), and the exported `requirements.txt` and
+  `requirements-docs.txt` list the project once, without the development
+  dependency group.
+- **[Contributor facing only]** The unused `conda-recipe/` directory has been
+  removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
+  that no workflow or release step used, and it no longer matched the build.
 
 ### News around this release
 
