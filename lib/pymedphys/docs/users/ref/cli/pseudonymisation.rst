@@ -1,16 +1,20 @@
 Pseudonymisation Tool
 =====================
 
+This command uses the legacy experimental pseudonymisation engine. See
+:doc:`../../background/dicom-deidentification` for its limitations and the
+planned transition before sharing output. The replacement presets described
+there are not available through this command.
+
 .. automodule:: pymedphys.cli.experimental.dicom
     :no-members:
 
-.. deprecated:: 0.42.0
+.. warning::
 
-    ``pymedphys experimental dicom pseudonymise`` will be removed in a future
-    release, and prints a notice on standard error when it runs. See the
-    :doc:`/users/ref/lib/experimental/pseudonymisation` for its limitations,
-    and read :doc:`/users/background/dicom-deidentification` before sharing
-    any output.
+    ``pymedphys experimental dicom pseudonymise`` is deprecated and prints a
+    notice on standard error when it runs. It will be removed in a later
+    release. The :doc:`../lib/experimental/pseudonymisation` lists its
+    security limitations.
 
 .. argparse::
    :ref: pymedphys.cli.define_parser

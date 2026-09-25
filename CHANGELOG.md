@@ -14,7 +14,7 @@ This project adheres to
 
 ### New features and enhancements
 
-- New documentation page, [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html), explaining de-identification, pseudonymisation, and anonymisation, what software can and cannot claim, and the known limitations of the current tools. In particular, `pymedphys.dicom.anonymise` keeps every UID; experimental pseudonymisation replaces UIDs and some numeric values with hashes computed without a secret key; and neither tool rewrites the file preamble or the Media Storage SOP Instance UID in the File Meta Information. A standards-based replacement is being developed.
+- New documentation page, [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html), explaining de-identification, pseudonymisation, and anonymisation, what software can and cannot claim, and the known limitations of the current tools. In particular, `pymedphys.dicom.anonymise` leaves identifying UIDs unchanged by default; experimental pseudonymisation replaces UIDs and some numeric values with hashes computed without a secret key; and neither tool rewrites the file preamble or the Media Storage SOP Instance UID in the File Meta Information. A standards-based replacement is planned but not yet available; this documentation change introduces no deprecation warnings or replacement presets.
 - Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
   while retaining the dose from valid beams. A missing dose file still
   aborts RTDOSE generation rather than exporting an incomplete sum.
@@ -31,6 +31,9 @@ This project adheres to
 
 ### Bug fixes
 
+- `pymedphys.experimental.pseudonymisation.pseudonymise` now leaves Patient's
+  Sex unchanged, as its documentation states. Previously it replaced the value
+  with a hash, which is not a valid DICOM code string.
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
@@ -51,8 +54,19 @@ This project adheres to
 
 ### Contributor facing changes
 
-- **[Contributor facing only]** Added a living design document and decision log for the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and experimental pseudonymisation (`lib/pymedphys/docs/contrib/info/deidentification-design.md`). `CLAUDE.md` now records the maintainers' guidance that pull requests stay small and reviewable, ship their documentation, and, for de-identification code, never log DICOM values or original file paths.
-- **[Contributor facing only]** Refined the de-identification design after review: UID handling respects the selected options and identifier roles; removal and retention overrides are validated before claiming conformance; synthetic birth dates remain stable per subject; descriptor cleaning has explicit limits; confidential QC packs are separate from release reports; and numerical risk thresholds require a documented, validated assessment model.
+- **[Contributor facing only]** Added a living design document and decision log
+  for the DICOM de-identification engine that will replace
+  `pymedphys.dicom.anonymise` and experimental pseudonymisation
+  (`lib/pymedphys/docs/contrib/info/deidentification-design.md`). The design
+  specifies policy-aware UID handling, validated overrides and conformance
+  claims, stable per-subject synthetic birth dates, descriptor-cleaning limits,
+  confidential QC packs separate from release reports, and risk thresholds
+  tied to validated assessment models. The roadmap supports an open-ended
+  series of small PRs, separates actual progress from future work and active
+  decisions from superseded history, and clarifies deprecation timing, planned
+  versus available capabilities, and release gates. Contributor and user
+  guidance follow the same plan, with documentation, tests, traceability, and
+  conformance evidence accompanying each implementation change.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
@@ -111,9 +125,6 @@ This project adheres to
   keeps the original file preamble and the original SOP Instance UID in the
   File Meta Information. See
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
-- `pymedphys.experimental.pseudonymisation.pseudonymise` now leaves Patient's
-  Sex unchanged, as its documentation states. Previously it replaced the value
-  with a hash, which is not a valid DICOM code string.
 
 ### News around this release
 
