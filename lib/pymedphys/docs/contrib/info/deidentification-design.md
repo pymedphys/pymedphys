@@ -23,6 +23,8 @@ Record actual opened or merged PRs here, using their GitHub numbers, scope, stat
 
 - **[#2062](https://github.com/pymedphys/pymedphys/pull/2062), M0 legacy diagnostics.** Open, based on #2061. Removes identifying values and paths from explicit application logging and progress output, with capture tests. Re-raised exceptions and dependency warnings remain separate disclosure channels; this PR does not complete D-020. Its own progress update records validation and the remaining work.
 
+- **[#2068](https://github.com/pymedphys/pymedphys/pull/2068), M0 GUI network exposure.** Open, based on #2061. `pymedphys gui` passes `--server.address localhost` (new `--address` option) and `--browser.gatherUsageStats false` to Streamlit, and `--port` now takes effect. Without an address, Streamlit 1.64 binds every interface. Four parser-driven tests cover the command; launching the GUI showed `0.0.0.0` before the change and `127.0.0.1` after. The flags override Streamlit configuration files, so `--address` is the only way to widen the binding. The GUI still has no authentication; exposing it on a network remains the operator's decision.
+
 ## Scope
 
 In scope:
@@ -233,7 +235,7 @@ This is a rolling planning horizon, not a complete backlog or a promise of one P
 | Remaining legacy diagnostic disclosure | Planned follow-up to #2062: scope sanitisation of re-raised exceptions and dependency warnings into reviewable changes, with compatibility decisions and capture tests. Keep these residual risks visible until addressed; D-020 is the target, not a claim that the initial fix covers all channels. |
 | Experimental pseudonymisation warnings and security note | Planned M0 work under D-009. Cover library, CLI, and app guidance; removal is a later, separate change. |
 | pydicom 3.0 minimum | Planned M0 dependency change under D-004, with regenerated dependency files and compatibility checks. |
-| GUI localhost binding and usage statistics | Planned M0 change, with configuration tests and documentation of access defaults. |
+| GUI localhost binding and usage statistics | Under review in #2068, based on #2061, with command tests and documentation of access defaults. |
 | First standard parser and provenance checks | First M1 implementation slice; depends on the agreed pinned inputs and generator approach (D-002 and D-005), not completion of unrelated M0 hygiene. Split remaining tables and generator features into subsequent PRs. |
 | Hypothesis and its first property tests | Deferred until the first M2 consumer is ready. Add it with that consumer or a directly preceding, verified prerequisite; do not land an unused dependency early. |
 
