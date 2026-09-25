@@ -29,11 +29,25 @@ PyMedPhys contains a series of top-level files. These include:
               PyMedPhys.
 
 :``CHANGELOG.md``: A text file containing release notes for the PyMedPhys
-                   source code library. ``changelog.md`` determines the text
-                   presented on the `Release Notes`_ documentation page.
+                   source code library. ``CHANGELOG.md`` determines the text
+                   presented on the :doc:`Release Notes <../../release-notes>` page.
 
-:``pyproject.toml``: The uv configuration file that designates dependencies
-                     and other library related details.
+:``pyproject.toml``: Package metadata, supported Python versions, dependencies,
+                     extras, and tool configuration. Hatchling is the build
+                     backend; uv manages the development environment.
+
+:``uv.lock``: The resolved dependencies used by uv and CI. Commit lockfile
+              changes together with the generated dependency files.
+
+:``.github/workflows/``: GitHub Actions workflows; see the
+                         :doc:`workflow guide <workflows>`.
+
+:``.readthedocs.yml``: The ReadTheDocs build configuration for the published
+                       documentation.
+
+:``requirements*.txt``: Exported dependency files. Regenerate these with
+                        ``uv run pymedphys dev propagate`` after changing
+                        dependencies; do not edit them by hand.
 
 You'll quickly note from a cursory look through PyMedPhys that there are
 actually many more top-level files. Most of these help configure specific
@@ -54,4 +68,3 @@ so we'll disregard them for now in the interest of brevity.
 
 
 .. _`the PyMedPhys GitHub page`: https://github.com/pymedphys/pymedphys
-.. _`Release Notes`: /release-notes.html
