@@ -63,12 +63,12 @@ The normative standard tables (rule layer L1) are generated from the pinned edit
 
 ## Why the existing tools are replaced
 
-Both existing paths share one engine in `lib/pymedphys/_dicom/anonymise/` and have defects that cannot be fixed without redesign:
+Both existing paths share one engine in `lib/pymedphys/_dicom/anonymise/`. Targeted hygiene fixes can reduce immediate disclosure, but profile conformance and collection-level guarantees require the planned replacement. The limitations motivating this work include:
 
 - By default, `pymedphys.dicom.anonymise` leaves identifying UIDs such as Study, Series, SOP Instance, and Frame of Reference UIDs unchanged. It replaces reference sequences such as Referenced Image Sequence with an empty item (breaking references), writes invalid values (Patient's Sex `ANON`), never records that de-identification took place, and does not implement a PS3.15 profile. Its keyword list derives from an old edition of Table E.1-1 of about 220 rows; edition 2026d has 657.
 - The experimental pseudonymisation module hashes UIDs and decimal strings without a secret, so anyone holding the original UIDs can re-link records and small-range values such as weight can be recovered by trying every plausible value. It jitters ages non-deterministically, applies one date offset to every patient on an installation, fails on non-ASCII names, maps Dose Reference UID but not Referenced Dose Reference UID (breaking the RT Plan to treatment record link), and misses most enhanced RT UIDs.
 - Neither explicitly rebuilds the file preamble or File Meta Information. If present in the input, the original Media Storage SOP Instance UID and preamble can survive writing, including after pseudonymisation changes the dataset's SOP Instance UID.
-- Error handling logs original values, and file handling prints original paths.
+- Legacy diagnostics can expose original values and paths. Progress records the application logging/output fixes and remaining exception and dependency-warning channels; a partial hygiene fix does not complete D-020.
 
 ## Architecture
 
