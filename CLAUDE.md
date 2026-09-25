@@ -196,6 +196,15 @@ When modifying DICOM functionality, be aware of:
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
 
+### Copyright Headers
+
+Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.
+
+- When a change is meaningful, credit its author in the header of each file it touches. For Claude-assisted work, that is the person who directed it.
+- Put a new line above the existing ones (newest first). If the author already has a line of their own, extend its years instead (`2025-2026`, `2021, 2025`). Leave joint lines unchanged.
+- A change is meaningful when the author's net surviving contribution to the file is about 15 or more added or rewritten lines, cumulative across PRs. Mechanical edits do not count: API renames, import reordering, lint, typing-only and formatting fixes, and `nosec` comments.
+- A new file starts with the full header, crediting its author and the current year. Do not add a header to an existing file that has none without the maintainers' agreement, since it must also credit the original authors.
+
 ## Claude Code Workflow Guidelines
 
 ### CRITICAL META-INSTRUCTION: Always Document General Feedback
