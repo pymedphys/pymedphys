@@ -213,6 +213,10 @@ Most source files open with one or more `# Copyright (C) <years> <authors>` line
 - Put a new line above the existing ones (newest first). If the author already has a line of their own, extend its years instead (`2025-2026`, `2021, 2025`). Leave joint lines unchanged.
 - A change is meaningful when the author's net surviving contribution to the file is about 15 or more added or rewritten lines, cumulative across PRs. Mechanical edits do not count: API renames, import reordering, lint, typing-only and formatting fixes, and `nosec` comments.
 - A new file starts with the full header, crediting its author and the current year. Do not add a header to an existing file that has none without the maintainers' agreement, since it must also credit the original authors.
+- Every PyMedPhys copyright header must have the full Apache 2.0 licence
+  notice immediately below its copyright lines, including when adding a
+  header to an existing file. Preserve upstream licence and attribution
+  notices in third-party code.
 
 ## Claude Code Workflow Guidelines
 
