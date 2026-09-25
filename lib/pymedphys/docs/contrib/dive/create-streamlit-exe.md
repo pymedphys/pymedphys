@@ -1,4 +1,17 @@
-# Creating a Streamlit Executable
+# Creating a Streamlit Executable (historical)
+
+```{note}
+This is a historical implementation write-up for the linked 2022 source
+snapshot. Its Poetry, PyOxidizer, Electron, and GitHub Actions examples are
+preserved for that snapshot. The current project uses uv and Hatchling, has
+no `build` extra, and does not build these desktop installers in CI.
+The remaining `pymedphys dev build` command does not make this a supported
+current build procedure.
+
+To run the current app, follow the {doc}`installation guide <../../users/get-started/quick-start>`
+and launch `pymedphys gui`. For current automation, see the
+{doc}`workflow guide <../info/workflows>`.
+```
 
 ## Document overview
 
@@ -10,16 +23,15 @@ This document refers to the state of the PyMedPhys code base as at commit hash
 [836f272d092f294099bb51db05bab80d2bfcb628](https://github.com/pymedphys/pymedphys/tree/836f272d092f294099bb51db05bab80d2bfcb628).
 All code links will be pointing to the code base at that commit hash.
 
-## Quick version
+## Historical build steps
 
-To actually build and create the PyMedPhys Streamlit binary all you actually
-need to do is the following:
+The source snapshot used the following steps:
 
-- Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- Install [Node](https://nodejs.org/en/) and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install#debian-stable)
+- Install [Poetry](https://python-poetry.org/docs/)
+- Install [Node](https://nodejs.org/en/) and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install)
 - Install PyOxidizer by installing all the project build dependencies:
-  - `uv sync --extra build --extra cli`
-- Then run `uv run -- pymedphys dev build --install`
+  - `poetry install -E build -E cli`
+- Then run `poetry run pymedphys dev build --install`
   - Which runs [this](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/lib/pymedphys/_dev/build.py#L28-L51) under the hood.
 
 The final built application for your current OS will be contained within
@@ -114,7 +126,7 @@ python_config.oxidized_importer = False
 ### Running the build
 
 Once that configuration file is created, and once PyOxidizer is installed then
-running `uv run -- pyoxidizer build install` will create a `pymedphys` binary
+running `poetry run pyoxidizer build install` will create a `pymedphys` binary
 within a `dist` directory within the repository root.
 
 ## The use and setting up of Electron
@@ -153,7 +165,7 @@ The resulting Electron application code utilised can be found at
 
 To install all of the required dependencies run `yarn install` within the
 `js/app` directory. You will need to have both [Node](https://nodejs.org/en/)
-and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install#debian-stable)
+and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install)
 installed to achieve this.
 
 ### The key components of the Electron code base
@@ -184,7 +196,7 @@ build:
 > [js/app/package.json#L22-L33](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/js/app/package.json#L22-L33)
 
 This directory doesn't exist in the source tree. When the Electron app is being
-built with `uv run -- pymedphys dev build` this `python` directory is created
+built with `poetry run pymedphys dev build` this `python` directory is created
 by running `pyoxidizer` and then moving the resulting built distribution over
 to `js/app/python`:
 
@@ -198,7 +210,7 @@ PYTHON_APP_DESTINATION = ELECTRON_APP_DIR.joinpath("python")
 ...
 
     subprocess.check_call(
-        ["uv", "run", "--", "pyoxidizer", "build", "install"], cwd=REPO_ROOT
+        ["poetry", "run", "pyoxidizer", "build", "install"], cwd=REPO_ROOT
     )
     shutil.move(PYOXIDIZER_DIST, PYTHON_APP_DESTINATION)
 ```
@@ -319,7 +331,7 @@ The actual build itself was scripted out within the
 - name: Build Binary
   if: matrix.task == 'build'
   run: |
-    uv run -- pymedphys dev build --install
+    poetry run pymedphys dev build --install
 ```
 
 > [.github/workflows/library.yml#L344-L347](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L344-L347)
@@ -328,10 +340,10 @@ To set up the CI, need to make sure that
 [Node, Yarn](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L244-L250),
 [Python](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L138-L141)
 and
-[uv](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L173-L187)
+[Poetry](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L173-L187)
 were all installed. Needed to also install PyOxidizer, which was included as
 PyMedPhys `build` dependency extras. So installation of PyOxidizer and other
-CLI dependencies were achieved with [`uv sync --extra build --extra cli`](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311).
+CLI dependencies were achieved with [`poetry install -E build -E cli`](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311).
 
 Once this build was completed within the CI, the resulting artifacts needed to
 be uploaded. That was achieved with:

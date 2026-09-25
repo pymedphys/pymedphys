@@ -1,59 +1,36 @@
-# Conda Recipe for PyMedPhys
+# Conda recipe draft
 
-This directory contains the conda recipe files needed to build PyMedPhys for conda/conda-forge.
+This directory contains an unfinished recipe, not a tested distribution path
+for the current PyMedPhys source. The GitHub Actions release workflow builds
+a wheel and source distribution with uv and Hatchling and publishes to PyPI.
+It does not build or publish this Conda recipe.
 
-## Files Overview
+For a current installation, use the
+[installation guide](https://docs.pymedphys.com/en/latest/users/get-started/quick-start.html).
+A Conda environment can still be used with pip, but this draft does not
+establish the availability or compatibility of a conda-forge package.
 
-- **meta.yaml**: The main recipe file that defines package metadata, dependencies, and build instructions
-- **build.sh**: Build script for Unix-like systems (Linux, macOS)
-- **bld.bat**: Build script for Windows
-- **conda_build_config.yaml**: Configuration for conda-build variants
+## What must be fixed before building
 
-## Building Locally
+Compare the recipe with the exact release's `pyproject.toml` and source archive:
 
-To build the conda package locally:
+- Supply a real version and SHA-256. `meta.yaml` currently falls back to
+  `0.0.0` and refers to an undefined `sha256` template variable; it does not
+  extract the version from `pyproject.toml`.
+- Replace the old Poetry backend requirement with the backend required by
+  that release. Current source uses `hatchling.build`.
+- Reconcile dependency versions and optional extras. The recipe's Streamlit
+  and other constraints do not match the current project metadata.
+- Resolve the combination of `noarch: python` and platform selectors.
+- Correct the variant configuration: the zipped Python and NumPy variant
+  lists currently have different lengths.
+- Reconcile the inline `build.script` with the separate `build.sh` and
+  `bld.bat` scripts, then validate the resulting build.
+- Repair the smoke tests. `pymedphys.gamma` is a callable rather than an
+  importable module, and the CLI has no `--version` option. Inspect the
+  version with `python -c "import pymedphys; print(pymedphys.__version__)"`.
 
-```bash
-conda build conda-recipe/
-```
-
-## Testing the Package
-
-After building, you can test the package:
-
-```bash
-conda create -n test-pymedphys python=3.11
-conda activate test-pymedphys
-conda install --use-local pymedphys
-python -c "import pymedphys; print(pymedphys.__version__)"
-```
-
-## Submitting to conda-forge
-
-To submit to conda-forge:
-
-1. Fork https://github.com/conda-forge/staged-recipes
-2. Create a new branch
-3. Copy this recipe to `recipes/pymedphys/`
-4. Create a pull request
-5. Address any feedback from conda-forge reviewers
-
-For updates to an existing feedstock:
-1. Fork https://github.com/conda-forge/pymedphys-feedstock
-2. Update the recipe files
-3. Create a pull request
-4. The conda-forge bot will help with the process
-
-## Notes on Dependencies
-
-- **pymssql**: Excluded on Windows due to build complexity
-- **pywin32**: Only included on Windows platforms
-- Some dependencies might need to be added to conda-forge if not already available
-- The recipe uses `noarch: python` since PyMedPhys is pure Python
-
-## Handling Poetry-based Projects
-
-Since PyMedPhys uses Poetry, the recipe:
-- Requires `poetry-core` as a host dependency
-- Uses pip for installation with `--no-build-isolation`
-- The version is automatically extracted from git tags or pyproject.toml
+`generate_recipe.sh` records an optional Grayskull starting point. Generated
+recipes still require review and Conda build/install testing. Use
+[conda-forge's contribution guide](https://conda-forge.org/docs/maintainer/adding_pkgs/)
+for submission or feedstock-update instructions after the recipe is working.
