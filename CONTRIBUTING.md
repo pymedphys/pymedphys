@@ -43,6 +43,24 @@ describes additional checks, conditional coverage, and troubleshooting.
 
 ## Open and review a pull request
 
+Keep each pull request small, digestible, and focused on one concern. As a
+sizing guide, aim for no more than about 400 lines of hand-written change,
+excluding tests and documentation; all files still need to be reviewable.
+Split larger work and keep generated data separate from logic where possible.
+Ship relevant tests, public API docstrings, user-facing documentation, and a
+`CHANGELOG.md` entry with the change. Explain appropriate validation for
+documentation-only changes rather than adding runtime tests for them.
+
+For a programme of changes, keep a living design document with active decisions,
+superseded history, actual PR progress, an outcome-based roadmap, and a rolling
+near-term queue. Milestones may need many small PRs; do not preallocate a fixed
+count or future PR numbers. Reconcile shared planning, user docs, and PR
+descriptions as decisions change. Tests, traceability, and conformance evidence
+belong with the implementation, even when a later milestone consolidates them.
+The [DICOM de-identification design](https://docs.pymedphys.com/en/latest/contrib/info/deidentification-design.html)
+records that programme's current plan and distinguishes planned capabilities
+from available features.
+
 Explain the problem, the change, and how you checked it. Ask a maintainer to add
 the `full-test` label when broader OS/Python coverage and integration tests are
 needed; the `database` label requests the database tests.

@@ -14,7 +14,7 @@ This project adheres to
 
 ### New features and enhancements
 
-- New documentation page, [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html), explaining de-identification, pseudonymisation, and anonymisation, what software can and cannot claim, and the known limitations of the current tools. In particular, `pymedphys.dicom.anonymise` keeps every UID; experimental pseudonymisation replaces UIDs and some numeric values with hashes computed without a secret key; and neither tool rewrites the file preamble or the Media Storage SOP Instance UID in the File Meta Information. A standards-based replacement is being developed.
+- New documentation page, [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html), explaining de-identification, pseudonymisation, and anonymisation, what software can and cannot claim, and the known limitations of the current tools. In particular, `pymedphys.dicom.anonymise` leaves identifying UIDs unchanged by default; experimental pseudonymisation replaces UIDs and some numeric values with hashes computed without a secret key; and neither tool rewrites the file preamble or the Media Storage SOP Instance UID in the File Meta Information. A standards-based replacement is planned but not yet available; this documentation change introduces no deprecation warnings or replacement presets.
 - Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
   while retaining the dose from valid beams. A missing dose file still
   aborts RTDOSE generation rather than exporting an incomplete sum.
@@ -38,9 +38,9 @@ This project adheres to
   The deprecated `pymedphys experimental pinnacle export` command calls the
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
-- **[Security]** The legacy DICOM anonymisation and experimental
-  pseudonymisation code no longer writes DICOM values or file paths to logs or
-  the terminal. Previously the `pymedphys dicom anonymise` and
+- **[Security]** Explicit application logging and progress output in legacy
+  DICOM anonymisation and experimental pseudonymisation now exclude DICOM
+  values and file paths. Previously the `pymedphys dicom anonymise` and
   `pymedphys experimental dicom pseudonymise` commands printed every input and
   output path (output file names contain the original SOP Instance UID),
   directory runs logged the path and error message of each failed file and
@@ -66,6 +66,7 @@ This project adheres to
 
 - **[Contributor facing only]** Added a living design document and decision log for the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and experimental pseudonymisation (`lib/pymedphys/docs/contrib/info/deidentification-design.md`). `CLAUDE.md` now records the maintainers' guidance that pull requests stay small and reviewable, ship their documentation, and, for de-identification code, never log DICOM values or original file paths.
 - **[Contributor facing only]** Refined the de-identification design after review: UID handling respects the selected options and identifier roles; removal and retention overrides are validated before claiming conformance; synthetic birth dates remain stable per subject; descriptor cleaning has explicit limits; confidential QC packs are separate from release reports; and numerical risk thresholds require a documented, validated assessment model.
+- **[Contributor facing only]** Harmonised the de-identification plan and related guidance: milestones contain an open-ended series of small PRs, actual PR progress is separate from the rolling queue, and superseded decisions are kept outside the active design. Clarified planned versus available behaviour, deprecation release timing, preset and release gates, and evidence that must accompany each implementation change. Contributor and legacy reference pages point to the same guidance.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation

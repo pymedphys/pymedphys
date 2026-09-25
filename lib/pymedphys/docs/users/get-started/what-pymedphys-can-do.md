@@ -70,7 +70,7 @@ script, or a clinic-specific workflow.
 ## If you want point-and-click tools
 
 PyMedPhys also includes a Streamlit-based app layer for selected workflows.
-The current stable app registry includes MetersetMap and pseudonymisation, and
+The current app registry includes MetersetMap and pseudonymisation, and
 there are additional experimental apps.
 If you want a graphical workflow rather than code, continue to
 [Choose your path](choose-your-path.md).

@@ -1,6 +1,6 @@
 # DICOM de-identification
 
-This page explains the terms PyMedPhys uses when it removes identifying information from DICOM data, what software can and cannot claim, and the known limitations of the tools currently in PyMedPhys. A replacement de-identification engine is being built; its design and progress are recorded in the [de-identification design document](../../contrib/info/deidentification-design.md).
+This page explains the terms PyMedPhys uses when it removes identifying information from DICOM data, what software can and cannot claim, and the known limitations of the tools currently in PyMedPhys. A replacement de-identification engine is planned but is not available yet; its active decisions, implementation progress, and rolling plan are recorded in the [de-identification design document](../../contrib/info/deidentification-design.md). That work will be delivered through many small pull requests, with documentation and evidence accompanying each implemented capability.
 
 ## Terms
 
@@ -37,16 +37,22 @@ Deciding whether a collection can be shared, and with whom, therefore also needs
 
 The planned public-release workflow also requires human quality control and a documented statistical risk assessment. A numerical threshold is meaningful only with its named model, assumptions, and subject-level unit of analysis; it is not an overall guarantee of anonymity. Confidential review packs may contain identifying strings or image previews missed by automated cleaning. They must remain in the restricted review environment and must not be included with released data or ordinary reports.
 
+The planned `basic`, `tps-import`, and `public-release` presets are designs, not current interfaces. Profile conformance and readiness to share a collection will be reported separately. `tps-import` will be for non-clinical databases only, and `public-release` will require the assessment and review gates above; its name will not mean that sharing is automatically approved.
+
 ## Limitations of the current PyMedPhys tools
 
 The tools currently in PyMedPhys do not implement the DICOM profile. Until the replacement engine is available, be aware of the following:
 
-- `pymedphys.dicom.anonymise` and the `pymedphys dicom anonymise` command keep every UID (Study, Series, SOP Instance, and Frame of Reference UIDs). UIDs can often be traced back to the original records by anyone with access to the source systems. The tool also replaces some reference sequences with empty items, which can break links between objects, and it does not record in the output that de-identification took place.
+- By default, `pymedphys.dicom.anonymise` and the `pymedphys dicom anonymise` command leave identifying UIDs such as Study, Series, SOP Instance, and Frame of Reference UIDs unchanged. UIDs can often be traced back to the original records by anyone with access to the source systems. The tool also replaces some reference sequences with empty items, which can break links between objects, and it does not record in the output that de-identification took place.
 - The experimental pseudonymisation module (`pymedphys.experimental.pseudonymisation` and `pymedphys experimental dicom pseudonymise`) replaces UIDs and some numeric values with hashes computed without a secret key. Anyone who holds the original UIDs can recompute the replacements and re-link records, and small-range values such as weight can be recovered by trying every plausible value. It shifts every patient's dates by the same offset, stored in the user's PyMedPhys configuration, and it can fail on names containing non-ASCII characters.
 - Neither tool rewrites the DICOM file preamble or the Media Storage SOP Instance UID in the File Meta Information, so the original SOP Instance UID can remain in every output file.
 - Neither tool detects burned-in text or recognisable faces.
 
 Review any output from these tools carefully before sharing it outside your organisation.
+
+## Planned transition
+
+This documentation does not introduce deprecation warnings or remove an API. Early work will add warnings and a security note for experimental pseudonymisation, including its CLI and app entry points. The stable `anonymise` API and command will start their warning period when usable replacements and migration guidance ship. They will remain for one full minor release with those warnings; removal of both legacy paths is planned for a subsequent minor release. Exact versions will be recorded in the release notes when scheduled, following D-009 in the design document. Legacy hygiene fixes do not make the current tools conform to the planned profile.
 
 ## Further reading
 

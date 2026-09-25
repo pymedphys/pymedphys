@@ -1,6 +1,8 @@
 # DICOM de-identification: design and decision log
 
-This is a living document. It records the design of the DICOM de-identification engine that replaces `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, the decisions taken and why, and the state of implementation. Every pull request that touches de-identification updates it: its own Progress entry, the decision log where a decision is taken or revised, and the "Open questions and next pull request" section when the programme-level plan changes.
+This is the living source of truth for the planned DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and the experimental pseudonymisation module. It records the intended behaviour, decisions and their rationale, implementation progress, and remaining work. The architecture and presets describe the target, not capabilities available today. Every de-identification pull request updates its own progress entry and any affected decisions, roadmap dependencies, open questions, or user documentation.
+
+The programme will require many small, single-concern pull requests. There is no fixed total or preallocated PR sequence. Milestones group related outcomes; each contains as many reviewable PRs as needed. The near-term queue is only the next slice of work, not the whole programme (D-015 and D-022).
 
 For the user-facing explanation of terms and current limitations, see [DICOM de-identification](../../users/background/dicom-deidentification.md).
 
@@ -9,24 +11,17 @@ For the user-facing explanation of terms and current limitations, see [DICOM de-
 | Item | State |
 | --- | --- |
 | Design | Agreed with maintainers; refined per pull request |
-| Implementation | Not started (milestone M0 in progress) |
+| Legacy hygiene | M0 documentation and diagnostic fixes under review; see Progress |
+| Replacement engine | Not implemented or available; architecture and presets below are planned |
 | DICOM edition targeted | PS3.15 2026d |
 
 ## Progress
 
-One entry per pull request. Each pull request updates only its own entry, so that pull requests developed in parallel do not conflict here.
+Record actual opened or merged PRs here, using their GitHub numbers, scope, status, validation, and remaining limitations. Future work belongs in the roadmap and near-term queue. Each PR maintains its own entry to reduce conflicts; it must also reconcile shared decisions and planning where its findings change them. Update merge status when reconciling the next PR; "open" is not evidence of a shipped feature.
 
-- **PR 01.** Design document, contributor principles, and background page; review corrections recorded in D-016 to D-021. Open as [pymedphys/pymedphys#2061](https://github.com/pymedphys/pymedphys/pull/2061).
+- **[#2061](https://github.com/pymedphys/pymedphys/pull/2061), M0 design and documentation.** Open. Establishes this design, contributor principles, and user guidance. D-016 to D-021 record the technical review corrections; D-022 records the rolling plan and consistency rules. Documentation checks cover links and a Sphinx build with warnings treated as errors and notebook execution disabled. No replacement engine or deprecation warnings are implemented here.
 
-- **PR 02.** Stop legacy de-identification code logging identifying values and original paths. In review. The legacy `anonymise` and experimental `pseudonymise` code, their commands, and the pseudonymisation Streamlit app no longer write values, input paths, or output paths to logs or standard output; the commands print a file count, and failures are logged by file number and exception type. Canary tests capture log records at DEBUG level and both standard streams. Residual risks, accepted because the code is deprecated and D-020 applies to the new engine: exceptions are re-raised unchanged, so an `OSError` message can contain a path; and pydicom's own value-validation warnings are not intercepted.
-
-- **PR 03.** Deprecate experimental pseudonymisation, with a security note. Not started.
-
-- **PR 04.** Require pydicom 3.0 or later. Not started.
-
-- **PR 05.** Bind the Streamlit GUI to localhost and disable usage statistics. Not started.
-
-- **PR 06.** Add Hypothesis for property tests. Rescheduled to open immediately before its first user, PR 14, so that no unused dependency lands early.
+- **[#2062](https://github.com/pymedphys/pymedphys/pull/2062), M0 legacy diagnostics.** Open, based on #2061. Removes identifying values and paths from explicit application logging and progress output, with capture tests. Eight canary tests capture DEBUG logs and both standard streams; the PR reports them passing alongside pre-commit, type/lint checks, and an app-render check. The existing download-dependent tests were blocked locally by Zenodo access and rely on CI. Re-raised exceptions and pydicom value-validation warnings remain separate disclosure channels, tracked in the near-term queue. This is a partial implementation of D-020, not a deprecation change or a claim that every diagnostic channel is sanitised.
 
 ## Scope
 
@@ -64,27 +59,27 @@ Wording rules for code, command-line output, reports, and documentation:
 | Validation resources | NCI MIDI synthetic identifier datasets, answer keys, and validation scripts; `dciodvfy` and `dcentvfy` from dicom3tools for object validity and cross-object consistency (validity only, not privacy) |
 | Governance context (documentation only) | UK ICO anonymisation guidance; GDPR Article 4(5) and Recital 26; CJEU C-413/23 P *EDPS v SRB* (4 September 2025); Privacy Act 1988 (Cth) and OAIC de-identification guidance; ISO 25237:2017 (pseudonymisation) |
 
-The rules applied by the engine are generated from the pinned edition of the standard, never transcribed by hand. The MIDI report's best practices are recorded as requirements alongside the standard's "shall" statements, so that every requirement can be traced to the code that implements it and the tests that check it.
+The normative standard tables (rule layer L1) are generated from the pinned edition, never transcribed or edited by hand. Reviewed supplementary rules (L2) and validated user rules (L3) are maintained separately with their rationale; they are not claimed to come from the generated tables. The MIDI report's best practices are recorded as requirements alongside the standard's "shall" statements, so that every requirement can be traced to the code that implements it and the tests that check it. The browsing links above may follow the current edition; generator inputs must use the pinned publication and verified digests (D-002 and D-005).
 
 ## Why the existing tools are replaced
 
-Both existing paths share one engine in `lib/pymedphys/_dicom/anonymise/` and have defects that cannot be fixed without redesign:
+Both existing paths share one engine in `lib/pymedphys/_dicom/anonymise/`. Targeted hygiene fixes can reduce immediate disclosure, but profile conformance and collection-level guarantees require the planned replacement. The limitations motivating this work include:
 
-- `pymedphys.dicom.anonymise` keeps every UID, replaces reference sequences such as Referenced Image Sequence with an empty item (breaking references), writes invalid values (Patient's Sex `ANON`), never records that de-identification took place, and does not implement a PS3.15 profile. Its keyword list derives from an old edition of Table E.1-1 of about 220 rows; edition 2026d has 657.
+- By default, `pymedphys.dicom.anonymise` leaves identifying UIDs such as Study, Series, SOP Instance, and Frame of Reference UIDs unchanged. It replaces reference sequences such as Referenced Image Sequence with an empty item (breaking references), writes invalid values (Patient's Sex `ANON`), never records that de-identification took place, and does not implement a PS3.15 profile. Its keyword list derives from an old edition of Table E.1-1 of about 220 rows; edition 2026d has 657.
 - The experimental pseudonymisation module hashes UIDs and decimal strings without a secret, so anyone holding the original UIDs can re-link records and small-range values such as weight can be recovered by trying every plausible value. It jitters ages non-deterministically, applies one date offset to every patient on an installation, fails on non-ASCII names, maps Dose Reference UID but not Referenced Dose Reference UID (breaking the RT Plan to treatment record link), and misses most enhanced RT UIDs.
-- Both write the original SOP Instance UID and the original 128-byte preamble back into every output file. pydicom 3 only re-synchronises the File Meta Information when `enforce_file_format=True`, which the existing code does not pass.
-- Error handling logs original values, and file handling prints original paths.
+- Neither explicitly rebuilds the file preamble or File Meta Information. If present in the input, the original Media Storage SOP Instance UID and preamble can survive writing, including after pseudonymisation changes the dataset's SOP Instance UID.
+- Legacy diagnostics can expose original values and paths. Progress records the application logging/output fixes and remaining exception and dependency-warning channels; a partial hygiene fix does not complete D-020.
 
 ## Architecture
 
-The package will live in `lib/pymedphys/_dicom/deidentify/` with the public API exposed from `pymedphys.dicom`. The main parts, in the order they will be implemented:
+The package will live in `lib/pymedphys/_dicom/deidentify/` with the public API exposed from `pymedphys.dicom`. The following is a component map, not a PR sequence. The roadmap records dependencies and delivery gates. The scope above is the target coverage; each implementation PR must state which IODs, options, and inputs it supports and reject or sequester unsupported cases without a conformance claim.
 
 1. **Generated standard tables (rule layer L1).** Table E.1-1 with every option column, Tables E.1-1a, E.3.4-1, and E.3.10-1, CID 7050, well-known UIDs, the VR and VM of every Table E.1-1 attribute, and attribute Types for supported IODs. A development command regenerates them from the standard and records the edition, the source file digest, and a content digest.
 2. **Supplementary rules (rule layer L2).** Reviewed rules, each with a rationale, for attributes the table does not list but that the de-identifier is still responsible for: dates, times, and person names by value representation; operator-entered RT text outside the table such as Beam Name and Dose Comment; RT Image machine names; and UID roles including SOP classes, transfer syntaxes, coding schemes, context groups, devices, and instance identities/references. A test fails if the dictionary contains an attribute in one of these categories with no rule. UI value representation alone does not determine the action (D-016).
 3. **User rules (rule layer L3).** Options are the primary configuration. Validate both removal and retention overrides against the IOD and effective profile/options before writing. Reject invalid IOD changes; changes incompatible with the selected options require an explicitly revised policy or acknowledged nonconformant processing with no unsupported claims (D-017).
 4. **UID engine.** Resolve the effective action from L1, L2, and validated L3 rules before transforming a UID. Values selected for replacement use the same keyed HMAC-SHA256 function everywhere replacement is required, including nested references, File Meta Information, and retained private elements. Format replacements as version 8 UUIDs in `2.25.` UIDs of at most 44 characters. Retain UIDs when the effective action requires retention; apply reviewed semantic rules to vocabulary and other non-instance identifiers (D-016).
 5. **Keys.** A 256-bit key is either ephemeral (discarded after the run, so links hold within the run only) or a project key held by a custodian (links hold across runs, as incremental RT collections need). Derivations for UIDs, identifiers, and date offsets are domain-separated. Keys are never logged or written into outputs.
-6. **Temporal handling.** Removal (Basic Profile), full retention, or per-subject whole-day shifts that keep times, intervals, and optionally the weekday. Dates found inside free text are removed rather than shifted. Any synthetic birth date is a single subject-level value reused across studies and incremental runs from a custodian-controlled subject profile (D-018).
+6. **Temporal handling.** Apply the Basic Profile's removal, empty-value, or dummy-value actions as required by the attribute and IOD; selected temporal options permit full retention or per-subject whole-day shifts that keep times, intervals, and optionally the weekday. Dates found inside free text are removed rather than shifted. Any synthetic birth date is a single subject-level value reused across studies and incremental runs from a custodian-controlled subject profile (D-018).
 7. **Free text.** A vocabulary-based cleaner is the initial implementation choice, not a prerequisite imposed by the Clean Descriptors Option. Combine it with checks for echoes of known patient and other person identifiers, contextual handling of ambiguous words, value checks on code and numeric strings, and pooled human review of retained strings in the confidential QC pack (D-019 and D-020).
 8. **Private attributes.** Removed by default. With the Retain Safe Private Option, retained only when shown to be safe by the routes E.3.10 allows, matched by private creator regardless of block, with the basis for each retained element recorded.
 9. **Container.** File Meta Information and preamble rebuilt, group 0004 and trailing padding removed, encapsulated documents replaced or sequestered, and metadata inside compressed pixel data bitstreams stripped without recompression.
@@ -92,39 +87,33 @@ The package will live in `lib/pymedphys/_dicom/deidentify/` with the public API 
 11. **Risk detection and quality control.** Risk indicators for burned-in text and potentially reconstructable faces (including RT Structure Set body contours of head and neck cases), sequestration of object types that cannot be cleaned, a confidential human review pack, and statistical disclosure control support with an explicitly selected and validated assessment model (D-020 and D-021).
 12. **Reports.** A machine-readable and human-readable release report per run, a conformance statement generated from the rule tables and effective policy, and a traceability matrix from requirements to tests. Release reports exclude source values and original paths and are separate from confidential QC artifacts and custodian-controlled state (D-020).
 
-## Presets
+## Planned presets
 
-| Preset | Purpose | Options claimed |
+| Preset | Intended use | Intended profile and options |
 | --- | --- | --- |
-| `basic` (default) | Strict conformance to the Basic Profile | Basic Profile only |
+| `basic` (default) | Baseline attribute transformation | Basic Profile only |
 | `tps-import` | Research copies that import into commercial treatment planning systems | Basic Profile, Retain Longitudinal Temporal Information with Modified Dates, Retain Patient Characteristics, Retain Device Identity, Clean Descriptors |
-| `public-release` | Unrestricted public sharing, following the MIDI best practices | Basic Profile, Retain Longitudinal Temporal Information with Modified Dates, Clean Descriptors, Retain Safe Private |
+| `public-release` | Prepare a collection for assessment for unrestricted public sharing | Basic Profile, Retain Longitudinal Temporal Information with Modified Dates, Clean Descriptors, Retain Safe Private |
 
-The table describes the intended conformant configuration of each preset. Validate the effective rules and output before emitting any claim. Overrides cannot silently change the option set; revised policies need explicit selection and validation, and nonconformant processing cannot inherit the preset's claims (D-017). Details of each preset are recorded in the decision log as they are implemented.
+These presets are not available yet. M2 defines and tests their policy composition; M3 and M4 supply the transformation and collection-level checks required to use them. Enable a preset only when its required behaviour is implemented and validated for the documented input scope. Validate the effective rules and output before emitting any claim. Overrides cannot silently change the option set; revised policies need explicit selection and validation, and nonconformant processing cannot inherit the preset's claims (D-017).
+
+Profile conformance and release readiness are separate results. `basic` does not authorise sharing, `tps-import` is restricted to non-clinical databases (D-018), and `public-release` additionally requires statistical assessment, pixel/face risk review, and human QC attestation (D-020 and D-021). No preset name or technical conformance claim establishes legal anonymity.
 
 ## Decision log
 
-Entries are numbered and never deleted. A superseded decision is marked as such and points to its replacement.
+The entries below are the active design decisions, not statements that the code already implements them. Decision identifiers are stable and never reused. Superseded entries are preserved in the Historical decisions section below, outside the active design: D-003 is replaced by D-016, D-006 by D-018, and D-007 by D-021. When a decision changes, reconcile the architecture, presets, roadmap, contributor guidance, user documentation, and affected PR descriptions in the same change.
 
 ### D-001: One engine, called de-identification
 
-- **Context.** Anonymisation and pseudonymisation were implemented as separate features with separate defects, and "anonymised" implies a legal status the software cannot establish.
+- **Context.** The current anonymisation and pseudonymisation interfaces share legacy transformation code but expose different strategies and defects. "Anonymised" implies a legal status the software cannot establish.
 - **Decision.** One engine. Re-identification capability is a property of key custody, not a different transformation. The wording rules above apply everywhere.
-- **Consequences.** The legacy API names are deprecated. Documentation explains key custody and recipient context instead of promising anonymity.
+- **Consequences.** The legacy API names will be deprecated and removed according to D-009. This design PR does not change their runtime status. Documentation explains key custody and recipient context instead of promising anonymity.
 
 ### D-002: Rules generated from a pinned edition of the standard
 
 - **Context.** The legacy keyword list was transcribed from an old edition and drifted. The standard is revised about five times a year.
-- **Decision.** Generate all rule tables from the pinned edition (currently 2026d). Record provenance. Check monthly for a new edition and open an issue when the generated tables would change.
+- **Decision.** Generate normative standard tables (L1) from the pinned edition (currently 2026d). Record provenance; keep supplementary and user rules (L2 and L3) distinct. Add a monthly edition check with the generator workflow and open an issue when the generated tables would change.
 - **Consequences.** Table changes arrive as reviewable generated diffs. Hand edits to generated files are never accepted.
-
-### D-003: UIDs mapped by value with a keyed function
-
-**Superseded by D-016.** The original decision below is retained for history and must not guide implementation.
-
-- **Context.** Table E.1-1 does not list every instance UID attribute (for example Target Frame of Reference UID), so mapping only listed attributes would leak original UIDs and break references. Unkeyed hashing lets anyone with the original UIDs re-link. A shared lookup table is fragile under parallel processing and cannot be reproduced later.
-- **Decision.** Replace every non-class, non-well-known UID value with HMAC-SHA256 under the run's key, formatted as a version 8 UUID in a `2.25.` UID. An organisation root under the PyMedPhys root UID is available as an option for systems that cannot handle long numeric components.
-- **Consequences.** Links survive regardless of which attributes the table lists. Output is deterministic for a given key and independent of the number of worker processes. Replacement UIDs contain no timestamp.
 
 ### D-004: pydicom 3.0 as the minimum version
 
@@ -138,33 +127,17 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 - **Decision.** Use `html.parser` and `xml.etree.ElementTree`. Verify the source file's SHA-256 before parsing, and justify each `nosec` comment as the security policy requires.
 - **Consequences.** No new dependency. The parser only ever sees verified publications, in a development-only tool.
 
-### D-006: Treatment planning system import defaults
-
-**Superseded by D-018.** The original decision below is retained for history and must not guide implementation.
-
-- **Context.** Commercial planning systems may reject empty identifiers, invalid values, or future-dated plans.
-- **Decision.** For `tps-import`: shift dates backwards only, by a whole number of weeks between 52 and 520, never zero, preserving the weekday. Generate conspicuously synthetic names and identifiers (for example `ZZRESEARCH^...`). Write a synthetic birth date derived from the shifted study date and the patient's age at year precision, with an option to leave it empty.
-- **Consequences.** Imported research copies are recognisable as such and date intervals such as fractionation patterns are preserved. The synthetic birth date reveals no more than the retained age. The documentation requires import into non-clinical databases only.
-
-### D-007: Public release defaults
-
-**Superseded by D-021.** The original decision below is retained for history and must not guide implementation.
-
-- **Context.** The MIDI report recommends a quantified risk threshold, human quality control, and caution with potentially reconstructable faces.
-- **Decision.** For `public-release`: statistical disclosure control threshold 0.09 by default (0.05 selectable); human review of every distinct retained string, every series (by maximum intensity projection or cine strip), and every instance in high-risk categories; potentially reconstructable facial information is a hard block unless a risk assessment reference is recorded; a human quality control attestation is required before a run can be marked ready for release.
-- **Consequences.** Public release requires deliberate human involvement, as the MIDI report and NCI evaluation results indicate it should.
-
 ### D-008: UID root
 
 - **Decision.** `2.25.` UIDs derived from version 8 UUIDs by default; the organisation root is opt-in. See D-016 for which values are replaced.
 
 ### D-009: Deprecation window
 
-- **Decision.** `pymedphys.dicom.anonymise` and the `pymedphys dicom anonymise` command remain for one minor release with a deprecation warning, then are removed. The experimental pseudonymisation module is deprecated immediately, with a security note, and removed in the same release.
+- **Decision.** Introduce experimental pseudonymisation deprecation warnings and a security note in M0, including its CLI and app entry points. "Immediately" means this early implementation work, not that the documentation PR has already deprecated or removed anything. Introduce warnings for `pymedphys.dicom.anonymise` and `pymedphys dicom anonymise` when usable replacements and migration guidance ship in M5. Keep these stable legacy interfaces for one full minor release with those warnings, then remove them and the experimental pseudonymisation entry points together in a subsequent minor release (M7). Here "the same release" means the common removal release, not the release that first warns about experimental pseudonymisation. Record exact versions when the implementation PRs schedule them.
 
 ### D-010: Published benchmark results
 
-- **Decision.** Results against the NCI MIDI validation resources are published in the documentation for each release, as separate metrics rather than a single score.
+- **Decision.** Publish results against the NCI MIDI validation resources for each release of the replacement engine, as separate metrics rather than a single score, with versions and supported coverage recorded. Add tests and traceability with each implementation PR; M6 consolidates and publishes that evidence before the first supported replacement release. Intermediate documentation or hygiene releases do not claim replacement-engine results.
 
 ### D-011: Private SOP Classes
 
@@ -183,12 +156,12 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 
 ### D-014: Pixel data protections are detect and warn
 
-- **Decision.** The engine detects and reports risk from burned-in text and recognisable features, never claims the Clean Pixel Data or Clean Recognizable Visual Features Options, and never sets Burned In Annotation or Recognizable Visual Features to NO. Optical character recognition and defacing may be added later as optional plugins.
+- **Decision.** The engine detects indicators of risk from burned-in text and recognisable features and reports them for review; absence of an indicator is not proof of absence. It never claims the Clean Pixel Data or Clean Recognizable Visual Features Options and never sets Burned In Annotation or Recognizable Visual Features to NO. Reporting a risk does not waive the `public-release` gates in D-021. Optical character recognition and defacing may be added later as optional plugins.
 
 ### D-015: Small pull requests with documentation
 
 - **Context.** Maintainers review this work by hand.
-- **Decision.** Each pull request has a single concern and about 400 lines of hand-written change at most, excluding tests and documentation. Generated data is kept separate from logic. Every pull request includes docstrings, user documentation for user-visible changes, a changelog entry, and an update to this document.
+- **Decision.** Each pull request has a single concern. As a sizing guide, aim for no more than about 400 lines of hand-written change, excluding tests and documentation; reviewability still matters for all files. Split work that grows beyond a digestible review. Keep generated data separate from hand-written logic where possible. Ship relevant tests and evidence, docstrings for new or changed public APIs and CLI options, user documentation for user-visible changes, a changelog entry, and an update to this document with the change. Documentation-only PRs do not need invented runtime tests or docstrings. Milestones and queue entries may split into further PRs (D-022).
 
 ### D-016: Resolve UID actions before mapping values
 
@@ -212,7 +185,7 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 ### D-019: Descriptor cleaning is an implementation choice
 
 - **Context.** [PS3.15 E.3.5](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.5.html) specifies the information to remove, not one mandatory cleaning algorithm. A vocabulary can include words that are also names, such as "Hand".
-- **Decision.** Start with a vocabulary-based cleaner, with context-aware checks and checks against known patient and other person identifiers. Treat unresolved ambiguous text conservatively by removing it or holding the affected output for confidential review. A token's presence in a vocabulary is not evidence that its use is safe. Other validated cleaning methods, including removing optional descriptors, may satisfy the option; document the method and limits in the conformance statement and preserve IOD validity.
+- **Decision.** Start with a vocabulary-based cleaner, with context-aware checks and checks against known patient and other person identifiers. Treat unresolved ambiguous text conservatively: remove optional attributes, use permitted empty or dummy values for required attributes, or hold the affected output for confidential review, subject to D-017. A token's presence in a vocabulary is not evidence that its use is safe. Other validated cleaning methods, including removing optional descriptors, may satisfy the option; document the method and limits in the conformance statement and preserve IOD validity.
 - **Validation.** Include names overlapping anatomical terms, clinician names, mixed descriptive/identifying text, non-English text, and missing source identifiers. Require human review of retained strings; do not claim that vocabulary matching alone establishes conformance.
 
 ### D-020: Confidential QC artifacts are separate from release reports
@@ -229,23 +202,72 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 - **Human review.** Retain review of every distinct retained string, every series (by maximum intensity projection or cine strip), and every instance in high-risk categories. Potentially reconstructable facial information remains a hard block unless a risk assessment reference is recorded. A human QC attestation is required before marking a run ready for release; confidential review artifacts follow D-020.
 - **Validation.** Test subject-versus-instance counts, longitudinal and prior-release linkage, missing model/assumptions/coverage, threshold boundaries, failed or stale assessments, and separation of statistical, pixel/face, and human-review gates. Select and validate the initial estimator before enabling an automated SDC gate in M4.
 
+### D-022: Rolling plan and consistent documentation
+
+- **Context.** A short progress list and fixed future PR ranges suggested competing programme sizes and forced unrelated work into a predetermined sequence. A late evidence milestone also obscured the requirement to ship documentation and tests with each change.
+- **Decision.** Keep stable milestone and decision identifiers, but identify actual PRs by their GitHub numbers. Maintain an outcome-based roadmap, a rolling near-term queue, and a separate progress record. Neither milestone rows nor queue entries are PR-sized commitments; split them whenever necessary to satisfy D-015. Introduce dependencies when their first verified consumer needs them, not to fill an earlier numbered slot. Review shared planning at the start and end of each PR and reconcile all affected documentation and PR descriptions. Record what is planned, under review, merged, or released explicitly.
+- **Consequences.** No fixed PR count or speculative PR numbering. Independent work may proceed concurrently when dependencies permit; declare stacked branches and update them after changes to their base. Tests, user guidance, requirements traceability, and conformance evidence grow with the implementation. M6 is their release-level consolidation, not permission to defer them.
+
 ## Implementation roadmap
 
-| Milestone | Pull requests | Content |
+These milestones describe outcomes and dependencies, not a fixed sequence of PRs or releases. Expect many small PRs within each milestone, and more as review exposes additional work. M0 hygiene can continue alongside the replacement; M1 to M5 describe increasing capabilities with dependencies between individual tasks. M6 evidence work runs throughout M1 to M5 and is a gate for the first supported replacement release. M7 removal also has the release-timing constraint in D-009.
+
+| Milestone | Work to split into single-concern PRs | Dependencies and completion evidence |
 | --- | --- | --- |
-| M0 Hygiene | 01 to 05 | This document and contributor principles; stop legacy code logging identifying values; deprecate experimental pseudonymisation with a security note; pydicom 3.0 minimum; bind the GUI to localhost |
-| M1 Standard | 07 to 13 | Table parser and generator command; generated Annex E tables; data dictionary, code, and attribute Type tables; requirements register |
-| M2 Primitives | 06, 14 to 20 | Hypothesis for property tests (PR 06, opened just before PR 14); keys, UIDs, value representation validators and dummy values, dates, selectors and actions, policy and presets, supplementary rules |
-| M3 Engine | 21 to 28 | Dataset transformation, File Meta Information, private attributes, text cleaning, bitstream metadata, public dataset-level API |
-| M4 Pipeline | 29 to 37 | File discovery and writing, reference graph, two-pass pipeline with verification, reports, risk detection, review pack, disclosure control, presets |
-| M5 Interfaces | 38 to 42 | Command-line interface, legacy deprecation, Streamlit application |
-| M6 Evidence | 43 to 46 | How-to guide, generated conformance statement, traceability matrix, evidence workflow with published benchmark results |
-| M7 Later | | Remove legacy APIs; Clean Structured Content; de-identification of accompanying spreadsheets with the same key; Encrypted Attributes Sequence for controlled sharing |
+| M0 Hygiene | Design and current-tool guidance; explicit legacy logging/output fixes; remaining exception and warning disclosure channels; experimental deprecation warnings and security note; pydicom 3.0 minimum; GUI localhost binding and disabled usage statistics | Each change has its own regression checks and docs. Track partial fixes and residual risks explicitly; hygiene does not establish profile conformance. |
+| M1 Standard | Pinned-source parsing and generator command; generated Annex E tables; dictionary, method codes, well-known UIDs, and attribute Types; requirements register and edition-check workflow | Verify source provenance and generated-table coverage. Keep generator logic and generated data reviewable separately. Start traceability with the first implemented requirement. |
+| M2 Primitives | Keys and domain separation; UID mapping; VR/VM validators and dummy values; dates and subject profiles; selectors and actions; supplementary rules and validated policy/preset composition | Use the relevant M1 tables and requirements. Add Hypothesis with, or immediately before, the first property tests that use it. Validate primitives and policy conflicts before integration. |
+| M3 Engine | Dataset transformation; File Meta Information and preamble; private attributes; descriptor cleaning; bitstream metadata; dataset-level API | Integrate tested M1/M2 components for explicitly supported inputs. Ship tests, API docs, and conformance evidence per component. A dataset-level API does not establish collection-level integrity or release readiness. |
+| M4 Pipeline | Discovery and writing; reference graph; two-pass collection verification; sanitised reports; risk detection; restricted QC pack and attestation; statistical assessment integration; end-to-end preset validation | Requires the relevant M3 transformations. Verify graph and subject consistency, report/QC/state separation, and all preset gates. D-021 permits validated external assessment evidence; an automated estimator needs separate validation before activation. |
+| M5 Interfaces and migration | CLI and Streamlit interfaces to the same engine; migration guides; stable legacy deprecation warnings | Expose only supported behaviour with the corresponding M3/M4 checks and user docs. Replacement availability is subject to M6 evidence; start the stable deprecation window only when replacements and migration guidance ship. |
+| M6 Release evidence | Consolidate the how-to guide, generated conformance statement, requirements-to-tests matrix, and reproducible benchmark publication workflow | Develop these with M1 to M5. Before the first supported replacement release, publish evidence for the shipped coverage and document exclusions; refresh it for each subsequent engine release (D-010). |
+| M7 Later work | Remove legacy interfaces after the deprecation window; separately consider Clean Structured Content, accompanying spreadsheets using the same key, and Encrypted Attributes Sequence for controlled sharing | Removal follows D-009. Other extensions require their own design, tests, and conformance review; generating a standard table in M1 does not enable the corresponding option. |
 
-## Open questions and next pull request
+## Near-term queue and open questions
 
-- **Next: PRs 02 to 05.** They are independent of each other and are developed in parallel on separate branches based on PR 01; see the Progress section. After M0, the next pull request is PR 07, the Annex E table parser.
-- **Review incorporated:** D-016 to D-021 resolve UID policy, override validation and claims, stable synthetic birth dates, descriptor-cleaning limits, confidential QC artifacts, and model-bound risk thresholds. Their validation cases are requirements for the relevant implementation PRs; this PR remains documentation only.
-- **Before M4:** select and validate the initial automated statistical risk estimator and its supported assumptions. Until then, the public-release SDC gate requires a complete documented external assessment meeting D-021; absence of an estimator or evidence cannot be treated as a pass.
-- **Open:** confirm the licence terms of the AAPM TG-263 structure name list before vendoring it as part of the vocabulary cleaner (needed by PR 25).
-- **Open:** confirm the licence terms of the TCIA synthetic identifier datasets before caching them for slow tests (needed by PR 31).
+This is a rolling planning horizon, not a complete backlog or a promise of one PR per row. Re-scope each item before opening a PR; add its actual GitHub link to Progress once opened. Independent items may use separate branches, but parallel work is optional and must account for shared files and semantic dependencies. Use `main` for independent work once prerequisites merge; identify the base PR explicitly for stacked work.
+
+| Next work | Status and dependency |
+| --- | --- |
+| Legacy application logging and progress output | Under review in #2062, based on #2061. Preserve its focused scope and capture-test coverage. |
+| Remaining legacy diagnostic disclosure | Planned follow-up to #2062: scope sanitisation of re-raised exceptions and dependency warnings into reviewable changes, with compatibility decisions and capture tests. Keep these residual risks visible until addressed; D-020 is the target, not a claim that the initial fix covers all channels. |
+| Experimental pseudonymisation warnings and security note | Planned M0 work under D-009. Cover library, CLI, and app guidance; removal is a later, separate change. |
+| pydicom 3.0 minimum | Planned M0 dependency change under D-004, with regenerated dependency files and compatibility checks. |
+| GUI localhost binding and usage statistics | Planned M0 change, with configuration tests and documentation of access defaults. |
+| First standard parser and provenance checks | First M1 implementation slice; depends on the agreed pinned inputs and generator approach (D-002 and D-005), not completion of unrelated M0 hygiene. Split remaining tables and generator features into subsequent PRs. |
+| Hypothesis and its first property tests | Deferred until the first M2 consumer is ready. Add it with that consumer or a directly preceding, verified prerequisite; do not land an unused dependency early. |
+
+Open questions are tied to capabilities, not guessed future PR numbers:
+
+- **Automated risk estimation:** select and validate the model and supported assumptions before enabling an automated M4 statistical disclosure control (SDC) gate. Until then, a public-release workflow needs a complete documented external assessment meeting D-021. Missing, failed, or stale evidence cannot pass.
+- **Vocabulary licensing:** confirm the AAPM TG-263 structure-name licence before vendoring it for the M3 descriptor cleaner.
+- **Benchmark licensing:** confirm the TCIA/NCI MIDI synthetic-identifier dataset and answer-key licences before vendoring or caching them for tests. Plan these checks with M1 requirements and the first benchmark tests, not only at M6 publication.
+- **Release versions:** record the experimental warning release, the supported replacement/stable warning release, and the common legacy removal release when scheduled under D-009. No version or deprecation is introduced by this documentation PR.
+
+## Historical decisions
+
+These entries are retained verbatim for traceability. They are superseded and must not guide implementation or claims; use the replacement decision identified at the start of each entry.
+
+### D-003: UIDs mapped by value with a keyed function
+
+**Superseded by D-016.** The original decision below is retained for history and must not guide implementation.
+
+- **Context.** Table E.1-1 does not list every instance UID attribute (for example Target Frame of Reference UID), so mapping only listed attributes would leak original UIDs and break references. Unkeyed hashing lets anyone with the original UIDs re-link. A shared lookup table is fragile under parallel processing and cannot be reproduced later.
+- **Decision.** Replace every non-class, non-well-known UID value with HMAC-SHA256 under the run's key, formatted as a version 8 UUID in a `2.25.` UID. An organisation root under the PyMedPhys root UID is available as an option for systems that cannot handle long numeric components.
+- **Consequences.** Links survive regardless of which attributes the table lists. Output is deterministic for a given key and independent of the number of worker processes. Replacement UIDs contain no timestamp.
+
+### D-006: Treatment planning system import defaults
+
+**Superseded by D-018.** The original decision below is retained for history and must not guide implementation.
+
+- **Context.** Commercial planning systems may reject empty identifiers, invalid values, or future-dated plans.
+- **Decision.** For `tps-import`: shift dates backwards only, by a whole number of weeks between 52 and 520, never zero, preserving the weekday. Generate conspicuously synthetic names and identifiers (for example `ZZRESEARCH^...`). Write a synthetic birth date derived from the shifted study date and the patient's age at year precision, with an option to leave it empty.
+- **Consequences.** Imported research copies are recognisable as such and date intervals such as fractionation patterns are preserved. The synthetic birth date reveals no more than the retained age. The documentation requires import into non-clinical databases only.
+
+### D-007: Public release defaults
+
+**Superseded by D-021.** The original decision below is retained for history and must not guide implementation.
+
+- **Context.** The MIDI report recommends a quantified risk threshold, human quality control, and caution with potentially reconstructable faces.
+- **Decision.** For `public-release`: statistical disclosure control threshold 0.09 by default (0.05 selectable); human review of every distinct retained string, every series (by maximum intensity projection or cine strip), and every instance in high-risk categories; potentially reconstructable facial information is a hard block unless a risk assessment reference is recorded; a human quality control attestation is required before a run can be marked ready for release.
+- **Consequences.** Public release requires deliberate human involvement, as the MIDI report and NCI evaluation results indicate it should.
