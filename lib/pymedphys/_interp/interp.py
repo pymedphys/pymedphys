@@ -352,6 +352,20 @@ def interp_linear_scipy(
 
 
 # pylint: disable=invalid-name
+def _check_axes_structure(axes_known):
+    for i, axis in enumerate(axes_known):
+        axis = np.asarray(axis)
+        if axis.size < 2:
+            raise ValueError(
+                f"axes_known[{i}] must have at least two points to interpolate"
+            )
+        diff = np.diff(axis)
+        if not np.all(diff > 0):
+            raise ValueError(f"axes_known[{i}] must be strictly ascending")
+        if not np.allclose(diff, diff[0]):
+            raise ValueError(f"axes_known[{i}] must be evenly spaced")
+
+
 def interp(
     axes_known: Sequence["np.ndarray"],
     values: "np.ndarray",
@@ -434,16 +448,10 @@ def interp(
             axes_known, values, points_interp, bounds_error
         )
 
-        axes_known_diffs = [np.diff(axis) for axis in axes_known]
-
-        # Handle ascending vs. descending vs. bad order.
-        for i, diff in enumerate(axes_known_diffs):
-            if not np.all(diff > 0):
-                raise ValueError(
-                    f"axes_known[{i}] is not monotonically ascending or descending"
-                )
-            if not np.allclose(diff, diff[0]):
-                raise ValueError(f"axis_known[{i}] must be evenly spaced")
+    # Always checked, even with skip_checks: it is O(n) per axis, and the
+    # kernels assume it, silently returning fill values or wrong weights
+    # (or reading out of bounds) when it does not hold.
+    _check_axes_structure(axes_known)
 
     if extrap_fill_value is None:
         extrap_fill_value = np.nan

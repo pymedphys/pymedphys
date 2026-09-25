@@ -38,6 +38,24 @@ This project adheres to
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
 
+- **DICOM coordinates were wrong for every orientation except head first
+  supine.** `pymedphys.dicom` coordinate extraction negated any axis the
+  scanner stored in descending order: x for head first prone, feet first
+  supine, and both decubitus right orientations; y for both prone orientations,
+  head first decubitus left, and feet first decubitus right; and z for all
+  feet first orientations. On a uniform grid this amounts to
+  shifting that axis by `(n - 1) * spacing - 2 * position`, so a comparison
+  between two datasets with identical grids was unaffected, but grids with
+  different extents or positions, such as a treatment planning system dose
+  against a Monte Carlo dose or a cropped dose, were misregistered. Gamma on
+  such data was also liable to fail inside numba, and feet first z values did
+  not match structure contours. Axes now follow the voxel positions
+  defined by the DICOM standard, and absolute `GridFrameOffsetVector` values
+  are supported.
+- `pymedphys.gamma` now accepts evaluation axes in descending order. Before,
+  every point of a descending evaluation grid was treated as outside the grid,
+  which could leave the gamma search running indefinitely.
+
 ### Dependency changes
 
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. The newer
@@ -111,6 +129,20 @@ This project adheres to
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
   `ftp`, was passed through unchecked.
+- `pymedphys.dicom.zyx_and_dose_from_dataset` returns strictly ascending
+  (z, y, x) axes, and flips the dose array, and swaps rows and columns for
+  decubitus orientations, to match. Head first supine data is unchanged. For
+  other orientations the returned dose, and gamma computed from DICOM data,
+  are no longer in the order in which the pixel data is stored.
+- The private `pymedphys._dicom.coords.xyz_axes_from_dataset` now raises
+  `NotImplementedError` for the IEC patient coordinate system, whose output
+  was incorrect, and `ValueError` rather than `UnboundLocalError` for an
+  unrecognised `coord_system`.
+- `pymedphys.gamma` raises `ValueError` when an evaluation axis has fewer than
+  two points or when the reference and evaluation grids do not overlap, and
+  falls back to `interp_algo="scipy"` with a warning when the evaluation axes
+  are not evenly spaced. `pymedphys.interpolate.interp` checks axis order,
+  spacing, and length even with `skip_checks=True`.
 
 ## [0.41.0]
 

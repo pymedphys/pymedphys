@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Matthew Jennings
+# Copyright (C) 2025-2026 Matthew Jennings
 # Copyright (C) 2016-2021 Matthew Jennings and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,11 @@ from pymedphys._imports import numpy as np
 
 from . import orientation
 from .compat import ensure_transfer_syntax
-from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
+from .coords import (
+    _axis_aligned_orientation,
+    coords_in_datasets_are_equal,
+    xyz_axes_from_dataset,
+)
 from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 from .structure import pull_structure
@@ -32,11 +36,46 @@ from .structure import pull_structure
 
 
 def zyx_and_dose_from_dataset(dataset):
+    """Return a DICOM RT Dose grid with ascending (z, y, x) DICOM axes.
+
+    Parameters
+    ----------
+    dataset : pydicom.dataset.Dataset
+        An RT Dose dataset whose Image Orientation (Patient) is one of the
+        eight axis-aligned patient orientations (head or feet first; supine,
+        prone, or decubitus left or right).
+
+    Returns
+    -------
+    coords : tuple of numpy.ndarray
+        The (z, y, x) DICOM axes of the dose grid, each strictly ascending.
+    dose : numpy.ndarray
+        The dose, indexed ``dose[z_index, y_index, x_index]``.
+
+    Notes
+    -----
+    The pixel array is reordered to match the axes: an axis the scanner
+    stored in descending order (for example x for head first prone, or z
+    for feet first) is flipped, and for decubitus orientations, whose rows
+    run along x, rows and columns are swapped. For head first supine the
+    dose is the pixel array unchanged.
+    """
     x, y, z = xyz_axes_from_dataset(dataset)
-    coords = (z, y, x)
     dose = dose_from_dataset(dataset)
 
-    return coords, dose
+    if _axis_aligned_orientation(dataset)[0] == 0:
+        # Decubitus: the pixel array is indexed (z, x, y).
+        dose = np.swapaxes(dose, 1, 2)
+
+    axes = [z, y, x]
+    for dimension, axis in enumerate(axes):
+        if axis.size > 1 and axis[1] < axis[0]:
+            axes[dimension] = axis[::-1]
+            dose = np.flip(dose, axis=dimension)
+
+    coords = tuple(np.ascontiguousarray(axis) for axis in axes)
+
+    return coords, np.ascontiguousarray(dose)
 
 
 def dose_from_dataset(ds):

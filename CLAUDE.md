@@ -148,6 +148,11 @@ When creating conda recipes, pull requests, or other metadata that requires main
 - Data caches must not fall back across changes to `hashes.json`: ZIP archives
   are checked, but previously extracted files are not refreshed automatically.
 - Mock data and fixtures are in `_mocks/` and test data directories
+- Test coordinate and geometry code against values derived independently
+  from the governing definition (for DICOM, the voxel position formula in
+  PS3.3), on off-centre grids with non-square spacing and every supported
+  orientation. Never use a stored snapshot of the implementation's own
+  output as the expected value: such snapshots can enshrine sign errors.
 - The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
   read the rendered markdown. Data-driven scenarios use the

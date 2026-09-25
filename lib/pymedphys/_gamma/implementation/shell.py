@@ -206,6 +206,65 @@ def expand_dims_to_1d(array):
     raise ValueError("Expected a 0-d or 1-d array")
 
 
+def _prepare_evaluation_grid(axes_evaluation, dose_evaluation, interp_algo):
+    """Return the evaluation grid as the interpolators require it.
+
+    Each axis becomes a contiguous, strictly ascending float64 array, with
+    the dose flipped along any axis that was descending, so that grids
+    stored in either order (as DICOM data often is) give the same gamma.
+    The reference grid is left as given, because gamma is returned on it.
+    """
+    axes = [np.asarray(axis, dtype=np.float64) for axis in axes_evaluation]
+    dose = np.asarray(dose_evaluation, dtype=np.float64)
+
+    for dimension, axis in enumerate(axes):
+        if axis.size < 2:
+            raise ValueError(
+                f"Evaluation axis {dimension} has {axis.size} value(s), but each "
+                "evaluation axis needs at least two to interpolate between. "
+                "Remove singleton dimensions from both the axes and the dose."
+            )
+        diff = np.diff(axis)
+        if np.all(diff < 0):
+            axes[dimension] = axis[::-1]
+            dose = np.flip(dose, axis=dimension)
+        elif not np.all(diff > 0):
+            raise ValueError(
+                f"Evaluation axis {dimension} must be strictly ascending or "
+                "strictly descending"
+            )
+
+    is_uneven = any(not np.allclose(np.diff(axis), axis[1] - axis[0]) for axis in axes)
+    if is_uneven and interp_algo.lower() == "pymedphys":
+        warn(
+            "The evaluation axes are not evenly spaced, which the 'pymedphys' "
+            "interpolator requires. Falling back to interp_algo='scipy'.",
+            UserWarning,
+            stacklevel=4,
+        )
+        interp_algo = "scipy"
+
+    axes = tuple(np.ascontiguousarray(axis) for axis in axes)
+
+    return axes, np.ascontiguousarray(dose), interp_algo
+
+
+def _check_grids_overlap(axes_reference, axes_evaluation):
+    for dimension, (reference, evaluation) in enumerate(
+        zip(axes_reference, axes_evaluation)
+    ):
+        if np.max(reference) < np.min(evaluation) or np.min(reference) > np.max(
+            evaluation
+        ):
+            raise ValueError(
+                f"The reference and evaluation grids do not overlap along axis "
+                f"{dimension}: the reference spans [{np.min(reference)}, "
+                f"{np.max(reference)}] and the evaluation spans "
+                f"[{np.min(evaluation)}, {np.max(evaluation)}]. Check that both "
+                "are in the same coordinate system."
+            )
+
+
 @dataclass(frozen=True)
 class GammaInternalFixedOptions:
     axes_evaluation: Any
@@ -268,6 +327,10 @@ class GammaInternalFixedOptions:
         axes_reference, axes_evaluation = run_input_checks(
             axes_reference, dose_reference, axes_evaluation, dose_evaluation
         )
+        axes_evaluation, dose_evaluation, interp_algo = _prepare_evaluation_grid(
+            axes_evaluation, dose_evaluation, interp_algo
+        )
+        _check_grids_overlap(axes_reference, axes_evaluation)
 
         dose_percent_threshold = expand_dims_to_1d(dose_percent_threshold)
         distance_mm_threshold = expand_dims_to_1d(distance_mm_threshold)
@@ -307,7 +370,7 @@ class GammaInternalFixedOptions:
 
         return cls(
             axes_evaluation,
-            np.array(dose_evaluation),
+            dose_evaluation,
             flat_mesh_axes_reference,
             flat_dose_reference,
             reference_points_to_calc,

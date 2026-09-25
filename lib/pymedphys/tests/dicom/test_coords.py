@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2021 Matthew Jennings
+# Copyright (C) 2018-2021, 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ from pymedphys._imports import numpy as np
 import pymedphys
 from pymedphys._data import download
 from pymedphys._dicom import coords, create
+
+from ._synthetic_rtdose import voxel_positions
 
 ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
@@ -71,25 +73,30 @@ def run_xyz_function_tests(coord_system):
 
 
 @pytest.mark.pydicom
-@pytest.mark.skip(
-    reason=(
-        "Test previously had a short circuit and did not run final "
-        "assertions. Once the short circuit was removed the tests were "
-        "failing."
-    )
-)
-def test_extract_iec_patient_xyz():
-    run_xyz_function_tests("PATIENT")
-
-
-@pytest.mark.pydicom
 def test_extract_iec_fixed_xyz():
     run_xyz_function_tests("FIXED")
 
 
 @pytest.mark.pydicom
-def test_extract_dicom_patient_xyz():
-    run_xyz_function_tests("DICOM")
+@pytest.mark.parametrize("orientation", ORIENTATIONS_SUPPORTED)
+def test_extract_dicom_patient_xyz(orientation):
+    # The stored expected_dicom_xyz.json was a snapshot of an implementation
+    # that negated every axis stored in descending order, so the real files
+    # are checked against the voxel positions defined by the standard.
+    ds = pydicom.dcmread(get_data_file(orientation))
+    positions = voxel_positions(ds)
+    is_decubitus = float(ds.ImageOrientationPatient[0]) == 0
+
+    x, y, z = coords.xyz_axes_from_dataset(ds, "DICOM")
+
+    along_rows, along_columns = positions[0, :, 0, :], positions[0, 0, :, :]
+    if is_decubitus:
+        expected_x, expected_y = along_rows[:, 0], along_columns[:, 1]
+    else:
+        expected_x, expected_y = along_columns[:, 0], along_rows[:, 1]
+    np.testing.assert_allclose(x, expected_x)
+    np.testing.assert_allclose(y, expected_y)
+    np.testing.assert_allclose(z, positions[:, 0, 0, 2])
 
 
 @pytest.mark.pydicom
