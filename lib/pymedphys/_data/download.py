@@ -23,6 +23,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from http import HTTPStatus
 
 from pymedphys._imports import tqdm
 
@@ -42,17 +43,32 @@ DEFAULT_HASHES_PATH = HERE.joinpath("hashes.json")
 # rejected.
 SUPPORTED_URL_SCHEMES = ("http", "https", "file")
 
-# Seconds to wait for the server to respond, and between received chunks. A
-# stalled connection then raises instead of hanging the caller indefinitely.
+# Seconds to wait for the server to respond, and for each socket read after
+# that. A stalled connection then raises instead of hanging the caller
+# indefinitely.
 DOWNLOAD_TIMEOUT_SECONDS = 60
 
 # HTTP statuses worth retrying. Anything else (404, 403, and so on) will not
 # change on a second attempt, so the download gives up at once.
-RETRYABLE_HTTP_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
+RETRYABLE_HTTP_STATUSES = frozenset(
+    {
+        HTTPStatus.REQUEST_TIMEOUT,
+        HTTPStatus.TOO_EARLY,
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        HTTPStatus.BAD_GATEWAY,
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.GATEWAY_TIMEOUT,
+    }
+)
 
 DATA_DIR_ENVIRONMENT_VARIABLE = "PYMEDPHYS_DATA_DIR"
 
-_CHUNK_SIZE = 1024 * 1024
+# Bytes read per iteration. The progress bar updates once per chunk, so this
+# keeps it responsive on slow links (about 0.6 s per update at 100 kB/s) while
+# the per-call overhead stays negligible. It does not affect stall detection:
+# the timeout applies to each socket read, whatever the chunk size.
+_CHUNK_SIZE = 64 * 1024
 
 
 def _is_permanent_failure(error: BaseException) -> bool:
