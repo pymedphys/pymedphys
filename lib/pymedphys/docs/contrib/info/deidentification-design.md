@@ -18,7 +18,7 @@ One entry per pull request. Each pull request updates only its own entry, so tha
 
 - **PR 01.** Design document, contributor principles, and background page; review corrections recorded in D-016 to D-021. Open as [pymedphys/pymedphys#2061](https://github.com/pymedphys/pymedphys/pull/2061).
 
-- **PR 02.** Stop legacy de-identification code logging identifying values and original paths. Not started.
+- **PR 02.** Stop legacy de-identification code logging identifying values and original paths. In review. The legacy `anonymise` and experimental `pseudonymise` code, their commands, and the pseudonymisation Streamlit app no longer write values, input paths, or output paths to logs or standard output; the commands print a file count, and failures are logged by file number and exception type. Canary tests capture log records at DEBUG level and both standard streams. Residual risks, accepted because the code is deprecated and D-020 applies to the new engine: exceptions are re-raised unchanged, so an `OSError` message can contain a path; and pydicom's own value-validation warnings are not intercepted.
 
 - **PR 03.** Deprecate experimental pseudonymisation, with a security note. Not started.
 

@@ -38,6 +38,19 @@ This project adheres to
   The deprecated `pymedphys experimental pinnacle export` command calls the
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
+- **[Security]** The legacy DICOM anonymisation and experimental
+  pseudonymisation code no longer writes DICOM values or file paths to logs or
+  the terminal. Previously the `pymedphys dicom anonymise` and
+  `pymedphys experimental dicom pseudonymise` commands printed every input and
+  output path (output file names contain the original SOP Instance UID),
+  directory runs logged the path and error message of each failed file and
+  the paths of all successful files, the pseudonymisation Streamlit app printed
+  the failing file's name and error, and `pymedphys.dicom.anonymise` logged the
+  value being replaced when no replacement was defined for its value
+  representation. The commands now print only the number of files written,
+  and failures are logged by file number and exception type. Two channels
+  remain: exceptions are re-raised unchanged, so their messages can contain a
+  path, and pydicom's own warnings about invalid values quote the value.
 
 ### Dependency changes
 

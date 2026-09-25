@@ -1,5 +1,5 @@
+# Copyright (C) 2019, 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
-# Copyright (C) 2019 Matthew Jennings
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -259,8 +259,6 @@ def anonymise_file(
 
     dicom_anon_filepath = core.label_dicom_filepath_as_anonymised(filepath_used)
 
-    print(f"{dicom_filepath} --> {dicom_anon_filepath}")
-
     ds.save_as(dicom_anon_filepath)
 
     if delete_original_file:
@@ -353,13 +351,13 @@ def anonymise_directory(
     """
     dicom_dirpath = str(dicom_dirpath)
 
-    dicom_filepaths = glob(dicom_dirpath + "/**/*.dcm", recursive=True)
+    # Sorted so that the file numbers in log messages are reproducible.
+    dicom_filepaths = sorted(glob(dicom_dirpath + "/**/*.dcm", recursive=True))
     failing_filepaths = []
-    successful_filepaths = []
     anon_filepaths = []
     errors = []
 
-    for dicom_filepath in dicom_filepaths:
+    for file_number, dicom_filepath in enumerate(dicom_filepaths, start=1):
         if output_dirpath is not None:
             relative_path = os.path.relpath(dicom_filepath, start=dicom_dirpath)
             output_filepath = os.path.join(output_dirpath, relative_path)
@@ -378,13 +376,18 @@ def anonymise_directory(
                 replacement_strategy=replacement_strategy,
                 identifying_keywords=identifying_keywords,
             )
-            successful_filepaths.append(dicom_filepath)
             anon_filepaths.append(dicom_anon_filepath)
         except (AttributeError, LookupError, TypeError, OSError, ValueError) as error:
             errors.append(error)
             failing_filepaths.append(dicom_filepath)
-            logging.warning("Unable to anonymise %s", dicom_filepath)
-            logging.warning(str(error))
+            # Neither the path nor the error message is logged: both can
+            # contain identifying information.
+            logging.warning(
+                "Unable to anonymise file %d of %d (in sorted path order): %s",
+                file_number,
+                len(dicom_filepaths),
+                type(error).__name__,
+            )
             if fail_fast:
                 raise error
 
@@ -397,7 +400,11 @@ def anonymise_directory(
                 remove_file(dicom_filepath)
 
     if len(errors) > 0:
-        logging.info("Succeeded in anonymising: \n%s", "\n".join(successful_filepaths))
+        logging.info(
+            "Anonymised %d of %d files; re-raising the first error",
+            len(anon_filepaths),
+            len(dicom_filepaths),
+        )
         raise errors[0]
     return anon_filepaths
 
@@ -431,9 +438,10 @@ def anonymise_cli(args):
             delete_unknown_tags=handle_unknown_tags,
             replacement_strategy=replacement_strategy,
         )
+        file_count = 1
 
     elif isdir(args.input_path):
-        anonymise_directory(
+        anon_filepaths = anonymise_directory(
             dicom_dirpath=args.input_path,
             output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,
@@ -444,8 +452,23 @@ def anonymise_cli(args):
             delete_unknown_tags=handle_unknown_tags,
             replacement_strategy=replacement_strategy,
         )
+        file_count = len(anon_filepaths)
 
     else:
         raise FileNotFoundError(
             "No file or directory was found at the supplied input path."
         )
+
+    print_cli_summary(file_count)
+
+
+def print_cli_summary(file_count):
+    """Print the one-line summary of an anonymisation command.
+
+    File paths are not printed. Input paths often contain patient names, and
+    output file names contain the original SOP Instance UID.
+    """
+    print(
+        f"Wrote {file_count} file(s). File paths are not shown because they "
+        "can contain identifying information."
+    )

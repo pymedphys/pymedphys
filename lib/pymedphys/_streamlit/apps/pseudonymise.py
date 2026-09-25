@@ -17,6 +17,7 @@
 import base64
 import datetime
 import io
+import logging
 import pathlib
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -107,10 +108,7 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
             # but then when the user goes to close the buffer (click x on screen)
             # there will be an error.
 
-            original_file_name = None
-
             try:
-                original_file_name = uploaded_file_buffer.name
                 ds_input: pydicom.FileDataset = pydicom.dcmread(
                     uploaded_file_buffer, force=True
                 )
@@ -128,8 +126,13 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
                 anon_filename = pathlib.Path(temp_anon_filepath).name
                 pydicom.dcmwrite(in_memory_temp_file, ds_input)
             except (KeyError, OSError, ValueError) as e_info:
-                print(e_info)
-                print(f"While processing {original_file_name}")
+                # Neither the file name nor the error message is logged: both
+                # can contain identifying information.
+                logging.warning(
+                    "Unable to pseudonymise uploaded file %d of this batch: %s",
+                    file_count,
+                    type(e_info).__name__,
+                )
                 bad_data = True
                 break
             myzip.writestr(
