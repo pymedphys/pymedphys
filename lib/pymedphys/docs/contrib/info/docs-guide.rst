@@ -80,21 +80,39 @@ by ``pymedphys dev docs --prep`` and by the normal build:
 * Edit the root ``CONTRIBUTING.md`` for the contributor landing page.
 * Edit the root ``CHANGELOG.md`` for release notes.
 
-Do not edit their generated copies. For links between pages in the built site,
-``:doc:`` roles in reStructuredText and MyST ``{doc}`` roles in Markdown provide
-Sphinx cross-references. Ordinary Markdown links to source pages can also be
-resolved by MyST.
-
-Use ordinary Markdown links in notebooks and other files that are also read in
-Jupyter, Colab, or GitHub. Those viewers do not interpret MyST roles. In notebooks,
-link to published documentation URLs so the links still work when a notebook is
-downloaded on its own.
+Do not edit their generated copies.
 
 GitHub Actions builds and uploads ``docs-html`` and ``docs-linkcheck``
 artefacts for selected PRs. ReadTheDocs publishes the public site separately,
 using ``.readthedocs.yml``. The ``latest`` site describes the development
 branch; select the documentation version matching an installed release when
 checking release-specific behaviour.
+
+Writing portable links
+----------------------
+
+Use ordinary Markdown links, ``[descriptive text](destination)``, as the
+standard in Markdown pages and notebook Markdown cells. GitHub, Jupyter, and
+Colab do not interpret MyST roles as links.
+
+For links between checked-in documentation pages, use a relative source path
+including its extension, for example ``[Quick Start Guide](quick-start.rst)``
+from another page in the same directory. This works when browsing the source,
+and MyST resolves the source path to the corresponding page in the built site.
+See the `MyST cross-reference documentation
+<https://myst-parser.readthedocs.io/en/latest/syntax/cross-referencing.html>`_.
+
+In notebooks that readers can download individually, use published
+documentation URLs so links work without the rest of the repository. Also use
+a published URL when the target is a generated page with no checked-in source
+at that path, such as
+``https://docs.pymedphys.com/en/latest/contrib/index.html``. Choose a release
+version instead of ``latest`` when the surrounding instructions require one.
+
+Check both the source-view destination and the built HTML after changing links.
+Keep native reStructuredText cross-references such as ``:doc:`` in
+reStructuredText files, and retain specialised Sphinx references when their
+target requires them, for example a Python API object.
 
 Keeping documentation current
 -----------------------------
