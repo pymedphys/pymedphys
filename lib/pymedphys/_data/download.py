@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import pathlib
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -34,17 +35,6 @@ HERE = pathlib.Path(__file__).resolve().parent
 DEFAULT_HASHES_PATH = HERE.joinpath("hashes.json")
 
 
-@functools.lru_cache()
-def create_download_progress_bar():
-    class DownloadProgressBar(tqdm.tqdm):
-        def update_to(self, b=1, bsize=1, tsize=None):
-            if tsize is not None:
-                self.total = tsize
-            self.update(b * bsize - self.n)
-
-    return DownloadProgressBar
-
-
 # Every URL comes from the package's own urls.json, a Zenodo record listing,
 # or the caller of data_path(url=...). file: is kept for local mirrors; the
 # caller already has filesystem access, so it grants nothing new. Every other
@@ -52,10 +42,38 @@ def create_download_progress_bar():
 # rejected.
 SUPPORTED_URL_SCHEMES = ("http", "https", "file")
 
+# Seconds to wait for the server to respond, and between received chunks. A
+# stalled connection then raises instead of hanging the caller indefinitely.
+DOWNLOAD_TIMEOUT_SECONDS = 60
 
-@retry.retry((urllib.error.HTTPError, ConnectionResetError))
+# HTTP statuses worth retrying. Anything else (404, 403, and so on) will not
+# change on a second attempt, so the download gives up at once.
+RETRYABLE_HTTP_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
+
+DATA_DIR_ENVIRONMENT_VARIABLE = "PYMEDPHYS_DATA_DIR"
+
+_CHUNK_SIZE = 1024 * 1024
+
+
+def _is_permanent_failure(error: BaseException) -> bool:
+    return (
+        isinstance(error, urllib.error.HTTPError)
+        and error.code not in RETRYABLE_HTTP_STATUSES
+    )
+
+
+@retry.retry(
+    (urllib.error.URLError, ConnectionError, TimeoutError),
+    giveup=_is_permanent_failure,
+)
 def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
     """Download ``url`` to ``filepath`` while showing a progress bar.
+
+    The download is written to a temporary file beside ``filepath`` and only
+    moved into place once it is complete, so an interrupted download never
+    leaves a truncated file behind. Network errors, timeouts, and transient
+    HTTP statuses are retried with an exponential backoff; other HTTP errors,
+    such as 404, are raised immediately.
 
     Parameters
     ----------
@@ -72,21 +90,63 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
             f"expected one of {SUPPORTED_URL_SCHEMES}"
         )
 
-    DownloadProgressBar = create_download_progress_bar()
+    filepath = pathlib.Path(filepath)
 
-    with DownloadProgressBar(
-        unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
-    ) as t:
-        # The scheme was checked against SUPPORTED_URL_SCHEMES above, and the
-        # note on that constant explains why file: is acceptable here.
-        urllib.request.urlretrieve(  # nosec B310
-            url, filepath, reporthook=t.update_to
+    # The scheme was checked against SUPPORTED_URL_SCHEMES above, and the
+    # note on that constant explains why file: is acceptable here.
+    with urllib.request.urlopen(  # nosec B310
+        url, timeout=DOWNLOAD_TIMEOUT_SECONDS
+    ) as response:
+        content_length = response.headers.get("Content-Length")
+        expected_size = int(content_length) if content_length else None
+
+        file_descriptor, temp_name = tempfile.mkstemp(
+            dir=filepath.parent, prefix=f".{filepath.name}.", suffix=".part"
         )
+        temp_path = pathlib.Path(temp_name)
+        try:
+            with (
+                os.fdopen(file_descriptor, "wb") as temp_file,
+                tqdm.tqdm(
+                    total=expected_size,
+                    unit="B",
+                    unit_scale=True,
+                    miniters=1,
+                    desc=url.split("/")[-1],
+                ) as progress,
+            ):
+                received = 0
+                while chunk := response.read(_CHUNK_SIZE):
+                    temp_file.write(chunk)
+                    received += len(chunk)
+                    progress.update(len(chunk))
+
+            if expected_size is not None and received < expected_size:
+                raise urllib.error.ContentTooShortError(
+                    f"Download of {url} stopped after {received} of "
+                    f"{expected_size} bytes",
+                    b"",
+                )
+
+            os.replace(temp_path, filepath)
+        except BaseException:
+            temp_path.unlink(missing_ok=True)
+            raise
 
 
 def get_data_dir():
-    data_dir = pmp_config.get_config_dir().joinpath("data")
-    data_dir.mkdir(exist_ok=True)
+    """Return the directory that caches downloaded data, creating it if needed.
+
+    The ``PYMEDPHYS_DATA_DIR`` environment variable overrides the default of
+    ``~/.pymedphys/data``.
+    """
+    override = os.environ.get(DATA_DIR_ENVIRONMENT_VARIABLE)
+    if override:
+        data_dir = pathlib.Path(override)
+    else:
+        data_dir = pmp_config.get_config_dir().joinpath("data")
+
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     return data_dir
 

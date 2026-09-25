@@ -73,8 +73,9 @@ def demo_config_on_disk(
 
     The apps memoise ``get_config`` with ``st.cache_data`` for the life of the
     process, and an earlier test may already have cached another file (the
-    pseudonymisation strategy writes a minimal ``~/.pymedphys/config.toml``),
-    so the caches are cleared on the way in and again on the way out.
+    pseudonymisation strategy writes a minimal ``~/.pymedphys/config.toml``
+    into the session's temporary home directory), so the caches are cleared
+    on the way in and again on the way out.
     """
     original_get_config = pmp_config.get_config
 

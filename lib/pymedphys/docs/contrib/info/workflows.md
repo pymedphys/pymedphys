@@ -275,8 +275,11 @@ uv run pyright
 uv run pymedphys dev lint
 uv run pymedphys dev tests -m "not slow"
 
-# Run slow tests locally
-uv run pymedphys dev tests --slow -m slow
+# Run only the slow tests locally
+uv run pymedphys dev tests --slow
+
+# Run the default tests plus the slow tests
+uv run pymedphys dev tests --include-slow
 
 # Build docs locally
 uv run pymedphys dev docs

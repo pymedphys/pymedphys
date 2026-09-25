@@ -158,14 +158,94 @@ def run_doctests(_, remaining):
     _call_pytest(remaining, "doctests")
 
 
+# pytest options whose value is given as the next argument. Their values are
+# never treated as test paths, even when a file of that name exists.
+_PYTEST_OPTIONS_WITH_VALUES = frozenset(
+    {
+        "-k",
+        "-m",
+        "-p",
+        "-o",
+        "-c",
+        "-W",
+        "--junitxml",
+        "--junit-xml",
+        "--basetemp",
+        "--rootdir",
+        "--maxfail",
+        "--durations",
+        "--tb",
+        "--timeout",
+        "--deselect",
+        "--ignore",
+        "--ignore-glob",
+        "--confcutdir",
+        "--log-level",
+        "--override-ini",
+    }
+)
+
+
+def build_pytest_args(remaining, original_cwd):
+    """Build the pytest arguments for ``pymedphys dev tests``.
+
+    pytest runs with its working directory set to the library root, so a test
+    path may be given relative to either the caller's directory or the library
+    root. Paths relative to the caller's directory are made absolute. The
+    whole package is collected with ``--pyargs pymedphys`` only when no path
+    is given.
+
+    Parameters
+    ----------
+    remaining : list of str
+        The arguments passed through to pytest.
+    original_cwd : str or os.PathLike
+        The directory ``pymedphys dev tests`` was called from.
+
+    Returns
+    -------
+    list of str
+        The arguments for ``pytest.main``.
+    """
+    original_cwd = pathlib.Path(original_cwd)
+    args = []
+    has_path = False
+    previous = None
+
+    for arg in remaining:
+        is_option_value = previous in _PYTEST_OPTIONS_WITH_VALUES
+        previous = arg
+
+        if arg.startswith("-") or is_option_value:
+            args.append(arg)
+            continue
+
+        path_part, separator, selector = arg.partition("::")
+        if path_part and original_cwd.joinpath(path_part).exists():
+            has_path = True
+            absolute = original_cwd.joinpath(path_part).resolve()
+            args.append(f"{absolute}{separator}{selector}")
+            continue
+
+        if path_part and LIBRARY_ROOT.joinpath(path_part).exists():
+            has_path = True
+        args.append(arg)
+
+    if has_path:
+        return args
+
+    return ["--pyargs", "pymedphys"] + args
+
+
 def _call_pytest(remaining, label):
     original_cwd = os.getcwd()
+    args = build_pytest_args(remaining, original_cwd)
 
     os.chdir(LIBRARY_ROOT)
     print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
 
     try:
-        retcode = pytest.main(["--pyargs", "pymedphys"] + remaining)
+        retcode = pytest.main(args)
     finally:
         os.chdir(original_cwd)
 
