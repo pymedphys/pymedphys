@@ -24,9 +24,13 @@ or combine PyMedPhys with notebooks and clinic-specific code.
 The library is the broadest interface.
 The CLI and app layer expose selected workflows.
 
-The current stable app registry includes MetersetMap and pseudonymisation.
+The current app registry includes MetersetMap and pseudonymisation.
 There are also additional experimental apps.
 After installation, the app layer is launched via `pymedphys gui`.
+The pseudonymisation app uses the legacy tools described in
+[DICOM de-identification](../background/dicom-deidentification.md); read their
+limitations before sharing output. App availability does not imply support for
+the planned replacement engine or its presets.
 
 ## Common scenarios
 
