@@ -11,7 +11,7 @@ For the user-facing explanation of terms and current limitations, see [DICOM de-
 | Design | Agreed with maintainers; refined per pull request |
 | Implementation | Not started (milestone M0 in progress) |
 | DICOM edition targeted | PS3.15 2026d |
-| Last updated by | PR 01 (design document, contributor principles, background page) |
+| Last updated by | PR 01 review (six design corrections recorded in D-016 to D-021) |
 
 ## Scope
 
@@ -35,7 +35,7 @@ The engine performs **de-identification**, the term used by DICOM PS3.15 and by 
 
 Wording rules for code, command-line output, reports, and documentation:
 
-- The technical claim is always "de-identified in accordance with DICOM PS3.15 *edition* Basic Application Level Confidentiality Profile with options *list*".
+- The technical claim, only after validating the effective policy and output, is "de-identified in accordance with DICOM PS3.15 *edition* Basic Application Level Confidentiality Profile with options *list*". Preset selection alone does not establish conformance. Claims and method codes must reflect the options actually satisfied; permitted nonconformant processing is explicitly labelled, with unsupported claims and codes suppressed (D-017).
 - The engine never describes its output as "anonymised".
 - Where a key or crosswalk is retained, documentation states that the data remain pseudonymised personal data for whoever holds it, and that a separate recipient needs its own assessment.
 
@@ -65,17 +65,17 @@ Both existing paths share one engine in `lib/pymedphys/_dicom/anonymise/` and ha
 The package will live in `lib/pymedphys/_dicom/deidentify/` with the public API exposed from `pymedphys.dicom`. The main parts, in the order they will be implemented:
 
 1. **Generated standard tables (rule layer L1).** Table E.1-1 with every option column, Tables E.1-1a, E.3.4-1, and E.3.10-1, CID 7050, well-known UIDs, the VR and VM of every Table E.1-1 attribute, and attribute Types for supported IODs. A development command regenerates them from the standard and records the edition, the source file digest, and a content digest.
-2. **Supplementary rules (rule layer L2).** Reviewed rules, each with a rationale, for attributes the table does not list but that the de-identifier is still responsible for: dates, times, and person names by value representation; operator-entered RT text outside the table such as Beam Name and Dose Comment; RT Image machine names; and a classification of every UID attribute as class-typed or instance-typed. A test fails if the dictionary contains an attribute in one of these categories with no rule.
-3. **User rules (rule layer L3).** Validated overrides. Options are the primary configuration. Additional removals are always allowed; additional retentions require an explicit acknowledgement that the result is not conformant, and the justification is recorded.
-4. **UID engine.** Every UID value that is not class-typed and not a well-known value is replaced by the same function everywhere it occurs, in any sequence, in the File Meta Information, and in retained private elements. The replacement is a keyed HMAC-SHA256 of the original, formatted as a version 8 UUID and encoded as a `2.25.` UID of at most 44 characters. Mapping by value rather than by attribute list keeps links intact even where the table covers one side of a reference and not the other.
+2. **Supplementary rules (rule layer L2).** Reviewed rules, each with a rationale, for attributes the table does not list but that the de-identifier is still responsible for: dates, times, and person names by value representation; operator-entered RT text outside the table such as Beam Name and Dose Comment; RT Image machine names; and UID roles including SOP classes, transfer syntaxes, coding schemes, context groups, devices, and instance identities/references. A test fails if the dictionary contains an attribute in one of these categories with no rule. UI value representation alone does not determine the action (D-016).
+3. **User rules (rule layer L3).** Options are the primary configuration. Validate both removal and retention overrides against the IOD and effective profile/options before writing. Reject invalid IOD changes; changes incompatible with the selected options require an explicitly revised policy or acknowledged nonconformant processing with no unsupported claims (D-017).
+4. **UID engine.** Resolve the effective action from L1, L2, and validated L3 rules before transforming a UID. Values selected for replacement use the same keyed HMAC-SHA256 function everywhere replacement is required, including nested references, File Meta Information, and retained private elements. Format replacements as version 8 UUIDs in `2.25.` UIDs of at most 44 characters. Retain UIDs when the effective action requires retention; apply reviewed semantic rules to vocabulary and other non-instance identifiers (D-016).
 5. **Keys.** A 256-bit key is either ephemeral (discarded after the run, so links hold within the run only) or a project key held by a custodian (links hold across runs, as incremental RT collections need). Derivations for UIDs, identifiers, and date offsets are domain-separated. Keys are never logged or written into outputs.
-6. **Temporal handling.** Removal (Basic Profile), full retention, or per-subject whole-day shifts that keep times, intervals, and optionally the weekday. Dates found inside free text are removed rather than shifted.
-7. **Free text.** A vocabulary-based cleaner that keeps only known-safe tokens (the only basis for claiming the Clean Descriptors Option), a scanner for echoes of the patient's own identifiers, value checks on code strings and numeric strings, and pooled human review of every distinct retained string.
+6. **Temporal handling.** Removal (Basic Profile), full retention, or per-subject whole-day shifts that keep times, intervals, and optionally the weekday. Dates found inside free text are removed rather than shifted. Any synthetic birth date is a single subject-level value reused across studies and incremental runs from a custodian-controlled subject profile (D-018).
+7. **Free text.** A vocabulary-based cleaner is the initial implementation choice, not a prerequisite imposed by the Clean Descriptors Option. Combine it with checks for echoes of known patient and other person identifiers, contextual handling of ambiguous words, value checks on code and numeric strings, and pooled human review of retained strings in the confidential QC pack (D-019 and D-020).
 8. **Private attributes.** Removed by default. With the Retain Safe Private Option, retained only when shown to be safe by the routes E.3.10 allows, matched by private creator regardless of block, with the basis for each retained element recorded.
 9. **Container.** File Meta Information and preamble rebuilt, group 0004 and trailing padding removed, encapsulated documents replaced or sequestered, and metadata inside compressed pixel data bitstreams stripped without recompression.
-10. **Referential integrity.** A first pass builds a graph of instances and references and reports dangling references, frame of reference mismatches, and inconsistent hierarchy before anything is written. After writing, the engine verifies that the mapping is one-to-one and that no original instance UID remains.
-11. **Risk detection and quality control.** Risk indicators for burned-in text and potentially reconstructable faces (including RT Structure Set body contours of head and neck cases), sequestration of object types that cannot be cleaned, a human review pack, and statistical disclosure control support for retained indirect identifiers.
-12. **Reports.** A machine-readable and human-readable report per run, a conformance statement generated from the rule tables, and a traceability matrix from requirements to tests.
+10. **Referential integrity.** A first pass builds a graph of instances and references and reports dangling references, frame of reference mismatches, and inconsistent hierarchy using opaque identifiers before anything is written. After writing, verify one-to-one replacement mappings, consistent links and subject-level replacements, absence of original UIDs where replacement/removal is required, and unchanged values where retention is required.
+11. **Risk detection and quality control.** Risk indicators for burned-in text and potentially reconstructable faces (including RT Structure Set body contours of head and neck cases), sequestration of object types that cannot be cleaned, a confidential human review pack, and statistical disclosure control support with an explicitly selected and validated assessment model (D-020 and D-021).
+12. **Reports.** A machine-readable and human-readable release report per run, a conformance statement generated from the rule tables and effective policy, and a traceability matrix from requirements to tests. Release reports exclude source values and original paths and are separate from confidential QC artifacts and custodian-controlled state (D-020).
 
 ## Presets
 
@@ -85,7 +85,7 @@ The package will live in `lib/pymedphys/_dicom/deidentify/` with the public API 
 | `tps-import` | Research copies that import into commercial treatment planning systems | Basic Profile, Retain Longitudinal Temporal Information with Modified Dates, Retain Patient Characteristics, Retain Device Identity, Clean Descriptors |
 | `public-release` | Unrestricted public sharing, following the MIDI best practices | Basic Profile, Retain Longitudinal Temporal Information with Modified Dates, Clean Descriptors, Retain Safe Private |
 
-Each preset claims exactly the options it applies. Details of each preset are recorded in the decision log as they are implemented.
+The table describes the intended conformant configuration of each preset. Validate the effective rules and output before emitting any claim. Overrides cannot silently change the option set; revised policies need explicit selection and validation, and nonconformant processing cannot inherit the preset's claims (D-017). Details of each preset are recorded in the decision log as they are implemented.
 
 ## Decision log
 
@@ -105,6 +105,8 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 
 ### D-003: UIDs mapped by value with a keyed function
 
+**Superseded by D-016.** The original decision below is retained for history and must not guide implementation.
+
 - **Context.** Table E.1-1 does not list every instance UID attribute (for example Target Frame of Reference UID), so mapping only listed attributes would leak original UIDs and break references. Unkeyed hashing lets anyone with the original UIDs re-link. A shared lookup table is fragile under parallel processing and cannot be reproduced later.
 - **Decision.** Replace every non-class, non-well-known UID value with HMAC-SHA256 under the run's key, formatted as a version 8 UUID in a `2.25.` UID. An organisation root under the PyMedPhys root UID is available as an option for systems that cannot handle long numeric components.
 - **Consequences.** Links survive regardless of which attributes the table lists. Output is deterministic for a given key and independent of the number of worker processes. Replacement UIDs contain no timestamp.
@@ -123,11 +125,15 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 
 ### D-006: Treatment planning system import defaults
 
+**Superseded by D-018.** The original decision below is retained for history and must not guide implementation.
+
 - **Context.** Commercial planning systems may reject empty identifiers, invalid values, or future-dated plans.
 - **Decision.** For `tps-import`: shift dates backwards only, by a whole number of weeks between 52 and 520, never zero, preserving the weekday. Generate conspicuously synthetic names and identifiers (for example `ZZRESEARCH^...`). Write a synthetic birth date derived from the shifted study date and the patient's age at year precision, with an option to leave it empty.
 - **Consequences.** Imported research copies are recognisable as such and date intervals such as fractionation patterns are preserved. The synthetic birth date reveals no more than the retained age. The documentation requires import into non-clinical databases only.
 
 ### D-007: Public release defaults
+
+**Superseded by D-021.** The original decision below is retained for history and must not guide implementation.
 
 - **Context.** The MIDI report recommends a quantified risk threshold, human quality control, and caution with potentially reconstructable faces.
 - **Decision.** For `public-release`: statistical disclosure control threshold 0.09 by default (0.05 selectable); human review of every distinct retained string, every series (by maximum intensity projection or cine strip), and every instance in high-risk categories; potentially reconstructable facial information is a hard block unless a risk assessment reference is recorded; a human quality control attestation is required before a run can be marked ready for release.
@@ -135,7 +141,7 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 
 ### D-008: UID root
 
-- **Decision.** `2.25.` UIDs derived from version 8 UUIDs by default; the organisation root is opt-in. See D-003.
+- **Decision.** `2.25.` UIDs derived from version 8 UUIDs by default; the organisation root is opt-in. See D-016 for which values are replaced.
 
 ### D-009: Deprecation window
 
@@ -169,6 +175,45 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 - **Context.** Maintainers review this work by hand.
 - **Decision.** Each pull request has a single concern and about 400 lines of hand-written change at most, excluding tests and documentation. Generated data is kept separate from logic. Every pull request includes docstrings, user documentation for user-visible changes, a changelog entry, and an update to this document.
 
+### D-016: Resolve UID actions before mapping values
+
+- **Context.** Replaces D-003. Table E.1-1 gives Device UID (0018,1002) action U in the Basic Profile but K under [Retain Device Identity](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.8.html). The `tps-import` preset therefore must retain it. UID roles also extend beyond classes and instances: [Coding Scheme UID (0008,010C)](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.12.html) identifies a vocabulary, including local vocabularies absent from a well-known-UID list.
+- **Decision.** Resolve the effective action from the profile, selected options, and reviewed supplementary/override rules first. Apply keyed HMAC-SHA256, formatted as a version 8 UUID under `2.25.`, only where replacement is required. The organisation root remains opt-in. Use the same replacement for all occurrences selected for replacement and their corresponding references. Retention requirements take precedence over the general mapping mechanism. Semantic identifiers need explicit rules; do not hash an unclassified UID merely because its VR is UI. Reject or sequester unsupported cases rather than silently treating them as instance identifiers.
+- **Validation.** Test Device UID under both `basic` and `tps-import`, retained coding-scheme/context identifiers, consistent nested instance references and file-meta replacements, retained private UIDs, and refusal of unresolved semantic cases. Verify both replacements and required retentions after writing.
+
+### D-017: Validate overrides and derive conformance claims
+
+- **Context.** PS3.15 E.1.1 requires IOD integrity and retention of attributes required by selected options. Removing Patient Weight while claiming [Retain Patient Characteristics](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.7.html) contradicts that option, even though removal reduces disclosure.
+- **Decision.** Validate every removal, replacement, and retention override against attribute Type, VR/VM, conditional requirements, referential integrity, and the effective profile/options. Reject changes that invalidate a supported IOD. For option conflicts, require an explicitly selected, fully revalidated policy or an explicit nonconformant mode with a recorded justification; never silently drop an option. Nonconformant processing, including opt-in Private SOP Classes, receives no unsupported conformance label or method code. Derive all report wording and De-identification Method/Code Sequence content from the validated result; a mixed run cannot claim that every output conforms.
+- **Validation.** Cover removal of Type 1 and Type 2 attributes, deletion of retained patient characteristics, retention forbidden by the selected profile, conditional attributes, revised option sets, nonconformant acknowledgements, and consistency between report claims and inserted metadata.
+
+### D-018: Stable synthetic birth dates for TPS import
+
+- **Context.** Replaces D-006. Recalculating a birth date from each study's date and rounded age can assign multiple birth dates to one subject. A project key alone does not fix a changing reference event.
+- **Decision.** Keep the backwards shift of 52 to 520 whole weeks, excluding zero, conspicuously synthetic names/identifiers, and the restriction to non-clinical databases. Resolve a stable project subject identity, including the identifier's issuer or a curator-supplied identity. Before first export, designate one reference study with a validated date and age in completed years. Subtract that age in calendar years from its shifted date to obtain one synthetic birth date (map 29 February to 28 February if necessary). Persist the reference, date offset, derivation version, and chosen synthetic date in the custodian-controlled subject profile. Reuse that date for every instance and subsequent run; a later or earlier incoming study must not change the reference. The date expresses approximate age at the reference event, not the true birthday; study-specific retained Patient's Age remains the source for age analyses.
+- **Failure handling.** Unresolved subject identity stops the affected objects for curator resolution. For an identified subject, missing or invalid reference dates/ages or inconsistent source ages require resolution before synthesis; otherwise emit an empty birth date consistently for that subject. Persist that empty choice too. Conflicts with an existing profile stop the subject for review rather than silently regenerating a date. Changing a previously exported choice requires an explicit migration of the related collection. Incremental export requires the saved profile as well as the project key.
+- **Validation.** Test multiple studies at the same age, later birthdays, leap years, processing-order independence with the designated reference, earlier studies arriving later, missing/inconsistent ages, missing subject state, and identical birth dates across related instances and incremental runs.
+
+### D-019: Descriptor cleaning is an implementation choice
+
+- **Context.** [PS3.15 E.3.5](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.5.html) specifies the information to remove, not one mandatory cleaning algorithm. A vocabulary can include words that are also names, such as "Hand".
+- **Decision.** Start with a vocabulary-based cleaner, with context-aware checks and checks against known patient and other person identifiers. Treat unresolved ambiguous text conservatively by removing it or holding the affected output for confidential review. A token's presence in a vocabulary is not evidence that its use is safe. Other validated cleaning methods, including removing optional descriptors, may satisfy the option; document the method and limits in the conformance statement and preserve IOD validity.
+- **Validation.** Include names overlapping anatomical terms, clinician names, mixed descriptive/identifying text, non-English text, and missing source identifiers. Require human review of retained strings; do not claim that vocabulary matching alone establishes conformance.
+
+### D-020: Confidential QC artifacts are separate from release reports
+
+- **Context.** Human review of retained strings and image previews requires access to material that may still identify people. Routine diagnostics and distributable reports do not require that material.
+- **Decision.** Logs, standard output, exceptions, and release reports contain no source attribute values, original paths, or secret keys. Use attribute paths, opaque object identifiers, rule identifiers, and aggregate results. A QC pack may contain only the retained strings, contextual excerpts, and image previews needed for review, in an explicitly designated location restricted to authorised reviewers. Treat it as potentially identifying, exclude it from release directories/archives, and document retention and deletion. Key and subject-profile stores are separate custodian-controlled state and are never included in either report. Release reports record an opaque attestation reference and outcome, not the sensitive review material.
+- **Validation.** Capture logs and errors, inspect release archives for QC/state artifacts, verify explicit QC destination/access requirements, and ensure a reviewer can locate the affected output through opaque identifiers without source paths appearing in release reports.
+
+### D-021: Bind public-release thresholds to an assessment model
+
+- **Context.** Replaces D-007. The MIDI report discusses 0.09 and 0.05 as example thresholds in section 1.15.2.2; sections 1.15.1.1 and 1.15.1.2 distinguish group size, reference population, threat model, and maximum versus average risk. Those numbers alone do not define an estimator or a release decision.
+- **Decision.** Retain 0.09 as the default acceptance threshold, with 0.05 selectable, for a documented maximum per-subject re-identification probability under an explicitly selected and validated model. Before this can be a release gate, require the assessment to name/version the model and implementation, define the assumed attacker knowledge and membership knowledge, identify the reference population and sampling assumptions (or justify assessment within the release cohort), and record matching variables, generalisation, missing-data handling, uncertainty, and exclusions. Count distinct subjects, not images, frames, or visits; account for linked longitudinal records and previously released linked data. A sample-based `1/k` calculation is permissible only with a documented known-membership/equivalence-class model, not as an estimate of population uniqueness.
+- **Release gate.** Bind the assessment to the exact collection and policy versions. No selected/validated model, incomplete subject coverage, an unavailable estimate, or a failed threshold means the SDC gate is not passed; do not substitute a default score. A documented external assessment may supply the evidence while automated estimators are being developed. Any collection or policy change requires reassessment. The statistic covers only the modelled disclosure channels, so it cannot replace pixel/face risk assessment or human QC, or establish legal anonymity.
+- **Human review.** Retain review of every distinct retained string, every series (by maximum intensity projection or cine strip), and every instance in high-risk categories. Potentially reconstructable facial information remains a hard block unless a risk assessment reference is recorded. A human QC attestation is required before marking a run ready for release; confidential review artifacts follow D-020.
+- **Validation.** Test subject-versus-instance counts, longitudinal and prior-release linkage, missing model/assumptions/coverage, threshold boundaries, failed or stale assessments, and separation of statistical, pixel/face, and human-review gates. Select and validate the initial estimator before enabling an automated SDC gate in M4.
+
 ## Implementation roadmap
 
 | Milestone | Pull requests | Content |
@@ -185,5 +230,7 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 ## Open questions and next pull request
 
 - **Next: PR 02.** Stop the legacy code from logging identifying values and printing original paths (`_dicom/anonymise/core.py` and `_dicom/anonymise/api.py`), with tests that capture logs and standard output.
+- **Review incorporated:** D-016 to D-021 resolve UID policy, override validation and claims, stable synthetic birth dates, descriptor-cleaning limits, confidential QC artifacts, and model-bound risk thresholds. Their validation cases are requirements for the relevant implementation PRs; this PR remains documentation only.
+- **Before M4:** select and validate the initial automated statistical risk estimator and its supported assumptions. Until then, the public-release SDC gate requires a complete documented external assessment meeting D-021; absence of an estimator or evidence cannot be treated as a pass.
 - **Open:** confirm the licence terms of the AAPM TG-263 structure name list before vendoring it as part of the vocabulary cleaner (needed by PR 25).
 - **Open:** confirm the licence terms of the TCIA synthetic identifier datasets before caching them for slow tests (needed by PR 31).

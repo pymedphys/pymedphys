@@ -25,7 +25,7 @@ Removing identifiers and replacing them with consistent pseudonyms is the same t
 
 ## What software can claim
 
-The DICOM standard defines a Basic Application Level Confidentiality Profile and a set of Options that remove, replace, clean, or retain specific attributes. A tool can correctly claim that its output is *de-identified in accordance with* a named edition of that profile with named options. That is the claim PyMedPhys will make.
+The DICOM standard defines a Basic Application Level Confidentiality Profile and a set of Options that remove, replace, clean, or retain specific attributes. The replacement engine will claim that its output is *de-identified in accordance with* a named edition of that profile with named options only when its effective rules and output satisfy those requirements. Selecting a preset alone is not evidence of conformance. Custom removals as well as retentions can invalidate an object or contradict an option. Unsupported processing, including opt-in processing of Private SOP Classes, will be labelled as outside the conformance claim.
 
 Even full conformance does not guarantee that nobody can be identified. The standard itself notes that:
 
@@ -34,6 +34,8 @@ Even full conformance does not guarantee that nobody can be identified. The stan
 - anyone with access to the original images can match pixel data, whatever happens to the identifiers.
 
 Deciding whether a collection can be shared, and with whom, therefore also needs a risk assessment for that collection and its intended recipients.
+
+The planned public-release workflow also requires human quality control and a documented statistical risk assessment. A numerical threshold is meaningful only with its named model, assumptions, and subject-level unit of analysis; it is not an overall guarantee of anonymity. Confidential review packs may contain identifying strings or image previews missed by automated cleaning. They must remain in the restricted review environment and must not be included with released data or ordinary reports.
 
 ## Limitations of the current PyMedPhys tools
 

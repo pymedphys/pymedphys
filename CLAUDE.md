@@ -184,9 +184,9 @@ The project uses uv with optional dependency groups:
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
 7. **DICOM De-identification**: A standards-driven de-identification engine is replacing `pymedphys.dicom.anonymise` and the experimental pseudonymisation module. Its design, decision log, and next steps are in `lib/pymedphys/docs/contrib/info/deidentification-design.md`; update that document in every pull request that touches de-identification.
-   - Never log, print, or put into exception messages or reports any DICOM attribute value or original file path from de-identification code. Refer to attributes by tag or keyword path only.
+   - Never put source DICOM attribute values, secret keys, or original file paths in logs, standard output, exception messages, or release reports. Use tag/keyword paths and opaque object identifiers. A confidential QC review pack may contain retained strings and image previews needed for human review; create it only in an explicitly designated restricted location, keep it separate from release outputs, and treat it as potentially identifying. Key and subject-profile stores remain separate custodian-controlled state.
    - Rule tables generated from the DICOM standard are regenerated with their generator, never edited by hand.
-   - Describe output as "de-identified in accordance with" a named DICOM PS3.15 edition, profile, and options. Never describe it as "anonymised"; that is a legal conclusion about the release context that software cannot make.
+   - Claim "de-identified in accordance with" a named DICOM PS3.15 edition, profile, and options only after validating the effective policy and output. Validate both removal and retention overrides against IOD requirements and the claimed options. Explicitly label permitted nonconformant processing, including Private SOP Classes, and suppress unsupported conformance claims and method codes. Never describe output as "anonymised"; that is a legal conclusion about the release context that software cannot make.
 
 ## Common Development Patterns
 
