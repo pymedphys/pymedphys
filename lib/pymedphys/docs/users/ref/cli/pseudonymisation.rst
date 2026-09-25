@@ -1,6 +1,11 @@
 Pseudonymisation Tool
 =====================
 
+This command uses the legacy experimental pseudonymisation engine. See
+:doc:`../../background/dicom-deidentification` for its limitations and the
+planned transition before sharing output. The replacement presets described
+there are not available through this command.
+
 .. automodule:: pymedphys.cli.experimental.dicom
     :no-members:
 

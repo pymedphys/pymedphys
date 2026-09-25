@@ -18,6 +18,10 @@ API
 Anonymisation
 -------------
 
+This is the legacy interface. It does not implement the planned DICOM
+confidentiality profile. See :doc:`../../background/dicom-deidentification`
+for current limitations and the planned transition before sharing output.
+
 .. autofunction:: pymedphys.dicom.anonymise
 
 
