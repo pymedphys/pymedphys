@@ -6,33 +6,21 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 
 ## Workflow Architecture
 
-```mermaid
-graph TD
-    A[Push/PR Event] --> B[ci.yml]
-    B --> C[pre-commit.yml]
-    B --> D[lint.yml]
-    B --> E[type-check.yml]
-    B --> F[unit-tests.yml]
-    B --> G[integration-tests.yml]
-    B --> H[mosaiq-db-tests.yml]
-    B --> I[docs.yml]
+```text
+Push / pull request -> ci.yml
+                       |-- pre-commit.yml
+                       |-- lint.yml
+                       |-- type-check.yml
+                       |-- unit-tests.yml
+                       |-- integration-tests.yml (selected runs)
+                       |-- mosaiq-db-tests.yml (selected runs)
+                       |-- docs.yml (documentation PRs)
+                       `-- CI Summary
 
-    J[Schedule] --> K[deps.yml]
-    J --> L[security.yml]
-
-    M[Release] --> N[release.yml]
-    N --> D
-    N --> E
-    N --> F
-    N --> G
-
-    O[Issue Comment] --> P[claude-assistant.yml]
-    O --> Q[claude.yml]
-
-    style B fill:#f9f,stroke:#333,stroke-width:4px
-    style D fill:#bbf,stroke:#333,stroke-width:2px
-    style E fill:#bbf,stroke:#333,stroke-width:2px
-    style F fill:#bbf,stroke:#333,stroke-width:2px
+Schedule / manual run / main push / PR -> security.yml
+Schedule / manual run -> deps.yml
+Published release / manual run -> release.yml -> quality checks and publishing
+Issue comment -> claude.yml
 ```
 
 ## Workflow Structure
@@ -42,49 +30,57 @@ graph TD
 #### `ci.yml` - Main Orchestrator
 Coordinates all CI checks based on file changes, labels, and event types.
 
-- **Triggers**: Push to main, pull requests, workflow_call
+- **Triggers**: Push to main, pull requests (including label changes, which queue
+  behind an in-flight run rather than cancelling it)
 - **Jobs**:
   - `changes`: Detects file changes using path filters
   - `pre-commit`: Auto-formatting and basic checks
-  - `lint`: Code quality (always runs)
-  - `type-check`: Static type checking (always runs)
-  - `unit-tests`: Fast unit tests (always runs)
+  - `lint`: Code quality
+  - `type-check`: Static type checking
+  - `unit-tests`: Fast unit tests
   - `integration-tests`: Extended tests (conditional)
   - `mosaiq-db-tests`: Database tests (conditional)
-  - `docs-check/publish`: Documentation (conditional)
-  - `cypress-e2e`: E2E tests (main only)
-  - `summary`: Generates comprehensive report
+  - `docs-check`: Documentation build and artefact (conditional)
+  - `summary`: Requires core checks and selected extended checks to succeed
+
+Lint, type checks, and unit tests normally run on every PR. If pre-commit
+pushes an auto-fix, those jobs are skipped for the superseded commit and the
+summary fails until a fresh run passes on the new commit. Upstream failures
+can also skip dependent jobs; the summaries reject those unexpected skips.
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
 
 - **Features**:
-  - Auto-fixes issues on PRs
-  - Commits fixes automatically with bot account
+  - Applies the configured hooks, including Ruff, actionlint, and offline zizmor
+  - Can push fixes on same-repository PRs when bot credentials are available
+  - Fork PR authors must apply and push their fixes themselves
   - Caches pre-commit environments
 
 #### `lint.yml`
 Dedicated linting workflow for code quality.
 
 - **Jobs**:
-  - `ruff`: Fast Python linter and formatter
-  - `pylint`: Comprehensive Python linting
-- **Always runs on PRs** for early issue detection
+  - `lint`: Comprehensive Python linting with Pylint
+- Ruff linting and formatting run through pre-commit
+- Runs on PRs subject to the orchestrator's pre-commit dependency
 
 #### `type-check.yml`
 Static type checking for type safety.
 
 - **Jobs**:
   - `pyright`: Primary type checker
-  - `mypy`: Secondary checker (optional/non-blocking)
-- **Always runs on PRs** to ensure type safety
+  - `mypy`: Secondary checker (optional/non-blocking), run from the locked `dev` extra
+- Runs on PRs subject to the orchestrator's pre-commit dependency
 
 #### `unit-tests.yml`
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS matrix on main (Ubuntu, Windows, macOS)
-  - Quick mode for PRs (Ubuntu +  latest supported Python version)
+  - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
+  - Quick mode for PRs (Ubuntu + Python 3.12)
+  - Installs the `user` extra so the headless Streamlit GUI tests run
+  - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
@@ -94,27 +90,30 @@ Fast unit tests with smart matrix strategy.
 Comprehensive testing beyond unit tests.
 
 - **Test Types**:
-  - `doctests`: Documentation code examples
+  - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
-  - `stackoverflow`: Example code validation
   - `wheel-build`: Package build verification
-  - `propagate`: Propagation script tests
+  - `propagate`: `pymedphys dev propagate` must leave the generated files
+    unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
+    `_version.py`)
 - **Triggers**: Main branch or `full-test` label
 
 #### `mosaiq-db-tests.yml`
 SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
-- **Triggers**: Database code changes or `database` label
-- **Features**: Automatic retries for connection stability
+- **Triggers**: Main pushes, database code changes, or `database` / `full-test` labels
+- **Features**: Waits for SQL Server to accept connections, then runs the tests once;
+  test failures are not hidden by retries
 
 #### `docs.yml`
-Builds and deploys documentation to GitHub Pages.
+Builds documentation on PRs that change documentation sources, package Python code, or build tooling.
 
-- **Modes**:
-  - `docs-check`: Build verification on PRs with doc changes
-  - `docs-publish`: Deploy to GitHub Pages on main
-- **Deployment**: docs.pymedphys.com
+- **HTML build**: Sphinx warnings and unexpected notebook errors fail the build
+- **Link check**: Advisory external-link check with downloadable reports
+- **Artefact**: Built HTML is uploaded for inspection
+- **Publishing**: ReadTheDocs publishes docs.pymedphys.com independently using
+  `.readthedocs.yml`
 
 ### Release & Maintenance
 
@@ -129,24 +128,47 @@ Handles PyPI package publishing with quality gates.
   - Installation verification
 
 #### `security.yml`
-Enhanced security scanning and vulnerability detection.
+Security scanning with pinned tools run through `uvx`, so nothing is installed
+into the project environment.
 
 - **Scans**:
-  - `secrets-scan`: API key exposure detection
-  - `dependency-audit`: pip-audit for vulnerabilities
-  - `python-security`: Bandit security linting
-  - `container-scan`: Trivy filesystem scanning
-  - `github-actions-security`: Workflow security patterns
-- **Schedule**: Weekly + on main pushes + PR changes
+  - `dependency-audit`: pip-audit over an export of `uv.lock` containing all
+    extras. The audit runs on Ubuntu/Python 3.12 and evaluates dependency
+    markers for that environment; it is not a separate audit of every
+    OS/Python combination. Advisory on pull requests and pushes so a
+    newly published advisory cannot turn an unrelated commit red; blocking on
+    scheduled and manual runs, where a failure opens or updates the issue
+    labelled `security-audit`
+  - `python-security`: Bandit, configured in `[tool.bandit]` in
+    `pyproject.toml`. Blocking when selected; SARIF is uploaded as an artefact and to
+    code scanning when the event has permission (fork PRs cannot upload there)
+  - `workflow-audit`: zizmor over `.github` and over any workflow files staged
+    in `claude_created_workflows_preview/`, blocking at medium severity and
+    above. The offline audits also run through pre-commit; the online ones,
+    including the check that each pin's version comment names the tag that
+    carries the pinned commit, run only here
+- **Triggers**: Weekly, manually, on main pushes, and on every PR; job-level path
+  filters select the scans, while `Security Summary` always runs
+- **Coverage**: Path filtering applies only to PRs; scheduled and manual runs scan
+  even when the last commit did not change security-related files
+- **Summary**: Requires every selected scan to succeed
+- **Not in the workflow**: secret scanning and push protection are GitHub
+  repository settings (Settings, Code security and analysis), and Dependabot
+  raises dependency alerts from the same lockfiles
 
 #### `deps.yml`
-Automated dependency updates.
+Automated dependency updates for Python packages.
 
-- **Schedule**: Weekly (Mondays)
-- **Features**:
-  - Creates PR with uv lock updates
-  - Includes changelog in PR description
-  - Runs tests before creating PR
+- **Schedule**: Weekly (Mondays), or manually
+- **Steps**: `uv lock --upgrade`, `uv sync`, and `pymedphys dev propagate` (so
+  the exported requirements files, `dependency-extra.txt`, and `pyproject.hash`
+  stay current), then the unit tests, the docs build, and a wheel build and
+  install before a PR is opened
+- **PR**: opened with the CI bot's app token so the normal CI runs on it; a PR
+  opened with `GITHUB_TOKEN` triggers no workflows
+- **Dependabot** (`.github/dependabot.yml`) owns the GitHub Actions pins (one
+  grouped weekly PR) and raises security-fix PRs for Python packages; it does
+  not open version-update PRs for Python packages
 
 ### AI Assistance
 
@@ -157,24 +179,14 @@ Claude Code integration for automated code assistance.
 - **Capabilities**: Code review, issue analysis, PR creation
 - **Tools**: File operations, git, uv package management
 
-#### `claude-assistant.yml`
-Claude chatbot for issue discussions.
-
-- **Triggers**: Comments with `!claude` mention
-- **Features**:
-  - Rate limiting protection
-  - Security filtering
-  - Context-aware responses
-
 ## Composite Actions
 
 ### `actions/setup-project/action.yml`
-Standardized project setup for all workflows.
+Standardised project setup for all workflows.
 
 - **Features**:
   - Python setup with configurable version
   - uv package manager with caching
-  - Optional Node.js setup
   - PyMedPhys data caching
   - Dependency installation with extras
 
@@ -183,15 +195,16 @@ Standardized project setup for all workflows.
 For a typical pull request:
 
 ```
-Always Run:
+Core checks (subject to the pre-commit dependency above):
 ├── pre-commit       # Auto-formatting
-├── lint             # Ruff + Pylint
+├── lint             # Pylint; Ruff runs in pre-commit
 ├── type-check       # Pyright
-└── unit-tests       # Quick mode (Ubuntu + latest supported Python version)
+└── unit-tests       # Quick mode (Ubuntu + Python 3.12)
 
-Conditional:
-├── mosaiq-db-tests  # If database files changed
-├── docs-check       # If documentation changed
+Conditional (also recalculated when labels change):
+├── integration-tests # full-test label
+├── mosaiq-db-tests  # Database files changed, database or full-test label
+├── docs-check       # Documentation sources or build tooling changed
 └── security         # If Python/config files changed
 ```
 
@@ -200,11 +213,10 @@ Conditional:
 On merge to main:
 
 ```
-Everything from PR workflow, plus:
+Core checks, plus:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
-├── cypress-e2e        # Browser tests (if present)
-├── docs-publish       # Deploy to GitHub Pages
+├── mosaiq-db-tests    # Database tests
 └── security           # Full security scan
 ```
 
@@ -212,34 +224,142 @@ Everything from PR workflow, plus:
 
 | Secret | Description | Used By |
 |--------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Claude AI API access | claude.yml, claude-assistant.yml |
+| `ANTHROPIC_API_KEY` | Claude AI API access | claude.yml |
 | `GITHUB_TOKEN` | GitHub API access (automatic) | All workflows |
-| `PYMEDPHYS_CI_BOT_ID` | Bot app ID for auto-commits | pre-commit.yml (optional) |
-| `PYMEDPHYS_CI_BOT_TOKEN` | Bot private key | pre-commit.yml (optional) |
+| `PYMEDPHYS_CI_BOT_ID` | Bot app ID for auto-commits and update PRs | pre-commit.yml (optional), deps.yml |
+| `PYMEDPHYS_CI_BOT_TOKEN` | Bot private key | pre-commit.yml (optional), deps.yml |
 
 ## Environments
 
-| Environment | Description | Protection Rules |
-|-------------|-------------|------------------|
-| `pypi` | PyPI publishing | Required reviewers, main branch only |
-| `claude-api` | Claude API access | Rate limiting recommended |
+| Environment | Purpose | Required setup |
+|-------------|---------|----------------|
+| `pypi` | Production publishing | Configure trusted publishing, release approvers, and allowed `main` branch / `v*` tag refs |
+| `testpypi` | Manual release dry runs | Configure TestPyPI trusted publishing and allowed `main` branch / `v*` tag refs |
 
-## Branch Protection Settings
+Environment protection is configured in GitHub Settings, not by the workflow's
+`environment` field. Create and verify these environments before releasing;
+referencing an absent environment can create it without protection rules.
+The publisher registered with PyPI or TestPyPI must match this repository,
+`.github/workflows/release.yml`, and the corresponding environment name.
+See the [release guide](release-guide.md) for the release procedure.
 
-Required status checks for merge:
-- ✅ `pre-commit`
-- ✅ `lint`
-- ✅ `type-check`
-- ✅ `unit-tests`
+## Required checks and pull request reviews
+
+### Why the summaries are required
+
+The required GitHub Actions check names for `main` are **`CI Summary`** (from
+`ci.yml`) and **`Security Summary`** (from `security.yml`). Select GitHub Actions
+as their expected source in the `main-integrity` ruleset. The release workflow's
+**`Release Summary`** is a report, not a merge gate, and must not be required on
+pull requests.
+
+| Required check | Checks it covers |
+|----------------|------------------|
+| `CI Summary` | Change selection, pre-commit, Pylint, the type-check workflow, unit tests, and selected integration, database, and documentation checks |
+| `Security Summary` | Change selection and selected dependency, Python security, and workflow security audits |
+
+These are executable gates, not just reports. Both use `if: always()` and
+`.github/scripts/check_workflow_status.py` to inspect their dependencies. A core
+check must succeed. A selected conditional check must also succeed; a skipped
+conditional check is accepted only when its selection output explicitly says
+`false`. Missing selection outputs, failures, cancellations, and unexpected skips
+fail the summary. A pre-commit auto-fix must pass a fresh run on its new commit.
+
+GitHub can accept a skipped individual job as a successful required check. The
+summaries close that gap and apply one consistent policy to conditional tests.
+They also provide stable required-check names when the OS/Python matrix or
+internal job names change. Requiring every constituent check separately does not
+add test coverage and can leave outdated names blocking otherwise valid PRs.
+See [GitHub's required-check troubleshooting guide](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks).
+
+### Seeing every constituent check
+
+Making only the summaries required does **not** hide, combine, or stop the other
+jobs. Expand the checks list in the PR's merge section to see individual results,
+including non-required checks. GitHub controls how that list is grouped or
+collapsed; the PR's **Checks** tab also lets you inspect each workflow and job.
+Open a check's details for its logs. The CI and security workflow run summaries
+include a table showing which checks were required for that run and their result.
+
+A skipped integration or database job can be expected on a small PR. The summary
+explains whether it was selected. The `full-test` and `database` labels below
+request broader coverage and trigger another CI run.
+
+### What a successful summary means
+
+- Ordinary PRs use Ubuntu and Python 3.12 for unit tests. The full OS/Python
+  matrix and integration tests run on main pushes and `full-test` PRs. A green
+  ordinary PR therefore does not mean the full matrix ran before merging.
+- Pyright is blocking. MyPy remains optional through `continue-on-error`.
+- Dependency vulnerabilities are advisory on PRs and pushes. Requiring either
+  `Dependency Audit` or `Security Summary` does not turn pip-audit findings into
+  a blocking policy; scheduled/manual scans handle them as described above.
+- Bandit and zizmor findings at the configured threshold are blocking when
+  selected. Documentation builds are blocking when selected; external link
+  failures remain advisory if the link checker produces its report.
+
+### The two main-branch rulesets
+
+| Ruleset | Policy | Bypass |
+|---------|--------|--------|
+| `main-integrity` | Require `CI Summary` and `Security Summary`, require an up-to-date branch, block force pushes and branch deletion | None, including admins |
+| `main-reviews` | Require a PR, one approval by an eligible reviewer, and resolution of review conversations | Repository admins, for pull requests only |
+
+Contributors with Write access may merge once these requirements pass. Review is
+encouraged for admin-authored PRs too, but an admin may explicitly bypass the
+review ruleset. GitHub grants bypass to the person merging, regardless of the
+PR author. The bypass does not waive the separate CI ruleset or permit direct
+pushes to main.
+
+By maintainer choice, **Dismiss stale approvals when new commits are pushed**
+and **Require approval of the most recent reviewable push** remain **off**.
+An approval can therefore remain valid after later commits; authors should
+request another review for substantive changes. Required checks still need to
+pass for the current commit. Code Owner approval is not required. Keep the
+additional-approval setting for unattributed Copilot PRs enabled.
+
+### Maintaining the gates
+
+1. Add each new blocking job to the appropriate summary's `needs`. The helper
+   cannot inspect jobs omitted from that list. Existing dependencies are
+   required to succeed unless explicitly configured as conditional.
+2. For a conditional job, use the same selection output for the job's `if` and
+   the summary's `--conditional JOB=OUTPUT` argument. Add regression coverage
+   when changing the selection policy.
+3. Keep each required check name unique across workflows. `CI Summary` is the
+   displayed CI check name; `summary` remains its internal YAML job ID.
+4. If renaming a required check, first produce the new check on the change PR,
+   then replace the old required context in GitHub Settings before merging.
+   Update older PRs to use the new workflow. Never remove all required gates
+   just to merge a naming change.
+5. Run `python -m unittest discover -s .github/scripts -p 'test_*.py'` after
+   changing the summary policy, then verify the PR's CI and security results.
+
+Remove obsolete standalone requirements, such as the former Actionlint check;
+actionlint now runs through pre-commit. Do not add required checks for advisory
+review bots or for workflows that do not run on every PR.
+
+Historical branches are managed separately from main. The `legacy-read-only`
+ruleset freezes `master`, the existing `0.6.x` through `0.39.x` branches, and
+`revert-1460-0.36.x` using explicit targets and no bypass. It prevents updates,
+force pushes, and deletion. To resume maintenance, deliberately remove the
+specific branch from that ruleset and configure working branch-specific CI and
+review requirements first. Do not apply main's check names to an old branch
+whose workflows do not emit them. Publishing branches such as `docs` and
+`streamlit-app-staging` need a separate deployment review before retirement.
 
 ## Labels for Manual Triggers
 
-- `full-test` - Run integration tests on a PR
+- `full-test` - Run the full unit-test matrix, slow integration tests, and database tests on a PR
 - `database` - Force database tests to run
-- `skip-ci` - Skip CI checks (use sparingly)
 
 
 ## Testing Workflows Locally
+
+Prefer the local commands below for reproducing individual checks.
+[act](https://nektosact.com/) can help investigate Linux jobs, but it does not
+reproduce GitHub-hosted Windows/macOS runners, repository permissions, secrets,
+or environment approvals. A local run does not replace GitHub CI.
 
 ```bash
 # Install act
@@ -247,11 +367,6 @@ brew install act  # or appropriate for your OS
 
 # Test CI workflow
 act push -W .github/workflows/ci.yml
-
-# Test with specific inputs
-act push -W .github/workflows/unit-tests.yml \
-  --input python-matrix='["3.12"]' \
-  --input quick=true
 
 # Test PR workflow
 act pull_request -W .github/workflows/ci.yml
@@ -261,7 +376,7 @@ act pull_request -W .github/workflows/ci.yml
 
 ```bash
 # Install with dev dependencies
-uv sync --frozen --extra dev --extra tests
+uv sync --python 3.12 --locked --extra all --group dev
 
 # Run all pre-commit hooks
 uv run pre-commit run --all-files
@@ -270,11 +385,14 @@ uv run pre-commit run --all-files
 uv run ruff check
 uv run ruff format --check
 uv run pyright
-uv run pytest -m "not slow"
 uv run pymedphys dev lint
+uv run pymedphys dev tests -m "not slow"
 
-# Run slow tests locally
-uv run pytest -m slow
+# Run only the slow tests locally
+uv run pymedphys dev tests --slow
+
+# Run the default tests plus the slow tests
+uv run pymedphys dev tests --include-slow
 
 # Build docs locally
 uv run pymedphys dev docs
@@ -284,9 +402,18 @@ uv run pymedphys dev docs
 ## Security Considerations
 
 - **Never commit secrets**: Use GitHub Secrets
-- **Review permissions**: Minimum required for each workflow
-- **Enable Dependabot**: Keep actions updated
-- **Audit third-party actions**: Pin to commit SHAs
+- **Review permissions**: Minimum required for each job; write permissions
+  belong at the job level, never at the workflow level
+- **Dependabot**: `.github/dependabot.yml` keeps the action pins current and
+  raises security-fix PRs for Python packages
+- **Audit third-party actions**: Pin to commit SHAs with the exact upstream tag
+  name as the comment (`# v6.0.2`, never `# 6.0.2`); zizmor resolves the
+  comment as a ref and fails when it does not exist or points elsewhere
+- **Keep zizmor clean**: Pass inputs, matrix values, and step outputs to `run:`
+  blocks through `env:`, set `persist-credentials: false` on checkouts that do
+  not push, and pin every action to a commit SHA. The pre-commit hook cannot
+  run the online audits, so confirm a pin's tag with
+  `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>`
 - **Rotate keys periodically**: Especially API keys
 - **Review security alerts**: Weekly scan results
 - **Limit workflow triggers**: Avoid `pull_request_target` misuse
@@ -294,8 +421,7 @@ uv run pymedphys dev docs
 
 ## Version Compatibility
 
-- **Python**: 3.10, 3.12 (tested in CI)
-- **Node.js**: 20.x (for Cypress and build tools)
-- **uv**: Latest version (auto-updated)
-- **GitHub Actions**: Ubuntu 22.04, Windows 2022, macOS 12/13/14
+- **Python**: 3.10, 3.11, 3.12 (tested in CI; 3.10 reaches end of life in October 2026)
+- **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
+- **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)

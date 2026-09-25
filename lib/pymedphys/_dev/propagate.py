@@ -48,8 +48,8 @@ AUTOGEN_MESSAGE = [
 
 def propagate_all(args):
     if args.update:
-        subprocess.check_call("uv lock --upgrade", shell=True)
-        subprocess.check_call("uv sync --extra all --group dev", shell=True)
+        subprocess.check_call(["uv", "lock", "--upgrade"])
+        subprocess.check_call(["uv", "sync", "--extra", "all", "--group", "dev"])
 
     propagate_version()
     propagate_extras()
@@ -73,7 +73,7 @@ def propagate_lock_requirements_and_hash():
 
 
 def _update_uv_lock():
-    subprocess.check_call("uv lock", shell=True)
+    subprocess.check_call(["uv", "lock"])
 
 
 def _read_text_utf8(path):
@@ -253,10 +253,11 @@ def propagate_extras():
     for key in sorted(extras_map.keys(), key=str.lower):
         arr = tomlkit.array(extras_map[key]).multiline(True)
         tbl.add(key, arr)
+    text = tomlkit.dumps(tbl)
+    if not text.endswith("\n"):
+        text += "\n"
     with io.open(DEPENDENCY_EXTRA_PATH, "w", encoding="utf-8", newline="\n") as f:
-        f.write(tomlkit.dumps(tbl))
-        if not str(tbl).endswith("\n"):
-            f.write("\n")
+        f.write(text)
 
 
 def _propagate_pyproject_hash():

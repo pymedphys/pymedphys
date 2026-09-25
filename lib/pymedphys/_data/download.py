@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +19,12 @@ import json
 import logging
 import os
 import pathlib
+import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
+from http import HTTPStatus
 
 from pymedphys._imports import tqdm
 
@@ -33,30 +37,133 @@ HERE = pathlib.Path(__file__).resolve().parent
 DEFAULT_HASHES_PATH = HERE.joinpath("hashes.json")
 
 
-@functools.lru_cache()
-def create_download_progress_bar():
-    class DownloadProgressBar(tqdm.tqdm):
-        def update_to(self, b=1, bsize=1, tsize=None):
-            if tsize is not None:
-                self.total = tsize
-            self.update(b * bsize - self.n)
+# Every URL comes from the package's own urls.json, a Zenodo record listing,
+# or the caller of data_path(url=...). file: is kept for local mirrors; the
+# caller already has filesystem access, so it grants nothing new. Every other
+# scheme, including the ftp: and data: schemes that urllib would accept, is
+# rejected.
+SUPPORTED_URL_SCHEMES = ("http", "https", "file")
 
-    return DownloadProgressBar
+# Seconds to wait for the server to respond, and for each socket read after
+# that. A stalled connection then raises instead of hanging the caller
+# indefinitely.
+DOWNLOAD_TIMEOUT_SECONDS = 60
+
+# HTTP statuses worth retrying. Anything else (404, 403, and so on) will not
+# change on a second attempt, so the download gives up at once.
+RETRYABLE_HTTP_STATUSES = frozenset(
+    {
+        HTTPStatus.REQUEST_TIMEOUT,
+        HTTPStatus.TOO_EARLY,
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        HTTPStatus.BAD_GATEWAY,
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.GATEWAY_TIMEOUT,
+    }
+)
+
+DATA_DIR_ENVIRONMENT_VARIABLE = "PYMEDPHYS_DATA_DIR"
+
+# Bytes read per iteration. The progress bar updates once per chunk, so this
+# keeps it responsive on slow links (about 0.6 s per update at 100 kB/s) while
+# the per-call overhead stays negligible. It does not affect stall detection:
+# the timeout applies to each socket read, whatever the chunk size.
+_CHUNK_SIZE = 64 * 1024
 
 
-@retry.retry((urllib.error.HTTPError, ConnectionResetError))
-def download_with_progress(url, filepath):
-    DownloadProgressBar = create_download_progress_bar()
+def _is_permanent_failure(error: BaseException) -> bool:
+    return (
+        isinstance(error, urllib.error.HTTPError)
+        and error.code not in RETRYABLE_HTTP_STATUSES
+    )
 
-    with DownloadProgressBar(
-        unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
-    ) as t:
-        urllib.request.urlretrieve(url, filepath, reporthook=t.update_to)
+
+@retry.retry(
+    (urllib.error.URLError, ConnectionError, TimeoutError),
+    giveup=_is_permanent_failure,
+)
+def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
+    """Download ``url`` to ``filepath`` while showing a progress bar.
+
+    The download is written to a temporary file beside ``filepath`` and only
+    moved into place once it is complete, so an interrupted download never
+    leaves a truncated file behind. Network errors, timeouts, and transient
+    HTTP statuses are retried with an exponential backoff; other HTTP errors,
+    such as 404, are raised immediately.
+
+    Parameters
+    ----------
+    url : str
+        An ``http``, ``https``, or ``file`` URL. Any other scheme raises
+        ``ValueError``.
+    filepath : str or os.PathLike
+        Where the download is written.
+    """
+    scheme = urllib.parse.urlsplit(url).scheme
+    if scheme not in SUPPORTED_URL_SCHEMES:
+        raise ValueError(
+            f"Unsupported URL scheme {scheme!r} in {url!r}; "
+            f"expected one of {SUPPORTED_URL_SCHEMES}"
+        )
+
+    filepath = pathlib.Path(filepath)
+
+    # The scheme was checked against SUPPORTED_URL_SCHEMES above, and the
+    # note on that constant explains why file: is acceptable here.
+    with urllib.request.urlopen(  # nosec B310
+        url, timeout=DOWNLOAD_TIMEOUT_SECONDS
+    ) as response:
+        content_length = response.headers.get("Content-Length")
+        expected_size = int(content_length) if content_length else None
+
+        file_descriptor, temp_name = tempfile.mkstemp(
+            dir=filepath.parent, prefix=f".{filepath.name}.", suffix=".part"
+        )
+        temp_path = pathlib.Path(temp_name)
+        try:
+            with (
+                os.fdopen(file_descriptor, "wb") as temp_file,
+                tqdm.tqdm(
+                    total=expected_size,
+                    unit="B",
+                    unit_scale=True,
+                    miniters=1,
+                    desc=url.split("/")[-1],
+                ) as progress,
+            ):
+                received = 0
+                while chunk := response.read(_CHUNK_SIZE):
+                    temp_file.write(chunk)
+                    received += len(chunk)
+                    progress.update(len(chunk))
+
+            if expected_size is not None and received < expected_size:
+                raise urllib.error.ContentTooShortError(
+                    f"Download of {url} stopped after {received} of "
+                    f"{expected_size} bytes",
+                    (str(filepath), response.headers),
+                )
+
+            os.replace(temp_path, filepath)
+        except BaseException:
+            temp_path.unlink(missing_ok=True)
+            raise
 
 
 def get_data_dir():
-    data_dir = pmp_config.get_config_dir().joinpath("data")
-    data_dir.mkdir(exist_ok=True)
+    """Return the directory that caches downloaded data, creating it if needed.
+
+    The ``PYMEDPHYS_DATA_DIR`` environment variable overrides the default of
+    ``~/.pymedphys/data``.
+    """
+    override = os.environ.get(DATA_DIR_ENVIRONMENT_VARIABLE)
+    if override:
+        data_dir = pathlib.Path(override)
+    else:
+        data_dir = pmp_config.get_config_dir().joinpath("data")
+
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     return data_dir
 

@@ -8,32 +8,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Install with uv (required for development)
-uv sync --extra all --group dev
+uv sync --python 3.12 --locked --extra all --group dev
 
 # Install pre-commit hooks
 uv run -- pre-commit install
 
 # Install for user use only
-pip install pymedphys[user]
+python -m pip install "pymedphys[user]"
 ```
 
 ### Testing
 
 ```bash
-# Run all tests
+# Run default tests (slow/database selection has separate options)
 uv run -- pymedphys dev tests
 
-# Run specific test file or directory
+# Run specific test file or directory (relative to lib/pymedphys or the cwd)
 uv run -- pymedphys dev tests tests/path/to/test.py
 
 # Run with specific pytest options
 uv run -- pymedphys dev tests -v -s -k "test_name"
 
+# Add the slow tests to the default selection, or run only the slow tests
+uv run -- pymedphys dev tests --include-slow
+uv run -- pymedphys dev tests --slow
+
 # Run doctests
 uv run -- pymedphys dev doctests
-
-# Run E2E tests with Cypress
-uv run -- pymedphys dev tests --cypress
 ```
 
 ### Code Quality
@@ -61,6 +62,19 @@ uv run -- pymedphys dev docs
 
 # The docs use Jupyter Book and are located in lib/pymedphys/docs/
 ```
+
+Documentation notebooks must use declared, locked dependencies rather than
+installing packages while running. Add documentation dependencies to both the
+`docs` and `all` extras and regenerate the exported ReadTheDocs requirements.
+Unexpected notebook errors and documentation build warnings fail the build.
+An install cell kept for readers running a notebook elsewhere (for example on
+Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
+generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
+file is gitignored, so edit `_config.yml`.
+
+Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
+Follow the relative source-path and published-URL guidance in
+[Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
 
 ## Architecture Overview
 
@@ -108,8 +122,42 @@ When creating conda recipes, pull requests, or other metadata that requires main
 
 - Unit tests are in `lib/pymedphys/tests/` mirroring the source structure
 - Tests use pytest with fixtures defined in `conftest.py`
+- `pymedphys dev tests` changes the working directory to `lib/pymedphys` before
+  invoking pytest, so relative output paths (e.g. `--junitxml`) resolve there.
+  Use absolute paths in CI. Test paths may be given relative to `lib/pymedphys`
+  or to the caller's directory; the whole package is collected only when no
+  path is given. Resolve positional paths after pytest parses its arguments;
+  do not maintain a list of value-taking options, since plugins can add more.
+- Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
+  `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
+  `--include-anthropic`) adds them to the default selection. `--slow` (and
+  `--mosaiqdb`, `--anthropic`, `--pydicom`) runs only the tests with that
+  marker; several of these select the union. `--all` runs everything.
+  `pytest -m slow` alone selects the slow tests but still skips every one.
+- `[tool.pytest.ini_options]` in `pyproject.toml` enforces strict markers and
+  strict xfail, and stops any test after 900 s (`pytest-timeout`). Register a
+  new marker in `MARKER_CONFIG` in the root conftest.
+- The root conftest points `HOME` and `USERPROFILE` at a temporary directory for
+  the whole session, so tests never read or write the real `~/.pymedphys` or
+  `~/.streamlit`. The Zenodo cache stays shared through `PYMEDPHYS_DATA_DIR`,
+  which `pymedphys._data.download.get_data_dir` honours. Write test outputs to
+  `tmp_path`, never beside cached data files.
+- `dev tests` and `dev doctests` bypass user logging configuration during CLI
+  startup, before pytest can isolate the home directory. Keep this boundary:
+  opening a configured log can modify user files before any test runs.
+- Data caches must not fall back across changes to `hashes.json`: ZIP archives
+  are checked, but previously extracted files are not refreshed automatically.
 - Mock data and fixtures are in `_mocks/` and test data directories
-- E2E tests use Cypress for Streamlit app testing
+- The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
+  `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
+  read the rendered markdown. Data-driven scenarios use the
+  `metersetmap-gui-e2e-data.zip` demo archive and run from a temporary working
+  directory because the apps extract it into the current directory. The apps
+  memoise `get_config` with `st.cache_data` for the life of the pytest process,
+  so a fixture that serves a different configuration must clear `st.cache_data`
+  on entry and exit. The root conftest also pins `MPLBACKEND=Agg`, because the
+  apps draw matplotlib figures on the AppTest worker thread and the GUI backends
+  abort the interpreter off the main thread.
 
 ### Dependencies and Extras
 
@@ -151,6 +199,19 @@ When modifying DICOM functionality, be aware of:
 - Anonymization requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+### Copyright Headers
+
+Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.
+
+- When a change is meaningful, credit its author in the header of each file it touches. For Claude-assisted work, that is the person who directed it.
+- Put a new line above the existing ones (newest first). If the author already has a line of their own, extend its years instead (`2025-2026`, `2021, 2025`). Leave joint lines unchanged.
+- A change is meaningful when the author's net surviving contribution to the file is about 15 or more added or rewritten lines, cumulative across PRs. Mechanical edits do not count: API renames, import reordering, lint, typing-only and formatting fixes, and `nosec` comments.
+- A new file starts with the full header, crediting its author and the current year. Do not add a header to an existing file that has none without the maintainers' agreement, since it must also credit the original authors.
+- Every PyMedPhys copyright header must have the full Apache 2.0 licence
+  notice immediately below its copyright lines, including when adding a
+  header to an existing file. Preserve upstream licence and attribution
+  notices in third-party code.
 
 ## Claude Code Workflow Guidelines
 
@@ -253,13 +314,78 @@ This ensures that:
 - Maintainers don't need to repeatedly explain the same concepts
 - Knowledge is preserved across different workflow runs
 
+### CI Gates and Review Policy
+
+- Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
+  Keep these names unique across workflows; the release report is named
+  `Release Summary`. Keep all constituent checks visible and add every new
+  blocking job to the appropriate summary's `needs`.
+- Document CI coverage, advisory exceptions, and check-name migrations in
+  `lib/pymedphys/docs/contrib/info/workflows.md`.
+- Non-admin collaborators with Write access may merge approved PRs. Admins may
+  bypass the review ruleset for PR merges but not the separate CI ruleset.
+- Keep stale-approval dismissal and last-push approval requirements off, as
+  requested by the maintainers. Encourage renewed review for substantive
+  changes without automatically discarding existing approvals.
+
+### Security Scanning Policy
+
+- `security.yml` runs three scanners through `uvx` at pinned versions: pip-audit
+  on the exported lockfile, Bandit on the package, and zizmor on the workflows.
+  The dependency audit is advisory on pull requests and pushes and blocking on
+  scheduled and manual runs, where a failure opens or updates the issue labelled
+  `security-audit`. Bandit and zizmor block on every event.
+- Workflow files staged in `claude_created_workflows_preview/` count as workflow
+  changes for the pull request path filter, and zizmor audits them in place, so
+  a staged workflow must be clean before a maintainer moves it.
+- Bandit is configured in `[tool.bandit]` in `pyproject.toml`: tests are excluded
+  and a reviewed list of low-severity checks is skipped. Fix any other finding.
+  Where a finding is a false positive, put the justification in a comment on the
+  line above and a bare `# nosec Bxxx` on the offending line (Bandit treats words
+  after the code as test names). Never widen the skip list to make a run green.
+- Workflows must pass zizmor at medium severity: pass inputs, matrix values, and
+  step outputs to `run:` blocks through `env:` rather than `${{ }}` expansions,
+  set `persist-credentials: false` on checkouts that do not push, keep write
+  permissions at the job level, and pin every action to a commit SHA with the
+  exact upstream tag name as the trailing comment (`# v6.0.2`, never `# 6.0.2`).
+  The online `ref-version-mismatch` audit resolves that comment as a ref in the
+  action's repository and fails the Workflow Audit job when it does not exist or
+  points at a different commit. The pre-commit zizmor hook runs the offline
+  audits only and cannot check this, so confirm a new pin with
+  `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>` before
+  pushing.
+- Secret scanning and push protection are GitHub repository settings, not
+  workflow jobs.
+
 ### Dependency Updates
 
 When updating dependencies:
 1. Update version constraints in `pyproject.toml`
-2. Run `uv lock --upgrade` and then `uv sync --extra all --group dev` to regenerate `uv.lock`
-3. Test changes to ensure nothing breaks
-4. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
+2. Run `uv lock --upgrade` and then `uv sync --python 3.12 --locked --extra all --group dev` to regenerate `uv.lock`
+3. Run `uv run pymedphys dev propagate` to regenerate the exported requirements
+   files, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
+   fails when these drift from `pyproject.toml` and `uv.lock`
+4. Test changes to ensure nothing breaks
+5. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
+
+### GitHub Actions Pins and Dependabot
+
+- Every action is pinned to a commit SHA with the tag in a trailing comment
+  (`uses: owner/repo@<sha> # vX.Y.Z`). Dependabot (`.github/dependabot.yml`)
+  updates the SHA and the comment together in one grouped weekly PR, so the
+  comment must be exactly the tag name.
+- Dependabot only raises security-fix PRs for Python packages. Version updates
+  come from the weekly `deps.yml` run, which regenerates the propagated files
+  and opens its PR with the CI bot's token so CI runs on it.
+- CI pins uv (`version` on `setup-uv`) to the same version as the pre-commit
+  `uv-lock` hook. Bump both together and confirm `uv lock` leaves `uv.lock`
+  unchanged under the new version.
+
+**Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
+resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.
+`uv lock --check` only validates `requires-dist` against `pyproject.toml`, so a
+hand-edited lockfile can pass the check while CI silently omits the package.
+Always regenerate the lockfile with `uv lock` after touching `pyproject.toml`.
 
 ### Working with Restricted Permissions
 
@@ -349,6 +475,11 @@ When asked to create GitHub workflow files (`.github/workflows/*.yml`):
    - Pull the branch locally
    - Move the file from `claude_created_workflows_preview/` to `.github/workflows/`
    - Push the change back using their own permissions
+   - Give the move command for both shells. Maintainers often work in
+     PowerShell, where `mv` is `Move-Item` and refuses to overwrite an
+     existing file unless `-Force` is passed:
+     - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+     - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
 4. **Provide the PR creation link** with the branch as-is
 
 **Recommended PR Workflow**: Create the PR first, then move the file. This approach:

@@ -1,3 +1,17 @@
+# Copyright (C) 2019, 2025-2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import functools
 import json
@@ -15,7 +29,7 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._data import download
-from pymedphys._dicom import create
+from pymedphys._dicom import compat
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS_FILEPATH,
     anonymise_directory,
@@ -103,7 +117,7 @@ def _check_is_anonymised_dataset_file_and_dir(
     temp_filepath = str(tmp_path / "test.dcm")
 
     try:
-        create.set_default_transfer_syntax(ds)
+        compat.ensure_transfer_syntax(ds)
 
         ds.file_meta = pydicom.filereader.read_file_meta_info(test_file_path)
 
@@ -296,7 +310,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         with pytest.raises(AttributeError) as e_info:
             ds_anon_delete_unknown.PatientName  # pylint: disable = pointless-statement
         assert str(e_info.value).count(
-            "'Dataset' object has no attribute " "'PatientName'"
+            "'Dataset' object has no attribute 'PatientName'"
         )
 
         ds_anon_ignore_unknown = anonymise_dataset(ds, delete_unknown_tags=False)
@@ -313,10 +327,19 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     assert is_anonymised_dataset(ds)
 
 
+def copy_test_file_into(directory, source_path):
+    """Copy a cached test file into ``directory``, keeping its name.
+
+    Anonymisation writes its output beside the input file, so tests work on a
+    copy rather than writing into the shared data cache.
+    """
+    return copyfile(source_path, pjoin(directory, basename(source_path)))
+
+
 @pytest.mark.pydicom
-def test_anonymise_file():
-    for test_file_path in get_test_filepaths():
-        _test_anonymise_file_at_path(test_file_path)
+def test_anonymise_file(tmp_path):
+    for source_path in get_test_filepaths():
+        _test_anonymise_file_at_path(copy_test_file_into(tmp_path, source_path))
 
 
 def _test_anonymise_file_at_path(test_file_path):
@@ -597,3 +620,32 @@ def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=
         # "TemplateExtensionOrganizationUID",
         # "TransactionUID",
         # "UID",
+
+
+@pytest.mark.pydicom
+def test_anonymise_dataset_preserves_file_meta():
+    """Anonymisation must leave the declared transfer syntax untouched."""
+    ds = dicom_dataset_from_dict(
+        {"PatientName": "Test^Patient", "PatientID": "12345", "StudyDate": "20230101"}
+    )
+    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRBigEndian
+
+    anon_ds = anonymise_dataset(ds)
+
+    assert is_anonymised_dataset(anon_ds)
+    assert anon_ds.file_meta.TransferSyntaxUID == pydicom.uid.ExplicitVRBigEndian
+
+
+@pytest.mark.pydicom
+def test_anonymise_dataset_without_file_meta():
+    """Datasets built without file meta information anonymise cleanly."""
+    ds = pydicom.Dataset()
+    ds.PatientName = "Test^Patient"
+    ds.PatientID = "12345"
+    ds.StudyDate = "20230101"
+    assert not hasattr(ds, "file_meta")
+
+    anon_ds = anonymise_dataset(ds)
+
+    assert is_anonymised_dataset(anon_ds)
+    assert anon_ds.PatientName == "ANONYMOUS^PATIENT"

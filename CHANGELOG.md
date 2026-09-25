@@ -2,17 +2,89 @@
 
 # Release Notes
 
-All notable changes to are documented here.
+All notable changes are documented here. Older entries describe the project
+at the time of that release; references to former hosted apps, discussion
+forums, and CI services may no longer be available. For current setup and
+usage, see the [documentation](https://docs.pymedphys.com/en/latest/).
 
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### New features and enhancements
+
+- Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
+  while retaining the dose from valid beams. A missing dose file still
+  aborts RTDOSE generation rather than exporting an incomplete sum.
+- Data downloads (`pymedphys.data_path`, `pymedphys.zip_data_paths`) now time
+  out after 60 seconds without data, and are written to a temporary file that
+  is moved into place only once complete, so an interrupted download no longer
+  leaves a truncated file in the cache. Network errors, timeouts, and transient
+  HTTP statuses (408, 425, 429, and 5xx) are retried; other HTTP errors such as
+  404 are raised at once instead of after 21 seconds of retries.
+- The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
+  downloaded data cache, which defaults to `~/.pymedphys/data`.
+
+### Dependency changes
+
+- `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. The newer
+  Streamlit no longer depends on GitPython, and Pillow 12, protobuf 7, and
+  pyarrow 25 follow; every dependency with an available security fix at the
+  time of the change was moved to a fixed release. The disputed, unfixed
+  PyJWT advisory PYSEC-2025-183 remains explicitly ignored by the security
+  workflow. `numpy<2` is now an explicit
+  constraint until the NumPy 2 migration is done.
+
+### Contributor facing changes
+
+- **[Contributor facing only]** The test suite now runs with `HOME` and
+  `USERPROFILE` pointed at a temporary directory, so running the tests no
+  longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
+  tests previously stored their secret there) or reads `~/.streamlit`. The
+  downloaded data cache is still shared, through `PYMEDPHYS_DATA_DIR`. Tests
+  that wrote their outputs beside the cached data files now write to a
+  temporary directory. `dev tests` and `dev doctests` bypass user logging
+  configuration at startup, so a configured log file is not opened before
+  pytest isolates the home directory.
+- **[Contributor facing only]** `--include-slow`, `--include-mosaiqdb`, and
+  `--include-anthropic` add their tests to the default selection. `--slow`,
+  `--mosaiqdb`, `--anthropic`, and `--pydicom` still run only the marked tests,
+  and several of them now select the union instead of skipping every test.
+- **[Contributor facing only]** `pymedphys dev tests <path>` now runs only the
+  given file, directory, or test ID, relative to `lib/pymedphys` or the current
+  directory. Previously the path was ignored and the whole suite ran. Pytest
+  parses option values before test paths are resolved, including options
+  registered by plugins and initial conftests.
+- **[Contributor facing only]** `pyproject.toml` now configures pytest with
+  strict markers, strict xfail, and a 900 second per-test timeout
+  (`pytest-timeout`, added to the `tests` and `all` extras). The repository
+  root is now the pytest rootdir, so test IDs in reports start with
+  `lib/pymedphys/`.
+- **[Contributor facing only]** The Cypress end-to-end scaffolding under
+  `lib/pymedphys/tests/e2e`, the `--cypress` option of `pymedphys dev tests`,
+  and the `pymedphys dev cypress` command have been removed. The Streamlit GUI
+  is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
+  normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
+
 ### News around this release
 
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and
   collaboration has moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
+
+### (Potentially) breaking changes
+
+- Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports now raise
+  `MissingCTImageError` when the plan has no primary CT image. RTPLAN and
+  RTDOSE exports raise `MissingTrialBeamsError` when the trial has no beams,
+  and RTDOSE export raises `MissingBeamDoseError` when all beam dose files
+  are empty or zero-filled. The exceptions are defined in
+  `pymedphys._pinnacle.pinnacle_exceptions`; callers should handle them if
+  they need to continue a batch export after these failures.
+- The `url` argument of `pymedphys.data_path` and `pymedphys.zip_data_paths`
+  now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
+  any other scheme. Previously every scheme that `urllib` supports, including
+  `ftp`, was passed through unchecked.
 
 ## [0.41.0]
 
@@ -20,7 +92,7 @@ This project adheres to
 
 - PyMedPhys now includes its own custom, `numba`-accelerated implementation of
   multilinear interpolation. You can find the technical reference
-  [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  [here](https://docs.pymedphys.com/en/latest/users/ref/lib/interp.html).
   This was implemented for the following reasons:
     - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
      `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
@@ -316,7 +388,7 @@ this in the future should be considered a breaking change.
     [Thebe](https://thebelab.readthedocs.io/)
   - Discourse commenting now available directly within the hosted documentation
   - The ability to utilise the expanded
-    [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
+    [MyST](https://jupyterbook.org/v1/content/myst.html) Documentation formatting.
 - Increased docstring coverage of public functions
 - Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to [@termim](https://github.com/termim) who has taken
@@ -384,7 +456,7 @@ this in the future should be considered a breaking change.
   - The online demo GUI should not have sensitive information submitted to it.
 - [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
   Masters thesis on deep learning auto-segmentation to
-  [the docs](https://docs.pymedphys.com/background/autocontouring.html#details).
+  [the docs](https://docs.pymedphys.com/en/latest/users/background/autocontouring.html#details).
 - PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
   [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
   [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
@@ -500,7 +572,7 @@ this in the future should be considered a breaking change.
 
 - Within `pymedphys.experimental.pseudonymisation` both `pseudonymise` and
   `is_valid_strategy_for_keywords` were added. `pseudonymise` provides
-  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/ref/lib/experimental/pseudonymisation.html#api)
+  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pseudonymisation.html#api)
   for more information. Credit to [@sjswerdloff](https://github.com/sjswerdloff)
   for all his work here.
 
@@ -1233,9 +1305,9 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 - Pinnacle module providing a tool to export raw Pinnacle data to DICOM
   objects.
   - A CLI is provided: See
-    [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
+    [the Pinnacle CLI docs](https://docs.pymedphys.com/en/latest/users/ref/cli/pinnacle.html).
   - As well as an API: See
-    [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
+    [the Pinnacle library docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pinnacle.html).
 
 ## [0.9.0] -- 2019/06/06
 
@@ -1311,7 +1383,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 ### New Features
 
 - A DICOM anonymisation CLI! See
-  [the DICOM Files CLI docs](../user/ref/cli/dicom.rst).
+  [the DICOM Files CLI docs](https://docs.pymedphys.com/users/ref/cli/dicom.html).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
     wrapper functions that take a DICOM file and a directory as respective

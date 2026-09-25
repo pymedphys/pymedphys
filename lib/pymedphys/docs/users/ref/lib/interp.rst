@@ -10,6 +10,7 @@ Summary
     :no-members:
 
 .. _Performance Comparison Between Implementations:
+
 Performance Comparison Between Implementations
 ----------------------------------------------
 .. image:: ../../../img/interp_comparison.png

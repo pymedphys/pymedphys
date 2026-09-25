@@ -16,11 +16,17 @@ repos:
       - id: check-toml
       - id: check-added-large-files
         args: ["--maxkb", "500"]
-        exclude: ^.*yarn-.*cjs$
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.11
+    rev: v1.7.12
     hooks:
       - id: actionlint
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.30.1
+    hooks:
+      - id: zizmor
+        # Offline static audits only; the security workflow runs the online
+        # audits with a token. Findings below medium severity do not block.
+        args: ["--no-online-audits", "--min-severity", "medium"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.1
     hooks:
@@ -28,6 +34,7 @@ repos:
         args: [ --fix ]
       - id: ruff-format
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.8.17
+    # Keep in step with the setup-uv version in .github/actions/setup-project.
+    rev: 0.12.15
     hooks:
       - id: uv-lock

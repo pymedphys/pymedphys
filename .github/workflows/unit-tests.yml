@@ -6,7 +6,7 @@ on:
       python-matrix:
         required: false
         type: string
-        default: '["3.10", "3.12"]'
+        default: '["3.10", "3.11", "3.12"]'
       extra-pytest-args:
         required: false
         type: string
@@ -31,31 +31,41 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
-          extras: 'dev tests mosaiq'
+          # user is a superset of mosaiq and provides the Streamlit GUI tests
+          # with the app dependencies.
+          extras: 'dev tests user'
 
       - name: Run unit tests
+        id: tests
         shell: bash
         env:
           PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_PYTHON: ${{ matrix.python-version }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
 
           # Always exclude slow tests in unit test runs.
           # Extra pytest options come from PYTEST_ADDOPTS, which pytest parses.
-          uv run pytest -m "not slow" \
-            --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+          # `pymedphys dev tests` changes directory to lib/pymedphys before
+          # invoking pytest, so the JUnit path must be absolute for the
+          # upload step (which looks in the workspace root) to find it.
+          uv run -- pymedphys dev tests -m "not slow" \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
 
       - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
           path: test-results/*.xml
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 30

@@ -1,3 +1,19 @@
+# Copyright (C) 2025 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import warnings
+
 import pytest
 from pydicom.dataset import Dataset, FileMetaDataset
 from pydicom.uid import (
@@ -10,15 +26,22 @@ from pymedphys._dicom.compat import ensure_transfer_syntax
 
 
 def test_creates_file_meta_and_defaults_when_missing():
-    """If file_meta and flags are missing, it should create them and default to Explicit VR Little Endian."""
+    """If file_meta and flags are missing, it should create file_meta and default to Implicit VR Little Endian."""
     ds = Dataset()
     out = ensure_transfer_syntax(ds)
 
     assert out is ds, "Function should return the same Dataset instance"
-    assert ds.file_meta.TransferSyntaxUID == ExplicitVRLittleEndian
-    # Defaults should have been set on the dataset
-    assert ds.is_implicit_VR is False
-    assert ds.is_little_endian is True
+    assert ds.file_meta.TransferSyntaxUID == ImplicitVRLittleEndian
+
+
+def test_does_not_set_deprecated_encoding_flags():
+    """Only the Transfer Syntax UID is written: pydicom 3 deprecates the flags and pydicom 4 removes them."""
+    ds = Dataset()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        ensure_transfer_syntax(ds)
+
+    assert ds.file_meta.TransferSyntaxUID == ImplicitVRLittleEndian
 
 
 @pytest.mark.parametrize(

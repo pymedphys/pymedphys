@@ -39,12 +39,13 @@ user = [
   "dash",
   "dbfread",
   "dicompyler-core",
+  "httpx2",
   "imageio[tifffile]",
   "keyring",
   "matplotlib",
   "natsort",
   "numba",
-  "numpy>=1.26",
+  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
   "packaging",
   "pandas>=1.0.0",
   "plotly",
@@ -59,7 +60,7 @@ user = [
   "scipy",
   "shapely>=1.7.0",
   "sqlalchemy",
-  "streamlit~=1.34.0",
+  "streamlit>=1.54",
   "timeago",
   "toml",
   "tqdm",
@@ -71,12 +72,18 @@ user = [
 
 dev = [
   "doc8",
+  "mypy",
   "pre-commit",
   "pyright",
   "readme-renderer",
   "rope",
   "ruff",
   "tabulate",
+  "types-PyYAML",
+  "types-python-dateutil",
+  "types-requests",
+  "types-tabulate",
+  "types-toml",
 ]
 
 lint = [
@@ -102,18 +109,21 @@ tests = [
   "pytest",
   "pytest-rerunfailures",
   "pytest-sugar",
+  "pytest-timeout",
   "python-dateutil",
   "shapely",
+  "toml",
   "tqdm",
 ]
 
 docs = [
+  "interpolation>=2.2.7,<3",
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
   "networkx",
   "numba",
-  "numpy",
+  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
   "pydicom",
   "scipy",
   "sphinx-argparse",
@@ -144,7 +154,7 @@ dicom = [
 ]
 
 icom = [
-    "numpy>=1.26",
+    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
 ]
 
 mosaiq = [
@@ -171,15 +181,18 @@ all = [
     "dbfread",
     "dicompyler-core",
     "doc8",
+    "httpx2",
     "imageio[tifffile]",
+    "interpolation>=2.2.7,<3",
     "ipython>=7.31.1",
     "jupyter-book>=0.12.0,<2.0.0",
     "keyring",
     "matplotlib",
+    "mypy",
     "natsort",
     "networkx",
     "numba",
-    "numpy>=1.26",
+    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
     "packaging",
     "pandas>=1.0.0",
     "plotly",
@@ -195,6 +208,7 @@ all = [
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
+    "pytest-timeout",
     "python-dateutil",
     "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
     "readme-renderer",
@@ -207,13 +221,18 @@ all = [
     "sphinx-argparse",
     "sphinx-book-theme",
     "sqlalchemy",
-    "streamlit~=1.34.0",
+    "streamlit>=1.54",
     "tabulate",
     "timeago",
     "toml",
     "tqdm",
     "trio",
     "trio-asyncio",
+    "types-PyYAML",
+    "types-python-dateutil",
+    "types-requests",
+    "types-tabulate",
+    "types-toml",
     "watchdog",
     "xmltodict",
 ]
@@ -239,6 +258,16 @@ include = ["lib/pymedphys/docs/_build/html/**/*"]
 [tool.hatch.build.targets.wheel]
 packages = ["lib/pymedphys"]
 
+[tool.pytest.ini_options]
+# Markers are registered by lib/pymedphys/conftest.py, which also defines the
+# opt-in flags that select them. A misspelt marker is an error, an xfail that
+# starts passing fails, and a hung test is stopped with a stack dump well
+# within the CI job timeouts (override per run with --timeout).
+minversion = "8.0"
+addopts = ["--strict-markers"]
+xfail_strict = true
+timeout = 900
+
 # Existing tool config stays as-is
 [tool.ruff.lint]
 extend-ignore = ["E741", "E722", "F401"]  # example: match your current settings
@@ -249,7 +278,9 @@ known-first-party = ["pymedphys"]
 
 
 [tool.pyright]
-include = ["lib/pymedphys"]
+include = ["lib/pymedphys", ".github/scripts"]
+# Setting exclude replaces pyright's defaults, which skip every dot-directory.
+exclude = ["**/node_modules", "**/__pycache__"]
 
 # These have been set to False in order to be able to utilise pyright, but
 # future work would be to iteratively set these to true and fix the code base.
@@ -271,6 +302,16 @@ reportIndexIssue = false
 reportReturnType = false
 reportMissingModuleSource = false
 reportTypedDictNotRequiredAccess = false
+
+[tool.bandit]
+# The security workflow runs Bandit with this configuration and blocks on any
+# finding. Tests are excluded (they use assert by design). The skipped checks
+# were reviewed as non-security noise for this code base: B101 assert, B404,
+# B603, and B607 subprocess use without a shell, B105 password key names and
+# empty defaults, B311 non-cryptographic random, B110 try/except/pass that
+# pylint already annotates. Anything else needs a fix or a justified "nosec".
+exclude_dirs = ["lib/pymedphys/tests"]
+skips = ["B101", "B404", "B603", "B607", "B105", "B311", "B110"]
 
 [build-system]
 requires = ["hatchling>=1.26"]

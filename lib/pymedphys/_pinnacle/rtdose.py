@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Matthew Jennings
+# Copyright (C) 2025-2026 Matthew Ward
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
@@ -46,6 +48,11 @@ import time
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
+from pymedphys._pinnacle.pinnacle_exceptions import (
+    MissingBeamDoseError,
+    MissingCTImageError,
+    MissingTrialBeamsError,
+)
 
 from pymedphys._dicom.orientation import IMAGE_ORIENTATION_MAP
 
@@ -57,6 +64,45 @@ from .constants import (
     RTDoseSOPClassUID,
     RTPlanSOPClassUID,
 )
+
+
+def construct_dose_from_binary(binary_data, array):
+    """
+    Read binary data into empty dose array
+    """
+    X, Y, Z = array.shape
+    idx = 0
+    for z in range(Z - 1, -1, -1):
+        for y in range(Y):
+            for x in range(X):
+                data_element = binary_data[idx : idx + 4]
+                value = struct.unpack(">f", data_element)[0]
+                array[x, y, z] = value
+                idx += 4
+    return array
+
+
+def read_binary_data(binary_file):
+    """Read the dose bytes, distinguishing absent files from empty beams.
+
+    Returns
+    -------
+    bytes, False, or None
+        The file contents if any byte is nonzero, False for empty or
+        zero-filled files, and None if the file does not exist. Missing
+        files must abort the export rather than omit a potentially valid
+        beam's contribution to the summed dose.
+    """
+    if not os.path.isfile(binary_file):
+        return None
+
+    with open(binary_file, "rb") as binary_stream:
+        data = binary_stream.read()
+
+    if not any(data):
+        return False
+
+    return data
 
 
 def trilinear_interpolation(idx, grid):
@@ -89,7 +135,7 @@ def convert_dose(plan, export_path):
     # Check that the plan has a primary image, as we can't create a meaningful RTDOSE without it:
     if not plan.primary_image:
         plan.logger.error("No primary image found for plan. Unable to generate RTDOSE.")
-        return
+        raise MissingCTImageError("Plan has no primary image associated with it.")
 
     supported_orientations = ("HFS", "HFP", "FFS", "FFP")
 
@@ -111,7 +157,7 @@ def convert_dose(plan, export_path):
     planInstanceUID = plan.plan_inst_uid
 
     # Populate required values for file meta information
-    file_meta = pydicom.dataset.Dataset()
+    file_meta = pydicom.dataset.FileMetaDataset()
     file_meta.MediaStorageSOPClassUID = RTDoseSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = doseInstanceUID
@@ -260,8 +306,9 @@ def convert_dose(plan, export_path):
     beam_list = trial_info["BeamList"] if trial_info["BeamList"] else []
     if len(beam_list) == 0:
         plan.logger.warning("No Beams found in Trial. Unable to generate RTDOSE.")
-        return
+        raise MissingTrialBeamsError("No Beams found in Trial.")
 
+    empty_beams = 0
     for beam in beam_list:
         plan.logger.info("Exporting Dose for beam: %s", beam["Name"])
 
@@ -269,6 +316,25 @@ def convert_dose(plan, export_path):
         binary_id = re.findall("\\d+", beam["DoseVolume"])[0]
         filled_binary_id = str(binary_id).zfill(3)
         binary_file = os.path.join(plan.path, f"plan.Trial.binary.{filled_binary_id}")
+
+        # check whether the binary file is non-empty
+        binary_data = read_binary_data(binary_file)
+        if binary_data is None:
+            plan.logger.warning("Dose file not found: %s", binary_file)
+            plan.logger.error("Skipping generating RTDOSE")
+            return
+
+        if binary_data is False:
+            plan.logger.warning(
+                "No Dose found for beam: %s. Skipping beam.", beam["Name"]
+            )
+            empty_beams += 1
+            if empty_beams == len(beam_list):
+                plan.logger.error(
+                    "All beams in plan are missing dose. Unable to generate RTDOSE."
+                )
+                raise MissingBeamDoseError("All beams in plan are missing dose.")
+            continue
 
         # Get the prescription for this beam (need this for number of fractions)
         prescription = [
@@ -326,19 +392,7 @@ def convert_dose(plan, export_path):
             ds.ImagePositionPatient[1],
             ds.ImagePositionPatient[2],
         ]
-
-        if os.path.isfile(binary_file):
-            with open(binary_file, "rb") as b:
-                for z in range(trial_info["DoseGrid .Dimension .Z"] - 1, -1, -1):
-                    for y in range(0, trial_info["DoseGrid .Dimension .Y"]):
-                        for x in range(0, trial_info["DoseGrid .Dimension .X"]):
-                            data_element = b.read(4)
-                            value = struct.unpack(">f", data_element)[0]
-                            dose_grid[x, y, z] = value
-        else:
-            plan.logger.warning("Dose file not found")
-            plan.logger.error("Skipping generating RTDOSE")
-            return
+        dose_grid = construct_dose_from_binary(binary_data, dose_grid)
 
         # Get the index within that grid of the dose reference point
         idx = [0.0, 0.0, 0.0]

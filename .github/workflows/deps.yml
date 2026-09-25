@@ -5,74 +5,97 @@ on:
     - cron: '17 3 * * MON'  # Staggered to avoid top-of-hour congestion
   workflow_dispatch:
 
+# Read-only. The pull request is pushed and opened with the CI bot's app token
+# so that the normal CI runs on it; a PR opened with GITHUB_TOKEN triggers no
+# workflows.
+permissions:
+  contents: read
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
-
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # 6.2.0
-        with:
-          python-version: '3.12'
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # 5.3.2
-
-      - name: Update dependencies
-        id: update
+      - name: Check for bot credentials
+        id: check-bot
+        env:
+          BOT_APP_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
         run: |
-          # Save current lock
-          cp uv.lock uv.lock.old
-
-          # Update
-          uv lock --upgrade
-
-          # Check if changed
-          if diff -q uv.lock uv.lock.old > /dev/null; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+          if [[ -n "$BOT_APP_ID" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-
-            # Generate changelog
-            {
-              echo "## Dependency Updates"
-              echo
-              echo '```diff'
-              diff uv.lock.old uv.lock | grep "^[><]" | head -50 || true
-              echo '```'
-            } > updates.md
+            echo "::error::PYMEDPHYS_CI_BOT_ID is not set; the update PR needs the app token so that CI runs on it."
+            exit 1
           fi
 
-      - name: Run validation
+      - name: Generate bot token
+        id: bot-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+          private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'all'
+
+      - name: Update the lockfile and the files generated from it
+        id: update
+        run: |
+          cp uv.lock uv.lock.old
+          uv lock --upgrade
+          if cmp -s uv.lock uv.lock.old; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            rm uv.lock.old
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+          uv sync --frozen --extra all --group dev
+          # Exported requirements files, dependency-extra.txt, pyproject.hash.
+          uv run pymedphys dev propagate
+
+          {
+            echo "## Dependency updates"
+            echo
+            echo '```diff'
+            diff uv.lock.old uv.lock | grep "^[><]" | head -50 || true
+            echo '```'
+          } > updates.md
+          rm uv.lock.old
+
+      - name: Validate the updated environment
         if: steps.update.outputs.changed == 'true'
         run: |
-          set -euxo pipefail
-
-          uv sync --frozen --extra user --extra tests --extra docs
-
-          # Run the full non-slow test suite rather than a hand-curated
-          # subset — ensures new test directories are covered automatically.
-          uv run pytest -q --maxfail=3 \
-            -m "not slow and not cypress and not mosaiqdb and not anthropic_key"
-
+          uv run -- pymedphys dev tests -m "not slow" --maxfail=3
           uv run pymedphys dev docs
-
           uv build --wheel
-          uv venv .wheel-test
-          source .wheel-test/bin/activate
-          uv pip install dist/*.whl
-          pymedphys --help
-          python -c "import pymedphys; print(pymedphys.__version__)"
+          uv venv wheel-test
+          uv pip install --python wheel-test/bin/python dist/*.whl
+          wheel-test/bin/pymedphys --help
+          wheel-test/bin/python -c "import pymedphys; print(pymedphys.__version__)"
 
       - name: Create PR
         if: steps.update.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
+          token: ${{ steps.bot-token.outputs.token }}
+          add-paths: |
+            uv.lock
+            requirements.txt
+            requirements-docs.txt
+            pyproject.hash
+            lib/pymedphys/dependency-extra.txt
+            lib/pymedphys/_version.py
           title: "chore: update dependencies"
           body-path: updates.md
           branch: deps/update-${{ github.run_number }}
