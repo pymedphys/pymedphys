@@ -43,7 +43,10 @@ import re
 import time
 
 from pymedphys._imports import pydicom
-from pymedphys._pinnacle.pinnacle_exceptions import MissingCTImageError, MissingTrialBeamsError
+from pymedphys._pinnacle.pinnacle_exceptions import (
+    MissingCTImageError,
+    MissingTrialBeamsError,
+)
 
 from .constants import (
     GImplementationClassUID,

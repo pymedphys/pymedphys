@@ -37,13 +37,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 class MissingCTImageError(Exception):
     # Raised when a plan does not have an associated primary CT image
     pass
 
+
 class MissingTrialBeamsError(Exception):
     # Raised when a trial does not have any beams associated with it
     pass
+
 
 class MissingBeamDoseError(Exception):
     # Raised when all plan beams are missing dose
