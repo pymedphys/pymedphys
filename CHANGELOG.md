@@ -344,7 +344,7 @@ this in the future should be considered a breaking change.
     [Thebe](https://thebelab.readthedocs.io/)
   - Discourse commenting now available directly within the hosted documentation
   - The ability to utilise the expanded
-    [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
+    [MyST](https://jupyterbook.org/v1/content/myst.html) Documentation formatting.
 - Increased docstring coverage of public functions
 - Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to [@termim](https://github.com/termim) who has taken

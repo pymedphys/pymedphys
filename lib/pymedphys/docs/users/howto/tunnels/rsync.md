@@ -54,8 +54,8 @@ sudo mkdir -p /media/rccc-ssh/D /media/tunnel-nbcc-pdc/Physics
 ```
 
 Then, to create the permanent mounts both `fstab` and `cifs-utils` were
-utilised. This was adapted from the instructions over at
-<https://wiki.ubuntu.com/MountWindowsSharesPermanently>.
+utilised. See Ubuntu's current guide to
+[mounting CIFS shares permanently](https://ubuntu.com/server/docs/how-to/samba/mount-cifs-shares-permanently/).
 
 Firstly `cifs-utils` was installed:
 
