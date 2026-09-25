@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Matthew Jennings
+# Copyright (C) 2025-2026 Matthew Ward
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
@@ -81,17 +83,26 @@ def construct_dose_from_binary(binary_data, array):
 
 
 def read_binary_data(binary_file):
+    """Read the dose bytes, distinguishing absent files from empty beams.
+
+    Returns
+    -------
+    bytes, False, or None
+        The file contents if any byte is nonzero, False for empty or
+        zero-filled files, and None if the file does not exist. Missing
+        files must abort the export rather than omit a potentially valid
+        beam's contribution to the summed dose.
     """
-    Check if the supplied binary file is non-empty and return the data if so
-    """
-    if os.path.isfile(binary_file):
-        size = os.path.getsize(binary_file)
-        with open(binary_file, "rb") as b:
-            data = b.read()
-            if all(byte == 0 for byte in data):
-                return False
-            else:
-                return data
+    if not os.path.isfile(binary_file):
+        return None
+
+    with open(binary_file, "rb") as binary_stream:
+        data = binary_stream.read()
+
+    if not any(data):
+        return False
+
+    return data
 
 
 def trilinear_interpolation(idx, grid):
@@ -308,6 +319,11 @@ def convert_dose(plan, export_path):
 
         # check whether the binary file is non-empty
         binary_data = read_binary_data(binary_file)
+        if binary_data is None:
+            plan.logger.warning("Dose file not found: %s", binary_file)
+            plan.logger.error("Skipping generating RTDOSE")
+            return
+
         if binary_data is False:
             plan.logger.warning(
                 "No Dose found for beam: %s. Skipping beam.", beam["Name"]

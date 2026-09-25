@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Matthew Jennings
+# Copyright (C) 2025-2026 Matthew Ward
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
@@ -40,16 +42,15 @@
 # pylint: disable = redefined-outer-name
 
 import os
+import struct
 import tempfile
 from zipfile import ZipFile
-import numpy as np
-import struct
-import pytest
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._data import download
+from pymedphys._pinnacle.rtdose import construct_dose_from_binary, read_binary_data
 from pymedphys.pinnacle import PinnacleExport
 
 working_path = tempfile.mkdtemp()
@@ -433,7 +434,6 @@ def temp_binary_file():
 
 
 # Tests for construct_dose_from_binary
-@pytest.mark.array
 def test_basic_dose_construction():
     """Test basic dose array construction from binary data"""
     # Create a 2x2x2 array
@@ -450,10 +450,23 @@ def test_basic_dose_construction():
 
     # Verify data is populated
     assert isinstance(result, np.ndarray)
-    assert np.any(result != 0)
+    np.testing.assert_array_equal(result, [[[5, 1], [7, 3]], [[6, 2], [8, 4]]])
 
 
-@pytest.mark.array
+def test_non_cubic_dose_construction():
+    """Keep X, Y, and reversed Z in order when all dimensions differ."""
+    array = np.zeros((2, 3, 4), dtype=np.float32)
+    binary_data = struct.pack(">24f", *range(24))
+
+    result = construct_dose_from_binary(binary_data, array)
+
+    expected = [
+        [[18, 12, 6, 0], [20, 14, 8, 2], [22, 16, 10, 4]],
+        [[19, 13, 7, 1], [21, 15, 9, 3], [23, 17, 11, 5]],
+    ]
+    np.testing.assert_array_equal(result, expected)
+
+
 def test_single_voxel_array():
     """Test with 1x1x1 array"""
     array = np.zeros((1, 1, 1), dtype=np.float32)
@@ -464,7 +477,6 @@ def test_single_voxel_array():
     assert result[0, 0, 0] == 42.5
 
 
-@pytest.mark.array
 def test_negative_values():
     """Test handling of negative dose values"""
     array = np.zeros((2, 1, 1), dtype=np.float32)
@@ -473,10 +485,9 @@ def test_negative_values():
     result = construct_dose_from_binary(binary_data, array)
 
     assert result[0, 0, 0] == -10.5
-    assert result[1, 0, 0] == -20.3
+    assert result[1, 0, 0] == pytest.approx(-20.3)
 
 
-@pytest.mark.array
 def test_z_axis_reversal():
     """Test that z-axis is filled in reverse order"""
     array = np.zeros((1, 1, 3), dtype=np.float32)
@@ -491,7 +502,6 @@ def test_z_axis_reversal():
     assert result[0, 0, 0] == 3.0
 
 
-@pytest.mark.array
 def test_large_array():
     """Test with a larger array"""
     shape = (10, 10, 10)
@@ -504,7 +514,6 @@ def test_large_array():
     assert np.any(result != 0)
 
 
-@pytest.mark.array
 def test_exact_binary_size():
     """Test that binary data size matches array size"""
     array = np.zeros((2, 2, 2), dtype=np.float32)
@@ -517,7 +526,6 @@ def test_exact_binary_size():
     assert result is not None
 
 
-@pytest.mark.array
 def test_preserves_array_type():
     """Test that the returned array maintains float32 type"""
     array = np.zeros((2, 2, 2), dtype=np.float32)
@@ -529,7 +537,6 @@ def test_preserves_array_type():
 
 
 # Tests for read_binary_data
-@pytest.mark.binary
 def test_read_valid_binary_file(temp_binary_file):
     """Test reading a valid binary file with data"""
     test_data = struct.pack(">f", 1.5) + struct.pack(">f", 2.5)
@@ -540,7 +547,6 @@ def test_read_valid_binary_file(temp_binary_file):
     assert result == test_data
 
 
-@pytest.mark.binary
 def test_read_all_zeros_file(temp_binary_file):
     """Test that file with all zeros returns False"""
     test_data = b"\x00" * 16
@@ -551,27 +557,23 @@ def test_read_all_zeros_file(temp_binary_file):
     assert result is False
 
 
-@pytest.mark.binary
-def test_nonexistent_file():
+def test_nonexistent_file(tmp_path):
     """Test handling of nonexistent file"""
-    result = read_binary_data("/nonexistent/path/file.bin")
+    result = read_binary_data(tmp_path / "missing.bin")
 
     assert result is None
 
 
-@pytest.mark.binary
 def test_empty_file(temp_binary_file):
     """Test reading an empty file"""
     file_path = temp_binary_file(b"")
 
     result = read_binary_data(file_path)
 
-    # Empty file has no bytes, so all() on empty sequence returns True
-    # This means it will return False
+    # An empty beam has the same sentinel as a zero-filled beam.
     assert result is False
 
 
-@pytest.mark.binary
 def test_mixed_zeros_and_data(temp_binary_file):
     """Test file with some zeros and some data"""
     test_data = b"\x00\x00\x01\x02"
@@ -583,7 +585,6 @@ def test_mixed_zeros_and_data(temp_binary_file):
     assert result == test_data
 
 
-@pytest.mark.binary
 def test_large_binary_file(temp_binary_file):
     """Test reading a larger binary file"""
     test_data = b"".join(struct.pack(">f", float(i)) for i in range(1000))
@@ -595,7 +596,6 @@ def test_large_binary_file(temp_binary_file):
     assert len(result) == 4000  # 1000 floats * 4 bytes
 
 
-@pytest.mark.binary
 def test_single_nonzero_byte(temp_binary_file):
     """Test file with single non-zero byte"""
     test_data = b"\x01"
@@ -606,7 +606,6 @@ def test_single_nonzero_byte(temp_binary_file):
     assert result == test_data
 
 
-@pytest.mark.binary
 def test_file_size_check(temp_binary_file):
     """Test that file size is correctly evaluated"""
     test_data = struct.pack(">f", 1.0) * 100
