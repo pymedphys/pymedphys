@@ -28,6 +28,16 @@ This project adheres to
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
 
+### Bug fixes
+
+- Importing `pymedphys.experimental.pinnacle` no longer changes the names of
+  public Pinnacle classes and `export_cli`. This restores class signatures
+  and members in the API documentation while retaining legacy deprecation
+  warnings, which now name the legacy import path alongside its replacement.
+  The deprecated `pymedphys experimental pinnacle export` command calls the
+  public `export_cli` directly, so it emits only its existing deprecation
+  warning.
+
 ### Dependency changes
 
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. The newer

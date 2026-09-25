@@ -4,22 +4,32 @@ from pymedphys.pinnacle import PinnacleImage as _PinnacleImage
 from pymedphys.pinnacle import PinnaclePlan as _PinnaclePlan
 from pymedphys.pinnacle import export_cli as _export_cli
 
-_PinnacleExport.__name__ = "pymedphys.experimental.pinnacle.PinnacleExport"
+# These objects are shared with the public API. Renaming them breaks autodoc,
+# so the legacy path is named in each reason instead.
 PinnacleExport = _deprecated(
-    reason="This has been replaced with `pymedphys.pinnacle.PinnacleExport`"
+    reason=(
+        "`pymedphys.experimental.pinnacle.PinnacleExport` has been replaced "
+        "with `pymedphys.pinnacle.PinnacleExport`"
+    )
 )(_PinnacleExport)
 
-_export_cli.__name__ = "pymedphys.experimental.pinnacle.export_cli"
 export_cli = _deprecated(
-    reason="This has been replaced with `pymedphys.pinnacle.export_cli`"
+    reason=(
+        "`pymedphys.experimental.pinnacle.export_cli` has been replaced "
+        "with `pymedphys.pinnacle.export_cli`"
+    )
 )(_export_cli)
 
-_PinnacleImage.__name__ = "pymedphys.experimental.pinnacle.PinnacleImage"
 PinnacleImage = _deprecated(
-    reason="This has been replaced with `pymedphys.pinnacle.PinnacleImage`"
+    reason=(
+        "`pymedphys.experimental.pinnacle.PinnacleImage` has been replaced "
+        "with `pymedphys.pinnacle.PinnacleImage`"
+    )
 )(_PinnacleImage)
 
-_PinnaclePlan.__name__ = "pymedphys.experimental.pinnacle.PinnaclePlan"
 PinnaclePlan = _deprecated(
-    reason="This has been replaced with `pymedphys.pinnacle.PinnaclePlan`"
+    reason=(
+        "`pymedphys.experimental.pinnacle.PinnaclePlan` has been replaced "
+        "with `pymedphys.pinnacle.PinnaclePlan`"
+    )
 )(_PinnaclePlan)

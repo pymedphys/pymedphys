@@ -16,4 +16,5 @@ itself. Below is the documentation for a range of these libraries.
     metersetmap
     trf
     electronfactors
+    pinnacle
     experimental/index
