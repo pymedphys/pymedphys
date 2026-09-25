@@ -1,3 +1,5 @@
+# Copyright (C) 2025 Matthew Jennings
+
 name: Lint & Format
 
 on:

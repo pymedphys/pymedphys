@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Matthew Jennings
+
 """Regression tests for the merge-blocking workflow summary policy."""
 
 import copy

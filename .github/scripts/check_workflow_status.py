@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Matthew Jennings
+
 """Fail workflow summaries when dependencies fail or required checks are skipped."""
 
 import argparse

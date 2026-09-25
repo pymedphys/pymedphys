@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Matthew Jennings (modifications)
+
 """PyTest local plugins."""
 
 import dataclasses

@@ -1,3 +1,5 @@
+# Copyright (C) 2024 Matthew Jennings
+
 import json
 import os
 import pathlib

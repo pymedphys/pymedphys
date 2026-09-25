@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Matthew Jennings (modifications)
+
 import time
 from functools import wraps
 

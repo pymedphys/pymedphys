@@ -1,3 +1,5 @@
+# Copyright (C) 2024 Matthew Jennings
+
 import os
 import pathlib
 from dataclasses import dataclass

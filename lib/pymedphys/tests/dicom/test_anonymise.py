@@ -1,3 +1,5 @@
+# Copyright (C) 2019, 2025-2026 Matthew Jennings
+
 import copy
 import functools
 import json
