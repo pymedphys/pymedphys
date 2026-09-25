@@ -206,7 +206,7 @@ pandas==2.3.3
     # via
     #   pymedphys
     #   streamlit
-pillow==10.4.0
+pillow==12.3.0
     # via
     #   imageio
     #   matplotlib
