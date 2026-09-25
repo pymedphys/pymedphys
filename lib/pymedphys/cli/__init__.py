@@ -18,6 +18,7 @@ import logging
 import sys
 
 from pymedphys import _config
+from pymedphys._version import __version__
 from pymedphys._vendor.patchlogging import apply_logging_patch
 
 from .claude import claude_cli
@@ -66,6 +67,11 @@ def define_parser():
         help="Print debugging statements",
         action="store_true",
         dest="logging_debug",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     return parser

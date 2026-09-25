@@ -169,6 +169,24 @@ The project uses uv with optional dependency groups:
 - `tests`: Testing dependencies
 - Specific features: `dicom`, `mosaiq`, `icom`, etc.
 
+### Packaging
+
+- `uv build` makes the sdist and then the wheel from it, so a file missing from
+  the sdist also breaks the wheel. Check a build with
+  `python .github/scripts/check_distributions.py dist`, which also installs the
+  wheel into a fresh virtual environment.
+- Set Hatchling file selection per build target, never build-wide: a build-wide
+  `include` is an allow-list that also replaces the sdist's contents. The sdist
+  uses `only-include`, because a full-tree walk reaches the repository-root
+  `docs` symlink first and then skips `lib/pymedphys/docs` as already seen.
+- Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
+  not `0.42.0-dev0`); the release tag must be `v` followed by it.
+- Distribution smoke tests must ignore the caller's Python path overrides,
+  run outside the checkout, and verify that package imports come from the
+  test environment. A fresh venv alone does not isolate `PYTHONPATH`.
+- Include every root-level input to documentation preparation in the sdist:
+  `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
+
 ## Important Implementation Notes
 
 1. **Beta Status**: PyMedPhys is in beta (version 0.x.x). APIs may change between releases.

@@ -56,6 +56,9 @@ jobs:
         run: |
           uv run -- pymedphys dev tests --slow -v
 
+  # Builds the wheel from the sdist, so a file missing from the sdist fails
+  # here, then installs the wheel into a fresh venv outside the project's
+  # environment. See .github/scripts/check_distributions.py.
   wheel-build:
     name: Wheel Build Test
     runs-on: ubuntu-latest
@@ -67,12 +70,11 @@ jobs:
 
       - uses: ./.github/actions/setup-project
 
-      - name: Build and test wheel
-        run: |
-          uv build --wheel
-          uv pip install dist/*.whl
-          uv run pymedphys --help
-          uv run python -c "import pymedphys"
+      - name: Build the sdist, then the wheel from it
+        run: uv build
+
+      - name: Check the distributions
+        run: python .github/scripts/check_distributions.py dist
 
   # The exported requirements files, dependency-extra.txt, pyproject.hash, and
   # _version.py are generated from pyproject.toml and uv.lock; a commit that
