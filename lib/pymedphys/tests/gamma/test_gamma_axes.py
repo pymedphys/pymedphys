@@ -118,9 +118,111 @@ def test_single_point_evaluation_axis_is_rejected():
         pymedphys.gamma(axes, dose, (axes[0], np.array([0.0])), dose[:, 6:7], 2, 2)
 
 
-def test_non_overlapping_grids_are_rejected():
-    axes, dose = _grid()
-    far_away = (axes[0] + 1000.0, axes[1])
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+@pytest.mark.parametrize("max_gamma", [None, 2])
+def test_non_overlapping_grids_can_pass_gamma(interp_algo, max_gamma):
+    # The nearest equal dose is 1.5 mm or 0.5 mm away, respectively, with a
+    # 3 mm distance criterion. Overlapping grid extents are not required.
+    result = pymedphys.gamma(
+        np.array([0.0, 1.0]),
+        np.ones(2),
+        np.array([1.5, 2.5]),
+        np.ones(2),
+        3,
+        3,
+        interp_fraction=30,
+        interp_algo=interp_algo,
+        max_gamma=max_gamma,
+    )
+    np.testing.assert_allclose(result, [0.5, 1 / 6])
 
-    with pytest.raises(ValueError, match="overlap"):
-        pymedphys.gamma(axes, dose, far_away, dose, 2, 2)
+
+def test_scipy_preserves_singleton_spatial_dimensions():
+    axes = (np.array([0.0, 1.0]), np.array([2.0]))
+    dose = np.ones((2, 1))
+    result = pymedphys.gamma(axes, dose, axes, dose, 3, 3, interp_algo="scipy")
+    np.testing.assert_array_equal(result, np.zeros_like(dose))
+
+
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+def test_search_stops_at_grid_extent_with_large_dose_difference(interp_algo):
+    # No need to search thousands of mm beyond a 1 mm evaluation grid just
+    # because the dose difference keeps gamma large.
+    axes = np.array([0.0, 1.0])
+    result = pymedphys.gamma(
+        axes, np.ones(2), axes, np.full(2, 100.0), 3, 3, interp_algo=interp_algo
+    )
+    np.testing.assert_allclose(result, [3300, 3300])
+
+
+def test_search_samples_the_spatial_endpoint():
+    # The ordinary 0.3 mm shells miss this narrow grid. The spatial endpoint
+    # reaches the last evaluation point from x=-1, despite not being a step
+    # multiple. Binary fractions keep the endpoint exactly representable.
+    result = pymedphys.gamma(
+        np.array([-1.0, 1.0]),
+        np.ones(2),
+        np.array([0.0625, 0.09375]),
+        np.ones(2),
+        3,
+        3,
+        interp_algo="scipy",
+    )
+    np.testing.assert_allclose(result[0], 1.09375 / 3)
+
+
+@pytest.mark.timeout(10)
+def test_search_terminates_when_no_finite_candidate_is_sampled():
+    # The grids' bounding intervals overlap, but the 0.3 mm shells miss the
+    # narrow evaluation interval from x=0. The endpoint reaches it from -1.
+    result = pymedphys.gamma(
+        np.array([-1.0, 0.0, 1.0]),
+        np.ones(3),
+        np.array([0.04, 0.05]),
+        np.ones(2),
+        3,
+        3,
+    )
+    assert np.isnan(result[1])
+
+
+def test_disjoint_grid_beyond_max_gamma_has_no_candidate():
+    result = pymedphys.gamma(
+        np.array([0.0, 1.0]),
+        np.ones(2),
+        np.array([1000.0, 1001.0]),
+        np.ones(2),
+        3,
+        3,
+        max_gamma=2,
+    )
+    assert np.all(np.isnan(result))
+
+
+@pytest.mark.timeout(10)
+def test_far_disjoint_grids_skip_empty_search_shells():
+    # A 0.01 mm step from zero would require 100 million empty iterations.
+    result = pymedphys.gamma(
+        np.array([0.0]),
+        np.ones(1),
+        np.array([1_000_000.0]),
+        np.ones(1),
+        3,
+        0.1,
+        interp_algo="scipy",
+    )
+    np.testing.assert_allclose(result, [10_000_000])
+
+
+@pytest.mark.parametrize("axis", [np.array([0, np.nan]), np.array([0, np.inf])])
+def test_nonfinite_evaluation_axis_is_rejected(axis):
+    with pytest.raises(ValueError, match="finite"):
+        pymedphys.gamma(np.array([0.0, 1.0]), np.ones(2), axis, np.ones(2), 3, 3)
+
+
+def test_nonfinite_reference_axis_is_rejected():
+    with pytest.raises(ValueError, match="Reference axis.*finite"):
+        pymedphys.gamma(
+            np.array([0.0, np.nan]), np.ones(2), np.array([0.0, 1.0]), np.ones(2), 3, 3
+        )

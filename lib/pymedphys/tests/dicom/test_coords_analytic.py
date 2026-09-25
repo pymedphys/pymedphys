@@ -120,8 +120,13 @@ def test_iec_fixed_axes_project_onto_the_image_axes(orientation):
 
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
-def test_zyx_and_dose_returns_ascending_axes_aligned_with_the_dose(orientation):
-    ds = rtdose(orientation)
+@pytest.mark.parametrize(
+    "frame_offsets", [[0.0, 2.5, 5.0], [0.0, -2.5, -5.0], [0.0, 2.5, 7.0]]
+)
+def test_zyx_and_dose_returns_ascending_axes_aligned_with_the_dose(
+    orientation, frame_offsets
+):
+    ds = rtdose(orientation, frame_offsets=frame_offsets)
     positions = voxel_positions(ds)
     raw = np.asarray(ds.pixel_array, dtype=float) * DOSE_GRID_SCALING
 
@@ -156,3 +161,108 @@ def test_zyx_and_dose_leaves_head_first_supine_unchanged():
     np.testing.assert_allclose(x, expected_x)
     np.testing.assert_allclose(y, expected_y)
     np.testing.assert_allclose(z, expected_z)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "orientation, expected",
+    [("HFP", [94.0, -202.0, 302.5]), ("FFDL", [102.0, -194.0, 297.5])],
+)
+def test_matrix_oracle_matches_worked_voxel_positions(orientation, expected):
+    # Frame 1, row 1, column 2 with IPP (100, -200, 300) and spacing (2, 3).
+    np.testing.assert_array_equal(
+        voxel_positions(rtdose(orientation))[1, 1, 2], expected
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "offsets, message",
+    [
+        ([], "non-empty"),
+        ([0, 2.5], "NumberOfFrames"),
+        ([0, 5, 2.5], "monotonic"),
+        ([0, 2.5, 2.5], "monotonic"),
+        ([0, np.nan, 5], "finite"),
+        ([0, 2.5, np.inf], "finite"),
+        ([301, 303.5, 306], "Image Position"),
+    ],
+)
+def test_invalid_frame_offsets_are_rejected(offsets, message):
+    ds = rtdose("HFS", frame_offsets=offsets)
+    with pytest.raises(ValueError, match=message):
+        dose.zyx_and_dose_from_dataset(ds)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "attribute, value",
+    [
+        ("ImagePositionPatient", [np.nan, 0, 0]),
+        ("PixelSpacing", [0, 3]),
+        ("PixelSpacing", [-2, 3]),
+        ("PixelSpacing", [np.inf, 3]),
+    ],
+)
+def test_invalid_image_geometry_is_rejected(attribute, value):
+    ds = rtdose("HFS")
+    setattr(ds, attribute, value)
+    with pytest.raises(ValueError, match=attribute):
+        dose.zyx_and_dose_from_dataset(ds)
+
+
+@pytest.mark.pydicom
+def test_geometry_equality_accounts_for_pixel_dimension_mapping():
+    # Both datasets describe the same physical dose field. The FFDL dataset
+    # stores x along rows and y along columns, and reverses its frame offsets
+    # to retain the same patient z positions as HFS.
+    pixels = np.arange(3 * 4 * 4).reshape(3, 4, 4)
+    reference = rtdose(
+        "HFS", shape=pixels.shape, pixel_spacing=(2, 2), pixel_values=pixels
+    )
+    transposed = rtdose(
+        "FFDL",
+        shape=pixels.shape,
+        pixel_spacing=(2, 2),
+        frame_offsets=[0, -2.5, -5],
+        pixel_values=pixels.swapaxes(1, 2),
+    )
+    for ds in (reference, transposed):
+        ds.PatientID = "SYNTHETIC"
+
+    np.testing.assert_array_equal(
+        voxel_positions(reference), voxel_positions(transposed).swapaxes(1, 2)
+    )
+    np.testing.assert_array_equal(
+        dose.zyx_and_dose_from_dataset(reference)[1],
+        dose.zyx_and_dose_from_dataset(transposed)[1],
+    )
+    assert not coords.coords_in_datasets_are_equal([reference, transposed])
+    with pytest.raises(ValueError, match="coincident coordinates"):
+        dose.sum_doses_in_datasets([reference, transposed])
+
+
+@pytest.mark.pydicom
+def test_absolute_and_relative_offsets_have_the_same_pixel_mapping():
+    relative = rtdose("HFS", frame_offsets=[0, 2.5, 5])
+    absolute = rtdose("HFS", frame_offsets=[300, 302.5, 305])
+    assert coords.coords_in_datasets_are_equal([relative, absolute])
+
+
+@pytest.mark.pydicom
+def test_rounded_orientation_preserves_geometry():
+    expected = rtdose("HFDL")
+    rounded = rtdose("HFDL")
+    rounded.ImageOrientationPatient = [0.00001, -0.99999, 0, 0.99999, 0.00001, 0]
+    for actual, axis in zip(
+        coords.xyz_axes_from_dataset(rounded), coords.xyz_axes_from_dataset(expected)
+    ):
+        np.testing.assert_array_equal(actual, axis)
+
+
+@pytest.mark.pydicom
+def test_oblique_grid_cannot_be_represented_by_patient_axes():
+    ds = rtdose("HFS")
+    ds.ImageOrientationPatient = [0.8, 0.6, 0, -0.6, 0.8, 0]
+    with pytest.raises(ValueError, match="orientation is not supported"):
+        coords.xyz_axes_from_dataset(ds)

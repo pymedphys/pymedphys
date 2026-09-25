@@ -24,7 +24,7 @@ from pymedphys._imports import numpy as np
 from . import orientation
 from .compat import ensure_transfer_syntax
 from .coords import (
-    _axis_aligned_orientation,
+    _DoseGridGeometry,
     coords_in_datasets_are_equal,
     xyz_axes_from_dataset,
 )
@@ -57,15 +57,16 @@ def zyx_and_dose_from_dataset(dataset):
     The pixel array is reordered to match the axes: an axis the scanner
     stored in descending order (for example x for head first prone, or z
     for feet first) is flipped, and for decubitus orientations, whose rows
-    run along x, rows and columns are swapped. For head first supine the
-    dose is the pixel array unchanged.
+    run along x, rows and columns are swapped. For head first supine with
+    increasing frame offsets the dose is the pixel array unchanged. Head
+    first supine grids with decreasing frame offsets are reversed in z.
     """
-    x, y, z = xyz_axes_from_dataset(dataset)
+    geometry = _DoseGridGeometry.from_dataset(dataset)
+    x, y, z = geometry.dicom_axes()
     dose = dose_from_dataset(dataset)
 
-    if _axis_aligned_orientation(dataset)[0] == 0:
-        # Decubitus: the pixel array is indexed (z, x, y).
-        dose = np.swapaxes(dose, 1, 2)
+    # Map pixel dimensions (frame, row, column) onto patient (z, y, x).
+    dose = np.transpose(dose, geometry.xyz_to_pixel_dimensions[::-1])
 
     axes = [z, y, x]
     for dimension, axis in enumerate(axes):

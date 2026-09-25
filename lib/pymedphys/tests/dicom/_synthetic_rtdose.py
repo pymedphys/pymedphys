@@ -102,8 +102,20 @@ def voxel_positions(ds):
         # Absolute frame positions (PS3.3 C.8.8.3.2), only valid for n = +z
         offsets = offsets - position[2]
 
-    k = offsets[:, None, None, None]
-    i = np.arange(ds.Rows)[None, :, None, None] * row_spacing
-    j = np.arange(ds.Columns)[None, None, :, None] * column_spacing
-
-    return position + j * r + i * c + k * n
+    # Independent homogeneous matrix implementation of the standard. The
+    # third input is the actual frame displacement, so uneven spacing works.
+    transform = np.eye(4)
+    transform[:3, 0] = column_spacing * r
+    transform[:3, 1] = row_spacing * c
+    transform[:3, 2] = n
+    transform[:3, 3] = position
+    # Apply the matrix one plane at a time to keep temporary allocations
+    # small for the real-file tests that also use this reference calculation.
+    indices = np.ones((ds.Rows, ds.Columns, 4))
+    indices[..., 0] = np.arange(ds.Columns)
+    indices[..., 1] = np.arange(ds.Rows)[:, None]
+    positions = np.empty((len(offsets), ds.Rows, ds.Columns, 3))
+    for frame, offset in enumerate(offsets):
+        indices[..., 2] = offset
+        positions[frame] = (indices @ transform.T)[..., :3]
+    return positions

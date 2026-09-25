@@ -14,6 +14,7 @@
 
 """A suite of functions for handling DICOM coordinates"""
 
+from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from pymedphys._imports import numpy as np
@@ -52,7 +53,9 @@ _ORIENTATION_TOLERANCE = 1e-4
 def _axis_aligned_orientation(ds) -> "np.ndarray":
     orientation = np.array(ds.ImageOrientationPatient, dtype=np.float64)
     rounded = np.round(orientation)
-    is_axis_aligned = np.allclose(orientation, rounded, atol=_ORIENTATION_TOLERANCE)
+    is_axis_aligned = np.allclose(
+        orientation, rounded, rtol=0, atol=_ORIENTATION_TOLERANCE
+    )
     magnitudes = np.abs(rounded)
     if not (
         is_axis_aligned
@@ -78,7 +81,15 @@ def _frame_offsets(ds, position, orientation) -> "np.ndarray":
     coordinates, which the standard only permits for the orientation
     [1, 0, 0, 0, 1, 0], with the first element equal to the IPP z value.
     """
-    offsets = np.array(ds.GridFrameOffsetVector, dtype=np.float64)
+    offsets = np.atleast_1d(np.array(ds.GridFrameOffsetVector, dtype=np.float64))
+    if offsets.ndim != 1 or offsets.size == 0 or not np.all(np.isfinite(offsets)):
+        raise ValueError("GridFrameOffsetVector must be a non-empty finite 1D array")
+    if offsets.size != int(getattr(ds, "NumberOfFrames", offsets.size)):
+        raise ValueError("GridFrameOffsetVector length must match NumberOfFrames")
+    differences = np.diff(offsets)
+    if not (np.all(differences > 0) or np.all(differences < 0)):
+        raise ValueError("GridFrameOffsetVector must be strictly monotonic")
+
     if offsets[0] == 0:
         return offsets
 
@@ -96,6 +107,88 @@ def _frame_offsets(ds, position, orientation) -> "np.ndarray":
 
     relative_offsets: "np.ndarray" = offsets - position[2]
     return relative_offsets
+
+
+@dataclass(frozen=True)
+class _DoseGridGeometry:
+    """Compact DICOM geometry, preserving the pixel array's dimension mapping.
+
+    ``basis`` has columns ``(r, c, r x c)`` and ``local_axes`` contains column,
+    row and frame displacements in mm. The standard's voxel transformation is
+    ``position + basis @ [column_mm, row_mm, frame_offset_mm]``. Frame offsets
+    need not be uniform, so the third input is a displacement, not an index.
+
+    Only signed axis permutations are supported here. Their patient axes can
+    be extracted in O(columns + rows + frames), without a coordinate volume.
+    """
+
+    position: "np.ndarray"
+    basis: "np.ndarray"
+    local_axes: Tuple["np.ndarray", "np.ndarray", "np.ndarray"]
+
+    @classmethod
+    def from_dataset(cls, ds):
+        position = np.array(ds.ImagePositionPatient, dtype=np.float64)
+        if position.shape != (3,) or not np.all(np.isfinite(position)):
+            raise ValueError("ImagePositionPatient must contain three finite values")
+
+        orientation = _axis_aligned_orientation(ds)
+        row, column = orientation[:3], orientation[3:]
+        basis = np.column_stack((row, column, np.cross(row, column)))
+
+        spacing = np.array(ds.PixelSpacing, dtype=np.float64)
+        sizes = np.array((ds.Rows, ds.Columns))
+        if (
+            spacing.shape != (2,)
+            or not np.all(np.isfinite(spacing))
+            or np.any(sizes < 1)
+            or np.any(spacing < 0)
+            or np.any((spacing == 0) & (sizes > 1))
+        ):
+            raise ValueError(
+                "PixelSpacing must contain finite positive row and column spacings "
+                "(zero is allowed only for a singleton dimension)"
+            )
+
+        return cls(
+            position,
+            basis,
+            (
+                np.arange(ds.Columns, dtype=np.float64) * spacing[1],
+                np.arange(ds.Rows, dtype=np.float64) * spacing[0],
+                _frame_offsets(ds, position, orientation),
+            ),
+        )
+
+    @property
+    def xyz_to_pixel_dimensions(self):
+        """Pixel array dimension corresponding to each patient x, y, z axis."""
+        return tuple(2 - int(index) for index in np.argmax(np.abs(self.basis), axis=1))
+
+    def dicom_axes(self):
+        return tuple(
+            self.position[dimension]
+            + self.basis[dimension, 2 - pixel_dimension]
+            * self.local_axes[2 - pixel_dimension]
+            for dimension, pixel_dimension in enumerate(self.xyz_to_pixel_dimensions)
+        )
+
+    def fixed_axes(self):
+        # Preserve the legacy image-aligned IEC FIXED convention.
+        origin = self.position @ self.basis
+        columns, rows, frames = self.local_axes
+        return origin[0] + columns, origin[2] + frames, -(origin[1] + rows)[::-1]
+
+    def matches_pixel_mapping(self, other):
+        """Whether equal pixel indices identify equal patient coordinates."""
+        return (
+            np.array_equal(self.basis, other.basis)
+            and np.allclose(self.position, other.position)
+            and all(
+                left.shape == right.shape and np.allclose(left, right)
+                for left, right in zip(self.local_axes, other.local_axes)
+            )
+        )
 
 
 def xyz_axes_from_dataset(
@@ -137,7 +230,7 @@ def xyz_axes_from_dataset(
         For decubitus orientations the rows run along `x` and the columns
         along `y`. An axis is descending wherever the scanner stored the
         pixels in descending order (for example `x` for head first prone),
-        so these axes can be paired directly with ``ds.pixel_array``. Use
+        with the dimension mapping described above. Use
         :func:`pymedphys.dicom.zyx_and_dose_from_dataset` for ascending
         axes with the dose reordered to match.
 
@@ -198,35 +291,13 @@ def xyz_axes_from_dataset(
             f"Unrecognised coord_system {coord_system!r}. Use 'DICOM' or 'FIXED'."
         )
 
-    position = np.array(ds.ImagePositionPatient, dtype=np.float64)
-    orientation = _axis_aligned_orientation(ds)
-    row_cosine, column_cosine = orientation[:3], orientation[3:]
-    normal = np.cross(row_cosine, column_cosine)
-
-    row_spacing = float(ds.PixelSpacing[0])
-    column_spacing = float(ds.PixelSpacing[1])
-
-    # Positions along each pixel array dimension, as (n, 3) arrays.
-    along_columns = position + np.outer(
-        np.arange(ds.Columns) * column_spacing, row_cosine
-    )
-    along_rows = position + np.outer(np.arange(ds.Rows) * row_spacing, column_cosine)
-    along_frames = position + np.outer(
-        _frame_offsets(ds, position, orientation), normal
-    )
-
+    geometry = _DoseGridGeometry.from_dataset(ds)
     if system in ("FIXED", "IEC FIXED", "F"):
-        x = along_columns @ row_cosine
-        y = along_frames @ normal
-        z = -(along_rows @ column_cosine)[::-1]
+        axes = geometry.fixed_axes()
     else:
-        is_decubitus = orientation[0] == 0
-        if is_decubitus:
-            x, y = along_rows[:, 0], along_columns[:, 1]
-        else:
-            x, y = along_columns[:, 0], along_rows[:, 1]
-        z = along_frames[:, 2]
+        axes = geometry.dicom_axes()
 
+    x, y, z = axes
     return (
         np.ascontiguousarray(x, dtype=np.float64),
         np.ascontiguousarray(y, dtype=np.float64),
@@ -235,7 +306,11 @@ def xyz_axes_from_dataset(
 
 
 def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) -> bool:
-    """True if all DICOM datasets have perfectly matching coordinates
+    """True if matching pixel indices have matching DICOM coordinates.
+
+    Equal patient-coordinate axes alone are insufficient: decubitus grids
+    can have the same axes but a different row/column mapping. This check is
+    used before adding raw pixel arrays, so their mappings must also agree.
 
     Parameters
     ----------
@@ -255,7 +330,8 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
     ):
         return False
 
-    # Full coord check:
-    all_concat_axes = [np.concatenate(xyz_axes_from_dataset(ds)) for ds in datasets]
-
-    return all(np.allclose(a, all_concat_axes[0]) for a in all_concat_axes)
+    reference = _DoseGridGeometry.from_dataset(datasets[0])
+    return all(
+        reference.matches_pixel_mapping(_DoseGridGeometry.from_dataset(ds))
+        for ds in datasets[1:]
+    )

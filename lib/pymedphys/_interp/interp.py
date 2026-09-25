@@ -355,6 +355,8 @@ def interp_linear_scipy(
 def _check_axes_structure(axes_known):
     for i, axis in enumerate(axes_known):
         axis = np.asarray(axis)
+        if axis.ndim != 1 or not np.all(np.isfinite(axis)):
+            raise ValueError(f"axes_known[{i}] must be a finite 1D array")
         if axis.size < 2:
             raise ValueError(
                 f"axes_known[{i}] must have at least two points to interpolate"
@@ -406,8 +408,9 @@ def interp(
         The value to use for points outside the bounds of the input data when
         `bounds_error` is False. Default is None, which results in using np.nan.
     skip_checks : bool, optional
-        If True, skip input validation checks. Skipping these checks can produce a
-        significant improve in performance for some applications. Default is False.
+        If True, skip shape, dtype and bounds checks. Axis length, order,
+        finiteness and spacing are still validated because the interpolation
+        kernels require them. Default is False.
 
     Returns
     -------
@@ -456,30 +459,9 @@ def interp(
     if extrap_fill_value is None:
         extrap_fill_value = np.nan
 
-    if len(axes_known) == 1:
-        # keep_dims has no effect for 1D interpolation
-        result: np.ndarray = interp_linear_1d(
-            axes_known[0],
-            values,
-            points_interp,
-            extrap_fill_value,
-        )
-        return result
-
-    elif len(axes_known) == 2:
-        values_interp = interp_linear_2d(
-            axes_known,
-            values,
-            points_interp,
-            extrap_fill_value,
-        )
-    else:
-        values_interp = interp_linear_3d(
-            axes_known,
-            values,
-            points_interp,
-            extrap_fill_value,
-        )
+    values_interp = _interp_validated(
+        axes_known, values, points_interp, extrap_fill_value
+    )
 
     if keep_dims:
         if axes_interp is None:
@@ -490,3 +472,18 @@ def interp(
 
     final_result: np.ndarray = values_interp
     return final_result
+
+
+def _interp_validated(axes_known, values, points_interp, extrap_fill_value):
+    """Interpolate a grid already validated and converted by the caller.
+
+    Private reuse path for repeated interpolation of a fixed grid, such as
+    gamma's search shells. Axes must be finite, ascending, evenly spaced
+    float64 arrays with at least two values. Grid shape and point dimensions
+    must agree, and values must be float64. Public calls use ``interp``.
+    """
+    if len(axes_known) == 1:
+        return interp_linear_1d(axes_known[0], values, points_interp, extrap_fill_value)
+    if len(axes_known) == 2:
+        return interp_linear_2d(axes_known, values, points_interp, extrap_fill_value)
+    return interp_linear_3d(axes_known, values, points_interp, extrap_fill_value)

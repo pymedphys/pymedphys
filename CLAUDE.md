@@ -153,6 +153,10 @@ When creating conda recipes, pull requests, or other metadata that requires main
   PS3.3), on off-centre grids with non-square spacing and every supported
   orientation. Never use a stored snapshot of the implementation's own
   output as the expected value: such snapshots can enshrine sign errors.
+- Keep the mapping from array dimensions to physical coordinates explicit
+  when reordering or comparing grids. Matching coordinate sets alone does
+  not justify combining array elements. Validate fixed geometry once before
+  repeated numerical work, while retaining validation at public boundaries.
 - The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
   read the rendered markdown. Data-driven scenarios use the

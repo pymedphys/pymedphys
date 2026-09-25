@@ -51,10 +51,15 @@ This project adheres to
   such data was also liable to fail inside numba, and feet first z values did
   not match structure contours. Axes now follow the voxel positions
   defined by the DICOM standard, and absolute `GridFrameOffsetVector` values
-  are supported.
+  are supported. A shared origin, orientation matrix and frame-offset model
+  keeps axes and dose-array permutations consistent. Dose summation checks
+  the mapping from pixel indices to patient coordinates, including whether
+  rows or columns represent each axis.
 - `pymedphys.gamma` now accepts evaluation axes in descending order. Before,
   every point of a descending evaluation grid was treated as outside the grid,
-  which could leave the gamma search running indefinitely.
+  which could leave the gamma search running indefinitely. Searches are now
+  bounded by the grids' spatial extent without requiring overlapping grids,
+  and the custom interpolator reuses the grid validation done at gamma entry.
 
 ### Dependency changes
 
@@ -131,18 +136,21 @@ This project adheres to
   `ftp`, was passed through unchecked.
 - `pymedphys.dicom.zyx_and_dose_from_dataset` returns strictly ascending
   (z, y, x) axes, and flips the dose array, and swaps rows and columns for
-  decubitus orientations, to match. Head first supine data is unchanged. For
-  other orientations the returned dose, and gamma computed from DICOM data,
-  are no longer in the order in which the pixel data is stored.
+  decubitus orientations, to match. Head first supine data with increasing
+  relative frame offsets is unchanged; decreasing frame offsets reverse z.
+  Other orientations may return dose and DICOM gamma arrays in a different
+  order from the stored pixels. Nonfinite, repeated or nonmonotonic frame
+  offsets, and offsets inconsistent with `NumberOfFrames`, are rejected.
 - The private `pymedphys._dicom.coords.xyz_axes_from_dataset` now raises
   `NotImplementedError` for the IEC patient coordinate system, whose output
   was incorrect, and `ValueError` rather than `UnboundLocalError` for an
   unrecognised `coord_system`.
-- `pymedphys.gamma` raises `ValueError` when an evaluation axis has fewer than
-  two points or when the reference and evaluation grids do not overlap, and
-  falls back to `interp_algo="scipy"` with a warning when the evaluation axes
-  are not evenly spaced. `pymedphys.interpolate.interp` checks axis order,
-  spacing, and length even with `skip_checks=True`.
+- `pymedphys.gamma` requires at least two points per evaluation axis for its
+  custom interpolator; singleton axes remain supported with explicit
+  `interp_algo="scipy"`. Uneven evaluation axes trigger a SciPy fallback with
+  a warning. Both grids require finite coordinates.
+  `pymedphys.interpolate.interp` checks axis order, spacing, finiteness and
+  length even with `skip_checks=True`.
 
 ## [0.41.0]
 
