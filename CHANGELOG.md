@@ -26,6 +26,13 @@ This project adheres to
 - The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 
+### Bug fixes
+
+- Importing `pymedphys.experimental.pinnacle` no longer changes the names of
+  public Pinnacle classes and `export_cli`. This restores class signatures
+  and members in the API documentation while retaining legacy deprecation
+  warnings.
+
 ### Dependency changes
 
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. The newer
