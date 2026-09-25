@@ -278,7 +278,7 @@ This ensures that:
 
 ### CI Gates and Review Policy
 
-- Main requires the GitHub Actions checks `summary` (CI) and `Security Summary`.
+- Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named
   `Release Summary`. Keep all constituent checks visible and add every new
   blocking job to the appropriate summary's `needs`.

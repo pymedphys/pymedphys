@@ -140,10 +140,11 @@ jobs:
     permissions:
       contents: read
 
-  # Keep this check named "summary": main-integrity requires that exact context.
+  # main-integrity requires the exact check name "CI Summary".
   # See the contributor workflow guide before changing this name or its needs.
   # The summary must fail when a required check fails or never runs.
   summary:
+    name: CI Summary
     needs: [changes, pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check]
     if: always()
     runs-on: ubuntu-latest

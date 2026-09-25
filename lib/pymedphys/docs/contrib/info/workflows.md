@@ -238,7 +238,7 @@ See the [release guide](release-guide.md) for the release procedure.
 
 ### Why the summaries are required
 
-The required GitHub Actions check names for `main` are **`summary`** (from
+The required GitHub Actions check names for `main` are **`CI Summary`** (from
 `ci.yml`) and **`Security Summary`** (from `security.yml`). Select GitHub Actions
 as their expected source in the `main-integrity` ruleset. The release workflow's
 **`Release Summary`** is a report, not a merge gate, and must not be required on
@@ -246,7 +246,7 @@ pull requests.
 
 | Required check | Checks it covers |
 |----------------|------------------|
-| `summary` | Change selection, pre-commit, Pylint, the type-check workflow, unit tests, and selected integration, database, and documentation checks |
+| `CI Summary` | Change selection, pre-commit, Pylint, the type-check workflow, unit tests, and selected integration, database, and documentation checks |
 | `Security Summary` | Change selection and selected dependency, Python security, and workflow security audits |
 
 These are executable gates, not just reports. Both use `if: always()` and
@@ -293,7 +293,7 @@ request broader coverage and trigger another CI run.
 
 | Ruleset | Policy | Bypass |
 |---------|--------|--------|
-| `main-integrity` | Require `summary` and `Security Summary`, require an up-to-date branch, block force pushes and branch deletion | None, including admins |
+| `main-integrity` | Require `CI Summary` and `Security Summary`, require an up-to-date branch, block force pushes and branch deletion | None, including admins |
 | `main-reviews` | Require a PR, one approval by an eligible reviewer, and resolution of review conversations | Repository admins, for pull requests only |
 
 Contributors with Write access may merge once these requirements pass. Review is
@@ -317,8 +317,8 @@ additional-approval setting for unattributed Copilot PRs enabled.
 2. For a conditional job, use the same selection output for the job's `if` and
    the summary's `--conditional JOB=OUTPUT` argument. Add regression coverage
    when changing the selection policy.
-3. Keep each required check name unique across workflows. The CI check retains
-   the name `summary` for compatibility with existing branch protection.
+3. Keep each required check name unique across workflows. `CI Summary` is the
+   displayed CI check name; `summary` remains its internal YAML job ID.
 4. If renaming a required check, first produce the new check on the change PR,
    then replace the old required context in GitHub Settings before merging.
    Update older PRs to use the new workflow. Never remove all required gates
