@@ -2,11 +2,6 @@
 Statement of Need
 =====================
 
-This statement accompanies the project's
-`2022 JOSS paper <https://doi.org/10.21105/joss.04555>`_. It describes the
-project and reported use at that time. For current capabilities, see
-:doc:`What PyMedPhys can do <users/get-started/what-pymedphys-can-do>`.
-
 Medical radiation applications are subject to fast-paced technological
 advancements. This is particularly true in the field of radiation oncology,
 where the implementation of increasingly sophisticated technologies requires

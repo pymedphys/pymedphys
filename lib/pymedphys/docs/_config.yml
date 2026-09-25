@@ -1,6 +1,6 @@
 title: PyMedPhys
 author: the PyMedPhys community
-copyright: "2018-2026"
+copyright: "2018-2025"
 logo: img/pymedphys.svg
 execute:
   execute_notebooks: cache
@@ -11,6 +11,8 @@ parse:
 
 html:
   favicon: img/pymedphys.svg
+  analytics:
+    google_analytics_id: UA-26591325-7
   home_page_in_navbar: false
   use_edit_page_button: true
   use_repository_button: true
@@ -31,8 +33,8 @@ launch_buttons:
 sphinx:
   config:
     language: en
-    # Unauthenticated github.com requests are frequently rate limited.
-    # Check new or changed GitHub links manually; they are excluded here.
+    # github.com permalinks, issues, and PRs do not rot, and unauthenticated
+    # checks of github.com are rate limited until the link-check step times out.
     linkcheck_ignore:
       - 'https://github\.com/.*'
     # Sphinx cannot set float-typed values such as the rate-limit timeout

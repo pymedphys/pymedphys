@@ -295,9 +295,8 @@ def calculate_percent_prediction_differences(
     Returns
     -------
     percent_prediction_differences : np.ndarray
-        Percent differences, computed as
-        ``100 * (factor_data - predictions) / factor_data``. Each prediction
-        is made with that data point removed from the model.
+        The predicted electron insert factors for each data point
+        with that given data point removed.
 
     """
     predictions = [

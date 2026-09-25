@@ -2,10 +2,6 @@
 Automatic Contouring Project
 ============================
 
-This page records a research project and its accompanying thesis. It is not a
-current installation guide or a claim that these models are included in the
-PyMedPhys distribution.
-
 Project aim
 -----------
 

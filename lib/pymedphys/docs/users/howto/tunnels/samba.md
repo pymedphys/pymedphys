@@ -1,11 +1,5 @@
 # SAMBA SSH Tunnelling
 
-```{note}
-This is a historical site deployment example. It was developed with Ubuntu
-20.04 and the Windows/network configuration described below. For a new
-deployment, use a supported OS and review the configuration for your network.
-```
-
 ## Background
 
 We need to access file shares across a range of sites. We do not yet have the
@@ -34,9 +28,7 @@ occupied by `lanman`. As such this port can no longer be utilised for SSH
 tunnelling. This service can be set to be a delayed start, and then loopback
 devices can be created, however we found that Windows updates would often come
 in and clobber these settings throwing the whole networking system down.
-The original write-up was Jan Just Keijser's *CIFS over SSH* at
-`https://www.nikhef.nl/~janjust/CifsOverSSH/`; that historical page is no
-longer available at this address.
+This approach was documented over at <https://www.nikhef.nl/~janjust/CifsOverSSH/>.
 
 As such, we instead opted to go for creating an Ubuntu machine within Hyper-V
 and having it be in-charge of remapping the ports. This is the document
@@ -46,12 +38,11 @@ This approach has been reliable.
 
 ## Pre-requisites
 
-* An Ubuntu VM within Hyper-V. The original example used Ubuntu 20.04;
-  obtain a supported release from [Ubuntu](https://ubuntu.com/download).
+* A fresh minimal installation of Ubuntu 20.04 within Hyper-V utilising the
+  [official Ubuntu iso](https://mirror.aarnet.edu.au/pub/ubuntu/releases/20.04.2.0/ubuntu-20.04.2.0-desktop-amd64.iso).
   * Set this up with a single `External` type network adapter
-  * Use Microsoft's [Ubuntu guest guidance](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/supported-ubuntu-virtual-machines-on-hyper-v)
-    for the VM generation and Secure Boot settings appropriate to your host
-    and guest; disabling Secure Boot is not a general prerequisite
+  * Disable secure boot
+  * Utilise Generation 2 so that UEFI is available
   * Throughout this document it will be assumed that the non-root username on
     the Ubuntu machine is `pexit`
 * A set up Windows OpenSSH server. For use within this document it will be
@@ -109,7 +100,7 @@ edited to include the line `192.168.100.13  rccc-ssh`.
 ## Initial set up of the SSH connection
 
 Run the command `ssh-keygen -t ed25519` to create an SSH key pair. See the
-[GitHub docs](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)
+[GitHub docs](https://docs.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)
 for more details on this.
 
 Then add the contents of the newly created file `~/.ssh/id_ed25519.pub` to the
@@ -128,10 +119,10 @@ by ssh to the `known_hosts` file.
 If you see the error `Permission denied (publickey,keyboard-interactive)` the
 cause is likely either the key hasn't been added to the `authorized_keys` file
 appropriately, or that the `authorized_keys` file has the wrong permissions.
-Check the file's ownership and permissions using Microsoft's
-[OpenSSH key-management guidance](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement).
-Preserve existing keys when repairing the file. Testing `ssh pexit@localhost`
-on `rccc-ssh` can help isolate server-side authentication problems.
+Simply deleting the `authorized_keys` file and then recreating it as the
+`pexit` user should fix its permissions. To see if this is working it a helpful
+troubleshooting step is to see if the `pexit` user can ssh into
+`pexit@localhost` while on the `rccc-ssh` server.
 ```
 
 Since port `445` is a privileged port we need to utilise `authbind` to allow
@@ -139,7 +130,7 @@ Since port `445` is a privileged port we need to utilise `authbind` to allow
 follows utilising the tips found at <https://superuser.com/a/892391>:
 
 ```bash
-sudo apt install authbind autossh
+sudo apt install authbind
 sudo touch /etc/authbind/byport/445
 sudo chmod 500 /etc/authbind/byport/445
 sudo chown pexit /etc/authbind/byport/445

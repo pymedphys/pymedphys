@@ -7,7 +7,7 @@ appropriate to you prior to commencing this release procedure.
 
 ## Determine next release version
 
-pymedphys uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) in the format `MAJOR.MINOR.PATCH`. For a minor release, increment `MINOR` and reset `PATCH` to zero; for example, `0.41.2` becomes `0.42.0`. While the project is pre-1.0, minor releases may contain breaking changes.
+pymedphys uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) in the format `MAJOR.MINOR.PATCH`, the next release number should typically be `MAJOR.MINOR+1.PATCH`. For example, if the previous release was `0.38.0`, the upcoming release will be `0.39.0`.
 
 In instances where the only changes since the last release are bug fixes and none of the pymedphys API has changed, you should increment the `PATCH` value: `MAJOR.MINOR.PATCH+1`
 
@@ -34,13 +34,11 @@ readme = "README.rst"
 ...
 ```
 
-Refresh the lockfile's project metadata, sync the environment, and regenerate
-the version and dependency files. Keep dependency upgrades in a separately
-reviewed change unless they are deliberately part of this release:
+Then run uv lock --upgrade as well as propagate:
 
 ```bash
-uv lock
-uv sync --python 3.12 --locked --extra all --group dev
+uv lock --upgrade
+uv sync --extra all --group dev
 uv run -- pymedphys dev propagate
 ```
 
@@ -53,7 +51,7 @@ Amend the `CHANGELOG.md` file to describe the changes since the last release. In
 
 # Release Notes
 
-All notable changes are documented here.
+All notable changes to are documented here.
 
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -151,24 +149,9 @@ parallel with a release-triggered publish of the same version.
 
 ### Final sanity tests
 
-From a fresh directory outside the source checkout, create an environment,
-install the exact published version (replace `VERSION`), and inspect the
-version and import path before running tests:
+Perform a final check to ensure the new version was released successfully. To do this, create a fresh Python virtual environment on your machine. Then install the new version of pymedphys and ensure all tests are passing as expected.
 
-```bash
-uv venv --python 3.12 .venv
-uv pip install "pymedphys[user,tests]==VERSION"
+```python
+pip install pymedphys[user,tests]
+pymedphys dev tests
 ```
-
-Activate the environment as described in the
-{doc}`quick start <../../users/get-started/quick-start>`, then run:
-
-```bash
-python -c "import pymedphys; print(pymedphys.__version__); print(pymedphys.__file__)"
-pymedphys --help
-pymedphys dev tests -m "not slow"
-```
-
-This checks the published package rather than the editable checkout. The
-tests may download public test datasets. Run the extended checks separately
-when needed, as described in the [workflow guide](workflows.md).

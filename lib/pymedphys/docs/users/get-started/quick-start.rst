@@ -108,7 +108,7 @@ Windows
 
 .. code:: powershell
 
-    .\.venv\Scripts\Activate.ps1
+    .venv\Scripts\activate
 
 Linux or macOS
 --------------
@@ -129,14 +129,6 @@ Then confirm that the command line entry point is available:
 
     pymedphys --help
 
-To launch the graphical apps from a ``user`` installation, run:
-
-.. code:: bash
-
-    pymedphys gui
-
-See :doc:`Graphical apps <../ref/cli/gui>` for the available CLI options.
-
 If you plan to use command line workflows, continue to
 :doc:`Using the CLI <cli>`.
 
@@ -147,17 +139,14 @@ TLS or certificate issues
 -------------------------
 
 Some healthcare networks use a corporate trust root or HTTPS interception.
-In that case, tell uv to use the operating system certificate store with
-``UV_SYSTEM_CERTS`` (older uv releases called this ``UV_NATIVE_TLS``).
-See `uv's certificate documentation
-<https://docs.astral.sh/uv/concepts/authentication/certificates/>`_.
+In that case, try telling uv to use the operating system certificate store.
 
 Windows
 ^^^^^^^
 
 .. code:: powershell
 
-    $env:UV_SYSTEM_CERTS = "true"
+    $env:UV_NATIVE_TLS = "true"
     uv pip install "pymedphys[user]"
 
 Linux or macOS
@@ -165,7 +154,7 @@ Linux or macOS
 
 .. code:: bash
 
-    UV_SYSTEM_CERTS=true uv pip install "pymedphys[user]"
+    UV_NATIVE_TLS=true uv pip install "pymedphys[user]"
 
 Proxy issues
 ------------
@@ -208,7 +197,7 @@ Windows
 .. code:: powershell
 
     python -m venv .venv
-    .\.venv\Scripts\Activate.ps1
+    .venv\Scripts\activate
     python -m pip install --upgrade pip
     python -m pip install "pymedphys[user]"
 

@@ -2,8 +2,8 @@
 CLI Reference
 =============
 
-The top-level help below is generated from the current CLI parser. The pages
-in this section provide detailed help for selected user commands:
+This section displays the help text for each of PyMedPhys' CLI commands. Help
+test is sturctured as follows:
 
 .. argparse::
    :ref: pymedphys.cli.define_parser
@@ -16,7 +16,6 @@ This presents what to write into the command prompt to use that CLI command.
 .. toctree::
     :maxdepth: 1
 
-    gui
     dicom
     trf
     icom

@@ -1,53 +1,37 @@
+===================================
 Linux Setup
-===========
-
-Install prerequisites
-=====================
-
-Install `Git <https://git-scm.com/downloads>`_ and
-`uv <https://docs.astral.sh/uv/getting-started/installation/>`_.
-On Linux, the standalone uv installer is:
-
-.. code-block:: bash
-
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-
-Open a new terminal if ``uv`` is not yet on your ``PATH``.
-
-Create the development environment
 ===================================
 
-Run these commands from the directory where you keep your projects. If you
-will contribute through a fork, substitute your fork's clone URL.
+Overview
+========
 
-.. code-block:: bash
+* Install Python 3.12.3
+* Install `pipx` with ``pip install pipx``
+* Install ``uv`` with ``curl -LsSf https://astral.sh/uv/install.sh | sh``
+* Clone the PyMedPhys git repo
+* Run ``uv sync --extra all --group dev`` within the root of the repo
+* Run ``uv run -- pre-commit install``
+* Install ``pandoc`` via your package manager
 
-    git clone https://github.com/pymedphys/pymedphys.git
-    cd pymedphys
-    uv python install 3.12
-    uv sync --python 3.12 --locked --extra all --group dev
-    uv run pre-commit install
+  * eg. ``sudo apt-get install pandoc``
 
-The current source supports Python 3.10, 3.11, and 3.12. Python 3.12 matches
-the quick CI run; no particular patch version is required. uv can install
-Python for you, so a separate Python or pipx installation is not required.
-
-``uv sync`` creates the repository's ``.venv`` and installs an editable copy of
-PyMedPhys with the contributor dependencies. Run project commands with
-``uv run`` from the repository root.
-
-Install `Pandoc <https://pandoc.org/installing.html>`_ if needed for notebook
-or document conversion (for example, ``sudo apt-get install pandoc`` on
-Debian/Ubuntu). The HTML documentation build uses the Python dependencies
-installed above.
+You're good to go.
 
 
-Next steps
-==========
+Opinionated Recommendations
+===========================
 
-* Run ``uv run pymedphys dev tests -m "not slow"``.
-* Follow the :doc:`documentation guide <../info/docs-guide>` to build the site.
-* Read the :doc:`workflow guide <../info/workflows>` before opening a PR.
-* For notebooks, :doc:`register the project kernel <../tips/add-jupyter-kernel>`.
-* An editor such as `Visual Studio Code <https://code.visualstudio.com/>`_ is
-  optional.
+* Install Python with pyenv
+
+  * `Install prerequisites`_
+  * `Install pyenv`_
+  * `Configure pyenv`_
+* Install `VSCode`_ as your code editor
+* Install `Jupyter Lab`_ to work with Notebooks
+
+
+.. _`Install pyenv`: https://github.com/pyenv/pyenv-installer#install
+.. _`Install prerequisites`: https://github.com/pyenv/pyenv/wiki#suggested-build-environment
+.. _`VSCode`: https://code.visualstudio.com/Download
+.. _`Jupyter Lab`: https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html#pip
+.. _`Configure pyenv`: https://amaral.northwestern.edu/resources/guides/pyenv-tutorial

@@ -4,9 +4,7 @@
 
 Please do not open a public issue for a suspected vulnerability.
 
-Email <developers@pymedphys.com>. Include the PyMedPhys version, what the issue affects, and steps to reproduce if you have them.
-
-If private vulnerability reporting is enabled in the repository's Security tab, you may instead use **Report a vulnerability** there. That option depends on a repository setting; email remains the reporting route when it is unavailable.
+Report it through GitHub's private vulnerability reporting for this repository (the "Report a vulnerability" button under the Security tab), or email <developers@pymedphys.com>. Include the PyMedPhys version, what the issue affects, and steps to reproduce if you have them.
 
 The maintainers will acknowledge the report, work with you on a fix, and agree the timing of any public disclosure with you.
 
@@ -20,4 +18,4 @@ PyMedPhys is a library and a set of tools that run on the user's own machine. Th
 
 ## Automated checks
 
-Dependabot alerts, a weekly dependency audit, Bandit, and zizmor run in this repository. See the [workflow guide](lib/pymedphys/docs/contrib/info/workflows.md) for what each one gates.
+Dependabot alerts, a weekly dependency audit, Bandit, and zizmor run in this repository. See `lib/pymedphys/docs/contrib/info/workflows.md` for what each one gates.

@@ -51,7 +51,7 @@ def gamma_shell(
 ):
     """Compare two dose grids with the gamma index.
 
-    It computes 1, 2, or 3 dimensional gamma with arbitrary grid sizes while
+    It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
     interpolating on the fly. This function makes use of some of the ideas
     presented within <http://dx.doi.org/10.1118/1.2721657>.
 
@@ -94,13 +94,11 @@ def gamma_shell(
         The dose normalisation value that the percent inputs calculate from.
         Defaults to the maximum value of :obj:`dose_reference`.
     random_subset : int, optional
-        Number of reference points to sample from those at or above the lower dose
-        cutoff. This is a count, not a fraction. If it exceeds the number of
-        eligible points, all eligible points are used.
+        Used to only calculate a random subset of the reference grid. The
+        number chosen is how many random points to calculate.
     ram_available : int, optional
-        RAM budget in bytes used to split interpolation work into chunks.
-        Defaults to 1.5 GiB (1610612736 bytes). This is not a limit on total
-        process memory.
+        The number of bytes of RAM available for use by this function. Defaults
+        to 0.8 times your total RAM as determined by psutil.
     quiet : bool, optional
         Deprecated but maintained for now for backwards compatibility.
         `pymedphys.gamma` now utilises the `logging` module. You can set
@@ -108,10 +106,6 @@ def gamma_shell(
         level. Basic information is given for the `info` level.
         Additional information using for benchmarking or troubleshooting
         performance is provided for the `debug` level.
-
-    interp_algo : {"pymedphys", "scipy"}, optional
-        Interpolation implementation. Defaults to "pymedphys". The "scipy"
-        option uses scipy.interpolate.RegularGridInterpolator.
 
     Returns
     -------

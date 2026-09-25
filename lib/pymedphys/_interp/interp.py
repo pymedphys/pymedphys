@@ -52,6 +52,7 @@ def plot_interp_comparison_heatmap(
     - The function creates a figure with two subplots side by side.
     - The left subplot shows the slice from the original data.
     - The right subplot shows the slice from the interpolated data.
+    - It is up to the user to ensure that
     - Both heatmaps use the same color scale, determined by the minimum and
       maximum values across both datasets.
     - A shared colorbar is displayed on the right side of the figure.
@@ -392,7 +393,7 @@ def interp(
         `bounds_error` is False. Default is None, which results in using np.nan.
     skip_checks : bool, optional
         If True, skip input validation checks. Skipping these checks can produce a
-        significant improvement in performance for some applications. Default is False.
+        significant improve in performance for some applications. Default is False.
 
     Returns
     -------

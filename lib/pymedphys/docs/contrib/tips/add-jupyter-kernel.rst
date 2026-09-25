@@ -1,24 +1,9 @@
-Use the development environment in Jupyter
-==========================================
+================================
+Add Jupyter kernel with *uv*
+================================
 
-After completing a :doc:`workstation setup <../setups/index>`, register the
-repository's Python environment as a Jupyter kernel. Run from the repository
-root:
+The following command can be used to set up a Jupyter kernel within uv
 
-.. code-block:: bash
+.. code:: bash
 
-    uv run python -m ipykernel install --user --name pymedphys --display-name "PyMedPhys (development)"
-
-Select **PyMedPhys (development)** in your notebook editor. The kernel points
-to this checkout's ``.venv``; register it again if you move the repository or
-recreate the environment at another path.
-
-JupyterLab itself is optional and is not included in the locked project
-dependencies. To launch it with uv:
-
-.. code-block:: bash
-
-    uv run --with jupyterlab jupyter lab
-
-See `uv's Jupyter guide
-<https://docs.astral.sh/uv/guides/integration/jupyter/>`_ for other setups.
+    uv run -- python -m ipykernel install --user --name pymedphys

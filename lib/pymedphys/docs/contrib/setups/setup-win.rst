@@ -1,55 +1,130 @@
+=====================================
 Windows Setup
-=============
+=====================================
 
-Install prerequisites
+All contributor installation steps can be completed without administration
+access. To achieve this choose "Install for my user only" when prompted.
+
+
+Overview
+========
+
+* `Install Python`_ 3.12.3
+* Install ``uv`` with ``powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"``
+* `Install git`_
+* Clone the PyMedPhys git repo
+
+  * eg. ``git clone https://github.com/pymedphys/pymedphys.git``
+* Run ``uv sync --extra all --group dev`` within the root of the repo
+* Run ``uv run -- pre-commit install``
+* `Install pandoc`_
+
+You're good to go.
+
+.. _`Install Python`: https://www.python.org/downloads/
+.. _`Install git`: https://git-scm.com/download/win
+.. _`Install pandoc`: https://pandoc.org/installing.html
+.. _`raising an issue`: https://github.com/pymedphys/pymedphys/issues/new
+
+More Advanced Options
 =====================
 
-Install `Git <https://git-scm.com/downloads>`_ and
-`uv <https://docs.astral.sh/uv/getting-started/installation/>`_.
-The commands on this page use PowerShell. The standalone uv installer is:
+* `Setting up OpenSSH on Windows 10`_
+* `Add Jupyter Kernel to uv`_
 
-.. code-block:: powershell
+.. _`Setting up OpenSSH on Windows 10`: ../other/win-open-ssh.html
+.. _`Add Jupyter Kernel to uv`: ../other/add-jupyter-kernel.html
+
+
+Opinionated Recommendations
+===========================
+
+* Install `VSCode`_ as your code editor
+* Install `Jupyter Lab`_ to work with Notebooks
+
+
+.. _`official distribution`: https://www.python.org/downloads/
+.. _`VSCode`: https://code.visualstudio.com/Download
+.. _`Jupyter Lab`: https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html#pip
+
+
+More details
+============
+
+Install contributor system dependencies
+---------------------------------------
+
+Python
+......
+
+Download and install **Python 3** for Windows, preferably from the
+`official distribution`_.
+
+.. warning::
+    At present, although PyMedPhys works with Python 3.10, not all of its
+    dependencies do. For now, we recommend installing Python 3.7, 3.8 or 3.9.
+
+VSCode
+......
+
+Download and install `VSCode`_. Make sure to tick the "Open with Code" boxes:
+
+.. image:: /img/open_with_code.png
+
+
+Git and pandoc
+..............
+
+Use the following links to install git and pandoc.
+
+* `Install git`_
+* `Install pandoc`_
+
+If you don't have admin access make sure to install within your user account.
+When installing git it will ask you what default text editor to use. If you
+don't know what ``vim`` is make sure to change the default setting from ``vim``
+to VSCode (that was just installed).
+
+
+Install uv
+..............
+
+To install uv run the following within a command prompt:
+
+.. code:: bash
 
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-Choose a per-user installation where offered if you do not have administrator
-access. Follow your organisation's software installation policy.
+What this does is detailed in the `Install uv`_ docs. You will need to
+close and reopen your command prompt after installing uv.
 
-Open a new terminal if ``uv`` is not yet on your ``PATH``.
 
-Create the development environment
-===================================
+Install the development version of PyMedPhys and pre-commit
+-----------------------------------------------------------
 
-Run these commands from the directory where you keep your projects. If you
-will contribute through a fork, substitute your fork's clone URL.
+To download a copy of the PyMedPhys repository onto your machine run:
 
-.. code-block:: powershell
+.. code:: bash
 
     git clone https://github.com/pymedphys/pymedphys.git
+
+Then change into the newly created directory by running:
+
+.. code:: bash
+
     cd pymedphys
-    uv python install 3.12
-    uv sync --python 3.12 --locked --extra all --group dev
-    uv run pre-commit install
 
-The current source supports Python 3.10, 3.11, and 3.12. Python 3.12 matches
-the quick CI run; no particular patch version is required. uv can install
-Python for you, so a separate Python or pipx installation is not required.
+Then install PyMedPhys and set up pre-commit by running:
 
-``uv sync`` creates the repository's ``.venv`` and installs an editable copy of
-PyMedPhys with the contributor dependencies. Run project commands with
-``uv run`` from the repository root.
+.. code:: bash
 
-Install `Pandoc <https://pandoc.org/installing.html>`_ if needed for notebook
-or document conversion. For SSH authentication, see
-:doc:`Git with SSH on Windows <../tips/win-open-ssh>`.
+    uv sync --extra all --group dev
+    uv run -- pre-commit install
 
 
-Next steps
-==========
+Install a Jupyter Lab kernel for the development install
+--------------------------------------------------------
 
-* Run ``uv run pymedphys dev tests -m "not slow"``.
-* Follow the :doc:`documentation guide <../info/docs-guide>` to build the site.
-* Read the :doc:`workflow guide <../info/workflows>` before opening a PR.
-* For notebooks, :doc:`register the project kernel <../tips/add-jupyter-kernel>`.
-* An editor such as `Visual Studio Code <https://code.visualstudio.com/>`_ is
-  optional.
+.. code:: bash
+
+    uv run -- python -m ipykernel install --user --name pymedphys

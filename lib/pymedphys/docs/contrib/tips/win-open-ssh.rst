@@ -1,21 +1,11 @@
-Git with SSH on Windows
-=======================
+================================
+Setting up OpenSSH on Windows 10
+================================
 
-SSH is optional. The setup guide uses an HTTPS clone URL; use Git Credential
-Manager or GitHub CLI if you prefer HTTPS authentication.
+If you want to be able to run git clone with SSH, instead of having to type a
+password every time you can either use git's ssh manager, but this will not
+work within your standard command prompt or within other tools such as VSCode.
 
-To use SSH, follow GitHub's maintained instructions for:
-
-* `Generating an SSH key and adding it to the agent
-  <https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent>`_
-* `Adding the public key to your GitHub account
-  <https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account>`_
-* `Testing the connection
-  <https://docs.github.com/en/authentication/connecting-to-github-with-ssh/testing-your-ssh-connection>`_
-
-Select the Windows instructions. Git for Windows and Windows OpenSSH can use
-different SSH executables and agents; ensure Git uses the agent holding your
-key. GitHub's guide explains the Windows configuration.
-
-Then clone with ``git clone git@github.com:pymedphys/pymedphys.git``, or use
-your fork's SSH URL.
+For now, a series of links have been provided within
+https://github.com/pymedphys/pymedphys/issues/649. Use those links to determine
+how to set up git with OpenSSH on Windows.

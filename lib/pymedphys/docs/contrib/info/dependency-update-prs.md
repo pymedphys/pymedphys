@@ -91,13 +91,10 @@ update manually.
 
 ## Manual commands for a cautious reviewer
 
-The following shell commands reproduce the smoke suite on Linux/macOS.
-On Windows, activate the wheel-test environment with
-`.wheel-test\Scripts\Activate.ps1` and pass the wheel's explicit path to
-`uv pip install`.
+If you want to reproduce the intended smoke suite locally:
 
 ```bash
-uv sync --python 3.12 --locked --extra all --group dev
+uv sync --frozen --extra all --group dev
 uv run pymedphys dev propagate
 
 uv run pymedphys dev tests -m "not slow" --maxfail=3
@@ -126,6 +123,6 @@ python -c "import pymedphys; print(pymedphys.__version__)"
 That usually means one of two things:
 
 1. `uv lock --upgrade` produced no changes
-2. the workflow failed, including validation or CI bot authentication
+2. the validation failed, so the workflow never opened the PR
 
 If you suspect the second case, run the workflow manually and inspect the logs.

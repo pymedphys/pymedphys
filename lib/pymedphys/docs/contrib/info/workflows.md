@@ -40,7 +40,7 @@ Coordinates all CI checks based on file changes, labels, and event types.
   - `unit-tests`: Fast unit tests
   - `integration-tests`: Extended tests (conditional)
   - `mosaiq-db-tests`: Database tests (conditional)
-  - `docs-check`: Documentation build and artifact (conditional)
+  - `docs-check`: Documentation build and artefact (conditional)
   - `summary`: Requires core checks and selected extended checks to succeed
 
 Lint, type checks, and unit tests normally run on every PR. If pre-commit
@@ -80,7 +80,7 @@ Fast unit tests with smart matrix strategy.
   - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
   - Quick mode for PRs (Ubuntu + Python 3.12)
   - Installs the `user` extra so the headless Streamlit GUI tests run
-  - Full OS and Python matrix for PRs labeled `full-test`
+  - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
@@ -111,7 +111,7 @@ Builds documentation on PRs that change documentation sources, package Python co
 
 - **HTML build**: Sphinx warnings and unexpected notebook errors fail the build
 - **Link check**: Advisory external-link check with downloadable reports
-- **Artifact**: Built HTML is uploaded for inspection
+- **Artefact**: Built HTML is uploaded for inspection
 - **Publishing**: ReadTheDocs publishes docs.pymedphys.com independently using
   `.readthedocs.yml`
 
@@ -140,7 +140,7 @@ into the project environment.
     scheduled and manual runs, where a failure opens or updates the issue
     labelled `security-audit`
   - `python-security`: Bandit, configured in `[tool.bandit]` in
-    `pyproject.toml`. Blocking when selected; SARIF is uploaded as an artifact and to
+    `pyproject.toml`. Blocking when selected; SARIF is uploaded as an artefact and to
     code scanning when the event has permission (fork PRs cannot upload there)
   - `workflow-audit`: zizmor over `.github` and over any workflow files staged
     in `claude_created_workflows_preview/`, blocking at medium severity and
@@ -182,7 +182,7 @@ Claude Code integration for automated code assistance.
 ## Composite Actions
 
 ### `actions/setup-project/action.yml`
-Standardized project setup for all workflows.
+Standardised project setup for all workflows.
 
 - **Features**:
   - Python setup with configurable version

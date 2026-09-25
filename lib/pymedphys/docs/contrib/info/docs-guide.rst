@@ -84,7 +84,7 @@ Do not edit their generated copies. Use ``:doc:`` in reStructuredText or the
 MyST ``{doc}`` role in Markdown for links between documentation pages.
 
 GitHub Actions builds and uploads ``docs-html`` and ``docs-linkcheck``
-artifacts for selected PRs. ReadTheDocs publishes the public site separately,
+artefacts for selected PRs. ReadTheDocs publishes the public site separately,
 using ``.readthedocs.yml``. The ``latest`` site describes the development
 branch; select the documentation version matching an installed release when
 checking release-specific behaviour.

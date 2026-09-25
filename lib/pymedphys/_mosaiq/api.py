@@ -30,11 +30,11 @@ def connect(
 ) -> Connection:
     """Connect to a Mosaiq SQL server.
 
-    When neither username nor password is supplied, credentials are read from
-    the operating system's credential storage, with an interactive prompt for
-    missing values. Credentials entered at that prompt are stored for later
-    use. Alternatively, supply both username and password explicitly; these
-    are used directly without storing them. Supplying only one raises an error.
+    The first time running this function on a system will result in a
+    prompt to login to the Mosaiq SQL server. The provided credentials
+    will be stored within the operating system's password storage
+    facilities. Subsequent calls to this function will pull from that
+    password storage in order to connect.
 
     Can optionally be called as a context manager. This will close the
     database connection once leaving the context manager.
@@ -101,11 +101,13 @@ def execute(
         A database connection. This can be retrieved by calling
         ``pymedphys.mosaiq.connect``
     query : str
-        The SQL query to execute. Use pymssql placeholders such as
-        ``%(last_name)s`` and pass the values separately in ``parameters``,
-        for example ``{"last_name": "PHANTOM"}``. Do not interpolate values
-        with f-strings, ``str.format``, or Python's percent operator.
-        The underlying driver handles parameter substitution.
+        The SQL query to execute. Do not parse Python variables directly
+        into this string. Instead create this string as if you
+        are going to call ``format`` on it
+        (https://docs.python.org/3/library/stdtypes.html#str.format)
+        and then utilise the parameters optional argument to this
+        function. That way, the underlying library ``pymssql`` will
+        sanitise the parameters to protect against malicious inputs.
     parameters : Dict, optional
         Parameters to be included within the query. These are sanitised
         by the underlying ``pymssql`` library before being included
