@@ -24,8 +24,9 @@ missing from the sdist also breaks the wheel, rather than being hidden by a
 wheel built straight from the source tree.
 
 After publishing, pass ``--published VERSION``. The wheel and the sdist are
-each installed from the package index into their own fresh environment, with
-pip's cache disabled and the sdist forced to build. pip's installation report
+resolved from the index's JSON Simple API and each exact archive URL is
+installed into its own fresh environment, with dependencies from PyPI,
+pip's cache disabled, and the sdist forced to build. pip's installation report
 must show the expected file from the index's own file host, and each
 environment then gets the smoke test's import and CLI checks and ``pip check``.
 The environments use the Python running this script.
@@ -42,6 +43,9 @@ import sys
 import tarfile
 import tempfile
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import venv
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
@@ -96,22 +100,21 @@ print(pymedphys.__version__)
 # served from a separate host, so an index URL is not a valid download URL.
 @dataclasses.dataclass(frozen=True)
 class PackageIndex:
-    index_url: str
+    project_url: str
     files_url: str
-    extra_index_urls: tuple[str, ...] = ()
+    dependency_index_url: str = "https://pypi.org/simple/"
 
 
 PACKAGE_INDEXES = {
     "pypi": PackageIndex(
-        index_url="https://pypi.org/simple/",
+        project_url="https://pypi.org/simple/pymedphys/",
         files_url="https://files.pythonhosted.org/",
     ),
-    # TestPyPI does not host the dependencies, so PyPI is searched too. Only
-    # pymedphys's own file is checked against the file host.
+    # Resolve pymedphys from TestPyPI alone. Runtime and build dependencies
+    # still use PyPI, without allowing it to substitute pymedphys itself.
     "testpypi": PackageIndex(
-        index_url="https://test.pypi.org/simple/",
+        project_url="https://test.pypi.org/simple/pymedphys/",
         files_url="https://test-files.pythonhosted.org/",
-        extra_index_urls=("https://pypi.org/simple/",),
     ),
 }
 FORMATS = ("wheel", "sdist")
@@ -444,6 +447,72 @@ def _report_sha256(download_info: Mapping) -> str | None:
     return sha256
 
 
+def _matches_distribution(filename: str, kind: str, version: str) -> bool:
+    if kind == "wheel":
+        return filename.startswith(f"pymedphys-{version}-") and filename.endswith(
+            ".whl"
+        )
+    return filename == f"pymedphys-{version}.tar.gz"
+
+
+def _published_url(
+    index: PackageIndex,
+    kind: str,
+    version: str,
+    *,
+    wait: float,
+    sleep: Callable[[float], None],
+) -> str:
+    """Select an exact archive from the index's JSON Simple API, with its hash."""
+    request = urllib.request.Request(
+        index.project_url,
+        headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+    )
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                listing = json.load(response)
+        except urllib.error.HTTPError as error:
+            if error.code != 404:
+                raise
+            listing = {"files": []}
+
+        api_version = listing.get("meta", {}).get("api-version", "1.0")
+        if api_version.split(".")[0] != "1":
+            raise ValueError(f"Unsupported Simple API version: {api_version}")
+        matches = [
+            entry
+            for entry in listing["files"]
+            if _matches_distribution(entry["filename"], kind, version)
+        ]
+        if matches:
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError(
+                f"The {kind} of pymedphys {version} is not available at "
+                f"{index.project_url}"
+            )
+        print(f"The {kind} of pymedphys {version} is not available yet; retrying")
+        sleep(min(RETRY_INTERVAL, remaining))
+
+    if len(matches) != 1:
+        raise ValueError(f"Expected one {kind} of pymedphys {version} on the index")
+    (entry,) = matches
+    url = urllib.parse.urljoin(index.project_url, entry["url"])
+    if not url.startswith(index.files_url):
+        raise ValueError(f"The index's file {url} is not served from {index.files_url}")
+    filename = urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1])
+    if filename != entry["filename"]:
+        raise ValueError(f"The index's filename does not match its URL: {url}")
+    sha256 = entry.get("hashes", {}).get("sha256", "")
+    if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
+        raise ValueError(f"The index has no valid SHA-256 for {filename}")
+    # pip checks the downloaded bytes against this hash before installing.
+    return urllib.parse.urldefrag(url)[0] + f"#sha256={sha256}"
+
+
 def check_install_report(
     report: Mapping,
     kind: str,
@@ -471,14 +540,8 @@ def check_install_report(
         )
 
     url = entry["download_info"]["url"]
-    filename = url.rsplit("/", 1)[-1]
-    if kind == "wheel":
-        right_format = filename.startswith(f"pymedphys-{version}-") and (
-            filename.endswith(".whl")
-        )
-    else:
-        right_format = filename == f"pymedphys-{version}.tar.gz"
-    if not right_format:
+    filename = urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1])
+    if not _matches_distribution(filename, kind, version):
         failures.append(f"The {kind} check installed {filename}, which is not a {kind}")
     if not url.startswith(index.files_url):
         failures.append(
@@ -500,19 +563,16 @@ def check_install_report(
     return failures
 
 
-def _install_from_index(
+def _install_published_url(
     python: Path,
     kind: str,
-    version: str,
+    url: str,
     index: PackageIndex,
     *,
     report: Path,
     working_directory: Path,
-    wait: float,
-    sleep: Callable[[float], None],
 ) -> subprocess.CompletedProcess:
-    """Install one format, retrying for up to ``wait`` seconds until it appears."""
-    requirement = f"pymedphys=={version}"
+    """Install the selected archive; other indexes cannot substitute it."""
     command = [
         python,
         "-I",
@@ -525,22 +585,11 @@ def _install_from_index(
         # cache means no previously built or downloaded wheel is reused.
         "--no-cache-dir",
         "--only-binary=pymedphys" if kind == "wheel" else "--no-binary=pymedphys",
-        f"--index-url={index.index_url}",
-        *(f"--extra-index-url={url}" for url in index.extra_index_urls),
+        f"--index-url={index.dependency_index_url}",
         f"--report={report}",
-        requirement,
+        url,
     ]
-    deadline = time.monotonic() + wait
-    while True:
-        install = _run(command, cwd=working_directory)
-        not_yet_available = f"No matching distribution found for {requirement}" in (
-            install.stderr
-        )
-        remaining = deadline - time.monotonic()
-        if install.returncode == 0 or not not_yet_available or remaining <= 0:
-            return install
-        print(f"The {kind} of {requirement} is not available yet; retrying")
-        sleep(min(RETRY_INTERVAL, remaining))
+    return _run(command, cwd=working_directory)
 
 
 def check_published(
@@ -561,18 +610,23 @@ def check_published(
     for kind in FORMATS:
         report = report_dir / f"{kind}-install.json"
         log = report_dir / f"{kind}-install.log"
+        try:
+            url = _published_url(index, kind, version, wait=wait, sleep=sleep)
+        except (OSError, ValueError) as error:
+            message = f"Resolving the {kind} of pymedphys {version} failed: {error}"
+            log.write_text(message + "\n", encoding="utf-8")
+            failures.append(message)
+            continue
         with tempfile.TemporaryDirectory(prefix=f"pymedphys-{kind}-check-") as env:
             working_directory = Path(env)
             bin_dir = _create_environment(working_directory)
-            install = _install_from_index(
+            install = _install_published_url(
                 _executable(bin_dir, "python"),
                 kind,
-                version,
+                url,
                 index,
                 report=report,
                 working_directory=working_directory,
-                wait=wait,
-                sleep=sleep,
             )
             log.write_text(install.stdout + install.stderr, encoding="utf-8")
             if install.returncode != 0:

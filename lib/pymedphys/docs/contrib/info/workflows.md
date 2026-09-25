@@ -125,9 +125,10 @@ Builds documentation on PRs that change documentation sources, package Python co
 Publishes to PyPI or TestPyPI behind quality gates.
 
 - **Triggers and destinations**: A published GitHub release, including a
-  pre-release, publishes to PyPI and then attaches the sdist and wheel to the
-  release. A manual run publishes to TestPyPI only (`dry_run=true`) or PyPI only
-  (`dry_run=false`), without the tag check or release assets
+  pre-release, publishes to PyPI and attaches the sdist and wheel only after
+  published-file verification succeeds. A manual run publishes to TestPyPI
+  only (`dry_run=true`) or PyPI only (`dry_run=false`), without the tag check
+  or release assets
 - **Before publishing**: Lint, type checks, the full unit-test matrix,
   integration tests, and the same distribution checks as `wheel-build`. For a
   release, the build also fails unless the tag is `v` followed by the package
@@ -139,7 +140,11 @@ Publishes to PyPI or TestPyPI behind quality gates.
   from the index just published to, separately on Linux, Windows, and macOS,
   with `check_distributions.py --published`, and requires both to match the
   files built in the run. It also runs after a TestPyPI rehearsal, so the job
-  is exercised before a release
+  is exercised before a release. PyMedPhys's exact archive URLs come from the
+  selected index; runtime and build dependencies use PyPI
+- **Recovery**: The original `dist` artefact is retained for 30 days. Retry
+  failed jobs using those files; rebuilding an existing release need not
+  reproduce its archive hashes. Never replace a published version's tag
 - **Release Summary**: Reports every job's result; it is not a gate
 - **Limitation**: Assets are attached after the release is published, which
   GitHub's [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)

@@ -15,8 +15,10 @@
 """Tests for the distribution checks, on synthetic archives and a local index."""
 
 import base64
+import dataclasses
 import hashlib
 import io
+import json
 import os
 import shutil
 import tarfile
@@ -29,6 +31,7 @@ from unittest import mock
 
 from check_distributions import (
     PackageIndex,
+    _published_url,
     check_contents,
     check_install_report,
     check_published,
@@ -124,9 +127,15 @@ LICENCE_FILES = ("LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT")
 
 
 def _metadata(
-    version, licence_expression=LICENCE_EXPRESSION, licence_files=LICENCE_FILES
+    version,
+    licence_expression=LICENCE_EXPRESSION,
+    licence_files=LICENCE_FILES,
+    *,
+    project_name="pymedphys",
+    requires=(),
 ):
-    lines = ["Metadata-Version: 2.4", "Name: pymedphys", f"Version: {version}"]
+    lines = ["Metadata-Version: 2.4", f"Name: {project_name}", f"Version: {version}"]
+    lines += [f"Requires-Dist: {requirement}" for requirement in requires]
     if licence_expression is not None:
         lines.append(f"License-Expression: {licence_expression}")
     lines += [f"License-File: {name}" for name in licence_files]
@@ -142,10 +151,14 @@ def _write_sdist(
     licence_expression=LICENCE_EXPRESSION,
     declared_licence_files=LICENCE_FILES,
     buildable=False,
+    requires=(),
+    build_requires=(),
 ):
     root = f"pymedphys-{version}"
     files = {
-        "PKG-INFO": _metadata(version, licence_expression, declared_licence_files),
+        "PKG-INFO": _metadata(
+            version, licence_expression, declared_licence_files, requires=requires
+        ),
         "lib/pymedphys/_pinnacle/LICENSE-MIT": "",
         "pyproject.toml": BUILDABLE_PYPROJECT if buildable else "",
         "README.rst": "",
@@ -157,6 +170,9 @@ def _write_sdist(
         {f"lib/pymedphys/{name}": text for name, text in package_files.items()}
     )
     if buildable:
+        files["pyproject.toml"] = BUILDABLE_PYPROJECT.replace(
+            "requires = []", f"requires = {json.dumps(list(build_requires))}"
+        )
         files["backend.py"] = BUILD_BACKEND
 
     path = Path(directory, f"{root}.tar.gz")
@@ -194,25 +210,32 @@ def _write_wheel(
     licence_expression=LICENCE_EXPRESSION,
     licence_files=LICENCE_FILES,
     declared_licence_files=LICENCE_FILES,
+    project_name="pymedphys",
+    requires=(),
 ):
-    dist_info = f"pymedphys-{version}.dist-info"
-    files = {f"pymedphys/{name}": text for name, text in package_files.items()}
+    dist_info = f"{project_name}-{version}.dist-info"
+    files = {f"{project_name}/{name}": text for name, text in package_files.items()}
     files[f"{dist_info}/METADATA"] = _metadata(
-        version, licence_expression, declared_licence_files
+        version,
+        licence_expression,
+        declared_licence_files,
+        project_name=project_name,
+        requires=requires,
     )
     files.update({f"{dist_info}/licenses/{name}": "" for name in licence_files})
     files[f"{dist_info}/WHEEL"] = (
         "Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
     )
-    files[f"{dist_info}/entry_points.txt"] = (
-        "[console_scripts]\npymedphys = pymedphys.__main__:main\n"
-    )
+    if project_name == "pymedphys":
+        files[f"{dist_info}/entry_points.txt"] = (
+            "[console_scripts]\npymedphys = pymedphys.__main__:main\n"
+        )
 
     record = [_record_line(name, text.encode()) for name, text in files.items()]
     record.append(f"{dist_info}/RECORD,,")
     files[f"{dist_info}/RECORD"] = "\n".join(record) + "\n"
 
-    path = Path(directory, f"pymedphys-{version}-py3-none-any.whl")
+    path = Path(directory, f"{project_name}-{version}-py3-none-any.whl")
     with zipfile.ZipFile(path, "w") as archive:
         for name, text in files.items():
             archive.writestr(name, text)
@@ -508,7 +531,9 @@ class SmokeTestTests(unittest.TestCase):
 
 
 FILES_URL = "https://files.pythonhosted.org/"
-PYPI = PackageIndex(index_url="https://pypi.org/simple/", files_url=FILES_URL)
+PYPI = PackageIndex(
+    project_url="https://pypi.org/simple/pymedphys/", files_url=FILES_URL
+)
 WHEEL_NAME = f"pymedphys-{VERSION}-py3-none-any.whl"
 SDIST_NAME = f"pymedphys-{VERSION}.tar.gz"
 
@@ -611,22 +636,31 @@ class InstallReportTests(unittest.TestCase):
         self.assertTrue(any("no local copy" in f for f in failures), failures)
 
 
-def _write_simple_index(root, files_dir, names):
-    """Serve the named files from a PEP 503 index directory, as pip reads it."""
-    project = Path(root, "simple", "pymedphys")
+def _write_simple_index(root, files_dir, names, project_name="pymedphys"):
+    """Provide the Simple API in JSON for discovery and HTML for pip."""
+    project = Path(root, "simple", project_name)
     project.mkdir(parents=True, exist_ok=True)
     links = []
+    files = []
     for name in names:
         path = Path(files_dir, name)
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         links.append(f'<a href="{path.as_uri()}#sha256={digest}">{name}</a>')
+        files.append(
+            {"filename": name, "url": path.as_uri(), "hashes": {"sha256": digest}}
+        )
     (project / "index.html").write_text(
         "<!DOCTYPE html><html><body>" + "".join(links) + "</body></html>",
         encoding="utf-8",
     )
+    metadata = project / "index.json"
+    metadata.write_text(
+        json.dumps({"meta": {"api-version": "1.0"}, "files": files}), encoding="utf-8"
+    )
     return PackageIndex(
-        index_url=Path(root, "simple").as_uri() + "/",
+        project_url=metadata.as_uri(),
         files_url=Path(files_dir).as_uri() + "/",
+        dependency_index_url=Path(root, "simple").as_uri() + "/",
     )
 
 
@@ -650,6 +684,15 @@ class PublishedTests(unittest.TestCase):
         for name in names:
             shutil.copy2(self.built / name, self.served / name)
         return _write_simple_index(self.root, self.served, names)
+
+    def _other_index(self):
+        root = self.root / "other-index"
+        files = root / "files"
+        files.mkdir(parents=True)
+        wrong = dict(PACKAGE_FILES, **{"_version.py": '__version__ = "0.0.0"\n'})
+        _write_wheel(files, package_files=wrong)
+        _write_sdist(files, package_files=wrong, buildable=True)
+        return _write_simple_index(root, files, (WHEEL_NAME, SDIST_NAME))
 
     def test_both_formats_pass_once_they_appear_on_the_index(self):
         # The first attempt finds nothing, as just after an upload.
@@ -682,6 +725,111 @@ class PublishedTests(unittest.TestCase):
 
         self.assertEqual(len(failures), 1, failures)
         self.assertIn("wheel", failures[0])
+
+    def test_the_sdist_check_does_not_fall_back_to_the_wheel(self):
+        index = self._publish(WHEEL_NAME)
+
+        failures = check_published(VERSION, index, report_dir=self.reports)
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("sdist", failures[0])
+
+    def test_other_indexes_cannot_substitute_the_same_version(self):
+        other = self._other_index()
+        index = dataclasses.replace(
+            self._publish(WHEEL_NAME, SDIST_NAME),
+            dependency_index_url=other.dependency_index_url,
+        )
+        with mock.patch.dict(
+            os.environ, {"PIP_EXTRA_INDEX_URL": other.dependency_index_url}
+        ):
+            failures = check_published(
+                VERSION, index, report_dir=self.reports, compare_with=self.built
+            )
+
+        self.assertEqual(failures, [])
+
+    def test_waits_for_target_even_when_the_other_index_has_both_files(self):
+        other = self._other_index()
+        index = dataclasses.replace(
+            self._publish(), dependency_index_url=other.dependency_index_url
+        )
+        sleeps = []
+
+        def publish_then_sleep(seconds):
+            sleeps.append(seconds)
+            self._publish(WHEEL_NAME, SDIST_NAME)
+
+        failures = check_published(
+            VERSION,
+            index,
+            report_dir=self.reports,
+            compare_with=self.built,
+            wait=60,
+            sleep=publish_then_sleep,
+        )
+
+        self.assertEqual(failures, [])
+        self.assertEqual(len(sleeps), 1)
+
+    def test_runtime_and_build_dependencies_use_the_dependency_index(self):
+        _write_sdist(
+            self.built,
+            buildable=True,
+            requires=("release-dependency",),
+            build_requires=("release-dependency<2",),
+        )
+        _write_wheel(self.built, requires=("release-dependency",))
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        other = self._other_index()
+        for root, files, version in (
+            (self.root, self.served, "2.0.0"),
+            (self.root / "other-index", self.root / "other-index/files", "1.0.0"),
+        ):
+            wheel = _write_wheel(
+                files,
+                version=version,
+                project_name="release_dependency",
+                package_files={"__init__.py": ""},
+            )
+            _write_simple_index(root, files, (wheel.name,), "release-dependency")
+        index = dataclasses.replace(
+            index, dependency_index_url=other.dependency_index_url
+        )
+
+        failures = check_published(VERSION, index, report_dir=self.reports)
+
+        self.assertEqual(failures, [])
+        for kind in ("wheel", "sdist"):
+            report = json.loads((self.reports / f"{kind}-install.json").read_text())
+            dependency = next(
+                entry
+                for entry in report["install"]
+                if entry["metadata"]["name"].replace("_", "-") == "release-dependency"
+            )
+            self.assertEqual(dependency["metadata"]["version"], "1.0.0")
+
+    def test_rejects_an_index_link_to_another_host_before_installing(self):
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        wrong_host = dataclasses.replace(index, files_url="https://example.org/")
+
+        with self.assertRaisesRegex(ValueError, "not served from"):
+            _published_url(wrong_host, "wheel", VERSION, wait=0, sleep=lambda _: None)
+
+    def test_downloaded_bytes_must_match_the_index_hash(self):
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        metadata = self.root / "simple/pymedphys/index.json"
+        listing = json.loads(metadata.read_text())
+        listing["files"][0]["hashes"]["sha256"] = "ab" * 32
+        metadata.write_text(json.dumps(listing))
+
+        failures = check_published(VERSION, index, report_dir=self.reports)
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("Installing the wheel", failures[0])
+        self.assertIn(
+            "DO NOT MATCH THE HASHES", (self.reports / "wheel-install.log").read_text()
+        )
 
 
 if __name__ == "__main__":

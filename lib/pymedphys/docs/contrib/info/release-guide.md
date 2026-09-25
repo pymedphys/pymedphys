@@ -14,7 +14,7 @@ pymedphys uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) in the
 
 In instances where the only changes since the last release are bug fixes and none of the pymedphys API has changed, you should increment the `PATCH` value: `MAJOR.MINOR.PATCH+1`
 
-A development release lets testers install unreleased changes from PyPI. Its version is the upcoming release with a [PEP 440](https://packaging.python.org/en/latest/specifications/version-specifiers/) `.devN` suffix: `0.42.0.dev1` is a development release of `0.42.0` and sorts before it. pip installs a development release only when it is requested explicitly (`pymedphys==0.42.0.dev1`, or `--pre`), or when no stable release satisfies the requirement (for example `pymedphys>=0.42` before `0.42.0` exists).
+A development release lets testers install unreleased changes from PyPI. Its version is the upcoming release with a [PEP 440](https://packaging.python.org/en/latest/specifications/version-specifiers/) `.devN` suffix: `0.42.0.dev1` is a development release of `0.42.0` and sorts before it. Request it explicitly with `pymedphys==0.42.0.dev1`, or enable development releases with `--pre` and a compatible version constraint. For example, `pymedphys>=0.42.0.dev1` includes that development release; `pymedphys>=0.42` excludes it even with `--pre`.
 
 Write the version in canonical form: `0.42.0.dev1`, not `0.42.0-dev1`. The build copies the string in `pyproject.toml` into the package metadata unchanged, the release tag must equal `v` followed by that string, and the distribution filenames always use the canonical form, so any other spelling leaves them disagreeing.
 
@@ -116,7 +116,7 @@ Publishing uses PyPI trusted publishing, with no stored API token. It depends on
 
 | Trigger | Package index | Tag check | GitHub release assets |
 | --- | --- | --- | --- |
-| Publish a GitHub release or pre-release | PyPI | Yes | Attached after PyPI succeeds |
+| Publish a GitHub release or pre-release | PyPI | Yes | Attached after PyPI and verification succeed |
 | Run the workflow manually with `dry_run=true` | TestPyPI only | No | None |
 | Run the workflow manually with `dry_run=false` | PyPI only | No | None |
 
@@ -127,11 +127,11 @@ Publish every release through a GitHub release. A manual run with `dry_run=false
 1. Open **Actions > Release > Run workflow**, select `main`, and leave **dry_run** set to **true**. The run uses the tip of `main` when it is dispatched; check that its commit SHA is the reviewed release commit.
 2. Check that the quality, build, `publish-testpypi`, and three **Verify published** jobs succeed. The verify jobs install the files from TestPyPI, as they will from PyPI after the release.
 
-Despite its name, `dry_run=true` uploads to TestPyPI, which cannot replace a file once uploaded, so rehearse each version once, before tagging it. TestPyPI does not host the dependencies, so the verify jobs also search PyPI. Anyone can upload to TestPyPI, and pip takes the highest version it finds on either index, so a dependency or build tool from TestPyPI can replace the PyPI one. The verify jobs hold no secrets or write permissions; run `check_distributions.py --published VERSION --index testpypi` yourself only where you would run untrusted code, such as a disposable container.
+Despite its name, `dry_run=true` uploads to TestPyPI, which cannot replace a file once uploaded, so rehearse each version once, before tagging it. Verification selects the PyMedPhys archives from TestPyPI's JSON Simple API and installs their exact URLs. Runtime and build dependencies use PyPI. This also works when the same PyMedPhys version exists on both indexes. The verify jobs hold no secrets or write permissions.
 
 ### Publish to PyPI
 
-1. Confirm that the release pull request has merged, and find the full SHA of the merged commit on `main` (`RELEASE_COMMIT`).
+1. Choose the reviewed commit on `main` to release and record its full SHA (`RELEASE_COMMIT`). For a stable release this is normally the merged release-preparation commit. For a development release, choose the commit containing the changes you intend to publish, which may be later than the pull request that set the version.
 2. Tag that commit. These commands work in Bash and PowerShell and do not change your checked-out branch:
 
    ```bash
@@ -164,7 +164,7 @@ uv run --no-project --python 3.12 python .github/scripts/check_distributions.py 
 
 For each format, the check:
 
-- installs `pymedphys==VERSION` into a new environment with pip's cache disabled, forcing the sdist to be built (`--no-binary=pymedphys`); dependencies may still come as wheels;
+- resolves the exact PyMedPhys archive from the selected index's JSON Simple API, then installs its URL into a new environment with pip's cache disabled and the sdist forced to build (`--no-binary=pymedphys`); runtime and build dependencies use PyPI and may come as wheels;
 - requires pip's installation report to name the expected file, served from `files.pythonhosted.org`, so an extra index in your pip configuration cannot substitute another file;
 - checks the installed version, that `pymedphys`, `pymedphys.dicom`, and `pymedphys.cli` import from inside the environment, the `pymedphys --version` output, and `pip check`.
 
@@ -177,7 +177,7 @@ gh release download vVERSION --pattern "pymedphys-*" --dir release-assets
 uv run --no-project --python 3.12 python .github/scripts/check_distributions.py --published VERSION --compare-with release-assets
 ```
 
-Your pip configuration still applies, apart from the index URL, so proxy and certificate settings keep working. On a slow connection, raise pip's 15-second network time-out by setting `PIP_TIMEOUT=120` in the environment first.
+Archive discovery uses Python's HTTPS support, including `HTTPS_PROXY` and `SSL_CERT_FILE`, with a 30-second network time-out. pip's proxy and certificate settings apply to installation; its dependency index defaults to PyPI. On a slow connection, raise pip's network time-out by setting `PIP_TIMEOUT=120` in the environment first.
 
 These are smoke tests. To run the test suite against the published package, create an environment in an empty directory outside the checkout and use its interpreter. In Bash:
 
@@ -215,14 +215,16 @@ Comment on the pull request that set the version with:
 | --- | --- |
 | The deployment is rejected by environment protection rules | Add or correct the `v*` tag rule on the `pypi` environment, then re-run the failed jobs. |
 | PyPI reports `invalid-publisher` | Correct the owner, repository, workflow filename, or environment in that index's trusted publisher, then re-run the failed jobs. |
-| The build job fails the tag check, or a test fails in the release run | Nothing was published. Re-run a download or network failure once. Otherwise delete the GitHub release and the tag (`git push origin --delete refs/tags/vVERSION` and `git tag -d vVERSION`), fix the cause on `main` through a pull request, and tag again. |
+| The build job fails the tag check, or a test fails in the release run | This attempt did not publish. Check all earlier attempts, other runs for this version, and PyPI before deciding whether the version is unused. Re-run a download or network failure once. For a code or version change, preserve the tag and fix the cause on `main` through a pull request using a new version and tag. |
 | The upload failed before any file reached PyPI | Fix the cause, then re-run the failed jobs. |
 | Only one of the two files reached PyPI | Re-run the failed jobs. The publish step skips files already on the index, and the **Verify published** jobs then confirm that both files match the build. |
-| PyPI succeeded but `upload-release-assets` failed | Re-run only that job. It replaces existing assets and does not publish to PyPI. |
-| A **Verify published** job failed | Read which check failed. If the version was not yet available, check the project page on the index and re-run the job. A SHA-256 mismatch means the index already held a different file with that name. Any other failure is a defect in the published files. |
+| PyPI and verification succeeded but `upload-release-assets` failed | Re-run only that job while the original `dist` artefact is available. It replaces existing assets with verified files and does not publish to PyPI. |
+| A **Verify published** job failed | GitHub release assets are not uploaded by this attempt. Inspect the logs to distinguish index propagation, network or certificate errors, dependency or build-tool failures, and defects in the package. Retry transient failures. A SHA-256 mismatch means the built and published bytes differ; keep the original files and investigate before retrying or changing the release. |
 | Locally, pip reports read time-outs and then `No matching distribution found` | This is a network failure, not a missing file. Check the proxy and certificate settings, and raise `PIP_TIMEOUT`. |
 
-Re-running failed jobs reuses the built files only while the run's `dist` artefact exists, which is 7 days. After that, re-run the whole workflow from the release so that it builds again from the tag; the files on PyPI are skipped, and the verify jobs require the rebuilt files to match them.
+Re-run failed jobs using the original run's `dist` artefact, retained for 30 days. Do not re-run the whole release workflow to recover a published version: it rebuilds the files, and the build backend is not pinned. Even unchanged source can produce different archive hashes when the backend or build environment changes.
+
+If the artefact is unavailable, recover the original archives from GitHub release assets or a retained copy and run the published-file check with `--compare-with`. For missing GitHub assets, original archives can also be downloaded from the URLs in pip's installation reports; verify them before attaching them with `gh release upload vVERSION release-assets/*`. If a PyPI upload is incomplete and the original workflow artefact cannot be recovered, publish a new version through the normal workflow. Keep the existing tag and release record; a fresh rebuild is not a replacement for the original files.
 
 PyPI never lets a filename be reused for different contents, so a published release cannot be replaced. To fix one, publish a new version through the same preparation and review: the next `.devN` for a development release, or the next patch version for a stable release. [Yank](https://pypi.org/help/#yanked) a broken release on PyPI rather than deleting it, so that installs pinned to it still work.
 

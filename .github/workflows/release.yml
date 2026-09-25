@@ -81,7 +81,7 @@ jobs:
         with:
           name: dist
           path: dist/
-          retention-days: 7
+          retention-days: 30
 
   # Publish to TestPyPI for manual dry-run dispatches.
   publish-testpypi:
@@ -134,10 +134,14 @@ jobs:
         with:
           skip-existing: true
 
-  # Upload release assets only on a real GitHub release.
+  # Only replace release assets after proving that they match PyPI. A skipped
+  # duplicate upload alone does not prove that the existing bytes agree.
   upload-release-assets:
-    needs: [publish-pypi]
-    if: github.event_name == 'release'
+    needs: [publish-pypi, verify-published]
+    if: >-
+      !cancelled() && github.event_name == 'release' &&
+      needs.publish-pypi.result == 'success' &&
+      needs.verify-published.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -157,9 +161,9 @@ jobs:
 
   # Install what the index now serves, the wheel and the sdist separately, on
   # each OS, and require the files to match the ones built and tested above.
-  # After a TestPyPI rehearsal this also exercises the job before a release;
-  # packages resolved from TestPyPI are untrusted, and this job holds no
-  # secrets or write permissions.
+  # After a TestPyPI rehearsal this also exercises the job before a release.
+  # Only pymedphys comes from that index; dependencies use PyPI. This job
+  # holds no secrets or write permissions.
   verify-published:
     name: Verify published (${{ matrix.os }})
     needs: [build, publish-testpypi, publish-pypi]

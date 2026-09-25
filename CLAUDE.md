@@ -216,7 +216,15 @@ The project uses uv with optional dependency groups:
   stable release.
 - The publish jobs use `skip-existing`, so a re-run after a partial upload is
   safe; `verify-published` then requires the files on the index to match the
-  build.
+  build. Release asset uploads must wait for that verification, so a skipped
+  duplicate cannot overwrite GitHub assets with different bytes.
+- Resolve PyMedPhys's published archive from the selected index alone, then
+  install its exact URL with dependencies from PyPI. Searching TestPyPI and
+  PyPI together does not give the first index priority.
+- Recover releases using their original distribution files. A rebuild of the
+  same tag can differ when the build backend changes. A failed retry does not
+  prove earlier attempts left PyPI untouched; preserve release tags and use a
+  new version for changed files.
 
 ## Important Implementation Notes
 
