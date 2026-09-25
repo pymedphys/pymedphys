@@ -56,9 +56,19 @@ This project adheres to
 
 ### Contributor facing changes
 
-- **[Contributor facing only]** Added a living design document and decision log for the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and experimental pseudonymisation (`lib/pymedphys/docs/contrib/info/deidentification-design.md`).
-- **[Contributor facing only]** Refined the de-identification design after review: UID handling respects the selected options and identifier roles; removal and retention overrides are validated before claiming conformance; synthetic birth dates remain stable per subject; descriptor cleaning has explicit limits; confidential QC packs are separate from release reports; and numerical risk thresholds require a documented, validated assessment model.
-- **[Contributor facing only]** Harmonised the de-identification plan and related guidance: milestones contain an open-ended series of small PRs, actual PR progress is separate from the rolling queue, and superseded decisions are kept outside the active design. Clarified planned versus available behaviour, deprecation release timing, preset and release gates, and evidence that must accompany each implementation change. Contributor and legacy reference pages point to the same guidance.
+- **[Contributor facing only]** Added a living design document and decision log
+  for the DICOM de-identification engine that will replace
+  `pymedphys.dicom.anonymise` and experimental pseudonymisation
+  (`lib/pymedphys/docs/contrib/info/deidentification-design.md`). The design
+  specifies policy-aware UID handling, validated overrides and conformance
+  claims, stable per-subject synthetic birth dates, descriptor-cleaning limits,
+  confidential QC packs separate from release reports, and risk thresholds
+  tied to validated assessment models. The roadmap supports an open-ended
+  series of small PRs, separates actual progress from future work and active
+  decisions from superseded history, and clarifies deprecation timing, planned
+  versus available capabilities, and release gates. Contributor and user
+  guidance follow the same plan, with documentation, tests, traceability, and
+  conformance evidence accompanying each implementation change.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
