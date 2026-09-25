@@ -191,9 +191,10 @@ def build_pytest_args(remaining, original_cwd):
 
     pytest runs with its working directory set to the library root, so a test
     path may be given relative to either the caller's directory or the library
-    root. Paths relative to the caller's directory are made absolute. The
-    whole package is collected with ``--pyargs pymedphys`` only when no path
-    is given.
+    root. Paths relative to the caller's directory are made absolute; any
+    other path is passed through, so pytest reports one that does not exist.
+    The whole package is collected with ``--pyargs pymedphys`` only when no
+    path is given.
 
     Parameters
     ----------
@@ -220,16 +221,16 @@ def build_pytest_args(remaining, original_cwd):
             args.append(arg)
             continue
 
+        # Every other positional argument is a test path or node ID. One that
+        # does not exist is passed through unchanged so that pytest reports
+        # it, rather than the whole suite silently running instead.
+        has_path = True
         path_part, separator, selector = arg.partition("::")
         if path_part and original_cwd.joinpath(path_part).exists():
-            has_path = True
             absolute = original_cwd.joinpath(path_part).resolve()
             args.append(f"{absolute}{separator}{selector}")
-            continue
-
-        if path_part and LIBRARY_ROOT.joinpath(path_part).exists():
-            has_path = True
-        args.append(arg)
+        else:
+            args.append(arg)
 
     if has_path:
         return args

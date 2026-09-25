@@ -1,5 +1,6 @@
 """PyTest local plugins."""
 
+import dataclasses
 import os
 import pathlib
 import shutil
@@ -14,39 +15,64 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 
 import pytest  # noqa: E402
 
+
+@dataclasses.dataclass(frozen=True)
+class Marker:
+    """A configured pytest marker and the flags that select it.
+
+    Attributes
+    ----------
+    only_options
+        Flags that run only the tests with this marker. The last one is the
+        name used in messages.
+    include_option
+        For an opt-in marker, the flag that adds its tests to the default
+        selection. None for a marker whose tests run by default.
+    description
+        The marker's description, registered with pytest.
+    noun
+        How messages refer to the marked tests.
+    """
+
+    only_options: tuple[str, ...]
+    include_option: str | None
+    description: str
+    noun: str
+
+
 # Each marker below can be selected with a "run only" flag. The opt-in markers
 # are also skipped unless they are requested, either with their "run only"
 # flag or with an additive "--include-..." flag that keeps the default
 # selection and adds the marked tests to it.
-MARKER_CONFIG = {
-    "slow": {
-        "only_options": ["--run-only-slow", "--slow"],
-        "include_option": "--include-slow",
-        "description": "mark test as slow to run",
-        "noun": "the slow tests",
-    },
-    "pydicom": {
-        "only_options": ["--run-only-pydicom", "--pydicom"],
-        "include_option": None,
-        "description": "mark test as using pydicom",
-        "noun": "the tests that use pydicom",
-    },
-    "mosaiqdb": {
-        "only_options": ["--run-only-mosaiqdb", "--mosaiqdb"],
-        "include_option": "--include-mosaiqdb",
-        "description": "mark test as using mosaiq db",
-        "noun": "the tests that use a Mosaiq database",
-    },
-    "anthropic_key": {
-        "only_options": ["--run-only-anthropic", "--anthropic"],
-        "include_option": "--include-anthropic",
-        "description": "mark test as requiring an Anthropic API key",
-        "noun": "the tests that use the Anthropic API",
-    },
+MARKER_CONFIG: dict[str, Marker] = {
+    "slow": Marker(
+        only_options=("--run-only-slow", "--slow"),
+        include_option="--include-slow",
+        description="mark test as slow to run",
+        noun="the slow tests",
+    ),
+    "pydicom": Marker(
+        only_options=("--run-only-pydicom", "--pydicom"),
+        include_option=None,
+        description="mark test as using pydicom",
+        noun="the tests that use pydicom",
+    ),
+    "mosaiqdb": Marker(
+        only_options=("--run-only-mosaiqdb", "--mosaiqdb"),
+        include_option="--include-mosaiqdb",
+        description="mark test as using mosaiq db",
+        noun="the tests that use a Mosaiq database",
+    ),
+    "anthropic_key": Marker(
+        only_options=("--run-only-anthropic", "--anthropic"),
+        include_option="--include-anthropic",
+        description="mark test as requiring an Anthropic API key",
+        noun="the tests that use the Anthropic API",
+    ),
 }
 
 OPT_IN_MARKERS = frozenset(
-    key for key, marker in MARKER_CONFIG.items() if marker["include_option"]
+    key for key, marker in MARKER_CONFIG.items() if marker.include_option
 )
 
 RUN_ALL_OPTIONS = ["--run-all-tests", "--all"]
@@ -89,17 +115,15 @@ def skip_reason(
         return None
 
     if only and not markers & only:
-        flags = ", ".join(
-            sorted(MARKER_CONFIG[key]["only_options"][-1] for key in only)
-        )
+        flags = ", ".join(sorted(MARKER_CONFIG[key].only_options[-1] for key in only))
         return f"not selected by {flags}"
 
     not_requested = sorted((markers & OPT_IN_MARKERS) - only - include)
     if not_requested:
         marker = MARKER_CONFIG[not_requested[0]]
         return (
-            f"needs {marker['include_option']} to run, "
-            f"or {marker['only_options'][-1]} to run only {marker['noun']}"
+            f"needs {marker.include_option} to run, "
+            f"or {marker.only_options[-1]} to run only {marker.noun}"
         )
 
     return None
@@ -108,19 +132,19 @@ def skip_reason(
 # https://docs.pytest.org/en/latest/example/simple.html#control-skipping-of-tests-according-to-command-line-option
 def pytest_addoption(parser):
     for marker in MARKER_CONFIG.values():
-        for option in marker["only_options"]:
+        for option in marker.only_options:
             parser.addoption(
                 option,
                 action="store_true",
                 default=False,
-                help=f"run only {marker['noun']}",
+                help=f"run only {marker.noun}",
             )
-        if marker["include_option"]:
+        if marker.include_option:
             parser.addoption(
-                marker["include_option"],
+                marker.include_option,
                 action="store_true",
                 default=False,
-                help=f"also run {marker['noun']}",
+                help=f"also run {marker.noun}",
             )
 
     for option in RUN_ALL_OPTIONS:
@@ -134,7 +158,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     for key, marker in MARKER_CONFIG.items():
-        config.addinivalue_line("markers", f"{key}: {marker['description']}")
+        config.addinivalue_line("markers", f"{key}: {marker.description}")
 
     _isolate_home_directory(config)
 
@@ -199,12 +223,12 @@ def pytest_collection_modifyitems(config, items):
     only = {
         key
         for key, marker in MARKER_CONFIG.items()
-        if any(config.getoption(option) for option in marker["only_options"])
+        if any(config.getoption(option) for option in marker.only_options)
     }
     include = {
         key
         for key, marker in MARKER_CONFIG.items()
-        if marker["include_option"] and config.getoption(marker["include_option"])
+        if marker.include_option and config.getoption(marker.include_option)
     }
 
     for item in items:

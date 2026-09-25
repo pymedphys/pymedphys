@@ -125,7 +125,7 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
                 raise urllib.error.ContentTooShortError(
                     f"Download of {url} stopped after {received} of "
                     f"{expected_size} bytes",
-                    b"",
+                    (str(filepath), response.headers),
                 )
 
             os.replace(temp_path, filepath)

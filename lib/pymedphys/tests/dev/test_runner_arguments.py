@@ -51,6 +51,14 @@ def test_node_id_keeps_its_test_selector(tmp_path: pathlib.Path):
     assert args == [node]
 
 
+def test_missing_path_is_passed_to_pytest(tmp_path: pathlib.Path):
+    # A mistyped path must reach pytest, which reports it as not found,
+    # rather than silently falling back to running the whole suite.
+    args = dev_tests.build_pytest_args(["tests/does_not_exist.py", "-v"], tmp_path)
+
+    assert args == ["tests/does_not_exist.py", "-v"]
+
+
 def test_option_values_are_not_mistaken_for_paths(tmp_path: pathlib.Path):
     # "tests" exists relative to the library root, but here it is a -k value.
     args = dev_tests.build_pytest_args(["-k", "tests", "-m", "not slow"], tmp_path)
