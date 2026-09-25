@@ -56,6 +56,11 @@ REQUIRED_SDIST_FILES = (
 )
 SDIST_PACKAGE_ROOT = "lib/pymedphys/"
 WHEEL_PACKAGE_ROOT = "pymedphys/"
+# Independent release expectations: keep these in sync with the project's
+# license and license-files settings in pyproject.toml. Reading expectations
+# from archive metadata would let matching omissions in both archives pass.
+EXPECTED_LICENCE_EXPRESSION = "Apache-2.0 AND MIT"
+EXPECTED_LICENCE_FILES = frozenset(("LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT"))
 # pymedphys.cli imports every command module, as the console script does.
 SMOKE_IMPORTS = ("pymedphys", "pymedphys.dicom", "pymedphys.cli")
 
@@ -203,6 +208,21 @@ def check_contents(
         # the full licence text in the free-form License field.
         if not archive.licence_expression:
             failures.append(f"The {kind} metadata has no License-Expression")
+        elif archive.licence_expression != EXPECTED_LICENCE_EXPRESSION:
+            failures.append(
+                f"The {kind} metadata License-Expression is "
+                f"{archive.licence_expression!r}, expected "
+                f"{EXPECTED_LICENCE_EXPRESSION!r}"
+            )
+
+        # Check declarations independently of file presence: losing a header
+        # and its file together must not disable that file's validation.
+        if set(archive.licence_files) != EXPECTED_LICENCE_FILES:
+            failures.append(
+                f"The {kind} metadata License-File declarations are "
+                f"{sorted(set(archive.licence_files))!r}, expected "
+                f"{sorted(EXPECTED_LICENCE_FILES)!r}"
+            )
         missing_licences = [
             name
             for name in archive.licence_files

@@ -64,11 +64,13 @@ LICENCE_EXPRESSION = "Apache-2.0 AND MIT"
 LICENCE_FILES = ("LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT")
 
 
-def _metadata(version, licence_expression=LICENCE_EXPRESSION):
+def _metadata(
+    version, licence_expression=LICENCE_EXPRESSION, licence_files=LICENCE_FILES
+):
     lines = ["Metadata-Version: 2.4", "Name: pymedphys", f"Version: {version}"]
     if licence_expression is not None:
         lines.append(f"License-Expression: {licence_expression}")
-    lines += [f"License-File: {name}" for name in LICENCE_FILES]
+    lines += [f"License-File: {name}" for name in licence_files]
     return "\n".join(lines) + "\n"
 
 
@@ -79,10 +81,11 @@ def _write_sdist(
     *,
     omit=(),
     licence_expression=LICENCE_EXPRESSION,
+    declared_licence_files=LICENCE_FILES,
 ):
     root = f"pymedphys-{version}"
     files = {
-        "PKG-INFO": _metadata(version, licence_expression),
+        "PKG-INFO": _metadata(version, licence_expression, declared_licence_files),
         "lib/pymedphys/_pinnacle/LICENSE-MIT": "",
         "pyproject.toml": "",
         "README.rst": "",
@@ -128,10 +131,13 @@ def _write_wheel(
     *,
     licence_expression=LICENCE_EXPRESSION,
     licence_files=LICENCE_FILES,
+    declared_licence_files=LICENCE_FILES,
 ):
     dist_info = f"pymedphys-{version}.dist-info"
     files = {f"pymedphys/{name}": text for name, text in package_files.items()}
-    files[f"{dist_info}/METADATA"] = _metadata(version, licence_expression)
+    files[f"{dist_info}/METADATA"] = _metadata(
+        version, licence_expression, declared_licence_files
+    )
     files.update({f"{dist_info}/licenses/{name}": "" for name in licence_files})
     files[f"{dist_info}/WHEEL"] = (
         "Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
@@ -257,6 +263,99 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(len(failures), 1, failures)
         self.assertIn("sdist", failures[0])
         self.assertIn("LICENSE-MIT", failures[0])
+
+    def test_missing_licence_file_declarations_fail(self):
+        for kinds in (("sdist",), ("wheel",), ("sdist", "wheel")):
+            for declared in ((), LICENCE_FILES[:1], LICENCE_FILES[1:]):
+                with self.subTest(kinds=kinds, declared=declared):
+                    # Leave the files present to isolate metadata omissions.
+                    sdist = _write_sdist(
+                        self.directory,
+                        declared_licence_files=(
+                            declared if "sdist" in kinds else LICENCE_FILES
+                        ),
+                    )
+                    wheel = _write_wheel(
+                        self.directory,
+                        declared_licence_files=(
+                            declared if "wheel" in kinds else LICENCE_FILES
+                        ),
+                    )
+
+                    failures = self._failures(sdist, wheel)
+
+                    for kind in kinds:
+                        self.assertTrue(
+                            any(kind in f and "License-File" in f for f in failures),
+                            failures,
+                        )
+
+    def test_wheel_without_licence_declarations_or_files_fails(self):
+        sdist = _write_sdist(self.directory)
+        wheel = _write_wheel(
+            self.directory, declared_licence_files=(), licence_files=()
+        )
+
+        failures = self._failures(sdist, wheel)
+
+        self.assertTrue(
+            any("wheel" in f and "License-File" in f for f in failures), failures
+        )
+
+    def test_both_archives_omitting_the_same_licence_fail(self):
+        # Agreement between archives must not hide a coordinated omission.
+        sdist = _write_sdist(
+            self.directory,
+            declared_licence_files=("LICENSE",),
+            omit=("lib/pymedphys/_pinnacle/LICENSE-MIT",),
+        )
+        wheel = _write_wheel(
+            self.directory,
+            declared_licence_files=("LICENSE",),
+            licence_files=("LICENSE",),
+        )
+
+        failures = self._failures(sdist, wheel)
+
+        for kind in ("sdist", "wheel"):
+            self.assertTrue(
+                any(kind in f and "LICENSE-MIT" in f for f in failures), failures
+            )
+
+    def test_wrong_licence_expressions_fail(self):
+        for sdist_expression, wheel_expression in (
+            ("MIT", LICENCE_EXPRESSION),
+            (LICENCE_EXPRESSION, "MIT"),
+            ("MIT", "MIT"),
+        ):
+            with self.subTest(sdist=sdist_expression, wheel=wheel_expression):
+                sdist = _write_sdist(
+                    self.directory, licence_expression=sdist_expression
+                )
+                wheel = _write_wheel(
+                    self.directory, licence_expression=wheel_expression
+                )
+
+                failures = self._failures(sdist, wheel)
+
+                for kind, expression in (
+                    ("sdist", sdist_expression),
+                    ("wheel", wheel_expression),
+                ):
+                    if expression != LICENCE_EXPRESSION:
+                        self.assertTrue(
+                            any(
+                                kind in f and "License-Expression" in f
+                                for f in failures
+                            ),
+                            failures,
+                        )
+
+    def test_reordered_licence_file_declarations_pass(self):
+        sdist = _write_sdist(self.directory)
+        wheel = _write_wheel(self.directory, declared_licence_files=LICENCE_FILES[::-1])
+
+        self.assertEqual(self._failures(sdist, wheel), [])
 
 
 class FindDistributionsTests(unittest.TestCase):
