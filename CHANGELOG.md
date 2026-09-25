@@ -14,6 +14,9 @@ This project adheres to
 
 ### New features and enhancements
 
+- Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
+  while retaining the dose from valid beams. A missing dose file still
+  aborts RTDOSE generation rather than exporting an incomplete sum.
 - Data downloads (`pymedphys.data_path`, `pymedphys.zip_data_paths`) now time
   out after 60 seconds without data, and are written to a temporary file that
   is moved into place only once complete, so an interrupted download no longer
@@ -71,6 +74,13 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports now raise
+  `MissingCTImageError` when the plan has no primary CT image. RTPLAN and
+  RTDOSE exports raise `MissingTrialBeamsError` when the trial has no beams,
+  and RTDOSE export raises `MissingBeamDoseError` when all beam dose files
+  are empty or zero-filled. The exceptions are defined in
+  `pymedphys._pinnacle.pinnacle_exceptions`; callers should handle them if
+  they need to continue a batch export after these failures.
 - The `url` argument of `pymedphys.data_path` and `pymedphys.zip_data_paths`
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
