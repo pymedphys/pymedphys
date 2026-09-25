@@ -149,6 +149,30 @@ def test_zyx_and_dose_returns_ascending_axes_aligned_with_the_dose(
 
 
 @pytest.mark.pydicom
+@pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
+def test_zyx_and_dose_keeps_a_single_frame_dose_three_dimensional(orientation):
+    # pydicom returns a (rows, columns) pixel array when there is one frame,
+    # as in planar dose exports.
+    ds = rtdose(orientation, shape=(1, 4, 5), frame_offsets=[0.0])
+    positions = voxel_positions(ds)[0]
+    raw = np.asarray(ds.pixel_array, dtype=float) * DOSE_GRID_SCALING
+    assert raw.ndim == 2
+
+    (z, y, x), dose_grid = dose.zyx_and_dose_from_dataset(ds)
+
+    assert dose_grid.shape == (len(z), len(y), len(x))
+    assert sorted(dose_grid.shape) == [1, 4, 5]
+    for i, j in np.ndindex(raw.shape):
+        px, py, pz = positions[i, j]
+        index = (
+            np.argmin(np.abs(z - pz)),
+            np.argmin(np.abs(y - py)),
+            np.argmin(np.abs(x - px)),
+        )
+        assert dose_grid[index] == raw[i, j], (orientation, (i, j))
+
+
+@pytest.mark.pydicom
 def test_zyx_and_dose_leaves_head_first_supine_unchanged():
     ds = rtdose("HFS")
 

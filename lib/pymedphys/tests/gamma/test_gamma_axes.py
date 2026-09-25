@@ -156,35 +156,91 @@ def test_search_stops_at_grid_extent_with_large_dose_difference(interp_algo):
     np.testing.assert_allclose(result, [3300, 3300])
 
 
+def _exact_1d_gamma(reference_x, evaluation_x, dta):
+    """Gamma for equal uniform doses: the distance to the nearest point."""
+    evaluation_x = np.asarray(evaluation_x)
+    distances = np.abs(np.asarray(reference_x)[:, None] - evaluation_x[None, :])
+    return distances.min(axis=1) / dta
+
+
+def _assert_within_search_resolution(result, expected, interp_fraction=10):
+    # Sampling a subset of the candidates can only overestimate gamma, by at
+    # most one search step in distance.
+    resolution = 1 / interp_fraction
+    assert np.all(result >= expected - 1e-12), (result, expected)
+    assert np.all(result <= expected + resolution), (result, expected)
+
+
 def test_search_samples_the_spatial_endpoint():
     # The ordinary 0.3 mm shells miss this narrow grid. The spatial endpoint
     # reaches the last evaluation point from x=-1, despite not being a step
     # multiple. Binary fractions keep the endpoint exactly representable.
+    reference_x = np.array([-1.0, 1.0])
+    evaluation_x = np.array([0.0625, 0.09375])
     result = pymedphys.gamma(
-        np.array([-1.0, 1.0]),
+        reference_x,
         np.ones(2),
-        np.array([0.0625, 0.09375]),
+        evaluation_x,
         np.ones(2),
         3,
         3,
         interp_algo="scipy",
     )
-    np.testing.assert_allclose(result[0], 1.09375 / 3)
+
+    expected = _exact_1d_gamma(reference_x, evaluation_x, 3)
+    # Only x=-1 is asserted: see the expected failure below for x=1.
+    _assert_within_search_resolution(result[:1], expected[:1])
 
 
 @pytest.mark.timeout(10)
-def test_search_terminates_when_no_finite_candidate_is_sampled():
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+def test_search_terminates_on_an_evaluation_grid_narrower_than_a_step(interp_algo):
     # The grids' bounding intervals overlap, but the 0.3 mm shells miss the
-    # narrow evaluation interval from x=0. The endpoint reaches it from -1.
+    # narrow evaluation interval. This used to search forever.
+    reference_x = np.array([-1.0, 0.0, 1.0])
+    evaluation_x = np.array([0.04, 0.05])
     result = pymedphys.gamma(
-        np.array([-1.0, 0.0, 1.0]),
+        reference_x,
         np.ones(3),
-        np.array([0.04, 0.05]),
+        evaluation_x,
         np.ones(2),
         3,
         3,
+        interp_algo=interp_algo,
     )
-    assert np.isnan(result[1])
+
+    # Points whose search never samples the grid are reported as NaN; any
+    # value that is reported must be right.
+    finite = np.isfinite(result)
+    expected = _exact_1d_gamma(reference_x, evaluation_x, 3)
+    _assert_within_search_resolution(result[finite], expected[finite])
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "Search shells step past evaluation grids narrower than one step, so "
+        "points they cannot reach are excluded as NaN despite having a gamma."
+    ),
+)
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+def test_every_point_finds_an_evaluation_grid_narrower_than_a_step(interp_algo):
+    reference_x = np.array([-1.0, 0.0, 1.0])
+    evaluation_x = np.array([0.04, 0.05])
+    result = pymedphys.gamma(
+        reference_x,
+        np.ones(3),
+        evaluation_x,
+        np.ones(2),
+        3,
+        3,
+        interp_algo=interp_algo,
+    )
+
+    _assert_within_search_resolution(
+        result, _exact_1d_gamma(reference_x, evaluation_x, 3)
+    )
 
 
 def test_disjoint_grid_beyond_max_gamma_has_no_candidate():

@@ -97,7 +97,8 @@ def voxel_positions(ds):
     n = np.cross(r, c)
     row_spacing, column_spacing = (float(s) for s in ds.PixelSpacing)
 
-    offsets = np.array(ds.GridFrameOffsetVector, dtype=float)
+    # A single-valued element reads as a scalar.
+    offsets = np.atleast_1d(np.array(ds.GridFrameOffsetVector, dtype=float))
     if offsets[0] != 0:
         # Absolute frame positions (PS3.3 C.8.8.3.2), only valid for n = +z
         offsets = offsets - position[2]

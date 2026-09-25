@@ -60,6 +60,8 @@ This project adheres to
   which could leave the gamma search running indefinitely. Searches are now
   bounded by the grids' spatial extent without requiring overlapping grids,
   and the custom interpolator reuses the grid validation done at gamma entry.
+  A reference point whose search shells step past an evaluation grid
+  narrower than one search step is still reported as NaN.
 
 ### Dependency changes
 
@@ -140,7 +142,9 @@ This project adheres to
   relative frame offsets is unchanged; decreasing frame offsets reverse z.
   Other orientations may return dose and DICOM gamma arrays in a different
   order from the stored pixels. Nonfinite, repeated or nonmonotonic frame
-  offsets, and offsets inconsistent with `NumberOfFrames`, are rejected.
+  offsets, and offsets inconsistent with `NumberOfFrames`, are rejected. A
+  single-frame dose, which pydicom reads as a two-dimensional array, is
+  returned with a length-one z axis rather than raising an error.
 - The private `pymedphys._dicom.coords.xyz_axes_from_dataset` now raises
   `NotImplementedError` for the IEC patient coordinate system, whose output
   was incorrect, and `ValueError` rather than `UnboundLocalError` for an

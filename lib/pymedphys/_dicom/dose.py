@@ -64,6 +64,9 @@ def zyx_and_dose_from_dataset(dataset):
     geometry = _DoseGridGeometry.from_dataset(dataset)
     x, y, z = geometry.dicom_axes()
     dose = dose_from_dataset(dataset)
+    # pydicom drops the frame dimension of a single-frame pixel array.
+    frames = geometry.local_axes[2].size
+    dose = dose.reshape(frames, int(dataset.Rows), int(dataset.Columns))
 
     # Map pixel dimensions (frame, row, column) onto patient (z, y, x).
     dose = np.transpose(dose, geometry.xyz_to_pixel_dimensions[::-1])
