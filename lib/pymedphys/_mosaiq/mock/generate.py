@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2021 Derek Lane
 
 # Licensed under the Apache License, Version 2.0 (the "License");
