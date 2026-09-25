@@ -73,7 +73,7 @@ To help determine what has changed since the last release, you can inspect the [
 
 ## Create release pull request
 
-Commit all changes to your release branch and push to GitHub. Then create a Pull Request of this branch into main. This will run the CI tests. Before finalising the release, ensure all tests are passing.
+Commit all changes to your release branch and push to GitHub. Then create a Pull Request of this branch into main. Add the `full-test` label so the full unit-test matrix and integration checks run before merging. Require the CI and security summaries to pass, and inspect their constituent checks as described in the [workflow guide](workflows.md).
 
 ### Troubleshooting issues
 
@@ -87,25 +87,65 @@ In most instances, releasing pymedphys with an upper pin isn't appropriate, as t
 
 Once the release pull request has been approved and merged, you're ready to release the new pymedphys version!
 
-### PyPI Account & Token
+### Verify trusted publishing and deployment protection
 
-Make sure you have an account at [PyPI](https://www.pypi.org) and your account has been added to the pymedphys project (contact the [pymedphys maintainers](https://github.com/pymedphys/pymedphys#maintainers) to be added).
+The release workflow builds with `uv` and publishes through PyPI trusted
+publishing. It does not use a PyPI API token or `poetry publish`.
 
-Next, create a token on PyPI for the pymedphys project used by to authenticate and upload the release. Create the token under the [pymedphys settings page](https://pypi.org/manage/project/pymedphys/settings/). Then add the token to your poetry configuration:
+Before the first release with this workflow, a repository admin and a PyPI
+project owner must verify:
 
-```bash
-poetry config pypi-token.pypi [your-pypi-token]
-```
+1. The GitHub environments `testpypi` and `pypi` exist and have the intended
+   deployment branch/tag restrictions. Permit the `main` branch for manual
+   runs and release tags matching `v*`. Configure production release approvers
+   in `pypi`; these environment approvals are separate from PR reviews.
+2. Each package index has the matching trusted publisher for owner `pymedphys`,
+   repository `pymedphys`, workflow `release.yml`, and environment `testpypi` or
+   `pypi`, respectively. A matching GitHub environment alone does not configure
+   the package index.
+3. The release commit has passed the required checks and is on `main`. A tag
+   name matching `v*` does not itself prove that its commit came from `main`.
 
-### Publish release to PyPI
+These are external settings, not protections created by the YAML file.
+Do not assume that an environment or a trusted publisher already exists simply
+because the workflow references its name.
 
-```bash
-poetry --build publish
-```
+### Rehearse with TestPyPI
 
-### Publish release on GitHub
+1. Open **Actions > Release > Run workflow** in GitHub.
+2. Select `main`, using the reviewed release-preparation commit.
+3. Leave **dry_run** set to **true** and run the workflow.
+4. Check the quality jobs, build/install checks, and TestPyPI publish job.
+   Inspect the uploaded distribution and install the intended version from
+   TestPyPI in a fresh environment before proceeding.
 
-Create a new release on [GitHub](https://github.com/pymedphys/pymedphys/releases). Create a new tag in the format `vMAJOR.MINOR.PATCH` (e.g. `v0.39.0`). Enter the tag as the name for this release as well. Finally add in the change logs for this release (direct copy from CHANGELOG.md). Publish the release.
+The TestPyPI run still performs publishing to TestPyPI; it is not a local-only
+simulation. It does not publish to production PyPI.
+
+### Publish the production release
+
+1. Confirm the version in `pyproject.toml` and the generated files match the
+   intended release, and that its preparation PR has merged into `main`.
+2. In GitHub **Releases**, draft a release with a new `vMAJOR.MINOR.PATCH` tag
+   pointing to that reviewed commit on `main`. Use that version as the title
+   and the corresponding changelog entries as the release notes.
+3. Publish the GitHub release. The `release: published` event starts the Release
+   workflow, which runs lint, type checks, the full unit-test matrix, integration
+   tests, and distribution build/install checks before publishing.
+4. Approve the production deployment when the `pypi` environment requests it.
+5. Verify the `publish-pypi` and `upload-release-assets` jobs succeeded, and
+   inspect the resulting package-index release and GitHub assets.
+
+The **Release Summary** job is a report, not a pass/fail gate. Inspect the
+workflow result and its publishing jobs; a successful report alone does not
+mean publishing succeeded. GitHub release publication precedes the workflow,
+so a published GitHub release alone also does not confirm PyPI publication.
+
+The workflow additionally supports a manual run with **dry_run=false**. This
+publishes to production PyPI and should be reserved for a deliberate release
+or recovery operation after checking the target commit and existing version.
+It does not create a GitHub release or upload its assets. Do not run it in
+parallel with a release-triggered publish of the same version.
 
 ### Final sanity tests
 
