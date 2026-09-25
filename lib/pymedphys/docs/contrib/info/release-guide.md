@@ -161,7 +161,7 @@ uv pip install "pymedphys[user,tests]==VERSION"
 ```
 
 Activate the environment as described in the
-{doc}`quick start <../../users/get-started/quick-start>`, then run:
+[quick start](../../users/get-started/quick-start.rst), then run:
 
 ```bash
 python -c "import pymedphys; print(pymedphys.__version__); print(pymedphys.__file__)"
