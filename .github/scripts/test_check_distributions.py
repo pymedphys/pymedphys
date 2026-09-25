@@ -17,12 +17,14 @@
 import base64
 import hashlib
 import io
+import os
 import tarfile
 import tempfile
 import textwrap
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 from check_distributions import (
     check_contents,
@@ -62,12 +64,14 @@ def _metadata(version):
     return f"Metadata-Version: 2.4\nName: pymedphys\nVersion: {version}\n"
 
 
-def _write_sdist(directory, version=VERSION, package_files=PACKAGE_FILES):
+def _write_sdist(directory, version=VERSION, package_files=PACKAGE_FILES, *, omit=()):
     root = f"pymedphys-{version}"
     files = {
         "PKG-INFO": _metadata(version),
         "pyproject.toml": "",
         "README.rst": "",
+        "CHANGELOG.md": "",
+        "CONTRIBUTING.md": "",
         "LICENSE": "",
     }
     files.update(
@@ -77,12 +81,23 @@ def _write_sdist(directory, version=VERSION, package_files=PACKAGE_FILES):
     path = Path(directory, f"{root}.tar.gz")
     with tarfile.open(path, "w:gz") as archive:
         for name, text in files.items():
+            if name in omit:
+                continue
             data = text.encode()
             info = tarfile.TarInfo(f"{root}/{name}")
             info.size = len(data)
             archive.addfile(info, io.BytesIO(data))
 
     return path
+
+
+def _write_checkout(directory, package_files=PACKAGE_FILES):
+    checkout = Path(directory, "checkout")
+    for name, text in package_files.items():
+        path = checkout / "pymedphys" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return checkout.resolve()
 
 
 def _record_line(name, data):
@@ -157,6 +172,16 @@ class ContentTests(unittest.TestCase):
 
         self.assertTrue(any("pymedphys/_data/hashes.json" in f for f in failures))
 
+    def test_sdist_requires_the_documentation_source_files(self):
+        wheel = _write_wheel(self.directory)
+        for name in ("README.rst", "CHANGELOG.md", "CONTRIBUTING.md"):
+            with self.subTest(filename=name):
+                sdist = _write_sdist(self.directory, omit=(name,))
+
+                failures = self._failures(sdist, wheel)
+
+                self.assertTrue(any(name in failure for failure in failures), failures)
+
     def test_sdist_and_wheel_versions_must_agree(self):
         sdist = _write_sdist(self.directory, version="1.2.0")
         wheel = _write_wheel(self.directory)
@@ -212,6 +237,59 @@ class SmokeTestTests(unittest.TestCase):
 
         self.assertTrue(any("pymedphys --version" in f for f in failures), failures)
         self.assertTrue(any("__version__" in f for f in failures), failures)
+
+    def test_checkout_cannot_hide_a_broken_wheel(self):
+        broken = dict(PACKAGE_FILES, **{"_version.py": '__version__ = "0.0.0"\n'})
+        del broken["dicom.py"]
+        with tempfile.TemporaryDirectory() as directory:
+            checkout = _write_checkout(directory)
+            wheel = _write_wheel(directory, package_files=broken)
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(checkout)
+                with mock.patch.dict(os.environ, {"PYTHONPATH": str(checkout)}):
+                    failures = smoke_test(
+                        wheel, VERSION, pip_args=("--no-deps", "--no-index")
+                    )
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertTrue(
+            any("Importing" in f and "pymedphys.dicom" in f for f in failures), failures
+        )
+        self.assertTrue(any("pymedphys --version" in f for f in failures), failures)
+
+    def test_python_path_overrides_do_not_break_a_valid_wheel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkout = _write_checkout(
+                directory, {"__init__.py": 'raise RuntimeError("checkout imported")\n'}
+            )
+            wheel = _write_wheel(directory)
+            with mock.patch.dict(
+                os.environ, {"PYTHONPATH": str(checkout), "PYTHONHOME": str(checkout)}
+            ):
+                failures = smoke_test(
+                    wheel, VERSION, pip_args=("--no-deps", "--no-index")
+                )
+
+        self.assertEqual(failures, [])
+
+    def test_imports_must_come_from_the_test_environment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkout = _write_checkout(directory)
+            # Model an installed package that redirects submodules to a source tree.
+            redirected = dict(PACKAGE_FILES)
+            redirected["__init__.py"] = (
+                f"__path__.insert(0, {str(checkout / 'pymedphys')!r})\n"
+                "from ._version import __version__\n"
+            )
+            wheel = _write_wheel(directory, package_files=redirected)
+
+            failures = smoke_test(wheel, VERSION, pip_args=("--no-deps", "--no-index"))
+
+        self.assertTrue(
+            any("outside" in f and str(checkout) in f for f in failures), failures
+        )
 
 
 if __name__ == "__main__":

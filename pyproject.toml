@@ -263,7 +263,7 @@ dev = [
 # lib/pymedphys/docs, and hatchling skips a directory it has already seen, so
 # the docs would silently drop out of the sdist and of wheels built from it.
 [tool.hatch.build.targets.sdist]
-only-include = ["lib/pymedphys", "CHANGELOG.md"]
+only-include = ["lib/pymedphys", "CHANGELOG.md", "CONTRIBUTING.md"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["lib/pymedphys"]

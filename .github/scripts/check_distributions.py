@@ -45,11 +45,35 @@ REQUIRED_PACKAGE_FILES = (
     "_data/hashes.json",
     "_data/urls.json",
 )
-REQUIRED_SDIST_FILES = ("pyproject.toml", "README.rst", "LICENSE", "PKG-INFO")
+# The docs preparation command copies these three root-level documents.
+REQUIRED_SDIST_FILES = (
+    "pyproject.toml",
+    "README.rst",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "PKG-INFO",
+)
 SDIST_PACKAGE_ROOT = "lib/pymedphys/"
 WHEEL_PACKAGE_ROOT = "pymedphys/"
 # pymedphys.cli imports every command module, as the console script does.
 SMOKE_IMPORTS = ("pymedphys", "pymedphys.dicom", "pymedphys.cli")
+
+IMPORT_CHECK = """\
+import importlib
+import sys
+from pathlib import Path
+
+environment = Path(sys.prefix).resolve()
+for name in ("pymedphys._version", *sys.argv[1:]):
+    module = importlib.import_module(name)
+    source = Path(module.__file__).resolve()
+    if not source.is_relative_to(environment):
+        raise RuntimeError(f"{name} was imported from {source}, outside {environment}")
+
+import pymedphys
+print(pymedphys.__version__)
+"""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -180,9 +204,19 @@ def check_contents(
     return failures
 
 
-def _run(command: Sequence[str | os.PathLike[str]]) -> subprocess.CompletedProcess:
+def _run(
+    command: Sequence[str | os.PathLike[str]], *, cwd: Path
+) -> subprocess.CompletedProcess:
+    # A venv still honours these overrides, including in its console scripts.
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if key.upper() not in {"PYTHONPATH", "PYTHONHOME"}
+    }
     return subprocess.run(
         [os.fspath(item) for item in command],
+        cwd=cwd,
+        env=environment,
         capture_output=True,
         text=True,
         check=False,
@@ -202,26 +236,29 @@ def smoke_test(
 
     with tempfile.TemporaryDirectory(prefix="pymedphys-dist-check-") as env_dir:
         venv.create(env_dir, with_pip=True)
+        working_directory = Path(env_dir)
         bin_dir = Path(env_dir, "Scripts" if os.name == "nt" else "bin")
         python = bin_dir / "python"
 
         install = _run(
-            [python, "-m", "pip", "install", "--quiet", *pip_args, wheel.resolve()]
+            [
+                python,
+                "-I",
+                "-m",
+                "pip",
+                "install",
+                "--quiet",
+                *pip_args,
+                wheel.resolve(),
+            ],
+            cwd=working_directory,
         )
         if install.returncode != 0:
             return [f"Installing {wheel.name} failed:\n{install.stderr}"]
 
         check_imports = _run(
-            [
-                python,
-                "-c",
-                "import importlib, sys\n"
-                "for name in sys.argv[1:]:\n"
-                "    importlib.import_module(name)\n"
-                "import pymedphys\n"
-                "print(pymedphys.__version__)",
-                *imports,
-            ]
+            [python, "-I", "-c", IMPORT_CHECK, *imports],
+            cwd=working_directory,
         )
         if check_imports.returncode != 0:
             failures.append(
@@ -233,7 +270,7 @@ def smoke_test(
                 f"expected {expected_version!r}"
             )
 
-        cli = _run([bin_dir / "pymedphys", "--version"])
+        cli = _run([bin_dir / "pymedphys", "--version"], cwd=working_directory)
         expected_output = f"pymedphys {expected_version}"
         if cli.returncode != 0 or cli.stdout.strip() != expected_output:
             failures.append(

@@ -181,6 +181,11 @@ The project uses uv with optional dependency groups:
   `docs` symlink first and then skips `lib/pymedphys/docs` as already seen.
 - Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
   not `0.42.0-dev0`); the release tag must be `v` followed by it.
+- Distribution smoke tests must ignore the caller's Python path overrides,
+  run outside the checkout, and verify that package imports come from the
+  test environment. A fresh venv alone does not isolate `PYTHONPATH`.
+- Include every root-level input to documentation preparation in the sdist:
+  `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
 
 ## Important Implementation Notes
 
