@@ -463,3 +463,9 @@ To move it to the correct location:
 ```
 
 This approach ensures successful workflow file delivery despite permission restrictions.
+
+### Language and pull request scope
+
+Follow the Australian/British English and focused PR conventions in
+[AGENTS.md](AGENTS.md). These apply to documentation, comments, user-facing text,
+reviews, commit messages, and PR descriptions as well as responses to maintainers.
