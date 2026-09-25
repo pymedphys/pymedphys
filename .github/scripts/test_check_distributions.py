@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the pre-publication distribution checks, on synthetic archives."""
+"""Tests for the distribution checks, on synthetic archives and a local index."""
 
 import base64
 import hashlib
 import io
 import os
+import shutil
 import tarfile
 import tempfile
 import textwrap
@@ -27,7 +28,10 @@ from pathlib import Path
 from unittest import mock
 
 from check_distributions import (
+    PackageIndex,
     check_contents,
+    check_install_report,
+    check_published,
     find_distributions,
     read_sdist,
     read_wheel,
@@ -60,15 +64,72 @@ PACKAGE_FILES = {
 }
 
 
+# An in-tree PEP 517 backend with no build requirements, so pip can build a
+# wheel from the synthetic sdist without network access.
+BUILDABLE_PYPROJECT = textwrap.dedent(
+    """\
+    [build-system]
+    requires = []
+    build-backend = "backend"
+    backend-path = ["."]
+    """
+)
+BUILD_BACKEND = textwrap.dedent(
+    """\
+    import base64
+    import hashlib
+    import zipfile
+    from pathlib import Path
+
+
+    def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
+        metadata = Path("PKG-INFO").read_text(encoding="utf-8")
+        (version,) = (
+            line.removeprefix("Version: ")
+            for line in metadata.splitlines()
+            if line.startswith("Version: ")
+        )
+        dist_info = f"pymedphys-{version}.dist-info"
+        files = {
+            f"pymedphys/{path.relative_to('lib/pymedphys').as_posix()}": path.read_bytes()
+            for path in Path("lib/pymedphys").rglob("*")
+            if path.is_file()
+        }
+        files[f"{dist_info}/METADATA"] = metadata.encode()
+        files[f"{dist_info}/WHEEL"] = (
+            b"Wheel-Version: 1.0\\nGenerator: test\\nRoot-Is-Purelib: true\\n"
+            b"Tag: py3-none-any\\n"
+        )
+        files[f"{dist_info}/entry_points.txt"] = (
+            b"[console_scripts]\\npymedphys = pymedphys.__main__:main\\n"
+        )
+        record = []
+        for name, data in files.items():
+            digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest())
+            record.append(f"{name},sha256={digest.rstrip(b'=').decode()},{len(data)}")
+        record.append(f"{dist_info}/RECORD,,")
+        files[f"{dist_info}/RECORD"] = ("\\n".join(record) + "\\n").encode()
+
+        filename = f"pymedphys-{version}-py3-none-any.whl"
+        with zipfile.ZipFile(Path(wheel_directory, filename), "w") as archive:
+            for name, data in files.items():
+                archive.writestr(name, data)
+        return filename
+    """
+)
+
+
 def _metadata(version):
     return f"Metadata-Version: 2.4\nName: pymedphys\nVersion: {version}\n"
 
 
-def _write_sdist(directory, version=VERSION, package_files=PACKAGE_FILES, *, omit=()):
+def _write_sdist(
+    directory, version=VERSION, package_files=PACKAGE_FILES, *, omit=(), buildable=False
+):
     root = f"pymedphys-{version}"
     files = {
         "PKG-INFO": _metadata(version),
-        "pyproject.toml": "",
+        "pyproject.toml": BUILDABLE_PYPROJECT if buildable else "",
         "README.rst": "",
         "CHANGELOG.md": "",
         "CONTRIBUTING.md": "",
@@ -77,6 +138,8 @@ def _write_sdist(directory, version=VERSION, package_files=PACKAGE_FILES, *, omi
     files.update(
         {f"lib/pymedphys/{name}": text for name, text in package_files.items()}
     )
+    if buildable:
+        files["backend.py"] = BUILD_BACKEND
 
     path = Path(directory, f"{root}.tar.gz")
     with tarfile.open(path, "w:gz") as archive:
@@ -290,6 +353,183 @@ class SmokeTestTests(unittest.TestCase):
         self.assertTrue(
             any("outside" in f and str(checkout) in f for f in failures), failures
         )
+
+
+FILES_URL = "https://files.pythonhosted.org/"
+PYPI = PackageIndex(index_url="https://pypi.org/simple/", files_url=FILES_URL)
+WHEEL_NAME = f"pymedphys-{VERSION}-py3-none-any.whl"
+SDIST_NAME = f"pymedphys-{VERSION}.tar.gz"
+
+
+def _report(filename, *, version=VERSION, url=None, sha256="ab" * 32):
+    """A pip installation report, reduced to the fields the check reads."""
+    return {
+        "version": "1",
+        "install": [
+            {
+                "download_info": {
+                    "url": url or f"{FILES_URL}packages/aa/bb/{filename}",
+                    "archive_info": {
+                        "hash": f"sha256={sha256}",
+                        "hashes": {"sha256": sha256},
+                    },
+                },
+                "is_direct": False,
+                "metadata": {"name": "numpy", "version": "2.0.0"},
+            },
+            {
+                "download_info": {
+                    "url": url or f"{FILES_URL}packages/cc/dd/{filename}",
+                    "archive_info": {
+                        "hash": f"sha256={sha256}",
+                        "hashes": {"sha256": sha256},
+                    },
+                },
+                "is_direct": False,
+                "metadata": {"name": "pymedphys", "version": version},
+            },
+        ],
+    }
+
+
+class InstallReportTests(unittest.TestCase):
+    """The archive pip installed must be the published file in the right format."""
+
+    def test_the_published_wheel_and_sdist_pass(self):
+        self.assertEqual(
+            check_install_report(_report(WHEEL_NAME), "wheel", VERSION, PYPI), []
+        )
+        self.assertEqual(
+            check_install_report(_report(SDIST_NAME), "sdist", VERSION, PYPI), []
+        )
+
+    def test_the_wrong_format_fails(self):
+        failures = check_install_report(_report(SDIST_NAME), "wheel", VERSION, PYPI)
+
+        self.assertTrue(any(SDIST_NAME in f for f in failures), failures)
+
+    def test_a_file_from_another_index_fails(self):
+        # An extra index configured for pip may serve the same version.
+        url = f"https://mirror.example.org/packages/{WHEEL_NAME}"
+
+        failures = check_install_report(
+            _report(WHEEL_NAME, url=url), "wheel", VERSION, PYPI
+        )
+
+        self.assertTrue(any(url in f and FILES_URL in f for f in failures), failures)
+
+    def test_a_different_version_fails(self):
+        report = _report("pymedphys-1.1.0-py3-none-any.whl", version="1.1.0")
+
+        failures = check_install_report(report, "wheel", VERSION, PYPI)
+
+        self.assertTrue(any("1.1.0" in f for f in failures), failures)
+
+    def test_a_report_without_pymedphys_fails(self):
+        report = _report(WHEEL_NAME)
+        del report["install"][1]
+
+        failures = check_install_report(report, "wheel", VERSION, PYPI)
+
+        self.assertTrue(any("no pymedphys" in f for f in failures), failures)
+
+    def test_hashes_are_compared_with_local_files(self):
+        local = {WHEEL_NAME: "ab" * 32}
+        self.assertEqual(
+            check_install_report(
+                _report(WHEEL_NAME), "wheel", VERSION, PYPI, local_hashes=local
+            ),
+            [],
+        )
+
+        failures = check_install_report(
+            _report(WHEEL_NAME, sha256="cd" * 32),
+            "wheel",
+            VERSION,
+            PYPI,
+            local_hashes=local,
+        )
+        self.assertTrue(any("SHA-256" in f for f in failures), failures)
+
+    def test_a_file_missing_from_the_local_copies_fails(self):
+        failures = check_install_report(
+            _report(WHEEL_NAME), "wheel", VERSION, PYPI, local_hashes={}
+        )
+
+        self.assertTrue(any("no local copy" in f for f in failures), failures)
+
+
+def _write_simple_index(root, files_dir, names):
+    """Serve the named files from a PEP 503 index directory, as pip reads it."""
+    project = Path(root, "simple", "pymedphys")
+    project.mkdir(parents=True, exist_ok=True)
+    links = []
+    for name in names:
+        path = Path(files_dir, name)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        links.append(f'<a href="{path.as_uri()}#sha256={digest}">{name}</a>')
+    (project / "index.html").write_text(
+        "<!DOCTYPE html><html><body>" + "".join(links) + "</body></html>",
+        encoding="utf-8",
+    )
+    return PackageIndex(
+        index_url=Path(root, "simple").as_uri() + "/",
+        files_url=Path(files_dir).as_uri() + "/",
+    )
+
+
+class PublishedTests(unittest.TestCase):
+    """Install each format from a local index into its own fresh environment."""
+
+    def setUp(self):
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        self.root = Path(temp_dir.name).resolve()
+        self.built = self.root / "built"
+        self.built.mkdir()
+        self.served = self.root / "files"
+        self.served.mkdir()
+        self.reports = self.root / "reports"
+        self.reports.mkdir()
+        _write_sdist(self.built, buildable=True)
+        _write_wheel(self.built)
+
+    def _publish(self, *names):
+        for name in names:
+            shutil.copy2(self.built / name, self.served / name)
+        return _write_simple_index(self.root, self.served, names)
+
+    def test_both_formats_pass_once_they_appear_on_the_index(self):
+        # The first attempt finds nothing, as just after an upload.
+        index = self._publish()
+        sleeps = []
+
+        def publish_then_sleep(seconds):
+            sleeps.append(seconds)
+            self._publish(WHEEL_NAME, SDIST_NAME)
+
+        failures = check_published(
+            VERSION,
+            index,
+            report_dir=self.reports,
+            compare_with=self.built,
+            wait=60,
+            sleep=publish_then_sleep,
+        )
+
+        self.assertEqual(failures, [])
+        self.assertEqual(len(sleeps), 1)
+        for kind in ("wheel", "sdist"):
+            self.assertTrue((self.reports / f"{kind}-install.json").is_file())
+            self.assertTrue((self.reports / f"{kind}-install.log").is_file())
+
+    def test_the_wheel_check_does_not_fall_back_to_the_sdist(self):
+        index = self._publish(SDIST_NAME)
+
+        failures = check_published(VERSION, index, report_dir=self.reports)
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("wheel", failures[0])
 
 
 if __name__ == "__main__":

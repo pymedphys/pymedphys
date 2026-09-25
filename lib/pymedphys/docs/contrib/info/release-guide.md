@@ -1,38 +1,32 @@
 # pymedphys Release Procedure
 
-This guide follows the active
-[release workflow](https://github.com/pymedphys/pymedphys/blob/main/.github/workflows/release.yml).
-It covers stable releases, development releases on production PyPI, and optional
-TestPyPI rehearsals. Keep it and the [workflow guide](workflows.md) in step with
-changes to publishing.
+This guide covers stable releases, development releases, and optional TestPyPI rehearsals. The [Release workflow](https://github.com/pymedphys/pymedphys/blob/main/.github/workflows/release.yml) builds, tests, and publishes every release; the [workflow guide](workflows.md) describes its jobs.
 
 ```{note}
-Please ensure that you have followed the [setup guide](https://docs.pymedphys.com/en/latest/contrib/setups/index.html)
-appropriate to you prior to commencing this release procedure.
+Please ensure that you have followed the [setup guide](../setups/index.rst) appropriate to you prior to commencing this release procedure.
 ```
 
-## Determine next release version
+## Choose the version
+
+In this guide, `VERSION` is the package version without a leading `v`, for example `0.42.0`, and the release tag is `vVERSION`.
 
 pymedphys uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) in the format `MAJOR.MINOR.PATCH`. For a minor release, increment `MINOR` and reset `PATCH` to zero; for example, `0.41.2` becomes `0.42.0`. While the project is pre-1.0, minor releases may contain breaking changes.
 
 In instances where the only changes since the last release are bug fixes and none of the pymedphys API has changed, you should increment the `PATCH` value: `MAJOR.MINOR.PATCH+1`
 
-For a development release, append a canonical PEP 440 suffix such as `.dev1`
-(for example, `0.42.0.dev1`). Use `0.42.0.dev1`, not `0.42.0-dev1`. Development
-releases can be published to real PyPI without declaring a stable release;
-ordinary pip installs prefer available stable releases, while testers can
-request the exact development version. See the
-[Python packaging versioning guide](https://packaging.python.org/en/latest/discussions/versioning/).
+A development release lets testers install unreleased changes from PyPI. Its version is the upcoming release with a [PEP 440](https://packaging.python.org/en/latest/specifications/version-specifiers/) `.devN` suffix: `0.42.0.dev1` is a development release of `0.42.0` and sorts before it. pip installs a development release only when it is requested explicitly (`pymedphys==0.42.0.dev1`, or `--pre`), or when no stable release satisfies the requirement (for example `pymedphys>=0.42` before `0.42.0` exists).
 
-In the remainder of this guide, `VERSION` means the package version without a
-leading `v`; the Git tag is `vVERSION`. Before choosing a version, check that it
-has not already been uploaded to the intended package index. Examples in this
-guide are illustrative, not reservations of unused versions.
+Write the version in canonical form: `0.42.0.dev1`, not `0.42.0-dev1`. The build copies the string in `pyproject.toml` into the package metadata unchanged, the release tag must equal `v` followed by that string, and the distribution filenames always use the canonical form, so any other spelling leaves them disagreeing.
 
-## Create a branch to prepare the release
+`main` carries the next unpublished development version between releases (see "Prepare main for the next release" below). Before choosing a version, check that it is not already on PyPI: PyPI never accepts the same filename twice, even after the file is deleted.
 
-Start from current `main` in a clean checkout. These Git commands assume that
-`origin` points to `pymedphys/pymedphys`. Replace `VERSION` with the chosen version:
+## Prepare the release pull request
+
+A stable release and a development release both need a reviewed pull request that sets the version on `main`, because the release tag must match `pyproject.toml` at the tagged commit.
+
+### Create a branch
+
+From an up-to-date clone in which `origin` is `pymedphys/pymedphys`, replacing `VERSION`:
 
 ```bash
 git fetch origin main
@@ -40,9 +34,9 @@ git switch -c VERSION-release-prep origin/main
 git push --set-upstream origin VERSION-release-prep
 ```
 
-## Update version in pyproject.toml
+### Update the version
 
-Update the version code near the top of the file:
+Update the version code near the top of `pyproject.toml`:
 
 ```toml
 [project]
@@ -52,9 +46,7 @@ readme = "README.rst"
 ...
 ```
 
-Refresh the lockfile's project metadata, sync the environment, and regenerate
-the version and dependency files. Keep dependency upgrades in a separately
-reviewed change unless they are deliberately part of this release:
+Refresh the lockfile's project metadata, sync the environment, and regenerate the version and dependency files. Keep dependency upgrades in a separately reviewed change unless they are deliberately part of this release:
 
 ```bash
 uv lock
@@ -62,19 +54,18 @@ uv sync --python 3.12 --locked --extra all --group dev
 uv run -- pymedphys dev propagate
 ```
 
-## Update CHANGELOG
+### Update the changelog
 
-Amend the `CHANGELOG.md` file to describe the changes since the last release. Insert information for this release near the top of the file and populate the sections as appropriate (remove unused sections):
+For a development release, leave `CHANGELOG.md` unchanged: its entries stay under `## Unreleased` until the stable release.
+
+For a stable release, rename the `## Unreleased` heading to `## [VERSION]`, complete its entries, and remove unused sections:
 
 ```markdown
 <!-- markdownlint-disable MD024 MD039 -->
 
 # Release Notes
 
-All notable changes are documented here.
-
-This project adheres to
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+...
 
 ## [VERSION]
 
@@ -91,289 +82,147 @@ This project adheres to
 
 To help determine what has changed since the last release, you can inspect the [merged pull requests](https://github.com/pymedphys/pymedphys/pulls?q=is%3Apr+is%3Amerged) during that time frame.
 
-## Create release pull request
+### Open the pull request
 
-Commit all changes to your release branch and push to GitHub. Then create a Pull Request of this branch into main. Add the `full-test` label so the full unit-test matrix and integration checks run before merging. Require the CI and security summaries to pass, and inspect their constituent checks as described in the [workflow guide](workflows.md).
+Commit all changes, push, and open a pull request into `main`. The CI and security summaries must pass; inspect their constituent checks as described in the [workflow guide](workflows.md).
 
-### Troubleshooting issues
+For a stable release, add the `full-test` label so the full unit-test matrix and integration checks run before merging. For a development release the label is optional: the Release workflow runs the same checks before publishing, and a failure there only delays a pre-release.
 
-Inspect the failing job before changing dependencies. CI uses the committed
-lockfile; elapsed time alone does not mean its application dependencies have
-been upgraded. Resolve a reproduced compatibility problem in the code or with
-a justified dependency constraint, regenerate the lockfile and propagated
-files, and rerun the affected checks. Network failures should be investigated
-separately from package or dependency failures.
+### If checks fail
 
-## Publish Release
+The `full-test` label runs checks that ordinary pull requests skip: the full OS and Python matrix, slow tests, and integration tests. A release pull request changes little besides the version, so a failure usually already exists on `main` or comes from outside the repository.
+
+- Read the failing job's log. Download errors (for example from Zenodo) and network time-outs are not code failures: re-run the job once, and investigate if it fails again.
+- Most jobs install the locked dependencies from `uv.lock`, so a new dependency release cannot break them. The distribution checks are the exception: they install the built wheel with pip, which resolves the newest compatible dependencies from PyPI.
+
+Fix a genuine failure on `main` in its own pull request, including any dependency constraint, `uv lock`, and `pymedphys dev propagate`, then merge `main` into the release branch.
+
+## Publish the release
 
 Once the release pull request has been approved and merged, you're ready to release the new pymedphys version!
 
-### Verify trusted publishing and deployment protection
+### Check the publishing settings
 
-The release workflow builds with `uv` and publishes through PyPI trusted
-publishing. It does not use a PyPI API token or `poetry publish`.
+Publishing uses PyPI trusted publishing, with no stored API token. It depends on settings in GitHub and on each package index, not in `release.yml`; naming an environment or publisher in the workflow does not create it. Check them before the first release from a new setup, and after any change:
 
-Before the first release with this workflow, a repository admin and a PyPI
-project owner must verify:
+1. The GitHub environment `pypi` exists, and `testpypi` too if you rehearse. Under **Deployment branches and tags**, choose **Selected branches and tags**, then add a branch rule for `main` (manual runs) and a tag rule for `v*` (releases). `pypi` has required reviewers; approving a deployment is separate from reviewing a pull request. If **Prevent self-review** is enabled, someone other than the releaser must approve.
+2. PyPI, and TestPyPI if you rehearse, each have a trusted publisher with owner `pymedphys`, repository `pymedphys`, workflow `release.yml` (the filename only), and environment `pypi` or `testpypi` respectively. See the [PyPI trusted-publisher guide](https://docs.pypi.org/trusted-publishers/adding-a-publisher/).
 
-1. The GitHub environment `pypi` exists; `testpypi` is also configured if using
-   that rehearsal route. Permit the `main` branch for manual runs and tags
-   matching `v*`, as separate branch and tag rules when using selected refs.
-   Configure production release approvers in `pypi`; these environment
-   approvals are separate from PR reviews. If self-review is disabled, another
-   authorised reviewer must approve a deployment started by the releaser.
-2. Each package index has the matching trusted publisher for owner `pymedphys`,
-   repository `pymedphys`, workflow `release.yml`, and environment `testpypi` or
-   `pypi`, respectively. A matching GitHub environment alone does not configure
-   the package index. The publisher's workflow field is the filename
-   `release.yml`, without the `.github/workflows/` prefix. Follow the
-   [PyPI trusted-publisher setup guide](https://docs.pypi.org/trusted-publishers/adding-a-publisher/).
-3. The release commit has passed the required checks and is on `main`. A tag
-   name matching `v*` does not itself prove that its commit came from `main`.
+### Choose the route
 
-These are external settings, not protections created by the YAML file.
-Do not assume that an environment or a trusted publisher already exists simply
-because the workflow references its name.
+| Trigger | Package index | Tag check | GitHub release assets |
+| --- | --- | --- | --- |
+| Publish a GitHub release or pre-release | PyPI | Yes | Attached after PyPI succeeds |
+| Run the workflow manually with `dry_run=true` | TestPyPI only | No | None |
+| Run the workflow manually with `dry_run=false` | PyPI only | No | None |
 
-### Choose the publishing route
+Publish every release through a GitHub release. A manual run with `dry_run=false` publishes whatever version `pyproject.toml` holds on the selected ref; keep it for recovery, run it from the release tag rather than `main`, and never alongside a release-triggered run of the same version.
 
-| Trigger | Package index | GitHub distribution assets |
-| --- | --- | --- |
-| Publish a GitHub release, including a prerelease | Production PyPI | Uploaded after PyPI succeeds |
-| Manual workflow with `dry_run=true` | TestPyPI only | Not uploaded |
-| Manual workflow with `dry_run=false` | Production PyPI only | Not uploaded |
+### Rehearse on TestPyPI (optional)
 
-Each run publishes to one index. The manual input description currently says
-"also to PyPI", but `dry_run=false` skips TestPyPI. Manual runs do not create
-a GitHub release and do not perform the release-event tag/version check.
+1. Open **Actions > Release > Run workflow**, select `main`, and leave **dry_run** set to **true**. The run uses the tip of `main` when it is dispatched; check that its commit SHA is the reviewed release commit.
+2. Check that the quality, build, and `publish-testpypi` jobs succeed.
+3. Check what TestPyPI now serves, as in "Check the published files" below, adding `--index testpypi`.
 
-### Rehearse with TestPyPI (optional)
+Despite its name, `dry_run=true` uploads to TestPyPI, which also never reuses a filename, so each version can be rehearsed once. TestPyPI does not host the dependencies, so the check also searches PyPI. Anyone can upload to TestPyPI, and pip takes the highest version it finds on either index, so a dependency or build tool from TestPyPI can replace the PyPI one: run the TestPyPI check only where you would run untrusted code, such as a disposable container.
 
-1. Open **Actions > Release > Run workflow** in GitHub.
-2. Confirm that the current tip of `main` is the intended reviewed commit,
-   then select `main`. Selecting the branch uses its tip at dispatch time;
-   check the run's commit SHA rather than assuming it selects an older commit.
-3. Leave **dry_run** set to **true** and run the workflow.
-4. Check the quality jobs, build/install checks, and TestPyPI publish job.
-   Inspect the uploaded distribution and install the intended version from
-   TestPyPI in a fresh environment before proceeding.
+### Publish to PyPI
 
-The TestPyPI run still performs publishing to TestPyPI; it is not a local-only
-simulation. It does not publish to production PyPI.
-
-### Publish to production PyPI
-
-1. Confirm the version in `pyproject.toml` and the generated files match the
-   intended release, and that its preparation PR has merged into `main`.
-2. Create the tag at the exact reviewed commit. Replace `RELEASE_COMMIT` with
-   its full SHA and `VERSION` with the package version. These commands work in
-   Bash and PowerShell and do not change the checked-out branch:
+1. Confirm that the release pull request has merged, and find the full SHA of the merged commit on `main` (`RELEASE_COMMIT`).
+2. Tag that commit. These commands work in Bash and PowerShell and do not change your checked-out branch:
 
    ```bash
    git fetch origin main
-   git show --no-patch --oneline RELEASE_COMMIT
+   git branch --remotes --contains RELEASE_COMMIT
+   git show RELEASE_COMMIT:pyproject.toml
    git tag -a vVERSION RELEASE_COMMIT -m "PyMedPhys VERSION"
    git push origin refs/tags/vVERSION
    ```
 
-   Inspect an existing tag instead of force-replacing it. Creating a tag alone
-   does not start the Release workflow.
-3. In GitHub **Releases**, create a release using that existing tag. Use the
-   version as the title and the corresponding changelog entries as the notes.
-   For a development version, select **Set as a pre-release** and do not mark
-   it as the latest stable release. Then **Publish release**; saving a draft
-   does not start publishing.
+   The second command must list `origin/main`, and the `version` near the top of the third command's output must be `VERSION`. If `vVERSION` already exists, stop and investigate; never move or force-push a release tag. Pushing the tag does not start the workflow.
+3. In GitHub **Releases**, draft a release from the existing tag, titled `VERSION`.
+   - For a stable release, use the version's changelog entries as the notes, and leave **Set as the latest release** selected.
+   - For a development release, summarise the `Unreleased` changelog entries and select **Set as a pre-release**.
 
-   The `release: published` event also runs for
-   [published prereleases](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release).
-   GitHub's prerelease checkbox controls presentation on GitHub; the `.devN`
-   package-version suffix controls development-release selection by pip.
+   The checkbox affects only GitHub; pip decides from the version string alone. A stable version marked as a pre-release still installs by default, and an unmarked development release becomes, by default, the repository's latest release.
+4. Select **Publish release**. Publishing a release or a pre-release starts the workflow; saving a draft does not. The workflow runs lint, type checks, the full unit-test matrix, integration tests, and the distribution checks. The build job fails, and nothing is published, unless the tag is exactly `v` followed by the package version.
+5. Approve the `pypi` deployment when it is requested, after the tests finish.
+6. Check that `publish-pypi`, `upload-release-assets`, and the three **Verify PyPI** jobs succeeded. The **Release Summary** job only reports these results and passes regardless, and a published GitHub release does not mean that PyPI publishing succeeded.
 
-   The workflow runs lint, type checks, the full unit-test matrix, integration
-   tests, and distribution checks. Plain `uv build` builds the sdist and then
-   the wheel from it. The archive and isolated-install checks require the tag
-   to equal `v` followed by the package version before publishing.
-4. Approve the production deployment when the `pypi` environment requests it.
-5. Verify the `publish-pypi` and `upload-release-assets` jobs succeeded, and
-   inspect the resulting package-index release and GitHub assets.
+### Check the published files
 
-Both destinations should contain `pymedphys-VERSION-py3-none-any.whl` and
-`pymedphys-VERSION.tar.gz`. GitHub's automatic **Source code** downloads are
-repository snapshots, not the Python source distribution to test. Confirm the
-filenames and, when comparing the two destinations, their SHA-256 hashes.
+After PyPI publishing, the **Verify PyPI** jobs install the wheel and the sdist from PyPI separately on Linux, Windows, and macOS, and require both files to match those built and tested earlier in the run. Each job uploads its pip installation reports and logs as an artefact.
 
-The **Release Summary** job is a report, not a pass/fail gate. Inspect the
-workflow result and its publishing jobs; a successful report alone does not
-mean publishing succeeded. GitHub release publication precedes the workflow,
-so a published GitHub release alone also does not confirm PyPI publication.
-
-The workflow additionally supports a manual run with **dry_run=false**. This
-publishes to production PyPI and should be reserved for a deliberate release
-or recovery operation after checking the target commit and existing version.
-It does not create a GitHub release or upload its assets. Do not run it in
-parallel with a release-triggered publish of the same version.
-
-### Verify both published distribution formats
-
-Test the wheel and sdist separately, outside the checkout, with Python 3.12
-(within the current supported range in `pyproject.toml`). The commands below
-use explicit environment executables, so activation is unnecessary. Replace
-`VERSION` with the exact published version and keep the same terminal open.
-`uv` must be available; see the [setup guides](../setups/index.rst).
-
-#### Create independent environments
-
-Windows PowerShell:
-
-```powershell
-$releaseVersion = "VERSION"
-$releaseTestRoot = Join-Path $env:TEMP ("pymedphys-release-" + [guid]::NewGuid().ToString("N"))
-New-Item -ItemType Directory -Path $releaseTestRoot | Out-Null
-Set-Location $releaseTestRoot
-uv venv --python 3.12 --seed wheel-env
-uv venv --python 3.12 --seed source-env
-$wheelPython = Join-Path $releaseTestRoot "wheel-env\Scripts\python.exe"
-$sourcePython = Join-Path $releaseTestRoot "source-env\Scripts\python.exe"
-```
-
-Bash (Linux or macOS):
+Run the same check yourself where the workflow cannot, for example on another platform or behind an institutional proxy. From the root of a checkout, in Bash or PowerShell:
 
 ```bash
-release_version="VERSION"
-release_test_root=$(mktemp -d)
-cd "$release_test_root"
-uv venv --python 3.12 --seed wheel-env
-uv venv --python 3.12 --seed source-env
-wheel_python="$release_test_root/wheel-env/bin/python"
-source_python="$release_test_root/source-env/bin/python"
+uv run --no-project --python 3.12 python .github/scripts/check_distributions.py --published VERSION
 ```
 
-Stop if environment creation fails. `--seed` supplies pip; neither environment
-should already contain PyMedPhys.
+For each format, the check:
 
-#### Install the wheel and source archive
+- installs `pymedphys==VERSION` into a new environment with pip's cache disabled, forcing the sdist to be built (`--no-binary=pymedphys`); dependencies may still come as wheels;
+- requires pip's installation report to name the expected file, served from `files.pythonhosted.org`, so an extra index in your pip configuration cannot substitute another file;
+- checks the installed version, that `pymedphys`, `pymedphys.dicom`, and `pymedphys.cli` import from inside the environment, the `pymedphys --version` output, and `pip check`.
 
-Windows PowerShell (stop if either command fails):
+It prints `The distributions passed every check.` on success, and otherwise lists each failure and exits non-zero. The environments are created in temporary directories and run with `python -I`, so neither the checkout nor `PYTHONPATH` can affect them. The installation reports and pip logs, including the sdist build, are kept in the directory it prints, or in `--report-dir`.
 
-```powershell
-& $wheelPython -I -m pip install --index-url https://pypi.org/simple --force-reinstall --no-cache-dir --only-binary=pymedphys --report wheel-install.json "pymedphys==$releaseVersion"
-& $sourcePython -I -m pip install --index-url https://pypi.org/simple --force-reinstall --no-cache-dir --no-binary=pymedphys --report source-install.json "pymedphys==$releaseVersion"
-```
-
-Bash (stop if either command fails):
+To also require the files on PyPI to match the GitHub release assets, download the assets and pass their directory. GitHub's automatic **Source code** archives are repository snapshots, not the sdist.
 
 ```bash
-"$wheel_python" -I -m pip install --index-url https://pypi.org/simple --force-reinstall --no-cache-dir --only-binary=pymedphys --report wheel-install.json "pymedphys==$release_version"
-"$source_python" -I -m pip install --index-url https://pypi.org/simple --force-reinstall --no-cache-dir --no-binary=pymedphys --report source-install.json "pymedphys==$release_version"
+gh release download vVERSION --pattern "pymedphys-*" --dir release-assets
+uv run --no-project --python 3.12 python .github/scripts/check_distributions.py --published VERSION --compare-with release-assets
 ```
 
-The wheel run must download the `.whl`. The source run must download the
-`.tar.gz`, build a wheel for PyMedPhys, and install it successfully. Dependencies
-may still use wheels. Keep the console output and installation reports; the
-PyMedPhys entry's `download_info.url` records the selected archive. For these
-production PyPI checks, verify that it points to the expected filename on
-`files.pythonhosted.org`, especially if pip also has a configured extra index.
+Your pip configuration still applies, apart from the index URL, so proxy and certificate settings keep working. On a slow connection, raise pip's 15-second network time-out by setting `PIP_TIMEOUT=120` in the environment first.
 
-`--no-cache-dir` prevents a previously built wheel being reused, while
-`--force-reinstall` prevents an existing installation satisfying the request.
-`Requirement already satisfied: pymedphys` alone is not evidence of a fresh
-source build. See the [pip install options](https://pip.pypa.io/en/stable/cli/pip_install/)
-and [cache documentation](https://pip.pypa.io/en/stable/topics/caching/).
-
-Python's `-I` isolates imports from the checkout and Python path overrides.
-Pip's separate `--isolated` option is deliberately omitted here so required
-user-level proxy or certificate settings remain available.
-
-#### Check the installed versions, import locations, and CLI
-
-Save the following as `check-published.py` in the temporary test directory:
-
-```python
-import importlib
-import os
-import subprocess
-import sys
-from importlib.metadata import version
-from pathlib import Path
-
-expected = sys.argv[1]
-environment = Path(sys.prefix).resolve()
-assert version("pymedphys") == expected
-
-for name in ("pymedphys", "pymedphys._version", "pymedphys.dicom", "pymedphys.cli"):
-    module = importlib.import_module(name)
-    source = Path(module.__file__).resolve()
-    assert source.is_relative_to(environment), (name, source, environment)
-    if name == "pymedphys":
-        assert module.__version__ == expected
-        print("Package:", source)
-
-cli_name = "pymedphys.exe" if sys.platform == "win32" else "pymedphys"
-cli = Path(sys.executable).parent / cli_name
-cli_env = os.environ.copy()
-for name in ("PYTHONPATH", "PYTHONHOME"):
-    cli_env.pop(name, None)
-output = subprocess.check_output([str(cli), "--version"], env=cli_env, text=True)
-assert output.strip() == f"pymedphys {expected}", output
-subprocess.run([sys.executable, "-I", "-m", "pip", "check"], check=True)
-print("PASS:", expected)
-```
-
-Run it with both interpreters. In PowerShell:
-
-```powershell
-& $wheelPython -I check-published.py $releaseVersion
-& $sourcePython -I check-published.py $releaseVersion
-```
-
-In Bash:
+These are smoke tests. To run the test suite against the published package, create an environment in an empty directory outside the checkout and use its interpreter. In Bash:
 
 ```bash
-"$wheel_python" -I check-published.py "$release_version"
-"$source_python" -I check-published.py "$release_version"
+uv venv --python 3.12 --seed release-tests
+release-tests/bin/python -I -m pip install --index-url https://pypi.org/simple/ "pymedphys[user,tests]==VERSION"
+release-tests/bin/python -I -m pymedphys dev tests
 ```
 
-Each run must print `PASS: VERSION`, a package path inside its own environment,
-and `No broken requirements found.` Any traceback or non-zero exit is a failed
-check. Imports and version checks alone cannot prove a source build occurred;
-retain the successful build output from the installation step as well.
+In PowerShell:
 
-These are core-package smoke tests. Optionally install
-`pymedphys[user,tests]==VERSION` into one test environment using its own Python,
-then run `python -I -m pip check` and `python -I -m pymedphys dev tests` with
-that same interpreter. The extended tests may download public datasets. Record
-their results separately rather than implying the core smoke tests cover them.
+```powershell
+uv venv --python 3.12 --seed release-tests
+release-tests\Scripts\python.exe -I -m pip install --index-url https://pypi.org/simple/ "pymedphys[user,tests]==VERSION"
+release-tests\Scripts\python.exe -I -m pymedphys dev tests
+```
 
-### Recover from publishing or installation failures
+The tests may download public datasets. They run without the repository's pytest settings in `pyproject.toml` (strict markers, strict xfail, and the 900-second time-out), which the wheel does not contain.
+
+### Record the result
+
+Comment on the release pull request with:
+
+```markdown
+- Version and release commit:
+- Release workflow run:
+- Verify PyPI jobs:
+- Local published-file check (OS, Python, result), if run:
+- Test suite against the published package (OS, Python, result), if run:
+```
+
+## Recover from failures
 
 | Symptom | Action |
 | --- | --- |
-| Publishing waits for approval or rejects the ref | Check the target GitHub environment's reviewers and separate branch/tag rules. |
-| PyPI reports `invalid-publisher` | Check the owner, repository, `release.yml` filename, and environment in that index's trusted-publisher settings. |
-| Upload fails before either file reaches the index | Correct the configuration, confirm no files were uploaded, and rerun the failed jobs. |
-| A filename already exists, or only one distribution uploaded | Inspect the index and original run's artifacts before recovery. The workflow does not skip existing files automatically. |
-| PyPI succeeds but GitHub asset upload fails | Check the asset job independently; do not republish to PyPI just to repair GitHub assets. |
-| pip reports read timeouts followed by `No matching distribution found` | Check the failing URL and required network/proxy settings. A failed index request does not establish that a dependency is unavailable. |
+| The deployment is rejected by environment protection rules | Add or correct the `v*` tag rule on the `pypi` environment, then re-run the failed jobs. |
+| PyPI reports `invalid-publisher` | Correct the owner, repository, workflow filename, or environment in that index's trusted publisher, then re-run the failed jobs. |
+| The build job fails the tag check, or a test fails in the release run | Nothing was published. Re-run a download or network failure once. Otherwise delete the GitHub release and the tag (`git push origin --delete refs/tags/vVERSION` and `git tag -d vVERSION`), fix the cause on `main` through a pull request, and tag again. |
+| The upload failed before any file reached PyPI | Fix the cause, then re-run the failed jobs. |
+| Only one of the two files reached PyPI | Do not rebuild. Re-run the failed jobs, which reuse the built files. If PyPI refuses the file that is already there, publishing the other needs a one-off change setting `skip-existing: true` on the publish step; the **Verify PyPI** jobs then confirm that both files match the build. |
+| PyPI succeeded but `upload-release-assets` failed | Re-run only that job. It replaces existing assets and does not publish to PyPI. |
+| A **Verify PyPI** job failed | Read which check failed. If the version was not yet available, check the PyPI project page and re-run the job. Any other failure is a defect in the published files. |
+| Locally, pip reports read time-outs and then `No matching distribution found` | This is a network failure, not a missing file. Check the proxy and certificate settings, and raise `PIP_TIMEOUT`. |
 
-For a slow connection, append `--timeout 120 --retries 1` to the relevant pip
-install command. If pip's `--isolated` was added, it may exclude required user
-configuration; retain Python's `-I` when retrying without that pip option.
-A successful retry does not by itself establish which network setting caused
-the failure. Repeat the source build with `--force-reinstall --no-cache-dir
---no-binary=pymedphys` so an earlier successful attempt cannot mask the result.
+Re-running failed jobs reuses the built files only while the run's `dist` artefact exists, which is 7 days. After that, re-run the whole workflow from the release so that it builds again from the tag.
 
-Published filenames [cannot be reused on PyPI](https://pypi.org/help/#file-name-reuse),
-even after deletion. For changed package contents, choose a new version (for
-example, the next `.devN`), update `pyproject.toml`, run `uv lock` and
-`pymedphys dev propagate` as above, and merge the reviewed preparation change
-before publishing its new tag. Do not move an existing release tag to new code.
+PyPI never accepts a filename twice, so a published release cannot be replaced. To fix one, publish a new version through the same preparation and review: the next `.devN` for a development release, or the next patch version for a stable release. [Yank](https://pypi.org/help/#yanked) a broken release on PyPI rather than deleting it, so that installs pinned to it still work.
 
-The current workflow attaches GitHub assets after release publication.
-[Immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
-prevent adding or replacing assets at that point. If enabling that feature,
-first adapt the workflow to attach assets while the release is still a draft.
+## Prepare main for the next release
 
-Record the version, release commit, workflow URL, OS/Python version, selected
-archive formats, and actual verification results on the release-preparation PR
-or release discussion. Keep observed results distinct from unrun optional
-checks and unconfirmed explanations for failures.
+After publishing, open a pull request that sets `main` to the next unpublished development version, so that `main` never carries a published version: after `0.42.0.dev0`, `0.42.0.dev1`; after `0.42.0`, `0.43.0.dev0`. Run the commands in "Update the version" above. After a stable release, also add an empty `## Unreleased` heading above the new release's entries in `CHANGELOG.md`.

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Publish to TestPyPI only (true) or also to PyPI (false)"
+        description: "true: publish to TestPyPI only. false: publish to PyPI only."
         type: boolean
         default: true
 
@@ -37,6 +37,8 @@ jobs:
   build:
     needs: [lint, type-check, unit-tests, integration-tests]
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -65,6 +67,14 @@ jobs:
           else
             python .github/scripts/check_distributions.py dist
           fi
+
+      # The wheel filename carries the normalised version.
+      - name: Record the version
+        id: version
+        run: |
+          wheel=$(basename dist/*.whl)
+          version=${wheel#pymedphys-}
+          echo "version=${version%%-*}" >> "$GITHUB_OUTPUT"
 
       - name: Upload built distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -138,9 +148,66 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "$TAG" dist/* --clobber
 
+  # Install what PyPI now serves, the wheel and the sdist separately, on each
+  # OS, and require the files to match the ones built and tested above.
+  verify-pypi:
+    name: Verify PyPI (${{ matrix.os }})
+    needs: [build, publish-pypi]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Download distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      # --wait covers the short delay before new files appear on the index.
+      - name: Install and check the published wheel and sdist
+        shell: bash
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: >-
+          python .github/scripts/check_distributions.py
+          --published "$VERSION" --compare-with dist --report-dir reports
+          --wait 600
+
+      - name: Upload installation reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pypi-install-reports-${{ matrix.os }}
+          path: reports/
+          retention-days: 30
+
   summary:
     name: Release Summary
-    needs: [lint, type-check, unit-tests, integration-tests, build, publish-testpypi, publish-pypi]
+    needs:
+      - lint
+      - type-check
+      - unit-tests
+      - integration-tests
+      - build
+      - publish-testpypi
+      - publish-pypi
+      - upload-release-assets
+      - verify-pypi
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -158,6 +225,8 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
           TESTPYPI_RESULT: ${{ needs.publish-testpypi.result || 'skipped' }}
           PYPI_RESULT: ${{ needs.publish-pypi.result || 'skipped' }}
+          ASSETS_RESULT: ${{ needs.upload-release-assets.result || 'skipped' }}
+          VERIFY_RESULT: ${{ needs.verify-pypi.result || 'skipped' }}
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## Release Summary
@@ -180,4 +249,6 @@ jobs:
           |--------|--------|
           | TestPyPI | ${TESTPYPI_RESULT} |
           | PyPI | ${PYPI_RESULT} |
+          | GitHub release assets | ${ASSETS_RESULT} |
+          | PyPI installation checks | ${VERIFY_RESULT} |
           EOF

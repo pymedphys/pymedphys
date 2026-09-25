@@ -72,6 +72,11 @@ Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
 generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
 file is gitignored, so edit `_config.yml`.
 
+Write procedures as instructions with their success criteria. State each
+fact once and link to it, prefer fixing a defect over documenting a workaround
+for it, and keep incident history and evidence caveats on the pull request
+rather than in the guide.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
@@ -186,13 +191,20 @@ The project uses uv with optional dependency groups:
   test environment. A fresh venv alone does not isolate `PYTHONPATH`.
 - Include every root-level input to documentation preparation in the sdist:
   `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
-- Keep `release-guide.md` and `workflows.md` aligned with the active release
-  workflow, including prereleases, publishing destinations, and post-upload
-  checks. Record actual release-test evidence on the relevant PR or release.
-- Check published wheels and sdists separately outside the checkout. A retry
-  must not count `Requirement already satisfied` or a cached wheel as a source
-  build: use `--force-reinstall --no-cache-dir --no-binary=pymedphys`, retain
-  the build log, and check installed versions and import locations.
+- Keep `release-guide.md` and `workflows.md` aligned with `release.yml`,
+  including pre-releases, publishing destinations, and post-publication checks.
+  Record release-test evidence on the release pull request.
+- Verify a release from the published files, not the checkout: install the
+  wheel and the sdist separately into fresh environments outside the checkout,
+  force the sdist to build, and check which file pip installed and where it
+  came from. `check_distributions.py --published` does this, and the release
+  workflow runs it after publishing; extend the script rather than documenting
+  manual steps.
+- Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
+  pre-releases. They need a reviewed pull request that sets the version, but
+  not the `full-test` label, and their changelog entries stay under
+  `## Unreleased`. After every release, `main` is bumped to the next
+  unpublished `.devN` so it never carries a published version.
 
 ## Important Implementation Notes
 
