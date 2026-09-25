@@ -109,6 +109,7 @@ tests = [
   "pytest",
   "pytest-rerunfailures",
   "pytest-sugar",
+  "pytest-timeout",
   "python-dateutil",
   "shapely",
   "toml",
@@ -207,6 +208,7 @@ all = [
     "pytest",
     "pytest-rerunfailures",
     "pytest-sugar",
+    "pytest-timeout",
     "python-dateutil",
     "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
     "readme-renderer",
@@ -255,6 +257,16 @@ include = ["lib/pymedphys/docs/_build/html/**/*"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["lib/pymedphys"]
+
+[tool.pytest.ini_options]
+# Markers are registered by lib/pymedphys/conftest.py, which also defines the
+# opt-in flags that select them. A misspelt marker is an error, an xfail that
+# starts passing fails, and a hung test is stopped with a stack dump well
+# within the CI job timeouts (override per run with --timeout).
+minversion = "8.0"
+addopts = ["--strict-markers"]
+xfail_strict = true
+timeout = 900
 
 # Existing tool config stays as-is
 [tool.ruff.lint]

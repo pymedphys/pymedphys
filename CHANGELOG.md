@@ -9,6 +9,17 @@ This project adheres to
 
 ## Unreleased
 
+### New features and enhancements
+
+- Data downloads (`pymedphys.data_path`, `pymedphys.zip_data_paths`) now time
+  out after 60 seconds without data, and are written to a temporary file that
+  is moved into place only once complete, so an interrupted download no longer
+  leaves a truncated file in the cache. Network errors, timeouts, and transient
+  HTTP statuses (408, 425, 429, and 5xx) are retried; other HTTP errors such as
+  404 are raised at once instead of after 21 seconds of retries.
+- The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
+  downloaded data cache, which defaults to `~/.pymedphys/data`.
+
 ### Dependency changes
 
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. The newer
@@ -21,6 +32,29 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** The test suite now runs with `HOME` and
+  `USERPROFILE` pointed at a temporary directory, so running the tests no
+  longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
+  tests previously stored their secret there) or reads `~/.streamlit`. The
+  downloaded data cache is still shared, through `PYMEDPHYS_DATA_DIR`. Tests
+  that wrote their outputs beside the cached data files now write to a
+  temporary directory. `dev tests` and `dev doctests` bypass user logging
+  configuration at startup, so a configured log file is not opened before
+  pytest isolates the home directory.
+- **[Contributor facing only]** `--include-slow`, `--include-mosaiqdb`, and
+  `--include-anthropic` add their tests to the default selection. `--slow`,
+  `--mosaiqdb`, `--anthropic`, and `--pydicom` still run only the marked tests,
+  and several of them now select the union instead of skipping every test.
+- **[Contributor facing only]** `pymedphys dev tests <path>` now runs only the
+  given file, directory, or test ID, relative to `lib/pymedphys` or the current
+  directory. Previously the path was ignored and the whole suite ran. Pytest
+  parses option values before test paths are resolved, including options
+  registered by plugins and initial conftests.
+- **[Contributor facing only]** `pyproject.toml` now configures pytest with
+  strict markers, strict xfail, and a 900 second per-test timeout
+  (`pytest-timeout`, added to the `tests` and `all` extras). The repository
+  root is now the pytest rootdir, so test IDs in reports start with
+  `lib/pymedphys/`.
 - **[Contributor facing only]** The Cypress end-to-end scaffolding under
   `lib/pymedphys/tests/e2e`, the `--cypress` option of `pymedphys dev tests`,
   and the `pymedphys dev cypress` command have been removed. The Streamlit GUI
