@@ -23,6 +23,8 @@ Record actual opened or merged PRs here, using their GitHub numbers, scope, stat
 
 - **[#2062](https://github.com/pymedphys/pymedphys/pull/2062), M0 legacy diagnostics.** Open, based on #2061. Removes identifying values and paths from explicit application logging and progress output, with capture tests. Re-raised exceptions and dependency warnings remain separate disclosure channels; this PR does not complete D-020. Its own progress update records validation and the remaining work.
 
+- **[#2067](https://github.com/pymedphys/pymedphys/pull/2067), M0 pydicom 3.0 minimum.** Open, based on #2061. Applies D-004: every extra declares `pydicom>=3.0`, including `docs`, which had no lower bound. `uv.lock` was regenerated with the CI-pinned uv, changing only the five specifiers, and the resolution is still pydicom 3.0.2; `pymedphys dev propagate` changed only `pyproject.hash`. The dead `pydicom<=1.2.1` branch in `DicomBase.__eq__` is removed. Two tests guard the floor through the installed distribution's metadata, so they also hold for a wheel. Download-dependent DICOM tests rely on CI. Migrating pydicom 3-deprecated calls ahead of pydicom 4 remains separate work.
+
 ## Scope
 
 In scope:
@@ -232,7 +234,7 @@ This is a rolling planning horizon, not a complete backlog or a promise of one P
 | Legacy application logging and progress output | Under review in #2062, based on #2061. Preserve its focused scope and capture-test coverage. |
 | Remaining legacy diagnostic disclosure | Planned follow-up to #2062: scope sanitisation of re-raised exceptions and dependency warnings into reviewable changes, with compatibility decisions and capture tests. Keep these residual risks visible until addressed; D-020 is the target, not a claim that the initial fix covers all channels. |
 | Experimental pseudonymisation warnings and security note | Planned M0 work under D-009. Cover library, CLI, and app guidance; removal is a later, separate change. |
-| pydicom 3.0 minimum | Planned M0 dependency change under D-004, with regenerated dependency files and compatibility checks. |
+| pydicom 3.0 minimum | Under review in #2067, based on #2061, with regenerated dependency files and metadata-based compatibility tests. |
 | GUI localhost binding and usage statistics | Planned M0 change, with configuration tests and documentation of access defaults. |
 | First standard parser and provenance checks | First M1 implementation slice; depends on the agreed pinned inputs and generator approach (D-002 and D-005), not completion of unrelated M0 hygiene. Split remaining tables and generator features into subsequent PRs. |
 | Hypothesis and its first property tests | Deferred until the first M2 consumer is ready. Add it with that consumer or a directly preceding, verified prerequisite; do not land an unused dependency early. |
