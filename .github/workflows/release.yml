@@ -100,10 +100,14 @@ jobs:
           name: dist
           path: dist/
 
+      # Skipping files already on the index makes a re-run safe after a
+      # partial upload. verify-published catches an existing file whose
+      # contents differ from this build.
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
   # Publish to PyPI for real releases or explicit non-dry-run dispatches.
   publish-pypi:
@@ -124,8 +128,11 @@ jobs:
           name: dist
           path: dist/
 
+      # See publish-testpypi for skip-existing.
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          skip-existing: true
 
   # Upload release assets only on a real GitHub release.
   upload-release-assets:
@@ -148,11 +155,18 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "$TAG" dist/* --clobber
 
-  # Install what PyPI now serves, the wheel and the sdist separately, on each
-  # OS, and require the files to match the ones built and tested above.
-  verify-pypi:
-    name: Verify PyPI (${{ matrix.os }})
-    needs: [build, publish-pypi]
+  # Install what the index now serves, the wheel and the sdist separately, on
+  # each OS, and require the files to match the ones built and tested above.
+  # After a TestPyPI rehearsal this also exercises the job before a release;
+  # packages resolved from TestPyPI are untrusted, and this job holds no
+  # secrets or write permissions.
+  verify-published:
+    name: Verify published (${{ matrix.os }})
+    needs: [build, publish-testpypi, publish-pypi]
+    if: >-
+      always() &&
+      (needs.publish-pypi.result == 'success' ||
+       needs.publish-testpypi.result == 'success')
     strategy:
       fail-fast: false
       matrix:
@@ -183,16 +197,17 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ needs.build.outputs.version }}
+          INDEX: ${{ needs.publish-pypi.result == 'success' && 'pypi' || 'testpypi' }}
         run: >-
           python .github/scripts/check_distributions.py
-          --published "$VERSION" --compare-with dist --report-dir reports
-          --wait 600
+          --published "$VERSION" --index "$INDEX" --compare-with dist
+          --report-dir reports --wait 600
 
       - name: Upload installation reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pypi-install-reports-${{ matrix.os }}
+          name: install-reports-${{ matrix.os }}
           path: reports/
           retention-days: 30
 
@@ -207,7 +222,7 @@ jobs:
       - publish-testpypi
       - publish-pypi
       - upload-release-assets
-      - verify-pypi
+      - verify-published
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -226,7 +241,7 @@ jobs:
           TESTPYPI_RESULT: ${{ needs.publish-testpypi.result || 'skipped' }}
           PYPI_RESULT: ${{ needs.publish-pypi.result || 'skipped' }}
           ASSETS_RESULT: ${{ needs.upload-release-assets.result || 'skipped' }}
-          VERIFY_RESULT: ${{ needs.verify-pypi.result || 'skipped' }}
+          VERIFY_RESULT: ${{ needs.verify-published.result || 'skipped' }}
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## Release Summary
@@ -250,5 +265,5 @@ jobs:
           | TestPyPI | ${TESTPYPI_RESULT} |
           | PyPI | ${PYPI_RESULT} |
           | GitHub release assets | ${ASSETS_RESULT} |
-          | PyPI installation checks | ${VERIFY_RESULT} |
+          | Published-file checks | ${VERIFY_RESULT} |
           EOF

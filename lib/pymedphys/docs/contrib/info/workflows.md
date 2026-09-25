@@ -133,11 +133,13 @@ Publishes to PyPI or TestPyPI behind quality gates.
   release, the build also fails unless the tag is `v` followed by the package
   version
 - **Publishing**: PyPI trusted publishing through the `pypi` or `testpypi`
-  environment, with no stored API token
-- **After publishing to PyPI**: `verify-pypi` installs the wheel and the sdist
-  from PyPI separately on Linux, Windows, and macOS with
-  `check_distributions.py --published`, and requires both to match the files
-  built in the run
+  environment, with no stored API token. Files already on the index are
+  skipped, so a re-run after a partial upload is safe
+- **After publishing**: `verify-published` installs the wheel and the sdist
+  from the index just published to, separately on Linux, Windows, and macOS,
+  with `check_distributions.py --published`, and requires both to match the
+  files built in the run. It also runs after a TestPyPI rehearsal, so the job
+  is exercised before a release
 - **Release Summary**: Reports every job's result; it is not a gate
 - **Limitation**: Assets are attached after the release is published, which
   GitHub's [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)

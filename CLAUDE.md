@@ -201,10 +201,15 @@ The project uses uv with optional dependency groups:
   workflow runs it after publishing; extend the script rather than documenting
   manual steps.
 - Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
-  pre-releases. They need a reviewed pull request that sets the version, but
-  not the `full-test` label, and their changelog entries stay under
-  `## Unreleased`. After every release, `main` is bumped to the next
-  unpublished `.devN` so it never carries a published version.
+  pre-releases. After every release, a reviewed pull request bumps `main` to
+  the next unpublished `.devN`, so `main` never carries a published version and
+  a development release can be tagged from `main` without a further pull
+  request. A pull request that sets a development version does not need the
+  `full-test` label, and changelog entries stay under `## Unreleased` until the
+  stable release.
+- The publish jobs use `skip-existing`, so a re-run after a partial upload is
+  safe; `verify-published` then requires the files on the index to match the
+  build.
 
 ## Important Implementation Notes
 
