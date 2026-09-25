@@ -1,17 +1,32 @@
 # DICOM de-identification: design and decision log
 
-This is a living document. It records the design of the DICOM de-identification engine that replaces `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, the decisions taken and why, and the state of implementation. Every pull request that touches de-identification updates it: status, decision log, and the "Open questions and next pull request" section.
+This is a living document. It records the design of the DICOM de-identification engine that replaces `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, the decisions taken and why, and the state of implementation. Every pull request that touches de-identification updates it: its own Progress entry, the decision log where a decision is taken or revised, and the "Open questions and next pull request" section when the programme-level plan changes.
 
 For the user-facing explanation of terms and current limitations, see [DICOM de-identification](../../users/background/dicom-deidentification.md).
 
 ## Status
 
 | Item | State |
-|---|---|
+| --- | --- |
 | Design | Agreed with maintainers; refined per pull request |
 | Implementation | Not started (milestone M0 in progress) |
 | DICOM edition targeted | PS3.15 2026d |
-| Last updated by | PR 01 review (six design corrections recorded in D-016 to D-021) |
+
+## Progress
+
+One entry per pull request. Each pull request updates only its own entry, so that pull requests developed in parallel do not conflict here.
+
+- **PR 01.** Design document, contributor principles, and background page; review corrections recorded in D-016 to D-021. Open as [pymedphys/pymedphys#2061](https://github.com/pymedphys/pymedphys/pull/2061).
+
+- **PR 02.** Stop legacy de-identification code logging identifying values and original paths. Not started.
+
+- **PR 03.** Deprecate experimental pseudonymisation, with a security note. Not started.
+
+- **PR 04.** Require pydicom 3.0 or later. Not started.
+
+- **PR 05.** Bind the Streamlit GUI to localhost and disable usage statistics. Not started.
+
+- **PR 06.** Add Hypothesis for property tests. Rescheduled to open immediately before its first user, PR 14, so that no unused dependency lands early.
 
 ## Scope
 
@@ -42,7 +57,7 @@ Wording rules for code, command-line output, reports, and documentation:
 ## Normative and guidance basis
 
 | Role | Source |
-|---|---|
+| --- | --- |
 | Normative technical rules | [DICOM PS3.15 Annex E, Attribute Confidentiality Profiles](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html), edition 2026d: E.1.1 (de-identifier), Table E.1-1 (attribute actions), E.1.3 (conformance statement contents), E.2 (Basic Profile), E.3 (Options), Table E.3.4-1 (structured content), Table E.3.10-1 (safe private attributes) |
 | Supporting DICOM parts | PS3.3 (attribute Types per IOD), PS3.4 (SOP Class to IOD), PS3.5 (UID encoding, UUID-derived UIDs), PS3.6 (data dictionary, well-known UIDs), PS3.10 (File Meta Information), PS3.16 (CID 7050 de-identification method codes, CID 7005 contributing equipment purpose) |
 | Best practice companion | Clunie DA et al. *Report of the Medical Image De-Identification (MIDI) Task Group: Best Practices and Recommendations*, report dated 2025-02-07, [arXiv:2303.10473](https://arxiv.org/abs/2303.10473) (preprint) |
@@ -80,7 +95,7 @@ The package will live in `lib/pymedphys/_dicom/deidentify/` with the public API 
 ## Presets
 
 | Preset | Purpose | Options claimed |
-|---|---|---|
+| --- | --- | --- |
 | `basic` (default) | Strict conformance to the Basic Profile | Basic Profile only |
 | `tps-import` | Research copies that import into commercial treatment planning systems | Basic Profile, Retain Longitudinal Temporal Information with Modified Dates, Retain Patient Characteristics, Retain Device Identity, Clean Descriptors |
 | `public-release` | Unrestricted public sharing, following the MIDI best practices | Basic Profile, Retain Longitudinal Temporal Information with Modified Dates, Clean Descriptors, Retain Safe Private |
@@ -217,10 +232,10 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 ## Implementation roadmap
 
 | Milestone | Pull requests | Content |
-|---|---|---|
-| M0 Hygiene | 01 to 06 | This document and contributor principles; stop legacy code logging identifying values; deprecate experimental pseudonymisation with a security note; pydicom 3.0 minimum; bind the GUI to localhost; add Hypothesis for property tests |
+| --- | --- | --- |
+| M0 Hygiene | 01 to 05 | This document and contributor principles; stop legacy code logging identifying values; deprecate experimental pseudonymisation with a security note; pydicom 3.0 minimum; bind the GUI to localhost |
 | M1 Standard | 07 to 13 | Table parser and generator command; generated Annex E tables; data dictionary, code, and attribute Type tables; requirements register |
-| M2 Primitives | 14 to 20 | Keys, UIDs, value representation validators and dummy values, dates, selectors and actions, policy and presets, supplementary rules |
+| M2 Primitives | 06, 14 to 20 | Hypothesis for property tests (PR 06, opened just before PR 14); keys, UIDs, value representation validators and dummy values, dates, selectors and actions, policy and presets, supplementary rules |
 | M3 Engine | 21 to 28 | Dataset transformation, File Meta Information, private attributes, text cleaning, bitstream metadata, public dataset-level API |
 | M4 Pipeline | 29 to 37 | File discovery and writing, reference graph, two-pass pipeline with verification, reports, risk detection, review pack, disclosure control, presets |
 | M5 Interfaces | 38 to 42 | Command-line interface, legacy deprecation, Streamlit application |
@@ -229,7 +244,7 @@ Entries are numbered and never deleted. A superseded decision is marked as such 
 
 ## Open questions and next pull request
 
-- **Next: PR 02.** Stop the legacy code from logging identifying values and printing original paths (`_dicom/anonymise/core.py` and `_dicom/anonymise/api.py`), with tests that capture logs and standard output.
+- **Next: PRs 02 to 05.** They are independent of each other and are developed in parallel on separate branches based on PR 01; see the Progress section. After M0, the next pull request is PR 07, the Annex E table parser.
 - **Review incorporated:** D-016 to D-021 resolve UID policy, override validation and claims, stable synthetic birth dates, descriptor-cleaning limits, confidential QC artifacts, and model-bound risk thresholds. Their validation cases are requirements for the relevant implementation PRs; this PR remains documentation only.
 - **Before M4:** select and validate the initial automated statistical risk estimator and its supported assumptions. Until then, the public-release SDC gate requires a complete documented external assessment meeting D-021; absence of an estimator or evidence cannot be treated as a pass.
 - **Open:** confirm the licence terms of the AAPM TG-263 structure name list before vendoring it as part of the vocabulary cleaner (needed by PR 25).
