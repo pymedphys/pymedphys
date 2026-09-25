@@ -15,11 +15,11 @@ Push / pull request -> ci.yml
                        |-- integration-tests.yml (selected runs)
                        |-- mosaiq-db-tests.yml (selected runs)
                        |-- docs.yml (documentation PRs)
-                       `-- summary
+                       `-- CI Summary
 
 Schedule / manual run / main push / PR -> security.yml
-Schedule -> deps.yml
-Release -> release.yml -> lint, type-check, unit and integration tests
+Schedule / manual run -> deps.yml
+Published release / manual run -> release.yml -> quality checks and publishing
 Issue comment -> claude.yml
 ```
 
@@ -35,20 +35,26 @@ Coordinates all CI checks based on file changes, labels, and event types.
 - **Jobs**:
   - `changes`: Detects file changes using path filters
   - `pre-commit`: Auto-formatting and basic checks
-  - `lint`: Code quality (always runs)
-  - `type-check`: Static type checking (always runs)
-  - `unit-tests`: Fast unit tests (always runs)
+  - `lint`: Code quality
+  - `type-check`: Static type checking
+  - `unit-tests`: Fast unit tests
   - `integration-tests`: Extended tests (conditional)
   - `mosaiq-db-tests`: Database tests (conditional)
   - `docs-check`: Documentation build and artifact (conditional)
   - `summary`: Requires core checks and selected extended checks to succeed
 
+Lint, type checks, and unit tests normally run on every PR. If pre-commit
+pushes an auto-fix, those jobs are skipped for the superseded commit and the
+summary fails until a fresh run passes on the new commit. Upstream failures
+can also skip dependent jobs; the summaries reject those unexpected skips.
+
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
 
 - **Features**:
-  - Auto-fixes issues on PRs
-  - Commits fixes automatically with bot account
+  - Applies the configured hooks, including Ruff, actionlint, and offline zizmor
+  - Can push fixes on same-repository PRs when bot credentials are available
+  - Fork PR authors must apply and push their fixes themselves
   - Caches pre-commit environments
 
 #### `lint.yml`
@@ -57,7 +63,7 @@ Dedicated linting workflow for code quality.
 - **Jobs**:
   - `lint`: Comprehensive Python linting with Pylint
 - Ruff linting and formatting run through pre-commit
-- **Always runs on PRs** for early issue detection
+- Runs on PRs subject to the orchestrator's pre-commit dependency
 
 #### `type-check.yml`
 Static type checking for type safety.
@@ -65,7 +71,7 @@ Static type checking for type safety.
 - **Jobs**:
   - `pyright`: Primary type checker
   - `mypy`: Secondary checker (optional/non-blocking), run from the locked `dev` extra
-- **Always runs on PRs** to ensure type safety
+- Runs on PRs subject to the orchestrator's pre-commit dependency
 
 #### `unit-tests.yml`
 Fast unit tests with smart matrix strategy.
@@ -126,14 +132,16 @@ Security scanning with pinned tools run through `uvx`, so nothing is installed
 into the project environment.
 
 - **Scans**:
-  - `dependency-audit`: pip-audit over the exported `uv.lock`, which covers
-    every extra and platform marker. Advisory on pull requests and pushes so a
+  - `dependency-audit`: pip-audit over an export of `uv.lock` containing all
+    extras. The audit runs on Ubuntu/Python 3.12 and evaluates dependency
+    markers for that environment; it is not a separate audit of every
+    OS/Python combination. Advisory on pull requests and pushes so a
     newly published advisory cannot turn an unrelated commit red; blocking on
     scheduled and manual runs, where a failure opens or updates the issue
     labelled `security-audit`
   - `python-security`: Bandit, configured in `[tool.bandit]` in
-    `pyproject.toml`. Blocking on every event; the SARIF report is uploaded to
-    code scanning
+    `pyproject.toml`. Blocking when selected; SARIF is uploaded as an artifact and to
+    code scanning when the event has permission (fork PRs cannot upload there)
   - `workflow-audit`: zizmor over `.github` and over any workflow files staged
     in `claude_created_workflows_preview/`, blocking at medium severity and
     above. The offline audits also run through pre-commit; the online ones,
@@ -187,13 +195,14 @@ Standardized project setup for all workflows.
 For a typical pull request:
 
 ```
-Always Run:
+Core checks (subject to the pre-commit dependency above):
 ├── pre-commit       # Auto-formatting
-├── lint             # Ruff + Pylint
+├── lint             # Pylint; Ruff runs in pre-commit
 ├── type-check       # Pyright
 └── unit-tests       # Quick mode (Ubuntu + Python 3.12)
 
 Conditional (also recalculated when labels change):
+├── integration-tests # full-test label
 ├── mosaiq-db-tests  # Database files changed, database or full-test label
 ├── docs-check       # Documentation sources or build tooling changed
 └── security         # If Python/config files changed
@@ -347,17 +356,17 @@ whose workflows do not emit them. Publishing branches such as `docs` and
 
 ## Testing Workflows Locally
 
+Prefer the local commands below for reproducing individual checks.
+[act](https://nektosact.com/) can help investigate Linux jobs, but it does not
+reproduce GitHub-hosted Windows/macOS runners, repository permissions, secrets,
+or environment approvals. A local run does not replace GitHub CI.
+
 ```bash
 # Install act
 brew install act  # or appropriate for your OS
 
 # Test CI workflow
 act push -W .github/workflows/ci.yml
-
-# Test with specific inputs
-act push -W .github/workflows/unit-tests.yml \
-  --input python-matrix='["3.12"]' \
-  --input quick=true
 
 # Test PR workflow
 act pull_request -W .github/workflows/ci.yml
@@ -367,7 +376,7 @@ act pull_request -W .github/workflows/ci.yml
 
 ```bash
 # Install with dev dependencies
-uv sync --frozen --extra all --group dev
+uv sync --python 3.12 --locked --extra all --group dev
 
 # Run all pre-commit hooks
 uv run pre-commit run --all-files

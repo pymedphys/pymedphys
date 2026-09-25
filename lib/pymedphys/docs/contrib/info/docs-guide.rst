@@ -2,7 +2,7 @@
 Documentation Guide
 ================================
 
-This documentation site uses a toolbox called Sphinx. This particular
+This documentation site is built with Sphinx, MyST, and Jupyter Book 1.x. This particular
 document aims to help contributors to improve the PyMedPhys
 documentation.
 
@@ -46,6 +46,61 @@ Add new pages to the relevant index so they appear in the site navigation.
 The build generates ``conf.py`` from ``_config.yml``. The generated file is
 ignored by git, so change ``_config.yml`` rather than ``conf.py``.
 
+
+Previewing and checking the site
+--------------------------------
+
+The HTML output is in ``lib/pymedphys/docs/_build/html``. Serve it locally:
+
+.. code-block:: bash
+
+    uv run python -m http.server 8000 --bind 127.0.0.1 --directory lib/pymedphys/docs/_build/html
+
+Open ``http://localhost:8000`` and inspect the pages you changed, including their
+navigation, code examples, and links. Stop the server with Ctrl+C.
+
+To produce the same external-link report as CI, run this after an HTML build:
+
+.. code-block:: bash
+
+    uv run python -m sphinx -b linkcheck -d lib/pymedphys/docs/_build/.doctrees lib/pymedphys/docs lib/pymedphys/docs/_build/linkcheck
+
+Read ``output.txt`` or ``output.json`` in the linkcheck directory. A failed
+request may be a rate limit, authentication requirement, or temporary outage;
+verify it before replacing a link. CI reports external-link failures as
+advisory, so a green summary alone does not establish that every link works.
+
+Source files and publishing
+---------------------------
+
+Edit pages under ``lib/pymedphys/docs``. Three files are copied into that tree
+by ``pymedphys dev docs --prep`` and by the normal build:
+
+* Edit the root ``README.rst`` for the homepage's imported introduction.
+* Edit the root ``CONTRIBUTING.md`` for the contributor landing page.
+* Edit the root ``CHANGELOG.md`` for release notes.
+
+Do not edit their generated copies. Use ``:doc:`` in reStructuredText or the
+MyST ``{doc}`` role in Markdown for links between documentation pages.
+
+GitHub Actions builds and uploads ``docs-html`` and ``docs-linkcheck``
+artifacts for selected PRs. ReadTheDocs publishes the public site separately,
+using ``.readthedocs.yml``. The ``latest`` site describes the development
+branch; select the documentation version matching an installed release when
+checking release-specific behaviour.
+
+Keeping documentation current
+-----------------------------
+
+When changing code, dependencies, or CI, check the setup guides, examples, and
+workflow/release instructions as well as the API docstrings. Compare commands
+with the CLI's ``--help`` and dependency advice with ``pyproject.toml`` and
+``uv.lock``. Re-run changed notebooks instead of relying on saved output.
+
+Mark historical implementation write-ups and site-specific deployment examples
+with their scope. Keep their original source permalinks and commands together;
+substituting new tool names into old examples can make them impossible to
+reproduce. Release notes and the published paper are historical records.
 
 Docstring extraction
 --------------------
