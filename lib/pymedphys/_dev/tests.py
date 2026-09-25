@@ -158,95 +158,67 @@ def run_doctests(_, remaining):
     _call_pytest(remaining, "doctests")
 
 
-# pytest options whose value is given as the next argument. Their values are
-# never treated as test paths, even when a file of that name exists.
-_PYTEST_OPTIONS_WITH_VALUES = frozenset(
-    {
-        "-k",
-        "-m",
-        "-p",
-        "-o",
-        "-c",
-        "-W",
-        "--junitxml",
-        "--junit-xml",
-        "--basetemp",
-        "--rootdir",
-        "--maxfail",
-        "--durations",
-        "--tb",
-        "--timeout",
-        "--deselect",
-        "--ignore",
-        "--ignore-glob",
-        "--confcutdir",
-        "--log-level",
-        "--override-ini",
-    }
-)
+def resolve_test_paths(paths, original_cwd, *, pyargs=False):
+    """Resolve pytest's parsed test paths relative to the caller or library.
 
-
-def build_pytest_args(remaining, original_cwd):
-    """Build the pytest arguments for ``pymedphys dev tests``.
-
-    pytest runs with its working directory set to the library root, so a test
-    path may be given relative to either the caller's directory or the library
-    root. Paths relative to the caller's directory are made absolute; any
-    other path is passed through, so pytest reports one that does not exist.
-    The whole package is collected with ``--pyargs pymedphys`` only when no
-    path is given.
-
-    Parameters
-    ----------
-    remaining : list of str
-        The arguments passed through to pytest.
-    original_cwd : str or os.PathLike
-        The directory ``pymedphys dev tests`` was called from.
-
-    Returns
-    -------
-    list of str
-        The arguments for ``pytest.main``.
+    Only positional paths reach this function; pytest and plugin option
+    values are left untouched. Missing paths are kept so pytest reports the
+    collection error. Explicit --pyargs arguments keep their module names.
     """
+    if not paths:
+        return [str(LIBRARY_ROOT)]
+
+    if pyargs:
+        return list(paths)
+
     original_cwd = pathlib.Path(original_cwd)
-    args = []
-    has_path = False
-    previous = None
-
-    for arg in remaining:
-        is_option_value = previous in _PYTEST_OPTIONS_WITH_VALUES
-        previous = arg
-
-        if arg.startswith("-") or is_option_value:
-            args.append(arg)
-            continue
-
-        # Every other positional argument is a test path or node ID. One that
-        # does not exist is passed through unchanged so that pytest reports
-        # it, rather than the whole suite silently running instead.
-        has_path = True
-        path_part, separator, selector = arg.partition("::")
-        if path_part and original_cwd.joinpath(path_part).exists():
-            absolute = original_cwd.joinpath(path_part).resolve()
-            args.append(f"{absolute}{separator}{selector}")
+    resolved = []
+    for path in paths:
+        path_part, separator, selector = path.partition("::")
+        candidate = original_cwd.joinpath(path_part)
+        if path_part and candidate.exists():
+            resolved.append(f"{candidate.resolve()}{separator}{selector}")
         else:
-            args.append(arg)
+            resolved.append(path)
 
-    if has_path:
-        return args
+    return resolved
 
-    return ["--pyargs", "pymedphys"] + args
+
+class _CallerRelativeTestPaths:
+    """Resolve positional paths after pytest has parsed its own options."""
+
+    def __init__(self, original_cwd):
+        self.original_cwd = original_cwd
+
+    def pytest_load_initial_conftests(self, early_config):
+        # Pytest's own implementation of this hook runs trylast. Updating
+        # its parsed paths first lets it find caller-relative conftests and
+        # register their options before the final argument parse.
+        namespace = early_config.known_args_namespace
+        namespace.file_or_dir = resolve_test_paths(
+            namespace.file_or_dir, self.original_cwd, pyargs=namespace.pyargs
+        )
+
+    def pytest_configure(self, config):
+        # The final parse includes options registered by initial conftests.
+        # Do not rewrite argv: the same text may be both a path and a value.
+        config.args = resolve_test_paths(
+            config.getoption("file_or_dir"),
+            self.original_cwd,
+            pyargs=config.getoption("pyargs"),
+        )
 
 
 def _call_pytest(remaining, label):
     original_cwd = os.getcwd()
-    args = build_pytest_args(remaining, original_cwd)
 
     os.chdir(LIBRARY_ROOT)
     print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
 
     try:
-        retcode = pytest.main(args)
+        retcode = pytest.main(
+            remaining, plugins=[_CallerRelativeTestPaths(original_cwd)]
+        )
     finally:
         os.chdir(original_cwd)
 

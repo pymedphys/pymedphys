@@ -38,14 +38,18 @@ This project adheres to
   tests previously stored their secret there) or reads `~/.streamlit`. The
   downloaded data cache is still shared, through `PYMEDPHYS_DATA_DIR`. Tests
   that wrote their outputs beside the cached data files now write to a
-  temporary directory.
+  temporary directory. `dev tests` and `dev doctests` bypass user logging
+  configuration at startup, so a configured log file is not opened before
+  pytest isolates the home directory.
 - **[Contributor facing only]** `--include-slow`, `--include-mosaiqdb`, and
   `--include-anthropic` add their tests to the default selection. `--slow`,
   `--mosaiqdb`, `--anthropic`, and `--pydicom` still run only the marked tests,
   and several of them now select the union instead of skipping every test.
 - **[Contributor facing only]** `pymedphys dev tests <path>` now runs only the
   given file, directory, or test ID, relative to `lib/pymedphys` or the current
-  directory. Previously the path was ignored and the whole suite ran.
+  directory. Previously the path was ignored and the whole suite ran. Pytest
+  parses option values before test paths are resolved, including options
+  registered by plugins and initial conftests.
 - **[Contributor facing only]** `pyproject.toml` now configures pytest with
   strict markers, strict xfail, and a 900 second per-test timeout
   (`pytest-timeout`, added to the `tests` and `all` extras). The repository

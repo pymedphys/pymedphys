@@ -122,7 +122,8 @@ When creating conda recipes, pull requests, or other metadata that requires main
   invoking pytest, so relative output paths (e.g. `--junitxml`) resolve there.
   Use absolute paths in CI. Test paths may be given relative to `lib/pymedphys`
   or to the caller's directory; the whole package is collected only when no
-  path is given.
+  path is given. Resolve positional paths after pytest parses its arguments;
+  do not maintain a list of value-taking options, since plugins can add more.
 - Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
   `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
   `--include-anthropic`) adds them to the default selection. `--slow` (and
@@ -137,6 +138,9 @@ When creating conda recipes, pull requests, or other metadata that requires main
   `~/.streamlit`. The Zenodo cache stays shared through `PYMEDPHYS_DATA_DIR`,
   which `pymedphys._data.download.get_data_dir` honours. Write test outputs to
   `tmp_path`, never beside cached data files.
+- `dev tests` and `dev doctests` bypass user logging configuration during CLI
+  startup, before pytest can isolate the home directory. Keep this boundary:
+  opening a configured log can modify user files before any test runs.
 - Data caches must not fall back across changes to `hashes.json`: ZIP archives
   are checked, but previously extracted files are not refreshed automatically.
 - Mock data and fixtures are in `_mocks/` and test data directories
