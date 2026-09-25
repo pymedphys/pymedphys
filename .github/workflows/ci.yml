@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_call:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 # Default to read-only. Jobs that need more override at the job level.
 permissions:
@@ -12,26 +12,68 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Label changes queue behind an in-flight run instead of discarding it.
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request' &&
+        github.event.action != 'labeled' &&
+        github.event.action != 'unlabeled' }}
 
 jobs:
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
-      mosaiq: ${{ steps.filter.outputs.mosaiq }}
-      docs: ${{ steps.filter.outputs.docs }}
+      run-integration: >-
+        ${{ github.event_name == 'push' ||
+            contains(github.event.pull_request.labels.*.name, 'full-test') }}
+      run-database: >-
+        ${{ github.event_name == 'push' ||
+            contains(github.event.pull_request.labels.*.name, 'full-test') ||
+            contains(github.event.pull_request.labels.*.name, 'database') ||
+            steps.filter.outputs.mosaiq == 'true' }}
+      run-docs: >-
+        ${{ github.event_name == 'pull_request' &&
+            steps.filter.outputs.docs == 'true' }}
     steps:
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test workflow status validation
+        run: python -m unittest discover -s .github/scripts -p 'test_*.py'
+      # Only pull requests use the filter outputs: pushes run every selected
+      # check, so the step is skipped and the checkout needs no credentials.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: github.event_name == 'pull_request'
         id: filter
         with:
           filters: |
             mosaiq:
               - 'lib/pymedphys/**/*mosaiq*'
+              - 'lib/pymedphys/**/*mosaiq*/**'
               - 'lib/pymedphys/**/*database*'
+              - 'lib/pymedphys/**/*database*/**'
             docs:
               - 'docs/**'
               - 'lib/pymedphys/docs/**'
+              # Autodoc and notebooks import the package implementation.
+              # Package modules only: tests cannot change the rendered docs.
+              - 'lib/pymedphys/*.py'
+              - 'lib/pymedphys/!(tests)/**/*.py'
+              # Notebooks fetch data files by name.
+              - 'lib/pymedphys/_data/**'
               - '*.md'
+              - 'README.rst'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'requirements-docs.txt'
+              - '.readthedocs.yml'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/docs.yml'
+              - '.github/actions/setup-project/**'
+              - '.github/scripts/**'
 
   # Pre-commit always runs. Needs write access for auto-fix pushes on PRs.
   pre-commit:
@@ -66,121 +108,59 @@ jobs:
       needs.pre-commit.outputs.autofix-pushed != 'true'
     uses: ./.github/workflows/unit-tests.yml
     with:
-      quick: ${{ github.event_name == 'pull_request' }}
+      quick: >-
+        ${{ github.event_name == 'pull_request' &&
+            !contains(github.event.pull_request.labels.*.name, 'full-test') }}
 
-  # Integration tests on main or when labeled — skip if auto-fix pushed.
+  # Extended checks share selection outputs with the required summary.
   integration-tests:
-    needs: [pre-commit, unit-tests]
+    needs: [pre-commit, changes, unit-tests]
     if: |
-      needs.pre-commit.outputs.autofix-pushed != 'true' && (
-        github.event_name == 'push' ||
-        contains(github.event.pull_request.labels.*.name, 'full-test')
-      )
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.outputs.run-integration == 'true'
     uses: ./.github/workflows/integration-tests.yml
     with:
-      run-slow: ${{ github.event_name == 'push' }}
+      run-slow: true
 
-  # Database tests based on changes or labels — skip if auto-fix pushed.
   mosaiq-db-tests:
     needs: [pre-commit, changes]
     if: |
       (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' && (
-        github.event_name == 'push' ||
-        contains(github.event.pull_request.labels.*.name, 'database') ||
-        needs.changes.outputs.mosaiq == 'true'
-      )
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-database == 'true'
     uses: ./.github/workflows/mosaiq-db-tests.yml
 
-  # Docs check for PRs with doc changes — skip if auto-fix pushed.
   docs-check:
     needs: [pre-commit, changes]
     if: |
       needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      github.event_name == 'pull_request' &&
-      needs.changes.outputs.docs == 'true'
+      needs.changes.outputs.run-docs == 'true'
     uses: ./.github/workflows/docs.yml
-    with:
-      publish: false
     permissions:
       contents: read
-      pages: write
-      id-token: write
 
-  # Docs publish on main — gated on the full core CI set.
-  docs-publish:
-    needs: [lint, type-check, unit-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/docs.yml
-    with:
-      publish: true
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-
-  # Summary job provides overall status.
+  # main-integrity requires the exact check name "CI Summary".
+  # See the contributor workflow guide before changing this name or its needs.
+  # The summary must fail when a required check fails or never runs.
   summary:
-    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish]
+    name: CI Summary
+    needs: [changes, pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - name: Generate Summary
-        run: |
-          if [[ "${{ needs.pre-commit.outputs.autofix-pushed }}" == "true" ]]; then
-            cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
-          ## CI Results
-
-          Pre-commit pushed an auto-fix commit. A fresh CI run will validate the fixes.
-          All other checks were skipped for this run.
-          EOF
-            exit 0
-          fi
-
-          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
-          ## CI Results
-
-          ### Core Checks (Always Run)
-          | Check | Status |
-          |-------|--------|
-          | Pre-commit | ${{ needs.pre-commit.result }} |
-          | Lint | ${{ needs.lint.result }} |
-          | Type Check | ${{ needs.type-check.result }} |
-          | Unit Tests | ${{ needs.unit-tests.result }} |
-
-          ### Extended Checks
-          | Check | Status |
-          |-------|--------|
-          | Integration Tests | ${{ needs.integration-tests.result || 'skipped' }} |
-          | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
-          | Documentation | ${{ needs.docs-check.result || needs.docs-publish.result || 'skipped' }} |
-
-          **Workflow:** ${{ github.workflow }}
-          **Triggered by:** ${{ github.actor }}
-          **Event:** ${{ github.event_name }}
-          **Branch:** ${{ github.ref_name }}
-          EOF
-
-      - name: Check Required Status
-        if: always() && needs.pre-commit.outputs.autofix-pushed != 'true'
-        run: |
-          # These must pass for PRs
-          if [[ "${{ needs.pre-commit.result }}" != "success" && "${{ needs.pre-commit.result }}" != "skipped" ]]; then
-            echo "::error::Pre-commit failed"
-            exit 1
-          fi
-          if [[ "${{ needs.lint.result }}" != "success" && "${{ needs.lint.result }}" != "skipped" ]]; then
-            echo "::error::Linting failed"
-            exit 1
-          fi
-          if [[ "${{ needs.type-check.result }}" != "success" && "${{ needs.type-check.result }}" != "skipped" ]]; then
-            echo "::error::Type checking failed"
-            exit 1
-          fi
-          if [[ "${{ needs.unit-tests.result }}" != "success" && "${{ needs.unit-tests.result }}" != "skipped" ]]; then
-            echo "::error::Unit tests failed"
-            exit 1
-          fi
-          echo "All required checks passed"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check required status and generate summary
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: >-
+          python .github/scripts/check_workflow_status.py
+          --title 'CI Results'
+          --conditional integration-tests=run-integration
+          --conditional mosaiq-db-tests=run-database
+          --conditional docs-check=run-docs

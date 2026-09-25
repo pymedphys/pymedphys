@@ -21,7 +21,7 @@ from pymedphys._imports import numpy as np
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._dicom import compat, coords, create
+from pymedphys._dicom import coords, create
 
 ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
@@ -113,9 +113,11 @@ def test_coords_in_datasets_are_equal():
         }
     )
 
-    compat.ensure_transfer_syntax(ds1)
     ds2 = copy.deepcopy(ds1)
     assert coords.coords_in_datasets_are_equal([ds1, ds2])
+
+    # The transfer syntax declared by dicom_dataset_from_dict survives the copy
+    assert ds2.file_meta.TransferSyntaxUID == ds1.file_meta.TransferSyntaxUID
 
     # only one coords supplied:
     assert coords.coords_in_datasets_are_equal([ds1])

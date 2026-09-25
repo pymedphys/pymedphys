@@ -80,7 +80,8 @@ def write_prs(
     coll_sn="0000000",
     coll_rev="C",
     f_ware_ver="0.0.0",
-    s_ware_v="0.0.0.0",
+    # A firmware version string, not a bind address.
+    s_ware_v="0.0.0.0",  # nosec B104
     depth="1.0",
     nom_gain="1",
     orient="Sagittal",

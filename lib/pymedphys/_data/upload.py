@@ -134,7 +134,9 @@ def upload_filepaths(filepaths, deposition_id, use_sandbox=False):
     files_url = get_files_url(deposition_id, use_sandbox=use_sandbox)
 
     for filepath in filepaths:
-        md5 = hashlib.md5()
+        # Zenodo compares this checksum against its own; it is an integrity
+        # check, not a security primitive.
+        md5 = hashlib.md5(usedforsecurity=False)
 
         with open(filepath, "rb") as upload_file:
             md5.update(upload_file.read())

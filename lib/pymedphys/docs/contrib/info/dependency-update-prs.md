@@ -11,14 +11,17 @@ That workflow should:
 
 1. run on a schedule and also allow manual dispatch
 2. check out the repository
-3. run `uv lock --upgrade`
+3. run `uv lock --upgrade`, sync the environment, and run
+   `pymedphys dev propagate` so the exported requirements files,
+   `dependency-extra.txt`, and `pyproject.hash` match the new lock
 4. stop without opening a PR if `uv.lock` did not change
 5. run a focused validation suite if `uv.lock` changed
-6. open a PR only if that validation passes
+6. open a PR, with the CI bot's token so CI runs on it, only if that
+   validation passes
 
 The PR should usually have:
 
-- title: `⬆️ Update dependencies`
+- title: `chore: update dependencies`
 - branch: `deps/update-<run_number>`
 - label: `dependencies`
 
@@ -28,7 +31,7 @@ The dependency update workflow should run a focused smoke suite before opening a
 PR:
 
 - install from the updated lockfile
-- run a representative pytest subset
+- run the unit tests (`pymedphys dev tests -m "not slow"`)
 - build the docs
 - build a wheel and install it into a clean virtual environment
 
@@ -88,32 +91,49 @@ update manually.
 
 ## Manual commands for a cautious reviewer
 
-If you want to reproduce the intended smoke suite locally:
+Run these preparation commands from the repository root in Bash or PowerShell:
 
-```bash
-uv sync --frozen --extra user --extra tests --extra docs
+```shell
+uv sync --python 3.12 --locked --extra all --group dev
+uv run pymedphys dev propagate
 
-uv run pytest -q --maxfail=1 \
-  -m "not slow and not cypress and not mosaiqdb and not anthropic_key" \
-  lib/pymedphys/tests/coordinates \
-  lib/pymedphys/tests/delivery \
-  lib/pymedphys/tests/dicom \
-  lib/pymedphys/tests/gamma \
-  lib/pymedphys/tests/interp \
-  lib/pymedphys/tests/logfiles \
-  lib/pymedphys/tests/metersetmap \
-  lib/pymedphys/tests/trf \
-  lib/pymedphys/tests/utilities
+uv run pymedphys dev tests -m "not slow" --maxfail=3
 
 uv run pymedphys dev docs
 
 uv build --wheel
+```
+
+Then install and smoke-test the wheel using the block for your shell. Keep only
+the newly built PyMedPhys wheel in `dist`; move any older wheels out first.
+
+### Linux/macOS (Bash)
+
+```bash
 uv venv .wheel-test
 source .wheel-test/bin/activate
 uv pip install dist/*.whl
 pymedphys --help
 python -c "import pymedphys; print(pymedphys.__version__)"
 ```
+
+### Windows (PowerShell)
+
+```powershell
+uv venv .wheel-test
+.\.wheel-test\Scripts\Activate.ps1
+$wheelFiles = @(Get-ChildItem -Path .\dist\pymedphys-*.whl -File)
+if ($wheelFiles.Count -ne 1) {
+    throw 'Expected exactly one PyMedPhys wheel in dist. Move older wheels out first.'
+}
+$wheelPath = $wheelFiles[0].FullName
+uv pip install $wheelPath
+pymedphys --help
+python -c "import pymedphys; print(pymedphys.__version__)"
+```
+
+`$wheelPath` is the wheel's resolved absolute filename, so `uv pip install`
+receives a concrete path rather than a wildcard or a hard-coded version.
 
 ## Merge checklist
 
@@ -129,6 +149,6 @@ python -c "import pymedphys; print(pymedphys.__version__)"
 That usually means one of two things:
 
 1. `uv lock --upgrade` produced no changes
-2. the validation failed, so the workflow never opened the PR
+2. the workflow failed, including validation or CI bot authentication
 
 If you suspect the second case, run the workflow manually and inspect the logs.

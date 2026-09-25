@@ -7,11 +7,14 @@ all = [
     'dbfread',
     'dicompyler-core',
     'doc8',
+    'httpx2',
     'imageio',
+    'interpolation',
     'ipython',
     'jupyter-book',
     'keyring',
     'matplotlib',
+    'mypy',
     'natsort',
     'networkx',
     'numba',
@@ -32,6 +35,7 @@ all = [
     'pytest',
     'pytest-rerunfailures',
     'pytest-sugar',
+    'pytest-timeout',
     'python-dateutil',
     'pywin32',
     'PyYAML',
@@ -52,6 +56,11 @@ all = [
     'tqdm',
     'trio',
     'trio-asyncio',
+    'types-python-dateutil',
+    'types-PyYAML',
+    'types-requests',
+    'types-tabulate',
+    'types-toml',
     'watchdog',
     'xmltodict',
 ]
@@ -60,18 +69,25 @@ cli = [
 ]
 dev = [
     'doc8',
+    'mypy',
     'pre-commit',
     'pyright',
     'readme-renderer',
     'rope',
     'ruff',
     'tabulate',
+    'types-python-dateutil',
+    'types-PyYAML',
+    'types-requests',
+    'types-tabulate',
+    'types-toml',
 ]
 dicom = [
     'pydicom',
     'pynetdicom',
 ]
 docs = [
+    'interpolation',
     'ipython',
     'jupyter-book',
     'matplotlib',
@@ -86,12 +102,19 @@ docs = [
     'tqdm',
 ]
 doctests = [
+    'pytest',
     'ruff',
     'sphinx-book-theme',
     'tabulate',
+    'toml',
 ]
 icom = [
     'numpy',
+]
+lint = [
+    'astroid',
+    'pylint',
+    'ruff',
 ]
 mosaiq = [
     'attrs',
@@ -110,17 +133,21 @@ tests = [
     'imageio',
     'matplotlib',
     'numba',
+    'pandas',
     'Pillow',
     'psutil',
     'pydicom',
     'PyGithub',
+    'pylibjpeg-libjpeg',
     'pylint',
     'pynetdicom',
     'pytest',
     'pytest-rerunfailures',
     'pytest-sugar',
+    'pytest-timeout',
     'python-dateutil',
     'shapely',
+    'toml',
     'tqdm',
 ]
 user = [
@@ -130,6 +157,7 @@ user = [
     'dash',
     'dbfread',
     'dicompyler-core',
+    'httpx2',
     'imageio',
     'keyring',
     'matplotlib',

@@ -46,6 +46,8 @@ import time
 from pymedphys._imports import pydicom
 from pymedphys._pinnacle.pinnacle_exceptions import MissingCTImageError
 
+from pymedphys._dicom.compat import ensure_transfer_syntax
+
 from .constants import (
     GImplementationClassUID,
     GTransferSyntaxUID,
@@ -406,7 +408,7 @@ def convert_struct(plan, export_path, skip_pattern):
     struct_sop_instuid = plan.struct_inst_uid
 
     # Populate required values for file meta information
-    file_meta = pydicom.dataset.Dataset()
+    file_meta = pydicom.dataset.FileMetaDataset()
     file_meta.MediaStorageSOPClassUID = RTStructSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = struct_sop_instuid
@@ -534,11 +536,14 @@ def convert_struct(plan, export_path, skip_pattern):
     # find out where to get if its been approved or not
     # find out how to insert proper 'CodeString' here
     ds.ApprovalStatus = "UNAPPROVED"
-    # Set the transfer syntax
 
-    # TODO: Use `pymedphys._dicom.create.set_default_transfer_syntax` here
-    ds.is_little_endian = True
-    ds.is_implicit_VR = True
+    # ``file_meta`` already declares Implicit VR Little Endian (see
+    # ``GTransferSyntaxUID``). Unlike the explicit VR transfer syntaxes it
+    # has no 64 kB element length limit, so arbitrarily long ContourData can
+    # be written. ``ensure_transfer_syntax`` never overrides a declared
+    # transfer syntax; it is called here only to guarantee that one is
+    # present before the file is written.
+    ensure_transfer_syntax(ds)
 
     # Save the RTDose Dicom File
     output_file = os.path.join(export_path, struct_filename)

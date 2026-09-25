@@ -1,38 +1,55 @@
+macOS Setup
+===========
+
+Install prerequisites
+=====================
+
+Install `Git <https://git-scm.com/downloads>`_ and
+`uv <https://docs.astral.sh/uv/getting-started/installation/>`_.
+On macOS, the standalone uv installer is:
+
+.. code-block:: bash
+
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+Open a new terminal if ``uv`` is not yet on your ``PATH``.
+
+Create the development environment
 ===================================
-MacOS Setup
-===================================
 
-Overview
-========
+Run these commands from the directory where you keep your projects. If you
+will contribute through a fork, substitute your fork's clone URL.
 
-* Install Python 3.12.3
-* Install ``uv`` with ``curl -LsSf https://astral.sh/uv/install.sh | sh``
-* Install freetds
+.. code-block:: bash
 
-  * Can be done with `Homebrew`_; ``brew install freetds``
-* Install ``cython``
+    git clone https://github.com/pymedphys/pymedphys.git
+    cd pymedphys
+    uv python install 3.12
+    uv sync --python 3.12 --locked --extra all --group dev
+    uv run pre-commit install
 
-  * eg. ``pip install cython``
-* Clone the PyMedPhys git repo
-* Run ``uv sync --extra all --group dev`` within the root of the repo
-* Run ``uv run -- pre-commit install``
-* Install pandoc
+The current source supports Python 3.10, 3.11, and 3.12. Python 3.12 matches
+the quick CI run; no particular patch version is required. uv can install
+Python for you, so a separate Python or pipx installation is not required.
 
-  * Can be done with `Homebrew`_; ``brew install pandoc``
+``uv sync`` creates the repository's ``.venv`` and installs an editable copy of
+PyMedPhys with the contributor dependencies. Run project commands with
+``uv run`` from the repository root.
 
-You're good to go.
-
-.. _`Homebrew`: https://brew.sh/
-
-
-Opinionated Recommendations
-===========================
-
-* Install Python with `pyenv`_
-* Install `VSCode`_ as your code editor
-* Install `Jupyter Lab`_ to work with Notebooks
+Install `Pandoc <https://pandoc.org/installing.html>`_ if needed for notebook
+or document conversion (for example, ``brew install pandoc`` with
+`Homebrew <https://brew.sh/>`_). FreeTDS and Cython are not general setup
+prerequisites: additional build tools may be needed if a dependency has no
+wheel for your Python version and platform. Follow that package's build
+instructions if installation reports a source-build failure.
 
 
-.. _`pyenv`: https://github.com/pyenv/pyenv-installer#install
-.. _`VSCode`: https://code.visualstudio.com/Download
-.. _`Jupyter Lab`: https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html#pip
+Next steps
+==========
+
+* Run ``uv run pymedphys dev tests -m "not slow"``.
+* Follow the :doc:`documentation guide <../info/docs-guide>` to build the site.
+* Read the :doc:`workflow guide <../info/workflows>` before opening a PR.
+* For notebooks, :doc:`register the project kernel <../tips/add-jupyter-kernel>`.
+* An editor such as `Visual Studio Code <https://code.visualstudio.com/>`_ is
+  optional.

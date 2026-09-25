@@ -21,6 +21,8 @@
 
 # Vendored from https://github.com/pytest-dev/apipkg/blob/e409195c52bab50e14745d0adf824b2a0390a50f/src/apipkg/__init__.py
 # The change within https://github.com/pytest-dev/apipkg/commit/c9b997713cb77d2c1334acb7847ee6b24e3261b2 was reverted
+# `distribution_version` uses `importlib.metadata` rather than `pkg_resources`,
+# which setuptools no longer ships.
 
 
 # type: ignore
@@ -58,14 +60,12 @@ def _py_abspath(path):
 def distribution_version(name):
     """try to get the version of the named distribution,
     returns None on failure"""
-    from pkg_resources import DistributionNotFound, get_distribution
+    from importlib.metadata import PackageNotFoundError, version
 
     try:
-        dist = get_distribution(name)
-    except DistributionNotFound:
-        pass
-    else:
-        return dist.version
+        return version(name)
+    except PackageNotFoundError:
+        return None
 
 
 def initpkg(pkgname, exportdefs, attr=None, eager=False):

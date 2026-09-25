@@ -91,7 +91,7 @@ def create_image_files(image, export_path):
         dateofscan = image_set["scan_date"]
         timeofscan = image_set["scan_time"]
 
-        file_meta = pydicom.dataset.Dataset()
+        file_meta = pydicom.dataset.FileMetaDataset()
         file_meta.MediaStorageSOPClassUID = classuid
         file_meta.MediaStorageSOPInstanceUID = instuid
         file_meta.TransferSyntaxUID = GTransferSyntaxUID

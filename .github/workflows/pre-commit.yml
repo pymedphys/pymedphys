@@ -37,24 +37,28 @@ jobs:
       - name: Generate bot token
         id: bot-token
         if: steps.check-bot.outputs.available == 'true'
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
           private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+          # The token only ever pushes the auto-fix commit.
+          permission-contents: write
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      # No credentials stay in the checkout while the hooks run; the auto-fix
+      # push authenticates explicitly below.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
-          token: ${{ steps.bot-token.outputs.token || github.token }}
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
           extras: 'all'
 
       - name: Cache pre-commit
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -65,6 +69,9 @@ jobs:
         run: |
           uv run pre-commit run --all-files --show-diff-on-failure
 
+      # Fork PRs are skipped: neither the bot token nor GITHUB_TOKEN can push
+      # to a fork. The push targets the head repository, the same one checked
+      # out above, which the guard makes equal to this repository.
       - name: Push auto-fixes
         if: |
           steps.pre-commit.outcome == 'failure' &&
@@ -73,6 +80,8 @@ jobs:
         id: autofix
         env:
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PUSH_TOKEN: ${{ steps.bot-token.outputs.token || github.token }}
+          REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           # Re-run pre-commit to apply auto-fixes (formatters, trailing whitespace, etc.)
           uv run pre-commit run --all-files || true
@@ -82,7 +91,8 @@ jobs:
             git config user.name "PyMedPhys Bot"
             git add -A
             git commit -m "style: auto-fix pre-commit issues"
-            git push origin "HEAD:${PR_BRANCH}"
+            # Git redacts the credential in its own output; the token is a masked secret.
+            git push "https://x-access-token:${PUSH_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:${PR_BRANCH}"
             echo "pushed=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Auto-fix commit pushed. A new CI run will validate the fixes."
           else
@@ -92,8 +102,10 @@ jobs:
 
       - name: Fail if pre-commit found issues
         if: steps.pre-commit.outcome == 'failure'
+        env:
+          AUTOFIX_PUSHED: ${{ steps.autofix.outputs.pushed }}
         run: |
-          if [[ "${{ steps.autofix.outputs.pushed }}" == "true" ]]; then
+          if [[ "${AUTOFIX_PUSHED}" == "true" ]]; then
             echo "::error::Pre-commit failed. Auto-fix commit has been pushed to this branch."
             echo "A new CI run should start automatically."
           else

@@ -50,7 +50,7 @@ This approach has been reliable.
   clients will connect as the non-administrator `pexit` user. The config
   is the following:
 
-```config
+```text
 Port 38471
 PubkeyAuthentication yes
 PasswordAuthentication no
@@ -177,7 +177,7 @@ our case this full command was:
 Then, once it has been verified that the above command worked as expected,
 the following file was created at `/etc/systemd/system/autossh-samba-tunnel.service`:
 
-```service
+```text
 [Unit]
 Description=AutoSSH samba port forwarding
 After=network.target

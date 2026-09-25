@@ -1,16 +1,16 @@
 title: PyMedPhys
 author: the PyMedPhys community
-copyright: "2018-2025"
+copyright: "2018-2026"
 logo: img/pymedphys.svg
 execute:
   execute_notebooks: cache
+  allow_errors: false
+  raise_on_error: true
 parse:
   myst_extended_syntax: []
 
 html:
   favicon: img/pymedphys.svg
-  analytics:
-    google_analytics_id: UA-26591325-7
   home_page_in_navbar: false
   use_edit_page_button: true
   use_repository_button: true
@@ -31,12 +31,33 @@ launch_buttons:
 sphinx:
   config:
     language: en
-
-  extra_extensions:
-    - sphinx.ext.autodoc
-    - sphinx.ext.doctest
-    - sphinx.ext.viewcode
-    - sphinx.ext.autosummary
-    - sphinx.ext.napoleon
-    - sphinxarg.ext
-    - matplotlib.sphinxext.plot_directive
+    # Unauthenticated github.com requests are frequently rate limited.
+    # Check new or changed GitHub links manually; they are excluded here.
+    linkcheck_ignore:
+      - 'https://github\.com/.*'
+    # Sphinx cannot set float-typed values such as the rate-limit timeout
+    # from the command line, so keep every link-check setting here.
+    linkcheck_workers: 10
+    linkcheck_timeout: 10
+    linkcheck_retries: 1
+    linkcheck_rate_limit_timeout: 30
+    linkcheck_report_timeouts_as_broken: false
+    # Navigation is defined by the embedded toctrees in index pages. Keep the
+    # Jupyter Book extensions except sphinx_external_toc, which conflicts with them.
+    extensions:
+      - sphinx_togglebutton
+      - sphinx_copybutton
+      - myst_nb
+      - jupyter_book
+      - sphinx_thebe
+      - sphinx_comments
+      - sphinx.ext.intersphinx
+      - sphinx_design
+      - sphinx_book_theme
+      - sphinx.ext.autodoc
+      - sphinx.ext.doctest
+      - sphinx.ext.viewcode
+      - sphinx.ext.autosummary
+      - sphinx.ext.napoleon
+      - sphinxarg.ext
+      - matplotlib.sphinxext.plot_directive
