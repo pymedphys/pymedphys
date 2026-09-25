@@ -22,6 +22,13 @@ import pytest
 from pymedphys import pinnacle
 
 
+def _legacy_message(name):
+    return (
+        rf"`pymedphys\.experimental\.pinnacle\.{name}` has been replaced "
+        rf"with `pymedphys\.pinnacle\.{name}`"
+    )
+
+
 @pytest.mark.parametrize(
     "name", ["PinnacleExport", "PinnaclePlan", "PinnacleImage", "export_cli"]
 )
@@ -54,8 +61,38 @@ def test_legacy_class_warns_and_forwards_arguments(name, monkeypatch):
     assert not caught
     assert direct.arguments == (args, kwargs)
 
-    with pytest.warns(DeprecationWarning, match=rf"pymedphys\.pinnacle\.{name}"):
+    with pytest.warns(DeprecationWarning, match=_legacy_message(name)):
         instance = getattr(legacy, name)(*args, **kwargs)
 
     assert isinstance(instance, public_class)
     assert instance.arguments == (args, kwargs)
+
+
+class _Forwarded(Exception):
+    pass
+
+
+class _RecordingArgs:
+    """Stop ``export_cli`` at its first argument lookup."""
+
+    def __getattr__(self, name):
+        raise _Forwarded(self)
+
+
+def test_legacy_export_cli_warns_and_forwards_arguments():
+    legacy = importlib.import_module("pymedphys.experimental.pinnacle")
+    args = _RecordingArgs()
+
+    with (
+        pytest.warns(DeprecationWarning, match=_legacy_message("export_cli")),
+        pytest.raises(_Forwarded) as forwarded,
+    ):
+        legacy.export_cli(args)
+
+    assert forwarded.value.args[0] is args
+
+
+def test_experimental_cli_uses_public_export_cli():
+    cli = importlib.import_module("pymedphys.cli.experimental.pinnacle")
+
+    assert cli.export_cli is pinnacle.export_cli

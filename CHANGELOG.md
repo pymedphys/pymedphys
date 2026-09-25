@@ -31,7 +31,10 @@ This project adheres to
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
-  warnings.
+  warnings, which now name the legacy import path alongside its replacement.
+  The deprecated `pymedphys experimental pinnacle export` command calls the
+  public `export_cli` directly, so it emits only its existing deprecation
+  warning.
 
 ### Dependency changes
 
