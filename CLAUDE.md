@@ -72,6 +72,10 @@ Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
 generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
 file is gitignored, so edit `_config.yml`.
 
+Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
+Follow the relative source-path and published-URL guidance in
+[Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
+
 ## Architecture Overview
 
 ### Project Structure

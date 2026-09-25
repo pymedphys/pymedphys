@@ -77,10 +77,10 @@ A common pattern is:
 ## Where to go next
 
 If you are still deciding whether PyMedPhys covers your task, go back to
-{doc}`What PyMedPhys can do <what-pymedphys-can-do>`.
+[What PyMedPhys can do](what-pymedphys-can-do.md).
 
 If you have chosen an interface and need to install it, continue to
-{doc}`Installation options <installation-options>`.
+[Installation options](installation-options.md).
 
 If you are ready to install now, go to the
-{doc}`Quick Start Guide <quick-start>`.
+[Quick Start Guide](quick-start.rst).
