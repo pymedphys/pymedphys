@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +14,8 @@
 
 # pylint: disable = protected-access
 
+from __future__ import annotations
+
 import pathlib
 import shutil
 import subprocess
@@ -21,21 +24,57 @@ import sys
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
 
+DEFAULT_ADDRESS = "localhost"
+
 
 def main(args):
     """Boot up the pymedphys GUI"""
     _fill_streamlit_credentials()
 
-    streamlit_script_path = str(HERE.joinpath("_app.py"))
+    subprocess.check_call(build_streamlit_command(port=args.port, address=args.address))
 
-    config = {}
 
-    if args.port:
-        config["server.port"] = args.port
+def build_streamlit_command(
+    port: int | None = None, address: str = DEFAULT_ADDRESS
+) -> list[str]:
+    """Return the command that starts the PyMedPhys GUI with Streamlit.
 
-    subprocess.check_call(
-        [sys.executable, "-m", "streamlit", "run", streamlit_script_path]
-    )
+    Streamlit listens on every network interface unless ``server.address``
+    is set, and sends usage statistics unless they are disabled. The GUI can
+    display patient data, so the command always sets both. Command-line flags
+    take precedence over Streamlit configuration files and environment
+    variables.
+
+    Parameters
+    ----------
+    port : int, optional
+        The port to serve on. If ``None``, Streamlit's own default applies.
+    address : str, optional
+        The address to listen on. Defaults to ``"localhost"``, so that only
+        the computer running the GUI can connect to it.
+
+    Returns
+    -------
+    list of str
+        The command, suitable for ``subprocess.check_call``.
+    """
+    options = [
+        "--server.address",
+        address,
+        "--browser.gatherUsageStats",
+        "false",
+    ]
+    if port is not None:
+        options += ["--server.port", str(port)]
+
+    return [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        *options,
+        str(HERE.joinpath("_app.py")),
+    ]
 
 
 def _fill_streamlit_credentials():

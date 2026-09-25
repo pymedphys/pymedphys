@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Cancer Care Associates
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +14,7 @@
 
 import argparse
 
-from pymedphys._gui import main
+from pymedphys._gui import DEFAULT_ADDRESS, main
 
 
 def gui_cli(subparsers: argparse._SubParsersAction):
@@ -21,7 +22,21 @@ def gui_cli(subparsers: argparse._SubParsersAction):
         "gui", help=("Run the PyMedPhys GUI.")
     )
 
-    parser.add_argument("--port")
+    parser.add_argument(
+        "--port",
+        type=int,
+        help="Port to serve the GUI on. Defaults to Streamlit's default port.",
+    )
+    parser.add_argument(
+        "--address",
+        default=DEFAULT_ADDRESS,
+        help=(
+            "Network address to serve the GUI on. Defaults to localhost, so "
+            "that only this computer can connect. The GUI has no login and can "
+            "display patient data; an address such as 0.0.0.0 makes it "
+            "reachable from every network this computer is connected to."
+        ),
+    )
     parser.add_argument("--electron", action="store_true")
     parser.set_defaults(func=main)
 

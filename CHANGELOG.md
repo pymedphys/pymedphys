@@ -125,6 +125,14 @@ This project adheres to
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
   `ftp`, was passed through unchecked.
+- **[Security]** `pymedphys gui` now serves on `localhost` only, so other
+  computers can no longer connect to it. Previously Streamlit listened on
+  every network interface, and the GUI, which has no login and can display
+  patient data, was reachable from the network. Pass `--address` (for example
+  `--address 0.0.0.0`) to serve on another address. The GUI also disables
+  Streamlit's usage statistics, and `--port` now takes effect; it was
+  previously ignored. These options are passed as command-line flags, so they
+  take precedence over any Streamlit configuration file.
 
 ## [0.41.0]
 
