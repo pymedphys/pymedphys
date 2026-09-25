@@ -186,6 +186,13 @@ The project uses uv with optional dependency groups:
   test environment. A fresh venv alone does not isolate `PYTHONPATH`.
 - Include every root-level input to documentation preparation in the sdist:
   `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
+- Keep `release-guide.md` and `workflows.md` aligned with the active release
+  workflow, including prereleases, publishing destinations, and post-upload
+  checks. Record actual release-test evidence on the relevant PR or release.
+- Check published wheels and sdists separately outside the checkout. A retry
+  must not count `Requirement already satisfied` or a cached wheel as a source
+  build: use `--force-reinstall --no-cache-dir --no-binary=pymedphys`, retain
+  the build log, and check installed versions and import locations.
 
 ## Important Implementation Notes
 

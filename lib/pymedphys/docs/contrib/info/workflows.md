@@ -124,12 +124,24 @@ Builds documentation on PRs that change documentation sources, package Python co
 Handles PyPI package publishing with quality gates.
 
 - **Quality Checks**: Runs lint, type-check, unit, and integration tests
-- **Features**:
-  - TestPyPI dry-run capability
-  - PyPI trusted publishing (no API tokens)
-  - Automatic release asset upload
+- **Publishing routes**:
+  - A published GitHub release, including a prerelease, publishes to production
+    PyPI and then uploads the distributions as GitHub release assets
+  - Manual `dry_run=true` publishes to TestPyPI only; it performs a real upload
+  - Manual `dry_run=false` publishes to production PyPI only and does not
+    create a GitHub release or upload release assets
+- **Validation and authentication**:
+  - PyPI trusted publishing through the `pypi` or `testpypi` environment
+    (no stored API token)
   - The same distribution checks as `wheel-build`; a published release also
     fails unless its tag is `v` followed by the package version
+  - Manual runs do not perform that release-event tag/version check
+- **Completion**: Inspect the publishing and asset jobs themselves. The
+  `Release Summary` job only writes a report and does not include the asset
+  upload in its dependencies
+
+Follow the [release procedure](release-guide.md) for exact-commit tagging,
+development releases, and separate wheel/source installation checks from PyPI.
 
 #### `security.yml`
 Security scanning with pinned tools run through `uvx`, so nothing is installed
@@ -244,7 +256,8 @@ Environment protection is configured in GitHub Settings, not by the workflow's
 `environment` field. Create and verify these environments before releasing;
 referencing an absent environment can create it without protection rules.
 The publisher registered with PyPI or TestPyPI must match this repository,
-`.github/workflows/release.yml`, and the corresponding environment name.
+the workflow filename `release.yml` (without `.github/workflows/` in the
+publisher form), and the corresponding environment name.
 See the [release guide](release-guide.md) for the release procedure.
 
 ## Required checks and pull request reviews
