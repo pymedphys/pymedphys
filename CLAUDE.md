@@ -262,6 +262,11 @@ The project uses uv with optional dependency groups:
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
+7. **DICOM De-identification**: A standards-driven de-identification engine is replacing `pymedphys.dicom.anonymise` and the experimental pseudonymisation module. Its design, decision log, and next steps are in `lib/pymedphys/docs/contrib/info/deidentification-design.md`; update that document in every pull request that touches de-identification.
+   - Never log, print, or put into exception messages or reports any DICOM attribute value or original file path from de-identification code. Refer to attributes by tag or keyword path only.
+   - Rule tables generated from the DICOM standard are regenerated with their generator, never edited by hand.
+   - Describe output as "de-identified in accordance with" a named DICOM PS3.15 edition, profile, and options. Never describe it as "anonymised"; that is a legal conclusion about the release context that software cannot make.
+
 ## Common Development Patterns
 
 When implementing new features:
@@ -405,6 +410,14 @@ This ensures that:
 - Future Claude Code interactions will follow the same guidelines
 - Maintainers don't need to repeatedly explain the same concepts
 - Knowledge is preserved across different workflow runs
+
+### Pull Request Scope and Documentation
+
+These principles come from maintainer feedback and apply to all pull requests:
+
+- **Keep pull requests small and reviewable by a human.** Each pull request has a single concern and, as a guide, about 400 lines of hand-written change at most, excluding tests and documentation. Split work that grows beyond this before requesting review. Keep generated data (lock files, generated tables, propagated requirements) apart from hand-written logic where possible, so the reviewer checks the generator and its tests rather than the generated lines.
+- **Every pull request ships its documentation.** New public functions, classes, and CLI options get NumPy-style docstrings that state behaviour, failure modes, and any standard clause they implement. User-visible changes are documented in the user docs in the same pull request. Add a `CHANGELOG.md` entry. The pull request description states the scope, what is deferred, how the change was verified, and what the reviewer should check first.
+- **Multi-PR programmes keep a living design document** under `lib/pymedphys/docs/contrib/info/`, with a decision log and a "next pull request" section, updated in every pull request of the programme. Re-assess the plan at the start of each pull request in light of what earlier ones found.
 
 ### CI Gates and Review Policy
 
