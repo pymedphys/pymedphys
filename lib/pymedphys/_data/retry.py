@@ -2,7 +2,7 @@ import time
 from functools import wraps
 
 
-def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
+def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None, giveup=None):
     """Retry calling the decorated function using an exponential backoff.
 
     http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
@@ -20,6 +20,9 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     :type backoff: int
     :param logger: logger to use. If None, print
     :type logger: logging.Logger instance
+    :param giveup: called with a caught exception; when it returns True the
+        exception is re-raised at once instead of being retried
+    :type giveup: callable or None
     """
 
     def deco_retry(f):
@@ -30,6 +33,8 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
                 try:
                     return f(*args, **kwargs)
                 except ExceptionToCheck as e:
+                    if giveup is not None and giveup(e):
+                        raise
                     msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
                     if logger:
                         logger.warning(msg)
