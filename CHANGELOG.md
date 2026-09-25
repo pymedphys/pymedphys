@@ -57,6 +57,7 @@ This project adheres to
 ### Contributor facing changes
 
 - **[Contributor facing only]** Added a living design document and decision log for the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and experimental pseudonymisation (`lib/pymedphys/docs/contrib/info/deidentification-design.md`). `CLAUDE.md` now records the maintainers' guidance that pull requests stay small and reviewable, ship their documentation, and, for de-identification code, never log DICOM values or original file paths.
+- **[Contributor facing only]** Refined the de-identification design after review: UID handling respects the selected options and identifier roles; removal and retention overrides are validated before claiming conformance; synthetic birth dates remain stable per subject; descriptor cleaning has explicit limits; confidential QC packs are separate from release reports; and numerical risk thresholds require a documented, validated assessment model.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
