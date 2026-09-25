@@ -136,7 +136,13 @@ def pymedphys_cli():
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()
-    logging_config = get_logging_config()
+    # Pytest isolates HOME only after CLI startup. Test commands must not
+    # read the user's config or open (possibly truncate) its configured log.
+    logging_config = (
+        {}
+        if getattr(args, "dev", None) in ("tests", "doctests")
+        else get_logging_config()
+    )
     run_logging_basic_config(args, logging_config)
 
     if hasattr(args, "func"):

@@ -23,11 +23,15 @@ python -m pip install "pymedphys[user]"
 # Run default tests (slow/database selection has separate options)
 uv run -- pymedphys dev tests
 
-# Run specific test file or directory
+# Run specific test file or directory (relative to lib/pymedphys or the cwd)
 uv run -- pymedphys dev tests tests/path/to/test.py
 
 # Run with specific pytest options
 uv run -- pymedphys dev tests -v -s -k "test_name"
+
+# Add the slow tests to the default selection, or run only the slow tests
+uv run -- pymedphys dev tests --include-slow
+uv run -- pymedphys dev tests --slow
 
 # Run doctests
 uv run -- pymedphys dev doctests
@@ -116,10 +120,27 @@ When creating conda recipes, pull requests, or other metadata that requires main
 - Tests use pytest with fixtures defined in `conftest.py`
 - `pymedphys dev tests` changes the working directory to `lib/pymedphys` before
   invoking pytest, so relative output paths (e.g. `--junitxml`) resolve there.
-  Use absolute paths in CI.
+  Use absolute paths in CI. Test paths may be given relative to `lib/pymedphys`
+  or to the caller's directory; the whole package is collected only when no
+  path is given. Resolve positional paths after pytest parses its arguments;
+  do not maintain a list of value-taking options, since plugins can add more.
 - Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
-  `conftest.py` unless the matching flag (e.g. `--slow`) is passed. `pytest -m slow`
-  alone selects them but still skips every one.
+  `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
+  `--include-anthropic`) adds them to the default selection. `--slow` (and
+  `--mosaiqdb`, `--anthropic`, `--pydicom`) runs only the tests with that
+  marker; several of these select the union. `--all` runs everything.
+  `pytest -m slow` alone selects the slow tests but still skips every one.
+- `[tool.pytest.ini_options]` in `pyproject.toml` enforces strict markers and
+  strict xfail, and stops any test after 900 s (`pytest-timeout`). Register a
+  new marker in `MARKER_CONFIG` in the root conftest.
+- The root conftest points `HOME` and `USERPROFILE` at a temporary directory for
+  the whole session, so tests never read or write the real `~/.pymedphys` or
+  `~/.streamlit`. The Zenodo cache stays shared through `PYMEDPHYS_DATA_DIR`,
+  which `pymedphys._data.download.get_data_dir` honours. Write test outputs to
+  `tmp_path`, never beside cached data files.
+- `dev tests` and `dev doctests` bypass user logging configuration during CLI
+  startup, before pytest can isolate the home directory. Keep this boundary:
+  opening a configured log can modify user files before any test runs.
 - Data caches must not fall back across changes to `hashes.json`: ZIP archives
   are checked, but previously extracted files are not refreshed automatically.
 - Mock data and fixtures are in `_mocks/` and test data directories
