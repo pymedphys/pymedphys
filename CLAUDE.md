@@ -179,6 +179,10 @@ The project uses uv with optional dependency groups:
   `include` is an allow-list that also replaces the sdist's contents. The sdist
   uses `only-include`, because a full-tree walk reaches the repository-root
   `docs` symlink first and then skips `lib/pymedphys/docs` as already seen.
+- Declare the licence as a PEP 639 SPDX expression (`license = "..."`) that
+  covers bundled third-party code as well as PyMedPhys's own, and list every
+  licence file in `license-files`. Update both when vendoring code under a new
+  licence or removing the last code under one.
 - Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
   not `0.42.0-dev0`); the release tag must be `v` followed by it.
 - Distribution smoke tests must ignore the caller's Python path overrides,

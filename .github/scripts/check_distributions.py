@@ -84,10 +84,24 @@ class Distributions:
 
 @dataclasses.dataclass(frozen=True)
 class Archive:
-    """A distribution's version and its member paths, relative to its root."""
+    """A distribution's metadata and its member paths, relative to its root.
+
+    ``licence_root`` is where the files named by ``License-File`` live: the
+    sdist root, or the wheel's ``.dist-info/licenses/`` directory.
+    """
 
     version: str
     files: frozenset[str]
+    licence_expression: str | None = None
+    licence_files: tuple[str, ...] = ()
+    licence_root: str = ""
+
+
+@dataclasses.dataclass(frozen=True)
+class _Metadata:
+    version: str
+    licence_expression: str | None
+    licence_files: tuple[str, ...]
 
 
 def find_distributions(dist_dir: Path) -> Distributions:
@@ -102,12 +116,17 @@ def find_distributions(dist_dir: Path) -> Distributions:
     return Distributions(sdist=sdists[0], wheel=wheels[0])
 
 
-def _version_from_metadata(text: str) -> str:
-    version = email.parser.Parser().parsestr(text, headersonly=True)["Version"]
+def _parse_metadata(text: str) -> _Metadata:
+    message = email.parser.Parser().parsestr(text, headersonly=True)
+    version = message["Version"]
     if not version:
         raise ValueError("Distribution metadata has no Version field")
 
-    return version
+    return _Metadata(
+        version=version,
+        licence_expression=message["License-Expression"],
+        licence_files=tuple(message.get_all("License-File") or ()),
+    )
 
 
 def read_sdist(path: Path) -> Archive:
@@ -121,25 +140,38 @@ def read_sdist(path: Path) -> Archive:
         pkg_info = archive.extractfile(f"{root}/PKG-INFO")
         if pkg_info is None:
             raise ValueError(f"{path.name} has no PKG-INFO")
-        version = _version_from_metadata(pkg_info.read().decode("utf-8"))
+        metadata = _parse_metadata(pkg_info.read().decode("utf-8"))
 
     files = frozenset(name.split("/", 1)[1] for name in names if "/" in name)
-    return Archive(version=version, files=files)
+    return Archive(
+        version=metadata.version,
+        files=files,
+        licence_expression=metadata.licence_expression,
+        licence_files=metadata.licence_files,
+    )
 
 
 def read_wheel(path: Path) -> Archive:
     with zipfile.ZipFile(path) as archive:
         names = [name for name in archive.namelist() if not name.endswith("/")]
-        metadata = [
+        metadata_paths = [
             name
             for name in names
             if name.count("/") == 1 and name.endswith(".dist-info/METADATA")
         ]
-        if len(metadata) != 1:
+        if len(metadata_paths) != 1:
             raise ValueError(f"{path.name} does not have exactly one METADATA")
-        version = _version_from_metadata(archive.read(metadata[0]).decode("utf-8"))
+        (metadata_path,) = metadata_paths
+        metadata = _parse_metadata(archive.read(metadata_path).decode("utf-8"))
 
-    return Archive(version=version, files=frozenset(names))
+    dist_info = metadata_path.split("/", 1)[0]
+    return Archive(
+        version=metadata.version,
+        files=frozenset(names),
+        licence_expression=metadata.licence_expression,
+        licence_files=metadata.licence_files,
+        licence_root=f"{dist_info}/licenses/",
+    )
 
 
 def _normalise_tag(version: str) -> str:
@@ -165,6 +197,22 @@ def check_contents(
                     "The release tag must be v followed by the version in "
                     "pyproject.toml."
                 )
+
+    for kind, archive in (("sdist", sdist), ("wheel", wheel)):
+        # PEP 639: a single SPDX expression that tools can read, rather than
+        # the full licence text in the free-form License field.
+        if not archive.licence_expression:
+            failures.append(f"The {kind} metadata has no License-Expression")
+        missing_licences = [
+            name
+            for name in archive.licence_files
+            if archive.licence_root + name not in archive.files
+        ]
+        if missing_licences:
+            failures.append(
+                f"The {kind} is missing the licence files its metadata names: "
+                f"{', '.join(missing_licences)}"
+            )
 
     missing_from_sdist = [
         name

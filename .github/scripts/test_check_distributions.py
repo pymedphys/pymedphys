@@ -60,14 +60,30 @@ PACKAGE_FILES = {
 }
 
 
-def _metadata(version):
-    return f"Metadata-Version: 2.4\nName: pymedphys\nVersion: {version}\n"
+LICENCE_EXPRESSION = "Apache-2.0 AND MIT"
+LICENCE_FILES = ("LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT")
 
 
-def _write_sdist(directory, version=VERSION, package_files=PACKAGE_FILES, *, omit=()):
+def _metadata(version, licence_expression=LICENCE_EXPRESSION):
+    lines = ["Metadata-Version: 2.4", "Name: pymedphys", f"Version: {version}"]
+    if licence_expression is not None:
+        lines.append(f"License-Expression: {licence_expression}")
+    lines += [f"License-File: {name}" for name in LICENCE_FILES]
+    return "\n".join(lines) + "\n"
+
+
+def _write_sdist(
+    directory,
+    version=VERSION,
+    package_files=PACKAGE_FILES,
+    *,
+    omit=(),
+    licence_expression=LICENCE_EXPRESSION,
+):
     root = f"pymedphys-{version}"
     files = {
-        "PKG-INFO": _metadata(version),
+        "PKG-INFO": _metadata(version, licence_expression),
+        "lib/pymedphys/_pinnacle/LICENSE-MIT": "",
         "pyproject.toml": "",
         "README.rst": "",
         "CHANGELOG.md": "",
@@ -105,10 +121,18 @@ def _record_line(name, data):
     return f"{name},sha256={digest.decode()},{len(data)}"
 
 
-def _write_wheel(directory, version=VERSION, package_files=PACKAGE_FILES):
+def _write_wheel(
+    directory,
+    version=VERSION,
+    package_files=PACKAGE_FILES,
+    *,
+    licence_expression=LICENCE_EXPRESSION,
+    licence_files=LICENCE_FILES,
+):
     dist_info = f"pymedphys-{version}.dist-info"
     files = {f"pymedphys/{name}": text for name, text in package_files.items()}
-    files[f"{dist_info}/METADATA"] = _metadata(version)
+    files[f"{dist_info}/METADATA"] = _metadata(version, licence_expression)
+    files.update({f"{dist_info}/licenses/{name}": "" for name in licence_files})
     files[f"{dist_info}/WHEEL"] = (
         "Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
     )
@@ -203,6 +227,36 @@ class ContentTests(unittest.TestCase):
         failures = self._failures(sdist, wheel, "v1.2.0")
 
         self.assertTrue(any("expected 1.2.0" in f for f in failures), failures)
+
+    def test_metadata_without_a_licence_expression_fails(self):
+        sdist = _write_sdist(self.directory, licence_expression=None)
+        wheel = _write_wheel(self.directory, licence_expression=None)
+
+        failures = self._failures(sdist, wheel)
+
+        self.assertEqual(len(failures), 2, failures)
+        self.assertTrue(all("License-Expression" in f for f in failures), failures)
+
+    def test_declared_licence_file_missing_from_the_wheel_fails(self):
+        sdist = _write_sdist(self.directory)
+        wheel = _write_wheel(self.directory, licence_files=("LICENSE",))
+
+        failures = self._failures(sdist, wheel)
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("lib/pymedphys/_pinnacle/LICENSE-MIT", failures[0])
+
+    def test_declared_licence_file_missing_from_the_sdist_fails(self):
+        sdist = _write_sdist(
+            self.directory, omit=("lib/pymedphys/_pinnacle/LICENSE-MIT",)
+        )
+        wheel = _write_wheel(self.directory)
+
+        failures = self._failures(sdist, wheel)
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("sdist", failures[0])
+        self.assertIn("LICENSE-MIT", failures[0])
 
 
 class FindDistributionsTests(unittest.TestCase):
