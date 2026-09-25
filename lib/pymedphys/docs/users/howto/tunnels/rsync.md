@@ -1,5 +1,12 @@
 # Backups using rsync
 
+```{note}
+This is a site-specific example originally used with Ubuntu 20.04. Use a
+supported OS for a new deployment and adjust the shares, accounts, and paths.
+The mirror below propagates source deletions; it does not provide versioned
+backup history.
+```
+
 ## Background
 
 We want all data to have a "single source of truth". As such, important data
@@ -25,7 +32,7 @@ document details an example of one such local sync.
   * For the purpose here, this username will be `pexit` and the remote share
     will be on the domain `nbccc`, and the local share will be on the domain
     `rccc`.
-* An Ubuntu 20.04 instance with access to both the forwarded SAMBA share and
+* An Ubuntu instance with access to both the forwarded SAMBA share and
   the local SAMBA share
   * For the purpose here, this instance is a VM within Hyper-V with user login
     name `pexit`.
@@ -47,8 +54,8 @@ sudo mkdir -p /media/rccc-ssh/D /media/tunnel-nbcc-pdc/Physics
 ```
 
 Then, to create the permanent mounts both `fstab` and `cifs-utils` were
-utilised. This was adapted from the instructions over at
-<https://wiki.ubuntu.com/MountWindowsSharesPermanently>.
+utilised. See Ubuntu's current guide to
+[mounting CIFS shares permanently](https://ubuntu.com/server/docs/how-to/samba/mount-cifs-shares-permanently/).
 
 Firstly `cifs-utils` was installed:
 
@@ -66,7 +73,7 @@ password=YOUR_PASSWORD_GOES_HERE
 Then the read/write permissions of this file were set as such:
 
 ```bash
-chmod 600 .smbcredentials
+chmod 600 ~/.smbcredentials
 ```
 
 Next, the contents of `/etc/fstab` was updated to include the following:
@@ -88,9 +95,16 @@ To set up the `crontab` run `crontab -e`, then append the following to the
 bottom of that file:
 
 ```text
-0 1 * * * mount /media/rccc-ssh/D ; mount /media/tunnel-nbcc-pdc/Physics ; timeout 4h rsync -av --delete /media/tunnel-nbcc-pdc/Physics/Physics/ /media/rccc-ssh/D/PhysicsDriveBackup/
+0 1 * * * (mountpoint -q /media/rccc-ssh/D || mount /media/rccc-ssh/D) && (mountpoint -q /media/tunnel-nbcc-pdc/Physics || mount /media/tunnel-nbcc-pdc/Physics) && mountpoint -q /media/rccc-ssh/D && mountpoint -q /media/tunnel-nbcc-pdc/Physics && test -d /media/tunnel-nbcc-pdc/Physics/Physics && timeout 4h rsync -av --delete /media/tunnel-nbcc-pdc/Physics/Physics/ /media/rccc-ssh/D/PhysicsDriveBackup/
 ```
 
-This will set up cron to make sure the appropriate directories are mounted and
-then runs `rsync` each night at 1 am. If the task hasn't completed by 5 am it
-is stopped ready for it to continue the task on the following night.
+This runs at 1 am and proceeds only after both mount points and the source
+directory are present. The previous semicolon-separated command continued
+even when mounting failed. Run an initial `rsync` with `--dry-run` and inspect
+the source and destination before enabling `--delete`.
+
+The four-hour timeout applies to `rsync` after the mount checks finish. It
+does not put a deadline on a blocked mount operation, and the next night's
+run rechecks the files rather than resuming a saved job. Monitor the command's
+exit status and keep separate versioned backups when recovery from accidental
+deletion is required.

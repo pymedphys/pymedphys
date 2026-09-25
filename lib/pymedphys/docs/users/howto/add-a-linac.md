@@ -1,5 +1,12 @@
 # Adding a Linac
 
+```{note}
+This guide describes a site-specific deployment at Cancer Care Associates.
+Hostnames, addresses, accounts, paths, and service configuration are examples.
+The installation instructions use the currently supported Python range;
+the linked infrastructure repository records the original deployment.
+```
+
 ## Background
 
 PyMedPhys has a range of tools that interface with an Elekta Linac. All of
@@ -27,10 +34,11 @@ Before getting started you will need the following:
 * A login username and password to the NSS to be able to access its file shares
   that it is sharing with the centre's network via SAMBA.
 * A server where you can run the iCom listener
-  * This server should be able to have a guarantee that the connection
-    between the server and the Linac will have near-zero network interruptions.
-    This is due to the following bug at
-    <https://github.com/pymedphys/pymedphys/issues/849> still being unresolved.
+  * Use a reliable network connection. [Issue #849](https://github.com/pymedphys/pymedphys/issues/849)
+    records a listener-disconnection problem affecting treatment recording.
+    It was closed in May 2025 after a report of a vendor fix in Integrity
+    4.0.6.3. Confirm applicability with your vendor for your installed version;
+    the issue's closure does not establish that older systems are unaffected.
   * You will need permission to create a service on this iCom server and to
     set that service to be able to boot on server start.
 * A shared network drive at your centre where you will be storing the iCom and
@@ -48,32 +56,22 @@ we have set up the [PyMedPhys iCom listener CLI tool](../ref/cli/icom.rst).
 
 ### Installing PyMedPhys on the iCom listener server
 
-In our case, the server where the iCom listener is to be installed has the
-requirement that the installation has minimal impact on the other software that
-is also running on that same server. If you don't have that restriction you
-can follow the [](../get-started/quick-start.rst) to install PyMedPhys in the
-usual fashion.
+Use a dedicated virtual environment so the listener's dependencies are
+isolated from other software on the server. Install uv using the
+{doc}`quick start guide <../get-started/quick-start>`, then run in PowerShell:
 
-So that the Python installation itself has minimal impact on the system we
-utilise Python's embedded distribution, an example download of one such
-distribution is available at
-<https://www.python.org/ftp/python/3.9.2/python-3.9.2-embed-amd64.zip>.
+```powershell
+uv python install 3.12
+uv venv --python 3.12 C:\PyMedPhys\icom\.venv
+uv pip install --python C:\PyMedPhys\icom\.venv\Scripts\python.exe "pymedphys[icom]"
+C:\PyMedPhys\icom\.venv\Scripts\python.exe -m pymedphys icom listen --help
+```
 
-Also, given this installation of PyMedPhys is only going to be running as an
-iCom listener it only needs a very minimal set of dependencies.
-
-To install PyMedPhys within the embedded distribution
-[these notes](https://www.christhoung.com/2018/07/15/embedded-python-windows/)
-were followed, we followed these steps by doing the following:
-
-* Extracted the Python embedded zip to `C:\Users\Public\Documents\python`
-* Edited the `python39._pth`, uncommenting the last line to change from
-  `#import site` to `import site`.
-* Downloaded [get-pip.py](https://pip.pypa.io/en/stable/installing/#installing-with-get-pip-py)
-  and then ran `C:\Users\Public\Documents\python\python.exe get-pip.py`
-* Installed PyMedPhys by running `C:\Users\Public\Documents\python\python.exe -m pip install pymedphys[icom]==0.36.1`.
-
-Make sure to adjust the above versions appropriately to match what is current.
+Choose a directory accessible to the service account, and use that same path
+in the service definition below. Install and test the version approved for
+your site's deployment; append `==VERSION` to the requirement to pin it.
+The original embedded-Python 3.9 / PyMedPhys 0.36.1 procedure is obsolete for
+the current source.
 
 ### The [physics-server](https://github.com/CCA-Physics/physics-server) git repository
 
@@ -94,20 +92,14 @@ them into a Windows service. A file called `4299_listening.bat` was created
 with the following contents:
 
 ```bat
-SET PYTHON_DIR="C:\Users\Public\Documents\python"
-cd %PYTHON_DIR%
-SET PATH=%PYTHON_DIR%;%PYTHON_DIR%\Scripts;"%PATH%"
-
-pymedphys icom listen 192.168.17.40 \\NBCCC-pdc\physics\NBCC-DataExchange\iCom
+@echo off
+"C:\PyMedPhys\icom\.venv\Scripts\python.exe" -m pymedphys icom listen 192.168.17.40 "\\NBCCC-pdc\physics\NBCC-DataExchange\iCom"
 ```
 
-The key being that, given the way that Python and PyMedPhys was installed on
-that server, the `pymedphys` CLI command was not found within the server's
-`%PATH%` variable. As such, before utilising the `pymedphys` CLI the embedded
-python distribution is temporarily added to the path. Here `192.168.17.40`
-is the `Hospital DNS IP Address` of the Linac, and
-`\\NBCCC-pdc\physics\NBCC-DataExchange\iCom` is the directory where the iCom
-records are to be stored.
+The absolute Python path selects the listener's environment without changing
+the machine's `PATH`. Here `192.168.17.40` is the Linac's hospital-network
+address, and `\\NBCCC-pdc\physics\NBCC-DataExchange\iCom` is the output
+directory. The service account needs access to that network share.
 
 Once this `.bat` file was defined [NSSM](https://nssm.cc/) was downloaded with
 its `.exe` placed at `C:\Users\Public\Documents\physics-server\bin`. Then,
@@ -146,41 +138,43 @@ Not yet documented.
 
 ## Updating the `config.toml` file
 
-In the .pymedphys directory under your home directory (e.g. \Users\<username>)
-create a `config.toml` file.  An example of a config.toml file can be found at
-[example CCA config.toml](https://github.com/pymedphys/pymedphys/blob/9ebe4ad4261709c5a1c3bcef120be0660e715e84/site-specific/cancer-care-associates/config.toml)
+Create `config.toml` in the `.pymedphys` directory under the home directory
+of the account running the GUI. This is separate from the listener, whose
+output directory is supplied on its command line. A
+[historical site configuration](https://github.com/pymedphys/pymedphys/blob/9ebe4ad4261709c5a1c3bcef120be0660e715e84/site-specific/cancer-care-associates/config.toml)
+shows a larger deployment.
 
-If you just want to look at a sample iCom data dump generated by the iCom listener
-command line utility in pymedphys, you will need a minimum of (substitute your own site and username information):
-```
+To inspect service-mode iCom recordings with the draft **iCom Logs Explorer**
+app, a minimal site configuration is:
+
+```toml
 [[site]]
-name = "yoursite"
-
-[data_methods]
-available = ["monaco", "dicom", "icom", "trf", "mosaiq"]
-default_reference = "monaco"
-default_evaluation = "icom"
+name = "Example site"
 
 [site.export-directories]
-icom = 'C:\Users\%USERNAME%\PyMedPhysData\Physics\DataExchange\iCom'
-
-[icom]
-patient_directories = [
-    'C:\Users\%USERNAME%\PyMedPhysData\Physics\DataExchange\iCom\patients',
-]
+icom = 'C:\PyMedPhysData\iCom'
 ```
-and under the directory specified for icom in the site.export-directories section,
-you will need to add these three hardcoded directories:
-QA
-Delivery
-WLutz
 
-and then to review a sample iCom listener data dump, place your file in the QA
-subdirectory.  The file should have the extension .xz, which is a compressed file format, and should have a date-stamp for it's name, e.g. 20250301_152405.
+Use your real path. These TOML strings do not expand `%USERNAME%` or other
+environment variables. The explorer app looks under the `patients` subdirectory
+of the configured iCom export directory and selects subdirectories whose
+names start with `Deliver` or `WLutz`, or contain `QA`.
 
-running `pymedphys gui` will launch a browser based interface, and the
-`iCom Logs Explorer` app button will lead you to a review tool.
+For example, place a service-mode recording at:
 
-Sample data can be found on [Zenodo](https://zenodo.org/records/4579973).
-You may need to search for pymedphys and then for the "MU Density GUI e2e data" zip.  Within the zip: there are sample iCom .xz files in
- `..\inputs\iCOM\patients\989898_PHYSICS, MOCK\`
+```text
+C:\PyMedPhysData\iCom\patients\QA\20250301_152405.xz
+```
+
+The filename stem must use `YYYYMMDD_HHMMSS`. You do not need to create all
+three of `QA`, `Delivery`, and `WLutz`. The `[icom].patient_directories` setting
+is used by other app workflows and is not the directory selector for this
+explorer.
+
+Run `pymedphys gui` from a `user` installation and open **iCom Logs Explorer**
+in the draft apps. This GUI needs more dependencies than the listener-only
+`icom` installation.
+
+The [example data record](https://zenodo.org/records/4579973) contains the
+**MU Density GUI e2e data** archive, including sample iCom `.xz` files under
+`inputs/iCOM/patients/989898_PHYSICS, MOCK/`.
