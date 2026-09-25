@@ -192,7 +192,9 @@ The project uses uv with optional dependency groups:
   fixtures in sync with these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
 - Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
-  not `0.42.0-dev0`); the release tag must be `v` followed by it.
+  not `0.42.0-dev0`); the release tag must be `v` followed by it. The build
+  check fails a non-canonical version before publishing, because Hatchling
+  copies it into the metadata unchanged but canonicalises the filenames.
 - Distribution smoke tests must ignore the caller's Python path overrides,
   run outside the checkout, and verify that package imports come from the
   test environment. A fresh venv alone does not isolate `PYTHONPATH`.

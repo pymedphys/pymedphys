@@ -63,6 +63,11 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           if [ "$EVENT_NAME" = "release" ]; then
+            case "$TAG" in
+              v*) ;;
+              *) echo "::error::The release tag $TAG must be v followed by the package version."
+                 exit 1 ;;
+            esac
             python .github/scripts/check_distributions.py dist --expected-version "$TAG"
           else
             python .github/scripts/check_distributions.py dist
@@ -162,13 +167,13 @@ jobs:
   # Install what the index now serves, the wheel and the sdist separately, on
   # each OS, and require the files to match the ones built and tested above.
   # After a TestPyPI rehearsal this also exercises the job before a release.
-  # Only pymedphys comes from that index; dependencies use PyPI. This job
-  # holds no secrets or write permissions.
+  # Only pymedphys comes from that index; dependencies use PyPI, so no other
+  # package can be substituted from TestPyPI, where anyone can upload.
   verify-published:
     name: Verify published (${{ matrix.os }})
     needs: [build, publish-testpypi, publish-pypi]
     if: >-
-      always() &&
+      !cancelled() &&
       (needs.publish-pypi.result == 'success' ||
        needs.publish-testpypi.result == 'success')
     strategy:
@@ -234,9 +239,9 @@ jobs:
     steps:
       - name: Create release summary
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version || github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN: ${{ inputs.dry_run || 'N/A (release event)' }}
+          DRY_RUN: ${{ github.event_name == 'release' && 'N/A (release event)' || inputs.dry_run }}
           LINT_RESULT: ${{ needs.lint.result }}
           TYPE_CHECK_RESULT: ${{ needs.type-check.result }}
           UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}

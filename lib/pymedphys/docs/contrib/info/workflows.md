@@ -92,6 +92,8 @@ Comprehensive testing beyond unit tests.
 - **Test Types**:
   - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
+  - `script-tests`: Runs the `.github/scripts` unit tests on Windows and
+    macOS; `ci.yml` runs them on Ubuntu for every pull request
   - `wheel-build`: Builds the sdist and then the wheel from it, and runs
     `.github/scripts/check_distributions.py`: both archives must contain the
     package, and the wheel must install into a fresh virtual environment,
@@ -132,7 +134,8 @@ Publishes to PyPI or TestPyPI behind quality gates.
 - **Before publishing**: Lint, type checks, the full unit-test matrix,
   integration tests, and the same distribution checks as `wheel-build`. For a
   release, the build also fails unless the tag is `v` followed by the package
-  version
+  version. The build fails before publishing if the version is not in
+  canonical PEP 440 form
 - **Publishing**: PyPI trusted publishing through the `pypi` or `testpypi`
   environment, with no stored API token. Files already on the index are
   skipped, so a re-run after a partial upload is safe

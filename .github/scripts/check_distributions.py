@@ -327,6 +327,9 @@ def _run(
         env=environment,
         capture_output=True,
         text=True,
+        # The children run with -I, which ignores PYTHONIOENCODING, so decode
+        # their output leniently rather than crash on an unexpected byte.
+        errors="replace",
         check=False,
     )
 
@@ -447,6 +450,10 @@ def _report_sha256(download_info: Mapping) -> str | None:
     return sha256
 
 
+def _filename(url: str) -> str:
+    return urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1])
+
+
 def _matches_distribution(filename: str, kind: str, version: str) -> bool:
     if kind == "wheel":
         return filename.startswith(f"pymedphys-{version}-") and filename.endswith(
@@ -474,7 +481,8 @@ def _published_url(
             with urllib.request.urlopen(request, timeout=30) as response:
                 listing = json.load(response)
         except urllib.error.HTTPError as error:
-            if error.code != 404:
+            # Not yet listed, or a transient index error: retry within wait.
+            if error.code != 404 and error.code != 429 and error.code < 500:
                 raise
             listing = {"files": []}
 
@@ -503,7 +511,7 @@ def _published_url(
     url = urllib.parse.urljoin(index.project_url, entry["url"])
     if not url.startswith(index.files_url):
         raise ValueError(f"The index's file {url} is not served from {index.files_url}")
-    filename = urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1])
+    filename = _filename(url)
     if filename != entry["filename"]:
         raise ValueError(f"The index's filename does not match its URL: {url}")
     sha256 = entry.get("hashes", {}).get("sha256", "")
@@ -511,6 +519,22 @@ def _published_url(
         raise ValueError(f"The index has no valid SHA-256 for {filename}")
     # pip checks the downloaded bytes against this hash before installing.
     return urllib.parse.urldefrag(url)[0] + f"#sha256={sha256}"
+
+
+def _local_hash_mismatch(url: str, hashes: Mapping[str, str]) -> str | None:
+    """Describe how the index's archive differs from the local copy, if it does."""
+    location, fragment = urllib.parse.urldefrag(url)
+    filename = _filename(location)
+    sha256 = fragment.removeprefix("sha256=")
+    expected_sha256 = hashes.get(filename)
+    if expected_sha256 is None:
+        return f"There is no local copy of {filename} to compare"
+    if sha256 != expected_sha256:
+        return (
+            f"The published {filename} has SHA-256 {sha256}, but the local copy "
+            f"has {expected_sha256}"
+        )
+    return None
 
 
 def check_install_report(
@@ -540,7 +564,7 @@ def check_install_report(
         )
 
     url = entry["download_info"]["url"]
-    filename = urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1])
+    filename = _filename(url)
     if not _matches_distribution(filename, kind, version):
         failures.append(f"The {kind} check installed {filename}, which is not a {kind}")
     if not url.startswith(index.files_url):
@@ -617,6 +641,14 @@ def check_published(
             log.write_text(message + "\n", encoding="utf-8")
             failures.append(message)
             continue
+        # Reject a file that differs from the local copy before pip downloads
+        # it or runs its build; the report check below confirms the install.
+        if hashes is not None:
+            mismatch = _local_hash_mismatch(url, hashes)
+            if mismatch:
+                log.write_text(mismatch + "\n", encoding="utf-8")
+                failures.append(mismatch)
+                continue
         with tempfile.TemporaryDirectory(prefix=f"pymedphys-{kind}-check-") as env:
             working_directory = Path(env)
             bin_dir = _create_environment(working_directory)
@@ -684,7 +716,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     published.add_argument(
         "--index",
         choices=sorted(PACKAGE_INDEXES),
-        default="pypi",
         help="Package index to install from (default: pypi)",
     )
     published.add_argument(
@@ -702,7 +733,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     published.add_argument(
         "--wait",
         type=float,
-        default=0,
         metavar="SECONDS",
         help="Keep retrying for this long while the version is not yet available",
     )
@@ -711,10 +741,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.published is None:
         if args.dist_dir is None:
             parser.error("give a build directory or --published VERSION")
+        published_only = {
+            "--index": args.index,
+            "--compare-with": args.compare_with,
+            "--report-dir": args.report_dir,
+            "--wait": args.wait,
+        }
+        for option, value in published_only.items():
+            if value is not None:
+                parser.error(f"{option} applies only with --published")
         failures = check_build(args.dist_dir, args.expected_version, args.skip_install)
     else:
         if args.dist_dir is not None:
             parser.error("--published checks the index, not a build directory")
+        if args.expected_version is not None or args.skip_install:
+            parser.error(
+                "--expected-version and --skip-install apply only to a build "
+                "directory"
+            )
         report_dir = args.report_dir or Path(
             tempfile.mkdtemp(prefix="pymedphys-published-")
         )
@@ -722,10 +766,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Installation reports and logs: {report_dir.resolve()}")
         failures = check_published(
             args.published,
-            PACKAGE_INDEXES[args.index],
+            PACKAGE_INDEXES[args.index or "pypi"],
             report_dir=report_dir.resolve(),
             compare_with=args.compare_with,
-            wait=args.wait,
+            wait=args.wait or 0,
         )
 
     for failure in failures:
@@ -734,6 +778,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("The distributions passed every check.")
 
     return 1 if failures else 0
+
+
+def check_filenames(
+    distributions: Distributions, sdist: Archive, wheel: Archive
+) -> list[str]:
+    """Require the metadata version to be the canonical one in the filenames.
+
+    The build copies the version from pyproject.toml into the metadata
+    unchanged but names the files with its canonical form, so a non-canonical
+    version would pass the tag check and then disagree with its own filenames.
+    """
+    filename_versions = (
+        (
+            "sdist",
+            distributions.sdist.name,
+            sdist,
+            distributions.sdist.name.removeprefix("pymedphys-").removesuffix(".tar.gz"),
+        ),
+        (
+            "wheel",
+            distributions.wheel.name,
+            wheel,
+            distributions.wheel.name.removeprefix("pymedphys-").split("-")[0],
+        ),
+    )
+    return [
+        f"The {kind} metadata version {archive.version!r} is not the canonical "
+        f"{filename_version!r} in its filename {filename}. Write the version in "
+        "pyproject.toml in canonical PEP 440 form."
+        for kind, filename, archive, filename_version in filename_versions
+        if archive.version != filename_version
+    ]
 
 
 def check_build(
@@ -748,6 +824,7 @@ def check_build(
     )
 
     failures = check_contents(sdist, wheel, expected_version)
+    failures += check_filenames(distributions, sdist, wheel)
     if not failures and not skip_install:
         failures = smoke_test(distributions.wheel, wheel.version)
 

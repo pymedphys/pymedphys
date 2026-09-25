@@ -15,6 +15,7 @@
 """Tests for the distribution checks, on synthetic archives and a local index."""
 
 import base64
+import contextlib
 import dataclasses
 import hashlib
 import io
@@ -25,6 +26,8 @@ import tarfile
 import tempfile
 import textwrap
 import unittest
+import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path
 from unittest import mock
@@ -32,10 +35,12 @@ from unittest import mock
 from check_distributions import (
     PackageIndex,
     _published_url,
+    check_build,
     check_contents,
     check_install_report,
     check_published,
     find_distributions,
+    main,
     read_sdist,
     read_wheel,
     smoke_test,
@@ -443,6 +448,61 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(self._failures(sdist, wheel), [])
 
 
+class CanonicalVersionTests(unittest.TestCase):
+    """The build copies the version string into the metadata unchanged."""
+
+    def test_canonical_versions_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _write_sdist(directory)
+            _write_wheel(directory)
+
+            failures = check_build(Path(directory), None, skip_install=True)
+
+        self.assertEqual(failures, [])
+
+    def test_a_non_canonical_version_fails_before_publishing(self):
+        # Hatchling writes "1.2.0-dev0" to the metadata but names the files
+        # with the canonical "1.2.0.dev0", so a matching tag would publish.
+        with tempfile.TemporaryDirectory() as directory:
+            sdist = _write_sdist(directory, version="1.2.0-dev0")
+            wheel = _write_wheel(directory, version="1.2.0-dev0")
+            sdist.rename(Path(directory, SDIST_NAME))
+            wheel.rename(Path(directory, WHEEL_NAME))
+
+            failures = check_build(Path(directory), "v1.2.0-dev0", skip_install=True)
+
+        self.assertEqual(len(failures), 2, failures)
+        self.assertTrue(all("canonical" in f for f in failures), failures)
+
+
+class ArgumentTests(unittest.TestCase):
+    """Options that do not apply to the chosen mode are errors, not ignored."""
+
+    def _exits(self, argv):
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as raised:
+                main(argv)
+        return raised.exception.code
+
+    def test_a_mode_is_required(self):
+        self.assertEqual(self._exits([]), 2)
+
+    def test_build_mode_rejects_published_options(self):
+        for option in (
+            ["--compare-with", "x"],
+            ["--index", "testpypi"],
+            ["--report-dir", "x"],
+            ["--wait", "5"],
+        ):
+            with self.subTest(option=option):
+                self.assertEqual(self._exits(["dist", *option]), 2)
+
+    def test_published_mode_rejects_build_options(self):
+        for option in (["dist"], ["--expected-version", "1"], ["--skip-install"]):
+            with self.subTest(option=option):
+                self.assertEqual(self._exits(["--published", "1", *option]), 2)
+
+
 class FindDistributionsTests(unittest.TestCase):
     def test_exactly_one_of_each_is_required(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -809,12 +869,58 @@ class PublishedTests(unittest.TestCase):
             )
             self.assertEqual(dependency["metadata"]["version"], "1.0.0")
 
+    def test_a_transient_index_error_is_retried_within_the_wait(self):
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        real_urlopen = urllib.request.urlopen
+        responses = iter(
+            [urllib.error.HTTPError(index.project_url, 503, "Unavailable", {}, None)]
+        )
+
+        def flaky_urlopen(*args, **kwargs):
+            error = next(responses, None)
+            if error is not None:
+                raise error
+            return real_urlopen(*args, **kwargs)
+
+        sleeps = []
+        with mock.patch("urllib.request.urlopen", flaky_urlopen):
+            url = _published_url(index, "wheel", VERSION, wait=60, sleep=sleeps.append)
+
+        self.assertEqual(len(sleeps), 1)
+        self.assertIn(WHEEL_NAME, url)
+
+    def test_a_permanent_index_error_is_not_retried(self):
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        error = urllib.error.HTTPError(index.project_url, 403, "Forbidden", {}, None)
+
+        with mock.patch("urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(urllib.error.HTTPError):
+                _published_url(index, "wheel", VERSION, wait=60, sleep=self.fail)
+
     def test_rejects_an_index_link_to_another_host_before_installing(self):
         index = self._publish(WHEEL_NAME, SDIST_NAME)
         wrong_host = dataclasses.replace(index, files_url="https://example.org/")
 
         with self.assertRaisesRegex(ValueError, "not served from"):
             _published_url(wrong_host, "wheel", VERSION, wait=0, sleep=lambda _: None)
+
+    def test_a_file_differing_from_the_local_copy_is_not_installed(self):
+        # With --compare-with, a mismatched archive (for example one kept by
+        # skip-existing) is rejected before pip downloads or builds it.
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        self._other_index()
+
+        failures = check_published(
+            VERSION,
+            index,
+            report_dir=self.reports,
+            compare_with=self.root / "other-index" / "files",
+        )
+
+        self.assertEqual(len(failures), 2, failures)
+        self.assertTrue(all("SHA-256" in f for f in failures), failures)
+        for kind in ("wheel", "sdist"):
+            self.assertFalse((self.reports / f"{kind}-install.json").exists())
 
     def test_downloaded_bytes_must_match_the_index_hash(self):
         index = self._publish(WHEEL_NAME, SDIST_NAME)

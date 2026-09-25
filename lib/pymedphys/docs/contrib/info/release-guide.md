@@ -90,7 +90,7 @@ To help determine what has changed since the last release, you can inspect the [
 
 Commit all changes, push, and open a pull request into `main`. The CI and security summaries must pass; inspect their constituent checks as described in the [workflow guide](workflows.md).
 
-For a stable release, add the `full-test` label so the full unit-test matrix and integration checks run before merging. A development-release pull request does not need the label: the Release workflow runs the same checks before publishing, and a failure there only delays a pre-release.
+For a stable release, add the `full-test` label so the full unit-test matrix and integration checks run before merging. A development-release pull request does not need the label: the Release workflow runs the full unit-test matrix and integration tests before publishing, and a failure there only delays a pre-release. It does not run the Mosaiq database tests, which `full-test` also selects.
 
 ### If checks fail
 
@@ -103,7 +103,7 @@ Fix a genuine failure on `main` in its own pull request, including any dependenc
 
 ## Publish the release
 
-Once the release pull request has been approved and merged, you're ready to release the new pymedphys version!
+Once `main` carries the version to release (for a stable release, once its release pull request has been approved and merged), you're ready to release the new pymedphys version!
 
 ### Check the publishing settings
 
@@ -120,14 +120,14 @@ Publishing uses PyPI trusted publishing, with no stored API token. It depends on
 | Run the workflow manually with `dry_run=true` | TestPyPI only | No | None |
 | Run the workflow manually with `dry_run=false` | PyPI only | No | None |
 
-Publish every release through a GitHub release. A manual run with `dry_run=false` publishes whatever version `pyproject.toml` holds on the selected ref; keep it for recovery, run it from the release tag rather than `main`, and never alongside a release-triggered run of the same version.
+Publish every release through a GitHub release. A manual run with `dry_run=false` builds afresh and publishes whatever version `pyproject.toml` holds on the selected ref. Use it only when no file of that version is on PyPI and the release-triggered run cannot be re-run; run it from the release tag rather than `main`, and never alongside a release-triggered run of the same version.
 
 ### Rehearse on TestPyPI (optional)
 
 1. Open **Actions > Release > Run workflow**, select `main`, and leave **dry_run** set to **true**. The run uses the tip of `main` when it is dispatched; check that its commit SHA is the reviewed release commit.
 2. Check that the quality, build, `publish-testpypi`, and three **Verify published** jobs succeed. The verify jobs install the files from TestPyPI, as they will from PyPI after the release.
 
-Despite its name, `dry_run=true` uploads to TestPyPI, which cannot replace a file once uploaded, so rehearse each version once, before tagging it. Verification selects the PyMedPhys archives from TestPyPI's JSON Simple API and installs their exact URLs. Runtime and build dependencies use PyPI. This also works when the same PyMedPhys version exists on both indexes. The verify jobs hold no secrets or write permissions.
+Despite its name, `dry_run=true` uploads to TestPyPI, which cannot replace a file once uploaded, so rehearse each version once, before tagging it. Verification selects the PyMedPhys archives from TestPyPI's JSON Simple API and installs their exact URLs. Runtime and build dependencies use PyPI. This also works when the same PyMedPhys version exists on both indexes.
 
 ### Publish to PyPI
 
@@ -148,7 +148,7 @@ Despite its name, `dry_run=true` uploads to TestPyPI, which cannot replace a fil
    - For a development release, summarise the `Unreleased` changelog entries and select **Set as a pre-release**.
 
    The checkbox affects only GitHub; pip decides from the version string alone. A stable version marked as a pre-release still installs by default, and an unmarked development release becomes, by default, the repository's latest release.
-4. Select **Publish release**. Publishing a release or a pre-release starts the workflow; saving a draft does not. The workflow runs lint, type checks, the full unit-test matrix, integration tests, and the distribution checks. The build job fails, and nothing is published, unless the tag is exactly `v` followed by the package version.
+4. Select **Publish release**. Publishing a release or a pre-release starts the workflow; saving a draft does not. The workflow runs lint, type checks, the full unit-test matrix, integration tests, and the distribution checks. The build job fails, and nothing is published, unless the tag is exactly `v` followed by the package version and that version is in canonical form.
 5. Approve the `pypi` deployment when it is requested, after the tests finish.
 6. Check that `publish-pypi`, `upload-release-assets`, and the three **Verify published** jobs succeeded. The **Release Summary** job only reports these results and passes regardless, and a published GitHub release does not mean that PyPI publishing succeeded.
 
@@ -165,12 +165,12 @@ uv run --no-project --python 3.12 python .github/scripts/check_distributions.py 
 For each format, the check:
 
 - resolves the exact PyMedPhys archive from the selected index's JSON Simple API, then installs its URL into a new environment with pip's cache disabled and the sdist forced to build (`--no-binary=pymedphys`); runtime and build dependencies use PyPI and may come as wheels;
-- requires pip's installation report to name the expected file, served from `files.pythonhosted.org`, so an extra index in your pip configuration cannot substitute another file;
+- requires pip's installation report to name that file, served from the index's file host (`files.pythonhosted.org` for PyPI);
 - checks the installed version, that `pymedphys`, `pymedphys.dicom`, and `pymedphys.cli` import from inside the environment, the `pymedphys --version` output, and `pip check`.
 
-It prints `The distributions passed every check.` on success, and otherwise lists each failure and exits non-zero. The environments are created in temporary directories and run with `python -I`, so neither the checkout nor `PYTHONPATH` can affect them. The installation reports and pip logs, including the sdist build, are kept in the directory it prints, or in `--report-dir`.
+It prints `The distributions passed every check.` on success, and otherwise lists each failure and exits non-zero. The environments are created in temporary directories and run with `python -I`, so neither the checkout nor `PYTHONPATH` can affect them. The installation reports and pip logs are kept in the directory it prints, or in `--report-dir`.
 
-To also require the files on PyPI to match the GitHub release assets, download the assets and pass their directory. GitHub's automatic **Source code** archives are repository snapshots, not the sdist.
+To also require the files on PyPI to match the GitHub release assets, download the assets and pass their directory; a file that differs is rejected before it is installed. GitHub's automatic **Source code** archives are repository snapshots, not the sdist.
 
 ```bash
 gh release download vVERSION --pattern "pymedphys-*" --dir release-assets
@@ -226,7 +226,7 @@ Re-run failed jobs using the original run's `dist` artefact, retained for 30 day
 
 If the artefact is unavailable, recover the original archives from GitHub release assets or a retained copy and run the published-file check with `--compare-with`. For missing GitHub assets, original archives can also be downloaded from the URLs in pip's installation reports; verify them before attaching them with `gh release upload vVERSION release-assets/*`. If a PyPI upload is incomplete and the original workflow artefact cannot be recovered, publish a new version through the normal workflow. Keep the existing tag and release record; a fresh rebuild is not a replacement for the original files.
 
-PyPI never lets a filename be reused for different contents, so a published release cannot be replaced. To fix one, publish a new version through the same preparation and review: the next `.devN` for a development release, or the next patch version for a stable release. [Yank](https://pypi.org/help/#yanked) a broken release on PyPI rather than deleting it, so that installs pinned to it still work.
+A published release cannot be replaced (see "Choose the version"). To fix one, publish a new version through the same preparation and review: the next `.devN` for a development release, or the next patch version for a stable release. [Yank](https://pypi.org/help/#yanked) a broken release on PyPI rather than deleting it, so that installs pinned to it still work.
 
 ## Prepare main for the next release
 
