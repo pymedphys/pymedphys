@@ -48,6 +48,11 @@ This project adheres to
   PyJWT advisory PYSEC-2025-183 remains explicitly ignored by the security
   workflow. `numpy<2` is now an explicit
   constraint until the NumPy 2 migration is done.
+- `pydicom` is now constrained to `>=3.0` instead of `>=2.0.0` in every extra,
+  including `docs`, which previously had no lower bound. Only pydicom 3 was
+  tested, and the planned de-identification engine relies on pydicom 3's
+  writing of the File Meta Information. Environments pinned to pydicom 2 must
+  upgrade it to install this release.
 
 ### Contributor facing changes
 
