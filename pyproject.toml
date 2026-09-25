@@ -4,7 +4,11 @@ version = "0.42.0.dev1"
 description = "Medical Physics library"
 readme = "README.rst"
 requires-python = ">=3.10,<3.13"
-license = { file = "LICENSE" }
+# PEP 639 SPDX expression. The package bundles MIT-licensed code alongside its
+# own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
+# DICOM dictionary, and the vendored apipkg and deprecated modules.
+license = "Apache-2.0 AND MIT"
+license-files = ["LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT"]
 authors = [
   { name = "PyMedPhys Contributors", email = "developers@pymedphys.com" }
 ]
@@ -324,5 +328,5 @@ exclude_dirs = ["lib/pymedphys/tests"]
 skips = ["B101", "B404", "B603", "B607", "B105", "B311", "B110"]
 
 [build-system]
-requires = ["hatchling>=1.26"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

@@ -19,7 +19,6 @@ import sys
 
 from pymedphys import _config
 from pymedphys._version import __version__
-from pymedphys._vendor.patchlogging import apply_logging_patch
 
 from .claude import claude_cli
 from .dev import dev_cli
@@ -136,9 +135,6 @@ def run_logging_basic_config(args, logging_config):
 
 def pymedphys_cli():
     _config.is_cli = True
-
-    # This is to allow the usage of force=True within logging.basicConfig
-    apply_logging_patch()
 
     parser = define_parser()
 
