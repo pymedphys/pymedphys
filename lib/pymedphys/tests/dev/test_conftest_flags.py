@@ -72,8 +72,11 @@ def test_the_suite_does_not_use_the_real_home_directory():
     real_home = conftest.REAL_HOME
     assert real_home is not None
 
-    assert pathlib.Path.home().resolve() != real_home.resolve()
-    assert real_home.resolve() not in pmp_config.get_config_dir().resolve().parents
+    temporary_home = pathlib.Path.home().resolve()
+    assert temporary_home != real_home.resolve()
+
+    # Windows can place temporary directories inside the real user profile.
+    assert pmp_config.get_config_dir().resolve() == temporary_home / ".pymedphys"
 
 
 def test_the_data_cache_is_still_shared():
