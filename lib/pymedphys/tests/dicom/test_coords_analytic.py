@@ -150,11 +150,19 @@ def test_zyx_and_dose_returns_ascending_axes_aligned_with_the_dose(
 
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
-def test_zyx_and_dose_keeps_a_single_slice_dose_three_dimensional(orientation):
+@pytest.mark.parametrize("omit_offsets", [False, True])
+@pytest.mark.parametrize("omit_slice_count", [False, True])
+def test_zyx_and_dose_keeps_a_single_slice_dose_three_dimensional(
+    orientation, omit_offsets, omit_slice_count
+):
     # pydicom returns a (rows, columns) pixel array when there is one slice,
     # as in planar dose exports.
     ds = rtdose(orientation, shape=(1, 4, 5), slice_offsets=[0.0])
     positions = voxel_positions(ds)[0]
+    if omit_offsets:
+        del ds.GridFrameOffsetVector
+    if omit_slice_count:
+        del ds.NumberOfFrames
     raw = np.asarray(ds.pixel_array, dtype=float) * DOSE_GRID_SCALING
     assert raw.ndim == 2
 
@@ -170,6 +178,14 @@ def test_zyx_and_dose_keeps_a_single_slice_dose_three_dimensional(orientation):
             np.argmin(np.abs(x - px)),
         )
         assert dose_grid[index] == raw[i, j], (orientation, (i, j))
+
+
+@pytest.mark.pydicom
+def test_multi_slice_dose_requires_slice_offsets():
+    ds = rtdose("HFS")
+    del ds.GridFrameOffsetVector
+    with pytest.raises(ValueError, match="GridFrameOffsetVector.*multi-slice"):
+        dose.zyx_and_dose_from_dataset(ds)
 
 
 @pytest.mark.pydicom

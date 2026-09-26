@@ -60,6 +60,8 @@ This project adheres to
   which could leave the gamma search running indefinitely. Searches are now
   bounded by the grids' spatial extent without requiring overlapping grids,
   and the custom interpolator reuses the grid validation done at gamma entry.
+  Query coordinates are reshaped without copying, and the SciPy interpolator
+  is reused across search shells and RAM chunks within each calculation.
   A reference point whose search shells step past an evaluation grid
   narrower than one search step is still reported as NaN.
 
@@ -154,15 +156,20 @@ This project adheres to
   order from the stored pixels. Nonfinite, repeated or nonmonotonic slice
   offsets, and offsets inconsistent with `NumberOfFrames`, are rejected. A
   single-slice dose, which pydicom reads as a two-dimensional array, is
-  returned with a length-one z axis rather than raising an error.
+  returned with a length-one z axis rather than raising an error. Its slice
+  offset is zero when `GridFrameOffsetVector` is absent, as permitted for
+  single-slice images. Multi-slice doses still require the vector.
 - The private `pymedphys._dicom.coords.xyz_axes_from_dataset` now raises
   `NotImplementedError` for the IEC patient coordinate system, whose output
   was incorrect, and `ValueError` rather than `UnboundLocalError` for an
   unrecognised `coord_system`.
 - `pymedphys.gamma` requires at least two points per evaluation axis for its
-  custom interpolator; singleton axes remain supported with explicit
-  `interp_algo="scipy"`. Uneven evaluation axes trigger a SciPy fallback with
-  a warning. Both grids require finite coordinates.
+  custom interpolator; singleton axes remain accepted with explicit
+  `interp_algo="scipy"`. The existing shell search can miss points on such
+  lower-dimensional grids, producing inaccurate gamma values or NaN. For
+  comparisons within one common plane, use two-dimensional axes and dose
+  arrays. Uneven evaluation axes trigger a SciPy fallback with a warning.
+  Both grids require finite coordinates.
   `pymedphys.interpolate.interp` checks axis order, spacing, finiteness and
   length even with `skip_checks=True`.
 

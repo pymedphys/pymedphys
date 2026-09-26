@@ -15,10 +15,11 @@
 """Gamma must register the two grids correctly, whatever their axis order."""
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pytest
+from pymedphys._imports import pytest, scipy
 
 import pymedphys
 from pymedphys._gamma.api import gamma_dicom
+from pymedphys._gamma.implementation import shell
 from pymedphys.tests.dicom._synthetic_rtdose import DOSE_GRID_SCALING, rtdose
 
 # Voxel spacing and gamma criteria are chosen so that a one-voxel (2 mm)
@@ -142,6 +143,55 @@ def test_scipy_preserves_singleton_spatial_dimensions():
     dose = np.ones((2, 1))
     result = pymedphys.gamma(axes, dose, axes, dose, 3, 3, interp_algo="scipy")
     np.testing.assert_array_equal(result, np.zeros_like(dose))
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="Three-dimensional shells do not reliably sample a singleton plane",
+)
+def test_scipy_planar_gamma_is_translation_invariant():
+    axis = np.arange(-2.0, 3.0)
+    y, _ = np.meshgrid(axis, axis, indexing="ij")
+    results = []
+    for origin in (0.0, 300.0):
+        results.append(
+            pymedphys.gamma(
+                (np.array([origin]), np.array([0.0]), np.array([0.0])),
+                np.ones((1, 1, 1)),
+                (np.array([origin]), axis, axis),
+                (1 + 0.1 * (y - 0.9))[None, :, :],
+                3,
+                3,
+                interp_algo="scipy",
+            ).item()
+        )
+    # Independently minimise (y - 0.9)^2 / 0.3^2 + y^2 / 3^2.
+    # The sampled point y=0.9 is within 0.002 of the analytical minimum.
+    expected = 0.9 / np.hypot(3, 0.3)
+    np.testing.assert_allclose(results, expected, rtol=0, atol=0.002)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="Shells miss a reachable evaluation plane and exclude a failing point",
+)
+def test_scipy_planar_gamma_retains_perpendicular_distance():
+    axis = np.arange(-2.0, 3.0)
+    result = pymedphys.gamma(
+        (np.array([-1.0, 0.0]), np.array([0.0]), np.array([0.0])),
+        np.array([0.9, 1.0]).reshape(2, 1, 1),
+        (np.array([0.0]), axis, axis),
+        np.ones((1, 5, 5)),
+        3,
+        3,
+        interp_algo="scipy",
+    )
+    # Uniform evaluation dose: the nearest point directly above each
+    # reference point minimises gamma, including the 1 mm plane separation.
+    expected = [np.hypot(0.1 / 0.03, 1 / 3), 0.0]
+    np.testing.assert_allclose(result.ravel(), expected)
 
 
 @pytest.mark.timeout(10)
@@ -282,3 +332,58 @@ def test_nonfinite_reference_axis_is_rejected():
         pymedphys.gamma(
             np.array([0.0, np.nan]), np.ones(2), np.array([0.0, 1.0]), np.ones(2), 3, 3
         )
+
+
+def test_scipy_interpolator_is_reused_within_each_calculation(monkeypatch):
+    original = scipy.interpolate.RegularGridInterpolator
+    instances = []
+
+    class TrackingInterpolator:
+        def __init__(self, *args, **kwargs):
+            self.interpolate = original(*args, **kwargs)
+            self.calls = 0
+            instances.append(self)
+
+        def __call__(self, points):
+            self.calls += 1
+            return self.interpolate(points)
+
+    monkeypatch.setattr(
+        scipy.interpolate, "RegularGridInterpolator", TrackingInterpolator
+    )
+    # Uneven, descending axes exercise normalisation and automatic fallback.
+    axis = np.array([2.0, 0.8, 0.0])
+    for evaluation_dose in (0.9, 0.94):
+        with pytest.warns(UserWarning, match="evenly spaced"):
+            result = pymedphys.gamma(
+                axis, np.ones(3), axis, np.full(3, evaluation_dose), 3, 3
+            )
+        np.testing.assert_allclose(result, (1 - evaluation_dose) / 0.03)
+
+    assert len(instances) == 2
+    assert all(instance.calls > 1 for instance in instances)
+
+
+@pytest.mark.parametrize("dimensions", [1, 2, 3])
+def test_custom_interpolator_reuses_query_coordinates(dimensions, monkeypatch):
+    # pylint: disable=protected-access
+    # Preserve the analytical value and coordinate order while checking that
+    # a potentially large shell/chunk query array is not copied.
+    axis = np.array([0.0, 1.0, 2.0])
+    axes = (axis,) * dimensions
+    values = sum(np.meshgrid(*axes, indexing="ij"))
+    options = shell.GammaInternalFixedOptions.from_user_inputs(
+        axes, values, axes, values, 3, 3
+    )
+    references = np.tile([0.5, 1.0], (dimensions, 1))
+    shifts = np.tile([-0.25, 0.0, 0.25], (dimensions, 1))
+    points = shell.add_shells_to_ref_coords(references, shifts)
+    original = shell._interp_validated
+
+    def check_view(*args, **kwargs):
+        assert np.shares_memory(kwargs["points_interp"], points)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(shell, "_interp_validated", check_view)
+    result = shell._run_custom_interp(options, points)
+    np.testing.assert_allclose(result, points.sum(axis=-1))

@@ -80,7 +80,13 @@ def _slice_offsets(ds, position, orientation) -> "np.ndarray":
     relative to Image Position (Patient). Otherwise it holds absolute z
     coordinates, which the standard only permits for the orientation
     [1, 0, 0, 0, 1, 0], with the first element equal to the IPP z value.
+    A single-slice image may omit the vector; its plane is defined by IPP.
     """
+    if not hasattr(ds, "GridFrameOffsetVector"):
+        if int(getattr(ds, "NumberOfFrames", 1)) != 1:
+            raise ValueError("GridFrameOffsetVector is required for a multi-slice dose")
+        return np.zeros(1, dtype=np.float64)
+
     offsets = np.atleast_1d(np.array(ds.GridFrameOffsetVector, dtype=np.float64))
     if offsets.ndim != 1 or offsets.size == 0 or not np.all(np.isfinite(offsets)):
         raise ValueError("GridFrameOffsetVector must be a non-empty finite 1D array")

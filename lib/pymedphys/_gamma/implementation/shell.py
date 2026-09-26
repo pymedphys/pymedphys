@@ -17,6 +17,7 @@
 
 import logging
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Optional
 from warnings import warn
 
@@ -66,7 +67,10 @@ def gamma_shell(
     axes_evaluation : tuple
         The evaluation coordinates. Axes may be ascending or descending.
         Uneven spacing uses the SciPy interpolator with a warning. Singleton
-        axes are supported when ``interp_algo="scipy"`` is selected explicitly.
+        axes are accepted when ``interp_algo="scipy"`` is selected explicitly,
+        but the shell search can miss points on these lower-dimensional grids
+        and return inaccurate gamma values or NaN. For comparisons within one
+        common plane, use two-dimensional axes and dose arrays.
     dose_evaluation : np.array
         The evaluation dose grid. Evaluation here is defined as the grid which
         is interpolated and searched over at increasing distances away from
@@ -332,6 +336,16 @@ class GammaInternalFixedOptions:
     @property
     def global_dose_threshold(self):
         return self.dose_percent_threshold / 100 * self.global_normalisation
+
+    @cached_property
+    def scipy_interpolator(self):
+        """Reuse the fixed evaluation grid across every shell and RAM chunk."""
+        return scipy.interpolate.RegularGridInterpolator(
+            self.axes_evaluation,
+            self.dose_evaluation,
+            bounds_error=False,
+            fill_value=np.inf,
+        )
 
     @classmethod
     def from_user_inputs(
@@ -645,9 +659,8 @@ def interpolate_evaluation_dose_at_distance(
 
 
 def _run_custom_interp(options, all_points):
-    points = np.column_stack(
-        [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
-    )
+    # add_shells_to_ref_coords returns contiguous points, so this is a view.
+    points = all_points.reshape(-1, all_points.shape[-1])
 
     # _prepare_evaluation_grid has already validated and normalised these
     # arrays. Reuse that guarantee throughout the shell/chunk loop.
@@ -660,16 +673,7 @@ def _run_custom_interp(options, all_points):
 
 
 def _run_interp_with_scipy(options, all_points):
-    evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
-        options.axes_evaluation,
-        options.dose_evaluation,
-        bounds_error=False,
-        fill_value=np.inf,
-    )
-
-    evaluation_dose = evaluation_interpolation(all_points)
-
-    return evaluation_dose
+    return options.scipy_interpolator(all_points)
 
 
 def add_shells_to_ref_coords(
