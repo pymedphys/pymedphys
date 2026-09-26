@@ -1,5 +1,9 @@
 # Tunnels
 
+```{note}
+This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
+```
+
 ## Background
 
 At Cancer Care Associates PyMedPhys is deployed for use across multiple sites.

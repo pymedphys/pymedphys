@@ -87,6 +87,13 @@ Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
 
+Historical, site-specific deployment pages (for example the iCom listener,
+tunnelling, and rsync how-tos) record what was done at the time. Do not
+modernise, correct, or test their commands, versions, or links. Keep their text
+as originally written, or at the latest as it stood before the September 2025
+switch from Poetry to uv, and confine changes to a note marking the page as a
+historical record.
+
 ## Architecture Overview
 
 ### Project Structure
