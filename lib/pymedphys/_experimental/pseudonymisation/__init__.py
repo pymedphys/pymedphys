@@ -173,7 +173,7 @@ def pseudonymise(dicom_input, output_path=None):
         logging.error("Please submit issue to PyMedPhys")
         # but continue on, the data might not contain the offending keywords
         # and if it does... there will be some kind of error raised
-    keywords_to_leave_unchanged = list("PatientSex")
+    keywords_to_leave_unchanged = ["PatientSex"]
 
     if isinstance(dicom_input, pydicom.dataset.Dataset):
         pseudo_ds = anonymise_dataset(

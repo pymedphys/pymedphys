@@ -20,6 +20,14 @@ This project adheres to
 - The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 
+### Bug fixes
+
+- The experimental `pymedphys.experimental.pseudonymisation.pseudonymise`
+  now leaves `PatientSex` unchanged, as documented. Previously it replaced the
+  value with a hash, which is not a valid value for this attribute, so outputs
+  from earlier versions differ in `PatientSex`.
+  [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
+
 ### Dependency changes
 
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. The newer

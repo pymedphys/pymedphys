@@ -81,6 +81,31 @@ def test_pseudonymise_convenience_api(tmp_path):
 
 
 @pytest.mark.pydicom
+def test_pseudonymise_leaves_patient_sex_unchanged(tmp_path):
+    from pydicom.data import get_testdata_file
+
+    # PatientSex is CS with enumerated values, so a hashed replacement would
+    # break DICOM conformance. Use pydicom's bundled files to avoid downloads.
+    for filename in ["rtplan.dcm", "CT_small.dcm"]:
+        source_path = get_testdata_file(filename)
+        ds_input = pydicom.dcmread(source_path, force=True)
+        ds_input.PatientSex = "F"
+
+        ds_pseudo = pseudonymisation_api.pseudonymise(ds_input)
+        assert ds_pseudo.PatientSex == "F"
+        assert ds_pseudo.PatientID != ds_input.PatientID
+
+        input_path = tmp_path / os.path.basename(source_path)
+        ds_input.save_as(input_path)
+        output_file = pseudonymisation_api.pseudonymise(
+            input_path, output_path=tmp_path / "output" / "pseudonymised.dcm"
+        )
+        ds_output = pydicom.dcmread(output_file, force=True)
+        assert ds_output.PatientSex == "F"
+        assert ds_output.PatientID != ds_input.PatientID
+
+
+@pytest.mark.pydicom
 def test_identifier_with_DS_vr():
     # PatientWeight is of type DS
     # Because the strategy is only applied when the identifier is found
