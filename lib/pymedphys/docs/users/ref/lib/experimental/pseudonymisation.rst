@@ -2,6 +2,9 @@
 Pseudonymisation Tool
 #####################
 
+This is the legacy experimental interface. Read its limitations in
+:doc:`../../../background/dicom-deidentification` before sharing output.
+
 .. automodule:: pymedphys.experimental.pseudonymisation
     :no-members:
 

@@ -78,6 +78,11 @@ for it, and keep incident history and evidence caveats on the pull request
 rather than in the guide. Open a long procedure with a short checklist for
 readers who already know it, and move one-time setup into an appendix.
 
+Documents, decision logs, changelog entries, and pull request descriptions
+describe the state being merged. Fold revisions made while a pull request is
+open into the text; do not record them as superseded decisions, review logs,
+or construction history.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
@@ -195,7 +200,11 @@ The project uses uv with optional dependency groups:
 - Declare the licence as a PEP 639 SPDX expression (`license = "..."`) that
   covers bundled third-party code as well as PyMedPhys's own, and list every
   licence file in `license-files`. Update both when vendoring code under a new
-  licence or removing the last code under one. Keep the independent licence
+  licence or removing the last code under one. Treat bundled data, such as
+  vocabularies, datasets, and tables generated from standards, like code:
+  bundle it only under terms compatible with Apache-2.0, never under
+  non-commercial or no-derivatives terms, and include any required
+  attribution. Keep the independent licence
   expectations in `.github/scripts/check_distributions.py` and its test
   fixtures in sync with these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
@@ -261,6 +270,12 @@ The project uses uv with optional dependency groups:
 5. **Streamlit Apps**: Web-based tools for various tasks (anonymization, metersetmap, dose analysis) in `_streamlit/apps/`.
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
+
+7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. In new or modified code that handles DICOM data:
+   - never put source attribute values, keys, or original paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or reports; use attribute paths and opaque identifiers;
+   - never describe output as "anonymised", or as "de-identified" without naming the PS3.15 edition, profile, and options it has been validated against;
+   - never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, or change Burned In Annotation or Recognizable Visual Features to NO;
+   - regenerate rule tables generated from the DICOM standard, and vocabularies converted from source spreadsheets, with their generators; never edit them by hand.
 
 ## Common Development Patterns
 

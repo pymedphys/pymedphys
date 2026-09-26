@@ -39,7 +39,10 @@ scripting in Python.
 Start with the [DICOM CLI reference](../ref/cli/dicom.rst) if you want a
 shell-based workflow.
 
-If your goal is to share data outside the clinic, also see the
+If your goal is to share data outside the clinic, first read
+[DICOM de-identification](../background/dicom-deidentification.md), which
+explains the terms and the known limitations of the current anonymisation and
+pseudonymisation tools. Their references are the
 [pseudonymisation library reference](../ref/lib/experimental/pseudonymisation.rst)
 and the
 [pseudonymisation CLI reference](../ref/cli/pseudonymisation.rst).
@@ -67,7 +70,7 @@ script, or a clinic-specific workflow.
 ## If you want point-and-click tools
 
 PyMedPhys also includes a Streamlit-based app layer for selected workflows.
-The current stable app registry includes MetersetMap and pseudonymisation, and
+The current app registry includes MetersetMap and pseudonymisation, and
 there are additional experimental apps.
 If you want a graphical workflow rather than code, continue to
 [Choose your path](choose-your-path.md).
