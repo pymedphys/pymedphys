@@ -5,9 +5,9 @@ The published, executed notebook tutorials live in
 under `lib/pymedphys/docs/users/howto/`.
 
 The notebooks in `drafts/` are unfinished experiments and are not executed by
-the documentation build. Some use retired namespaces such as
-`pymedphys.labs`, `pymedphys.mudensity`, and `pymedphys.wlutz`. They are
-retained as historical development material, not current installation or API
+the documentation build. Some use namespaces that have since been removed
+(`pymedphys.labs` and `pymedphys.wlutz`) or deprecated (`pymedphys.mudensity`,
+superseded by `pymedphys.metersetmap`). They are retained as historical development material, not current installation or API
 instructions.
 
 `github-issue-responses/` contains examples written for specific issue
