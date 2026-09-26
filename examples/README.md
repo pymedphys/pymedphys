@@ -44,7 +44,9 @@ The opt-in `Gamma performance study` workflow runs the full study on GitHub
 Actions when a `benchmarks/gamma-*` branch is pushed. Its matrix keeps all four
 implementations on the same runner within each round, saves partial results,
 and combines the verified observations. Ordinary PR pushes do not launch it.
-The notebook identifies the canonical cloud run for PR #2066. See
+Hosted runners can have different CPU models despite identical CPU counts.
+The paired ratios remain within-runner comparisons, but use a single
+workstation for an absolute-time study on consistent hardware. See
 [Faster gamma calculations: a reproducible benchmark](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance.html)
 for workloads, methodology, recorded results and interpretation.
 
