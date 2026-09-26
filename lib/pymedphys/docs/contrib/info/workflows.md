@@ -37,7 +37,7 @@ Coordinates all CI checks based on file changes, labels, and event types.
   - `pre-commit`: Auto-formatting and basic checks
   - `lint`: Code quality
   - `type-check`: Static type checking
-  - `unit-tests`: Fast unit tests when Python inputs change
+  - `unit-tests`: Fast unit tests when selected
   - `script-tests`: Distribution/tooling regression tests when their inputs change
   - `integration-tests`: Extended tests (conditional)
   - `mosaiq-db-tests`: Database tests (conditional)
@@ -71,19 +71,20 @@ any fallback.
 Only recognised documentation inputs under `lib/pymedphys/docs/` are exempt
 from Python checks; a Python file or new configuration format inside the docs
 tree is not exempt. The repository-root `docs` is a symlink to that directory,
-so git reports only the link itself, which selects every check. A symlink or
-submodule is never exempt, whatever its name, because it can stand in for any
+so git reports only the link itself, which selects every check that a changed
+path can select. A symlink or submodule is never exempt, whatever its name, because it can stand in for any
 content. Package modules still select documentation because autodoc and
 notebooks import them. The full OS/Python matrix and integration checks remain
 unconditional on main. ReadTheDocs publishes main documentation independently.
 
 Integration tests, database tests and the full unit-test matrix are too costly
-for every PR. Apart from main and the labels, the integration and database
-jobs run only for the inputs that no standard check validates: the
-generated-file drift check, the wheel build, the Windows and macOS tooling
-tests, the example scripts and the locked database drivers. An unclassified
-path selects every standard check, but not these. Unit tests use the quick
-matrix unless the PR has the `full-test` label.
+for every PR. Apart from main and the labels, integration and database tests
+run only when a PR changes an input that no standard check validates, as the
+table lists: an input of the generated-file drift check, the wheel build, the
+Windows and macOS tooling tests or the example scripts, or the database code
+and its locked drivers. An unclassified path selects every standard check, but
+not these. Unit tests use the quick matrix unless the PR has the `full-test`
+label.
 
 If pre-commit pushes an auto-fix, dependent jobs are skipped for the superseded
 commit and the summary fails until a fresh run passes on the new commit.
@@ -111,7 +112,7 @@ Dedicated linting workflow for code quality.
 - **Jobs**:
   - `lint`: Comprehensive Python linting with Pylint
 - Ruff linting and formatting run through pre-commit
-- Runs on PRs subject to the orchestrator's pre-commit dependency
+- Runs when the selector chooses the Python checks, even if pre-commit fails
 
 #### `type-check.yml`
 Static type checking for type safety.
@@ -119,7 +120,7 @@ Static type checking for type safety.
 - **Jobs**:
   - `pyright`: Primary type checker
   - `mypy`: Secondary checker (optional/non-blocking), run from the locked `dev` extra
-- Runs on PRs subject to the orchestrator's pre-commit dependency
+- Runs when the selector chooses the Python checks, even if pre-commit fails
 
 #### `unit-tests.yml`
 Fast unit tests with smart matrix strategy.
@@ -166,7 +167,7 @@ SQL Server integration tests for Mosaiq database functionality.
   test failures are not hidden by retries
 
 #### `docs.yml`
-Builds documentation on PRs that change documentation sources, package Python code, or build tooling.
+Builds documentation on PRs that change documentation sources, package modules, or any unclassified input.
 
 - **HTML build**: Sphinx warnings and unexpected notebook errors fail the build
 - **Link check**: Advisory external-link check with downloadable reports
@@ -293,6 +294,7 @@ Standardised project setup for all workflows.
   - Tool-only setup for jobs that do not need an installed project
 
 ### `actions/cache-data/action.yml`
+
 Restores and saves the PyMedPhys data cache. Keys are per job and per manifest,
 and never restore across a change to `hashes.json`. Jobs that decide later
 whether they need data, such as `deps.yml`, use it directly.
