@@ -193,6 +193,11 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- The `pymedphys claude respond-to-issue-comment` command and the private
+  `pymedphys._claude` package behind it have been removed. They posted Claude
+  replies to GitHub issues, but no workflow has run them since the `@claude`
+  workflow moved to `anthropics/claude-code-action`. PyGithub, which only they
+  used, is no longer in the `tests` and `all` extras.
 - PyMedPhys now requires pydicom 3.0 or later: every extra declares
   `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
   no lower bound. Continuous integration only tests pydicom 3, and the planned
