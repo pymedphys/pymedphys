@@ -19,10 +19,8 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
+          cache-data: 'true'
           extras: 'docs'
-
-      - name: Prepare Sphinx configuration and data
-        run: uv run pymedphys dev docs --prep
 
       - name: Build documentation
         run: uv run pymedphys dev docs
