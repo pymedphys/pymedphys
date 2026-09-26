@@ -43,9 +43,7 @@ def get_export_directory_from_site_config(site_config, export_directory):
     )
 
 
-DirectoryConfigOptions = Literal[
-    "monaco", "escan", "anonymised_monaco", "iviewdb", "icom"
-]
+DirectoryConfigOptions = Literal["monaco", "escan", "iviewdb", "icom"]
 
 DirectoriesForSite = Dict[DirectoryConfigOptions, pathlib.Path]
 
@@ -65,9 +63,6 @@ def get_site_directories(config) -> Dict[str, DirectoriesForSite]:
         "monaco": get_monaco_from_site_config,
         "escan": functools.partial(
             get_export_directory_from_site_config, export_directory="escan"
-        ),
-        "anonymised_monaco": functools.partial(
-            get_export_directory_from_site_config, export_directory="anonymised_monaco"
         ),
         "iviewdb": functools.partial(
             get_export_directory_from_site_config, export_directory="iviewdb"

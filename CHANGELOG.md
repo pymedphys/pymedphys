@@ -190,6 +190,11 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- The draft "Anonymising Monaco Backend Files" app has been removed, along
+  with its `anonymised_monaco` export directory setting. It copied a Monaco
+  patient directory into a zip file named after the Patient ID and wrote the
+  Patient ID into the replacement demographic file, so its output identified
+  the patient.
 - PyMedPhys now requires pydicom 3.0 or later: every extra declares
   `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
   no lower bound. Continuous integration only tests pydicom 3, and the planned

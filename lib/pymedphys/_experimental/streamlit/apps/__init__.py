@@ -1,7 +1,6 @@
 # ruff: noqa: F401
 
 from . import (
-    anonymise_monaco,
     dashboard,
     dicom_explorer,
     electrons,
