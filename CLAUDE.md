@@ -84,6 +84,13 @@ Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
 
+Historical, site-specific deployment pages (for example the iCom listener,
+tunnelling, and rsync how-tos) record what was done at the time. Do not
+modernise, correct, or test their commands, versions, or links. Keep their text
+as originally written, or at the latest as it stood before the September 2025
+switch from Poetry to uv, and confine changes to a note marking the page as a
+historical record.
+
 ## Architecture Overview
 
 ### Project Structure
@@ -306,6 +313,14 @@ Prefer "slices" for spatial image and dose planes in identifiers, comments,
 docstrings, and documentation. Preserve official DICOM attribute names such as
 `NumberOfFrames` and `GridFrameOffsetVector`.
 
+When you find unmaintained or non-functional material, such as a packaging
+recipe that no workflow builds or a CLI command whose inputs no longer exist,
+remove it (and anything that exists only to support it) rather than annotating
+it as a draft. Git history preserves it. Do not write documentation that hedges
+around code that cannot work; fix or remove the code in the same PR, and record
+contributor-facing removals in `CHANGELOG.md`. Historical documentation pages
+are different: keep them as originally written, as described above.
+
 ### Copyright Headers
 
 Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.
@@ -405,6 +420,11 @@ https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
 - Use THREE dots (`...`) between branch names, not two (`..`)
 - Correct: `compare/main...feature-branch`
 - Wrong: `compare/main..feature-branch`
+
+### PR Descriptions
+
+When a pull request's scope changes after it is opened, update its title and
+description to match the current diff and the validation actually run.
 
 ### Maintainer Guidance Documentation
 

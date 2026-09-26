@@ -1,5 +1,9 @@
 # Backups using rsync
 
+```{note}
+This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
+```
+
 ## Background
 
 We want all data to have a "single source of truth". As such, important data
