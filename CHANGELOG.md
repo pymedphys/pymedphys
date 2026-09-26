@@ -164,11 +164,7 @@ This project adheres to
   removed. It drove a PyOxidizer and Electron desktop build whose Electron
   app, PyOxidizer configuration, and `build` extra had already been removed,
   so it could only fail.
-- **[Contributor facing only]** `CLAUDE.md` no longer gives conflicting advice
-  on workflow files: agents stage a new or edited workflow, including an
-  `allowed_tools` change, in `claude_created_workflows_preview/` and post its
-  content in a comment only if that commit fails. A broken nested code fence
-  and markdownlint findings are fixed.
+- **[Contributor facing only]** The `@claude` workflow now applies its model and command allow-list. Version 1 of `claude-code-action` ignores the `model` and `allowed_tools` inputs, so both move to `claude_args`. Entries the action already grants, and entries that would bypass its push wrapper or branch handling, are dropped, and the workflow still cannot change `.github/workflows/`. `CLAUDE.md` describes the workflow as it runs, has agents edit workflow files directly and stage them in `claude_created_workflows_preview/` only when a push lacks the `workflows` permission, and fixes a broken nested code fence and markdownlint findings.
 
 ### News around this release
 

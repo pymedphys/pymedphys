@@ -54,70 +54,40 @@ jobs:
         uses: anthropics/claude-code-action@2261fcfc88e7de1b55f179edd588805e12de71f2 # v1.0.228
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-opus-4-7
-          # Allowed tools — read-only git operations, safe dev tooling,
-          # and controlled write operations via MCP.
-          # Destructive commands (git reset --hard, git branch -D, force push)
-          # are intentionally excluded.
-          allowed_tools: >
-            View,
-            Edit,
-            Write,
-            GlobTool,
-            GrepTool,
-            Bash(git status),
-            Bash(git log),
-            Bash(git log --oneline),
-            Bash(git diff),
-            Bash(git diff --staged),
-            Bash(git diff HEAD),
-            Bash(git branch),
-            Bash(git branch -a),
-            Bash(git remote -v),
-            Bash(git config user.name),
-            Bash(git config user.email),
-            Bash(git fetch),
-            Bash(git fetch origin),
-            Bash(git checkout -b),
-            Bash(git checkout),
-            Bash(git merge),
-            Bash(git add),
-            Bash(git add .),
-            Bash(git add -A),
-            Bash(git commit -m),
-            Bash(git push),
-            Bash(git push origin),
-            Bash(git push -u origin),
-            Bash(gh auth status),
-            Bash(gh pr create),
-            Bash(gh pr create --title),
-            Bash(gh pr list),
-            Bash(gh pr view),
-            Bash(gh pr comment),
-            Bash(gh issue comment),
-            Bash(uv pip install),
-            Bash(uv pip install -e),
-            Bash(uv pip install -r),
-            Bash(uv venv),
-            Bash(uv run),
-            Bash(uv sync),
-            Bash(uv lock),
-            Bash(uv add),
-            Bash(uv remove),
-            Bash(uv tool install),
-            Bash(uv tool run),
-            Bash(uv run ruff check),
-            Bash(uv run ruff check --fix),
-            Bash(uv run ruff format),
-            Bash(uv run pyright),
-            Bash(uv run mypy),
-            Bash(ls),
-            Bash(ls -la),
-            Bash(pwd),
-            Bash(cat),
-            Bash(head),
-            Bash(tail),
-            Bash(which),
-            Bash(echo),
-            mcp__github_file_ops__commit_files,
-            mcp__github__create_pull_request
+          # claude-code-action v1 takes the model and tool permissions only
+          # through claude_args. It already allows reading, searching, and
+          # editing files in the workspace, and committing and pushing through
+          # its own git add, git commit, git rm, and push wrapper. The entries
+          # below add read-only git and GitHub commands and the uv tooling;
+          # uv run executes repository code, as running the tests requires.
+          # An entry ending in :* matches that command prefix; any other entry
+          # matches only that exact command. Do not add git push, which would
+          # bypass the push wrapper's checks, or commands that switch, merge,
+          # or reset branches, which the action manages itself.
+          claude_args: |
+            --model claude-opus-4-7
+            --allowedTools
+            "Bash(git status:*)"
+            "Bash(git log:*)"
+            "Bash(git diff:*)"
+            "Bash(git branch)"
+            "Bash(git branch -a)"
+            "Bash(git remote -v)"
+            "Bash(git config user.name)"
+            "Bash(git config user.email)"
+            "Bash(git fetch)"
+            "Bash(git fetch origin)"
+            "Bash(gh pr list:*)"
+            "Bash(gh pr view:*)"
+            "Bash(uv sync:*)"
+            "Bash(uv lock:*)"
+            "Bash(uv add:*)"
+            "Bash(uv remove:*)"
+            "Bash(uv run:*)"
+            "Bash(ls:*)"
+            "Bash(pwd)"
+            "Bash(cat:*)"
+            "Bash(head:*)"
+            "Bash(tail:*)"
+            "Bash(which:*)"
+            "Bash(echo:*)"

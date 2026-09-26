@@ -358,46 +358,16 @@ This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code
 
 **Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behaviour across all Claude Code interactions.
 
-### Bash Command Restrictions
+### The `@claude` Workflow
 
-When the Claude workflow uses restricted bash permissions (via `allowed_tools` with specific `Bash(command)` entries):
+`.github/workflows/claude.yml` runs `anthropics/claude-code-action` when someone with write access mentions `@claude`. Its GitHub token covers contents, issues, and pull requests only.
 
-**Important**: Command chaining with `&` or `&&` is NOT allowed. Each `Bash(command)` entry is treated as an exact string match.
-
-**Problem Example**:
-
-```yaml
-Bash(git add file.txt),
-Bash(git commit -m "message")
-```
-
-This does NOT allow: `git add file.txt && git commit -m "message"`
-
-**Solution**: Execute commands sequentially:
-
-1. Execute first command
-2. Check result
-3. If successful, execute next command
-
-This approach prioritises security over efficiency, as confirmed by maintainer @sjswerdloff.
-
-### Git and GitHub Tool Usage
-
-#### Known Issues and Workarounds
-
-1. **MCP GitHub commit tools**: The `mcp__github_file_ops__commit_files` tool may sometimes fail with undefined errors. When this happens:
-   - Try using sequential git commands via Bash
-   - Be aware that commit messages must be part of the allowed command string for restricted bash
-
-2. **Timing Issues with PR Merges**: Be aware that workflow runs may start with a repository state from just before a recent PR merge. If permissions appear to be missing:
-   - Check if a recent PR was merged that might have added those permissions
-   - The workflow's checkout might be from before the merge
-
-3. **GitHub Workflow File Restrictions**: The `mcp__github_file_ops__commit_files` tool cannot commit files to the `.github/workflows/` directory. This appears to be a security restriction to prevent automated creation or modification of GitHub Actions workflows. When creating workflow files:
-   - The tool will return "undefined" errors when attempting to commit to `.github/workflows/`
-   - You can successfully commit to other directories including `.github/` itself
-   - Stage the file in `claude_created_workflows_preview/` instead, as described in "GitHub Workflow File Creation" below. Post its content in an expandable comment only if committing it there also fails (see "Handling File Creation Failures")
-   - This is NOT a general permission issue - the same tool works for other file locations
+- Set the model and tool permissions through `claude_args` (`--model`, `--allowedTools`). Version 1 of the action ignores the old `model` and `allowed_tools` inputs.
+- The action already allows reading, searching, and editing files in the workspace, and committing and pushing through its own `git add`, `git commit`, `git rm`, and push wrapper. Never allow `git push`, which bypasses the wrapper's checks, or commands that switch, merge, or reset branches, which the action manages itself.
+- An `--allowedTools` entry ending in `:*` matches that command prefix; any other entry matches only that exact command. A command chained with `&&` or `;` runs only if every part is allowed. Run commands one at a time and check each result instead of chaining them; this prioritises security over efficiency, as confirmed by maintainer @sjswerdloff.
+- Keep workflow write off, as the maintainers decided: never add `workflows: write` to `additional_permissions` or pass the action a token that has it. With it, a prompt-injected run could push a workflow change that then runs with the repository's secrets.
+- When a run needs a command it is not allowed, propose adding it to `--allowedTools`, and say which command and why. A Claude Code session can make that edit (see "Workflow Files").
+- A run can start from the repository state just before a recent merge, so a permission that merge added may not apply to it yet.
 
 ### PR Link Format
 
@@ -486,7 +456,6 @@ When updating dependencies:
    files, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
 4. Test changes to ensure nothing breaks
-5. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
 
 ### GitHub Actions Pins and Dependabot
 
@@ -506,15 +475,6 @@ resolved `[package.optional-dependencies]` tables, not the `requires-dist` metad
 `uv lock --check` only validates `requires-dist` against `pyproject.toml`, so a
 hand-edited lockfile can pass the check while CI silently omits the package.
 Always regenerate the lockfile with `uv lock` after touching `pyproject.toml`.
-
-### Working with Restricted Permissions
-
-When working with restricted bash permissions:
-
-1. Check the `.github/workflows/claude.yml` file for allowed commands
-2. If a needed command is missing, propose adding it to `allowed_tools`. You cannot commit to `.github/workflows/`, so stage the edited workflow as `claude_created_workflows_preview/claude.yml`, as described in "GitHub Workflow File Creation"
-3. Be specific about which commands you need and why
-4. Remember that exact string matching is used for command validation
 
 ### Pre-commit Hook Exclusions
 
@@ -590,43 +550,16 @@ When discussing permissions needed for operations:
 - GitHub API operations: `mcp__github__create_branch`, `mcp__github__push_files`
 - External operations: Access to external repositories with justification
 
-### GitHub Workflow File Creation
+### Workflow Files
 
-When asked to create GitHub workflow files (`.github/workflows/*.yml`):
+GitHub accepts a push that creates or changes a file in `.github/workflows/` only from a token with the `workflows` permission. Claude Code sessions directed by a maintainer can normally push workflow changes, so edit `.github/workflows/` directly. The `@claude` workflow cannot, and its permission stays off (see "The `@claude` Workflow").
 
-**Important**: Due to permission restrictions on the `.github/workflows/` directory, use the following approach:
+When a push is rejected for lacking the `workflows` permission:
 
-1. **Create a preview directory**: Use `claude_created_workflows_preview/` in the repository root
-2. **Place the workflow file there** with the intended filename (e.g., `conda-package.yml`)
-3. **Inform the user** that they need to:
-   - Pull the branch locally
-   - Move the file from `claude_created_workflows_preview/` to `.github/workflows/`
-   - Push the change back using their own permissions
-   - Give the move command for both shells. Maintainers often work in
-     PowerShell, where `mv` is `Move-Item` and refuses to overwrite an
-     existing file unless `-Force` is passed:
-     - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
-     - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
-4. **Provide the PR creation link** with the branch as-is
+1. Commit the workflow as `claude_created_workflows_preview/<name>.yml`, under the name it will have in `.github/workflows/`, and push it to the pull request's branch.
+2. Ask a maintainer to move it within that pull request, and give the command for both shells. Maintainers often work in PowerShell, where `mv` is `Move-Item` and refuses to overwrite an existing file unless `-Force` is passed:
+   - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+   - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+3. If that commit also fails, post the file in a comment as described in "Handling File Creation Failures".
 
-**Recommended PR Workflow**: Create the PR first, then move the file. This approach:
-
-- Allows immediate visibility of the proposed workflow
-- Enables discussion and review before the file is in its final location
-- Permits the maintainer to make the move as part of the PR review process
-- Avoids potential confusion if the branch is updated locally but not pushed
-
-**Example response**:
-
-```text
-I've created the workflow file at `claude_created_workflows_preview/my-workflow.yml`.
-
-To move it to the correct location:
-1. Pull this branch locally
-2. Move the file: `mv claude_created_workflows_preview/my-workflow.yml .github/workflows/`
-3. Commit and push the change
-
-[Create PR](https://github.com/pymedphys/pymedphys/compare/main...branch-name)
-```
-
-This approach ensures successful workflow file delivery despite permission restrictions.
+The staged file must pass the same workflow checks as one in place (see "Security Scanning Policy"). The move is complete when the file is in `.github/workflows/`, `claude_created_workflows_preview/` no longer holds it, and the pull request's checks pass.

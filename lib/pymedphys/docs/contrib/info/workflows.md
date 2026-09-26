@@ -207,8 +207,8 @@ Automated dependency updates for Python packages.
 Claude Code integration for automated code assistance.
 
 - **Triggers**: Comments with `@claude` mention
-- **Capabilities**: Code review, issue analysis, PR creation
-- **Tools**: File operations, git, uv package management
+- **Capabilities**: Code review, issue analysis, and commits to a branch with a link to open the pull request; it cannot change `.github/workflows/`
+- **Tools**: File operations, read-only git and `gh` commands, and uv, set through `claude_args`
 
 ## Composite Actions
 
