@@ -17,7 +17,7 @@
 import argparse
 import json
 import os
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -28,16 +28,26 @@ def _selection(needs: Needs) -> Mapping[str, Any]:
     return needs.get("changes", {}).get("outputs", {})
 
 
-def check_jobs(needs: Needs, conditional_jobs: Mapping[str, str]) -> list[str]:
+def check_jobs(
+    needs: Needs,
+    conditional_jobs: Mapping[str, str],
+    skipped_jobs: Collection[str] = (),
+) -> list[str]:
     """Return failures; unlisted dependencies are required to succeed.
 
     Conditional jobs may be skipped only when their selection output from the
-    changes job is explicitly false. Missing outputs fail closed.
+    changes job is explicitly false. Missing outputs fail closed. Skipped jobs
+    are not part of this run, for example another publishing route, and must
+    not have run at all.
     """
     failures: list[str] = []
     selection = _selection(needs)
-    if "changes" not in needs:
+    if conditional_jobs and "changes" not in needs:
         failures.append("The changes job is missing from the summary dependencies.")
+
+    for job in skipped_jobs:
+        if job not in needs:
+            failures.append(f"{job}: missing from the summary dependencies.")
 
     for job, output in conditional_jobs.items():
         if job not in needs:
@@ -47,6 +57,12 @@ def check_jobs(needs: Needs, conditional_jobs: Mapping[str, str]) -> list[str]:
 
     for job, details in needs.items():
         result = details.get("result")
+        if job in skipped_jobs:
+            if result != "skipped":
+                failures.append(
+                    f"{job}: expected skipped on this run, got {result or 'missing'}."
+                )
+            continue
         optional = (
             job in conditional_jobs and selection.get(conditional_jobs[job]) == "false"
         )
@@ -63,11 +79,12 @@ def make_summary(
     needs: Needs,
     conditional_jobs: Mapping[str, str],
     failures: list[str],
+    skipped_jobs: Collection[str] = (),
 ) -> str:
     selection = _selection(needs)
     lines = [f"## {title}", "", "| Check | Required | Status |", "|---|---|---|"]
     for job, details in needs.items():
-        required = (
+        required = job not in skipped_jobs and (
             job not in conditional_jobs
             or selection.get(conditional_jobs[job]) != "false"
         )
@@ -114,11 +131,18 @@ def main() -> int:
         metavar="JOB=OUTPUT",
         help="Allow JOB to be skipped when changes.outputs.OUTPUT is false.",
     )
+    parser.add_argument(
+        "--skipped",
+        action="append",
+        default=[],
+        metavar="JOB",
+        help="JOB is not part of this run and must have been skipped.",
+    )
     args = parser.parse_args()
     conditional_jobs = parse_conditional(args.conditional)
     needs: dict[str, dict[str, Any]] = json.loads(os.environ["NEEDS_JSON"])
-    failures = check_jobs(needs, conditional_jobs)
-    summary = make_summary(args.title, needs, conditional_jobs, failures)
+    failures = check_jobs(needs, conditional_jobs, args.skipped)
+    summary = make_summary(args.title, needs, conditional_jobs, failures, args.skipped)
     with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as output:
         output.write(summary)
     for failure in failures:
