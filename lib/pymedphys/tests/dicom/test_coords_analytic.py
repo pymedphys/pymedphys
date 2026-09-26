@@ -31,11 +31,11 @@ DECUBITUS = {"FFDL", "FFDR", "HFDL", "HFDR"}
 def _expected_pixel_order_axes(ds):
     """DICOM x, y and z along the array axis on which each one varies."""
     positions = voxel_positions(ds)
-    frame_axis = positions[:, 0, 0, :]
+    slice_axis = positions[:, 0, 0, :]
     row_axis = positions[0, :, 0, :]
     column_axis = positions[0, 0, :, :]
 
-    z = frame_axis[:, 2]
+    z = slice_axis[:, 2]
     if ds.ImageOrientationPatient[0] == 0:  # decubitus: rows run along x
         x, y = row_axis[:, 0], column_axis[:, 1]
     else:
@@ -68,9 +68,9 @@ def test_head_first_prone_x_axis_is_not_mirrored():
 
 
 @pytest.mark.pydicom
-def test_absolute_frame_offsets_match_relative_offsets():
-    relative = rtdose("HFS", frame_offsets=[0.0, 2.5, 5.0])
-    absolute = rtdose("HFS", frame_offsets=[300.0, 302.5, 305.0])
+def test_absolute_slice_offsets_match_relative_offsets():
+    relative = rtdose("HFS", slice_offsets=[0.0, 2.5, 5.0])
+    absolute = rtdose("HFS", slice_offsets=[300.0, 302.5, 305.0])
 
     np.testing.assert_allclose(
         coords.xyz_axes_from_dataset(absolute)[2],
@@ -79,9 +79,9 @@ def test_absolute_frame_offsets_match_relative_offsets():
 
 
 @pytest.mark.pydicom
-def test_absolute_frame_offsets_require_the_standard_orientation():
+def test_absolute_slice_offsets_require_the_standard_orientation():
     # PS3.3 C.8.8.3.2 only permits absolute offsets for [1, 0, 0, 0, 1, 0].
-    ds = rtdose("HFP", frame_offsets=[300.0, 302.5, 305.0])
+    ds = rtdose("HFP", slice_offsets=[300.0, 302.5, 305.0])
 
     with pytest.raises(ValueError, match="GridFrameOffsetVector"):
         coords.xyz_axes_from_dataset(ds)
@@ -103,7 +103,7 @@ def test_iec_patient_coordinates_are_not_offered():
 @pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
 def test_iec_fixed_axes_project_onto_the_image_axes(orientation):
     # The long-standing IEC fixed convention: x along the row direction r,
-    # y along the frame normal r x c, and z = -(position . c) in ascending
+    # y along the slice normal r x c, and z = -(position . c) in ascending
     # order, all relative to the DICOM origin.
     ds = rtdose(orientation)
     positions = voxel_positions(ds)
@@ -121,12 +121,12 @@ def test_iec_fixed_axes_project_onto_the_image_axes(orientation):
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
 @pytest.mark.parametrize(
-    "frame_offsets", [[0.0, 2.5, 5.0], [0.0, -2.5, -5.0], [0.0, 2.5, 7.0]]
+    "slice_offsets", [[0.0, 2.5, 5.0], [0.0, -2.5, -5.0], [0.0, 2.5, 7.0]]
 )
 def test_zyx_and_dose_returns_ascending_axes_aligned_with_the_dose(
-    orientation, frame_offsets
+    orientation, slice_offsets
 ):
-    ds = rtdose(orientation, frame_offsets=frame_offsets)
+    ds = rtdose(orientation, slice_offsets=slice_offsets)
     positions = voxel_positions(ds)
     raw = np.asarray(ds.pixel_array, dtype=float) * DOSE_GRID_SCALING
 
@@ -150,10 +150,10 @@ def test_zyx_and_dose_returns_ascending_axes_aligned_with_the_dose(
 
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
-def test_zyx_and_dose_keeps_a_single_frame_dose_three_dimensional(orientation):
-    # pydicom returns a (rows, columns) pixel array when there is one frame,
+def test_zyx_and_dose_keeps_a_single_slice_dose_three_dimensional(orientation):
+    # pydicom returns a (rows, columns) pixel array when there is one slice,
     # as in planar dose exports.
-    ds = rtdose(orientation, shape=(1, 4, 5), frame_offsets=[0.0])
+    ds = rtdose(orientation, shape=(1, 4, 5), slice_offsets=[0.0])
     positions = voxel_positions(ds)[0]
     raw = np.asarray(ds.pixel_array, dtype=float) * DOSE_GRID_SCALING
     assert raw.ndim == 2
@@ -193,7 +193,7 @@ def test_zyx_and_dose_leaves_head_first_supine_unchanged():
     [("HFP", [94.0, -202.0, 302.5]), ("FFDL", [102.0, -194.0, 297.5])],
 )
 def test_matrix_oracle_matches_worked_voxel_positions(orientation, expected):
-    # Frame 1, row 1, column 2 with IPP (100, -200, 300) and spacing (2, 3).
+    # Slice 1, row 1, column 2 with IPP (100, -200, 300) and spacing (2, 3).
     np.testing.assert_array_equal(
         voxel_positions(rtdose(orientation))[1, 1, 2], expected
     )
@@ -212,8 +212,8 @@ def test_matrix_oracle_matches_worked_voxel_positions(orientation, expected):
         ([301, 303.5, 306], "Image Position"),
     ],
 )
-def test_invalid_frame_offsets_are_rejected(offsets, message):
-    ds = rtdose("HFS", frame_offsets=offsets)
+def test_invalid_slice_offsets_are_rejected(offsets, message):
+    ds = rtdose("HFS", slice_offsets=offsets)
     with pytest.raises(ValueError, match=message):
         dose.zyx_and_dose_from_dataset(ds)
 
@@ -238,7 +238,7 @@ def test_invalid_image_geometry_is_rejected(attribute, value):
 @pytest.mark.pydicom
 def test_geometry_equality_accounts_for_pixel_dimension_mapping():
     # Both datasets describe the same physical dose field. The FFDL dataset
-    # stores x along rows and y along columns, and reverses its frame offsets
+    # stores x along rows and y along columns, and reverses its slice offsets
     # to retain the same patient z positions as HFS.
     pixels = np.arange(3 * 4 * 4).reshape(3, 4, 4)
     reference = rtdose(
@@ -248,7 +248,7 @@ def test_geometry_equality_accounts_for_pixel_dimension_mapping():
         "FFDL",
         shape=pixels.shape,
         pixel_spacing=(2, 2),
-        frame_offsets=[0, -2.5, -5],
+        slice_offsets=[0, -2.5, -5],
         pixel_values=pixels.swapaxes(1, 2),
     )
     for ds in (reference, transposed):
@@ -268,8 +268,8 @@ def test_geometry_equality_accounts_for_pixel_dimension_mapping():
 
 @pytest.mark.pydicom
 def test_absolute_and_relative_offsets_have_the_same_pixel_mapping():
-    relative = rtdose("HFS", frame_offsets=[0, 2.5, 5])
-    absolute = rtdose("HFS", frame_offsets=[300, 302.5, 305])
+    relative = rtdose("HFS", slice_offsets=[0, 2.5, 5])
+    absolute = rtdose("HFS", slice_offsets=[300, 302.5, 305])
     assert coords.coords_in_datasets_are_equal([relative, absolute])
 
 

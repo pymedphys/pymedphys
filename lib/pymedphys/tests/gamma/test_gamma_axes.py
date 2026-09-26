@@ -28,13 +28,13 @@ SHAPE = (3, 9, 11)
 
 
 def _gaussian_pixels(shape, position, orientation_sign_x):
-    frames, rows, columns = shape
+    slices, rows, columns = shape
     x = position[0] + orientation_sign_x * PIXEL_SPACING[1] * np.arange(columns)
     y = position[1] - PIXEL_SPACING[0] * np.arange(rows)  # prone: rows run to -y
     xx, yy = np.meshgrid(x, y)
     peak = np.exp(-((xx - 90.0) ** 2 + (yy + 208.0) ** 2) / (2 * 4.0**2))
     plane = np.round(peak / DOSE_GRID_SCALING * 0.01)
-    return np.broadcast_to(plane, (frames, rows, columns))
+    return np.broadcast_to(plane, (slices, rows, columns))
 
 
 @pytest.mark.pydicom

@@ -58,17 +58,17 @@ def zyx_and_dose_from_dataset(dataset):
     stored in descending order (for example x for head first prone, or z
     for feet first) is flipped, and for decubitus orientations, whose rows
     run along x, rows and columns are swapped. For head first supine with
-    increasing frame offsets the dose is the pixel array unchanged. Head
-    first supine grids with decreasing frame offsets are reversed in z.
+    increasing slice offsets the dose is the pixel array unchanged. Head
+    first supine grids with decreasing slice offsets are reversed in z.
     """
     geometry = _DoseGridGeometry.from_dataset(dataset)
     x, y, z = geometry.dicom_axes()
     dose = dose_from_dataset(dataset)
-    # pydicom drops the frame dimension of a single-frame pixel array.
-    frames = geometry.local_axes[2].size
-    dose = dose.reshape(frames, int(dataset.Rows), int(dataset.Columns))
+    # pydicom drops the slice dimension of a single-slice pixel array.
+    slices = geometry.local_axes[2].size
+    dose = dose.reshape(slices, int(dataset.Rows), int(dataset.Columns))
 
-    # Map pixel dimensions (frame, row, column) onto patient (z, y, x).
+    # Map pixel dimensions (slice, row, column) onto patient (z, y, x).
     dose = np.transpose(dose, geometry.xyz_to_pixel_dimensions[::-1])
 
     axes = [z, y, x]

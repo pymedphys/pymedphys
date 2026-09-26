@@ -21,7 +21,7 @@ position (PS3.3 C.7.6.2.1.1 and C.8.8.3.2), not from the code under test:
                         + offset[k] * (r x c)
 
 where ``r`` and ``c`` are the row and column direction cosines of Image
-Orientation (Patient), ``j`` indexes columns, ``i`` rows and ``k`` frames.
+Orientation (Patient), ``j`` indexes columns, ``i`` rows and ``k`` slices.
 """
 
 from pymedphys._imports import numpy as np
@@ -48,20 +48,20 @@ def rtdose(
     position=(100.0, -200.0, 300.0),
     shape=(3, 4, 5),
     pixel_spacing=(2.0, 3.0),
-    frame_offsets=None,
+    slice_offsets=None,
     pixel_values=None,
 ):
     """Build an RT Dose dataset.
 
-    ``shape`` is (frames, rows, columns) and ``pixel_spacing`` is the DICOM
+    ``shape`` is (slices, rows, columns) and ``pixel_spacing`` is the DICOM
     (row spacing, column spacing) pair. By default every voxel holds a
     distinct value, so a test can tell which voxel ended up where.
     """
-    frames, rows, columns = shape
-    if frame_offsets is None:
-        frame_offsets = [2.5 * k for k in range(frames)]
+    slices, rows, columns = shape
+    if slice_offsets is None:
+        slice_offsets = [2.5 * k for k in range(slices)]
     if pixel_values is None:
-        pixel_values = np.arange(frames * rows * columns).reshape(shape)
+        pixel_values = np.arange(slices * rows * columns).reshape(shape)
     pixel_values = np.asarray(pixel_values, dtype=np.uint32)
 
     return create.dicom_dataset_from_dict(
@@ -70,10 +70,10 @@ def rtdose(
             "ImagePositionPatient": list(position),
             "ImageOrientationPatient": list(ORIENTATIONS[orientation]),
             "PixelSpacing": list(pixel_spacing),
-            "GridFrameOffsetVector": list(frame_offsets),
+            "GridFrameOffsetVector": list(slice_offsets),
             "Rows": rows,
             "Columns": columns,
-            "NumberOfFrames": frames,
+            "NumberOfFrames": slices,
             "BitsAllocated": 32,
             "BitsStored": 32,
             "HighBit": 31,
@@ -90,7 +90,7 @@ def rtdose(
 
 
 def voxel_positions(ds):
-    """Return the (frames, rows, columns, 3) DICOM position of every voxel."""
+    """Return the (slices, rows, columns, 3) DICOM position of every voxel."""
     position = np.array(ds.ImagePositionPatient, dtype=float)
     orientation = np.array(ds.ImageOrientationPatient, dtype=float)
     r, c = orientation[:3], orientation[3:]
@@ -100,11 +100,11 @@ def voxel_positions(ds):
     # A single-valued element reads as a scalar.
     offsets = np.atleast_1d(np.array(ds.GridFrameOffsetVector, dtype=float))
     if offsets[0] != 0:
-        # Absolute frame positions (PS3.3 C.8.8.3.2), only valid for n = +z
+        # Absolute slice positions (PS3.3 C.8.8.3.2), only valid for n = +z
         offsets = offsets - position[2]
 
     # Independent homogeneous matrix implementation of the standard. The
-    # third input is the actual frame displacement, so uneven spacing works.
+    # third input is the actual slice displacement, so uneven spacing works.
     transform = np.eye(4)
     transform[:3, 0] = column_spacing * r
     transform[:3, 1] = row_spacing * c
@@ -116,7 +116,7 @@ def voxel_positions(ds):
     indices[..., 0] = np.arange(ds.Columns)
     indices[..., 1] = np.arange(ds.Rows)[:, None]
     positions = np.empty((len(offsets), ds.Rows, ds.Columns, 3))
-    for frame, offset in enumerate(offsets):
+    for slice_index, offset in enumerate(offsets):
         indices[..., 2] = offset
-        positions[frame] = (indices @ transform.T)[..., :3]
+        positions[slice_index] = (indices @ transform.T)[..., :3]
     return positions

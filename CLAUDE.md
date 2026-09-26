@@ -234,6 +234,10 @@ When modifying DICOM functionality, be aware of:
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
 
+Prefer "slices" for spatial image and dose planes in identifiers, comments,
+docstrings, and documentation. Preserve official DICOM attribute names such as
+`NumberOfFrames` and `GridFrameOffsetVector`.
+
 ### Copyright Headers
 
 Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.

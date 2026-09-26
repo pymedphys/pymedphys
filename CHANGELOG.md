@@ -51,7 +51,7 @@ This project adheres to
   such data was also liable to fail inside numba, and feet first z values did
   not match structure contours. Axes now follow the voxel positions
   defined by the DICOM standard, and absolute `GridFrameOffsetVector` values
-  are supported. A shared origin, orientation matrix and frame-offset model
+  are supported. A shared origin, orientation matrix and slice-offset model
   keeps axes and dose-array permutations consistent. Dose summation checks
   the mapping from pixel indices to patient coordinates, including whether
   rows or columns represent each axis.
@@ -149,11 +149,11 @@ This project adheres to
 - `pymedphys.dicom.zyx_and_dose_from_dataset` returns strictly ascending
   (z, y, x) axes, and flips the dose array, and swaps rows and columns for
   decubitus orientations, to match. Head first supine data with increasing
-  relative frame offsets is unchanged; decreasing frame offsets reverse z.
+  relative slice offsets is unchanged; decreasing slice offsets reverse z.
   Other orientations may return dose and DICOM gamma arrays in a different
-  order from the stored pixels. Nonfinite, repeated or nonmonotonic frame
+  order from the stored pixels. Nonfinite, repeated or nonmonotonic slice
   offsets, and offsets inconsistent with `NumberOfFrames`, are rejected. A
-  single-frame dose, which pydicom reads as a two-dimensional array, is
+  single-slice dose, which pydicom reads as a two-dimensional array, is
   returned with a length-one z axis rather than raising an error.
 - The private `pymedphys._dicom.coords.xyz_axes_from_dataset` now raises
   `NotImplementedError` for the IEC patient coordinate system, whose output

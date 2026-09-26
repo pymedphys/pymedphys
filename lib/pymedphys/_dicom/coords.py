@@ -73,8 +73,8 @@ def _axis_aligned_orientation(ds) -> "np.ndarray":
     return rounded
 
 
-def _frame_offsets(ds, position, orientation) -> "np.ndarray":
-    """Offsets of each frame along the slice normal, from the first frame.
+def _slice_offsets(ds, position, orientation) -> "np.ndarray":
+    """Offsets of each slice along the slice normal, from the first slice.
 
     PS3.3 C.8.8.3.2: a Grid Frame Offset Vector whose first element is zero is
     relative to Image Position (Patient). Otherwise it holds absolute z
@@ -114,12 +114,12 @@ class _DoseGridGeometry:
     """Compact DICOM geometry, preserving the pixel array's dimension mapping.
 
     ``basis`` has columns ``(r, c, r x c)`` and ``local_axes`` contains column,
-    row and frame displacements in mm. The standard's voxel transformation is
-    ``position + basis @ [column_mm, row_mm, frame_offset_mm]``. Frame offsets
+    row and slice displacements in mm. The standard's voxel transformation is
+    ``position + basis @ [column_mm, row_mm, slice_offset_mm]``. Slice offsets
     need not be uniform, so the third input is a displacement, not an index.
 
     Only signed axis permutations are supported here. Their patient axes can
-    be extracted in O(columns + rows + frames), without a coordinate volume.
+    be extracted in O(columns + rows + slices), without a coordinate volume.
     """
 
     position: "np.ndarray"
@@ -156,7 +156,7 @@ class _DoseGridGeometry:
             (
                 np.arange(ds.Columns, dtype=np.float64) * spacing[1],
                 np.arange(ds.Rows, dtype=np.float64) * spacing[0],
-                _frame_offsets(ds, position, orientation),
+                _slice_offsets(ds, position, orientation),
             ),
         )
 
@@ -176,8 +176,8 @@ class _DoseGridGeometry:
     def fixed_axes(self):
         # Preserve the legacy image-aligned IEC FIXED convention.
         origin = self.position @ self.basis
-        columns, rows, frames = self.local_axes
-        return origin[0] + columns, origin[2] + frames, -(origin[1] + rows)[::-1]
+        columns, rows, slices = self.local_axes
+        return origin[0] + columns, origin[2] + slices, -(origin[1] + rows)[::-1]
 
     def matches_pixel_mapping(self, other):
         """Whether equal pixel indices identify equal patient coordinates."""
@@ -226,7 +226,7 @@ def xyz_axes_from_dataset(
 
         For 'DICOM', each axis holds the coordinate along the pixel array
         dimension on which it varies, in pixel order: `z` follows the
-        frames, and `x` and `y` follow the columns and rows respectively.
+        slices, and `x` and `y` follow the columns and rows respectively.
         For decubitus orientations the rows run along `x` and the columns
         along `y`. An axis is descending wherever the scanner stored the
         pixels in descending order (for example `x` for head first prone),
@@ -234,7 +234,7 @@ def xyz_axes_from_dataset(
         :func:`pymedphys.dicom.zyx_and_dose_from_dataset` for ascending
         axes with the dose reordered to match.
 
-        For 'fixed', `x` follows the columns and `y` the frames, both in
+        For 'fixed', `x` follows the columns and `y` the slices, both in
         pixel order, and `z` follows the rows in ascending order.
 
     Raises
@@ -272,7 +272,7 @@ def xyz_axes_from_dataset(
 
     Extra notes
     -----------
-    Each voxel's position follows PS3.3 C.7.6.2.1.1: for the voxel in frame
+    Each voxel's position follows PS3.3 C.7.6.2.1.1: for the voxel in slice
     ``k``, row ``i`` and column ``j``,
     ``IPP + j * PixelSpacing[1] * r + i * PixelSpacing[0] * c + offset[k] * n``,
     where ``r`` and ``c`` are the row and column direction cosines of Image
