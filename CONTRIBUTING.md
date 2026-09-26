@@ -1,6 +1,7 @@
 # Contributing to PyMedPhys
 
-Use a branch based on `main` and open a pull request for your changes.
+Use a branch based on `main`, or on the branch of an open pull request that your
+change depends on, and open a pull request for your changes.
 The older `master` and release-maintenance branches are retained as read-only
 history.
 
@@ -43,20 +44,52 @@ describes additional checks, conditional coverage, and troubleshooting.
 
 ## Open and review a pull request
 
-Keep each pull request small, digestible, and focused on one concern. As a
-sizing guide, aim for no more than about 400 lines of hand-written change,
-excluding tests and documentation; all files still need to be reviewable.
-Split larger work and keep generated data separate from logic where possible.
-Ship relevant tests, public API docstrings, user-facing documentation, and a
-`CHANGELOG.md` entry with the change. Explain appropriate validation for
-documentation-only changes rather than adding runtime tests for them.
+These rules apply to every pull request. `CLAUDE.md` refers to them rather
+than restating them.
+
+- **Scope.** Keep each pull request small, digestible, and focused on one
+  concern. As a sizing guide, aim for no more than about 400 lines of
+  hand-written change, excluding tests and documentation; all files still need
+  to be reviewable. Split larger work before requesting review. Keep generated
+  data (lock files, generated tables, propagated requirements) separate from
+  hand-written logic where possible, so reviewers check the generator and its
+  tests rather than the generated lines.
+- **Documentation and evidence.** Ship relevant tests and evidence with the
+  change: NumPy-style docstrings for new or changed public functions, classes,
+  and CLI options (behaviour, failure modes, and any standard clause they
+  implement), user documentation for user-visible changes, and a
+  `CHANGELOG.md` entry. Documentation-only changes need documentation checks,
+  such as a documentation build with warnings as errors, not invented runtime
+  tests or docstrings.
+- **Changelog.** Consolidate related entries made on the same branch: update
+  the existing entry to describe the final effect rather than the sequence of
+  edits. File each entry under the section for its main effect; a change that
+  can break existing code or installations belongs under breaking changes.
+- **Description.** State the scope, what is deferred, how the change was
+  verified, and what reviewers should check first.
+- **Stacked pull requests.** When a change depends on another open pull
+  request, open it against that pull request's branch and name the parent in
+  the description. Merge (do not rebase) the parent's changes into it before
+  review and before merge, and retarget it to `main` once the parent merges.
+- **Deprecation.** Do not deprecate an interface until its replacement and
+  migration guidance are released. Until then, disclose known limitations or
+  risks in the documentation, and with runtime warnings that are not
+  deprecations where the risk warrants them, so that a stalled replacement
+  never leaves users on a deprecated interface with nowhere to go.
+- **Dependencies.** Add a new third-party dependency with, or immediately
+  before, its first verified consumer. Correcting a declared constraint to
+  match what CI tests is not a new dependency.
 
 For a programme of changes, keep a living design document with active decisions,
 superseded history, actual PR progress, an outcome-based roadmap, and a rolling
 near-term queue. Milestones may need many small PRs; do not preallocate a fixed
-count or future PR numbers. Reconcile shared planning, user docs, and PR
-descriptions as decisions change. Tests, traceability, and conformance evidence
-belong with the implementation, even when a later milestone consolidates them.
+count or future PR numbers. Each pull request adds and maintains only its own
+progress entry; concurrent pull requests conflict trivially there, so keep both
+entries. Re-assess the plan at the start and end of each pull request, and
+reconcile shared planning, user docs, and PR descriptions as decisions change.
+Distinguish planned, under-review, merged, and released behaviour. Tests,
+traceability, and conformance evidence belong with the implementation, even
+when a later milestone consolidates them.
 The [DICOM de-identification design](https://docs.pymedphys.com/en/latest/contrib/info/deidentification-design.html)
 records that programme's current plan and distinguishes planned capabilities
 from available features.
