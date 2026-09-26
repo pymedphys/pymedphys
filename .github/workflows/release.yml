@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Publish to TestPyPI only (true) or also to PyPI (false)"
+        description: "true: publish to TestPyPI only. false: publish to PyPI only."
         type: boolean
         default: true
 
@@ -37,6 +37,8 @@ jobs:
   build:
     needs: [lint, type-check, unit-tests, integration-tests]
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,17 +63,30 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           if [ "$EVENT_NAME" = "release" ]; then
+            case "$TAG" in
+              v*) ;;
+              *) echo "::error::The release tag $TAG must be v followed by the package version."
+                 exit 1 ;;
+            esac
             python .github/scripts/check_distributions.py dist --expected-version "$TAG"
           else
             python .github/scripts/check_distributions.py dist
           fi
+
+      # The wheel filename carries the normalised version.
+      - name: Record the version
+        id: version
+        run: |
+          wheel=$(basename dist/*.whl)
+          version=${wheel#pymedphys-}
+          echo "version=${version%%-*}" >> "$GITHUB_OUTPUT"
 
       - name: Upload built distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist
           path: dist/
-          retention-days: 7
+          retention-days: 30
 
   # Publish to TestPyPI for manual dry-run dispatches.
   publish-testpypi:
@@ -90,10 +105,14 @@ jobs:
           name: dist
           path: dist/
 
+      # Skipping files already on the index makes a re-run safe after a
+      # partial upload. verify-published catches an existing file whose
+      # contents differ from this build.
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
   # Publish to PyPI for real releases or explicit non-dry-run dispatches.
   publish-pypi:
@@ -114,13 +133,20 @@ jobs:
           name: dist
           path: dist/
 
+      # See publish-testpypi for skip-existing.
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          skip-existing: true
 
-  # Upload release assets only on a real GitHub release.
+  # Only replace release assets after proving that they match PyPI. A skipped
+  # duplicate upload alone does not prove that the existing bytes agree.
   upload-release-assets:
-    needs: [publish-pypi]
-    if: github.event_name == 'release'
+    needs: [publish-pypi, verify-published]
+    if: >-
+      !cancelled() && github.event_name == 'release' &&
+      needs.publish-pypi.result == 'success' &&
+      needs.verify-published.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -138,9 +164,74 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "$TAG" dist/* --clobber
 
+  # Install what the index now serves, the wheel and the sdist separately, on
+  # each OS, and require the files to match the ones built and tested above.
+  # After a TestPyPI rehearsal this also exercises the job before a release.
+  # Only pymedphys comes from that index; dependencies use PyPI, so no other
+  # package can be substituted from TestPyPI, where anyone can upload.
+  verify-published:
+    name: Verify published (${{ matrix.os }})
+    needs: [build, publish-testpypi, publish-pypi]
+    if: >-
+      !cancelled() &&
+      (needs.publish-pypi.result == 'success' ||
+       needs.publish-testpypi.result == 'success')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Download distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      # --wait covers the short delay before new files appear on the index.
+      - name: Install and check the published wheel and sdist
+        shell: bash
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          INDEX: ${{ needs.publish-pypi.result == 'success' && 'pypi' || 'testpypi' }}
+        run: >-
+          python .github/scripts/check_distributions.py
+          --published "$VERSION" --index "$INDEX" --compare-with dist
+          --report-dir reports --wait 600
+
+      - name: Upload installation reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: install-reports-${{ matrix.os }}
+          path: reports/
+          retention-days: 30
+
   summary:
     name: Release Summary
-    needs: [lint, type-check, unit-tests, integration-tests, build, publish-testpypi, publish-pypi]
+    needs:
+      - lint
+      - type-check
+      - unit-tests
+      - integration-tests
+      - build
+      - publish-testpypi
+      - publish-pypi
+      - upload-release-assets
+      - verify-published
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -148,9 +239,9 @@ jobs:
     steps:
       - name: Create release summary
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version || github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN: ${{ inputs.dry_run || 'N/A (release event)' }}
+          DRY_RUN: ${{ github.event_name == 'release' && 'N/A (release event)' || inputs.dry_run }}
           LINT_RESULT: ${{ needs.lint.result }}
           TYPE_CHECK_RESULT: ${{ needs.type-check.result }}
           UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}
@@ -158,6 +249,8 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
           TESTPYPI_RESULT: ${{ needs.publish-testpypi.result || 'skipped' }}
           PYPI_RESULT: ${{ needs.publish-pypi.result || 'skipped' }}
+          ASSETS_RESULT: ${{ needs.upload-release-assets.result || 'skipped' }}
+          VERIFY_RESULT: ${{ needs.verify-published.result || 'skipped' }}
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## Release Summary
@@ -180,4 +273,6 @@ jobs:
           |--------|--------|
           | TestPyPI | ${TESTPYPI_RESULT} |
           | PyPI | ${PYPI_RESULT} |
+          | GitHub release assets | ${ASSETS_RESULT} |
+          | Published-file checks | ${VERIFY_RESULT} |
           EOF

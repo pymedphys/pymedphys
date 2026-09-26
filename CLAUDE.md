@@ -72,6 +72,11 @@ Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
 generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
 file is gitignored, so edit `_config.yml`.
 
+Write procedures as instructions with their success criteria. State each
+fact once and link to it, prefer fixing a defect over documenting a workaround
+for it, and keep incident history and evidence caveats on the pull request
+rather than in the guide.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
@@ -187,12 +192,45 @@ The project uses uv with optional dependency groups:
   fixtures in sync with these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
 - Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
-  not `0.42.0-dev0`); the release tag must be `v` followed by it.
+  not `0.42.0-dev0`); the release tag must be `v` followed by it. The build
+  check fails a non-canonical version before publishing, because Hatchling
+  copies it into the metadata unchanged but canonicalises the filenames.
 - Distribution smoke tests must ignore the caller's Python path overrides,
   run outside the checkout, and verify that package imports come from the
-  test environment. A fresh venv alone does not isolate `PYTHONPATH`.
+  test environment. A fresh venv alone does not isolate `PYTHONPATH`, and
+  `python -I` does not isolate pip configuration. Disable pip configuration
+  files and inherited behavioural `PIP_*` settings for installs and their
+  build subprocesses; preserve only explicit network settings such as proxy,
+  certificate, time-out, and retry settings.
 - Include every root-level input to documentation preparation in the sdist:
   `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
+- Keep `release-guide.md` and `workflows.md` aligned with `release.yml`,
+  including pre-releases, publishing destinations, and post-publication checks.
+  Record release-test evidence on the release pull request.
+- Verify a release from the published files, not the checkout: install the
+  wheel and the sdist separately into fresh environments outside the checkout,
+  force the sdist to build, and check which file pip installed and where it
+  came from. `check_distributions.py --published` does this, and the release
+  workflow runs it after publishing; extend the script rather than documenting
+  manual steps.
+- Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
+  pre-releases. After every release, a reviewed pull request bumps `main` to
+  the next unpublished `.devN`, so `main` never carries a published version and
+  a development release can be tagged from `main` without a further pull
+  request. A pull request that sets a development version does not need the
+  `full-test` label, and changelog entries stay under `## Unreleased` until the
+  stable release.
+- The publish jobs use `skip-existing`, so a re-run after a partial upload is
+  safe; `verify-published` then requires the files on the index to match the
+  build. Release asset uploads must wait for that verification, so a skipped
+  duplicate cannot overwrite GitHub assets with different bytes.
+- Resolve PyMedPhys's published archive from the selected index alone, then
+  install its exact URL with dependencies from PyPI. Searching TestPyPI and
+  PyPI together does not give the first index priority.
+- Recover releases using their original distribution files. A rebuild of the
+  same tag can differ when the build backend changes. A failed retry does not
+  prove earlier attempts left PyPI untouched; preserve release tags and use a
+  new version for changed files.
 
 ## Important Implementation Notes
 
@@ -208,9 +246,10 @@ The project uses uv with optional dependency groups:
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
-7. **DICOM De-identification**: A standards-driven replacement for `pymedphys.dicom.anonymise` and the experimental pseudonymisation module is planned. `lib/pymedphys/docs/contrib/info/deidentification-design.md` is the source of truth for its active decisions, actual PR progress, outcome-based roadmap, and rolling next steps; update it in every de-identification PR. Distinguish planned behaviour from implemented and released support. Follow active decisions, not the separate superseded history, and keep user guidance and PR descriptions consistent with them.
-   - Never put source DICOM attribute values, secret keys, or original file paths in logs, standard output, exception messages, or release reports. Use tag/keyword paths and opaque object identifiers. A confidential QC review pack may contain retained strings and image previews needed for human review; create it only in an explicitly designated restricted location, keep it separate from release outputs, and treat it as potentially identifying. Key and subject-profile stores remain separate custodian-controlled state.
+7. **DICOM De-identification**: A standards-driven replacement for `pymedphys.dicom.anonymise` and the experimental pseudonymisation module is being developed. `lib/pymedphys/docs/contrib/info/deidentification-design.md` is the source of truth for its status, active decisions, actual PR progress, outcome-based roadmap, and rolling next steps; update it in every de-identification PR. Distinguish planned behaviour from implemented and released support. Follow active decisions, not the separate superseded history, and keep user guidance and PR descriptions consistent with them.
+   - In new or modified code, never put source DICOM attribute values, secret keys, or original file paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or release reports. Use tag/keyword paths and opaque object identifiers. Record channels that remain in legacy code in the design document until they are fixed. A confidential QC review pack may contain retained strings and image previews needed for human review; create it only in an explicitly designated restricted location, keep it separate from release outputs, and treat it as potentially identifying. Key and subject-profile stores remain separate custodian-controlled state.
    - Rule tables generated from the DICOM standard are regenerated with their generator, never edited by hand.
+   - Never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, and never set Burned In Annotation or Recognizable Visual Features to NO. Never replace a UID merely because its value representation is UI; resolve its role and the effective action first.
    - Claim "de-identified in accordance with" a named DICOM PS3.15 edition, profile, and options only after validating the effective policy and output. Validate both removal and retention overrides against IOD requirements and the claimed options. Explicitly label permitted nonconformant processing, including Private SOP Classes, and suppress unsupported conformance claims and method codes. Never describe output as "anonymised"; that is a legal conclusion about the release context that software cannot make.
 
 ## Common Development Patterns
@@ -278,6 +317,11 @@ This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code
 - One-off fixes for specific issues
 - Detailed explanations of individual features
 
+**Where guidance belongs**: record decisions that belong to one multi-PR
+programme in that programme's design document, not here. Record
+repository-wide contributor rules in `CONTRIBUTING.md` and link to them from
+here rather than restating them.
+
 **Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behavior across all Claude Code interactions.
 
 ### Bash Command Restrictions
@@ -320,15 +364,11 @@ This approach prioritizes security over efficiency, as confirmed by maintainer @
 
 ### PR Link Format
 
-**Always use this exact format when providing PR links**:
-```
-https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
-```
-
-**Important**:
-- Use THREE dots (`...`) between branch names, not two (`..`)
-- Correct: `compare/main...feature-branch`
-- Wrong: `compare/main..feature-branch`
+Before a pull request exists, link a comparison against its actual base:
+`https://github.com/pymedphys/pymedphys/compare/<base>...<your-branch>`, where
+`<base>` is `main` unless the pull request is stacked on another branch. Use
+three dots (`...`), not two. Once the pull request exists, link it as
+`https://github.com/pymedphys/pymedphys/pull/<number>`.
 
 ### Maintainer Guidance Documentation
 
@@ -346,13 +386,13 @@ This ensures that:
 
 ### Pull Request Scope and Documentation
 
-These principles come from maintainer feedback and apply to all pull requests:
-
-- **Keep pull requests small and reviewable by a human.** Each pull request has a single concern. As a sizing guide, aim for no more than about 400 lines of hand-written change, excluding tests and documentation; reviewability still matters for all files. Split work that grows beyond a digestible review before requesting review. Keep generated data (lock files, generated tables, propagated requirements) apart from hand-written logic where possible, so the reviewer checks the generator and its tests rather than the generated lines.
-- **Every pull request ships its documentation and relevant evidence.** New or changed public functions, classes, and CLI options get NumPy-style docstrings that state behaviour, failure modes, and any standard clause they implement. User-visible changes are documented in the user docs in the same pull request. Add a `CHANGELOG.md` entry. Include relevant tests and requirements/conformance evidence as behaviour is implemented, rather than postponing them to a final documentation milestone. Documentation-only changes need appropriate documentation checks, not invented runtime tests or docstrings. The pull request description states the scope, what is deferred, how the change was verified, and what the reviewer should check first.
-- **Consolidate related changelog entries made on the same branch.** Update the existing entry as review and follow-up commits refine the change; describe its final effect rather than the sequence of edits. Keep distinct user-facing and contributor-facing entries where useful, and preserve unrelated entries and release history.
-- **Multi-PR programmes keep a living design document** under `lib/pymedphys/docs/contrib/info/`, with active decisions, separately marked superseded history, actual PR progress, an outcome-based roadmap, and a rolling near-term queue. Milestones and queue entries may expand into many PRs; do not assign a fixed total or speculative PR numbers. Link actual GitHub PRs once opened. Introduce dependencies with, or immediately before, their first verified consumer. Re-assess the plan at the start and end of each PR in light of what earlier work found.
-- **Keep shared planning and documentation consistent.** Each PR maintains its own progress entry to reduce conflicts and also updates affected shared decisions, dependencies, user guidance, and PR descriptions. A near-term queue is not the whole programme. Distinguish planned, under-review, merged, and released behaviour; anchor deprecation windows to named releases once scheduled. Independent work may proceed concurrently when dependencies allow; declare stacked PR bases and reconcile changes from the base before review or merge.
+Before opening or updating a pull request, read and follow "Open and review a
+pull request" in `CONTRIBUTING.md`, the single source for these rules:
+single-concern pull requests of reviewable size; documentation, tests, and
+evidence with every change; consolidated changelog entries; stacked pull
+requests that merge (never rebase) their parent's changes; living design
+documents for multi-PR programmes; no deprecation before a replacement is
+released; and new dependencies only with their first consumer.
 
 ### CI Gates and Review Policy
 
