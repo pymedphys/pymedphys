@@ -1,3 +1,8 @@
+ai = [
+    'anthropic',
+    'httpx2',
+    'trio',
+]
 all = [
     'anthropic',
     'anyio',
@@ -149,13 +154,11 @@ tests = [
     'tqdm',
 ]
 user = [
-    'anthropic',
     'anyio',
     'attrs',
     'dash',
     'dbfread',
     'dicompyler-core',
-    'httpx2',
     'imageio',
     'keyring',
     'matplotlib',
@@ -182,7 +185,6 @@ user = [
     'timeago',
     'toml',
     'tqdm',
-    'trio',
     'trio-asyncio',
     'watchdog',
     'xmltodict',

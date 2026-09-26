@@ -184,6 +184,7 @@ Use this list wherever metadata needs the maintainers.
 The project uses uv with optional dependency groups:
 
 - `user`: Standard user installation
+- `ai`: The Anthropic dependencies of the experimental Mosaiq chat app; opt-in, never part of `user`
 - `all`: All features including development tools
 - `dev`: Development tools (linting, formatting)
 - `docs`: Documentation building
@@ -270,7 +271,7 @@ The project uses uv with optional dependency groups:
 
 3. **Gamma Analysis**: Core functionality for dose distribution comparison using efficient shell-based algorithm implementation.
 
-4. **Anthropic Integration**: Built-in Claude integration for AI-assisted features (requires API key).
+4. **Anthropic Integration**: The experimental Mosaiq chat app and its SQL agent (`_ai/`) call Anthropic's API and need an API key. Their dependencies are in the opt-in `ai` extra, so import them only where they are used, and keep the rest of the GUI loadable without them.
 
 5. **Streamlit Apps**: Web-based tools for various tasks (anonymisation, metersetmap, dose analysis) in `_streamlit/apps/`. `pymedphys gui` serves them, and is meant to be run either on one computer or on a server that other computers connect to, for example within a radiotherapy department. Keep network serving supported; the GUI has no login, so document that anyone who can reach it can use its apps.
 
