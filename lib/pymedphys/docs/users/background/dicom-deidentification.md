@@ -74,7 +74,7 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 
 ## Planned replacement
 
-Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, planned warnings and notices will state their limitations without deprecating them. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
+Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, their limitations are stated without deprecating them: experimental pseudonymisation's library functions emit a `PseudonymisationLimitationWarning`, its command prints a notice on standard error, and its app shows a banner, and planned notices for `anonymise` will do the same. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
 
 ## Further reading
 

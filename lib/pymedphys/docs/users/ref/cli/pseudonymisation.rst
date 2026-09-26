@@ -8,6 +8,12 @@ output.
 .. automodule:: pymedphys.cli.experimental.dicom
     :no-members:
 
+.. warning::
+
+    ``pymedphys experimental dicom pseudonymise`` prints a notice of its
+    security limitations on standard error when it runs. The
+    :doc:`../lib/experimental/pseudonymisation` describes them.
+
 .. argparse::
    :ref: pymedphys.cli.define_parser
    :prog: pymedphys
