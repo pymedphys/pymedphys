@@ -117,22 +117,26 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_release_assets_require_published_verification(self):
         workflow = jobs("release.yml")
-        self.assertIn("verify-published", needs(workflow["upload-release-assets"]))
-        self.assertIn(
-            "needs.verify-published.result == 'success'",
-            workflow["upload-release-assets"],
-        )
-        self.assertIn(
-            "diff built.sha256 assets.sha256", workflow["upload-release-assets"]
-        )
-        verification = workflow["verify-published"]
-        self.assertIn("--compare-with dist", verification)
-        self.assertIn("--tests", verification)
-        self.assertNotIn("test-published", workflow)
-        self.assertIn("os: [ubuntu-latest, windows-latest, macos-latest]", verification)
-        self.assertIn("fail-fast: false", verification)
-        self.assertNotIn("setup-project", verification)
-        self.assertNotIn("actions/cache", verification)
+        upload = workflow["upload-release-assets"]
+        self.assertIn("verify-published", needs(upload))
+        self.assertIn("needs.verify-published.result == 'success'", upload)
+        self.assertIn("diff built.sha256 assets.sha256", upload)
+        # Published tests resolve dependencies and datasets that change outside
+        # the repository. They report to the summary but never hold back assets.
+        self.assertNotIn("test-published", upload)
+        self.assertNotIn("--tests", workflow["verify-published"])
+        self.assertIn("--tests", workflow["test-published"])
+        for job in ("verify-published", "test-published"):
+            with self.subTest(job=job):
+                body = workflow[job]
+                self.assertIn("--published", body)
+                self.assertIn("--compare-with dist", body)
+                self.assertIn("publish-pypi", needs(body))
+                self.assertIn("os: [ubuntu-latest, windows-latest, macos-latest]", body)
+                self.assertIn("fail-fast: false", body)
+                # Fresh environments, as a user's installation would be.
+                self.assertNotIn("setup-project", body)
+                self.assertNotIn("actions/cache", body)
 
 
 if __name__ == "__main__":

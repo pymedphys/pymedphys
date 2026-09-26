@@ -166,15 +166,18 @@ Publishes to PyPI behind quality gates.
 - **Publishing**: PyPI trusted publishing through the `pypi` environment,
   with no stored API token. Files already on PyPI are skipped, so a re-run
   after a partial upload is safe
-- **After publishing**: `verify-published` installs the wheel and sdist
-  separately on Linux, Windows and macOS with
-  `check_distributions.py --published --tests`, and requires both archives to
-  match the build. It adds the `user` and `tests` extras to that fresh wheel
-  environment and runs the suite, with dependencies resolved from PyPI and no
-  restored package/data cache. Combining installation and testing removes a
-  second pair of installations on each OS. `upload-release-assets` waits for
-  verification **and tests** on every OS, then attaches the files and reads them
-  back to confirm the release offers exactly those files
+- **After publishing**: `verify-published` installs the wheel and the sdist
+  from PyPI, separately on Linux, Windows, and macOS, with
+  `check_distributions.py --published`, and requires both to match the files
+  built in the run. `test-published` runs alongside it on each OS: it repeats
+  that verification in its own fresh environments, adds the `user` and `tests`
+  extras to the published wheel's environment, and runs the test suite
+  (`--tests`), with dependencies resolved afresh from PyPI rather than from
+  `uv.lock` and no restored cache. After verification, `upload-release-assets`
+  attaches the files to the GitHub release and reads them back to confirm the
+  release offers exactly those files. The assets do not wait for the published
+  tests, whose dependencies and datasets change outside the repository; a
+  failure there turns the Release Summary red
 - **Concurrency**: Attempts for the same tag are serialised; publishing is
   never cancelled automatically by a newer attempt
 - **Recovery**: The original `dist` artefact is retained for 30 days. Retry

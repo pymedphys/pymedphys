@@ -147,11 +147,66 @@ jobs:
           diff built.sha256 assets.sha256
 
   # Install what PyPI now serves, the wheel and the sdist separately, on each
-  # OS, and require the files to match the ones built and tested above. Reuse
-  # that fresh wheel environment for the test suite, with dependencies resolved
-  # from PyPI and no restored package/data cache. Assets wait for these tests too.
+  # OS, and require the files to match the ones built and tested above.
   verify-published:
-    name: Verify and test published (${{ matrix.os }})
+    name: Verify published (${{ matrix.os }})
+    needs: [build, publish-pypi]
+    if: >-
+      !cancelled() && needs.publish-pypi.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Download distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      # --wait covers the short delay before new files appear on the index.
+      - name: Install and check the published wheel and sdist
+        shell: bash
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: >-
+          python .github/scripts/check_distributions.py
+          --published "$VERSION" --compare-with dist
+          --report-dir reports --wait 600 --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload installation reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: install-reports-${{ matrix.os }}
+          path: reports/
+          retention-days: 30
+
+  # Run the test suite against the published wheel with its dependencies
+  # resolved afresh from PyPI, as a user's installation is, rather than from
+  # uv.lock as in the tests before publishing. It runs alongside verification
+  # and repeats it in its own fresh environments, so the suite never runs on
+  # files that differ from the build. It does not gate the release assets:
+  # its dependencies and datasets change outside the repository, and a failure
+  # here is a defect in the published release, reported by the Release
+  # Summary. Like a user's installation, it restores no cache, so the tests
+  # download their data.
+  test-published:
+    name: Test published (${{ matrix.os }})
     needs: [build, publish-pypi]
     if: >-
       !cancelled() && needs.publish-pypi.result == 'success'
@@ -180,8 +235,7 @@ jobs:
           name: dist
           path: dist/
 
-      # --wait covers the short delay before new files appear on the index.
-      - name: Verify both published archives and test the wheel
+      - name: Install the published wheel and run the test suite
         shell: bash
         env:
           VERSION: ${{ needs.build.outputs.version }}
@@ -190,11 +244,11 @@ jobs:
           --published "$VERSION" --compare-with dist
           --report-dir reports --wait 600 --tests --summary "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload installation and test reports
+      - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: published-reports-${{ matrix.os }}
+          name: test-reports-${{ matrix.os }}
           path: reports/
           retention-days: 30
 
@@ -211,6 +265,7 @@ jobs:
       - publish-pypi
       - upload-release-assets
       - verify-published
+      - test-published
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10

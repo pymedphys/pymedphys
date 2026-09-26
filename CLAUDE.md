@@ -249,7 +249,9 @@ The project uses uv with optional dependency groups:
 - The publish job uses `skip-existing`, so a re-run after a partial upload is
   safe; `verify-published` then requires the files on the index to match the
   build. Release asset uploads must wait for that verification, so a skipped
-  duplicate cannot overwrite GitHub assets with different bytes.
+  duplicate cannot overwrite GitHub assets with different bytes. They must not
+  wait for `test-published`, whose dependencies and datasets change outside the
+  repository; keep it a separate job that reports to `Release Summary`.
 - Resolve PyMedPhys's published archive from PyPI's JSON Simple API and
   install its exact URL, so no other configured index can substitute it.
 - Recover releases using their original distribution files. A rebuild of the

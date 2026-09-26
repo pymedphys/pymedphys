@@ -69,8 +69,8 @@ This project adheres to
   jobs avoid installing the scientific stack, and only data consumers restore
   the manifest-specific data cache. Release validation runs in parallel with
   one distribution build; publishing still waits for every quality gate.
-  Published-package verification and tests share a fresh environment per OS,
-  and release assets wait for both to pass.
+  After publishing, the published-package tests run alongside archive
+  verification, and release assets wait only for verification.
 
 - **[Contributor facing only]** Added the design document for the DICOM
   de-identification engine that will replace `pymedphys.dicom.anonymise` and
