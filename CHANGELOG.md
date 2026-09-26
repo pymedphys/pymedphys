@@ -81,6 +81,9 @@ This project adheres to
   (for example a malformed time during pseudonymisation) in validation
   messages that it issues as Python warnings and logs through the `pydicom`
   logger, which propagates to the root logger.
+- `pymedphys gui --port` now takes effect. Previously the port was ignored and
+  the GUI always used Streamlit's default port. A port that is not an integer
+  is now rejected.
 
 ### Dependency changes
 
