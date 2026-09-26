@@ -72,6 +72,11 @@ Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
 generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
 file is gitignored, so edit `_config.yml`.
 
+Write procedures as instructions with their success criteria. State each
+fact once and link to it, prefer fixing a defect over documenting a workaround
+for it, and keep incident history and evidence caveats on the pull request
+rather than in the guide.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
@@ -187,12 +192,45 @@ The project uses uv with optional dependency groups:
   fixtures in sync with these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
 - Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
-  not `0.42.0-dev0`); the release tag must be `v` followed by it.
+  not `0.42.0-dev0`); the release tag must be `v` followed by it. The build
+  check fails a non-canonical version before publishing, because Hatchling
+  copies it into the metadata unchanged but canonicalises the filenames.
 - Distribution smoke tests must ignore the caller's Python path overrides,
   run outside the checkout, and verify that package imports come from the
-  test environment. A fresh venv alone does not isolate `PYTHONPATH`.
+  test environment. A fresh venv alone does not isolate `PYTHONPATH`, and
+  `python -I` does not isolate pip configuration. Disable pip configuration
+  files and inherited behavioural `PIP_*` settings for installs and their
+  build subprocesses; preserve only explicit network settings such as proxy,
+  certificate, time-out, and retry settings.
 - Include every root-level input to documentation preparation in the sdist:
   `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
+- Keep `release-guide.md` and `workflows.md` aligned with `release.yml`,
+  including pre-releases, publishing destinations, and post-publication checks.
+  Record release-test evidence on the release pull request.
+- Verify a release from the published files, not the checkout: install the
+  wheel and the sdist separately into fresh environments outside the checkout,
+  force the sdist to build, and check which file pip installed and where it
+  came from. `check_distributions.py --published` does this, and the release
+  workflow runs it after publishing; extend the script rather than documenting
+  manual steps.
+- Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
+  pre-releases. After every release, a reviewed pull request bumps `main` to
+  the next unpublished `.devN`, so `main` never carries a published version and
+  a development release can be tagged from `main` without a further pull
+  request. A pull request that sets a development version does not need the
+  `full-test` label, and changelog entries stay under `## Unreleased` until the
+  stable release.
+- The publish jobs use `skip-existing`, so a re-run after a partial upload is
+  safe; `verify-published` then requires the files on the index to match the
+  build. Release asset uploads must wait for that verification, so a skipped
+  duplicate cannot overwrite GitHub assets with different bytes.
+- Resolve PyMedPhys's published archive from the selected index alone, then
+  install its exact URL with dependencies from PyPI. Searching TestPyPI and
+  PyPI together does not give the first index priority.
+- Recover releases using their original distribution files. A rebuild of the
+  same tag can differ when the build backend changes. A failed retry does not
+  prove earlier attempts left PyPI untouched; preserve release tags and use a
+  new version for changed files.
 
 ## Important Implementation Notes
 
