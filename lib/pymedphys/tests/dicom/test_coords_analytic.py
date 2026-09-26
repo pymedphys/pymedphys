@@ -148,19 +148,26 @@ def test_zyx_and_dose_returns_ascending_axes_aligned_with_the_dose(
         assert dose_grid[index] == raw[k, i, j], (orientation, (k, i, j))
 
 
+def _remove_slice_offsets(ds, offsets):
+    # pydicom reads an empty numeric element from a file as None.
+    if offsets == "absent":
+        del ds.GridFrameOffsetVector
+    elif offsets == "empty":
+        ds.GridFrameOffsetVector = None
+
+
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
-@pytest.mark.parametrize("omit_offsets", [False, True])
+@pytest.mark.parametrize("offsets", ["present", "absent", "empty"])
 @pytest.mark.parametrize("omit_slice_count", [False, True])
 def test_zyx_and_dose_keeps_a_single_slice_dose_three_dimensional(
-    orientation, omit_offsets, omit_slice_count
+    orientation, offsets, omit_slice_count
 ):
     # pydicom returns a (rows, columns) pixel array when there is one slice,
     # as in planar dose exports.
     ds = rtdose(orientation, shape=(1, 4, 5), slice_offsets=[0.0])
     positions = voxel_positions(ds)[0]
-    if omit_offsets:
-        del ds.GridFrameOffsetVector
+    _remove_slice_offsets(ds, offsets)
     if omit_slice_count:
         del ds.NumberOfFrames
     raw = np.asarray(ds.pixel_array, dtype=float) * DOSE_GRID_SCALING
@@ -181,9 +188,10 @@ def test_zyx_and_dose_keeps_a_single_slice_dose_three_dimensional(
 
 
 @pytest.mark.pydicom
-def test_multi_slice_dose_requires_slice_offsets():
+@pytest.mark.parametrize("offsets", ["absent", "empty"])
+def test_multi_slice_dose_requires_slice_offsets(offsets):
     ds = rtdose("HFS")
-    del ds.GridFrameOffsetVector
+    _remove_slice_offsets(ds, offsets)
     with pytest.raises(ValueError, match="GridFrameOffsetVector.*multi-slice"):
         dose.zyx_and_dose_from_dataset(ds)
 
@@ -219,7 +227,7 @@ def test_matrix_oracle_matches_worked_voxel_positions(orientation, expected):
 @pytest.mark.parametrize(
     "offsets, message",
     [
-        ([], "non-empty"),
+        ([], "required for a multi-slice"),
         ([0, 2.5], "NumberOfFrames"),
         ([0, 5, 2.5], "monotonic"),
         ([0, 2.5, 2.5], "monotonic"),

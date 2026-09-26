@@ -63,8 +63,8 @@ This project adheres to
   which could leave the gamma search running indefinitely. Searches are now
   bounded by the grids' spatial extent without requiring overlapping grids,
   and the custom interpolator reuses the grid validation done at gamma entry.
-  Query coordinates are reshaped without copying, and the SciPy interpolator
-  is reused across search shells and RAM chunks within each calculation.
+  The SciPy interpolator is built once per gamma calculation instead of for
+  every search shell.
   A reference point whose search shells step past an evaluation grid
   narrower than one search step is still reported as NaN.
 
@@ -160,8 +160,8 @@ This project adheres to
   offsets, and offsets inconsistent with `NumberOfFrames`, are rejected. A
   single-slice dose, which pydicom reads as a two-dimensional array, is
   returned with a length-one z axis rather than raising an error. Its slice
-  offset is zero when `GridFrameOffsetVector` is absent, as permitted for
-  single-slice images. Multi-slice doses still require the vector.
+  offset is zero when `GridFrameOffsetVector` is absent or empty, as permitted
+  for single-slice images. Multi-slice doses still require the vector.
 - The private `pymedphys._dicom.coords.xyz_axes_from_dataset` now raises
   `NotImplementedError` for the IEC patient coordinate system, whose output
   was incorrect, and `ValueError` rather than `UnboundLocalError` for an
