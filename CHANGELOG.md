@@ -14,6 +14,14 @@ This project adheres to
 
 ### New features and enhancements
 
+- New documentation page,
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html),
+  explaining de-identification, pseudonymisation, and anonymisation, what a
+  DICOM conformance claim does and does not establish, and the known
+  limitations of `pymedphys.dicom.anonymise` and experimental
+  pseudonymisation. Neither tool implements a DICOM confidentiality profile:
+  for example, `anonymise` leaves UIDs unchanged, and experimental
+  pseudonymisation hashes UIDs without a secret key.
 - Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
   while retaining the dose from valid beams. A missing dose file still
   aborts RTDOSE generation rather than exporting an incomplete sum.
@@ -64,6 +72,12 @@ This project adheres to
   Published-package verification and tests share a fresh environment per OS,
   and release assets wait for both to pass.
 
+- **[Contributor facing only]** Added the design document for the DICOM
+  de-identification engine that will replace `pymedphys.dicom.anonymise` and
+  experimental pseudonymisation
+  (`lib/pymedphys/docs/contrib/info/deidentification-design.md`), covering its
+  scope, conformance claims, architecture, target presets, decisions, and
+  roadmap.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
