@@ -1,6 +1,6 @@
 [project]
 name = "pymedphys"
-version = "0.42.0.dev0"
+version = "0.42.0.dev1"
 description = "Medical Physics library"
 readme = "README.rst"
 requires-python = ">=3.10,<3.13"

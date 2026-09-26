@@ -56,6 +56,31 @@ jobs:
         run: |
           uv run -- pymedphys dev tests --slow -v
 
+  # The distribution checks create venvs, run console scripts, and build from
+  # file:// indexes, which differ on Windows and macOS. Ubuntu runs these
+  # tests on every pull request in ci.yml.
+  script-tests:
+    name: Script Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Run the script tests
+        run: python -m unittest discover -s .github/scripts -p 'test_*.py'
+
   # Builds the wheel from the sdist, so a file missing from the sdist fails
   # here, then installs the wheel into a fresh venv outside the project's
   # environment. See .github/scripts/check_distributions.py.
