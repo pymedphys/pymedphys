@@ -259,11 +259,20 @@ def test_select_table_rejects_merged_cells():
         chtml.select_table(chtml.extract_tables(page), "Table E.1-1")
 
 
-def test_select_table_rejects_rows_that_do_not_match_the_header():
-    page = _page(_table("Table X-1. Fixture", ("A", "B"), (("1", "2"), ("3",))))
+@pytest.mark.parametrize("row", [(), ("3",), ("3", "4", "5")])
+def test_select_table_rejects_rows_that_do_not_match_the_header(row):
+    page = _page(_table("Table X-1. Fixture", ("A", "B"), (("1", "2"), row)))
 
-    with pytest.raises(chtml.TableFormatError, match="row 2 has 1 cells"):
+    with pytest.raises(chtml.TableFormatError, match=f"row 2 has {len(row)} cells"):
         chtml.select_table(chtml.extract_tables(page), "Table X-1")
+
+
+def test_an_empty_first_row_is_preserved_without_becoming_a_header():
+    page = _page(_table("Table X-1. Fixture", (), (("1", "2"),)))
+    table = chtml.select_table(chtml.extract_tables(page), "Table X-1")
+
+    assert table.header == ()
+    assert table.rows == ((), ("1", "2"))
 
 
 def test_parse_table_e1_1():
@@ -332,6 +341,26 @@ def test_invalid_values_fail(column, value, message):
 
     with pytest.raises(chtml.TableFormatError, match=message):
         annex_e.parse_table_e1_1(_e1_1_table(rows=(tuple(row),)))
+
+
+@pytest.mark.parametrize("column", [4, 6])
+@pytest.mark.parametrize("action", ["X/K", "D/Z", "U/U*", "U*", "C/K", "X/Z/U"])
+def test_undefined_action_combinations_fail(column, action):
+    row = list(E1_1_ROWS[1])
+    row[column] = action
+
+    with pytest.raises(chtml.TableFormatError, match="action"):
+        annex_e.parse_table_e1_1(_e1_1_table(rows=(tuple(row),)))
+
+
+@pytest.mark.parametrize("action", ["Z/D", "X/Z", "X/D", "X/Z/D", "X/Z/U*"])
+def test_defined_compound_actions_are_preserved(action):
+    row = list(E1_1_ROWS[1])
+    row[4] = action
+
+    (attribute,) = annex_e.parse_table_e1_1(_e1_1_table(rows=(tuple(row),)))
+
+    assert attribute.basic_profile == action
 
 
 def test_duplicate_tags_fail():

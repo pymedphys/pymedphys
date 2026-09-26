@@ -42,7 +42,7 @@ class HtmlTable:
     header : tuple of str
         The first row when every cell in it is a ``th`` cell, otherwise empty.
     rows : tuple of tuple of str
-        Every other row.
+        Every other row, including empty rows.
     has_merged_cells : bool
         Whether any cell spans more than one row or column.
     """
@@ -155,9 +155,9 @@ def extract_tables(page: str) -> list[HtmlTable]:
 
     tables = []
     for table in collector.tables:
-        rows = [row for row in table.rows if row]
+        rows = table.rows
         texts = [tuple(_normalise("".join(cell.parts)) for cell in row) for row in rows]
-        has_header = bool(rows) and all(cell.is_header for cell in rows[0])
+        has_header = bool(rows and rows[0]) and all(cell.is_header for cell in rows[0])
         tables.append(
             HtmlTable(
                 title=table.title,

@@ -47,9 +47,11 @@ OPTION_COLUMNS = {
 
 COLUMNS = (_NAME, _TAG, _RETIRED, _IN_STANDARD_IOD, _BASIC_PROFILE, *OPTION_COLUMNS)
 
-# The action codes of Table E.1-1a. "U*" is the form Table E.1-1 uses in
-# X/Z/U* for attributes whose replacement UID has a note.
-ACTION_CODES = frozenset({"C", "D", "K", "U", "U*", "X", "Z"})
+# Complete action codes from Table E.1-1a. Compound codes have defined
+# meanings; other combinations, including "U*" alone, are not defined.
+ACTION_CODES = frozenset(
+    {"D", "Z", "X", "K", "C", "U", "Z/D", "X/Z", "X/D", "X/Z/D", "X/Z/U*"}
+)
 
 # A tag, where an "x" stands for any hexadecimal digit, as in (60xx,3000).
 _TAG_PATTERN = re.compile(r"\([0-9A-Fx]{4},[0-9A-Fx]{4}\)")
@@ -96,15 +98,10 @@ def _flag(value: str, column: str, row: int) -> bool:
 
 
 def _action(value: str, column: str, row: int) -> str:
-    codes = value.split("/")
-    if (
-        not value
-        or any(code not in ACTION_CODES for code in codes)
-        or len(set(codes)) != len(codes)
-    ):
+    if value not in ACTION_CODES:
         raise TableFormatError(
             f"{TABLE_E1_1} row {row}: {column} has action {value!r}, "
-            "which is not a combination of distinct Table E.1-1a codes"
+            "which is not defined in Table E.1-1a"
         )
     return value
 
@@ -148,9 +145,8 @@ def parse_table_e1_1(table: HtmlTable) -> tuple[ProfileAttribute, ...]:
     TableFormatError
         If a column is unknown, missing, or repeated; if a Y/N column holds
         anything else; if a tag has an unrecognised form or appears more than
-        once; or if an action is not a combination of distinct Table E.1-1a
-        codes. The Basic Profile action is required; option actions may be
-        empty.
+        once; or if an action is not defined in Table E.1-1a. The Basic
+        Profile action is required; option actions may be empty.
     """
     _check_columns(table.header)
 
