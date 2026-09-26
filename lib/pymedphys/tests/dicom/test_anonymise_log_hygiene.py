@@ -23,7 +23,8 @@ stderr, and the log records that reach the root logger with its level set to
 DEBUG, and checks that no canary appears. A logger with its own level
 contributes only records at or above it: pydicom's logger stays at WARNING.
 One strict expected failure documents a channel that remains: pydicom quotes
-invalid values in its validation messages.
+invalid values in its validation messages. Remaining channels are listed in
+the tracking issue, https://github.com/pymedphys/pymedphys/issues/2075.
 """
 
 import io
@@ -207,12 +208,15 @@ def test_streamlit_pseudonymise_failure_does_not_print_file_name(
 
     monkeypatch.setattr(pseudonymise_app, "anonymise_dataset", _raise_with_value)
 
+    # The buffer is the first of a later 50 MB batch, so it is reported by its
+    # position among all uploads rather than within its batch.
     bad_data = pseudonymise_app._zip_pseudo_fifty_mbytes(  # pylint: disable = protected-access
-        [uploaded], io.BytesIO()
+        [uploaded], io.BytesIO(), first_file_number=4
     )
 
     assert bad_data
     _assert_no_canaries(capsys, caplog)
+    assert "uploaded file 4 " in caplog.text
     assert "ValueError" in caplog.text
 
 
@@ -223,8 +227,8 @@ def test_streamlit_pseudonymise_failure_does_not_print_file_name(
     reason=(
         "pydicom quotes an invalid value in its validation message, which it "
         "issues as a Python warning and logs through the 'pydicom' logger. "
-        "This remaining channel is tracked in the de-identification design "
-        "document."
+        "This remaining channel is listed in the de-identification tracking "
+        "issue, pymedphys/pymedphys#2075."
     ),
 )
 def test_pseudonymise_invalid_value_is_not_quoted(tmp_path, capsys, caplog):

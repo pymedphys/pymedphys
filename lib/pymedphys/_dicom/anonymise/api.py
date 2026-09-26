@@ -462,7 +462,7 @@ def anonymise_cli(args):
     print_cli_summary(file_count)
 
 
-def print_cli_summary(file_count):
+def print_cli_summary(file_count: int) -> None:
     """Print the one-line summary of an anonymisation command.
 
     File paths are not printed. Input paths often contain patient names, and
