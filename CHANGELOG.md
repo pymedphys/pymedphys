@@ -164,7 +164,7 @@ This project adheres to
   being merged, stacked pull requests, no deprecation before a replacement is
   released, dependencies added with their first consumer, and design documents
   and tracking issues for work spanning many pull requests.
-  [PR #2076](https://github.com/pymedphys/pymedphys/pull/2076)
+  [PR #2076](https://github.com/pymedphys/pymedphys/pull/2076), [PR #2095](https://github.com/pymedphys/pymedphys/pull/2095)
 - **[Contributor facing only]** CI now selects Python, documentation, tooling
   and security checks from the complete tested PR diff. Unknown inputs select
   every standard check, and symlinks, submodules or an unverifiable diff select
