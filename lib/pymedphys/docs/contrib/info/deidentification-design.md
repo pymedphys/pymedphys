@@ -277,7 +277,7 @@ These are the active design decisions, not statements that the code implements t
 ### D-019: No deprecation before a released replacement
 
 - **Decision.**
-  - Disclose the legacy tools' limitations now with warnings that are not deprecations and promise no removal. For experimental pseudonymisation, these are a `UserWarning` subclass in the library, a standard-error notice on the command line, and a banner in the app. For `pymedphys.dicom.anonymise`, they are corrected documentation and docstrings, and a runtime notice where its risk warrants one.
+  - Disclose the legacy tools' limitations now with warnings that are not deprecations and promise no removal. For experimental pseudonymisation, these are a `UserWarning` subclass in the library, a standard-error notice on the command line, and a banner in the app. For `pymedphys.dicom.anonymise`, they are corrected documentation and docstrings, a `UserWarning` subclass from the library function, and a standard-error notice on the command line.
   - Deprecate a legacy interface (library, command line, or app) only once a released replacement covers its use and migration guidance is published, which is no earlier than the first supported release (M6).
   - Keep each legacy interface for at least one full minor release with deprecation warnings, then remove both in the same release. Record exact versions in the release notes when they are scheduled.
 - **Rationale.** Deprecating before a replacement exists would leave users nowhere to go and, if the work stalled, would make the warning permanent noise. If the replacement is not delivered, both legacy interfaces remain available with their documented limitations.

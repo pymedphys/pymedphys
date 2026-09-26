@@ -50,6 +50,17 @@ This project adheres to
   banner. This is not a deprecation: neither legacy tool will be deprecated
   until a replacement is released. See
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
+- **[Security]** `pymedphys.dicom.anonymise` now warns about its limitations.
+  It replaces only a list of attributes; its default list keeps every UID and
+  most RT attributes, such as plan, structure set, ROI, and beam labels and
+  names; it does not rebuild the file preamble or File Meta Information; and
+  `pymedphys dicom anonymise` names its output files after the original SOP
+  Instance UID. `pymedphys.dicom.anonymise` emits an
+  `AnonymisationLimitationWarning` (a `UserWarning`), and the command prints
+  the notice on standard error. The docstrings and help text no longer claim
+  that output file names contain no identifying information or that
+  `is_anonymised_*` confirms anonymisation, and they state which files and
+  attributes are processed. This is not a deprecation.
 
 ### Bug fixes
 
