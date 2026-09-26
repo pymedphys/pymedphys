@@ -108,6 +108,11 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** Guidance for all coding agents now lives in
+  `AGENTS.md`, and `CLAUDE.md` keeps only the Claude Code instructions and
+  points to it. The guides keep maintainers' personal preferences out of the
+  repository, and drop outdated sections on branch names, Git timestamps,
+  permission requests, and conda recipes.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state
