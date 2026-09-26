@@ -311,6 +311,11 @@ This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code
 - One-off fixes for specific issues
 - Detailed explanations of individual features
 
+**Where guidance belongs**: record decisions that belong to one multi-PR
+programme in that programme's design document, not here. Record
+repository-wide contributor rules in `CONTRIBUTING.md` and link to them from
+here rather than restating them.
+
 **Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behavior across all Claude Code interactions.
 
 ### Bash Command Restrictions
@@ -353,15 +358,11 @@ This approach prioritizes security over efficiency, as confirmed by maintainer @
 
 ### PR Link Format
 
-**Always use this exact format when providing PR links**:
-```
-https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
-```
-
-**Important**:
-- Use THREE dots (`...`) between branch names, not two (`..`)
-- Correct: `compare/main...feature-branch`
-- Wrong: `compare/main..feature-branch`
+Before a pull request exists, link a comparison against its actual base:
+`https://github.com/pymedphys/pymedphys/compare/<base>...<your-branch>`, where
+`<base>` is `main` unless the pull request is stacked on another branch. Use
+three dots (`...`), not two. Once the pull request exists, link it as
+`https://github.com/pymedphys/pymedphys/pull/<number>`.
 
 ### Maintainer Guidance Documentation
 
@@ -376,6 +377,11 @@ This ensures that:
 - Future Claude Code interactions will follow the same guidelines
 - Maintainers don't need to repeatedly explain the same concepts
 - Knowledge is preserved across different workflow runs
+
+### Pull Request Rules
+
+Before opening or updating a pull request, read and follow "Open and review a
+pull request" in `CONTRIBUTING.md`.
 
 ### CI Gates and Review Policy
 

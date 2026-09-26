@@ -50,6 +50,13 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
+  every pull request follows: single-concern scope, tests and documentation
+  with each change, consolidated changelog entries, descriptions of the state
+  being merged, stacked pull requests, no deprecation before a replacement is
+  released, dependencies added with their first consumer, and design documents
+  and tracking issues for work spanning many pull requests. `CLAUDE.md` links
+  to these rules and links pull requests against their actual base.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
