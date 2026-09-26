@@ -260,6 +260,11 @@ full  = ["user", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
 dev = [
   "sphinx-external-toc>=1.0.1",
 ]
+# CI installs only this group, hash-checked from uv.lock, to run pre-commit
+# without the project or its scientific dependencies.
+pre-commit = [
+  "pre-commit",
+]
 
 # Each target lists its own contents: a build-wide include is an allow-list
 # that would also decide what the sdist holds. only-include walks just these
