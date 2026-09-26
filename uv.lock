@@ -2722,6 +2722,9 @@ user = [
 dev = [
     { name = "sphinx-external-toc" },
 ]
+pre-commit = [
+    { name = "pre-commit" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2900,6 +2903,7 @@ provides-extras = ["user", "dev", "lint", "tests", "docs", "doctests", "cli", "d
 
 [package.metadata.requires-dev]
 dev = [{ name = "sphinx-external-toc", specifier = ">=1.0.1" }]
+pre-commit = [{ name = "pre-commit" }]
 
 [[package]]
 name = "pymssql"
