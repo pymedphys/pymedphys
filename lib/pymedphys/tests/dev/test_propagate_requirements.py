@@ -33,7 +33,13 @@ def fixture_export_calls(monkeypatch, tmp_path: pathlib.Path):
         output = cmd[cmd.index("--output-file") + 1]
         pathlib.Path(cwd, output).write_text("numpy==1.26.4\n", encoding="utf-8")
 
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        '[project.optional-dependencies]\nuser = ["numpy"]\ndocs = ["numpy"]\n',
+        encoding="utf-8",
+    )
     monkeypatch.setattr(propagate, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(propagate, "PYPROJECT_TOML_PATH", pyproject)
     monkeypatch.setattr(propagate.subprocess, "check_call", fake_check_call)
 
     return calls
