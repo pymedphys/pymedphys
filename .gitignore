@@ -82,6 +82,9 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# Local outputs from examples/gamma_performance.py
+/gamma-performance-*/
+
 # IPython
 profile_default/
 ipython_config.py

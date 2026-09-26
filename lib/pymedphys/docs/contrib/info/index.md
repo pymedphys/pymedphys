@@ -11,4 +11,5 @@ workflows
 dependency-update-prs
 dicom-coordinate-validation
 dicom-coordinates-illustrated
+gamma-performance
 ```

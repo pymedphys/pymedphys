@@ -363,9 +363,15 @@ so plugin autoload was disabled and a 180-second subprocess timeout covered
 the whole selection; per-test timeout behaviour was not exercised. Ruff,
 Pyright and the repository pre-commit checks passed.
 
-The notebook's ordinary cells were executed in a fresh Jupyter kernel and
-its figures inspected. The optional two-checkout performance comparison was
-not rerun: its worker was smoke-tested with both 2D interpolators, and guards
-for missing paths, invalid revisions and incorrect import origins were
-exercised. The notebook no longer presents historical hard-coded timings as
-verified measurements or claims full-array agreement from checksums alone.
+The coordinate notebook's ordinary cells were executed in a fresh Jupyter
+kernel and its figures inspected. Performance is now demonstrated separately
+in [Faster gamma calculations: a reproducible benchmark](gamma-performance.ipynb).
+The complete two-checkout comparison used previous main `866f83e` and PR
+revision `d99893b`, with three alternating rounds and two timed calls per
+revision per round across six workloads. All 72 timed calls reproduced their
+warm-up arrays exactly; every array also matched across revisions and rounds,
+including NaN positions. Both versions used the same dependency environment
+and two Numba threads. The performance notebook embeds the individual timings,
+input/output hashes and source/environment provenance, and explains warm-up
+exclusions and the limits of the synthetic cases. The one-command workstation
+runner additionally exports a comparison figure and raw evidence.

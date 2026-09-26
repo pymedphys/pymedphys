@@ -25,6 +25,25 @@ Earlier versions returned incorrect patient coordinates for DICOM RT Dose grids 
 
 Coordinates now follow the DICOM definition of voxel position (PS3.3 C.7.6.2.1.1 and C.8.8.3.2) for all eight supported transverse cardinal orientations. Accepted rounded direction cosines are approximated by those cardinal directions when extracting separable axes. [DICOM coordinates and gamma, illustrated](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinates-illustrated.html) demonstrates each case and how to check whether an earlier comparison was affected. The [DICOM coordinate validation note](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinate-validation.html) records the independent checks and the remaining limitations: oblique orientations are unsupported, and two private helpers still mishandle decubitus grids. The returned dose arrays can be ordered differently from the stored pixel data; see (Potentially) breaking changes.
 
+### Faster gamma calculations
+
+`pymedphys.gamma` reduces repeated copying and interpolator setup during its
+search. In a controlled Windows benchmark of three synthetic 3D
+workloads using the default interpolator, the updated implementation took
+**21–25% less time (1.27–1.34× speed-up)**, with exact elementwise
+agreement across both revisions in all six tested 2D/3D workloads, including
+NaN positions. The comparison used previous main `866f83e` and PR revision
+`d99893b`, the same Python environment, two Numba threads, and six warmed timed
+calls per revision per case. Gains depend on the workload, interpolator and
+computer; these numbers exclude imports and initial compilation.
+
+[Faster gamma calculations: a reproducible benchmark](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance.html)
+provides the workloads, individual measurements, variation plots and numerical
+checks. Run `python examples/gamma_performance.py` from the repository root
+in your PyMedPhys environment to compare committed revisions on your own
+workstation and save a labelled PNG/SVG with raw timings and provenance. No
+patient data is required, and the benchmark preserves your working files.
+
 ### New features and enhancements
 
 - Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
@@ -40,7 +59,6 @@ Coordinates now follow the DICOM definition of voxel position (PS3.3 C.7.6.2.1.1
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
-- `pymedphys.gamma` reduces repeated work: the default interpolator receives search points as a view instead of a copy made for every shell, and the SciPy interpolator is built once per calculation. Runtime depends on the grid, settings and host. The optional benchmark in [DICOM coordinates and gamma, illustrated](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinates-illustrated.html) checks exact source revisions, import paths and full-array equality before comparing timings.
 
 ### Bug fixes
 

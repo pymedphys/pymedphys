@@ -1,5 +1,14 @@
 # Example status
 
+`gamma_performance.py` is a runnable old-versus-new gamma benchmark. From the
+repository root, with the PyMedPhys environment active, run
+`python examples/gamma_performance.py`. It prepares temporary checkouts of
+previous main and committed HEAD, checks complete gamma-array equality, and
+saves a labelled PNG/SVG comparison with the raw timings and source provenance.
+Use the saved PNG directly when sharing your workstation's results. See
+[Faster gamma calculations: a reproducible benchmark](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance.html)
+for workloads, methodology and interpretation; `--help` lists the options.
+
 The published, executed notebook tutorials live in
 [the documentation how-to section](https://docs.pymedphys.com/en/latest/users/howto/index.html),
 under `lib/pymedphys/docs/users/howto/`.
