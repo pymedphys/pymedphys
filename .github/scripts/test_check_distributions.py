@@ -33,7 +33,9 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
+import check_distributions
 from check_distributions import (
+    CheckResult,
     PackageIndex,
     _published_url,
     _run,
@@ -41,7 +43,9 @@ from check_distributions import (
     check_contents,
     check_install_report,
     check_published,
+    check_published_files,
     find_distributions,
+    format_summary,
     main,
     read_sdist,
     read_wheel,
@@ -140,9 +144,11 @@ def _metadata(
     *,
     project_name="pymedphys",
     requires=(),
+    extras=(),
 ):
     lines = ["Metadata-Version: 2.4", f"Name: {project_name}", f"Version: {version}"]
     lines += [f"Requires-Dist: {requirement}" for requirement in requires]
+    lines += [f"Provides-Extra: {extra}" for extra in extras]
     if licence_expression is not None:
         lines.append(f"License-Expression: {licence_expression}")
     lines += [f"License-File: {name}" for name in licence_files]
@@ -220,6 +226,7 @@ def _write_wheel(
     declared_licence_files=LICENCE_FILES,
     project_name="pymedphys",
     requires=(),
+    extras=(),
 ):
     dist_info = f"{project_name}-{version}.dist-info"
     files = {f"{project_name}/{name}": text for name, text in package_files.items()}
@@ -229,6 +236,7 @@ def _write_wheel(
         declared_licence_files,
         project_name=project_name,
         requires=requires,
+        extras=extras,
     )
     files.update({f"{dist_info}/licenses/{name}": "" for name in licence_files})
     files[f"{dist_info}/WHEEL"] = (
@@ -493,9 +501,10 @@ class ArgumentTests(unittest.TestCase):
     def test_build_mode_rejects_published_options(self):
         for option in (
             ["--compare-with", "x"],
-            ["--index", "testpypi"],
             ["--report-dir", "x"],
             ["--wait", "5"],
+            ["--tests"],
+            ["--summary", "x"],
         ):
             with self.subTest(option=option):
                 self.assertEqual(self._exits(["dist", *option]), 2)
@@ -1012,6 +1021,184 @@ class PublishedTests(unittest.TestCase):
         self.assertIn(
             "DO NOT MATCH THE HASHES", (self.reports / "wheel-install.log").read_text()
         )
+
+
+class PublishedTestSuiteTests(unittest.TestCase):
+    """With tests requested, the suite runs in the published wheel's environment."""
+
+    def setUp(self):
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        self.root = Path(temp_dir.name).resolve()
+        self.served = self.root / "files"
+        self.served.mkdir()
+        self.reports = self.root / "reports"
+        self.reports.mkdir()
+        # Only the tests extra needs this dependency, and only the dependency
+        # index serves it.
+        requirement = 'release-dependency; extra == "tests"'
+        _write_sdist(self.served, buildable=True, requires=(requirement,))
+        _write_wheel(self.served, requires=(requirement,), extras=("tests", "user"))
+        dependency = _write_wheel(
+            self.served,
+            version="1.0.0",
+            project_name="release_dependency",
+            package_files={"__init__.py": ""},
+        )
+        _write_simple_index(
+            self.root, self.served, (dependency.name,), "release-dependency"
+        )
+
+    def _results(self, test_command, names=(WHEEL_NAME, SDIST_NAME), tests=True):
+        index = _write_simple_index(self.root, self.served, names)
+        return check_published_files(
+            VERSION,
+            index,
+            report_dir=self.reports,
+            tests=tests,
+            test_command=test_command,
+        )
+
+    def test_the_suite_runs_with_its_extras_and_console_script(self):
+        # A caller's installation must not shadow the wheel being tested.
+        shadow_bin = self.root / "other-installation"
+        shadow_bin.mkdir()
+        shadow_cli = shadow_bin / ("pymedphys.exe" if os.name == "nt" else "pymedphys")
+        shadow_cli.write_text("This console script must not run.\n", encoding="utf-8")
+        shadow_cli.chmod(0o755)
+        inherited_path = os.pathsep.join((str(shadow_bin), os.environ.get("PATH", "")))
+        command = textwrap.dedent(
+            f"""\
+            import pathlib
+            import shutil
+            import subprocess
+            import sys
+
+            import release_dependency
+
+            script = shutil.which("pymedphys")
+            assert script is not None
+            # macOS exposes the same temporary directory under /var and
+            # /private/var. Resolve the directories, not the Python executable:
+            # a venv's Python may itself be a symlink to the base interpreter.
+            assert (
+                pathlib.Path(script).parent.resolve()
+                == pathlib.Path(sys.executable).parent.resolve()
+            ), script
+            result = subprocess.run(
+                ["pymedphys", "--version"],
+                check=True, capture_output=True, text=True,
+            )
+            assert result.stdout.strip() == "pymedphys {VERSION}", result.stdout
+            """
+        )
+        with mock.patch.dict(os.environ, {"PATH": inherited_path}):
+            results = self._results(["-c", command])
+            self.assertEqual(os.environ["PATH"], inherited_path)
+
+        self.assertEqual([r.name for r in results], ["wheel", "sdist", "tests"])
+        self.assertEqual([r.status for r in results], ["passed"] * 3, results)
+        self.assertEqual(results[2].filename, WHEEL_NAME)
+        self.assertTrue((self.reports / "tests-install.log").is_file())
+        self.assertTrue((self.reports / "tests.log").is_file())
+
+    def test_a_failing_suite_fails_the_check_and_keeps_its_output(self):
+        command = ["-c", "import sys; print('3 failed'); sys.exit(3)"]
+
+        results = self._results(command)
+
+        self.assertEqual([r.status for r in results], ["passed", "passed", "failed"])
+        (failure,) = results[2].failures
+        self.assertIn("exit code 3", failure)
+        self.assertIn("3 failed", (self.reports / "tests.log").read_text())
+
+    def test_the_suite_does_not_run_when_the_wheel_check_fails(self):
+        results = self._results(["-c", "raise SystemExit(1)"], names=(SDIST_NAME,))
+
+        self.assertEqual([r.status for r in results], ["failed", "passed", "not run"])
+        self.assertEqual(results[2].failures, [])
+        self.assertFalse((self.reports / "tests.log").exists())
+
+    def test_the_suite_runs_only_when_requested(self):
+        results = self._results(["-c", "raise SystemExit(1)"], tests=False)
+
+        self.assertEqual([r.name for r in results], ["wheel", "sdist"])
+
+
+class SummaryTests(unittest.TestCase):
+    """The Markdown report records each file, its hash, and each result."""
+
+    WHEEL_SHA256 = "ab" * 32
+    SDIST_SHA256 = "cd" * 32
+
+    def _results(self, *, wheel_failures=(), tests=None):
+        results = [
+            CheckResult(
+                "wheel", WHEEL_NAME, self.WHEEL_SHA256, failures=list(wheel_failures)
+            ),
+            CheckResult("sdist", SDIST_NAME, self.SDIST_SHA256),
+        ]
+        if tests is not None:
+            results.append(tests)
+        return results
+
+    def test_a_passing_check_lists_both_files_and_their_hashes(self):
+        summary = format_summary(VERSION, self._results())
+
+        heading = summary.splitlines()[0]
+        self.assertIn(f"pymedphys {VERSION}", heading)
+        self.assertIn("PyPI", heading)
+        self.assertIn("passed", heading)
+        for name, sha256 in (
+            (WHEEL_NAME, self.WHEEL_SHA256),
+            (SDIST_NAME, self.SDIST_SHA256),
+        ):
+            (row,) = [line for line in summary.splitlines() if name in line]
+            self.assertIn(sha256, row)
+            self.assertIn("passed", row)
+        self.assertNotIn("test suite", summary)
+
+    def test_failures_are_listed_by_their_first_line(self):
+        results = self._results(
+            wheel_failures=["Installing the wheel failed:\nlong pip output"],
+            tests=CheckResult("tests", WHEEL_NAME, ran=False),
+        )
+
+        summary = format_summary(VERSION, results)
+
+        self.assertIn("failed", summary.splitlines()[0])
+        self.assertIn("- Installing the wheel failed\n", summary)
+        self.assertNotIn("long pip output", summary)
+        (row,) = [line for line in summary.splitlines() if "test suite" in line]
+        self.assertIn("not run", row)
+
+    def test_main_appends_the_summary_to_the_given_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            served = root / "files"
+            served.mkdir()
+            _write_sdist(served, buildable=True)
+            _write_wheel(served)
+            index = _write_simple_index(root, served, (WHEEL_NAME, SDIST_NAME))
+            summary = root / "summary.md"
+            summary.write_text("Earlier job output\n", encoding="utf-8")
+            arguments = ["--published", VERSION, "--report-dir", str(root / "reports")]
+
+            with (
+                mock.patch.object(check_distributions, "PYPI", index),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                exit_code = main([*arguments, "--summary", str(summary)])
+
+            text = summary.read_text(encoding="utf-8")
+            wheel_sha256 = hashlib.sha256(
+                (served / WHEEL_NAME).read_bytes()
+            ).hexdigest()
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(text.startswith("Earlier job output\n"))
+        self.assertIn(f"pymedphys {VERSION} from PyPI: passed", text)
+        self.assertIn(wheel_sha256, text)
 
 
 if __name__ == "__main__":

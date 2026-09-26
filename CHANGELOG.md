@@ -14,6 +14,14 @@ This project adheres to
 
 ### New features and enhancements
 
+- New documentation page,
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html),
+  explaining de-identification, pseudonymisation, and anonymisation, what a
+  DICOM conformance claim does and does not establish, and the known
+  limitations of `pymedphys.dicom.anonymise` and experimental
+  pseudonymisation. Neither tool implements a DICOM confidentiality profile:
+  for example, `anonymise` leaves UIDs unchanged, and experimental
+  pseudonymisation hashes UIDs without a secret key.
 - Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
   while retaining the dose from valid beams. A missing dose file still
   aborts RTDOSE generation rather than exporting an incomplete sum.
@@ -27,6 +35,21 @@ This project adheres to
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
+- **[Security]** Experimental pseudonymisation now warns about its security
+  limitations. It hashes UIDs and some numeric values without a secret key,
+  so anyone who holds the original UIDs can re-link records, and anyone can
+  recover small-range values such as patient weight from the output alone by
+  hashing every plausible value; it shifts every patient's dates by the same
+  offset; and its output keeps the original file preamble and the original SOP
+  Instance UID in the File Meta Information.
+  `pymedphys.experimental.pseudonymisation.pseudonymise`,
+  `get_default_pseudonymisation_keywords`, and
+  `is_valid_strategy_for_keywords` emit a `PseudonymisationLimitationWarning`
+  (a `UserWarning`); `pymedphys experimental dicom pseudonymise` prints the
+  notice on standard error; and the DICOM Pseudonymisation app shows it as a
+  banner. This is not a deprecation: neither legacy tool will be deprecated
+  until a replacement is released. See
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
 
 ### Bug fixes
 
@@ -37,6 +60,27 @@ This project adheres to
   The deprecated `pymedphys experimental pinnacle export` command calls the
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
+- The experimental `pymedphys.experimental.pseudonymisation.pseudonymise`
+  now leaves `PatientSex` unchanged, as documented. Previously it replaced the
+  value with a hash, which is not a valid value for this attribute, so outputs
+  from earlier versions differ in `PatientSex`.
+  [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
+- **[Security]** Explicit application logging and progress output in legacy
+  DICOM anonymisation and experimental pseudonymisation now exclude DICOM
+  values and file paths. Previously the `pymedphys dicom anonymise` and
+  `pymedphys experimental dicom pseudonymise` commands printed every input and
+  output path (output file names contain the original SOP Instance UID),
+  directory runs logged the path and error message of each failed file and
+  the paths of all successful files, the pseudonymisation Streamlit app printed
+  the failing file's name and error, and `pymedphys.dicom.anonymise` logged the
+  value being replaced when no replacement was defined for its value
+  representation. The commands now print only the number of files written
+  on standard output, and failures are logged by file number and exception
+  type. Two channels remain: exceptions are re-raised unchanged, so their
+  messages can contain a path or a value; and pydicom quotes invalid values
+  (for example a malformed time during pseudonymisation) in validation
+  messages that it issues as Python warnings and logs through the `pydicom`
+  logger, which propagates to the root logger.
 
 ### Dependency changes
 
@@ -57,6 +101,29 @@ This project adheres to
   released, dependencies added with their first consumer, and design documents
   and tracking issues for work spanning many pull requests. `CLAUDE.md` links
   to these rules and links pull requests against their actual base.
+- **[Contributor facing only]** CI now selects Python, documentation, tooling
+  and security checks from the complete tested PR diff. Unknown inputs select
+  every standard check, and symlinks, submodules or an unverifiable diff select
+  every check, while required summaries reject unexpected skips. Integration and
+  database tests stay cost-gated: besides main and their labels, they run only
+  for the inputs no standard check validates, such as dependency metadata, CI
+  configuration, packaging filters, slow tests, doctests, shared test data, and
+  the release tooling. Policy tests keep the lists of slow-test and doctest
+  modules equal to what a scan of the package finds. The step summary names the
+  reason for each selected check, including the path behind any fallback.
+  Tool-only jobs avoid installing the scientific stack: pre-commit installs
+  only its own dependency group, hash-checked from `uv.lock`. Only data
+  consumers restore the manifest-specific data cache. Release validation runs
+  in parallel with one distribution build; publishing still waits for every
+  quality gate. After publishing, the published-package tests run alongside
+  archive verification, and release assets wait only for verification.
+
+- **[Contributor facing only]** Added the design document for the DICOM
+  de-identification engine that will replace `pymedphys.dicom.anonymise` and
+  experimental pseudonymisation
+  (`lib/pymedphys/docs/contrib/info/deidentification-design.md`), covering its
+  scope, conformance claims, architecture, target presets, decisions, and
+  roadmap.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
@@ -109,6 +176,18 @@ This project adheres to
 - **[Contributor facing only]** The unused `conda-recipe/` directory has been
   removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
   that no workflow or release step used, and it no longer matched the build.
+- **[Contributor facing only]** After publishing, the Release workflow now
+  runs the test suite against the published wheel on Linux, Windows, and
+  macOS with dependencies resolved afresh from PyPI, reads back the GitHub
+  release assets, and fails its `Release Summary` unless every job succeeded.
+  `check_distributions.py --published` gains `--tests` and `--summary` to run
+  the same checks locally and report them. The workflow's manual trigger and
+  TestPyPI route have been removed: publishing a GitHub release is the only
+  way to publish.
+- **[Contributor facing only]** The `pymedphys dev build` command has been
+  removed. It drove a PyOxidizer and Electron desktop build whose Electron
+  app, PyOxidizer configuration, and `build` extra had already been removed,
+  so it could only fail.
 
 ### News around this release
 
@@ -117,6 +196,12 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- PyMedPhys now requires pydicom 3.0 or later: every extra declares
+  `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
+  no lower bound. Continuous integration only tests pydicom 3, and the planned
+  de-identification engine uses `dcmwrite(..., enforce_file_format=True)`,
+  which pydicom 3.0 added.
+  Environments pinned to pydicom 2 must upgrade it to install this release.
 - Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports now raise
   `MissingCTImageError` when the plan has no primary CT image. RTPLAN and
   RTDOSE exports raise `MissingTrialBeamsError` when the trial has no beams,

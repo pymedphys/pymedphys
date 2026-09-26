@@ -24,20 +24,27 @@ missing from the sdist also breaks the wheel, rather than being hidden by a
 wheel built straight from the source tree.
 
 After publishing, pass ``--published VERSION``. The wheel and the sdist are
-resolved from the index's JSON Simple API and each exact archive URL is
-installed into its own fresh environment, with dependencies from PyPI,
-pip's cache disabled, and the sdist forced to build. pip's installation report
-must show the expected file from the index's own file host, and each
-environment then gets the smoke test's import and CLI checks and ``pip check``.
-The environments use the Python running this script.
+resolved from PyPI's JSON Simple API and each exact archive URL is installed
+into its own fresh environment, with pip's configuration and cache disabled
+and the sdist forced to build, so no other index can substitute either file.
+pip's installation report must show the expected file from PyPI's file host,
+and each environment then gets the smoke test's import and CLI checks and
+``pip check``. The environments use the Python running this script.
+
+With ``--tests``, the wheel's environment then gains the ``user`` and ``tests``
+extras, resolved afresh from PyPI as a user's installation would be, and runs
+``pymedphys dev tests``. ``--summary FILE`` appends a Markdown report of every
+result to FILE, for the job summary or the release pull request.
 """
 
 import argparse
 import dataclasses
+import datetime
 import email.parser
 import hashlib
 import json
 import os
+import platform
 import subprocess
 import sys
 import tarfile
@@ -78,6 +85,9 @@ EXPECTED_LICENCE_EXPRESSION = "Apache-2.0 AND MIT"
 EXPECTED_LICENCE_FILES = frozenset(("LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT"))
 # pymedphys.cli imports every command module, as the console script does.
 SMOKE_IMPORTS = ("pymedphys", "pymedphys.dicom", "pymedphys.cli")
+# The extras and command a contributor uses to run the default test selection.
+TEST_EXTRAS = ("user", "tests")
+TEST_COMMAND = ("-m", "pymedphys", "dev", "tests")
 
 IMPORT_CHECK = """\
 import importlib
@@ -96,8 +106,9 @@ print(pymedphys.__version__)
 """
 
 
-# pip's --report locates the archive it installed. Files on these indexes are
-# served from a separate host, so an index URL is not a valid download URL.
+# pip's --report locates the archive it installed. PyPI serves files from a
+# separate host, so an index URL is not a valid download URL. The tests
+# substitute a local index.
 @dataclasses.dataclass(frozen=True)
 class PackageIndex:
     project_url: str
@@ -105,18 +116,10 @@ class PackageIndex:
     dependency_index_url: str = "https://pypi.org/simple/"
 
 
-PACKAGE_INDEXES = {
-    "pypi": PackageIndex(
-        project_url="https://pypi.org/simple/pymedphys/",
-        files_url="https://files.pythonhosted.org/",
-    ),
-    # Resolve pymedphys from TestPyPI alone. Runtime and build dependencies
-    # still use PyPI, without allowing it to substitute pymedphys itself.
-    "testpypi": PackageIndex(
-        project_url="https://test.pypi.org/simple/pymedphys/",
-        files_url="https://test-files.pythonhosted.org/",
-    ),
-}
+PYPI = PackageIndex(
+    project_url="https://pypi.org/simple/pymedphys/",
+    files_url="https://files.pythonhosted.org/",
+)
 FORMATS = ("wheel", "sdist")
 RETRY_INTERVAL = 30
 # Keep explicit transport settings for institutional proxies and slow links.
@@ -132,6 +135,23 @@ PIP_NETWORK_SETTINGS = frozenset(
         "PIP_RESUME_RETRIES",
     }
 )
+
+
+@dataclasses.dataclass
+class CheckResult:
+    """One published-file check: the wheel, the sdist, or the test suite."""
+
+    name: str
+    filename: str = ""
+    sha256: str = ""
+    failures: list[str] = dataclasses.field(default_factory=list)
+    ran: bool = True
+
+    @property
+    def status(self) -> str:
+        if not self.ran:
+            return "not run"
+        return "failed" if self.failures else "passed"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -325,9 +345,7 @@ def check_contents(
     return failures
 
 
-def _run(
-    command: Sequence[str | os.PathLike[str]], *, cwd: Path
-) -> subprocess.CompletedProcess:
+def _child_environment() -> dict[str, str]:
     # A venv and python -I do not isolate pip's configuration. Control it for
     # every child, including the pip subprocesses that install build tools.
     environment = {
@@ -338,10 +356,16 @@ def _run(
     }
     # This disables global, user, and per-environment pip configuration files.
     environment["PIP_CONFIG_FILE"] = os.devnull
+    return environment
+
+
+def _run(
+    command: Sequence[str | os.PathLike[str]], *, cwd: Path
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         [os.fspath(item) for item in command],
         cwd=cwd,
-        env=environment,
+        env=_child_environment(),
         capture_output=True,
         text=True,
         # The children run with -I, which ignores PYTHONIOENCODING, so decode
@@ -349,6 +373,30 @@ def _run(
         errors="replace",
         check=False,
     )
+
+
+def _run_to_log(
+    command: Sequence[str | os.PathLike[str]], *, cwd: Path, log: Path, bin_dir: Path
+) -> int:
+    """Run a long command with its output written to ``log`` as it arrives."""
+    environment = _child_environment()
+    # Tests can spawn console scripts by name, so prefer this environment.
+    environment["PATH"] = os.pathsep.join(
+        (os.fspath(bin_dir), environment.get("PATH", os.defpath))
+    )
+    with log.open("wb") as output:
+        return subprocess.run(
+            [os.fspath(item) for item in command],
+            cwd=cwd,
+            env=environment,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+            check=False,
+        ).returncode
+
+
+def _tail(text: str, lines: int = 40) -> str:
+    return "\n".join(text.rstrip().splitlines()[-lines:])
 
 
 def _create_environment(env_dir: Path) -> Path:
@@ -633,6 +681,160 @@ def _install_published_url(
     return _run(command, cwd=working_directory)
 
 
+def _run_test_suite(
+    python: Path,
+    url: str,
+    index: PackageIndex,
+    *,
+    report_dir: Path,
+    working_directory: Path,
+    test_command: Sequence[str] | None,
+) -> list[str]:
+    """Add the test extras to the wheel's environment and run the test suite.
+
+    Requesting the extras on the same URL keeps pymedphys the published file;
+    only the extras' dependencies come from the dependency index.
+    """
+    install_log = report_dir / "tests-install.log"
+    requirement = f"pymedphys[{','.join(TEST_EXTRAS)}] @ {url}"
+    install = _run(
+        [
+            python,
+            "-I",
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "--progress-bar=off",
+            "--no-cache-dir",
+            f"--index-url={index.dependency_index_url}",
+            requirement,
+        ],
+        cwd=working_directory,
+    )
+    install_log.write_text(install.stdout + install.stderr, encoding="utf-8")
+    if install.returncode != 0:
+        return [
+            f"Installing the {' and '.join(TEST_EXTRAS)} extras for the test suite "
+            f"failed; the log is {install_log}:\n{install.stderr[-2000:]}"
+        ]
+
+    log = report_dir / "tests.log"
+    if test_command is None:
+        junit = report_dir / "tests-junit.xml"
+        test_command = (*TEST_COMMAND, f"--junitxml={junit}")
+    print(f"Running the test suite; its output is written to {log}", flush=True)
+    returncode = _run_to_log(
+        [python, "-I", *test_command],
+        cwd=working_directory,
+        log=log,
+        bin_dir=python.parent,
+    )
+    print(_tail(log.read_text(encoding="utf-8", errors="replace")), flush=True)
+    if returncode != 0:
+        return [f"The test suite failed with exit code {returncode}; the log is {log}"]
+    return []
+
+
+def check_published_files(
+    version: str,
+    index: PackageIndex,
+    *,
+    report_dir: Path,
+    compare_with: Path | None = None,
+    wait: float = 0,
+    imports: Sequence[str] = SMOKE_IMPORTS,
+    sleep: Callable[[float], None] = time.sleep,
+    tests: bool = False,
+    test_command: Sequence[str] | None = None,
+) -> list[CheckResult]:
+    """Install the published wheel and sdist separately and check each one.
+
+    With ``tests``, the test suite then runs in the wheel's environment,
+    unless the wheel's own checks failed.
+    """
+    version = _normalise_tag(version)
+    hashes = local_hashes(compare_with) if compare_with is not None else None
+    results = []
+    suite = CheckResult("tests", ran=False)
+
+    for kind in FORMATS:
+        result = CheckResult(kind)
+        results.append(result)
+        report = report_dir / f"{kind}-install.json"
+        log = report_dir / f"{kind}-install.log"
+        try:
+            url = _published_url(index, kind, version, wait=wait, sleep=sleep)
+        except (OSError, ValueError) as error:
+            message = f"Resolving the {kind} of pymedphys {version} failed: {error}"
+            log.write_text(message + "\n", encoding="utf-8")
+            result.failures.append(message)
+            continue
+        location, fragment = urllib.parse.urldefrag(url)
+        result.filename = _filename(location)
+        result.sha256 = fragment.removeprefix("sha256=")
+        if kind == "wheel":
+            suite.filename = result.filename
+        # Reject a file that differs from the local copy before pip downloads
+        # it or runs its build; the report check below confirms the install.
+        if hashes is not None:
+            mismatch = _local_hash_mismatch(url, hashes)
+            if mismatch:
+                log.write_text(mismatch + "\n", encoding="utf-8")
+                result.failures.append(mismatch)
+                continue
+        with tempfile.TemporaryDirectory(prefix=f"pymedphys-{kind}-check-") as env:
+            working_directory = Path(env)
+            bin_dir = _create_environment(working_directory)
+            python = _executable(bin_dir, "python")
+            install = _install_published_url(
+                python,
+                kind,
+                url,
+                index,
+                report=report,
+                working_directory=working_directory,
+            )
+            log.write_text(install.stdout + install.stderr, encoding="utf-8")
+            if install.returncode != 0:
+                result.failures.append(
+                    f"Installing the {kind} of pymedphys {version} failed; the "
+                    f"log is {log}:\n{install.stderr[-2000:]}"
+                )
+                continue
+
+            result.failures += check_install_report(
+                json.loads(report.read_text(encoding="utf-8")),
+                kind,
+                version,
+                index,
+                local_hashes=hashes,
+            )
+            result.failures += _check_environment(
+                bin_dir,
+                version,
+                imports=imports,
+                working_directory=working_directory,
+                pip_check=True,
+            )
+            if not result.failures:
+                print(f"The {kind} passed. Installation report: {report}")
+                if tests and kind == "wheel":
+                    suite.ran = True
+                    suite.failures = _run_test_suite(
+                        python,
+                        url,
+                        index,
+                        report_dir=report_dir,
+                        working_directory=working_directory,
+                        test_command=test_command,
+                    )
+
+    if tests:
+        results.append(suite)
+    return results
+
+
 def check_published(
     version: str,
     index: PackageIndex,
@@ -643,68 +845,52 @@ def check_published(
     imports: Sequence[str] = SMOKE_IMPORTS,
     sleep: Callable[[float], None] = time.sleep,
 ) -> list[str]:
-    """Install the published wheel and sdist separately and check each one."""
-    version = _normalise_tag(version)
-    hashes = local_hashes(compare_with) if compare_with is not None else None
-    failures = []
+    """Return a failure message for each problem with the published files."""
+    results = check_published_files(
+        version,
+        index,
+        report_dir=report_dir,
+        compare_with=compare_with,
+        wait=wait,
+        imports=imports,
+        sleep=sleep,
+    )
+    return [failure for result in results for failure in result.failures]
 
-    for kind in FORMATS:
-        report = report_dir / f"{kind}-install.json"
-        log = report_dir / f"{kind}-install.log"
-        try:
-            url = _published_url(index, kind, version, wait=wait, sleep=sleep)
-        except (OSError, ValueError) as error:
-            message = f"Resolving the {kind} of pymedphys {version} failed: {error}"
-            log.write_text(message + "\n", encoding="utf-8")
-            failures.append(message)
-            continue
-        # Reject a file that differs from the local copy before pip downloads
-        # it or runs its build; the report check below confirms the install.
-        if hashes is not None:
-            mismatch = _local_hash_mismatch(url, hashes)
-            if mismatch:
-                log.write_text(mismatch + "\n", encoding="utf-8")
-                failures.append(mismatch)
-                continue
-        with tempfile.TemporaryDirectory(prefix=f"pymedphys-{kind}-check-") as env:
-            working_directory = Path(env)
-            bin_dir = _create_environment(working_directory)
-            install = _install_published_url(
-                _executable(bin_dir, "python"),
-                kind,
-                url,
-                index,
-                report=report,
-                working_directory=working_directory,
-            )
-            log.write_text(install.stdout + install.stderr, encoding="utf-8")
-            if install.returncode != 0:
-                failures.append(
-                    f"Installing the {kind} of pymedphys {version} failed; the "
-                    f"log is {log}:\n{install.stderr[-2000:]}"
-                )
-                continue
 
-            kind_failures = check_install_report(
-                json.loads(report.read_text(encoding="utf-8")),
-                kind,
-                version,
-                index,
-                local_hashes=hashes,
-            )
-            kind_failures += _check_environment(
-                bin_dir,
-                version,
-                imports=imports,
-                working_directory=working_directory,
-                pip_check=True,
-            )
+def format_summary(
+    version: str,
+    results: Sequence[CheckResult],
+    *,
+    compare_with: Path | None = None,
+) -> str:
+    """Describe the published-file check in Markdown, one row per result."""
+    outcome = "failed" if any(result.failures for result in results) else "passed"
+    checked = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")
+    lines = [
+        f"### pymedphys {_normalise_tag(version)} from PyPI: {outcome}",
+        "",
+        f"Checked on {platform.platform()} with Python "
+        f"{platform.python_version()} at {checked} UTC.",
+    ]
+    if compare_with is not None:
+        lines.append(
+            f"The published files had to match the copies in `{compare_with}`."
+        )
+    lines += ["", "| Check | File | SHA-256 | Result |", "| --- | --- | --- | --- |"]
+    for result in results:
+        name = "test suite" if result.name == "tests" else result.name
+        filename = f"`{result.filename}`" if result.filename else "not resolved"
+        if result.name == "tests":
+            filename = "wheel environment"
+        sha256 = f"`{result.sha256}`" if result.sha256 else ""
+        lines.append(f"| {name} | {filename} | {sha256} | {result.status} |")
 
-        failures += kind_failures
-        if not kind_failures:
-            print(f"The {kind} passed. Installation report: {report}")
-
-    return failures
+    failures = [failure for result in results for failure in result.failures]
+    if failures:
+        lines.append("")
+        lines += [f"- {failure.splitlines()[0].rstrip(':')}" for failure in failures]
+    return "\n".join(lines) + "\n\n"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -728,12 +914,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     published.add_argument(
         "--published",
         metavar="VERSION",
-        help="Check this version on the package index instead of a local build",
-    )
-    published.add_argument(
-        "--index",
-        choices=sorted(PACKAGE_INDEXES),
-        help="Package index to install from (default: pypi)",
+        help="Check this version on PyPI instead of a local build",
     )
     published.add_argument(
         "--compare-with",
@@ -753,16 +934,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         metavar="SECONDS",
         help="Keep retrying for this long while the version is not yet available",
     )
+    published.add_argument(
+        "--tests",
+        action="store_true",
+        help="Also install the wheel's user and tests extras and run the test "
+        "suite in its environment",
+    )
+    published.add_argument(
+        "--summary",
+        type=Path,
+        metavar="FILE",
+        help="Append a Markdown report of the results to FILE",
+    )
     args = parser.parse_args(argv)
 
     if args.published is None:
         if args.dist_dir is None:
             parser.error("give a build directory or --published VERSION")
         published_only = {
-            "--index": args.index,
             "--compare-with": args.compare_with,
             "--report-dir": args.report_dir,
             "--wait": args.wait,
+            "--tests": args.tests or None,
+            "--summary": args.summary,
         }
         for option, value in published_only.items():
             if value is not None:
@@ -770,7 +964,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         failures = check_build(args.dist_dir, args.expected_version, args.skip_install)
     else:
         if args.dist_dir is not None:
-            parser.error("--published checks the index, not a build directory")
+            parser.error("--published checks PyPI, not a build directory")
         if args.expected_version is not None or args.skip_install:
             parser.error(
                 "--expected-version and --skip-install apply only to a build "
@@ -781,13 +975,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         report_dir.mkdir(parents=True, exist_ok=True)
         print(f"Installation reports and logs: {report_dir.resolve()}")
-        failures = check_published(
+        results = check_published_files(
             args.published,
-            PACKAGE_INDEXES[args.index or "pypi"],
+            PYPI,
             report_dir=report_dir.resolve(),
             compare_with=args.compare_with,
             wait=args.wait or 0,
+            tests=args.tests,
         )
+        failures = [failure for result in results for failure in result.failures]
+        if args.summary is not None:
+            with args.summary.open("a", encoding="utf-8") as summary:
+                summary.write(
+                    format_summary(
+                        args.published,
+                        results,
+                        compare_with=args.compare_with,
+                    )
+                )
 
     for failure in failures:
         print(f"::error::{failure}")

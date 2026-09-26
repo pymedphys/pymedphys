@@ -46,7 +46,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'all'
+          install-project: 'false'
 
       - name: Update the lockfile and the files generated from it
         id: update
@@ -72,6 +72,12 @@ jobs:
             echo '```'
           } > updates.md
           rm uv.lock.old
+
+      # Only a changed lockfile runs the tests and documentation build, which
+      # read the data; an unchanged week restores none of it.
+      - name: Restore PyMedPhys data
+        if: steps.update.outputs.changed == 'true'
+        uses: ./.github/actions/cache-data
 
       - name: Validate the updated environment
         if: steps.update.outputs.changed == 'true'

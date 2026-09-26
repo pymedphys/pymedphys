@@ -58,7 +58,7 @@ user = [
   "packaging",
   "pandas>=1.0.0",
   "plotly",
-  "pydicom>=2.0.0",
+  "pydicom>=3.0",
   "pylibjpeg-libjpeg>=1.3.2",
   "pymssql",
   "pynetdicom",
@@ -110,7 +110,7 @@ tests = [
   "pandas>=1.0.0",
   "Pillow",
   "psutil",
-  "pydicom>=2.0.0",
+  "pydicom>=3.0",
   "pynetdicom",
   "PyGithub",
   "pylibjpeg-libjpeg>=1.3.2",
@@ -133,7 +133,7 @@ docs = [
   "networkx",
   "numba",
   "numpy>=1.26,<2",  # NumPy 2 is a separate migration
-  "pydicom",
+  "pydicom>=3.0",
   "scipy",
   "sphinx-argparse",
   "sphinx-book-theme",
@@ -158,7 +158,7 @@ cli = [
 ]
 
 dicom = [
-    "pydicom>=2.0.0",
+    "pydicom>=3.0",
     "pynetdicom",
 ]
 
@@ -207,7 +207,7 @@ all = [
     "plotly",
     "pre-commit",
     "psutil",
-    "pydicom>=2.0.0",
+    "pydicom>=3.0",
     "PyGithub",
     "pylibjpeg-libjpeg>=1.3.2",
     "pylint",
@@ -259,6 +259,11 @@ full  = ["user", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
 [dependency-groups]
 dev = [
   "sphinx-external-toc>=1.0.1",
+]
+# CI installs only this group, hash-checked from uv.lock, to run pre-commit
+# without the project or its scientific dependencies.
+pre-commit = [
+  "pre-commit",
 ]
 
 # Each target lists its own contents: a build-wide include is an allow-list

@@ -2722,6 +2722,9 @@ user = [
 dev = [
     { name = "sphinx-external-toc" },
 ]
+pre-commit = [
+    { name = "pre-commit" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2790,11 +2793,11 @@ requires-dist = [
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "psutil", marker = "extra == 'all'" },
     { name = "psutil", marker = "extra == 'tests'" },
-    { name = "pydicom", marker = "extra == 'all'", specifier = ">=2.0.0" },
-    { name = "pydicom", marker = "extra == 'dicom'", specifier = ">=2.0.0" },
-    { name = "pydicom", marker = "extra == 'docs'" },
-    { name = "pydicom", marker = "extra == 'tests'", specifier = ">=2.0.0" },
-    { name = "pydicom", marker = "extra == 'user'", specifier = ">=2.0.0" },
+    { name = "pydicom", marker = "extra == 'all'", specifier = ">=3.0" },
+    { name = "pydicom", marker = "extra == 'dicom'", specifier = ">=3.0" },
+    { name = "pydicom", marker = "extra == 'docs'", specifier = ">=3.0" },
+    { name = "pydicom", marker = "extra == 'tests'", specifier = ">=3.0" },
+    { name = "pydicom", marker = "extra == 'user'", specifier = ">=3.0" },
     { name = "pygithub", marker = "extra == 'all'" },
     { name = "pygithub", marker = "extra == 'tests'" },
     { name = "pylibjpeg-libjpeg", marker = "extra == 'all'", specifier = ">=1.3.2" },
@@ -2900,6 +2903,7 @@ provides-extras = ["user", "dev", "lint", "tests", "docs", "doctests", "cli", "d
 
 [package.metadata.requires-dev]
 dev = [{ name = "sphinx-external-toc", specifier = ">=1.0.1" }]
+pre-commit = [{ name = "pre-commit" }]
 
 [[package]]
 name = "pymssql"

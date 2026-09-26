@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +16,7 @@ import functools
 import json
 import logging
 import pathlib
+import sys
 from os.path import abspath, dirname, isdir, isfile
 from os.path import join as pjoin
 
@@ -26,6 +28,7 @@ from pymedphys._dicom.anonymise import (
     get_default_identifying_keywords,
 )
 from pymedphys._dicom.anonymise import strategy as anon_strategy
+from pymedphys._dicom.anonymise.api import print_cli_summary
 from pymedphys._imports import pydicom
 
 from . import strategy
@@ -33,6 +36,26 @@ from . import strategy
 HERE = dirname(abspath(__file__))
 
 IDENTIFYING_UIDS_FILEPATH = pjoin(HERE, "identifying_uids.json")
+
+LIMITATION_NOTICE = (
+    "experimental pseudonymisation hashes UIDs and some numeric values "
+    "without a secret key, so anyone who holds the original UIDs can re-link "
+    "records, and anyone can recover small-range values such as weight by "
+    "hashing every plausible value. It shifts every patient's dates by the "
+    "same offset, and its output keeps the original file preamble and the "
+    "original SOP Instance UID in the File Meta Information. Review its output "
+    "before sharing it. See https://docs.pymedphys.com/en/latest/users/"
+    "background/dicom-deidentification.html"
+)
+
+
+class PseudonymisationLimitationWarning(UserWarning):
+    """Experimental pseudonymisation has known security limitations.
+
+    This is not a deprecation warning. No replacement is available yet, so
+    experimental pseudonymisation is not scheduled for removal (decision
+    D-019 in the de-identification design document).
+    """
 
 
 @functools.lru_cache()
@@ -67,6 +90,9 @@ def get_default_pseudonymisation_keywords():
 
 
 def anonymise_with_pseudo_cli(args):
+    # Python warnings are easy to miss on the command line, so say it directly.
+    print(f"Warning: {LIMITATION_NOTICE}", file=sys.stderr)
+
     if args.delete_unknown_tags:
         handle_unknown_tags = True
     elif args.ignore_unknown_tags:
@@ -101,9 +127,10 @@ def anonymise_with_pseudo_cli(args):
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_for_pseudo,
         )
+        file_count = 1
 
     elif isdir(args.input_path):
-        anonymise_directory(
+        anon_filepaths = anonymise_directory(
             dicom_dirpath=args.input_path,
             output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,
@@ -115,11 +142,14 @@ def anonymise_with_pseudo_cli(args):
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_for_pseudo,
         )
+        file_count = len(anon_filepaths)
 
     else:
         raise FileNotFoundError(
             "No file or directory was found at the supplied input path."
         )
+
+    print_cli_summary(file_count)
 
 
 def is_valid_strategy_for_keywords(
@@ -144,15 +174,20 @@ def pseudonymise(dicom_input, output_path=None):
     """Convenient API to pseudonymisation.
     Elements whose tags are not in the pydicom dictionary will be deleted
     PatientSex will not be modified/pseudonymised
-    For fine tune control, use anonymise_dataset() instead
+    For finer control, pass this module's strategy and keywords to
+    ``pymedphys.dicom.anonymise`` instead
 
     Parameters
     ----------
     dicom_input : ``pydicom.dataset.Dataset | str | pathlib.Path``
         Either a dataset, a path to a file or a path to a directory
     output_path : ``str | pathlib.Path``, optional
-        If the input is a file or a path, the directory to place the
-        pseudonymised files, by default None
+        For a file input, provide a file path with a directory component.
+        Its parent directory is used, but the filename is generated from the
+        pseudonymised dataset. For a directory input, this is the destination
+        directory. If None, output is written alongside the input. Ignored
+        for a Dataset input, which returns a new dataset without saving it.
+        Defaults to None.
 
     Returns
     -------
@@ -169,7 +204,7 @@ def pseudonymise(dicom_input, output_path=None):
         logging.error("Please submit issue to PyMedPhys")
         # but continue on, the data might not contain the offending keywords
         # and if it does... there will be some kind of error raised
-    keywords_to_leave_unchanged = list("PatientSex")
+    keywords_to_leave_unchanged = ["PatientSex"]
 
     if isinstance(dicom_input, pydicom.dataset.Dataset):
         pseudo_ds = anonymise_dataset(

@@ -32,11 +32,13 @@ def check_jobs(needs: Needs, conditional_jobs: Mapping[str, str]) -> list[str]:
     """Return failures; unlisted dependencies are required to succeed.
 
     Conditional jobs may be skipped only when their selection output from the
-    changes job is explicitly false. Missing outputs fail closed.
+    changes job is explicitly false. Missing outputs fail closed. A summary
+    without conditional jobs, such as the release workflow's, needs no changes
+    job.
     """
     failures: list[str] = []
     selection = _selection(needs)
-    if "changes" not in needs:
+    if conditional_jobs and "changes" not in needs:
         failures.append("The changes job is missing from the summary dependencies.")
 
     for job, output in conditional_jobs.items():

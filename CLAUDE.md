@@ -75,11 +75,24 @@ file is gitignored, so edit `_config.yml`.
 Write procedures as instructions with their success criteria. State each
 fact once and link to it, prefer fixing a defect over documenting a workaround
 for it, and keep incident history and evidence caveats on the pull request
-rather than in the guide.
+rather than in the guide. Open a long procedure with a short checklist for
+readers who already know it, and move one-time setup into an appendix.
+
+Documents, decision logs, changelog entries, and pull request descriptions
+describe the state being merged. Fold revisions made while a pull request is
+open into the text; do not record them as superseded decisions, review logs,
+or construction history.
 
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
+
+Historical, site-specific deployment pages (for example the iCom listener,
+tunnelling, and rsync how-tos) record what was done at the time. Do not
+modernise, correct, or test their commands, versions, or links. Keep their text
+as originally written, or at the latest as it stood before the September 2025
+switch from Poetry to uv, and confine changes to a note marking the page as a
+historical record.
 
 ## Architecture Overview
 
@@ -187,7 +200,11 @@ The project uses uv with optional dependency groups:
 - Declare the licence as a PEP 639 SPDX expression (`license = "..."`) that
   covers bundled third-party code as well as PyMedPhys's own, and list every
   licence file in `license-files`. Update both when vendoring code under a new
-  licence or removing the last code under one. Keep the independent licence
+  licence or removing the last code under one. Treat bundled data, such as
+  vocabularies, datasets, and tables generated from standards, like code:
+  bundle it only under terms compatible with Apache-2.0, never under
+  non-commercial or no-derivatives terms, and include any required
+  attribution. Keep the independent licence
   expectations in `.github/scripts/check_distributions.py` and its test
   fixtures in sync with these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
@@ -210,23 +227,33 @@ The project uses uv with optional dependency groups:
 - Verify a release from the published files, not the checkout: install the
   wheel and the sdist separately into fresh environments outside the checkout,
   force the sdist to build, and check which file pip installed and where it
-  came from. `check_distributions.py --published` does this, and the release
-  workflow runs it after publishing; extend the script rather than documenting
-  manual steps.
-- Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
-  pre-releases. After every release, a reviewed pull request bumps `main` to
-  the next unpublished `.devN`, so `main` never carries a published version and
-  a development release can be tagged from `main` without a further pull
-  request. A pull request that sets a development version does not need the
-  `full-test` label, and changelog entries stay under `## Unreleased` until the
-  stable release.
-- The publish jobs use `skip-existing`, so a re-run after a partial upload is
+  came from. `check_distributions.py --published` does this, and with
+  `--tests` also runs the test suite against the published wheel; the release
+  workflow runs both after publishing, and `--summary` writes the report for
+  the release pull request. Extend the script or the workflow rather than
+  documenting manual steps.
+- `Release Summary` fails unless every release job succeeded; add each new
+  release job to its `needs`.
+- Publishing a GitHub release or pre-release is the only way to publish.
+  There is no manual or TestPyPI route, as the maintainers decided a library
+  release needs no rehearsal beyond the checks before publishing; rehearse a
+  change to the release pipeline with a development release on PyPI.
+- Tag a commit on `main`: for a stable release, the merge commit of its
+  reviewed release pull request, which is the state of `main` that CI tested,
+  never a commit from the release branch. After publishing, a separate pull
+  request sets `main` to the next unpublished `.devN`, so a development
+  release (`X.Y.Z.devN`, a GitHub pre-release) can be tagged from `main`
+  without a release pull request. Only a stable release pull request needs the
+  `full-test` label, and changelog entries stay under `## Unreleased` until
+  the stable release.
+- The publish job uses `skip-existing`, so a re-run after a partial upload is
   safe; `verify-published` then requires the files on the index to match the
   build. Release asset uploads must wait for that verification, so a skipped
-  duplicate cannot overwrite GitHub assets with different bytes.
-- Resolve PyMedPhys's published archive from the selected index alone, then
-  install its exact URL with dependencies from PyPI. Searching TestPyPI and
-  PyPI together does not give the first index priority.
+  duplicate cannot overwrite GitHub assets with different bytes. They must not
+  wait for `test-published`, whose dependencies and datasets change outside the
+  repository; keep it a separate job that reports to `Release Summary`.
+- Resolve PyMedPhys's published archive from PyPI's JSON Simple API and
+  install its exact URL, so no other configured index can substitute it.
 - Recover releases using their original distribution files. A rebuild of the
   same tag can differ when the build backend changes. A failed retry does not
   prove earlier attempts left PyPI untouched; preserve release tags and use a
@@ -246,6 +273,12 @@ The project uses uv with optional dependency groups:
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
+7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. In new or modified code that handles DICOM data:
+   - never put source attribute values, keys, or original paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or reports; use attribute paths and opaque identifiers;
+   - never describe output as "anonymised", or as "de-identified" without naming the PS3.15 edition, profile, and options it has been validated against;
+   - never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, or change Burned In Annotation or Recognizable Visual Features to NO;
+   - regenerate rule tables generated from the DICOM standard, and vocabularies converted from source spreadsheets, with their generators; never edit them by hand.
+
 ## Common Development Patterns
 
 When implementing new features:
@@ -262,6 +295,14 @@ When modifying DICOM functionality, be aware of:
 - Anonymization requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+When you find unmaintained or non-functional material, such as a packaging
+recipe that no workflow builds or a CLI command whose inputs no longer exist,
+remove it (and anything that exists only to support it) rather than annotating
+it as a draft. Git history preserves it. Do not write documentation that hedges
+around code that cannot work; fix or remove the code in the same PR, and record
+contributor-facing removals in `CHANGELOG.md`. Historical documentation pages
+are different: keep them as originally written, as described above.
 
 ### Copyright Headers
 
@@ -364,6 +405,11 @@ Before a pull request exists, link a comparison against its actual base:
 three dots (`...`), not two. Once the pull request exists, link it as
 `https://github.com/pymedphys/pymedphys/pull/<number>`.
 
+### PR Descriptions
+
+When a pull request's scope changes after it is opened, update its title and
+description to match the current diff and the validation actually run.
+
 ### Maintainer Guidance Documentation
 
 **Critical**: Any time you receive guidance, feedback, or learn something important from maintainers:
@@ -385,6 +431,23 @@ pull request" in `CONTRIBUTING.md`.
 
 ### CI Gates and Review Policy
 
+- Optimise CI and releases without reducing validation: skip only checks whose
+  inputs are known to be unaffected. Unknown paths select every standard check;
+  symlinks, submodules and an unverifiable diff select every check a path can
+  select. Integration and database tests and the full unit-test matrix are
+  cost-gated, as the maintainers decided: beyond main and the `full-test` and
+  `database` labels, integration and database tests run only for the inputs
+  that no standard check validates, listed in `select_checks.py`. Add an input
+  there when only a cost-gated job validates it. Packaging filters, slow-test
+  modules, modules with doctests, and shared test fixtures and data are
+  integration inputs. Policy tests require `SLOW_TEST_FILES` and `DOCTEST_FILES`
+  to equal what a scan of the package finds, so update them in the pull request
+  that adds, removes or renames such a module. `select_checks.py` alone reads
+  labels, and a missing selection output must mean more validation, never less.
+  Keep selection and summary conditions identical, with regression coverage for
+  deletions, renames and missing outputs. Release optimisation must retain
+  fresh package verification and every publishing gate.
+
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named
   `Release Summary`. Keep all constituent checks visible and add every new
@@ -404,9 +467,10 @@ pull request" in `CONTRIBUTING.md`.
   The dependency audit is advisory on pull requests and pushes and blocking on
   scheduled and manual runs, where a failure opens or updates the issue labelled
   `security-audit`. Bandit and zizmor block on every event.
-- Workflow files staged in `claude_created_workflows_preview/` count as workflow
-  changes for the pull request path filter, and zizmor audits them in place, so
-  a staged workflow must be clean before a maintainer moves it.
+- Workflow files staged in `claude_created_workflows_preview/` are unclassified
+  inputs to `.github/scripts/select_checks.py` and select every scan. Zizmor
+  audits them in place, so a staged workflow must be clean before a maintainer
+  moves it.
 - Bandit is configured in `[tool.bandit]` in `pyproject.toml`: tests are excluded
   and a reviewed list of low-severity checks is skipped. Fix any other finding.
   Where a finding is a false positive, put the justification in a comment on the
@@ -437,6 +501,9 @@ When updating dependencies:
 4. Test changes to ensure nothing breaks
 5. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
 
+Do not add tests that restate a declared dependency constraint or the locked
+version. The lockfile checks and CI's locked environment already cover them.
+
 ### GitHub Actions Pins and Dependabot
 
 - Every action is pinned to a commit SHA with the tag in a trailing comment
@@ -449,6 +516,11 @@ When updating dependencies:
 - CI pins uv (`version` on `setup-uv`) to the same version as the pre-commit
   `uv-lock` hook. Bump both together and confirm `uv lock` leaves `uv.lock`
   unchanged under the new version.
+- When CI runs a tool that `uv.lock` already pins, give it a dependency group
+  and install it with `uv sync --frozen --only-group <group>`, which checks the
+  lockfile's hashes without installing the project. `uvx --constraints`
+  applies the versions but ignores hashes. Install in a step of its own, before
+  any `continue-on-error` step, so an installation failure is not misreported.
 
 **Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
 resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.
