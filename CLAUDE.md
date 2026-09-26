@@ -162,6 +162,12 @@ When creating conda recipes, pull requests, or other metadata that requires main
   when reordering or comparing grids. Matching coordinate sets alone does
   not justify combining array elements. Validate fixed geometry once before
   repeated numerical work, while retaining validation at public boundaries.
+- When replacing established geometry code, preserve its validated behaviour
+  and explain every intended difference with an independently worked example.
+  Test physical invariance across storage orientations and different grid
+  extents; self-comparisons alone can hide a shared error. Changelog impact
+  statements must distinguish expected usage frequency from error severity
+  and must not imply that unmeasured incidence is known.
 - Compare DICOM dose-grid positions with an explicit 0.01 mm absolute
   tolerance, independent of the coordinate origin. For grid equality, apply
   it to the maximum 3D displacement of corresponding voxel centres, combining

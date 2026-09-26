@@ -38,26 +38,33 @@ This project adheres to
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
 
-- **DICOM coordinates were wrong for every orientation except head first
-  supine.** `pymedphys.dicom` coordinate extraction negated any axis the
-  scanner stored in descending order: x for head first prone, feet first
-  supine, and both decubitus right orientations; y for both prone orientations,
-  head first decubitus left, and feet first decubitus right; and z for all
-  feet first orientations. On a uniform grid this amounts to
-  shifting that axis by `(n - 1) * spacing - 2 * position`, so a comparison
-  between two datasets with identical grids was unaffected, but grids with
-  different extents or positions, such as a treatment planning system dose
-  against a Monte Carlo dose or a cropped dose, were misregistered. Gamma on
-  such data was also liable to fail inside numba, and feet first z values did
-  not match structure contours. Axes now follow the voxel positions
-  defined by the DICOM standard, and absolute `GridFrameOffsetVector` values
-  are supported. A shared origin, orientation matrix and slice-offset model
-  keeps axes and dose-array permutations consistent. Dose summation checks
+- **Correct RT Dose coordinates and dose alignment for non-head-first-supine
+  orientations.** The usual head first supine (HFS) case with increasing
+  relative slice offsets retains its coordinates and dose order, and the
+  legacy IEC FIXED convention is preserved. Overall impact is expected to be
+  low where these HFS comparisons dominate; affected usage has not been
+  measured. However, the correction is **not limited to comparisons between
+  different orientations**: two non-HFS grids with the same orientation can
+  also be misregistered if their origins or extents differ, for example after
+  cropping or when comparing treatment planning and Monte Carlo dose grids.
+  For matching uniform supine/prone grids, a common coordinate shift can
+  cancel in a dose comparison; this does not establish correct absolute
+  positions or cover the separate descending-axis interpolation problem.
+  Decubitus grids additionally need their row/column dose dimensions swapped.
+  Errors in affected workflows can be substantial despite their expected
+  limited frequency; external contours and coordinate-based dose queries
+  also depend on correct patient positions. Axes now follow the DICOM voxel
+  position definition, and permitted absolute `GridFrameOffsetVector` values
+  are interpreted correctly, including for HFS. Dose summation checks
   the mapping from pixel indices to patient coordinates, including whether
   rows or columns represent each axis. Corresponding voxel centres must be
   within 0.01 mm in 3D, including combined origin and spacing differences;
   the tolerance no longer grows with the coordinate origin. Absolute slice
   offsets also use a fixed 0.01 mm tolerance when checked against the origin.
+  The contributor guide's DICOM coordinate validation note records the
+  independent checks and remaining limitations, including pre-existing
+  decubitus mapping defects in the private structure-mask and
+  `DicomDose.coords` helpers.
 - `pymedphys.gamma` now accepts evaluation axes in descending order. Before,
   every point of a descending evaluation grid was treated as outside the grid,
   which could leave the gamma search running indefinitely. Searches are now
