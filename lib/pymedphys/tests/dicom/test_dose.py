@@ -130,6 +130,7 @@ def test_sum_doses_in_datasets():
         "BitsStored": bits_allocated,
         "Rows": 2,
         "Columns": 3,
+        "NumberOfFrames": 4,
         "PixelRepresentation": 0,
         "SamplesPerPixel": 1,
         "PhotometricInterpretation": "MONOCHROME2",

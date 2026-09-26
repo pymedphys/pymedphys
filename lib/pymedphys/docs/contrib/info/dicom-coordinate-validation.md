@@ -14,22 +14,22 @@ The governing definitions are DICOM PS3.3
 [C.7.6.2.1.1](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1)
 and
 [C.8.8.3.2](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.3.2.html).
-For raw dose element `pixel_array[k, i, j]`, the patient position is
+For raw dose element `pixel_array[k, row, column]`, the patient position is
 
 ```text
-P = S + j * dc * r + i * dr * c + g[k] * (r x c)
+P = S + column * dc * r + row * dr * c + g[k] * (r x c)
 ```
 
 Here `S` is Image Position (Patient), `r` and `c` are the first and second
 triples of Image Orientation (Patient), `dr, dc` are Pixel Spacing, and `g`
 contains relative slice offsets. In the permitted absolute-offset form,
-subtract `S[z]` to obtain `g`; that form requires IOP `(1,0,0,0,1,0)`.
+subtract `S[z]` to obtain `g`; that form requires IOP `(1,0,0,0,1,0)` and its first value must equal `S[z]`.
 
 The first transmitted voxel is at `S` for relative offsets starting at zero.
 An orientation change does not negate `S`: the direction cosines determine
 the displacement from it.
 
-For the eight supported orientations the basis is a signed permutation.
+For the eight supported transverse cardinal orientations the basis is a signed permutation.
 Each patient coordinate therefore depends on exactly one raw array index.
 Extracting its one-dimensional axis is algebraically the same transformation
 as applying the full matrix to every voxel, without allocating a coordinate
@@ -81,6 +81,46 @@ two grids. This argument does not cover decubitus row/column permutations,
 uneven reversed slice offsets, or the old interpolator's inability to handle
 descending evaluation axes. A passing self-comparison alone is insufficient.
 
+## Physical tolerances and accepted orientation rounding
+
+For conversion to three patient axes, direction cosines within `1e-4` of a
+supported transverse cardinal orientation are snapped to it. This is an
+approximation, whose displacement grows with grid extent. The exact-placement
+checks above concern exact cardinal directions. Other cardinal orientations
+can also be separable but are outside the current implementation's support.
+
+Grid equality instead retains the original encoded cosines. It combines the
+origin, spacing and orientation into the maximum Euclidean displacement of
+corresponding voxel centres, across every pair of datasets:
+
+- up to **0.01 mm**: accept silently;
+- above **0.01 mm through 0.1 mm**: warn and still treat as coincident;
+- above **0.1 mm**: reject.
+
+A separate `1e-9` mm allowance handles arithmetic round-off at those limits.
+These absolute limits do not grow with the coordinate origin, do not resample
+dose, and do not assess clinical significance. Absolute-offset metadata
+consistency retains its separate 0.01 mm rule.
+
+The difference between two corresponding voxel positions is affine in row
+and column within each slice. Its norm is convex, so the maximum occurs at
+an in-plane corner. Checking four corners of **every** slice therefore gives
+the maximum without allocating a volume; an uneven-offset error can peak on
+an interior slice. Regression checks compare this calculation with an
+independent exhaustive voxel calculation, including slightly rotated cosines.
+
+For example, a `0.00009` rad in-plane rotation over 400 mm in each direction
+produces a maximum displacement of about 0.0509 mm. This now warns and accepts,
+rather than hiding the displacement by rounding both orientations first.
+
+The historical cancellation argument also needs a physical bound: for
+feet-first offsets `g[k]`, the old slice error was
+`-2 * S_z + g[k] + g[N - 1 - k]`. With `S_z = 55` and offsets `[0, 2.5, 6]`,
+the errors are `[-104, -105, -104]` mm, not a constant translation. The notebook
+demonstrates different gamma values even with identical reference/evaluation
+grid headers. Correct HFS placement also does not rule out the former default
+interpolator's separate error on unevenly spaced evaluation axes.
+
 ## Evidence and its limits
 
 Validation combines ongoing local tests with recorded historical checks:
@@ -108,11 +148,11 @@ Checks completed during this review:
 | Historical metadata files for all eight orientations | Zero difference from the independent DICOM matrix calculation |
 | Historical IEC FIXED baseline and pre-PR implementation | Exactly equal in all eight orientations |
 | 800 additional seeded random grids, including unequal spacing and uneven/decreasing slice offsets | Zero coordinate difference from the matrix calculation; every dose value retains its physical voxel |
-| 800 seeded perturbed grid pairs | Compact 0.01 mm equality decision agrees with exhaustive 3D voxel displacement |
+| 800 seeded perturbed grid pairs | Original 0.01 mm equality decision agrees with exhaustive 3D voxel displacement for exact cardinal directions; the revised regression also checks rounded cosines and both physical limits |
 | IEC FIXED on those 800 grids | Exactly equal to the original implementation |
 | Negative control using the original dose conversion | New physical-grid tests detect all 15 changed encoding cases; ordinary HFS with increasing offsets passes |
 
-The randomized probes used seed 2066, 100 grids per orientation, dimensions
+The randomised probes used seed 2066, 100 grids per orientation, dimensions
 between 2 and 8, origins within +/-1500 mm, and spacings between 0.2 and 5 mm.
 The committed seeded matrix regression also checks 100 grids per orientation.
 These checks are not a statistical estimate of clinical error frequency.
@@ -183,7 +223,7 @@ retained locally:
 
 This removes recurring vendor-file regression coverage from this test group;
 the recorded historical pass is evidence for those revisions, not a substitute
-for future testing. Local DICOM serialization retains file-reading coverage,
+for future testing. Local DICOM serialisation retains file-reading coverage,
 but it cannot represent every vendor-specific encoding. Other repository
 test groups may still download their own data. The fixture URL/hash registry
 is retained so historical tests can be replayed.
@@ -260,8 +300,8 @@ For example, sorting an x axis must retain its pairing with dose:
 | Ascending representation | `[98, 99, 100]` | `[30, 20, 10]` |
 
 The dose at x = 100 mm is still 10 Gy. Likewise, with reference axes `(z, y, x)`,
-`gamma[k, j, i]` and `dose_reference[k, j, i]` belong to the same position
-`(z[k], y[j], x[i])`. Plot a transverse gamma slice with the reference x and y
+`gamma[i_z, i_y, i_x]` and `dose_reference[i_z, i_y, i_x]` belong to the same position
+`(z[i_z], y[i_y], x[i_x])`. Plot a transverse gamma slice with the reference x and y
 coordinates, and identify its plane using the reference z coordinate. The
 [DICOM tutorial](../../users/howto/gamma/from-dicom.ipynb) demonstrates this
 after calculating gamma for the full volume.
@@ -313,3 +353,19 @@ the PyMedPhys data-download helpers; the cache remained empty. The generated
 DICOM files were written only to pytest's temporary directories. Ruff,
 Pyright and MyPy passed for the changed Python files, and Pylint with the
 repository configuration again scored 10.00/10.
+
+The follow-up review on 26 September 2026 revised the equality limits and
+retained encoded direction cosines in the physical comparison. Its targeted
+selection completed with **453 passed and the same 20 strict expected
+failures**, on Windows with Python 3.12.14, NumPy 1.26.4, SciPy 1.16.2,
+pydicom 3.0.1 and Numba 0.61.2. The existing environment lacked pytest-timeout,
+so plugin autoload was disabled and a 180-second subprocess timeout covered
+the whole selection; per-test timeout behaviour was not exercised. Ruff,
+Pyright and the repository pre-commit checks passed.
+
+The notebook's ordinary cells were executed in a fresh Jupyter kernel and
+its figures inspected. The optional two-checkout performance comparison was
+not rerun: its worker was smoke-tested with both 2D interpolators, and guards
+for missing paths, invalid revisions and incorrect import origins were
+exercised. The notebook no longer presents historical hard-coded timings as
+verified measurements or claims full-array agreement from checksums alone.

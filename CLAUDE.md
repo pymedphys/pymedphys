@@ -186,11 +186,15 @@ When creating conda recipes, pull requests, or other metadata that requires main
   Distinguish physical positions from array storage order, and state which
   coordinates belong to each returned array. Include plotting and indexing
   guidance when an ordering change affects existing callers.
-- Compare DICOM dose-grid positions with an explicit 0.01 mm absolute
-  tolerance, independent of the coordinate origin. For grid equality, apply
-  it to the maximum 3D displacement of corresponding voxel centres, combining
-  origin and spacing differences instead of allowing each a separate budget.
-  Keep dimensionless orientation-rounding tolerances separate.
+- Keep floating-point round-off, small physical discrepancies and clinical
+  significance separate. Dose-grid equality accepts up to 0.01 mm silently,
+  warns but still accepts above 0.01 mm through 0.1 mm, and rejects larger
+  mismatches, with a separate 1e-9 mm numerical allowance. Apply these absolute
+  limits to the maximum 3D displacement of corresponding voxel centres across
+  every dataset pair. Combine origin, spacing and original encoded direction
+  cosines; snapping cosines before comparison can conceal a growing edge
+  error. Acceptance does not resample a grid or assess clinical significance.
+  Keep orientation rounding and absolute-offset metadata validation separate.
 - The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
   read the rendered markdown. Data-driven scenarios use the

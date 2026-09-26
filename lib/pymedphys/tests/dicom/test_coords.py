@@ -33,12 +33,13 @@ def test_coords_in_datasets_are_equal():
             "BitsStored": bits_allocated,
             "Rows": 3,
             "Columns": 3,
+            "NumberOfFrames": 3,
             "PixelRepresentation": 0,
             "SamplesPerPixel": 1,
             "PhotometricInterpretation": "MONOCHROME2",
             "PixelSpacing": [1.0, 1.0],
             "GridFrameOffsetVector": [0.0, 1.0, 2.0],
-            "PixelData": np.ones((3, 3, 3)).tobytes(),
+            "PixelData": np.ones((3, 3, 3), dtype="<u4").tobytes(),
         }
     )
 
@@ -53,6 +54,9 @@ def test_coords_in_datasets_are_equal():
 
     # y-shift (for DICOM HFS)
     ds2.ImagePositionPatient = [-1.0, -1.1, -1.0]
+    with pytest.warns(UserWarning, match="0.1 mm acceptance limit"):
+        assert coords.coords_in_datasets_are_equal([ds1, ds2])
+    ds2.ImagePositionPatient = [-1.0, -1.11, -1.0]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
 
     # same coords but rotated using IOP

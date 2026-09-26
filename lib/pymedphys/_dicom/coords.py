@@ -14,7 +14,9 @@
 
 """A suite of functions for handling DICOM coordinates"""
 
+import warnings
 from dataclasses import dataclass
+from itertools import combinations
 from typing import Sequence, Tuple
 
 from pymedphys._imports import numpy as np
@@ -49,8 +51,12 @@ def coords_from_xyz_axes(xyz_axes: Sequence["np.ndarray"]) -> "np.ndarray":
 # Direction cosines are written as decimal strings, so allow for rounding.
 _ORIENTATION_TOLERANCE = 1e-4
 
-# Physical coordinate comparisons must not become looser far from the origin.
-_COORDINATE_TOLERANCE_MM = 0.01
+# Keep arithmetic round-off separate from the two physical acceptance limits.
+# None of these limits is a threshold for clinical significance.
+_NUMERICAL_TOLERANCE_MM = 1e-9
+_COORDINATE_QUIET_TOLERANCE_MM = 0.01
+_COORDINATE_ACCEPTANCE_TOLERANCE_MM = 0.1
+_ABSOLUTE_OFFSET_TOLERANCE_MM = 0.01
 
 
 def _axis_aligned_orientation(ds) -> "np.ndarray":
@@ -107,14 +113,14 @@ def _slice_offsets(ds, position, orientation) -> "np.ndarray":
         return offsets
 
     if not np.array_equal(orientation, [1, 0, 0, 0, 1, 0]) or not np.isclose(
-        offsets[0], position[2], rtol=0, atol=_COORDINATE_TOLERANCE_MM
+        offsets[0], position[2], rtol=0, atol=_ABSOLUTE_OFFSET_TOLERANCE_MM
     ):
         raise ValueError(
             "GridFrameOffsetVector does not start at zero, so it must hold "
             "absolute z coordinates. That form is only valid when Image "
             "Orientation (Patient) is [1, 0, 0, 0, 1, 0] and its first element "
             "matches the z value of Image Position (Patient) within "
-            f"{_COORDINATE_TOLERANCE_MM} mm. Got orientation "
+            f"{_ABSOLUTE_OFFSET_TOLERANCE_MM} mm. Got orientation "
             f"{orientation.tolist()}, first offset {offsets[0]} and IPP z "
             f"{position[2]}."
         )
@@ -129,9 +135,11 @@ class _DoseGridGeometry:
 
     ``basis`` has columns ``(r, c, r x c)`` and ``local_axes`` contains column,
     row and slice displacements in mm. The standard's voxel transformation is
-    ``position + basis @ [column_mm, row_mm, slice_offset_mm]``. Slice offsets
+    ``position + encoded_basis @ [column_mm, row_mm, slice_offset_mm]``. Slice offsets
     need not be uniform, so the third input is a displacement, not an index.
 
+    ``basis`` is snapped to a signed permutation for axis extraction;
+    ``encoded_basis`` retains the file's cosines for physical comparisons.
     Only signed axis permutations are supported here. Their patient axes can
     be extracted in O(columns + rows + slices), without a coordinate volume.
     """
@@ -139,6 +147,7 @@ class _DoseGridGeometry:
     position: "np.ndarray"
     basis: "np.ndarray"
     local_axes: Tuple["np.ndarray", "np.ndarray", "np.ndarray"]
+    encoded_basis: "np.ndarray"
 
     @classmethod
     def from_dataset(cls, ds):
@@ -149,6 +158,13 @@ class _DoseGridGeometry:
         orientation = _axis_aligned_orientation(ds)
         row, column = orientation[:3], orientation[3:]
         basis = np.column_stack((row, column, np.cross(row, column)))
+
+        # Retain the encoded cosines for physical equality comparisons. Snapping
+        # to cardinal axes is an approximation and can hide a growing edge error.
+        encoded = np.array(ds.ImageOrientationPatient, dtype=np.float64)
+        encoded_basis = np.column_stack(
+            (encoded[:3], encoded[3:], np.cross(encoded[:3], encoded[3:]))
+        )
 
         spacing = np.array(ds.PixelSpacing, dtype=np.float64)
         sizes = np.array((ds.Rows, ds.Columns))
@@ -172,6 +188,7 @@ class _DoseGridGeometry:
                 np.arange(ds.Rows, dtype=np.float64) * spacing[0],
                 _slice_offsets(ds, position, orientation),
             ),
+            encoded_basis,
         )
 
     @property
@@ -193,26 +210,62 @@ class _DoseGridGeometry:
         columns, rows, slices = self.local_axes
         return origin[0] + columns, origin[2] + slices, -(origin[1] + rows)[::-1]
 
-    def matches_pixel_mapping(self, other):
-        """Whether corresponding voxel centres are within 0.01 mm in 3D."""
+    def maximum_voxel_displacement(self, other):
+        """Largest encoded 3D displacement, or infinity for incompatible mappings.
+
+        Within each slice the difference is affine in row and column. Its norm
+        is convex, so its maximum occurs at an in-plane corner. Check all four
+        corners of every slice: uneven offset errors can peak on an inner slice.
+        This uses O(slices) memory, including for slightly rounded orientations.
+        """
         if not np.array_equal(self.basis, other.basis) or any(
             left.shape != right.shape
             for left, right in zip(self.local_axes, other.local_axes)
         ):
-            return False
+            return np.inf
 
-        # The common signed-permutation basis is orthonormal. Work in its
-        # local coordinates, combining origin and axis differences before
-        # applying one physical tolerance. Each axis varies independently,
-        # so the norm of their maxima is the largest voxel displacement.
-        origin_delta = (self.position - other.position) @ self.basis
-        maximum_displacements = [
-            np.max(np.abs(delta + (left - right)))
-            for delta, left, right in zip(
-                origin_delta, self.local_axes, other.local_axes
-            )
-        ]
-        return bool(np.linalg.norm(maximum_displacements) <= _COORDINATE_TOLERANCE_MM)
+        # Subtract the origins first to avoid cancellation from adding a large
+        # common patient coordinate to every voxel before taking differences.
+        slice_deltas = (
+            (self.position - other.position)
+            + self.local_axes[2][:, None] * self.encoded_basis[:, 2]
+            - other.local_axes[2][:, None] * other.encoded_basis[:, 2]
+        )
+        maximum = 0.0
+        for column in (0, -1):
+            for row in (0, -1):
+                displacement = slice_deltas.copy()
+                for dimension, index in ((0, column), (1, row)):
+                    displacement += (
+                        self.local_axes[dimension][index]
+                        * self.encoded_basis[:, dimension]
+                        - other.local_axes[dimension][index]
+                        * other.encoded_basis[:, dimension]
+                    )
+                maximum = max(
+                    maximum, float(np.max(np.linalg.norm(displacement, axis=1)))
+                )
+        return maximum
+
+    def matches_pixel_mapping(self, other):
+        """Apply the physical acceptance limits to corresponding voxel centres."""
+        return _displacement_is_acceptable(self.maximum_voxel_displacement(other))
+
+
+def _displacement_is_acceptable(displacement):
+    if displacement > _COORDINATE_ACCEPTANCE_TOLERANCE_MM + _NUMERICAL_TOLERANCE_MM:
+        return False
+    if displacement > _COORDINATE_QUIET_TOLERANCE_MM + _NUMERICAL_TOLERANCE_MM:
+        warnings.warn(
+            f"Corresponding dose-grid voxel centres differ by up to {displacement:.6g} mm. "
+            f"This exceeds the quiet tolerance of {_COORDINATE_QUIET_TOLERANCE_MM} mm "
+            f"but is within the {_COORDINATE_ACCEPTANCE_TOLERANCE_MM} mm acceptance limit; "
+            "the grids are treated as coincident without resampling. "
+            "This geometric tolerance does not assess clinical significance.",
+            UserWarning,
+            stacklevel=3,
+        )
+    return True
 
 
 def xyz_axes_from_dataset(
@@ -272,7 +325,11 @@ def xyz_axes_from_dataset(
 
     Notes
     -----
-    Supported scan orientations [1]_:
+    Supported transverse cardinal scan orientations [1]_. Direction cosines
+    within 1e-4 are snapped to these directions for separable axis extraction;
+    the positional effect of that approximation grows with grid extent.
+    Grid-equality comparisons retain the original cosines.
+
 
     =========================== ==========================
     Orientation                 ds.ImageOrientationPatient
@@ -297,8 +354,8 @@ def xyz_axes_from_dataset(
     Extra notes
     -----------
     Each voxel's position follows PS3.3 C.7.6.2.1.1: for the voxel in slice
-    ``k``, row ``i`` and column ``j``,
-    ``IPP + j * PixelSpacing[1] * r + i * PixelSpacing[0] * c + offset[k] * n``,
+    ``k``, row ``row`` and column ``column``,
+    ``IPP + column * PixelSpacing[1] * r + row * PixelSpacing[0] * c + offset[k] * n``,
     where ``r`` and ``c`` are the row and column direction cosines of Image
     Orientation (Patient) and ``n = r x c``. Note that ``PixelSpacing`` lists
     the spacing between rows first. See
@@ -335,9 +392,14 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
     Equal patient-coordinate axes alone are insufficient: decubitus grids
     can have the same axes but a different row/column mapping. This check is
     used before adding raw pixel arrays, so their mappings must also agree.
-    For the supported axis-aligned geometry, the maximum Euclidean distance
-    between corresponding voxel centres must be at most 0.01 mm. This is an
-    absolute physical tolerance, independent of the coordinate origin.
+    For every pair of datasets, corresponding voxel centres are compared using
+    the original encoded direction cosines, including accepted rounding. The
+    maximum Euclidean displacement is accepted silently through 0.01 mm, with
+    a UserWarning above 0.01 mm through 0.1 mm, and rejected above 0.1 mm.
+    Accepted grids are treated as coincident without resampling. These absolute
+    physical limits do not depend on the coordinate origin and do not assess
+    clinical significance. A separate 1e-9 mm allowance handles arithmetic
+    round-off at the limits.
 
     Parameters
     ----------
@@ -357,8 +419,12 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
     ):
         return False
 
-    reference = _DoseGridGeometry.from_dataset(datasets[0])
-    return all(
-        reference.matches_pixel_mapping(_DoseGridGeometry.from_dataset(ds))
-        for ds in datasets[1:]
+    geometries = [_DoseGridGeometry.from_dataset(ds) for ds in datasets]
+    maximum = max(
+        (
+            left.maximum_voxel_displacement(right)
+            for left, right in combinations(geometries, 2)
+        ),
+        default=0.0,
     )
+    return _displacement_is_acceptable(maximum)

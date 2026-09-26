@@ -18,6 +18,9 @@ Each orientation uses an off-centre grid with non-square pixels, so that a
 sign error, a reversed axis, or swapped spacings cannot cancel out.
 """
 
+import warnings
+from contextlib import nullcontext
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
@@ -300,25 +303,56 @@ def test_absolute_and_relative_offsets_have_the_same_pixel_mapping():
 @pytest.mark.pydicom
 @pytest.mark.parametrize("origin", [-10000.0, 0.0, 10000.0])
 @pytest.mark.parametrize(
-    "shift, expected",
+    "shift, expected, warns",
     [
-        ([0.009, 0, 0], True),
-        ([0.011, 0, 0], False),
-        ([0.006, 0.006, 0], True),
-        ([0.006, 0.006, 0.006], False),
+        ([0.009, 0, 0], True, False),
+        ([0.01, 0, 0], True, False),
+        ([0.011, 0, 0], True, True),
+        ([0.1, 0, 0], True, True),
+        ([0.10001, 0, 0], False, False),
+        ([0.006, 0.006, 0], True, False),
+        ([0.006, 0.006, 0.006], True, True),
+        ([0.06, 0.06, 0.06], False, False),
     ],
 )
-def test_geometry_equality_uses_an_absolute_3d_tolerance(origin, shift, expected):
+def test_geometry_equality_uses_absolute_3d_limits(origin, shift, expected, warns):
     position = np.full(3, origin)
     reference = rtdose("HFS", position=position)
     shifted = rtdose("HFS", position=position + shift)
-    assert coords.coords_in_datasets_are_equal([reference, shifted]) is expected
-    assert coords.coords_in_datasets_are_equal([shifted, reference]) is expected
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        for pair in ([reference, shifted], [shifted, reference]):
+            context = (
+                pytest.warns(UserWarning, match="without resampling")
+                if warns
+                else nullcontext()
+            )
+            with context:
+                assert coords.coords_in_datasets_are_equal(pair) is expected
+
+
+def _assert_equality_matches_voxel_positions(reference, changed):
+    # Independent exhaustive oracle, including the unrounded direction cosines.
+    differences = voxel_positions(changed) - voxel_positions(reference)
+    maximum_distance = np.max(np.linalg.norm(differences, axis=-1))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", UserWarning)
+        actual = coords.coords_in_datasets_are_equal([reference, changed])
+    assert actual is bool(maximum_distance <= 0.1)
+    assert bool(caught) is bool(0.01 < maximum_distance <= 0.1)
+    np.testing.assert_allclose(
+        coords._DoseGridGeometry.from_dataset(reference).maximum_voxel_displacement(
+            coords._DoseGridGeometry.from_dataset(changed)
+        ),
+        maximum_distance,
+        rtol=0,
+        atol=1e-9,
+    )
 
 
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
-@pytest.mark.parametrize("column_spacing_change", [0.001, 0.004])
+@pytest.mark.parametrize("column_spacing_change", [0.001, 0.004, 0.04])
 def test_geometry_equality_combines_origin_and_spacing_changes(
     orientation, column_spacing_change
 ):
@@ -328,27 +362,56 @@ def test_geometry_equality_combines_origin_and_spacing_changes(
         position=(100.003, -199.996, 300.002),
         pixel_spacing=(2, 3 + column_spacing_change),
     )
-    # Independent per-voxel matrix calculation includes all signs and
-    # dimension permutations, with no reuse of the compact comparison.
-    differences = voxel_positions(changed) - voxel_positions(reference)
-    maximum_distance = np.max(np.linalg.norm(differences, axis=-1))
-    expected = bool(maximum_distance <= 0.01)
-    assert coords.coords_in_datasets_are_equal([reference, changed]) is expected
+    _assert_equality_matches_voxel_positions(reference, changed)
 
 
 @pytest.mark.pydicom
-@pytest.mark.parametrize("position_change", [0.0, 0.006])
+@pytest.mark.parametrize("position_change", [0.0, 0.006, 0.06])
 def test_geometry_equality_checks_interior_slice_offsets(position_change):
     reference = rtdose("HFS")
     changed = rtdose(
         "HFS",
         position=(100, -200, 300 + position_change),
-        slice_offsets=[0, 2.506, 5],
+        slice_offsets=[0, 2.556, 5],
     )
-    # The largest difference is on the middle slice. Independent 0.006 mm
-    # allowances for the origin and offsets would wrongly accept 0.012 mm.
-    expected = position_change == 0
-    assert coords.coords_in_datasets_are_equal([reference, changed]) is expected
+    # The greatest error is at the inner slice and includes the origin change.
+    _assert_equality_matches_voxel_positions(reference, changed)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("extent_mm", [50, 400, 1000])
+def test_geometry_equality_retains_small_rotation_at_large_extent(extent_mm):
+    reference = rtdose(
+        "HFS",
+        shape=(2, 201, 201),
+        pixel_spacing=(extent_mm / 200,) * 2,
+        slice_offsets=[0, 5],
+    )
+    changed = rtdose(
+        "HFS",
+        shape=(2, 201, 201),
+        pixel_spacing=(extent_mm / 200,) * 2,
+        slice_offsets=[0, 5],
+    )
+    angle = 0.00009
+    changed.ImageOrientationPatient = [
+        np.cos(angle),
+        np.sin(angle),
+        0,
+        -np.sin(angle),
+        np.cos(angle),
+        0,
+    ]
+    _assert_equality_matches_voxel_positions(reference, changed)
+
+
+@pytest.mark.pydicom
+def test_geometry_equality_compares_every_pair():
+    datasets = [rtdose("HFS", position=(x, 0, 0)) for x in (0, -0.06, 0.06)]
+    # Each is within 0.1 mm of the first, but the outer pair is 0.12 mm apart.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        assert not coords.coords_in_datasets_are_equal(datasets)
 
 
 @pytest.mark.pydicom
@@ -438,9 +501,15 @@ def test_seeded_voxel_mapping_and_equality_against_matrix(orientation):
             pixel_spacing=np.round(spacing + rng.uniform(-0.002, 0.002, 2), 8),
             slice_offsets=offsets,
         )
-        maximum_distance = np.max(
-            np.linalg.norm(voxel_positions(changed) - positions, axis=-1)
+        # Exercise the accepted small-cosine range as well as exact orientations.
+        angle = rng.uniform(-0.00009, 0.00009)
+        rotation = np.array(
+            [
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1],
+            ]
         )
-        assert coords.coords_in_datasets_are_equal([ds, changed]) == bool(
-            maximum_distance <= 0.01
-        )
+        encoded = np.array(changed.ImageOrientationPatient).reshape(2, 3) @ rotation.T
+        changed.ImageOrientationPatient = encoded.ravel().tolist()
+        _assert_equality_matches_voxel_positions(ds, changed)

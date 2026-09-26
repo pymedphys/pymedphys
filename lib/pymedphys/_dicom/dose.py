@@ -42,7 +42,7 @@ def zyx_and_dose_from_dataset(dataset):
     ----------
     dataset : pydicom.dataset.Dataset
         An RT Dose dataset whose Image Orientation (Patient) is one of the
-        eight axis-aligned patient orientations (head or feet first; supine,
+        eight supported transverse cardinal orientations (head or feet first; supine,
         prone, or decubitus left or right).
 
     Returns
@@ -50,7 +50,7 @@ def zyx_and_dose_from_dataset(dataset):
     coords : tuple of numpy.ndarray
         The (z, y, x) DICOM axes of the dose grid, each strictly ascending.
     dose : numpy.ndarray
-        The dose, indexed ``dose[z_index, y_index, x_index]``.
+        The dose, indexed ``dose[i_z, i_y, i_x]`` at ``(z[i_z], y[i_y], x[i_x])``.
 
     Notes
     -----
@@ -61,7 +61,9 @@ def zyx_and_dose_from_dataset(dataset):
     increasing slice offsets the dose is the pixel array unchanged. Head
     first supine grids with decreasing slice offsets are reversed in z.
 
-    Reordering does not resample dose or change voxel positions. Keep the
+    Accepted direction cosines within 1e-4 of a supported cardinal orientation
+    are snapped to it for axis extraction; the positional effect grows with
+    grid extent. The rearrangement itself does not resample dose or move voxels. Keep the
     returned coordinates and dose together when indexing or plotting.
     Gamma calculated with this pair as its reference has the same shape and
     index order as the returned dose, which can differ from ``pixel_array``.
