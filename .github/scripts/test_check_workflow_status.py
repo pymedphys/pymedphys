@@ -23,6 +23,10 @@ from check_workflow_status import check_jobs, make_summary
 class WorkflowStatusTests(unittest.TestCase):
     def setUp(self):
         self.conditional = {
+            "lint": "run-python",
+            "type-check": "run-python",
+            "unit-tests": "run-python",
+            "script-tests": "run-scripts",
             "integration-tests": "run-integration",
             "mosaiq-db-tests": "run-database",
             "docs-check": "run-docs",
@@ -33,9 +37,6 @@ class WorkflowStatusTests(unittest.TestCase):
                 "outputs": dict.fromkeys(self.conditional.values(), "false"),
             },
             "pre-commit": {"result": "success", "outputs": {}},
-            "lint": {"result": "success"},
-            "type-check": {"result": "success"},
-            "unit-tests": {"result": "success"},
             **{job: {"result": "skipped"} for job in self.conditional},
         }
 
@@ -56,6 +57,9 @@ class WorkflowStatusTests(unittest.TestCase):
                 with self.subTest(job=job, result=result):
                     needs = copy.deepcopy(self.needs)
                     needs["changes"]["outputs"][output] = "true"
+                    for selected_job, selected_output in self.conditional.items():
+                        if selected_output == output:
+                            needs[selected_job]["result"] = "success"
                     needs[job]["result"] = result
                     self.assertEqual(
                         bool(check_jobs(needs, self.conditional)), result != "success"
@@ -103,16 +107,16 @@ class WorkflowStatusTests(unittest.TestCase):
         self.assertIn("new CI run must pass", summary)
         self.assertNotIn("All required checks passed", summary)
 
-    def test_security_scans_follow_shared_selection(self):
+    def test_security_scans_follow_independent_selection(self):
         scans = ("dependency-audit", "python-security", "workflow-audit")
-        conditional = dict.fromkeys(scans, "security")
+        conditional = {job: f"run-{job}" for job in scans}
         for selection in ("true", "false"):
             for result in ("success", "failure", "cancelled", "skipped"):
                 with self.subTest(selection=selection, result=result):
                     needs = {
                         "changes": {
                             "result": "success",
-                            "outputs": {"security": selection},
+                            "outputs": dict.fromkeys(conditional.values(), selection),
                         },
                         **{job: {"result": result} for job in scans},
                     }

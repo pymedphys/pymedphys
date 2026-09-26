@@ -6,6 +6,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
 
 # Read-only by default. Jobs that upload SARIF or open issues add what they need.
@@ -14,7 +15,10 @@ permissions:
 
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request' &&
+        github.event.action != 'labeled' &&
+        github.event.action != 'unlabeled' }}
 
 env:
   # Scanner versions. The scanners run through uvx, so nothing here touches the
@@ -25,41 +29,29 @@ env:
   ZIZMOR_VERSION: 1.30.1
 
 jobs:
-  # Filter pull requests only. Scheduled, manual, and main runs always scan,
-  # because new vulnerabilities can appear without repository changes.
-  # Workflow files staged under claude_created_workflows_preview for a
-  # maintainer to move (see CLAUDE.md) count as workflow changes.
+  # PR scans follow their inputs. Main, scheduled and manual runs always
+  # scan, because new vulnerabilities can appear without repository changes.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
     outputs:
-      security: >-
-        ${{ github.event_name != 'pull_request' ||
-            steps.filter.outputs.security == 'true' }}
+      run-dependency-audit: ${{ steps.select.outputs.run-dependency-audit }}
+      run-python-security: ${{ steps.select.outputs.run-python-security }}
+      run-workflow-audit: ${{ steps.select.outputs.run-workflow-audit }}
     steps:
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        if: github.event_name == 'pull_request'
-        id: filter
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          filters: |
-            security:
-              - '**/*.py'
-              - 'pyproject.toml'
-              - 'uv.lock'
-              - '.pre-commit-config.yaml'
-              - '.github/workflows/*.yml'
-              - '.github/actions/**/action.yml'
-              - '.github/scripts/**'
-              - 'claude_created_workflows_preview/*.yml'
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Select affected scans
+        id: select
+        run: python .github/scripts/select_checks.py
 
   # Audits the lockfile rather than an installed environment, so every extra
   # and platform marker is covered and nothing has to be installed.
   dependency-audit:
     needs: [changes]
-    if: needs.changes.outputs.security == 'true'
+    if: needs.changes.outputs.run-dependency-audit == 'true'
     name: Dependency Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -122,7 +114,7 @@ jobs:
   # event: fix the finding or add a justified "nosec" comment.
   python-security:
     needs: [changes]
-    if: needs.changes.outputs.security == 'true'
+    if: needs.changes.outputs.run-python-security == 'true'
     name: Python Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -176,7 +168,7 @@ jobs:
   # severity are style advice and do not block.
   workflow-audit:
     needs: [changes]
-    if: needs.changes.outputs.security == 'true'
+    if: needs.changes.outputs.run-workflow-audit == 'true'
     name: Workflow Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -247,9 +239,9 @@ jobs:
         run: >-
           python .github/scripts/check_workflow_status.py
           --title 'Security Scan Results'
-          --conditional dependency-audit=security
-          --conditional python-security=security
-          --conditional workflow-audit=security
+          --conditional dependency-audit=run-dependency-audit
+          --conditional python-security=run-python-security
+          --conditional workflow-audit=run-workflow-audit
       - name: Explain the gating policy
         if: always()
         run: |

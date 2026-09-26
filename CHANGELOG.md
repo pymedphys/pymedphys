@@ -50,6 +50,15 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI now selects Python, documentation, tooling
+  and security checks from the complete tested PR diff, while unknown inputs
+  request every check and required summaries reject unexpected skips. Tool-only
+  jobs avoid installing the scientific stack, and only data consumers restore
+  the manifest-specific data cache. Release validation runs in parallel with
+  one distribution build; publishing still waits for every quality gate.
+  Published-package verification and tests share a fresh environment per OS,
+  and release assets wait for both to pass.
+
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation

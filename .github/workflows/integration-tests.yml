@@ -3,12 +3,22 @@ name: Integration Tests
 on:
   workflow_call:
     inputs:
+      run-wheel-build:
+        description: Build and smoke-test distributions (the release builds its own)
+        type: boolean
+        default: true
+        required: false
       run-slow:
         type: boolean
         default: false
         required: false
   workflow_dispatch:
     inputs:
+      run-wheel-build:
+        description: Build and smoke-test distributions (the release builds its own)
+        type: boolean
+        default: true
+        required: false
       run-slow:
         type: boolean
         default: true
@@ -30,6 +40,7 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           extras: 'all'
+          cache-data: 'true'
 
       - name: Run doctests
         run: |
@@ -51,6 +62,7 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           extras: 'dev tests'
+          cache-data: 'true'
 
       - name: Run slow tests
         run: |
@@ -71,7 +83,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: .github/scripts
+          sparse-checkout: .github
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -85,6 +97,7 @@ jobs:
   # here, then installs the wheel into a fresh venv outside the project's
   # environment. See .github/scripts/check_distributions.py.
   wheel-build:
+    if: inputs.run-wheel-build
     name: Wheel Build Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -94,6 +107,8 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-project
+        with:
+          install-project: 'false'
 
       - name: Build the sdist, then the wheel from it
         run: uv build

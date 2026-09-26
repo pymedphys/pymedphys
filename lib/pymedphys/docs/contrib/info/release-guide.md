@@ -120,8 +120,7 @@ The run is complete when its **Release Summary** job passes. That job fails unle
 
 - before publishing: lint, type checks, the full unit-test matrix, integration tests, and the build and distribution checks;
 - `publish-pypi`;
-- **Verify published** on Linux, Windows, and macOS, which installs the wheel and the sdist from PyPI separately and requires both to match the files built and tested earlier in the run;
-- **Test published** on Linux, Windows, and macOS, which runs the test suite against the published wheel with its dependencies resolved afresh from PyPI, as a user's installation is, rather than from `uv.lock`;
+- **Verify and test published** on Linux, Windows and macOS, which installs the wheel and sdist from PyPI separately, requires both to match the build, and runs the suite in the fresh wheel environment with dependencies resolved from PyPI;
 - `upload-release-assets`, which attaches the verified files to the GitHub release and reads them back.
 
 A published GitHub release does not by itself mean that PyPI publishing succeeded. If the summary fails, see "Recover from failures".
@@ -142,7 +141,7 @@ The workflow checks the published files with Python 3.12 on GitHub-hosted runner
 uv run --no-project --python 3.12 python .github/scripts/check_distributions.py --published VERSION --tests --summary release-check.md
 ```
 
-This installs the wheel and the sdist from PyPI into separate fresh environments outside the checkout, as the **Verify published** jobs do, then adds the `user` and `tests` extras to the wheel's environment and runs the test suite there. The tests download public datasets and can take tens of minutes; omit `--tests` for a check of a few minutes. Neither the checkout nor `PYTHONPATH` can affect the environments.
+This installs the wheel and the sdist from PyPI into separate fresh environments outside the checkout, as the **Verify and test published** jobs do, then adds the `user` and `tests` extras to the wheel's environment and runs the test suite there. The tests download public datasets and can take tens of minutes; omit `--tests` for a check of a few minutes. Neither the checkout nor `PYTHONPATH` can affect the environments.
 
 It prints `The distributions passed every check.` on success, and otherwise lists each failure and exits non-zero. It appends a Markdown report of the platform, each file's SHA-256, and each result to `release-check.md`, ready to paste into the release pull request. Installation reports, pip logs, and the test log are kept in the directory it prints, or in `--report-dir`. The test suite runs without the repository's pytest settings in `pyproject.toml` (strict markers, strict xfail, and the 900-second time-out), which the wheel does not contain.
 
@@ -158,9 +157,9 @@ Installation ignores pip configuration files and inherited `PIP_*` settings exce
 | The build job fails the tag check, or a test fails before publishing | This attempt did not publish. Re-run a download or network failure once. Otherwise check all earlier attempts, other runs for this version, and PyPI before deciding whether the version is unused. For a code or version change, keep the tag, fix the cause on `main`, and release a new version through the same procedure. |
 | A failed run can no longer be re-run (GitHub allows 30 days) | If no file of this version reached PyPI, delete the GitHub release, keeping its tag, and publish a new release from the same tag to start a fresh run. Otherwise recover the original files as described below. |
 | The upload failed before any file reached PyPI | Fix the cause, then re-run the failed jobs. |
-| Only one of the two files reached PyPI | Re-run the failed jobs. The publish step skips files already on the index, and the **Verify published** jobs then confirm that both files match the build. |
-| A **Verify published** job failed | The release assets are not uploaded. Inspect the job's log and its `install-reports` artefact to distinguish index propagation, network or certificate errors, dependency or build-tool failures, and defects in the package. Re-run transient failures. A SHA-256 mismatch means the built and published bytes differ; keep the original files and investigate before retrying or changing the release. |
-| A **Test published** job failed | The release is on PyPI. Inspect the job's log and its `test-reports` artefact. Re-run a data download or network failure once. A genuine failure with freshly resolved dependencies that passed with `uv.lock` usually comes from a new dependency release: constrain it on `main` and publish a new version. Yank the release if it is unusable. |
+| Only one of the two files reached PyPI | Re-run the failed jobs. The publish step skips files already on the index, and the **Verify and test published** jobs then confirm that both files match the build. |
+| Published archive verification failed | The release is on PyPI, but release assets are not uploaded. Inspect the job's log and its `published-reports` artefact to distinguish index propagation, network or certificate errors, dependency or build-tool failures, and defects in the package. Re-run transient failures. A SHA-256 mismatch means the built and published bytes differ; keep the original files and investigate before retrying or changing the release. |
+| The published test suite failed | The release is on PyPI, but release assets are not uploaded. Inspect the job's log and its `published-reports` artefact. Re-run a data download or network failure once. A genuine failure with freshly resolved dependencies that passed with `uv.lock` usually comes from a new dependency release: constrain it on `main` and publish a new version. Yank the release if it is unusable. |
 | `upload-release-assets` failed, including its read-back check | Re-run only that job while the original `dist` artefact is available. It replaces the assets with the verified files and does not publish to PyPI. |
 
 Re-run failed jobs, not the whole workflow: re-running failed jobs reuses the original run's `dist` artefact, retained for 30 days. A whole-workflow re-run rebuilds the files, and even unchanged source can produce different archive hashes when the build backend or environment changes.

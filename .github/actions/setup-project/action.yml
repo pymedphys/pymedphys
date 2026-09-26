@@ -8,6 +8,12 @@ inputs:
   extras:
     description: Space-separated list of extras to install
     default: ''
+  install-project:
+    description: Install the locked project environment
+    default: 'true'
+  cache-data:
+    description: Restore data only for jobs that consume it
+    default: 'false'
 
 runs:
   using: composite
@@ -28,6 +34,7 @@ runs:
           pyproject.toml
 
     - name: Install dependencies
+      if: inputs.install-project == 'true'
       shell: bash
       env:
         EXTRAS: ${{ inputs.extras }}
@@ -40,6 +47,7 @@ runs:
         fi
 
     - name: Cache PyMedPhys data
+      if: inputs.cache-data == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.pymedphys

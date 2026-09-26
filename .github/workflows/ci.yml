@@ -22,58 +22,41 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
-      pull-requests: read
     outputs:
-      run-integration: >-
-        ${{ github.event_name == 'push' ||
-            contains(github.event.pull_request.labels.*.name, 'full-test') }}
-      run-database: >-
-        ${{ github.event_name == 'push' ||
-            contains(github.event.pull_request.labels.*.name, 'full-test') ||
-            contains(github.event.pull_request.labels.*.name, 'database') ||
-            steps.filter.outputs.mosaiq == 'true' }}
-      run-docs: >-
-        ${{ github.event_name == 'pull_request' &&
-            steps.filter.outputs.docs == 'true' }}
+      run-python: ${{ steps.select.outputs.run-python }}
+      run-integration: ${{ steps.select.outputs.run-integration }}
+      run-database: ${{ steps.select.outputs.run-database }}
+      run-docs: ${{ steps.select.outputs.run-docs }}
+      run-scripts: ${{ steps.select.outputs.run-scripts }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Test workflow status validation
-        run: python -m unittest discover -s .github/scripts -p 'test_*.py'
-      # Only pull requests use the filter outputs: pushes run every selected
-      # check, so the step is skipped and the checkout needs no credentials.
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        if: github.event_name == 'pull_request'
-        id: filter
+          fetch-depth: 2
+      - name: Test selection and summary policy
+        run: |
+          python -m unittest discover -s .github/scripts -p 'test_select_checks.py'
+          python -m unittest discover -s .github/scripts -p 'test_check_workflow_status.py'
+          python -m unittest discover -s .github/scripts -p 'test_workflow_contracts.py'
+      - name: Select affected checks
+        id: select
+        run: python .github/scripts/select_checks.py
+
+  script-tests:
+    needs: [changes]
+    if: needs.changes.outputs.run-scripts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          filters: |
-            mosaiq:
-              - 'lib/pymedphys/**/*mosaiq*'
-              - 'lib/pymedphys/**/*mosaiq*/**'
-              - 'lib/pymedphys/**/*database*'
-              - 'lib/pymedphys/**/*database*/**'
-            docs:
-              - 'docs/**'
-              - 'lib/pymedphys/docs/**'
-              # Autodoc and notebooks import the package implementation.
-              # Package modules only: tests cannot change the rendered docs.
-              - 'lib/pymedphys/*.py'
-              - 'lib/pymedphys/!(tests)/**/*.py'
-              # Notebooks fetch data files by name.
-              - 'lib/pymedphys/_data/**'
-              - '*.md'
-              - 'README.rst'
-              - 'pyproject.toml'
-              - 'uv.lock'
-              - 'requirements-docs.txt'
-              - '.readthedocs.yml'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/docs.yml'
-              - '.github/actions/setup-project/**'
-              - '.github/scripts/**'
+          persist-credentials: false
+          sparse-checkout: .github
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Test distribution and workflow tooling
+        run: python -m unittest discover -s .github/scripts -p 'test_*.py'
 
   # Pre-commit always runs. Needs write access for auto-fix pushes on PRs.
   pre-commit:
@@ -84,28 +67,34 @@ jobs:
       PYMEDPHYS_CI_BOT_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
       PYMEDPHYS_CI_BOT_TOKEN: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
 
-  # Linting — skip if pre-commit pushed an auto-fix (a fresh run is coming).
+  # Lint affected Python inputs unless pre-commit pushed a newer commit.
   lint:
-    needs: [pre-commit]
+    needs: [pre-commit, changes]
     if: |
       (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true'
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/lint.yml
 
-  # Type checking — skip if auto-fix pushed.
+  # Type-check affected Python inputs unless an auto-fix was pushed.
   type-check:
-    needs: [pre-commit]
+    needs: [pre-commit, changes]
     if: |
       (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true'
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/type-check.yml
 
-  # Unit tests — skip if auto-fix pushed.
+  # Test affected Python inputs unless an auto-fix was pushed.
   unit-tests:
-    needs: [pre-commit]
+    needs: [pre-commit, changes]
     if: |
       (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true'
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/unit-tests.yml
     with:
       quick: >-
@@ -114,7 +103,7 @@ jobs:
 
   # Extended checks share selection outputs with the required summary.
   integration-tests:
-    needs: [pre-commit, changes, unit-tests]
+    needs: [pre-commit, changes]
     if: |
       needs.pre-commit.outputs.autofix-pushed != 'true' &&
       needs.changes.outputs.run-integration == 'true'
@@ -145,7 +134,7 @@ jobs:
   # The summary must fail when a required check fails or never runs.
   summary:
     name: CI Summary
-    needs: [changes, pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check]
+    needs: [changes, pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, script-tests]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -161,6 +150,10 @@ jobs:
         run: >-
           python .github/scripts/check_workflow_status.py
           --title 'CI Results'
+          --conditional lint=run-python
+          --conditional type-check=run-python
+          --conditional unit-tests=run-python
+          --conditional script-tests=run-scripts
           --conditional integration-tests=run-integration
           --conditional mosaiq-db-tests=run-database
           --conditional docs-check=run-docs

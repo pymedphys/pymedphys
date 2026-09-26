@@ -408,6 +408,12 @@ This ensures that:
 
 ### CI Gates and Review Policy
 
+- Optimise CI and releases without reducing validation: skip only checks whose
+  inputs are known to be unaffected, and select all checks for unknown paths or
+  an unverifiable diff. Keep selection and summary conditions identical, with
+  regression coverage for deletions, renames and missing outputs. Release
+  optimisation must retain fresh package verification and every publishing gate.
+
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named
   `Release Summary`. Keep all constituent checks visible and add every new

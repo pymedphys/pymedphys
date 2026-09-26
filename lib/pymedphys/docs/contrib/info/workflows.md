@@ -25,7 +25,7 @@ Issue comment -> claude.yml
 
 ## Workflow Structure
 
-### Core Workflows (Run on All PRs)
+### Pull request checks
 
 #### `ci.yml` - Main Orchestrator
 Coordinates all CI checks based on file changes, labels, and event types.
@@ -33,20 +33,44 @@ Coordinates all CI checks based on file changes, labels, and event types.
 - **Triggers**: Push to main, pull requests (including label changes, which queue
   behind an in-flight run rather than cancelling it)
 - **Jobs**:
-  - `changes`: Detects file changes using path filters
+  - `changes`: Tests the selection/gating policy and reads the tested merge diff
   - `pre-commit`: Auto-formatting and basic checks
   - `lint`: Code quality
   - `type-check`: Static type checking
-  - `unit-tests`: Fast unit tests
+  - `unit-tests`: Fast unit tests when Python inputs change
+  - `script-tests`: Distribution/tooling regression tests when their inputs change
   - `integration-tests`: Extended tests (conditional)
   - `mosaiq-db-tests`: Database tests (conditional)
   - `docs-check`: Documentation build and artefact (conditional)
-  - `summary`: Requires core checks and selected extended checks to succeed
+  - `summary`: Requires policy checks, pre-commit and every selected check to succeed
 
-Lint, type checks, and unit tests normally run on every PR. If pre-commit
-pushes an auto-fix, those jobs are skipped for the superseded commit and the
-summary fails until a fresh run passes on the new commit. Upstream failures
-can also skip dependent jobs; the summaries reject those unexpected skips.
+`.github/scripts/select_checks.py` owns selection for both CI and security.
+For PRs it compares the tested merge tree with its base parent. It verifies both
+parents against the event, reads NUL-delimited paths, and disables rename
+detection so deletions and both sides of renames count. It needs only two
+checkout generations and has no API file-list limit. If the merge cannot be
+verified, every check is selected.
+
+| PR changes | Selected checks, in addition to policy checks and pre-commit |
+|------------|-------------------------------------------------------------|
+| Known documentation prose, notebooks and rendered assets only | Documentation |
+| Package Python modules | Lint, type checks, unit tests, generated documentation and all security scans |
+| Python tests only | Lint, type checks, unit tests and all security scans |
+| Mosaiq/database Python modules or shared imports, fixtures and data access | The Python checks above, plus database tests |
+| Dependencies, non-Python test data, build/CI configuration or any unclassified path | Every check, including integration and database tests |
+| `full-test` label | Every check and the full unit-test matrix |
+| `database` label | Adds database tests |
+
+Only recognised documentation inputs are exempt from Python checks; a Python
+file or new configuration format inside the docs tree is not exempt. Package
+modules still select documentation because autodoc and notebooks import them.
+The full OS/Python matrix and integration checks remain unconditional on main.
+ReadTheDocs publishes main documentation independently.
+
+If pre-commit pushes an auto-fix, dependent jobs are skipped for the superseded
+commit and the summary fails until a fresh run passes on the new commit.
+Upstream failures can also skip dependent jobs; the summaries reject those
+unexpected skips. Independent integration jobs can run alongside unit tests.
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
@@ -56,6 +80,9 @@ Runs pre-commit hooks for code formatting and basic checks.
   - Can push fixes on same-repository PRs when bot credentials are available
   - Fork PR authors must apply and push their fixes themselves
   - Caches pre-commit environments
+  - Runs the tool and its transitive dependencies constrained by `uv.lock`,
+    without installing the project's scientific dependencies
+  - Checks out the event's exact head commit before applying auto-fixes
 
 #### `lint.yml`
 Dedicated linting workflow for code quality.
@@ -78,7 +105,7 @@ Fast unit tests with smart matrix strategy.
 
 - **Features**:
   - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
-  - Quick mode for PRs (Ubuntu + Python 3.12)
+  - Quick mode for selected PRs (Ubuntu + Python 3.12)
   - Installs the `user` extra so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
@@ -93,7 +120,8 @@ Comprehensive testing beyond unit tests.
   - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
   - `script-tests`: Runs the `.github/scripts` unit tests on Windows and
-    macOS; `ci.yml` runs them on Ubuntu for every pull request
+    macOS; `ci.yml` runs the full script suite on Ubuntu when selected,
+    and the selection, summary and workflow-contract tests on every PR
   - `wheel-build`: Builds the sdist and then the wheel from it, and runs
     `.github/scripts/check_distributions.py`: both archives must contain the
     package, and the wheel must install into a fresh virtual environment,
@@ -101,7 +129,7 @@ Comprehensive testing beyond unit tests.
   - `propagate`: `pymedphys dev propagate` must leave the generated files
     unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
     `_version.py`)
-- **Triggers**: Main branch or `full-test` label
+- **Triggers**: Main branch, `full-test`, or unclassified/shared build inputs
 
 #### `mosaiq-db-tests.yml`
 SQL Server integration tests for Mosaiq database functionality.
@@ -130,21 +158,25 @@ Publishes to PyPI behind quality gates.
   only trigger and the only way to publish. There is no manual run and no
   TestPyPI route; a development release rehearses changes to the pipeline
 - **Before publishing**: Lint, type checks, the full unit-test matrix,
-  integration tests, and the same distribution checks as `wheel-build`. The
-  build also fails unless the tag is `v` followed by the package version, and
-  before publishing if the version is not in canonical PEP 440 form
+  integration tests, and one distribution build run in parallel. The release
+  build replaces the integration workflow's duplicate wheel build and retains
+  its archive/install checks, plus Twine and tag/version validation. Publishing
+  directly depends on every quality job succeeding. The tag must be `v` followed
+  by the canonical PEP 440 package version; no checks are reused from earlier CI
 - **Publishing**: PyPI trusted publishing through the `pypi` environment,
   with no stored API token. Files already on PyPI are skipped, so a re-run
   after a partial upload is safe
-- **After publishing**: `verify-published` installs the wheel and the sdist
-  from PyPI, separately on Linux, Windows, and macOS, with
-  `check_distributions.py --published`, and requires both to match the files
-  built in the run. `test-published` then adds the `user` and `tests` extras
-  to the published wheel's environment on each OS and runs the test suite
-  (`--tests`), with dependencies resolved afresh from PyPI rather than from
-  `uv.lock`. After verification, `upload-release-assets` attaches the files
-  to the GitHub release and reads them back to confirm the release offers
-  exactly those files
+- **After publishing**: `verify-published` installs the wheel and sdist
+  separately on Linux, Windows and macOS with
+  `check_distributions.py --published --tests`, and requires both archives to
+  match the build. It adds the `user` and `tests` extras to that fresh wheel
+  environment and runs the suite, with dependencies resolved from PyPI and no
+  restored package/data cache. Combining installation and testing removes a
+  second pair of installations on each OS. `upload-release-assets` waits for
+  verification **and tests** on every OS, then attaches the files and reads them
+  back to confirm the release offers exactly those files
+- **Concurrency**: Attempts for the same tag are serialised; publishing is
+  never cancelled automatically by a newer attempt
 - **Recovery**: The original `dist` artefact is retained for 30 days. Retry
   failed jobs using those files; rebuilding an existing release need not
   reproduce its archive hashes. Never replace a published version's tag
@@ -178,9 +210,12 @@ into the project environment.
     above. The offline audits also run through pre-commit; the online ones,
     including the check that each pin's version comment names the tag that
     carries the pinned commit, run only here
-- **Triggers**: Weekly, manually, on main pushes, and on every PR; job-level path
-  filters select the scans, while `Security Summary` always runs
-- **Coverage**: Path filtering applies only to PRs; scheduled and manual runs scan
+- **Triggers**: Weekly, manually, on main pushes, and on every PR (including
+  label changes); job-level selection chooses scans while `Security Summary`
+  always runs. Python changes retain all three scans: online audits can discover
+  new vulnerabilities without a lockfile or workflow edit. Unknown inputs also
+  select all scans
+- **Coverage**: Change selection applies only to PRs; scheduled and manual runs scan
   even when the last commit did not change security-related files
 - **Summary**: Requires every selected scan to succeed
 - **Not in the workflow**: secret scanning and push protection are GitHub
@@ -191,7 +226,8 @@ into the project environment.
 Automated dependency updates for Python packages.
 
 - **Schedule**: Weekly (Mondays), or manually
-- **Steps**: `uv lock --upgrade`, `uv sync`, and `pymedphys dev propagate` (so
+- **Steps**: `uv lock --upgrade`, then (only if the lockfile changed)
+  `uv sync` and `pymedphys dev propagate` (so
   the exported requirements files, `dependency-extra.txt`, and `pyproject.hash`
   stay current), then the unit tests, the docs build, and a wheel build and
   install before a PR is opened
@@ -218,25 +254,27 @@ Standardised project setup for all workflows.
 - **Features**:
   - Python setup with configurable version
   - uv package manager with caching
-  - PyMedPhys data caching
+  - PyMedPhys data caching only for jobs that consume data; manifest-specific
+    keys and the prohibition on restoring across manifest changes are retained
   - Dependency installation with extras
+  - Tool-only setup for jobs that do not need an installed project
 
 ## PR Workflow
 
 For a typical pull request:
 
 ```
-Core checks (subject to the pre-commit dependency above):
-├── pre-commit       # Auto-formatting
-├── lint             # Pylint; Ruff runs in pre-commit
-├── type-check       # Pyright
-└── unit-tests       # Quick mode (Ubuntu + Python 3.12)
+Always:
+├── changes          # Selection, summary and workflow-contract regression tests
+├── pre-commit       # All configured hooks
+├── CI Summary      # Requires every selected CI job to succeed
+└── Security Summary # Requires every selected scan to succeed
 
-Conditional (also recalculated when labels change):
-├── integration-tests # full-test label
-├── mosaiq-db-tests  # Database files changed, database or full-test label
-├── docs-check       # Documentation sources or build tooling changed
-└── security         # If Python/config files changed
+Selected from the complete merge diff and labels:
+├── lint / type-check / unit-tests
+├── script-tests / integration-tests / mosaiq-db-tests
+├── docs-check
+└── dependency-audit / python-security / workflow-audit
 ```
 
 ## Main Branch Workflow
@@ -285,12 +323,12 @@ and must not be required on pull requests.
 
 | Required check | Checks it covers |
 |----------------|------------------|
-| `CI Summary` | Change selection, pre-commit, Pylint, the type-check workflow, unit tests, and selected integration, database, and documentation checks |
+| `CI Summary` | Change-selection policy, pre-commit, and selected lint, type, unit, script, integration, database and documentation checks |
 | `Security Summary` | Change selection and selected dependency, Python security, and workflow security audits |
 
 These are executable gates, not just reports. Both use `if: always()` and
-`.github/scripts/check_workflow_status.py` to inspect their dependencies. A core
-check must succeed. A selected conditional check must also succeed; a skipped
+`.github/scripts/check_workflow_status.py` to inspect their dependencies. The policy and pre-commit
+checks must succeed. A selected conditional check must also succeed; a skipped
 conditional check is accepted only when its selection output explicitly says
 `false`. Missing selection outputs, failures, cancellations, and unexpected skips
 fail the summary. A pre-commit auto-fix must pass a fresh run on its new commit.
@@ -317,7 +355,7 @@ request broader coverage and trigger another CI run.
 
 ### What a successful summary means
 
-- Ordinary PRs use Ubuntu and Python 3.12 for unit tests. The full OS/Python
+- Ordinary PRs use Ubuntu and Python 3.12 when unit tests are selected. The full OS/Python
   matrix and integration tests run on main pushes and `full-test` PRs. A green
   ordinary PR therefore does not mean the full matrix ran before merging.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.

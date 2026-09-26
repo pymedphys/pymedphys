@@ -46,7 +46,8 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'all'
+          install-project: 'false'
+          cache-data: 'true'
 
       - name: Update the lockfile and the files generated from it
         id: update
