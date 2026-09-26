@@ -59,8 +59,14 @@ jobs:
       # Hook environments are independent of the package. Install only the
       # pre-commit group, hash-checked from uv.lock, and do it before the hooks
       # run so that an installation failure is not reported as a hook failure.
+      # This job checks out the PR head, so a branch that predates the group
+      # must merge main first, as the up-to-date branch rule requires anyway.
       - name: Install pre-commit
-        run: uv sync --frozen --only-group pre-commit
+        run: |
+          uv sync --frozen --only-group pre-commit || {
+            echo "::error::Installing the pre-commit dependency group failed. If this branch predates that group, merge main into it."
+            exit 1
+          }
 
       - name: Cache pre-commit
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
