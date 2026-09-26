@@ -168,7 +168,21 @@ numba==0.67.0
     # via
     #   interpolation
     #   pymedphys
-numpy==1.26.4
+numpy==2.2.6 ; python_full_version < '3.11'
+    # via
+    #   contourpy
+    #   matplotlib
+    #   numba
+    #   pymedphys
+    #   scipy
+numpy==2.4.6 ; python_full_version == '3.11.*'
+    # via
+    #   contourpy
+    #   matplotlib
+    #   numba
+    #   pymedphys
+    #   scipy
+numpy==2.5.3 ; python_full_version >= '3.12'
     # via
     #   contourpy
     #   matplotlib
