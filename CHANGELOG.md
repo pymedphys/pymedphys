@@ -64,6 +64,17 @@ This project adheres to
 
 ### Bug fixes
 
+- A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
+  read, including itself, now raises `ValueError` instead of hanging every
+  command and GUI app that reads the configuration.
+- The maintainer helper that uploads test data to Zenodo
+  (`pymedphys._data.upload`) now sends its access token in an
+  `Authorization` header rather than in the request URL, which server logs
+  and exception messages can record. When Zenodo rejects a token, the request is now
+  retried with a new one, up to three times; previously the retry always
+  failed with a `TypeError`, and a retried file upload would have sent an
+  empty file.
+
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
@@ -108,6 +119,31 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** Removed unmaintained experimental code that
+  nothing imports: the `serviceplans` module (with the service plan
+  templates), and from `paulking` a second copy of the Profiler
+  reader, an unused narrow-PNG reader duplicating `Profile.from_narrow_png`, a
+  sinogram-to-PDF script with its sample CSV, and an editor scratch file. The
+  clean-imports check no longer ignores the long-removed `pedromartinez`
+  module.
+- **[Contributor facing only]** Guidance for all coding agents now lives in
+  `AGENTS.md`, and `CLAUDE.md` keeps only the Claude Code instructions and
+  points to it. The guides keep maintainers' personal preferences out of the
+  repository, and drop outdated sections on branch names, Git timestamps,
+  permission requests, and conda recipes.
+- **[Contributor facing only]** A development command,
+  `pymedphys dev deid-tables`, generates Table E.1-1 of DICOM PS3.15 as JSON
+  from NEMA's HTML publication of the pinned edition, 2026d, the first step
+  towards the de-identification rule tables. It downloads each source page,
+  or reads it from `--source-dir`, and parses it only after checking its
+  SHA-256 digest against the pin. The parser maps columns by their header
+  text and rejects unknown or missing columns, merged cells, empty or
+  otherwise inconsistent rows, a table with no rows, unrecognised tags,
+  actions not defined in Table E.1-1a, and repeated tags. Each generated file
+  records the edition, the source digests, a digest of its rows, and the
+  acknowledgement "DICOM PS3.15 2026d, © NEMA", and the same input always
+  produces the same bytes. `--check` exits with status 1 when the written
+  tables are missing or out of date. No tables are shipped yet.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state
@@ -211,6 +247,20 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- The `user` extra no longer installs `anthropic` or `httpx2`, and no longer
+  lists `trio` as a direct dependency. These three packages are now in the new
+  `ai` extra (`pip install "pymedphys[user,ai]"`), which only the experimental
+  Mosaiq chat app in the GUI needs. The app sends questions and query results
+  to Anthropic's API, so it is now opt-in. Without the extra the rest of the
+  GUI still loads, and the chat app says how to install it; before, a missing
+  AI package stopped the whole GUI from loading. The `user` extra still
+  installs `trio` through `trio-asyncio`, and the `all` extra still includes
+  all three packages.
+- The `pymedphys claude respond-to-issue-comment` command and the private
+  `pymedphys._claude` package behind it have been removed. They posted Claude
+  replies to GitHub issues, but no workflow has run them since the `@claude`
+  workflow moved to `anthropics/claude-code-action`. PyGithub, which only they
+  used, is no longer in the `tests` and `all` extras.
 - PyMedPhys now requires pydicom 3.0 or later: every extra declares
   `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
   no lower bound. Continuous integration only tests pydicom 3, and the planned
@@ -228,6 +278,13 @@ This project adheres to
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
   `ftp`, was passed through unchecked.
+- A relative `redirect` in `~/.pymedphys/config.toml` is now resolved against
+  the directory of the config file that contains it. Previously it was
+  resolved against the directory PyMedPhys was started from, so the same
+  configuration could find different files. A configuration that relied on
+  the old behaviour can stop loading, or load a different file, after
+  upgrading. To migrate, make the `redirect` an absolute path, or rewrite it
+  relative to the config file that contains it.
 - Experimental pseudonymisation now writes Person Name values within
   DICOM's limit of 64 characters per component group (PS3.5 Table 6.2-1).
   Previously the family, given, and middle names were each replaced with a

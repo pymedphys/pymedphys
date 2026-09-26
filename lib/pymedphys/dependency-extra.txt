@@ -1,3 +1,8 @@
+ai = [
+    'anthropic',
+    'httpx2',
+    'trio',
+]
 all = [
     'anthropic',
     'anyio',
@@ -26,7 +31,6 @@ all = [
     'pre-commit',
     'psutil',
     'pydicom',
-    'PyGithub',
     'pylibjpeg-libjpeg',
     'pylint',
     'pymssql',
@@ -137,7 +141,6 @@ tests = [
     'Pillow',
     'psutil',
     'pydicom',
-    'PyGithub',
     'pylibjpeg-libjpeg',
     'pylint',
     'pynetdicom',
@@ -151,13 +154,11 @@ tests = [
     'tqdm',
 ]
 user = [
-    'anthropic',
     'anyio',
     'attrs',
     'dash',
     'dbfread',
     'dicompyler-core',
-    'httpx2',
     'imageio',
     'keyring',
     'matplotlib',
@@ -184,7 +185,6 @@ user = [
     'timeago',
     'toml',
     'tqdm',
-    'trio',
     'trio-asyncio',
     'watchdog',
     'xmltodict',
