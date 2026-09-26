@@ -19,7 +19,7 @@ Push / pull request -> ci.yml
 
 Schedule / manual run / main push / PR -> security.yml
 Schedule / manual run -> deps.yml
-Published release / manual run -> release.yml -> quality checks and publishing
+Published release / manual run -> release.yml -> quality checks, publishing, and PyPI verification
 Issue comment -> claude.yml
 ```
 
@@ -92,6 +92,8 @@ Comprehensive testing beyond unit tests.
 - **Test Types**:
   - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
+  - `script-tests`: Runs the `.github/scripts` unit tests on Windows and
+    macOS; `ci.yml` runs them on Ubuntu for every pull request
   - `wheel-build`: Builds the sdist and then the wheel from it, and runs
     `.github/scripts/check_distributions.py`: both archives must contain the
     package, and the wheel must install into a fresh virtual environment,
@@ -121,15 +123,39 @@ Builds documentation on PRs that change documentation sources, package Python co
 ### Release & Maintenance
 
 #### `release.yml`
-Handles PyPI package publishing with quality gates.
 
-- **Quality Checks**: Runs lint, type-check, unit, and integration tests
-- **Features**:
-  - TestPyPI dry-run capability
-  - PyPI trusted publishing (no API tokens)
-  - Automatic release asset upload
-  - The same distribution checks as `wheel-build`; a published release also
-    fails unless its tag is `v` followed by the package version
+Publishes to PyPI or TestPyPI behind quality gates.
+
+- **Triggers and destinations**: A published GitHub release, including a
+  pre-release, publishes to PyPI and attaches the sdist and wheel only after
+  published-file verification succeeds. A manual run publishes to TestPyPI
+  only (`dry_run=true`) or PyPI only (`dry_run=false`), without the tag check
+  or release assets
+- **Before publishing**: Lint, type checks, the full unit-test matrix,
+  integration tests, and the same distribution checks as `wheel-build`. For a
+  release, the build also fails unless the tag is `v` followed by the package
+  version. The build fails before publishing if the version is not in
+  canonical PEP 440 form
+- **Publishing**: PyPI trusted publishing through the `pypi` or `testpypi`
+  environment, with no stored API token. Files already on the index are
+  skipped, so a re-run after a partial upload is safe
+- **After publishing**: `verify-published` installs the wheel and the sdist
+  from the index just published to, separately on Linux, Windows, and macOS,
+  with `check_distributions.py --published`, and requires both to match the
+  files built in the run. It also runs after a TestPyPI rehearsal, so the job
+  is exercised before a release. PyMedPhys's exact archive URLs come from the
+  selected index; runtime and build dependencies use PyPI
+- **Recovery**: The original `dist` artefact is retained for 30 days. Retry
+  failed jobs using those files; rebuilding an existing release need not
+  reproduce its archive hashes. Never replace a published version's tag
+- **Release Summary**: Reports every job's result; it is not a gate
+- **Limitation**: Assets are attached after the release is published, which
+  GitHub's [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+  forbid. Before enabling immutable releases, change the workflow to attach the
+  assets while the release is still a draft
+
+The [release procedure](release-guide.md) covers tagging, development releases,
+and recovery.
 
 #### `security.yml`
 Security scanning with pinned tools run through `uvx`, so nothing is installed
@@ -243,9 +269,9 @@ Core checks, plus:
 Environment protection is configured in GitHub Settings, not by the workflow's
 `environment` field. Create and verify these environments before releasing;
 referencing an absent environment can create it without protection rules.
-The publisher registered with PyPI or TestPyPI must match this repository,
-`.github/workflows/release.yml`, and the corresponding environment name.
-See the [release guide](release-guide.md) for the release procedure.
+The trusted publisher registered with PyPI or TestPyPI must match this
+repository, `release.yml`, and the environment name; the
+[release guide](release-guide.md) lists the settings.
 
 ## Required checks and pull request reviews
 

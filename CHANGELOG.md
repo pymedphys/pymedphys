@@ -80,7 +80,11 @@ This project adheres to
   decisions from superseded history, and clarifies deprecation timing, planned
   versus available capabilities, and release gates. Contributor and user
   guidance follow the same plan, with documentation, tests, traceability, and
-  conformance evidence accompanying each implementation change.
+  conformance evidence accompanying each implementation change. No legacy
+  interface is deprecated before its replacement is released. An independent
+  review added decisions on temporal attributes by role, required
+  de-identification markers, and key custody, and `CONTRIBUTING.md` is now the
+  single source for pull request rules, which `CLAUDE.md` refers to.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
