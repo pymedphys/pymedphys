@@ -22,6 +22,7 @@ one call produces one warning. ``pseudonymise`` also keeps Patient's Sex, as
 its docstring has always stated.
 """
 
+import pickle
 import warnings
 
 from pymedphys._imports import pydicom, pytest
@@ -89,6 +90,25 @@ def test_public_functions_warn_once_and_point_to_background(call):
     assert "deprecated" not in message
     assert "removed" not in message
     assert not [w for w in caught if issubclass(w.category, DeprecationWarning)]
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "pseudonymise",
+        "get_default_pseudonymisation_keywords",
+        "is_valid_strategy_for_keywords",
+    ],
+)
+def test_public_functions_can_be_pickled(name):
+    """Pickle finds each warning wrapper by its public import path.
+
+    Process pools pickle functions by reference, so wrapping must not make the
+    public name resolve to a different object.
+    """
+    func = getattr(pseudonymisation, name)
+
+    assert pickle.loads(pickle.dumps(func)) is func
 
 
 @pytest.mark.pydicom

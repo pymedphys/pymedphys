@@ -38,10 +38,11 @@ TITLE = "DICOM Pseudonymisation"
 
 LIMITATION_WARNING = (
     "**Review output before sharing it.** This app hashes UIDs and some numeric "
-    "values without a secret key, so anyone who holds the original data can "
-    "re-link or recover them. It shifts every patient's dates by the same "
-    "offset, and its output keeps the original file preamble and the original "
-    "SOP Instance UID in the File Meta Information. Read "
+    "values without a secret key, so anyone who holds the original UIDs can "
+    "re-link records, and anyone can recover small-range values such as weight "
+    "by hashing every plausible value. It shifts every patient's dates by the "
+    "same offset, and its output keeps the original file preamble and the "
+    "original SOP Instance UID in the File Meta Information. Read "
     "[DICOM de-identification](https://docs.pymedphys.com/en/latest/users/"
     "background/dicom-deidentification.html) before sharing any output."
 )

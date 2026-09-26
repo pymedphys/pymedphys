@@ -25,6 +25,11 @@ def test_pseudonymise_app_shows_limitation_warning_first():
     app_test = utl.load_app("pseudonymise")
     utl.assert_no_exception(app_test)
 
+    element_types = [
+        type(element).__name__ for element in app_test.main.children.values()
+    ]
+    assert element_types.index("Warning") < element_types.index("FileUploader")
+
     warnings = [warning.value for warning in app_test.warning]
     assert len(warnings) == 1
     assert "without a secret key" in warnings[0]

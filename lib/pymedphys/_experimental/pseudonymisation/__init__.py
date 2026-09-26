@@ -38,12 +38,13 @@ IDENTIFYING_UIDS_FILEPATH = pjoin(HERE, "identifying_uids.json")
 
 LIMITATION_NOTICE = (
     "experimental pseudonymisation hashes UIDs and some numeric values "
-    "without a secret key, so anyone who holds the original data can re-link "
-    "or recover them. It shifts every patient's dates by the same offset, and "
-    "its output keeps the original file preamble and the original SOP Instance "
-    "UID in the File Meta Information. Review its output before sharing it. "
-    "See https://docs.pymedphys.com/en/latest/users/background/"
-    "dicom-deidentification.html"
+    "without a secret key, so anyone who holds the original UIDs can re-link "
+    "records, and anyone can recover small-range values such as weight by "
+    "hashing every plausible value. It shifts every patient's dates by the "
+    "same offset, and its output keeps the original file preamble and the "
+    "original SOP Instance UID in the File Meta Information. Review its output "
+    "before sharing it. See https://docs.pymedphys.com/en/latest/users/"
+    "background/dicom-deidentification.html"
 )
 
 

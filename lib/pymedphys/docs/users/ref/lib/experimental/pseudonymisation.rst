@@ -12,15 +12,17 @@ there are not available through this API.
 
 .. warning::
 
-    Experimental pseudonymisation hashes UIDs and some numeric values, such as
-    patient weight, without a secret key, so anyone who holds the original
-    data can re-link records or recover the values. It shifts every patient's
+    Experimental pseudonymisation hashes UIDs and some numeric values without
+    a secret key. Anyone who holds the original UIDs can re-link records, and
+    anyone can recover small-range values such as patient weight from the
+    output alone by hashing every plausible value. It shifts every patient's
     dates by the same offset. Its output keeps the original file preamble and
     the original SOP Instance UID in the File Meta Information. Its functions
     emit a
     :class:`~pymedphys.experimental.pseudonymisation.PseudonymisationLimitationWarning`
-    describing these limitations; this is not a deprecation. Review its output
-    before sharing it.
+    describing these limitations; this is not a deprecation.
+    ``pseudonymisation_dispatch`` is a dictionary, so using it directly with
+    ``anonymise_dataset`` does not warn. Review the output before sharing it.
 
 *******
 Summary

@@ -3,6 +3,8 @@
 
 # The limitation warning is emitted here, at the public interface, so that the
 # private implementation can call these functions without repeating it.
+# pseudonymisation_dispatch is a dictionary of strategy functions, not a call,
+# so it is re-exported without a warning; the functions that apply it warn.
 
 import functools as _functools
 import warnings as _warnings
@@ -24,6 +26,10 @@ def _warn_about_limitations(func):
         )
         return func(*args, **kwargs)
 
+    # functools.wraps copies the private module and name. Point them at this
+    # module instead, so that pickle resolves the public name to the wrapper.
+    wrapper.__module__ = __name__
+    wrapper.__qualname__ = func.__name__
     return wrapper
 
 

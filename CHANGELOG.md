@@ -29,9 +29,10 @@ This project adheres to
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
 - **[Security]** Experimental pseudonymisation now warns about its security
-  limitations. It hashes UIDs and some numeric values, such as patient weight,
-  without a secret key, so anyone who holds the original data can re-link
-  records or recover the values; it shifts every patient's dates by the same
+  limitations. It hashes UIDs and some numeric values without a secret key,
+  so anyone who holds the original UIDs can re-link records, and anyone can
+  recover small-range values such as patient weight from the output alone by
+  hashing every plausible value; it shifts every patient's dates by the same
   offset; and its output keeps the original file preamble and the original SOP
   Instance UID in the File Meta Information.
   `pymedphys.experimental.pseudonymisation.pseudonymise`,
@@ -47,7 +48,10 @@ This project adheres to
 
 - `pymedphys.experimental.pseudonymisation.pseudonymise` now leaves Patient's
   Sex unchanged, as its documentation states. Previously it replaced the value
-  with a hash, which is not a valid DICOM code string.
+  with a hash, which is not a permitted Patient's Sex value (M, F, or O).
+  Patient's Sex is now retained, so treat it as a quasi-identifier when
+  assessing output. `pymedphys experimental dicom pseudonymise` still replaces
+  it unless `--keywords_to_leave_unchanged PatientSex` is given.
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
