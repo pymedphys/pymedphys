@@ -45,6 +45,11 @@ This project adheres to
   The deprecated `pymedphys experimental pinnacle export` command calls the
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
+- The experimental `pymedphys.experimental.pseudonymisation.pseudonymise`
+  now leaves `PatientSex` unchanged, as documented. Previously it replaced the
+  value with a hash, which is not a valid value for this attribute, so outputs
+  from earlier versions differ in `PatientSex`.
+  [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
 - **[Security]** Explicit application logging and progress output in legacy
   DICOM anonymisation and experimental pseudonymisation now exclude DICOM
   values and file paths. Previously the `pymedphys dicom anonymise` and
@@ -140,6 +145,10 @@ This project adheres to
   the same checks locally and report them. The workflow's manual trigger and
   TestPyPI route have been removed: publishing a GitHub release is the only
   way to publish.
+- **[Contributor facing only]** The `pymedphys dev build` command has been
+  removed. It drove a PyOxidizer and Electron desktop build whose Electron
+  app, PyOxidizer configuration, and `build` extra had already been removed,
+  so it could only fail.
 
 ### News around this release
 
