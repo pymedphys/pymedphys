@@ -1,3 +1,17 @@
+# Copyright (C) 2019, 2025-2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import functools
 import json
@@ -313,10 +327,19 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     assert is_anonymised_dataset(ds)
 
 
+def copy_test_file_into(directory, source_path):
+    """Copy a cached test file into ``directory``, keeping its name.
+
+    Anonymisation writes its output beside the input file, so tests work on a
+    copy rather than writing into the shared data cache.
+    """
+    return copyfile(source_path, pjoin(directory, basename(source_path)))
+
+
 @pytest.mark.pydicom
-def test_anonymise_file():
-    for test_file_path in get_test_filepaths():
-        _test_anonymise_file_at_path(test_file_path)
+def test_anonymise_file(tmp_path):
+    for source_path in get_test_filepaths():
+        _test_anonymise_file_at_path(copy_test_file_into(tmp_path, source_path))
 
 
 def _test_anonymise_file_at_path(test_file_path):

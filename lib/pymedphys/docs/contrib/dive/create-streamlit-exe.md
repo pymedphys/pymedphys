@@ -1,4 +1,4 @@
-# Creating a Streamlit Executable (historical)
+# Creating a Streamlit Executable
 
 ```{note}
 This is a historical implementation write-up for the linked 2022 source
@@ -22,12 +22,13 @@ This document refers to the state of the PyMedPhys code base as at commit hash
 [836f272d092f294099bb51db05bab80d2bfcb628](https://github.com/pymedphys/pymedphys/tree/836f272d092f294099bb51db05bab80d2bfcb628).
 All code links will be pointing to the code base at that commit hash.
 
-## Historical build steps
+## Quick version
 
-The source snapshot used the following steps:
+To actually build and create the PyMedPhys Streamlit binary all you actually
+need to do is the following:
 
-- Install [Poetry](https://python-poetry.org/docs/)
-- Install [Node](https://nodejs.org/en/) and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install)
+- Install [Poetry](https://python-poetry.org/docs/#installation)
+- Install [Node](https://nodejs.org/en/) and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install#debian-stable)
 - Install PyOxidizer by installing all the project build dependencies:
   - `poetry install -E build -E cli`
 - Then run `poetry run pymedphys dev build --install`
@@ -164,7 +165,7 @@ The resulting Electron application code utilised can be found at
 
 To install all of the required dependencies run `yarn install` within the
 `js/app` directory. You will need to have both [Node](https://nodejs.org/en/)
-and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install)
+and [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install#debian-stable)
 installed to achieve this.
 
 ### The key components of the Electron code base
@@ -342,7 +343,7 @@ and
 [Poetry](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L173-L187)
 were all installed. Needed to also install PyOxidizer, which was included as
 PyMedPhys `build` dependency extras. So installation of PyOxidizer and other
-CLI dependencies were achieved with [`poetry install -E build -E cli`](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311).
+CLI dependencies was achieved with [`poetry install -E build -E cli`](https://github.com/pymedphys/pymedphys/blob/836f272d092f294099bb51db05bab80d2bfcb628/.github/workflows/library.yml#L306-L311).
 
 Once this build was completed within the CI, the resulting artifacts needed to
 be uploaded. That was achieved with:

@@ -176,13 +176,16 @@ def _make_requirements_txt(
 
     uv_environment_flags = " ".join([f"--extra {item}" for item in extras])
 
-    # TODO: Once the hashes pinning issue in poetry is fixed, remove the
-    # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
-    # for more details.
+    # The project line is appended below with its extras, so uv must not emit
+    # its own bare one, and the development group is not a runtime dependency.
+    # Hashes stay off because the appended local project line has none, and pip
+    # requires every line to be hashed once any line is.
     cmd = [
         "uv",
         "export",
         "--no-hashes",
+        "--no-emit-project",
+        "--no-default-groups",
         *uv_environment_flags.split(),
         "--format",
         "requirements-txt",

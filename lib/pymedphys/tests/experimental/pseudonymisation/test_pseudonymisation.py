@@ -20,6 +20,7 @@ from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 from pymedphys.tests.dicom.test_anonymise import (
+    copy_test_file_into,
     dicom_dataset_from_dict,
     get_test_filepaths,
 )
@@ -51,8 +52,9 @@ def _assert_values_changed_and_not_hardcoded(test_file_path, pseudonymised_file_
 
 
 @pytest.mark.pydicom
-def test_pseudonymise_convenience_api():
-    for test_file_path in get_test_filepaths():
+def test_pseudonymise_convenience_api(tmp_path):
+    for source_path in get_test_filepaths():
+        test_file_path = copy_test_file_into(tmp_path, source_path)
         output_file = pseudonymisation_api.pseudonymise(test_file_path)  # using facade
         assert exists(output_file)
         os.remove(output_file)

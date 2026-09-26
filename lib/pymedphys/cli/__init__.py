@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +18,7 @@ import logging
 import sys
 
 from pymedphys import _config
-from pymedphys._vendor.patchlogging import apply_logging_patch
+from pymedphys._version import __version__
 
 from .claude import claude_cli
 from .dev import dev_cli
@@ -65,6 +66,11 @@ def define_parser():
         help="Print debugging statements",
         action="store_true",
         dest="logging_debug",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     return parser
@@ -130,13 +136,16 @@ def run_logging_basic_config(args, logging_config):
 def pymedphys_cli():
     _config.is_cli = True
 
-    # This is to allow the usage of force=True within logging.basicConfig
-    apply_logging_patch()
-
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()
-    logging_config = get_logging_config()
+    # Pytest isolates HOME only after CLI startup. Test commands must not
+    # read the user's config or open (possibly truncate) its configured log.
+    logging_config = (
+        {}
+        if getattr(args, "dev", None) in ("tests", "doctests")
+        else get_logging_config()
+    )
     run_logging_basic_config(args, logging_config)
 
     if hasattr(args, "func"):
