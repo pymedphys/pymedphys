@@ -36,19 +36,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-
-      # Use the same pinned setup-uv action as the rest of CI.
-      - name: Set up uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          version: "0.12.15"
-          enable-cache: true
-          cache-dependency-glob: |
-            uv.lock
-            pyproject.toml
-
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
@@ -58,12 +45,15 @@ jobs:
           # through claude_args. It already allows reading, searching, and
           # editing files in the workspace, and committing and pushing through
           # its own git add, git commit, git rm, and push wrapper. The entries
-          # below add read-only git and GitHub commands and the uv tooling;
-          # uv run executes repository code, as running the tests requires.
-          # An entry ending in :* matches that command prefix; any other entry
-          # matches only that exact command. Do not add git push, which would
-          # bypass the push wrapper's checks, or commands that switch, merge,
-          # or reset branches, which the action manages itself.
+          # below add read-only git, GitHub, and shell commands. An entry
+          # ending in :* matches that command prefix; any other entry matches
+          # only that exact command. Do not add commands that run repository
+          # code or build hooks, such as uv run, uv sync, uv lock, tests, or
+          # linters: the action checks out fork pull requests, and this job
+          # holds the API key and a repository write token. CI tests every
+          # commit the action pushes. Do not add git push, which would bypass
+          # the push wrapper's checks, or commands that switch, merge, or
+          # reset branches, which the action manages itself.
           claude_args: |
             --model claude-opus-5-5
             --allowedTools
@@ -79,11 +69,6 @@ jobs:
             "Bash(git fetch origin)"
             "Bash(gh pr list:*)"
             "Bash(gh pr view:*)"
-            "Bash(uv sync:*)"
-            "Bash(uv lock:*)"
-            "Bash(uv add:*)"
-            "Bash(uv remove:*)"
-            "Bash(uv run:*)"
             "Bash(ls:*)"
             "Bash(pwd)"
             "Bash(cat:*)"

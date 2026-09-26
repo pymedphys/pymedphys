@@ -287,7 +287,7 @@ Claude Code integration for automated code assistance.
 
 - **Triggers**: Comments with `@claude` mention
 - **Capabilities**: Code review, issue analysis, and commits to a branch with a link to open the pull request; it cannot change `.github/workflows/`
-- **Tools**: File operations, read-only git and `gh` commands, and uv, set through `claude_args`
+- **Tools**: File operations and read-only git, `gh`, and shell commands, set through `claude_args`. It does not run tests or other repository code; CI tests the commits it pushes
 
 ## Composite Actions
 
