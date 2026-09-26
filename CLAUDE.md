@@ -78,6 +78,8 @@ for it, and keep incident history and evidence caveats on the pull request
 rather than in the guide. Open a long procedure with a short checklist for
 readers who already know it, and move one-time setup into an appendix.
 
+Write changelog entries as informative release notes: state what changed, its effect, and what users should do, in declarative sentences. Do not phrase entries as answers to review questions or pre-empt objections ("is not limited to ...", "does not use ...", "has not been measured"); state the scope directly instead. When a fix changes results that earlier versions returned without an error, open the release section with a warning that says which inputs and functions were affected, by how much, and what to re-check, and also list the changed results and any changed return shapes or array order under (Potentially) breaking changes.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
@@ -160,7 +162,35 @@ When creating conda recipes, pull requests, or other metadata that requires main
   opening a configured log can modify user files before any test runs.
 - Data caches must not fall back across changes to `hashes.json`: ZIP archives
   are checked, but previously extracted files are not refreshed automatically.
+- Prefer small, deterministic local fixtures for regression tests. Before
+  retiring download-backed tests, record the tested revisions, fixture
+  provenance and results, and retain their useful coverage locally. Distinguish
+  changed expectations from unchanged baselines and previously skipped tests.
 - Mock data and fixtures are in `_mocks/` and test data directories
+- Test coordinate and geometry code against values derived independently
+  from the governing definition (for DICOM, the voxel position formula in
+  PS3.3), on off-centre grids with non-square spacing and every supported
+  orientation. Never use a stored snapshot of the implementation's own
+  output as the expected value: such snapshots can enshrine sign errors.
+- Keep the mapping from array dimensions to physical coordinates explicit
+  when reordering or comparing grids. Matching coordinate sets alone does
+  not justify combining array elements. Validate fixed geometry once before
+  repeated numerical work, while retaining validation at public boundaries.
+- When replacing established geometry code, preserve its validated behaviour
+  and explain every intended difference with an independently worked example.
+  Test physical invariance across storage orientations and different grid
+  extents; self-comparisons alone can hide a shared error. Changelog impact
+  statements must distinguish expected usage frequency from error severity
+  and must not imply that unmeasured incidence is known.
+- For coordinate fixes, trace and document the affected public workflows.
+  Distinguish physical positions from array storage order, and state which
+  coordinates belong to each returned array. Include plotting and indexing
+  guidance when an ordering change affects existing callers.
+- Compare DICOM dose-grid positions with an explicit 0.01 mm absolute
+  tolerance, independent of the coordinate origin. For grid equality, apply
+  it to the maximum 3D displacement of corresponding voxel centres, combining
+  origin and spacing differences instead of allowing each a separate budget.
+  Keep dimensionless orientation-rounding tolerances separate.
 - The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
   read the rendered markdown. Data-driven scenarios use the
@@ -278,6 +308,10 @@ When modifying DICOM functionality, be aware of:
 - Anonymization requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+Prefer "slices" for spatial image and dose planes in identifiers, comments,
+docstrings, and documentation. Preserve official DICOM attribute names such as
+`NumberOfFrames` and `GridFrameOffsetVector`.
 
 When you find unmaintained or non-functional material, such as a packaging
 recipe that no workflow builds or a CLI command whose inputs no longer exist,

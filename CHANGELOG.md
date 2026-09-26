@@ -12,6 +12,19 @@ This project adheres to
 
 ## Unreleased
 
+### Warning: incorrect DICOM RT Dose coordinates in earlier versions
+
+Earlier versions returned incorrect patient coordinates for DICOM RT Dose grids stored in any orientation other than head first supine (HFS), and for HFS grids whose `GridFrameOffsetVector` holds absolute z coordinates. This release corrects the coordinates. Review results obtained from such files with earlier versions, and recalculate those that depended on the affected coordinates.
+
+- Along each axis on which the stored voxels run in the negative patient direction, the grid centre was placed at the negative of its true coordinate, which translated the dose by twice that coordinate. These axes are x and y for head first prone, x and z for feet first supine, y and z for feet first prone, y for head first decubitus left, x for head first decubitus right, z for feet first decubitus left, and all three for feet first decubitus right. For example, a head first prone grid centred at x = 40 mm, y = -120 mm was placed as if centred at x = -40 mm, y = 120 mm.
+- Decubitus grids were also transposed in the transverse plane, because their rows run along x and their columns along y. For decubitus grids with unequal numbers of rows and columns, the axis lengths did not match the dose, so gamma and `pymedphys.dicom.dicom_dose_interpolate` raised an error instead.
+- Absolute slice offsets were displaced by the z coordinate of `ImagePositionPatient`.
+- Along the affected axes, grids stored in the same orientation were displaced relative to one another by twice the difference between their centres. For example, removing 10 mm from one edge of a head first prone grid moved its dose 10 mm relative to the full grid. Grids with the same orientation, position, and extent had identical errors, which cancel when they are compared with each other.
+- `pymedphys.dicom.zyx_and_dose_from_dataset` returned these coordinates, and `pymedphys.dicom.dicom_dose_interpolate` returned dose from the wrong positions. Gamma calculated from the output of `zyx_and_dose_from_dataset`, as in the DICOM gamma tutorial, used the same coordinates. With the default interpolator introduced in version 0.41.0, an evaluation grid in any orientation other than HFS raised an error, returned NaN, or did not terminate. Gamma was misregistered without an error when an affected grid was the reference, when an affected evaluation grid was interpolated with `interp_algo="scipy"`, and when slice offsets were absolute.
+- HFS grids with relative slice offsets, whose first offset is zero, retain their coordinates.
+
+Coordinates now follow the DICOM definition of voxel position (PS3.3 C.7.6.2.1.1 and C.8.8.3.2) for all eight axis-aligned patient orientations. [DICOM coordinates and gamma, illustrated](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinates-illustrated.html) demonstrates each case and how to check whether an earlier comparison was affected. The [DICOM coordinate validation note](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinate-validation.html) records the independent checks and the remaining limitations: oblique orientations are unsupported, and two private helpers still mishandle decubitus grids. The returned dose arrays can be ordered differently from the stored pixel data; see (Potentially) breaking changes.
+
 ### New features and enhancements
 
 - Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
@@ -27,6 +40,7 @@ This project adheres to
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
+- `pymedphys.gamma` is faster with its default interpolator, which now receives the search points as a view instead of a copy made for every search shell; the SciPy interpolator is built once per calculation instead of once per shell. In the benchmark recorded in [DICOM coordinates and gamma, illustrated](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinates-illustrated.html), three-dimensional gamma took 36% to 46% less time with the default interpolator, and every gamma value was identical to the previous implementation's. Run times with the SciPy interpolator, and in two dimensions, were unchanged within the run-to-run variation.
 
 ### Bug fixes
 
@@ -42,6 +56,12 @@ This project adheres to
   value with a hash, which is not a valid value for this attribute, so outputs
   from earlier versions differ in `PatientSex`.
   [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
+- Direction cosines within 1e-4 of an axis-aligned orientation are accepted. Previously any rounding in `ImageOrientationPatient` raised an error.
+- `pymedphys.gamma` accepts evaluation axes in descending order. It reverses such axes together with the evaluation dose before interpolating, so the result does not depend on storage order, and it still returns gamma in the shape and index order of the reference dose. Previously the default interpolator treated every point of a descending evaluation grid as outside it, so the search returned NaN when `max_gamma` was set and otherwise did not terminate.
+- `pymedphys.gamma` uses the SciPy interpolator, with a warning, when the evaluation axes are unevenly spaced, as they are for RT Dose grids with non-uniform slice offsets. The default interpolator assumes even spacing and previously interpolated such grids incorrectly.
+- The gamma search skips distances shorter than the smallest distance between the reference and evaluation grids and stops beyond the largest, or at `max_gamma` times the largest distance threshold if that is smaller, so every search terminates, including for grids that do not overlap. A reference point whose search shells step past an evaluation grid narrower than one search step is still reported as NaN.
+- RT Dose datasets with a single slice, which pydicom reads as two-dimensional pixel arrays, are returned with a length-one z axis, and their `GridFrameOffsetVector` may be absent or empty, as the DICOM standard permits. Previously a missing `GridFrameOffsetVector` raised an error during conversion; otherwise z was returned as a scalar alongside a two-dimensional dose, which gamma and `pymedphys.dicom.dicom_dose_interpolate` rejected.
+- The experimental Sum Coincident DICOM Doses app requires every dataset to map pixel indices to the same patient positions, with corresponding voxel centres within 0.01 mm. Previously it accepted grids whose axis values matched even when their rows and columns ran along different patient axes, and its tolerance grew with distance from the coordinate origin.
 
 ### Dependency changes
 
@@ -55,6 +75,7 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** The DICOM coordinate and dose tests use locally generated fixtures instead of downloading the historical dose archive and separate DICOM examples. They check coordinates against an independent implementation of the DICOM voxel position definition in all eight orientations, and generated DICOM files retain the dose decoding, scaling, and patient-position checks. The original results and fixture provenance are recorded in the DICOM coordinate validation note.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
@@ -138,6 +159,12 @@ This project adheres to
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
   `ftp`, was passed through unchecked.
+- Results change for the RT Dose grids described in the warning at the top of this section.
+- `pymedphys.dicom.zyx_and_dose_from_dataset` returns strictly ascending (z, y, x) axes with the dose array reordered to match, so that `dose[k, j, i]` is at `(z[k], y[j], x[i])`. The array is reversed along each axis stored in descending order, and its rows and columns are interchanged for decubitus orientations; no voxel is resampled or moved. HFS grids with increasing relative slice offsets are returned unchanged. For other grids, the returned dose, and gamma calculated with it as the reference, can be ordered differently from `pixel_array`: index and plot them with the returned axes.
+- RT Dose conversion raises `ValueError` for a `GridFrameOffsetVector` that is non-finite, repeated, or not monotonic, or whose length differs from `NumberOfFrames`, and for absolute offsets used with an orientation other than HFS or inconsistent with `ImagePositionPatient`.
+- `pymedphys.gamma` requires at least two points on each evaluation axis with the default interpolator, and finite coordinates on both grids. Singleton evaluation axes are accepted with `interp_algo="scipy"`, but the shell search can miss points on such grids and return inaccurate gamma values or NaN; compare doses within a common plane using two-dimensional axes and arrays. A redesign of the search is tracked in [#2070](https://github.com/pymedphys/pymedphys/issues/2070).
+- `pymedphys.interpolate.interp` checks that each axis is finite, strictly ascending, evenly spaced, and at least two points long, including when `skip_checks=True`.
+- The private `pymedphys._dicom.coords.xyz_axes_from_dataset` raises `NotImplementedError` for the IEC patient coordinate system, whose output was incorrect, and `ValueError` instead of `UnboundLocalError` for an unrecognised `coord_system`.
 
 ## [0.41.0]
 

@@ -9,4 +9,6 @@ docs-guide
 release-guide
 workflows
 dependency-update-prs
+dicom-coordinate-validation
+dicom-coordinates-illustrated
 ```
