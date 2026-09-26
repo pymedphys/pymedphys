@@ -217,10 +217,66 @@ misregistered. Same-orientation crops, absolute coordinate queries, and
 comparison with external contours also matter. Absolute slice offsets and
 decreasing HFS slice offsets have their own corrected behaviour.
 
-The public dose conversion and DICOM gamma output now use ascending patient
-axes, so callers must not assume their returned array order matches raw
-`pixel_array`. Existing code that overlays or indexes these outputs needs
-to use the returned axes and matching array order.
+### Effect on gamma calculations
+
+The original DICOM gamma workflow used the affected coordinate code.
+`zyx_and_dose_from_dataset` obtained axes from `xyz_axes_from_dataset` and
+returned them with the dose array. Both the internal `gamma_dicom` wrapper and
+the public [Gamma from DICOM example](../../users/howto/gamma/from-dicom.ipynb)
+passed that pair into gamma. Incorrect coordinates could therefore change
+gamma values and pass rates, not just the position of a displayed heatmap.
+
+`pymedphys.gamma` itself takes coordinate arrays and dose arrays, not DICOM
+datasets. A call supplied with independently correct coordinates does not use
+this DICOM conversion and is not affected by this particular geometry defect.
+The separate interpolation and search limitations above still apply.
+
+Matching coordinate errors can cancel when they amount to the same translation
+of both grids. That explains why a self-comparison can pass despite incorrect
+absolute positions. It does not protect comparisons with differing origins,
+extents or orientations. In the HFP example above, the full grid and its crop
+acquire an artificial 2 mm relative displacement even though both are HFP.
+The original custom interpolator also mishandled descending evaluation axes;
+shared coordinate errors do not resolve that separate problem.
+
+### Array order and plotting
+
+Two operations must be distinguished:
+
+- **DICOM conversion** returns ascending patient `(z, y, x)` axes and a dose
+  array reordered to match. Reversing or transposing the array is an exact
+  rearrangement: it does not resample dose or change voxel positions.
+- **Gamma** normalises evaluation axes and dose together internally. It leaves
+  the supplied reference order unchanged, including descending reference axes.
+  Each returned gamma array has the reference dose's shape and index order.
+
+For example, sorting an x axis must retain its pairing with dose:
+
+| Representation | x coordinates (mm) | Corresponding dose values (Gy) |
+| --- | --- | --- |
+| Original descending storage | `[100, 99, 98]` | `[10, 20, 30]` |
+| Ascending representation | `[98, 99, 100]` | `[30, 20, 10]` |
+
+The dose at x = 100 mm is still 10 Gy. Likewise, with reference axes `(z, y, x)`,
+`gamma[k, j, i]` and `dose_reference[k, j, i]` belong to the same position
+`(z[k], y[j], x[i])`. Plot a transverse gamma slice with the reference x and y
+coordinates, and identify its plane using the reference z coordinate. The
+[DICOM tutorial](../../users/howto/gamma/from-dicom.ipynb) demonstrates this
+after calculating gamma for the full volume.
+
+The compatibility change is in array storage order. A gamma array calculated
+from the converted reference must not be overlaid on raw `pixel_array` by
+index without accounting for the reordering. Use the converted reference dose
+and its axes together, or apply the inverse reversals and dimension permutation
+to restore raw order. Decubitus conversion can swap the row/column lengths;
+equal shapes in other orientations do not prove equal index order.
+
+The evaluation dose has its own coordinates. A matching slice index does not
+necessarily select the same physical z position in both datasets. Dose
+subtraction requires coincident sample positions, or interpolation onto a
+common grid; gamma itself does not require matching grids. Reversing the
+display axes to choose a viewing convention does not change these physical
+correspondences.
 
 ## Reproducing the committed checks
 

@@ -59,13 +59,16 @@ def gamma_shell(
     Parameters
     ----------
     axes_reference : tuple
-        The reference coordinates.
+        The reference coordinates, in the same order as the dose dimensions.
+        Ascending or descending axes retain their supplied order in the output.
     dose_reference : np.array
         The reference dose grid. Each point in the reference grid becomes the
         centre of a Gamma ellipsoid. For each point of the reference, nearby
         evaluation points are searched at increasing distances.
     axes_evaluation : tuple
         The evaluation coordinates. Axes may be ascending or descending.
+        Descending axes and their dose values are reversed together internally;
+        this does not change the reference grid or the output order.
         Uneven spacing uses the SciPy interpolator with a warning. Singleton
         axes are accepted when ``interp_algo="scipy"`` is selected explicitly,
         but the shell search can miss points on these lower-dimensional grids
@@ -123,8 +126,11 @@ def gamma_shell(
     Returns
     -------
     gamma
-        The array of gamma values the same shape as that
-        given by the reference coordinates and dose.
+        Each returned gamma array has the same shape and index order as
+        ``dose_reference``. Its values belong to ``axes_reference``; use those
+        coordinates when plotting. If the reference was obtained from
+        :func:`pymedphys.dicom.zyx_and_dose_from_dataset`, its order can differ
+        from the DICOM dataset's raw ``pixel_array``.
     """
 
     if quiet is not None:

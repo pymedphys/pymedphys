@@ -47,6 +47,10 @@ This project adheres to
   different orientations**: two non-HFS grids with the same orientation can
   also be misregistered if their origins or extents differ, for example after
   cropping or when comparing treatment planning and Monte Carlo dose grids.
+  This affected **DICOM-based gamma calculations**, not just coordinate
+  display: the DICOM workflow passed these coordinates and doses from
+  `zyx_and_dose_from_dataset` into gamma. Calls to `pymedphys.gamma` supplied
+  with independently correct coordinates do not use this DICOM conversion.
   For matching uniform supine/prone grids, a common coordinate shift can
   cancel in a dose comparison; this does not establish correct absolute
   positions or cover the separate descending-axis interpolation problem.
@@ -66,9 +70,12 @@ This project adheres to
   decubitus mapping defects in the private structure-mask and
   `DicomDose.coords` helpers.
 - `pymedphys.gamma` now accepts evaluation axes in descending order. Before,
-  every point of a descending evaluation grid was treated as outside the grid,
-  which could leave the gamma search running indefinitely. Searches are now
-  bounded by the grids' spatial extent without requiring overlapping grids,
+  the custom interpolator treated every point of a descending evaluation grid
+  as outside the grid, which could leave the gamma search running indefinitely.
+  Evaluation axes and their dose values are reordered together internally;
+  gamma retains the reference grid's shape and index order, including when
+  reference axes descend. Searches are now bounded by the grids' spatial
+  extent without requiring overlapping grids,
   and the custom interpolator reuses the grid validation done at gamma entry.
   The SciPy interpolator is built once per gamma calculation instead of for
   every search shell.
@@ -169,8 +176,12 @@ This project adheres to
   decubitus orientations, to match. Head first supine data with increasing
   relative slice offsets is unchanged; decreasing slice offsets reverse z.
   Other orientations may return dose and DICOM gamma arrays in a different
-  order from the stored pixels. Nonfinite, repeated or nonmonotonic slice
-  offsets, and offsets inconsistent with `NumberOfFrames`, are rejected. A
+  order from the stored pixels. This rearrangement does not resample dose or
+  change voxel positions. Plot gamma using the reference axes and dose returned
+  by the conversion; do not assume its indices match raw `pixel_array`.
+  Restoring raw storage order requires the inverse reversals and permutation.
+  Nonfinite, repeated or nonmonotonic slice offsets, and offsets inconsistent
+  with `NumberOfFrames`, are rejected. A
   single-slice dose, which pydicom reads as a two-dimensional array, is
   returned with a length-one z axis rather than raising an error. Its slice
   offset is zero when `GridFrameOffsetVector` is absent or empty, as permitted

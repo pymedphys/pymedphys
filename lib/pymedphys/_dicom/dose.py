@@ -60,6 +60,13 @@ def zyx_and_dose_from_dataset(dataset):
     run along x, rows and columns are swapped. For head first supine with
     increasing slice offsets the dose is the pixel array unchanged. Head
     first supine grids with decreasing slice offsets are reversed in z.
+
+    Reordering does not resample dose or change voxel positions. Keep the
+    returned coordinates and dose together when indexing or plotting.
+    Gamma calculated with this pair as its reference has the same shape and
+    index order as the returned dose, which can differ from ``pixel_array``.
+    To recover raw storage order, apply the inverse reversals and dimension
+    permutation to the result.
     """
     geometry = _DoseGridGeometry.from_dataset(dataset)
     x, y, z = geometry.dicom_axes()

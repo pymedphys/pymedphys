@@ -172,6 +172,10 @@ When creating conda recipes, pull requests, or other metadata that requires main
   extents; self-comparisons alone can hide a shared error. Changelog impact
   statements must distinguish expected usage frequency from error severity
   and must not imply that unmeasured incidence is known.
+- For coordinate fixes, trace and document the affected public workflows.
+  Distinguish physical positions from array storage order, and state which
+  coordinates belong to each returned array. Include plotting and indexing
+  guidance when an ordering change affects existing callers.
 - Compare DICOM dose-grid positions with an explicit 0.01 mm absolute
   tolerance, independent of the coordinate origin. For grid equality, apply
   it to the maximum 3D displacement of corresponding voxel centres, combining
