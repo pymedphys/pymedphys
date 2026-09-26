@@ -35,6 +35,21 @@ This project adheres to
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
+- **[Security]** Experimental pseudonymisation now warns about its security
+  limitations. It hashes UIDs and some numeric values without a secret key,
+  so anyone who holds the original UIDs can re-link records, and anyone can
+  recover small-range values such as patient weight from the output alone by
+  hashing every plausible value; it shifts every patient's dates by the same
+  offset; and its output keeps the original file preamble and the original SOP
+  Instance UID in the File Meta Information.
+  `pymedphys.experimental.pseudonymisation.pseudonymise`,
+  `get_default_pseudonymisation_keywords`, and
+  `is_valid_strategy_for_keywords` emit a `PseudonymisationLimitationWarning`
+  (a `UserWarning`); `pymedphys experimental dicom pseudonymise` prints the
+  notice on standard error; and the DICOM Pseudonymisation app shows it as a
+  banner. This is not a deprecation: neither legacy tool will be deprecated
+  until a replacement is released. See
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
 
 ### Bug fixes
 
@@ -50,6 +65,22 @@ This project adheres to
   value with a hash, which is not a valid value for this attribute, so outputs
   from earlier versions differ in `PatientSex`.
   [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
+- **[Security]** Explicit application logging and progress output in legacy
+  DICOM anonymisation and experimental pseudonymisation now exclude DICOM
+  values and file paths. Previously the `pymedphys dicom anonymise` and
+  `pymedphys experimental dicom pseudonymise` commands printed every input and
+  output path (output file names contain the original SOP Instance UID),
+  directory runs logged the path and error message of each failed file and
+  the paths of all successful files, the pseudonymisation Streamlit app printed
+  the failing file's name and error, and `pymedphys.dicom.anonymise` logged the
+  value being replaced when no replacement was defined for its value
+  representation. The commands now print only the number of files written
+  on standard output, and failures are logged by file number and exception
+  type. Two channels remain: exceptions are re-raised unchanged, so their
+  messages can contain a path or a value; and pydicom quotes invalid values
+  (for example a malformed time during pseudonymisation) in validation
+  messages that it issues as Python warnings and logs through the `pydicom`
+  logger, which propagates to the root logger.
 
 ### Dependency changes
 
