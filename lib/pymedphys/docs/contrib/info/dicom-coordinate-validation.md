@@ -1,125 +1,36 @@
 # DICOM coordinate validation
 
-This note records the geometry and impact review for
-[#2066](https://github.com/pymedphys/pymedphys/pull/2066). The review compared
-the original implementation on `main` at `400b61fe8` with the PR at `658c4b6f0`,
-then added the regression tests described below. It does not establish that
-every DICOM helper or every gamma search case is correct.
+This is the **validation record** for
+[#2066](https://github.com/pymedphys/pymedphys/pull/2066): independent test
+methods, fixture provenance, reproducible checks and known limitations.
+For the coordinate definition, affected historical calculations, physical
+tolerances and plotting guidance, read
+[DICOM coordinates and gamma, illustrated](dicom-coordinates-illustrated.ipynb).
+That notebook is the physicist-facing explanation; those examples are not
+repeated here.
 
-[DICOM coordinates and gamma, illustrated](dicom-coordinates-illustrated.ipynb) demonstrates these checks with executable examples and figures, including gamma plotting and a speed comparison.
+The original review compared `main` at `400b61fe8` with the PR at `658c4b6f0`.
+Later checks and their source/environment scope are recorded below. These
+results do not establish that every DICOM helper or gamma search case is correct.
 
-## Independent definition
+## Independence of the checks
 
-The governing definitions are DICOM PS3.3
+The reference geometry comes from DICOM PS3.3
 [C.7.6.2.1.1](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1)
-and
-[C.8.8.3.2](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.3.2.html).
-For raw dose element `pixel_array[k, row, column]`, the patient position is
+and [C.8.8.3.2](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.3.2.html),
+not the production conversion. The checks use both a matrix oracle and a
+separately tabulated storage encoding, with manually worked voxels to check
+the oracle itself. Asymmetric nonzero dose values expose incorrect reversals
+and row/column swaps that equal-shaped or uniform arrays could hide.
 
-```text
-P = S + column * dc * r + row * dr * c + g[k] * (r x c)
-```
-
-Here `S` is Image Position (Patient), `r` and `c` are the first and second
-triples of Image Orientation (Patient), `dr, dc` are Pixel Spacing, and `g`
-contains relative slice offsets. In the permitted absolute-offset form,
-subtract `S[z]` to obtain `g`; that form requires IOP `(1,0,0,0,1,0)` and its first value must equal `S[z]`.
-
-The first transmitted voxel is at `S` for relative offsets starting at zero.
-An orientation change does not negate `S`: the direction cosines determine
-the displacement from it.
-
-For the eight supported transverse cardinal orientations the basis is a signed permutation.
-Each patient coordinate therefore depends on exactly one raw array index.
-Extracting its one-dimensional axis is algebraically the same transformation
-as applying the full matrix to every voxel, without allocating a coordinate
-volume. Dose conversion must then transpose the raw dimensions and reverse
-both coordinates and dose wherever an axis decreases.
-
-| Orientation | Increasing raw column | Increasing raw row | Positive slice offset |
-| --- | --- | --- | --- |
-| HFS | +x | +y | +z |
-| HFP | -x | -y | +z |
-| FFS | -x | +y | -z |
-| FFP | +x | -y | -z |
-| HFDL | -y | +x | +z |
-| HFDR | +y | -x | +z |
-| FFDL | +y | +x | -z |
-| FFDR | -y | -x | -z |
-
-## A worked difference from the original implementation
-
-Consider HFP, an x origin of 100 mm, five columns and 1 mm column spacing.
-The raw columns must lie at:
-
-```text
-100, 99, 98, 97, 96 mm
-```
-
-The original DICOM branch returned:
-
-```text
--96, -97, -98, -99, -100 mm
-```
-
-It first formed the image-aligned axis `-100 + j`, which is appropriate to
-the retained image-aligned convention, then reversed the array to obtain
-the DICOM result. Reversing array order does not undo the origin sign.
-The PR's raw-order DICOM axis is the first sequence above. Its public dose
-conversion returns ascending `96, 97, 98, 99, 100` and reverses the dose with it.
-
-The old and correct raw-order axes in this example differ by a constant
--196 mm. If both grids have that same error, their relative geometry is
-unchanged. But removing the last two columns changes the old error to
--198 mm. The full grid and its crop now disagree by 2 mm even though **both
-are HFP**. This is why different orientations are not a prerequisite for
-affected comparisons.
-
-For a uniformly spaced descending axis, the old displacement is
-`(n - 1) * spacing - 2 * origin`. Equal shifts cancel only when shared by the
-two grids. This argument does not cover decubitus row/column permutations,
-uneven reversed slice offsets, or the old interpolator's inability to handle
-descending evaluation axes. A passing self-comparison alone is insufficient.
-
-## Physical tolerances and accepted orientation rounding
-
-For conversion to three patient axes, direction cosines within `1e-4` of a
-supported transverse cardinal orientation are snapped to it. This is an
-approximation, whose displacement grows with grid extent. The exact-placement
-checks above concern exact cardinal directions. Other cardinal orientations
-can also be separable but are outside the current implementation's support.
-
-Grid equality instead retains the original encoded cosines. It combines the
-origin, spacing and orientation into the maximum Euclidean displacement of
-corresponding voxel centres, across every pair of datasets:
-
-- up to **0.01 mm**: accept silently;
-- above **0.01 mm through 0.1 mm**: warn and still treat as coincident;
-- above **0.1 mm**: reject.
-
-A separate `1e-9` mm allowance handles arithmetic round-off at those limits.
-These absolute limits do not grow with the coordinate origin, do not resample
-dose, and do not assess clinical significance. Absolute-offset metadata
-consistency retains its separate 0.01 mm rule.
-
-The difference between two corresponding voxel positions is affine in row
-and column within each slice. Its norm is convex, so the maximum occurs at
-an in-plane corner. Checking four corners of **every** slice therefore gives
-the maximum without allocating a volume; an uneven-offset error can peak on
-an interior slice. Regression checks compare this calculation with an
-independent exhaustive voxel calculation, including slightly rotated cosines.
-
-For example, a `0.00009` rad in-plane rotation over 400 mm in each direction
-produces a maximum displacement of about 0.0509 mm. This now warns and accepts,
-rather than hiding the displacement by rounding both orientations first.
-
-The historical cancellation argument also needs a physical bound: for
-feet-first offsets `g[k]`, the old slice error was
-`-2 * S_z + g[k] + g[N - 1 - k]`. With `S_z = 55` and offsets `[0, 2.5, 6]`,
-the errors are `[-104, -105, -104]` mm, not a constant translation. The notebook
-demonstrates different gamma values even with identical reference/evaluation
-grid headers. Correct HFS placement also does not rule out the former default
-interpolator's separate error on unevenly spaced evaluation axes.
+The physical grid-equality check is tested against exhaustive voxel positions,
+including rounded direction cosines, both acceptance boundaries and errors on
+interior slices. Its compact implementation checks four corners of every
+slice: displacement is affine in row and column, so its convex Euclidean norm
+reaches a maximum at an in-plane corner. It retains the original encoded
+cosines; the cardinal approximation used for separable axis extraction is not
+substituted into this comparison. The notebook explains the user-facing
+geometric limits and their distinction from clinical significance.
 
 ## Evidence and its limits
 
@@ -249,77 +160,6 @@ is retained so historical tests can be replayed.
   general decubitus support for those helpers. The public
   `zyx_and_dose_from_dataset` and `dicom_dose_interpolate` paths do not call them.
 
-## Impact statement
-
-Ordinary HFS dose conversion with increasing relative slice offsets is
-unchanged. Expected affected usage may therefore be low in workflows
-dominated by those grids, but no usage survey establishes its frequency.
-This is distinct from severity: affected non-HFS grids can be substantially
-misregistered. Same-orientation crops, absolute coordinate queries, and
-comparison with external contours also matter. Absolute slice offsets and
-decreasing HFS slice offsets have their own corrected behaviour.
-
-### Effect on gamma calculations
-
-The original DICOM gamma workflow used the affected coordinate code.
-`zyx_and_dose_from_dataset` obtained axes from `xyz_axes_from_dataset` and
-returned them with the dose array. Both the internal `gamma_dicom` wrapper and
-the public [Gamma from DICOM example](../../users/howto/gamma/from-dicom.ipynb)
-passed that pair into gamma. Incorrect coordinates could therefore change
-gamma values and pass rates, not just the position of a displayed heatmap.
-
-`pymedphys.gamma` itself takes coordinate arrays and dose arrays, not DICOM
-datasets. A call supplied with independently correct coordinates does not use
-this DICOM conversion and is not affected by this particular geometry defect.
-The separate interpolation and search limitations above still apply.
-
-Matching coordinate errors can cancel when they amount to the same translation
-of both grids. That explains why a self-comparison can pass despite incorrect
-absolute positions. It does not protect comparisons with differing origins,
-extents or orientations. In the HFP example above, the full grid and its crop
-acquire an artificial 2 mm relative displacement even though both are HFP.
-The original custom interpolator also mishandled descending evaluation axes;
-shared coordinate errors do not resolve that separate problem.
-
-### Array order and plotting
-
-Two operations must be distinguished:
-
-- **DICOM conversion** returns ascending patient `(z, y, x)` axes and a dose
-  array reordered to match. Reversing or transposing the array is an exact
-  rearrangement: it does not resample dose or change voxel positions.
-- **Gamma** normalises evaluation axes and dose together internally. It leaves
-  the supplied reference order unchanged, including descending reference axes.
-  Each returned gamma array has the reference dose's shape and index order.
-
-For example, sorting an x axis must retain its pairing with dose:
-
-| Representation | x coordinates (mm) | Corresponding dose values (Gy) |
-| --- | --- | --- |
-| Original descending storage | `[100, 99, 98]` | `[10, 20, 30]` |
-| Ascending representation | `[98, 99, 100]` | `[30, 20, 10]` |
-
-The dose at x = 100 mm is still 10 Gy. Likewise, with reference axes `(z, y, x)`,
-`gamma[i_z, i_y, i_x]` and `dose_reference[i_z, i_y, i_x]` belong to the same position
-`(z[i_z], y[i_y], x[i_x])`. Plot a transverse gamma slice with the reference x and y
-coordinates, and identify its plane using the reference z coordinate. The
-[DICOM tutorial](../../users/howto/gamma/from-dicom.ipynb) demonstrates this
-after calculating gamma for the full volume.
-
-The compatibility change is in array storage order. A gamma array calculated
-from the converted reference must not be overlaid on raw `pixel_array` by
-index without accounting for the reordering. Use the converted reference dose
-and its axes together, or apply the inverse reversals and dimension permutation
-to restore raw order. Decubitus conversion can swap the row/column lengths;
-equal shapes in other orientations do not prove equal index order.
-
-The evaluation dose has its own coordinates. A matching slice index does not
-necessarily select the same physical z position in both datasets. Dose
-subtraction requires coincident sample positions, or interpolation onto a
-common grid; gamma itself does not require matching grids. Reversing the
-display axes to choose a viewing convention does not change these physical
-correspondences.
-
 ## Reproducing the committed checks
 
 After the usual locked development installation, run from the repository root:
@@ -363,15 +203,7 @@ so plugin autoload was disabled and a 180-second subprocess timeout covered
 the whole selection; per-test timeout behaviour was not exercised. Ruff,
 Pyright and the repository pre-commit checks passed.
 
-The coordinate notebook's ordinary cells were executed in a fresh Jupyter
-kernel and its figures inspected. Performance is now demonstrated separately
-in [Faster gamma calculations: a reproducible benchmark](gamma-performance.ipynb).
-The complete two-checkout comparison used previous main `866f83e` and PR
-revision `d99893b`, with three alternating rounds and two timed calls per
-revision per round across six workloads. All 72 timed calls reproduced their
-warm-up arrays exactly; every array also matched across revisions and rounds,
-including NaN positions. Both versions used the same dependency environment
-and two Numba threads. The performance notebook embeds the individual timings,
-input/output hashes and source/environment provenance, and explains warm-up
-exclusions and the limits of the synthetic cases. The one-command workstation
-runner additionally exports a comparison figure and raw evidence.
+The coordinate notebook was also executed in a fresh Jupyter kernel and
+its figures inspected. Gamma performance is a separate experiment; see the
+[workstation study and upload instructions](gamma-performance-study.md) and
+the [recorded fixed-grid demonstration](gamma-performance.ipynb).

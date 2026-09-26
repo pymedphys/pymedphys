@@ -122,7 +122,7 @@ def compare_arrays(paths, atol=1e-10):
             array._mmap.close()
 
 
-def run_study(config, roots, output, result):
+def run_study(config, roots, output, result, stop_file=None):
     worker_source = (
         Path(__file__).with_name("gamma_scaling_worker.py").read_text(encoding="utf-8")
     )
@@ -142,6 +142,12 @@ def run_study(config, roots, output, result):
             paths = {}
             group_records = []
             for position in ORDERS[round_index % 4]:
+                if stop_file is not None and stop_file.exists():
+                    print(
+                        "Stop requested; preserving the current worker checkpoint.",
+                        flush=True,
+                    )
+                    return result
                 variant = VARIANTS[position]
                 version, algorithm = variant.split("-")
                 key = f"{group}-{variant}"
@@ -754,6 +760,11 @@ def main():
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--merge", type=Path)
     parser.add_argument("--plot-only", type=Path)
+    parser.add_argument(
+        "--stop-file",
+        type=Path,
+        help="Stop after the current worker when this file appears",
+    )
     args = parser.parse_args()
     if args.resume and (args.output or args.merge or args.plot_only):
         parser.error("Use --resume on its own, with matching study options")
@@ -856,13 +867,23 @@ def main():
                 git("worktree", "add", "--detach", str(root), revision)
                 checked_checkout(root, revision)
                 roots[version] = root
-            run_study(config, roots, output, result)
+            run_study(config, roots, output, result, args.stop_file)
         finally:
             for root in roots.values():
                 if not root.resolve().is_relative_to(Path(directory).resolve()):
                     raise RuntimeError("Temporary checkout escaped its parent")
                 git("worktree", "remove", "--force", str(root))
-    save_report(result, output)
+    if result["comparisons"]:
+        save_report(result, output)
+    else:
+        validate_records(result)
+        write_json(output / "results.json", result)
+    if args.stop_file is not None and args.stop_file.exists():
+        print(
+            "Study stopped at a checkpoint; resume to finish the remaining comparisons.",
+            flush=True,
+        )
+        return
     print(
         f"Saved verified observations, tables and logarithmic plots in {output}",
         flush=True,
