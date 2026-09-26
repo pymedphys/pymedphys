@@ -53,7 +53,7 @@ class PseudonymisationLimitationWarning(UserWarning):
 
     This is not a deprecation warning. No replacement is available yet, so
     experimental pseudonymisation is not scheduled for removal (decision
-    D-023 in the de-identification design document).
+    D-019 in the de-identification design document).
     """
 
 

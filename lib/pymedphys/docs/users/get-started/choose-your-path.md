@@ -29,8 +29,7 @@ There are also additional experimental apps.
 After installation, the app layer is launched via `pymedphys gui`.
 The pseudonymisation app uses the legacy tools described in
 [DICOM de-identification](../background/dicom-deidentification.md); read their
-limitations before sharing output. App availability does not imply support for
-the planned replacement engine or its presets.
+limitations before sharing output.
 
 ## Common scenarios
 

@@ -15,7 +15,7 @@
 """Experimental pseudonymisation warns about its security limitations.
 
 The warning discloses known limitations; it is not a deprecation and makes no
-removal promise, because no replacement is available yet (decision D-023).
+removal promise, because no replacement is available yet (decision D-019).
 The public functions warn, the command prints a notice on stderr, and the
 private implementation that the public functions share stays silent so that
 one call produces one warning. ``pseudonymise`` also keeps Patient's Sex, as
