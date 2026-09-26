@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Select affected PR checks; uncertainty always requests full validation.
+"""Select the checks a pull request affects; uncertainty widens the selection.
 
 Diff the tested merge tree against its base parent, with rename detection off,
 so deletions and both sides of a rename remain visible. Two checkout generations
 suffice and there is no API file-count limit. Main, release and manual runs keep
-full validation; only known PR inputs are eligible for reduced coverage.
+full validation. On pull requests only known inputs skip standard checks, while
+the costly integration and database tests and the full unit-test matrix follow
+their labels and their own inputs. Links and unverifiable diffs select every
+check that a changed path can select.
 """
 
 import json
