@@ -122,5 +122,28 @@ class WorkflowStatusTests(unittest.TestCase):
                     self.assertEqual(not check_jobs(needs, conditional), should_pass)
 
 
+class UnconditionalSummaryTests(unittest.TestCase):
+    """A summary without change selection, such as the release workflow's."""
+
+    def setUp(self):
+        self.needs = {
+            "build": {"result": "success"},
+            "publish-pypi": {"result": "success"},
+        }
+
+    def test_every_job_succeeding_passes_without_a_changes_job(self):
+        self.assertEqual(check_jobs(self.needs, {}), [])
+        summary = make_summary("Release Summary", self.needs, {}, [])
+        self.assertIn("| publish-pypi | yes | success |", summary)
+        self.assertIn("All required checks passed", summary)
+
+    def test_every_job_must_succeed(self):
+        for result in ("failure", "cancelled", "skipped", None):
+            with self.subTest(result=result):
+                needs = copy.deepcopy(self.needs)
+                needs["publish-pypi"]["result"] = result
+                self.assertTrue(check_jobs(needs, {}))
+
+
 if __name__ == "__main__":
     unittest.main()
