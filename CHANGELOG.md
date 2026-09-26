@@ -103,6 +103,16 @@ This project adheres to
   PEP 440 form (`0.42.0.dev0`), and the exported `requirements.txt` and
   `requirements-docs.txt` list the project once, without the development
   dependency group.
+- **[Contributor facing only]** The package metadata now declares its licence
+  as the SPDX expression `Apache-2.0 AND MIT` (PEP 639), naming both licence
+  files, instead of embedding the full Apache licence text. The MIT part covers
+  bundled third-party code: the Pinnacle exporter, a copy of pydicom's DICOM
+  dictionary, and the vendored `apipkg` and `deprecated` modules. The build now
+  requires hatchling 1.27 or later. The distribution check rejects incorrect
+  or missing licence expressions, missing or unexpected licence-file
+  declarations, and missing licence files. Matching omissions in both archives
+  also fail validation. The vendored logging back-port for Python 3.7 and
+  earlier has been removed.
 - **[Contributor facing only]** The unused `conda-recipe/` directory has been
   removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
   that no workflow or release step used, and it no longer matched the build.
