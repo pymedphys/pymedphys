@@ -21,7 +21,11 @@ def gui_cli(subparsers: argparse._SubParsersAction):
         "gui", help=("Run the PyMedPhys GUI.")
     )
 
-    parser.add_argument("--port")
+    parser.add_argument(
+        "--port",
+        type=int,
+        help="Port to serve the GUI on. Defaults to Streamlit's default port.",
+    )
     parser.add_argument("--electron", action="store_true")
     parser.set_defaults(func=main)
 
