@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# Serialise attempts for the same tag; never cancel publishing in progress.
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 jobs:
   lint:
     uses: ./.github/workflows/lint.yml
@@ -25,15 +30,15 @@ jobs:
       quick: false
 
   integration-tests:
-    needs: [unit-tests]
     uses: ./.github/workflows/integration-tests.yml
     with:
       run-slow: true
+      run-wheel-build: false
 
-  # Build the package and verify it installs cleanly.
+  # Build once, in parallel with validation. Publishing waits for every gate.
   build:
-    needs: [lint, type-check, unit-tests, integration-tests]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -43,7 +48,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev tests'
+          install-project: 'false'
 
       # Plain uv build makes the sdist, then the wheel from it, so a file
       # missing from the sdist also fails the wheel checks below.
@@ -79,9 +84,10 @@ jobs:
           name: dist
           path: dist/
           retention-days: 30
+          if-no-files-found: error
 
   publish-pypi:
-    needs: [build]
+    needs: [lint, type-check, unit-tests, integration-tests, build]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -192,15 +198,18 @@ jobs:
 
   # Run the test suite against the published wheel with its dependencies
   # resolved afresh from PyPI, as a user's installation is, rather than from
-  # uv.lock as in the tests before publishing. It does not gate the release
-  # assets: a failure here is a defect in the published release, reported by
-  # the Release Summary. Like a user's installation, it restores no cache, so
-  # the tests download their data.
+  # uv.lock as in the tests before publishing. It runs alongside verification
+  # and repeats it in its own fresh environments, so the suite never runs on
+  # files that differ from the build. It does not gate the release assets:
+  # its dependencies and datasets change outside the repository, and a failure
+  # here is a defect in the published release, reported by the Release
+  # Summary. Like a user's installation, it restores no cache, so the tests
+  # download their data.
   test-published:
     name: Test published (${{ matrix.os }})
-    needs: [build, verify-published]
+    needs: [build, publish-pypi]
     if: >-
-      !cancelled() && needs.verify-published.result == 'success'
+      !cancelled() && needs.publish-pypi.result == 'success'
     strategy:
       fail-fast: false
       matrix:

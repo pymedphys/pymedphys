@@ -249,7 +249,9 @@ The project uses uv with optional dependency groups:
 - The publish job uses `skip-existing`, so a re-run after a partial upload is
   safe; `verify-published` then requires the files on the index to match the
   build. Release asset uploads must wait for that verification, so a skipped
-  duplicate cannot overwrite GitHub assets with different bytes.
+  duplicate cannot overwrite GitHub assets with different bytes. They must not
+  wait for `test-published`, whose dependencies and datasets change outside the
+  repository; keep it a separate job that reports to `Release Summary`.
 - Resolve PyMedPhys's published archive from PyPI's JSON Simple API and
   install its exact URL, so no other configured index can substitute it.
 - Recover releases using their original distribution files. A rebuild of the
@@ -423,6 +425,23 @@ This ensures that:
 
 ### CI Gates and Review Policy
 
+- Optimise CI and releases without reducing validation: skip only checks whose
+  inputs are known to be unaffected. Unknown paths select every standard check;
+  symlinks, submodules and an unverifiable diff select every check a path can
+  select. Integration and database tests and the full unit-test matrix are
+  cost-gated, as the maintainers decided: beyond main and the `full-test` and
+  `database` labels, integration and database tests run only for the inputs
+  that no standard check validates, listed in `select_checks.py`. Add an input
+  there when only a cost-gated job validates it. Packaging filters, slow-test
+  modules, modules with doctests, and shared test fixtures and data are
+  integration inputs. Policy tests require `SLOW_TEST_FILES` and `DOCTEST_FILES`
+  to equal what a scan of the package finds, so update them in the pull request
+  that adds, removes or renames such a module. `select_checks.py` alone reads
+  labels, and a missing selection output must mean more validation, never less.
+  Keep selection and summary conditions identical, with regression coverage for
+  deletions, renames and missing outputs. Release optimisation must retain
+  fresh package verification and every publishing gate.
+
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named
   `Release Summary`. Keep all constituent checks visible and add every new
@@ -442,9 +461,10 @@ This ensures that:
   The dependency audit is advisory on pull requests and pushes and blocking on
   scheduled and manual runs, where a failure opens or updates the issue labelled
   `security-audit`. Bandit and zizmor block on every event.
-- Workflow files staged in `claude_created_workflows_preview/` count as workflow
-  changes for the pull request path filter, and zizmor audits them in place, so
-  a staged workflow must be clean before a maintainer moves it.
+- Workflow files staged in `claude_created_workflows_preview/` are unclassified
+  inputs to `.github/scripts/select_checks.py` and select every scan. Zizmor
+  audits them in place, so a staged workflow must be clean before a maintainer
+  moves it.
 - Bandit is configured in `[tool.bandit]` in `pyproject.toml`: tests are excluded
   and a reviewed list of low-severity checks is skipped. Fix any other finding.
   Where a finding is a false positive, put the justification in a comment on the
@@ -487,6 +507,11 @@ When updating dependencies:
 - CI pins uv (`version` on `setup-uv`) to the same version as the pre-commit
   `uv-lock` hook. Bump both together and confirm `uv lock` leaves `uv.lock`
   unchanged under the new version.
+- When CI runs a tool that `uv.lock` already pins, give it a dependency group
+  and install it with `uv sync --frozen --only-group <group>`, which checks the
+  lockfile's hashes without installing the project. `uvx --constraints`
+  applies the versions but ignores hashes. Install in a step of its own, before
+  any `continue-on-error` step, so an installation failure is not misreported.
 
 **Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
 resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.
