@@ -70,7 +70,7 @@ jobs:
 
   # The distribution checks create venvs, run console scripts, and build from
   # file:// indexes, which differ on Windows and macOS. Ubuntu runs these
-  # tests on every pull request in ci.yml.
+  # tests in ci.yml whenever the tooling checks are selected.
   script-tests:
     name: Script Tests (${{ matrix.os }})
     strategy:
