@@ -108,6 +108,11 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** Guidance for all coding agents now lives in
+  `AGENTS.md`, and `CLAUDE.md` keeps only the Claude Code instructions and
+  points to it. The guides keep maintainers' personal preferences out of the
+  repository, and drop outdated sections on branch names, Git timestamps,
+  permission requests, and conda recipes.
 - **[Contributor facing only]** A development-only parser in
   `pymedphys._dev.deid_tables` reads Table E.1-1 of DICOM PS3.15 from NEMA's
   HTML publication, the first step towards generating the de-identification
@@ -218,6 +223,11 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- The `pymedphys claude respond-to-issue-comment` command and the private
+  `pymedphys._claude` package behind it have been removed. They posted Claude
+  replies to GitHub issues, but no workflow has run them since the `@claude`
+  workflow moved to `anthropics/claude-code-action`. PyGithub, which only they
+  used, is no longer in the `tests` and `all` extras.
 - PyMedPhys now requires pydicom 3.0 or later: every extra declares
   `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
   no lower bound. Continuous integration only tests pydicom 3, and the planned
