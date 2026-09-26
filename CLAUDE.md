@@ -75,7 +75,8 @@ file is gitignored, so edit `_config.yml`.
 Write procedures as instructions with their success criteria. State each
 fact once and link to it, prefer fixing a defect over documenting a workaround
 for it, and keep incident history and evidence caveats on the pull request
-rather than in the guide.
+rather than in the guide. Open a long procedure with a short checklist for
+readers who already know it, and move one-time setup into an appendix.
 
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
@@ -210,16 +211,24 @@ The project uses uv with optional dependency groups:
 - Verify a release from the published files, not the checkout: install the
   wheel and the sdist separately into fresh environments outside the checkout,
   force the sdist to build, and check which file pip installed and where it
-  came from. `check_distributions.py --published` does this, and the release
-  workflow runs it after publishing; extend the script rather than documenting
-  manual steps.
+  came from. `check_distributions.py --published` does this, and with
+  `--tests` also runs the test suite against the published wheel; the release
+  workflow runs both after publishing, and `--summary` writes the report for
+  the release pull request. Extend the script or the workflow rather than
+  documenting manual steps.
+- `Release Summary` fails unless every job on the run's publishing route
+  succeeded; add each new release job to its `needs`, and name jobs that a
+  route skips with `check_workflow_status.py --skipped`.
 - Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
-  pre-releases. After every release, a reviewed pull request bumps `main` to
-  the next unpublished `.devN`, so `main` never carries a published version and
-  a development release can be tagged from `main` without a further pull
-  request. A pull request that sets a development version does not need the
-  `full-test` label, and changelog entries stay under `## Unreleased` until the
-  stable release.
+  pre-releases. Every release has one reviewed release pull request, merged
+  with a merge commit, that ends with a commit setting `main` to the next
+  unpublished `.devN`; the release tag goes on the commit before it. A stable
+  release pull request first adds a commit setting the release version and
+  completing the changelog; for a development release, that commit is the
+  `main` commit the branch starts from. `main` therefore never carries a
+  published version. Only a stable release pull request needs the `full-test`
+  label, and changelog entries stay under `## Unreleased` until the stable
+  release.
 - The publish jobs use `skip-existing`, so a re-run after a partial upload is
   safe; `verify-published` then requires the files on the index to match the
   build. Release asset uploads must wait for that verification, so a skipped

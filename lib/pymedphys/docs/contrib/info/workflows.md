@@ -19,7 +19,7 @@ Push / pull request -> ci.yml
 
 Schedule / manual run / main push / PR -> security.yml
 Schedule / manual run -> deps.yml
-Published release / manual run -> release.yml -> quality checks, publishing, and PyPI verification
+Published release / manual run -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 ```
 
@@ -142,20 +142,28 @@ Publishes to PyPI or TestPyPI behind quality gates.
 - **After publishing**: `verify-published` installs the wheel and the sdist
   from the index just published to, separately on Linux, Windows, and macOS,
   with `check_distributions.py --published`, and requires both to match the
-  files built in the run. It also runs after a TestPyPI rehearsal, so the job
-  is exercised before a release. PyMedPhys's exact archive URLs come from the
-  selected index; runtime and build dependencies use PyPI
+  files built in the run. `test-published` then adds the `user` and `tests`
+  extras to the published wheel's environment on each OS and runs the test
+  suite (`--tests`), with dependencies resolved afresh from PyPI rather than
+  from `uv.lock`. Both also run after a TestPyPI rehearsal, so the jobs are
+  exercised before a release. PyMedPhys's exact archive URLs come from the
+  selected index; runtime, build, and test dependencies use PyPI. After
+  verification, `upload-release-assets` attaches the files to the GitHub
+  release and reads them back to confirm the release offers exactly those
+  files
 - **Recovery**: The original `dist` artefact is retained for 30 days. Retry
   failed jobs using those files; rebuilding an existing release need not
   reproduce its archive hashes. Never replace a published version's tag
-- **Release Summary**: Reports every job's result; it is not a gate
+- **Release Summary**: Fails unless every job on the run's route succeeded;
+  jobs on the other publishing routes must be skipped. It ends with a record
+  to paste on the release pull request. It is not a pull request check
 - **Limitation**: Assets are attached after the release is published, which
   GitHub's [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
   forbid. Before enabling immutable releases, change the workflow to attach the
   assets while the release is still a draft
 
-The [release procedure](release-guide.md) covers tagging, development releases,
-and recovery.
+The [release procedure](release-guide.md) covers the release pull request,
+tagging, manual runs, and recovery.
 
 #### `security.yml`
 Security scanning with pinned tools run through `uvx`, so nothing is installed
@@ -280,8 +288,8 @@ repository, `release.yml`, and the environment name; the
 The required GitHub Actions check names for `main` are **`CI Summary`** (from
 `ci.yml`) and **`Security Summary`** (from `security.yml`). Select GitHub Actions
 as their expected source in the `main-integrity` ruleset. The release workflow's
-**`Release Summary`** is a report, not a merge gate, and must not be required on
-pull requests.
+**`Release Summary`** shows whether a release completed; it is not a merge gate
+and must not be required on pull requests.
 
 | Required check | Checks it covers |
 |----------------|------------------|
