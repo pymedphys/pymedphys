@@ -1,13 +1,16 @@
 # Tunnels
 
+```{note}
+This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
+```
+
 ## Background
 
-These pages record a deployment originally set up at Cancer Care Associates.
-They are site-specific examples, not a statement about the organisation's
-current infrastructure. PyMedPhys was deployed for use across multiple sites.
-The sites needed access to the PyMedPhys Streamlit web server, and the server
-needed access to their data. SSH tunnels provided encrypted port forwarding
-between sites.
+At Cancer Care Associates PyMedPhys is deployed for use across multiple sites.
+These sites need to all have access to the PyMedPhys Streamlit web server, and
+in return data from each site needs to be able to be accessible to that very
+same server. All of these communications between sites is handled via the
+encrypted port forwarding capacity afforded by SSH tunnelling.
 
 ## Overview
 

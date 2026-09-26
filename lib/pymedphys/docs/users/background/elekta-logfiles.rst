@@ -2,6 +2,10 @@
 Elekta Logfile Decoding and Indexing
 ====================================
 
+.. note::
+
+   This page is a historical record of the project as originally written. Statements about current or planned work, and links to source code, have not been updated against the current PyMedPhys source.
+
 Project aim
 -----------
 The aim of this project is to have an automated machine record based delivery
@@ -26,8 +30,8 @@ Linac for every patient and fraction.
 Presentations Related to this Project
 -------------------------------------
 
-Historical presentations about this project include the following. Slides
-are linked where available.
+Portions of this project have been presented and are scheduled to be presented
+in the future. The links below provide downloads of the respective slides.
 
 * `Comparing the Reported MLC and Jaw Positions Between Mosaiq and Elekta Linac Delivery at EPSM 2018`_.
 * Open source tools for converting 40 ms resolution trf Elekta log files into
@@ -50,7 +54,7 @@ couch and collimator angles, and more. For a full list of the column names in
 the log files
 see the `logfile config code`_.
 
-.. _`logfile config code`: https://github.com/pymedphys/pymedphys/blob/main/lib/pymedphys/_trf/decode/config.json
+.. _`logfile config code`: https://github.com/pymedphys/pymedphys/blob/b6d2c0500ee90af1eb189ba44d96e0c5cf242e80/src/pymedphys/trf/_data/config.json#L25-L376
 
 These log files can be extracted and then associated to a patient's record
 using Mosaiq SQL. This is achieved by aligning the logfile to the recorded
@@ -60,9 +64,10 @@ Patient Name and ID. Example SQL to achieve this looks like the following:
 
 .. image:: ../../img/sql_example.png
 
-The current indexer stores the index in an ``index.json`` file. Large indexes
-can be costly to load and rewrite; a previously proposed SQLite migration has
-not been implemented. An example entry within this index looks like the
+An index is then created, at this current time the index is json file, but this
+has issues when the index becomes large. It is expected that a backwards
+incompatible change will occur in the near future converting the index json
+format into SQLite. An example entry within this index looks like the
 following:
 
 .. image:: ../../img/index_example.png
