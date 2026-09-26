@@ -103,7 +103,7 @@ PyMedPhys is maintained by:
 - Matthew-Jennings
 - pchlap
 
-When creating conda recipes, pull requests, or other metadata that requires maintainer information, use this list.
+When creating pull requests or other metadata that requires maintainer information, use this list.
 
 ### Key Architectural Patterns
 
@@ -176,6 +176,10 @@ The project uses uv with optional dependency groups:
 
 ### Packaging
 
+- PyMedPhys is distributed through PyPI only. The maintainers retired conda
+  packaging, so the conda-forge feedstock is not updated. Do not add conda
+  recipes, feedstock automation, or conda CI; direct conda users to install
+  from PyPI with pip inside their conda environment.
 - `uv build` makes the sdist and then the wheel from it, so a file missing from
   the sdist also breaks the wheel. Check a build with
   `python .github/scripts/check_distributions.py dist`, which also installs the
@@ -533,7 +537,7 @@ When asked to create GitHub workflow files (`.github/workflows/*.yml`):
 **Important**: Due to permission restrictions on the `.github/workflows/` directory, use the following approach:
 
 1. **Create a preview directory**: Use `claude_created_workflows_preview/` in the repository root
-2. **Place the workflow file there** with the intended filename (e.g., `conda-package.yml`)
+2. **Place the workflow file there** with the intended filename (e.g., `my-workflow.yml`)
 3. **Inform the user** that they need to:
    - Pull the branch locally
    - Move the file from `claude_created_workflows_preview/` to `.github/workflows/`
