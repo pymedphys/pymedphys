@@ -12,13 +12,15 @@ there are not available through this API.
 
 .. warning::
 
-    Experimental pseudonymisation is deprecated, and its functions emit a
-    ``DeprecationWarning``. It will be removed in a later release. It hashes
-    UIDs and some numeric values, such as patient weight, without a secret key,
-    so anyone who holds the original data can re-link records or recover the
-    values. It shifts every patient's dates by the same offset. Its output
-    keeps the original file preamble and the original SOP Instance UID in the
-    File Meta Information.
+    Experimental pseudonymisation hashes UIDs and some numeric values, such as
+    patient weight, without a secret key, so anyone who holds the original
+    data can re-link records or recover the values. It shifts every patient's
+    dates by the same offset. Its output keeps the original file preamble and
+    the original SOP Instance UID in the File Meta Information. Its functions
+    emit a
+    :class:`~pymedphys.experimental.pseudonymisation.PseudonymisationLimitationWarning`
+    describing these limitations; this is not a deprecation. Review its output
+    before sharing it.
 
 *******
 Summary
@@ -39,6 +41,7 @@ API
 .. autofunction:: pymedphys.experimental.pseudonymisation.pseudonymise
 .. autofunction:: pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords
 .. autofunction:: pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords
+.. autoclass:: pymedphys.experimental.pseudonymisation.PseudonymisationLimitationWarning
 .. autoattribute:: pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch
     :annotation: strategy, i.e. dictionary of VR and function references for anonymisation to achieve pseudonymisation
 

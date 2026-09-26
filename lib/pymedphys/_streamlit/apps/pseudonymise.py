@@ -36,12 +36,12 @@ from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 CATEGORY = categories.BETA
 TITLE = "DICOM Pseudonymisation"
 
-DEPRECATION_WARNING = (
-    "**This app is deprecated** and will be removed in a future release. It "
-    "hashes UIDs and some numeric values without a secret key, so anyone who "
-    "holds the original data can re-link or recover them, and its output keeps "
-    "the original file preamble and the original SOP Instance UID in the File "
-    "Meta Information. Read "
+LIMITATION_WARNING = (
+    "**Review output before sharing it.** This app hashes UIDs and some numeric "
+    "values without a secret key, so anyone who holds the original data can "
+    "re-link or recover them. It shifts every patient's dates by the same "
+    "offset, and its output keeps the original file preamble and the original "
+    "SOP Instance UID in the File Meta Information. Read "
     "[DICOM de-identification](https://docs.pymedphys.com/en/latest/users/"
     "background/dicom-deidentification.html) before sharing any output."
 )
@@ -244,7 +244,7 @@ def _gen_index_list_to_fifty_mbyte_increment(file_buffer_list):
 
 
 def main():
-    st.warning(DEPRECATION_WARNING)
+    st.warning(LIMITATION_WARNING)
 
     uploaded_file_buffer_list = st.file_uploader(
         "Files to pseudonymise, refresh page after downloading zip(s)",

@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Experimental pseudonymisation is deprecated.
+"""Experimental pseudonymisation warns about its security limitations.
 
+The warning discloses known limitations; it is not a deprecation and makes no
+removal promise, because no replacement is available yet (decision D-023).
 The public functions warn, the command prints a notice on stderr, and the
 private implementation that the public functions share stays silent so that
 one call produces one warning. ``pseudonymise`` also keeps Patient's Sex, as
@@ -78,11 +80,15 @@ def test_public_functions_warn_once_and_point_to_background(call):
     ours = [
         w
         for w in caught
-        if issubclass(w.category, DeprecationWarning)
-        and BACKGROUND_PAGE in str(w.message)
+        if issubclass(w.category, pseudonymisation.PseudonymisationLimitationWarning)
     ]
     assert len(ours) == 1
-    assert "without a secret key" in str(ours[0].message)
+    message = str(ours[0].message)
+    assert "without a secret key" in message
+    assert BACKGROUND_PAGE in message
+    assert "deprecated" not in message
+    assert "removed" not in message
+    assert not [w for w in caught if issubclass(w.category, DeprecationWarning)]
 
 
 @pytest.mark.pydicom
@@ -98,7 +104,7 @@ def test_private_implementation_does_not_warn():
 
 @pytest.mark.pydicom
 def test_pseudonymise_leaves_patient_sex_unchanged():
-    with pytest.warns(DeprecationWarning):
+    with pytest.warns(pseudonymisation.PseudonymisationLimitationWarning):
         pseudonymised = pseudonymisation.pseudonymise(_dataset())
 
     assert pseudonymised.PatientSex == "F"
@@ -106,7 +112,7 @@ def test_pseudonymise_leaves_patient_sex_unchanged():
 
 
 @pytest.mark.pydicom
-def test_cli_prints_deprecation_notice_on_stderr(tmp_path, capsys):
+def test_cli_prints_limitation_notice_on_stderr(tmp_path, capsys):
     input_path = _write_file(tmp_path / "input.dcm")
     args = define_parser().parse_args(
         [
@@ -123,6 +129,7 @@ def test_cli_prints_deprecation_notice_on_stderr(tmp_path, capsys):
     args.func(args)
 
     captured = capsys.readouterr()
-    assert "deprecated" in captured.err
+    assert "without a secret key" in captured.err
     assert BACKGROUND_PAGE in captured.err
-    assert "deprecated" not in captured.out
+    assert "deprecated" not in captured.err
+    assert "without a secret key" not in captured.out

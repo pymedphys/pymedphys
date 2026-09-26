@@ -28,6 +28,20 @@ This project adheres to
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
+- **[Security]** Experimental pseudonymisation now warns about its security
+  limitations. It hashes UIDs and some numeric values, such as patient weight,
+  without a secret key, so anyone who holds the original data can re-link
+  records or recover the values; it shifts every patient's dates by the same
+  offset; and its output keeps the original file preamble and the original SOP
+  Instance UID in the File Meta Information.
+  `pymedphys.experimental.pseudonymisation.pseudonymise`,
+  `get_default_pseudonymisation_keywords`, and
+  `is_valid_strategy_for_keywords` emit a `PseudonymisationLimitationWarning`
+  (a `UserWarning`); `pymedphys experimental dicom pseudonymise` prints the
+  notice on standard error; and the DICOM Pseudonymisation app shows it as a
+  banner. This is not a deprecation: neither legacy tool will be deprecated
+  until a replacement is released. See
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
 
 ### Bug fixes
 
@@ -119,22 +133,6 @@ This project adheres to
 - **[Contributor facing only]** The unused `conda-recipe/` directory has been
   removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
   that no workflow or release step used, and it no longer matched the build.
-
-### Deprecations
-
-- Experimental pseudonymisation is deprecated and will be removed in a future
-  release. `pymedphys.experimental.pseudonymisation.pseudonymise`,
-  `get_default_pseudonymisation_keywords`, and
-  `is_valid_strategy_for_keywords` emit a `DeprecationWarning`;
-  `pymedphys experimental dicom pseudonymise` prints a notice on standard
-  error; and the DICOM Pseudonymisation app shows a warning banner.
-  **[Security]** Do not rely on its output for sharing data: it hashes UIDs
-  and some numeric values, such as patient weight, without a secret key, so
-  anyone who holds the original data can re-link records or recover the
-  values; it shifts every patient's dates by the same offset; and its output
-  keeps the original file preamble and the original SOP Instance UID in the
-  File Meta Information. See
-  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
 
 ### News around this release
 

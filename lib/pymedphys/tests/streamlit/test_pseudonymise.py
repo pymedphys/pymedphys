@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The deprecated pseudonymisation app warns before it can be used."""
+"""The pseudonymisation app warns about its limitations before it is used."""
 
 from pymedphys._imports import pytest
 
@@ -21,11 +21,12 @@ from . import apptest_utilities as utl
 pytest.importorskip("streamlit")
 
 
-def test_pseudonymise_app_shows_deprecation_warning_first():
+def test_pseudonymise_app_shows_limitation_warning_first():
     app_test = utl.load_app("pseudonymise")
     utl.assert_no_exception(app_test)
 
     warnings = [warning.value for warning in app_test.warning]
     assert len(warnings) == 1
-    assert "deprecated" in warnings[0].lower()
+    assert "without a secret key" in warnings[0]
+    assert "deprecated" not in warnings[0].lower()
     assert "users/background/dicom-deidentification.html" in warnings[0]

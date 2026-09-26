@@ -11,10 +11,9 @@ there are not available through this command.
 
 .. warning::
 
-    ``pymedphys experimental dicom pseudonymise`` is deprecated and prints a
-    notice on standard error when it runs. It will be removed in a later
-    release. The :doc:`../lib/experimental/pseudonymisation` lists its
-    security limitations.
+    ``pymedphys experimental dicom pseudonymise`` prints a notice of its
+    security limitations on standard error when it runs. The
+    :doc:`../lib/experimental/pseudonymisation` describes them.
 
 .. argparse::
    :ref: pymedphys.cli.define_parser

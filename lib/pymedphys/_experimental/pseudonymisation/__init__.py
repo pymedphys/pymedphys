@@ -36,13 +36,24 @@ HERE = dirname(abspath(__file__))
 
 IDENTIFYING_UIDS_FILEPATH = pjoin(HERE, "identifying_uids.json")
 
-DEPRECATION_REASON = (
-    "experimental pseudonymisation is deprecated and will be removed in a "
-    "future release. It hashes UIDs and some numeric values without a secret "
-    "key, so anyone who holds the original data can re-link or recover them. "
+LIMITATION_NOTICE = (
+    "experimental pseudonymisation hashes UIDs and some numeric values "
+    "without a secret key, so anyone who holds the original data can re-link "
+    "or recover them. It shifts every patient's dates by the same offset, and "
+    "its output keeps the original file preamble and the original SOP Instance "
+    "UID in the File Meta Information. Review its output before sharing it. "
     "See https://docs.pymedphys.com/en/latest/users/background/"
     "dicom-deidentification.html"
 )
+
+
+class PseudonymisationLimitationWarning(UserWarning):
+    """Experimental pseudonymisation has known security limitations.
+
+    This is not a deprecation warning. No replacement is available yet, so
+    experimental pseudonymisation is not scheduled for removal (decision
+    D-023 in the de-identification design document).
+    """
 
 
 @functools.lru_cache()
@@ -77,8 +88,8 @@ def get_default_pseudonymisation_keywords():
 
 
 def anonymise_with_pseudo_cli(args):
-    # A DeprecationWarning is hidden by default, so tell command-line users.
-    print(f"Warning: {DEPRECATION_REASON}", file=sys.stderr)
+    # Python warnings are easy to miss on the command line, so say it directly.
+    print(f"Warning: {LIMITATION_NOTICE}", file=sys.stderr)
 
     if args.delete_unknown_tags:
         handle_unknown_tags = True
