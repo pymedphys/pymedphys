@@ -102,6 +102,11 @@ This project adheres to
 - **[Contributor facing only]** The unused `conda-recipe/` directory has been
   removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
   that no workflow or release step used, and it no longer matched the build.
+- **[Contributor facing only]** `CLAUDE.md` no longer gives conflicting advice
+  on workflow files: agents stage a new or edited workflow, including an
+  `allowed_tools` change, in `claude_created_workflows_preview/` and post its
+  content in a comment only if that commit fails. A broken nested code fence
+  and markdownlint findings are fixed.
 
 ### News around this release
 
