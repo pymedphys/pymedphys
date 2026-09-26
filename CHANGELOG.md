@@ -14,7 +14,7 @@ This project adheres to
 
 ### New features and enhancements
 
-- PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier.
+- PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - New documentation page,
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html),
   explaining de-identification, pseudonymisation, and anonymisation, what a
@@ -115,7 +115,7 @@ This project adheres to
 
 ### Dependency changes
 
-- For Python 3.13 and 3.14 support: the Windows `pywin32` requirement no longer excludes Python 3.13 and later; the locked environment moves to `pylibjpeg-libjpeg` 2.4.0, which has wheels for 3.13 and 3.14, and to `altair` 6.3.0, because altair 5.5.0 cannot be imported on Python 3.14 and Streamlit imports it while rendering GUI apps; and the EconForge `interpolation` package, which only the interpolation comparison notebook in the documentation uses, is installed only on Python 3.12 and earlier, because its latest release imports the `cgi` module that Python 3.13 removed.
+- For Python 3.13 and 3.14 support: the Windows `pywin32` requirement no longer excludes Python 3.13 and later; the locked environment moves to `pylibjpeg-libjpeg` 2.4.0, which has wheels for 3.13 and 3.14, and to `altair` 6.3.0, because altair 5.5.0 cannot be imported on Python 3.14 and Streamlit imports it while rendering GUI apps; and the EconForge `interpolation` package, which only the interpolation comparison notebook in the documentation uses, is installed only on Python 3.12 and earlier, because its latest release imports the `cgi` module that Python 3.13 removed. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - The locked development environment moves from NumPy 1.26 to NumPy 2 (2.2 on Python 3.10, 2.4 on 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. Newer Streamlit releases no longer depend on GitPython. The locked development environment moves to Pillow 12, protobuf 7, and pyarrow 25, and to a fixed release of every dependency that had a security fix available at the time; the security workflow explicitly ignores PYSEC-2025-183, a disputed PyJWT advisory with no fix. [PR #2036](https://github.com/pymedphys/pymedphys/pull/2036), [PR #2039](https://github.com/pymedphys/pymedphys/pull/2039), [PR #2041](https://github.com/pymedphys/pymedphys/pull/2041)
 - The `user` and `all` extras now install `dash` and `plotly`; `plotly` draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885)
@@ -210,7 +210,7 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
-- PyMedPhys now requires Python 3.11 or later; v0.41.0 supported Python 3.10 to 3.12. Python 3.10 reaches end of life in October 2026, and NumPy 2.3 and SciPy 1.16 already require Python 3.11.
+- PyMedPhys now requires Python 3.11 or later; v0.41.0 supported Python 3.10 to 3.12. Python 3.10 reaches end of life in October 2026, and NumPy 2.3 and SciPy 1.16 already require Python 3.11. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - `pymedphys.data_path`, `pymedphys.zip_data_paths`, and
   `pymedphys.zenodo_data_paths` now raise `NoHashFound` before downloading a
   file without a recorded hash when `check_hash=True` (the default). Downloads
