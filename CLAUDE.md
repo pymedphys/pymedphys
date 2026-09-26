@@ -7,21 +7,6 @@ are additional requirements specific to Claude Code.
 
 ## Claude Code Workflow Guidelines
 
-### Always Document General Feedback
-
-When maintainers provide reusable guidance or principles, implement that
-feedback in the current task and preserve it for future coding-agent sessions:
-
-- Add vendor-agnostic repository guidance to `AGENTS.md`.
-- Add guidance that applies only to Claude Code to this file.
-- Keep task-specific decisions in the relevant design document or pull request
-  instead of either agent guide.
-- Keep repository-wide contributor rules in `CONTRIBUTING.md` and link to them
-  rather than restating them.
-
-Guidance in either agent file should be broadly applicable. Do not add one-off
-solutions or detailed explanations of individual features.
-
 ### The `@claude` Workflow
 
 `.github/workflows/claude.yml` runs `anthropics/claude-code-action` when someone with write access mentions `@claude`. Its GitHub token covers contents, issues, and pull requests only.
@@ -45,6 +30,7 @@ When a push is rejected for lacking the `workflows` permission:
 2. Ask a maintainer to move it within that pull request, and give the command for both shells. Maintainers often work in PowerShell, where `mv` is `Move-Item` and refuses to overwrite an existing file unless `-Force` is passed:
    - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
    - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
-3. If that commit also fails, post the file in a comment as described in "Handling File Creation Failures".
+3. If that commit also fails, post the file in a comment as described in
+   [Handling File Creation Failures](AGENTS.md#handling-file-creation-failures).
 
-The staged file must pass the same workflow checks as one in place (see "Security Scanning Policy"). The move is complete when the file is in `.github/workflows/`, `claude_created_workflows_preview/` no longer holds it, and the pull request's checks pass.
+The staged file must pass the same workflow checks as one in place (see [Security Scanning Policy](AGENTS.md#security-scanning-policy)). The move is complete when the file is in `.github/workflows/`, `claude_created_workflows_preview/` no longer holds it, and the pull request's checks pass.

@@ -108,6 +108,9 @@ This project adheres to
 
 ### Contributor facing changes
 
+- Shared coding-agent guidance now lives in the vendor-agnostic `AGENTS.md`.
+  `CLAUDE.md` directs Claude Code to that guide and retains Claude-specific
+  workflow instructions.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state

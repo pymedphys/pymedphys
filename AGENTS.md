@@ -1,7 +1,8 @@
 # AGENTS.md
 
 This file provides vendor-agnostic guidance for coding agents working in this
-repository. Follow these instructions for all changes within the repository.
+repository. Follow these instructions for all changes within the repository,
+including the [contributor language policy](CONTRIBUTING.md#language).
 
 ## Development Commands
 
@@ -312,7 +313,7 @@ are different: keep them as originally written, as described above.
 
 Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.
 
-- When a change is meaningful, credit its author in the header of each file it touches. For Claude-assisted work, that is the person who directed it.
+- When a change is meaningful, credit its author in the header of each file it touches. For agent-assisted work, that is the person who directed it.
 - Put a new line above the existing ones (newest first). If the author already has a line of their own, extend its years instead (`2025-2026`, `2021, 2025`). Leave joint lines unchanged.
 - A change is meaningful when the author's net surviving contribution to the file is about 15 or more added or rewritten lines, cumulative across PRs. Mechanical edits do not count: API renames, import reordering, lint, typing-only and formatting fixes, and `nosec` comments.
 - A new file starts with the full header, crediting its author and the current year. Do not add a header to an existing file that has none without the maintainers' agreement, since it must also credit the original authors.
@@ -322,6 +323,22 @@ Most source files open with one or more `# Copyright (C) <years> <authors>` line
   notices in third-party code.
 
 ## Agent Workflow Guidelines
+
+### Always Document General Feedback
+
+When maintainers provide reusable guidance or principles, implement that
+feedback in the current task and preserve it for future coding-agent sessions:
+
+- Add vendor-agnostic repository guidance to `AGENTS.md`.
+- Add vendor-specific guidance to the corresponding agent file (for example,
+  `CLAUDE.md` for Claude Code).
+- Keep task-specific decisions in the relevant design document or pull request
+  instead of an agent guide.
+- Keep repository-wide contributor rules in `CONTRIBUTING.md` and link to them
+  rather than restating them.
+
+Guidance in agent files should be broadly applicable. Do not add one-off
+solutions or detailed explanations of individual features.
 
 ### PR Link Format
 
