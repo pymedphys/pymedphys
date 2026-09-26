@@ -6,10 +6,57 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from gamma_scaling import BASE_SHAPES, ORDERS, VARIANTS, compare_arrays, shape_for
+from gamma_scaling import (
+    BASE_SHAPES,
+    ORDERS,
+    VARIANTS,
+    compare_arrays,
+    paired_ratios,
+    shape_for,
+)
 
 
 class ScalingIntegrityTests(unittest.TestCase):
+    def paired_example(self):
+        return {
+            "records": [
+                {
+                    "case": "example",
+                    "round": index,
+                    "variant": variant,
+                    "verified": True,
+                    "times": [seconds],
+                    "host": {"processor": "example CPU"},
+                    "cloud": {"job": index},
+                }
+                for variant, times in (
+                    ("previous-pymedphys", (1, 2, 10, 20)),
+                    ("current-pymedphys", (0.5, 2, 1, 40)),
+                )
+                for index, seconds in enumerate(times)
+            ]
+        }
+
+    def test_ratios_preserve_runner_pairing_before_aggregation(self):
+        ratios = paired_ratios(
+            self.paired_example(), "example", "current-pymedphys", "previous-pymedphys"
+        )
+        np.testing.assert_array_equal(ratios, [0.5, 1, 0.1, 2])
+        self.assertEqual(np.median(ratios), 0.75)
+        # Dividing the two overall medians would instead give 1.5 / 6 = 0.25.
+
+    def test_ratios_reject_unmatched_runner_or_round(self):
+        for change in ("runner", "round"):
+            result = self.paired_example()
+            if change == "runner":
+                result["records"][-1]["cloud"] = {"job": "different runner"}
+            else:
+                result["records"].pop()
+            with self.assertRaises(ValueError):
+                paired_ratios(
+                    result, "example", "current-pymedphys", "previous-pymedphys"
+                )
+
     def test_balanced_order_and_carryover(self):
         for column in zip(*ORDERS):
             self.assertEqual(set(column), set(range(4)))

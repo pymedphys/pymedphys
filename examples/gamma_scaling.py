@@ -24,6 +24,7 @@ import platform
 import subprocess
 import sys
 import tempfile
+import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -375,6 +376,28 @@ def validate_records(result):
     result["complete"] = not result["incomplete_groups"]
 
 
+def paired_ratios(result, case, numerator, denominator):
+    """Compare round medians on the same runner before summarising ratios."""
+    selected = {
+        variant: {
+            r["round"]: r
+            for r in result["records"]
+            if r["case"] == case and r["variant"] == variant and r.get("verified")
+        }
+        for variant in (numerator, denominator)
+    }
+    top, bottom = selected[numerator], selected[denominator]
+    if not top or top.keys() != bottom.keys():
+        raise ValueError("Runtime ratios require the same measured rounds")
+    ratios = []
+    for round_index in sorted(top):
+        left, right = top[round_index], bottom[round_index]
+        if left["host"] != right["host"] or left["cloud"] != right["cloud"]:
+            raise ValueError("Runtime ratios must be paired on the same runner")
+        ratios.append(np.median(left["times"]) / np.median(right["times"]))
+    return np.asarray(ratios)
+
+
 def save_report(result, output):
     import matplotlib
 
@@ -435,11 +458,15 @@ def save_report(result, output):
     )
     for profile in result["config"]["profiles"]:
         dimensions = result["config"]["dimensions"]
-        fig, axs = plt.subplots(
-            len(dimensions), 2, figsize=(12, 4.1 * len(dimensions) + 1.4), squeeze=False
-        )
+        height = 4.1 * len(dimensions) + 2.5
+        fig, axs = plt.subplots(len(dimensions), 2, figsize=(12, height), squeeze=False)
         fig.subplots_adjust(
-            left=0.09, right=0.98, top=0.84, bottom=0.16, wspace=0.28, hspace=0.5
+            left=0.09,
+            right=0.98,
+            top=1 - 1.65 / height,
+            bottom=1.65 / height,
+            wspace=0.28,
+            hspace=0.5,
         )
         for row_index, dimension in enumerate(dimensions):
             absolute, relative = axs[row_index]
@@ -492,15 +519,29 @@ def save_report(result, output):
                     and r["variant"] == f"current-{algorithm}"
                 }
                 scales = sorted(old.keys() & new.keys())
+                x = [new[s]["points"] for s in scales]
+                paired = [
+                    paired_ratios(
+                        result,
+                        new[s]["case"],
+                        f"current-{algorithm}",
+                        f"previous-{algorithm}",
+                    )
+                    for s in scales
+                ]
                 relative.plot(
-                    [new[s]["points"] for s in scales],
-                    [
-                        new[s]["median_seconds"] / old[s]["median_seconds"]
-                        for s in scales
-                    ],
+                    x,
+                    [np.median(values) for values in paired],
                     marker=marker,
                     color=colour,
-                    label=f"{algorithm.capitalize()}: new / old",
+                    label="PyMedPhys" if algorithm == "pymedphys" else "SciPy",
+                )
+                relative.vlines(
+                    x,
+                    [min(values) for values in paired],
+                    [max(values) for values in paired],
+                    color=colour,
+                    alpha=0.6,
                 )
             absolute.set(
                 xscale="log",
@@ -512,7 +553,7 @@ def save_report(result, output):
             relative.set(
                 xscale="log",
                 xlabel="Total reference grid points (log scale)",
-                ylabel="New / old runtime",
+                ylabel="Paired new / old runtime",
                 title=f"{dimension}D · effect of this change",
             )
             relative.axhline(1, color="#666666", linestyle=":", linewidth=1)
@@ -524,31 +565,48 @@ def save_report(result, output):
             handles,
             names,
             loc="upper center",
-            bbox_to_anchor=(0.52, 0.91),
-            ncol=2,
+            bbox_to_anchor=(0.52, 1 - 0.9 / height),
+            ncol=4,
+            fontsize=10,
             frameon=False,
         )
         fig.suptitle(
             f"Gamma scaling · {PROFILE_LABELS[profile]}",
-            y=0.985,
+            y=1 - 0.18 / height,
             fontsize=18,
             fontweight="bold",
         )
         fig.text(
             0.5,
-            0.94,
+            1 - 0.65 / height,
             "All four implementations use identical inputs, criteria and RAM chunk budgets",
             ha="center",
         )
         config = result["config"]
         count = len({r["round"] for r in result["records"] if r.get("verified")})
+        processors = sorted({r["host"]["processor"] for r in result["records"]})
+        measured = next(r for r in result["records"] if r.get("verified"))
+        software = ", ".join(
+            f"{name} {version}" for name, version in measured["versions"].items()
+        )
+        environment_note = textwrap.fill(
+            f"{'; '.join(processors)} · Python {measured['python'].split()[0]} · {software}",
+            width=150,
+        )
         footer = (
             f"Previous {config['revisions']['previous'][:12]} · Current {config['revisions']['current'][:12]} · {config['threads']} Numba threads\n"
-            f"{count} observed round(s); median and individual-call min–max, not confidence intervals. Full warm-ups excluded.\n"
-            "Fixed physical fields; increasing resolution. Old/new arrays equal exactly; PyMedPhys/SciPy checked to 1e-10.\n"
-            f"Verified groups: {len(result['comparisons'])}; incomplete groups: {len(set(result['incomplete_groups']))}. Missing runs are not zero runtimes."
+            f"{environment_note}\n"
+            f"{count} observed round(s); medians and min–max, not confidence intervals. Ratios paired within runners; full warm-ups excluded.\n"
+            "Fixed fields; increasing resolution. Old/new arrays equal exactly; PyMedPhys/SciPy checked to 1e-10.\n"
+            f"Verified groups: {len(result['comparisons'])}; incomplete groups: {len(set(result['incomplete_groups']))}."
         )
-        fig.text(0.03, 0.025, footer, fontsize=9, va="bottom", color="#444444")
+        cloud = measured["cloud"]
+        if cloud.get("GITHUB_RUN_ID"):
+            footer += (
+                f"\nCloud source: {cloud['GITHUB_SERVER_URL']}/{cloud['GITHUB_REPOSITORY']}"
+                f"/actions/runs/{cloud['GITHUB_RUN_ID']}"
+            )
+        fig.text(0.03, 0.02, footer, fontsize=8, va="bottom", color="#444444")
         fig.savefig(output / f"scaling-{profile}.png", dpi=180, facecolor="white")
         fig.savefig(output / f"scaling-{profile}.svg", facecolor="white")
         plt.close(fig)
@@ -592,6 +650,8 @@ def save_report(result, output):
     lines += [
         "",
         "Raw observations and provenance: `results.json` and `timings.csv`.",
+        "",
+        "Absolute times are medians of all timed calls. Figure ratios are calculated within each matched runner/round before taking the median; they need not equal the ratio of the absolute medians. Ranges show observed min–max, not confidence intervals.",
         "",
         "PyMedPhys/SciPy ratios compare the full gamma call, not an isolated interpolation kernel. Log axes show multiplicative changes. Peak RSS includes input preparation, warm-up and verification; the RAM chunk budget is not a process memory cap.",
     ]
