@@ -120,14 +120,19 @@ This project adheres to
   points to it. The guides keep maintainers' personal preferences out of the
   repository, and drop outdated sections on branch names, Git timestamps,
   permission requests, and conda recipes.
-- **[Contributor facing only]** A development-only parser in
-  `pymedphys._dev.deid_tables` reads Table E.1-1 of DICOM PS3.15 from NEMA's
-  HTML publication, the first step towards generating the de-identification
-  rule tables. It reads a source file only after checking its SHA-256 digest,
-  maps columns by their header text, and rejects unknown or missing columns,
-  merged cells, empty or otherwise inconsistent rows, a table with no rows,
-  unrecognised tags, actions not defined in Table E.1-1a, and repeated tags.
-  No tables are generated or shipped yet.
+- **[Contributor facing only]** A development command,
+  `pymedphys dev deid-tables`, generates Table E.1-1 of DICOM PS3.15 as JSON
+  from NEMA's HTML publication of the pinned edition, 2026d, the first step
+  towards the de-identification rule tables. It downloads each source page,
+  or reads it from `--source-dir`, and parses it only after checking its
+  SHA-256 digest against the pin. The parser maps columns by their header
+  text and rejects unknown or missing columns, merged cells, empty or
+  otherwise inconsistent rows, a table with no rows, unrecognised tags,
+  actions not defined in Table E.1-1a, and repeated tags. Each generated file
+  records the edition, the source digests, a digest of its rows, and the
+  acknowledgement "DICOM PS3.15 2026d, © NEMA", and the same input always
+  produces the same bytes. `--check` exits with status 1 when the written
+  tables are missing or out of date. No tables are shipped yet.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state
