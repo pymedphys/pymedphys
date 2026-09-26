@@ -108,6 +108,13 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** A development-only parser in
+  `pymedphys._dev.deid_tables` reads Table E.1-1 of DICOM PS3.15 from NEMA's
+  HTML publication, the first step towards generating the de-identification
+  rule tables. It reads a source file only after checking its SHA-256 digest,
+  maps columns by their header text, and rejects unknown or missing columns,
+  merged cells, unrecognised tags and action codes, and repeated tags. No
+  tables are generated or shipped yet.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state
