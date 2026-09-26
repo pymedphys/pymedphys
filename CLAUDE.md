@@ -477,6 +477,9 @@ When updating dependencies:
    fails when these drift from `pyproject.toml` and `uv.lock`
 4. Test changes to ensure nothing breaks
 
+Do not add tests that restate a declared dependency constraint or the locked
+version. The lockfile checks and CI's locked environment already cover them.
+
 ### GitHub Actions Pins and Dependabot
 
 - Every action is pinned to a commit SHA with the tag in a trailing comment
