@@ -64,14 +64,16 @@ This project adheres to
 
 ### Bug fixes
 
-- Archives extracted into the data cache are now extracted again when the
-  downloaded archive changes, or when an extracted file is missing or has the
-  wrong size, such as after an interrupted extraction. Previously files already
-  on disk were kept, so a new release of an archive left stale contents in
-  place. Extraction metadata is stored beside the archive so it cannot
-  overwrite archive members; damaged metadata triggers a refresh, and empty
-  archives return an empty list. Extraction into a directory the caller
-  chooses still only adds missing files.
+- `pymedphys.zip_data_paths` now refreshes archives extracted into the data
+  cache when the downloaded archive changes, extraction metadata is missing or
+  invalid, an archived member is missing, or an extracted file has the wrong
+  size. Previously existing files could keep stale or incomplete contents.
+  Extraction metadata is kept outside the extracted members, with bounded
+  filenames to avoid failures for long archive names. Empty archives return an
+  empty list, and repeated member names no longer force repeated extraction.
+  Edits that leave a file the same size are not detected. A caller-specified
+  `extract_directory` still only gains missing files, preserving existing edits.
+  [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
   read, including itself, now raises `ValueError` instead of hanging every
   command and GUI app that reads the configuration.
@@ -255,14 +257,17 @@ This project adheres to
 ### (Potentially) breaking changes
 
 - `pymedphys.data_path`, `pymedphys.zip_data_paths` and
-  `pymedphys.zenodo_data_paths` now refuse a file whose hash is not recorded in
-  PyMedPhys's `hashes.json`, raising `NoHashFound` before downloading it, unless
-  `check_hash=False` is passed. Previously such a file was served unverified and
-  its hash was written into the installed package's `hashes.json`. Four
-  `urls.json` entries that had no recorded hash and that nothing used have been
-  removed: `RD.TBB_water_feet_first.dcm`, `RD.TBC_water_feet_first.dcm` (whose
-  URL pointed at the TBB file), `dicomorient_doses_only.zip` and
-  `plan-tel-monaco-upgrade.zip`.
+  `pymedphys.zenodo_data_paths` now raise `NoHashFound` before downloading a
+  file without a recorded hash when `check_hash=True` (the default). Downloads
+  no longer add hashes to the installed package's `hashes.json`. For custom
+  data, pass a maintained hash manifest through `hash_filepath` to
+  `data_path` or `zip_data_paths`, or explicitly pass `check_hash=False` to
+  accept unverified data. Four download aliases without recorded hashes have
+  been removed: `RD.TBB_water_feet_first.dcm`, `RD.TBC_water_feet_first.dcm`,
+  `dicomorient_doses_only.zip` and `plan-tel-monaco-upgrade.zip`. Calls using
+  these aliases must supply `url=` as well as a hash manifest or the explicit
+  opt-out.
+  [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - The `user` extra no longer installs `anthropic` or `httpx2`, and no longer
   lists `trio` as a direct dependency. These three packages are now in the new
   `ai` extra (`pip install "pymedphys[user,ai]"`), which only the experimental

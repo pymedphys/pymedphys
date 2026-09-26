@@ -165,12 +165,13 @@ Use this list wherever metadata needs the maintainers.
 - `dev tests` and `dev doctests` bypass user logging configuration during CLI
   startup, before pytest can isolate the home directory. Keep this boundary:
   opening a configured log can modify user files before any test runs.
-- The data cache serves only files whose hashes are recorded in `hashes.json`,
-  and never writes to it; record the hash of every file added to `urls.json`.
-  Archives extracted into the cache are extracted again when the archive's hash
-  or an extracted file's size no longer matches. Directories a caller chooses,
-  such as the GUI demo's working directory, only gain missing files, so user
-  edits there survive.
+- Data downloads require recorded hashes by default and never write to
+  `hashes.json`; record the hash of every file added to `urls.json`.
+  `check_hash=False` explicitly accepts unverified data. Archives extracted
+  into the cache are refreshed when the archive changes, extraction metadata
+  is missing or invalid, an archived member is missing, or a file's size no
+  longer matches. Directories a caller chooses, such as the GUI demo's working
+  directory, only gain missing files, so user edits there survive.
 - Mock data and fixtures are in `_mocks/` and test data directories
 - The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions

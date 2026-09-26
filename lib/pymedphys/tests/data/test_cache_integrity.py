@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The data cache serves only files that match their recorded hashes.
+"""Data downloads require recorded hashes unless explicitly opted out.
 
 Every test works offline: sources are ``file://`` URLs, the cache is a
 temporary ``PYMEDPHYS_DATA_DIR``, and hashes come from a temporary copy of
@@ -21,6 +21,7 @@ temporary ``PYMEDPHYS_DATA_DIR``, and hashes come from a temporary copy of
 
 import hashlib
 import json
+import os
 import pathlib
 import zipfile
 
@@ -111,7 +112,8 @@ def test_extracted_files_follow_a_changed_archive(cache, tmp_path):
     assert contents == {"a.txt": "two", "c.txt": "sea"}
 
 
-def test_damaged_extracted_file_is_extracted_again(cache, tmp_path):
+@pytest.mark.parametrize("damage", ["truncate", "delete"])
+def test_damaged_extracted_file_is_extracted_again(cache, tmp_path, damage):
     _, hashes = cache
     source = _zip(tmp_path / "v1.zip", {"a.txt": "complete contents"})
     _record(hashes, "archive.zip", source)
@@ -119,7 +121,10 @@ def test_damaged_extracted_file_is_extracted_again(cache, tmp_path):
         "archive.zip", url=source.as_uri(), hash_filepath=hashes
     )
 
-    extracted.write_text("trunc", encoding="utf-8")  # e.g. an interrupted copy
+    if damage == "truncate":
+        extracted.write_text("trunc", encoding="utf-8")
+    else:
+        extracted.unlink()
     (again,) = download.zip_data_paths(
         "archive.zip", url=source.as_uri(), hash_filepath=hashes
     )
@@ -254,7 +259,7 @@ def test_interrupted_refresh_is_retried(cache, tmp_path, monkeypatch):
                 "archive.zip", url=source.as_uri(), hash_filepath=hashes
             )
 
-    assert list(data_dir.rglob(f"*{download.EXTRACTED_ARCHIVE_MARKER}")) == []
+    assert not list(data_dir.rglob(f"*{download.EXTRACTED_ARCHIVE_MARKER}"))
 
     paths = download.zip_data_paths(
         "archive.zip", url=source.as_uri(), hash_filepath=hashes
@@ -280,3 +285,122 @@ def test_archives_sharing_an_extraction_directory_refresh_each_other(cache, tmp_
             name, url=sources[name].as_uri(), hash_filepath=hashes
         )
         assert extracted.read_text(encoding="utf-8") == contents
+
+
+@pytest.mark.parametrize("member", ["", "empty/"])
+def test_missing_empty_directories_are_recreated(cache, tmp_path, member):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {member: ""} if member else {})
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+    directory = data_dir / "archive" / member
+    directory.rmdir()
+
+    assert not download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert directory.is_dir()
+
+
+def test_duplicate_zip_members_reuse_the_final_entry(cache, tmp_path, monkeypatch):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "old"})
+    with zipfile.ZipFile(source, "a") as archive:
+        with pytest.warns(UserWarning, match="Duplicate name"):
+            archive.writestr("data.txt", "final contents")
+    _record(hashes, "archive.zip", source)
+    first = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert all(path.read_text(encoding="utf-8") == "final contents" for path in first)
+
+    def unexpected_extraction(*_args, **_kwargs):
+        pytest.fail("Repeated member names should not invalidate a complete extraction")
+
+    monkeypatch.setattr(zipfile.ZipFile, "extractall", unexpected_extraction)
+    assert (
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+        == first
+    )
+
+
+def test_long_archive_names_can_be_extracted(cache, tmp_path, monkeypatch):
+    data_dir, hashes = cache
+    # Exercise the component-length limit independently of Windows' legacy
+    # total-path limit and of the downloader's temporary filename.
+    if os.name == "nt":
+        data_dir = pathlib.Path("\\\\?\\" + str(data_dir.resolve()))
+        monkeypatch.setenv(download.DATA_DIR_ENVIRONMENT_VARIABLE, str(data_dir))
+    data_dir.mkdir(parents=True)
+    name = "x" * 224 + ".zip"
+    source = _zip(tmp_path / "source.zip", {"data.txt": "contents"})
+    _record(hashes, name, source)
+    (data_dir / name).write_bytes(source.read_bytes())
+
+    for _ in range(2):
+        (extracted,) = download.zip_data_paths(name, hash_filepath=hashes)
+        assert extracted.read_text(encoding="utf-8") == "contents"
+
+
+def test_direct_hash_check_does_not_record_unverified_content(cache):
+    data_dir, hashes = cache
+    data_dir.mkdir()
+    (data_dir / "unrecorded.txt").write_text("unverified", encoding="utf-8")
+
+    with pytest.raises(download.NoHashFound):
+        download.data_file_hash_check("unrecorded.txt", hash_filepath=hashes)
+
+    assert hashes.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.parametrize("delete_cached", [False, True])
+def test_missing_hash_respects_cached_file_deletion(cache, monkeypatch, delete_cached):
+    data_dir, hashes = cache
+    data_dir.mkdir()
+    cached = data_dir / "unrecorded.txt"
+    cached.write_text("unverified", encoding="utf-8")
+
+    def unexpected_download(*_args, **_kwargs):
+        pytest.fail("A missing recorded hash must be rejected before downloading")
+
+    monkeypatch.setattr(download, "download_with_progress", unexpected_download)
+    with pytest.raises(download.NoHashFound):
+        download.data_path(
+            "unrecorded.txt",
+            hash_filepath=hashes,
+            delete_when_no_hash_found=delete_cached,
+        )
+
+    if delete_cached:
+        assert not cached.exists()
+    else:
+        assert cached.read_text(encoding="utf-8") == "unverified"
+    assert hashes.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.parametrize("filename", ["data.txt", "archive.zip"])
+def test_zenodo_downloads_require_hashes_unless_skipped(
+    cache, tmp_path, monkeypatch, filename
+):
+    data_dir, hashes = cache
+    source = tmp_path / filename
+    if source.suffix == ".zip":
+        _zip(source, {"data.txt": "contents"})
+    else:
+        source.write_text("contents", encoding="utf-8")
+    monkeypatch.setattr(download, "DEFAULT_HASHES_PATH", hashes)
+    monkeypatch.setattr(
+        download.zenodo,
+        "get_zenodo_file_urls",
+        lambda _record: {filename: source.as_uri()},
+    )
+
+    with pytest.raises(download.NoHashFound):
+        download.zenodo_data_paths("review-record")
+    assert not (data_dir / "review-record" / filename).exists()
+
+    (path,) = download.zenodo_data_paths("review-record", check_hash=False)
+    assert path.read_text(encoding="utf-8") == "contents"
+    assert hashes.read_text(encoding="utf-8") == "{}"

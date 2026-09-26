@@ -15,6 +15,7 @@
 
 
 import functools
+import hashlib
 import json
 import logging
 import os
@@ -357,16 +358,25 @@ def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
     have its archived size, which catches truncated or partly written files.
     """
     try:
-        if marker.read_bytes().strip() != archive_hash.encode("ascii"):
+        if (
+            not extract_directory.is_dir()
+            or marker.read_bytes().strip() != archive_hash.encode("ascii")
+        ):
             return False
     except OSError:
         return False
 
-    for info in zip_file.infolist():
+    # extractall() resolves names to their final ZipInfo entry when an archive
+    # contains duplicates, so check the same entries that it actually writes.
+    for name in zip_file.namelist():
+        info = zip_file.getinfo(name)
+        path = extract_directory.joinpath(name)
         if info.is_dir():
+            if not path.is_dir():
+                return False
             continue
         try:
-            size = extract_directory.joinpath(info.filename).stat().st_size
+            size = path.stat().st_size
         except OSError:
             return False
         if size != info.file_size:
@@ -382,9 +392,15 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     )
     # Keep metadata outside the extracted members, with one marker per
     # extraction directory even when several archives share that directory.
-    marker = extract_directory.with_name(
-        f".{extract_directory.name}{EXTRACTED_ARCHIVE_MARKER}"
-    )
+    marker_name = f".{extract_directory.name}{EXTRACTED_ARCHIVE_MARKER}"
+    # A valid archive name can leave too little room for the marker suffix.
+    # Hash overlong names to fit the usual 255-byte filename component limit.
+    if len(os.fsencode(marker_name)) > 255:
+        directory_key = hashlib.sha256(
+            os.fsencode(os.path.normcase(extract_directory.name))
+        ).hexdigest()
+        marker_name = f".{directory_key}{EXTRACTED_ARCHIVE_MARKER}"
+    marker = extract_directory.with_name(marker_name)
     if _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
         return
 
