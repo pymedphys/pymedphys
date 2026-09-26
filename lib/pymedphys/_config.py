@@ -34,14 +34,26 @@ def get_config(path=None):
     path = pathlib.Path(path)
 
     config_path = path.joinpath("config.toml")
+    visited = set()
 
     while True:
+        resolved = config_path.resolve()
+        if resolved in visited:
+            raise ValueError(
+                f"Config redirect loop: {config_path} was already visited."
+            )
+        visited.add(resolved)
+
         with open(config_path) as f:
             results = toml.load(f)
 
         try:
-            config_path = pathlib.Path(results["redirect"])
+            redirect = results["redirect"]
         except KeyError:
             break
+
+        # A relative redirect is relative to the file that contains it, not
+        # to the directory PyMedPhys happened to be started from.
+        config_path = config_path.parent.joinpath(redirect)
 
     return results

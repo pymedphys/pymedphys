@@ -64,6 +64,17 @@ This project adheres to
 
 ### Bug fixes
 
+- A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
+  read, including itself, now raises `ValueError` instead of hanging every
+  command and GUI app that reads the configuration.
+- The maintainer helper that uploads test data to Zenodo
+  (`pymedphys._data.upload`) now sends its access token in an
+  `Authorization` header rather than in the request URL, which server logs
+  and exception messages can record. When Zenodo rejects a token, the request is now
+  retried with a new one, up to three times; previously the retry always
+  failed with a `TypeError`, and a retried file upload would have sent an
+  empty file.
+
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
@@ -267,6 +278,13 @@ This project adheres to
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
   `ftp`, was passed through unchecked.
+- A relative `redirect` in `~/.pymedphys/config.toml` is now resolved against
+  the directory of the config file that contains it. Previously it was
+  resolved against the directory PyMedPhys was started from, so the same
+  configuration could find different files. A configuration that relied on
+  the old behaviour can stop loading, or load a different file, after
+  upgrading. To migrate, make the `redirect` an absolute path, or rewrite it
+  relative to the config file that contains it.
 
 ## [0.41.0]
 
