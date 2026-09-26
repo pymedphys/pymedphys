@@ -16,6 +16,7 @@ import functools
 import json
 import logging
 import pathlib
+import sys
 from os.path import abspath, dirname, isdir, isfile
 from os.path import join as pjoin
 
@@ -35,6 +36,26 @@ from . import strategy
 HERE = dirname(abspath(__file__))
 
 IDENTIFYING_UIDS_FILEPATH = pjoin(HERE, "identifying_uids.json")
+
+LIMITATION_NOTICE = (
+    "experimental pseudonymisation hashes UIDs and some numeric values "
+    "without a secret key, so anyone who holds the original UIDs can re-link "
+    "records, and anyone can recover small-range values such as weight by "
+    "hashing every plausible value. It shifts every patient's dates by the "
+    "same offset, and its output keeps the original file preamble and the "
+    "original SOP Instance UID in the File Meta Information. Review its output "
+    "before sharing it. See https://docs.pymedphys.com/en/latest/users/"
+    "background/dicom-deidentification.html"
+)
+
+
+class PseudonymisationLimitationWarning(UserWarning):
+    """Experimental pseudonymisation has known security limitations.
+
+    This is not a deprecation warning. No replacement is available yet, so
+    experimental pseudonymisation is not scheduled for removal (decision
+    D-019 in the de-identification design document).
+    """
 
 
 @functools.lru_cache()
@@ -69,6 +90,9 @@ def get_default_pseudonymisation_keywords():
 
 
 def anonymise_with_pseudo_cli(args):
+    # Python warnings are easy to miss on the command line, so say it directly.
+    print(f"Warning: {LIMITATION_NOTICE}", file=sys.stderr)
+
     if args.delete_unknown_tags:
         handle_unknown_tags = True
     elif args.ignore_unknown_tags:

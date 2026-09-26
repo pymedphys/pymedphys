@@ -35,6 +35,21 @@ This project adheres to
   downloaded data cache, which defaults to `~/.pymedphys/data`.
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
+- **[Security]** Experimental pseudonymisation now warns about its security
+  limitations. It hashes UIDs and some numeric values without a secret key,
+  so anyone who holds the original UIDs can re-link records, and anyone can
+  recover small-range values such as patient weight from the output alone by
+  hashing every plausible value; it shifts every patient's dates by the same
+  offset; and its output keeps the original file preamble and the original SOP
+  Instance UID in the File Meta Information.
+  `pymedphys.experimental.pseudonymisation.pseudonymise`,
+  `get_default_pseudonymisation_keywords`, and
+  `is_valid_strategy_for_keywords` emit a `PseudonymisationLimitationWarning`
+  (a `UserWarning`); `pymedphys experimental dicom pseudonymise` prints the
+  notice on standard error; and the DICOM Pseudonymisation app shows it as a
+  banner. This is not a deprecation: neither legacy tool will be deprecated
+  until a replacement is released. See
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
 
 ### Bug fixes
 
