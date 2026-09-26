@@ -24,8 +24,10 @@ from unittest.mock import Mock
 
 from check_workflow_status import check_jobs
 from select_checks import (
+    COST_GATED,
     OUTPUTS,
     PATH_SELECTABLE,
+    STANDARD,
     ChangedPath,
     changed_paths,
     explain_checks,
@@ -122,25 +124,51 @@ class SelectionTests(unittest.TestCase):
 
     def test_the_root_docs_symlink_is_not_documentation(self):
         # Git reports the repository-root link itself, never paths beneath it.
-        self.assertEqual(selected(select_checks(["docs"])), set(PATH_SELECTABLE))
+        link = ChangedPath("docs", regular=False)
+        self.assertEqual(selected(select_checks([link])), set(PATH_SELECTABLE))
         self.assertTrue(select_checks(["docs/page.md"])["run-python"])
 
-    def test_unknown_dependency_fixture_and_ci_inputs_select_every_path_check(self):
+    def test_unknown_inputs_select_every_standard_check(self):
         for path in (
-            "pyproject.toml",
-            "uv.lock",
-            "requirements-docs.txt",
             "new-directory/input",
             ".github/workflows/release.yml",
-            ".github/scripts/select_checks.py",
+            ".github/workflows/claude.yml",
             ".pre-commit-config.yaml",
             "lib/pymedphys/tests/fixture.csv",
-            "docs",
+            "docs/page.md",
             ".readthedocs.yml",
             "claude_created_workflows_preview/release.yml",
         ):
             with self.subTest(path=path):
-                self.assertEqual(selected(select_checks([path])), set(PATH_SELECTABLE))
+                self.assertEqual(selected(select_checks([path])), set(STANDARD))
+
+    def test_costly_checks_run_for_the_inputs_only_they_validate(self):
+        both = {"run-integration", "run-database"}
+        for path, expected in (
+            ("pyproject.toml", both),
+            ("uv.lock", both),
+            ("requirements.txt", both),
+            ("requirements-docs.txt", both),
+            ("pyproject.hash", both),
+            ("lib/pymedphys/dependency-extra.txt", both),
+            ("lib/pymedphys/_version.py", both),
+            (".github/workflows/ci.yml", both),
+            (".github/actions/setup-project/action.yml", both),
+            (".github/workflows/integration-tests.yml", {"run-integration"}),
+            (".github/scripts/check_distributions.py", {"run-integration"}),
+            (".github/scripts/select_checks.py", {"run-integration"}),
+            ("examples/stackoverflow/gamma.py", {"run-integration"}),
+            (".github/workflows/mosaiq-db-tests.yml", {"run-database"}),
+            ("docker/mosaiq/docker-compose.yml", {"run-database"}),
+            ("lib/pymedphys/_mosaiq/mock/data.csv", {"run-database"}),
+            ("lib/pymedphys/_data/hashes.json", {"run-database"}),
+            (".github/workflows/claude.yml", set()),
+            ("lib/pymedphys/tests/fixture.csv", set()),
+            ("lib/pymedphys/docs/users/howto/mosaiq.md", set()),
+        ):
+            with self.subTest(path=path):
+                result = selected(select_checks([path]))
+                self.assertEqual(result & set(COST_GATED), expected)
 
     def test_database_and_shared_code_select_database_tests(self):
         for path in (
@@ -243,6 +271,7 @@ class SummaryTests(unittest.TestCase):
             reasons["run-python"], ("package Python", "lib/pymedphys/_gamma/core.py")
         )
         self.assertEqual(reasons["run-scripts"], ("unclassified input", "uv.lock"))
+        self.assertEqual(reasons["run-integration"], ("integration input", "uv.lock"))
         self.assertEqual(reasons["run-database"], ("database label", None))
         self.assertIsNone(reasons["run-full-matrix"])
 
@@ -255,16 +284,24 @@ class SummaryTests(unittest.TestCase):
         summary = render_summary(explain_checks(changes), changes)
         self.assertIn(
             "Fallback: ` pyproject.toml ` is not a recognised documentation or "
-            "package Python input",
+            "package Python input, so it selects every standard check.",
             summary,
         )
         self.assertIn("1 more changed path is also unclassified.", summary)
         self.assertIn("| run-docs | yes | documentation ` README.rst ` |", summary)
 
     def test_summary_explains_links_and_unverified_diffs(self):
-        changes = [ChangedPath("lib/pymedphys/docs/page.md", regular=False)]
+        changes = [
+            ChangedPath("uv.lock"),
+            ChangedPath("lib/pymedphys/docs/page.md", regular=False),
+        ]
         summary = render_summary(explain_checks(changes), changes)
-        self.assertIn("is a symlink or submodule", summary)
+        # The link selects the most, so it is named even though it came second.
+        self.assertIn(
+            "Fallback: ` lib/pymedphys/docs/page.md ` is a symlink or submodule, "
+            "so it selects every check that a changed path can select.",
+            summary,
+        )
         summary = render_summary(explain_checks(None), None)
         self.assertIn("could not be verified", summary)
         self.assertNotIn("Fallback", summary)
@@ -374,7 +411,7 @@ class DiffTests(unittest.TestCase):
                     ChangedPath("deleted.py"),
                 },
             )
-            self.assertEqual(selected(select_checks(changes)), set(PATH_SELECTABLE))
+            self.assertEqual(selected(select_checks(changes)), set(STANDARD))
             # Exercise the exact shallow history used by Actions, without a
             # network or an API response that could truncate the changed files.
             with tempfile.TemporaryDirectory() as checkout:

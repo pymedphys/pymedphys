@@ -60,8 +60,11 @@ any fallback.
 | Known documentation prose, notebooks and rendered assets only | Documentation |
 | Package Python modules | Lint, type checks, unit tests, generated documentation and all security scans |
 | Python tests only | Lint, type checks, unit tests and all security scans |
-| Mosaiq/database Python modules, `conftest.py`, top-level modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` | The Python checks above, plus database tests |
-| Dependencies, non-Python test data, build/CI configuration, symlinks, submodules or any unclassified path | Every check, including integration and database tests, with the quick unit-test matrix |
+| Non-Python test data, other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
+| Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests |
+| `.github/scripts/`, `integration-tests.yml` or `examples/` | Standard checks, plus integration tests |
+| Any path naming Mosaiq or a database, `conftest.py`, top-level modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` (except documentation) | Adds database tests |
+| A symlink, a submodule or an unverifiable merge diff | Every check a changed path can select, including integration and database tests |
 | `full-test` label | Every check and the full unit-test matrix |
 | `database` label | Adds database tests |
 
@@ -73,6 +76,14 @@ submodule is never exempt, whatever its name, because it can stand in for any
 content. Package modules still select documentation because autodoc and
 notebooks import them. The full OS/Python matrix and integration checks remain
 unconditional on main. ReadTheDocs publishes main documentation independently.
+
+Integration tests, database tests and the full unit-test matrix are too costly
+for every PR. Apart from main and the labels, the integration and database
+jobs run only for the inputs that no standard check validates: the
+generated-file drift check, the wheel build, the Windows and macOS tooling
+tests, the example scripts and the locked database drivers. An unclassified
+path selects every standard check, but not these. Unit tests use the quick
+matrix unless the PR has the `full-test` label.
 
 If pre-commit pushes an auto-fix, dependent jobs are skipped for the superseded
 commit and the summary fails until a fresh run passes on the new commit.
@@ -141,15 +152,16 @@ Comprehensive testing beyond unit tests.
   - `propagate`: `pymedphys dev propagate` must leave the generated files
     unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
     `_version.py`)
-- **Triggers**: Main branch, `full-test`, or an unclassified input, symlink or
-  submodule
+- **Triggers**: Main branch, `full-test`, or a PR that changes dependency or
+  build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
+  `integration-tests.yml` or `examples/`, or a symlink or submodule
 
 #### `mosaiq-db-tests.yml`
 SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
-- **Triggers**: Main pushes, database or shared code changes, unclassified
-  inputs, or `database` / `full-test` labels
+- **Triggers**: Main pushes, database or shared code changes, dependency
+  metadata or shared CI configuration, or `database` / `full-test` labels
 - **Features**: Waits for SQL Server to accept connections, then runs the tests once;
   test failures are not hidden by retries
 
@@ -383,8 +395,9 @@ request broader coverage and trigger another CI run.
 
 - Ordinary PRs use Ubuntu and Python 3.12 when unit tests are selected. The
   full OS/Python matrix runs on main pushes and `full-test` PRs; integration
-  tests also run on PRs with an unclassified input. A green ordinary PR
-  therefore does not mean the full matrix ran before merging.
+  tests also run on PRs that change their inputs. A green ordinary PR
+  therefore does not mean the full matrix or the integration tests ran before
+  merging.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.
 - Dependency vulnerabilities are advisory on PRs and pushes. Requiring either
   `Dependency Audit` or `Security Summary` does not turn pip-audit findings into

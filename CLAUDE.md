@@ -426,13 +426,17 @@ This ensures that:
 ### CI Gates and Review Policy
 
 - Optimise CI and releases without reducing validation: skip only checks whose
-  inputs are known to be unaffected, and select every check a path can select
-  for unknown paths, symlinks, submodules or an unverifiable diff. Only main and
-  the `full-test` label widen the unit-test matrix. `select_checks.py` alone
-  reads labels, and a missing selection output must mean more validation, never
-  less. Keep selection and summary conditions identical, with regression
-  coverage for deletions, renames and missing outputs. Release optimisation must
-  retain fresh package verification and every publishing gate.
+  inputs are known to be unaffected. Unknown paths select every standard check;
+  symlinks, submodules and an unverifiable diff select every check a path can
+  select. Integration and database tests and the full unit-test matrix are
+  cost-gated, as the maintainers decided: beyond main and the `full-test` and
+  `database` labels, integration and database tests run only for the inputs
+  that no standard check validates, listed in `select_checks.py`. Add an input
+  there when only a cost-gated job validates it. `select_checks.py` alone reads
+  labels, and a missing selection output must mean more validation, never less.
+  Keep selection and summary conditions identical, with regression coverage for
+  deletions, renames and missing outputs. Release optimisation must retain
+  fresh package verification and every publishing gate.
 
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named

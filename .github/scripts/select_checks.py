@@ -42,6 +42,10 @@ OUTPUTS = (
 # Only main and the full-test label widen the unit tests to every OS and
 # Python version; no changed path does.
 PATH_SELECTABLE = tuple(output for output in OUTPUTS if output != "run-full-matrix")
+# Integration and database tests are too costly for every PR. Beyond main and
+# the labels, they run only for their own inputs, links and unverified diffs.
+COST_GATED = ("run-integration", "run-database", "run-full-matrix")
+STANDARD = tuple(output for output in OUTPUTS if output not in COST_GATED)
 # Labels compare case-insensitively, as GitHub's contains() does.
 FULL_TEST_LABEL = "full-test"
 DATABASE_LABEL = "database"
@@ -49,7 +53,7 @@ DATABASE_LABEL = "database"
 PACKAGE_ROOT = "lib/pymedphys/"
 TESTS_ROOT = "lib/pymedphys/tests/"
 # The repository-root docs is a symlink to this directory, so git reports only
-# the link itself, which is not documentation and selects every check.
+# the link itself, which selects every check that a changed path can select.
 DOC_ROOT = "lib/pymedphys/docs/"
 # Only prose and rendered assets are exempt from Python checks. A Python file,
 # configuration file or new file type in the docs directory remains executable
@@ -87,12 +91,32 @@ SHARED_PREFIXES = (
     "lib/pymedphys/_utilities/",
     "lib/pymedphys/_base/",
 )
+# Dependency and build metadata: only the integration and database jobs check
+# generated-file drift, the wheel build and the locked database drivers.
+DEPENDENCY_INPUTS = frozenset(
+    {
+        "pyproject.toml",
+        "uv.lock",
+        "requirements.txt",
+        "requirements-docs.txt",
+        "pyproject.hash",
+        "lib/pymedphys/dependency-extra.txt",
+        "lib/pymedphys/_version.py",
+    }
+)
+# Shared CI configuration defines how the integration and database jobs run.
+CI_CONFIGURATION_FILES = frozenset({".github/workflows/ci.yml"})
+CI_CONFIGURATION_ROOTS = (".github/actions/",)
+# Only integration tests run the CI tooling tests on Windows and macOS and run
+# the example scripts.
+INTEGRATION_FILES = frozenset({".github/workflows/integration-tests.yml"})
+INTEGRATION_ROOTS = (".github/scripts/", "examples/")
 # Blob modes of ordinary files; 000000 marks the absent side of an addition or
 # a deletion. A symlink (120000) or submodule (160000) can stand in for any
 # content, so its name says nothing about which checks it affects.
 REGULAR_MODES = frozenset({"000000", "100644", "100755"})
 RAW_RECORD = re.compile(rb":([0-7]{6}) ([0-7]{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]")
-# Policies under which one unrecognised path selects every path-selectable check.
+# Policies under which one unrecognised path selects a broad fallback.
 FALLBACK_POLICIES = frozenset({"unclassified input", "symlink or submodule"})
 
 Git = Callable[[list[str]], bytes]
@@ -126,13 +150,28 @@ def classify(change: ChangedPath) -> str:
     return "unclassified"
 
 
-def _affects_database(name: str) -> bool:
+def _configures_ci(name: str) -> bool:
+    return name in CI_CONFIGURATION_FILES or name.startswith(CI_CONFIGURATION_ROOTS)
+
+
+def _is_integration_input(name: str) -> bool:
+    return (
+        name in DEPENDENCY_INPUTS
+        or _configures_ci(name)
+        or name in INTEGRATION_FILES
+        or name.startswith(INTEGRATION_ROOTS)
+    )
+
+
+def _is_database_input(name: str) -> bool:
     path = PurePosixPath(name)
     return (
         any("mosaiq" in part or "database" in part for part in path.parts)
         or path.name == "conftest.py"
         or name.startswith(SHARED_PREFIXES)
-        or path.parent == PurePosixPath("lib/pymedphys")
+        or (path.parent == PurePosixPath("lib/pymedphys") and path.suffix == ".py")
+        or name in DEPENDENCY_INPUTS
+        or _configures_ci(name)
     )
 
 
@@ -187,14 +226,20 @@ def explain_checks(
             # Autodoc and notebooks import package modules, never the tests.
             if not change.name.startswith(TESTS_ROOT):
                 select(["run-docs"], reason)
-            if _affects_database(change.name):
-                select(["run-database"], reason)
+        elif kind == "unclassified":
+            # Dependencies, non-Python fixtures, build/CI configuration and
+            # unknown paths can affect any standard check. A deny-list of
+            # extensions would silently miss new consumers and is avoided.
+            select(STANDARD, Reason("unclassified input", change.name))
         else:
-            # Dependencies, non-Python fixtures, build/CI configuration, links
-            # and unknown paths can affect any check. A deny-list of extensions
-            # would silently miss new consumers and is deliberately avoided.
-            policy = "symlink or submodule" if kind == "link" else "unclassified input"
-            select(PATH_SELECTABLE, Reason(policy, change.name))
+            # A link can stand in for any content, so nothing is exempt.
+            select(PATH_SELECTABLE, Reason("symlink or submodule", change.name))
+        # The costly checks run for inputs that no standard check validates.
+        if kind in {"python", "unclassified"}:
+            if _is_integration_input(change.name):
+                select(["run-integration"], Reason("integration input", change.name))
+            if _is_database_input(change.name):
+                select(["run-database"], Reason("database input", change.name))
     return reasons
 
 
@@ -303,11 +348,14 @@ def render_summary(
         ]
     elif policies & FALLBACK_POLICIES and changes is not None:
         fallback = [c for c in changes if classify(c) in {"unclassified", "link"}]
-        first = fallback[0]
+        # A link selects the most, so name it first.
+        first = min(fallback, key=lambda change: change.regular)
         what = (
-            "a symlink or submodule"
+            "a symlink or submodule, so it selects every check that a changed path "
+            "can select"
             if not first.regular
-            else "not a recognised documentation or package Python input"
+            else "not a recognised documentation or package Python input, so it "
+            "selects every standard check"
         )
         count = len(fallback) - 1
         others = (
@@ -316,11 +364,7 @@ def render_summary(
             if count
             else ""
         )
-        lines += [
-            "",
-            f"Fallback: {_code(first.name)} is {what}, so it selects every check "
-            f"that a changed path can select.{others}",
-        ]
+        lines += ["", f"Fallback: {_code(first.name)} is {what}.{others}"]
     return "\n".join(lines) + "\n"
 
 
