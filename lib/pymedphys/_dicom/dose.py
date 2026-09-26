@@ -53,7 +53,7 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
     interp_coords : tuple(z, y, x)
         A tuple of coordinates in DICOM order, z axis first, then y, then x
         where x, y, and z are DICOM axes.
-    dose : pydicom.Dataset
+    dicom_dose_dataset : pydicom.Dataset
         An RT DICOM Dose object
     """
 
@@ -94,7 +94,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
         defined as the surface of the phantom using either the
         ``SurfaceEntryPoint`` parameter or a combination of
         ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
-        ``IsocentrePosition``.
+        ``IsocenterPosition``.
     dose_dataset : pydicom.dataset.Dataset
         The RT DICOM dose dataset to be interpolated
     plan_dataset : pydicom.dataset.Dataset
@@ -143,7 +143,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
         defined as the surface of the phantom using either the
         ``SurfaceEntryPoint`` parameter or a combination of
         ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
-        ``IsocentrePosition``.
+        ``IsocenterPosition``.
     direction : str, one of ('inplane', 'inline', 'crossplane', 'crossline')
         Corresponds to the axis upon which to apply the displacements.
          - 'inplane' or 'inline' converts to DICOM z direction
