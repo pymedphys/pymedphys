@@ -75,11 +75,24 @@ file is gitignored, so edit `_config.yml`.
 Write procedures as instructions with their success criteria. State each
 fact once and link to it, prefer fixing a defect over documenting a workaround
 for it, and keep incident history and evidence caveats on the pull request
-rather than in the guide.
+rather than in the guide. Open a long procedure with a short checklist for
+readers who already know it, and move one-time setup into an appendix.
+
+Documents, decision logs, changelog entries, and pull request descriptions
+describe the state being merged. Fold revisions made while a pull request is
+open into the text; do not record them as superseded decisions, review logs,
+or construction history.
 
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
+
+Historical, site-specific deployment pages (for example the iCom listener,
+tunnelling, and rsync how-tos) record what was done at the time. Do not
+modernise, correct, or test their commands, versions, or links. Keep their text
+as originally written, or at the latest as it stood before the September 2025
+switch from Poetry to uv, and confine changes to a note marking the page as a
+historical record.
 
 ## Architecture Overview
 
@@ -189,7 +202,11 @@ The project uses uv with optional dependency groups:
 - Declare the licence as a PEP 639 SPDX expression (`license = "..."`) that
   covers bundled third-party code as well as PyMedPhys's own, and list every
   licence file in `license-files`. Update both when vendoring code under a new
-  licence or removing the last code under one. Keep the independent licence
+  licence or removing the last code under one. Treat bundled data, such as
+  vocabularies, datasets, and tables generated from standards, like code:
+  bundle it only under terms compatible with Apache-2.0, never under
+  non-commercial or no-derivatives terms, and include any required
+  attribution. Keep the independent licence
   expectations in `.github/scripts/check_distributions.py` and its test
   fixtures in sync with these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
@@ -212,23 +229,31 @@ The project uses uv with optional dependency groups:
 - Verify a release from the published files, not the checkout: install the
   wheel and the sdist separately into fresh environments outside the checkout,
   force the sdist to build, and check which file pip installed and where it
-  came from. `check_distributions.py --published` does this, and the release
-  workflow runs it after publishing; extend the script rather than documenting
-  manual steps.
-- Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
-  pre-releases. After every release, a reviewed pull request bumps `main` to
-  the next unpublished `.devN`, so `main` never carries a published version and
-  a development release can be tagged from `main` without a further pull
-  request. A pull request that sets a development version does not need the
-  `full-test` label, and changelog entries stay under `## Unreleased` until the
-  stable release.
-- The publish jobs use `skip-existing`, so a re-run after a partial upload is
+  came from. `check_distributions.py --published` does this, and with
+  `--tests` also runs the test suite against the published wheel; the release
+  workflow runs both after publishing, and `--summary` writes the report for
+  the release pull request. Extend the script or the workflow rather than
+  documenting manual steps.
+- `Release Summary` fails unless every release job succeeded; add each new
+  release job to its `needs`.
+- Publishing a GitHub release or pre-release is the only way to publish.
+  There is no manual or TestPyPI route, as the maintainers decided a library
+  release needs no rehearsal beyond the checks before publishing; rehearse a
+  change to the release pipeline with a development release on PyPI.
+- Tag a commit on `main`: for a stable release, the merge commit of its
+  reviewed release pull request, which is the state of `main` that CI tested,
+  never a commit from the release branch. After publishing, a separate pull
+  request sets `main` to the next unpublished `.devN`, so a development
+  release (`X.Y.Z.devN`, a GitHub pre-release) can be tagged from `main`
+  without a release pull request. Only a stable release pull request needs the
+  `full-test` label, and changelog entries stay under `## Unreleased` until
+  the stable release.
+- The publish job uses `skip-existing`, so a re-run after a partial upload is
   safe; `verify-published` then requires the files on the index to match the
   build. Release asset uploads must wait for that verification, so a skipped
   duplicate cannot overwrite GitHub assets with different bytes.
-- Resolve PyMedPhys's published archive from the selected index alone, then
-  install its exact URL with dependencies from PyPI. Searching TestPyPI and
-  PyPI together does not give the first index priority.
+- Resolve PyMedPhys's published archive from PyPI's JSON Simple API and
+  install its exact URL, so no other configured index can substitute it.
 - Recover releases using their original distribution files. A rebuild of the
   same tag can differ when the build backend changes. A failed retry does not
   prove earlier attempts left PyPI untouched; preserve release tags and use a
@@ -248,6 +273,12 @@ The project uses uv with optional dependency groups:
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
+7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. In new or modified code that handles DICOM data:
+   - never put source attribute values, keys, or original paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or reports; use attribute paths and opaque identifiers;
+   - never describe output as "anonymised", or as "de-identified" without naming the PS3.15 edition, profile, and options it has been validated against;
+   - never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, or change Burned In Annotation or Recognizable Visual Features to NO;
+   - regenerate rule tables generated from the DICOM standard, and vocabularies converted from source spreadsheets, with their generators; never edit them by hand.
+
 ## Common Development Patterns
 
 When implementing new features:
@@ -265,6 +296,14 @@ When modifying DICOM functionality, be aware of:
 - Anonymisation requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+When you find unmaintained or non-functional material, such as a packaging
+recipe that no workflow builds or a CLI command whose inputs no longer exist,
+remove it (and anything that exists only to support it) rather than annotating
+it as a draft. Git history preserves it. Do not write documentation that hedges
+around code that cannot work; fix or remove the code in the same PR, and record
+contributor-facing removals in `CHANGELOG.md`. Historical documentation pages
+are different: keep them as originally written, as described above.
 
 ### Copyright Headers
 
@@ -317,7 +356,7 @@ This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code
 - One-off fixes for specific issues
 - Detailed explanations of individual features
 
-**Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behavior across all Claude Code interactions.
+**Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behaviour across all Claude Code interactions.
 
 ### Bash Command Restrictions
 
@@ -363,14 +402,21 @@ This approach prioritises security over efficiency, as confirmed by maintainer @
 ### PR Link Format
 
 **Always use this exact format when providing PR links**:
-```
+
+```text
 https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
 ```
 
 **Important**:
+
 - Use THREE dots (`...`) between branch names, not two (`..`)
 - Correct: `compare/main...feature-branch`
 - Wrong: `compare/main..feature-branch`
+
+### PR Descriptions
+
+When a pull request's scope changes after it is opened, update its title and
+description to match the current diff and the validation actually run.
 
 ### Maintainer Guidance Documentation
 
