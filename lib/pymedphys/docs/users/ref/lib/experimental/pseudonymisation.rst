@@ -19,8 +19,10 @@ This is the legacy experimental interface. Read its limitations in
     emit a
     :class:`~pymedphys.experimental.pseudonymisation.PseudonymisationLimitationWarning`
     describing these limitations; this is not a deprecation.
-    ``pseudonymisation_dispatch`` is a dictionary, so using it directly with
-    ``anonymise_dataset`` does not warn. Review the output before sharing it.
+    ``pseudonymisation_dispatch`` is a dictionary, so it emits no warning
+    itself; :func:`pymedphys.dicom.anonymise`, which applies it in the example
+    below, emits an :class:`~pymedphys.dicom.AnonymisationLimitationWarning`.
+    Review the output before sharing it.
 
 *******
 Summary

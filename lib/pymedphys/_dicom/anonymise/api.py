@@ -17,6 +17,7 @@
 import logging
 import os
 import pprint
+import sys
 from copy import deepcopy
 from glob import glob
 from os.path import dirname, isdir, isfile
@@ -24,6 +25,7 @@ from os.path import dirname, isdir, isfile
 from pymedphys._imports import pydicom
 
 from pymedphys._dicom.anonymise import core
+from pymedphys._dicom.anonymise.limitations import LIMITATION_NOTICE
 from pymedphys._dicom.utilities import remove_file
 
 
@@ -37,12 +39,23 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     replacement_strategy=None,
     identifying_keywords=None,
 ):
-    r"""A simple tool to anonymise a DICOM dataset.
+    r"""Replace the values of a fixed list of identifying attributes in a
+    DICOM dataset.
 
-    You can find the list of DICOM keywords that are included in default
-    anonymisation `here <https://github.com/pymedphys/pymedphys/blob/main/lib/pymedphys/_dicom/anonymise/identifying_keywords.json>`__.
-    These were drawn from `DICOM Supp 142
-    <https://www.dicomstandard.org/supplements/>`__
+    The default list of keywords is
+    `here <https://github.com/pymedphys/pymedphys/blob/main/lib/pymedphys/_dicom/anonymise/identifying_keywords.json>`__.
+    It was drawn from `DICOM Supplement 142
+    <https://www.dicomstandard.org/supplements/>`__, an earlier version of
+    the attribute confidentiality profile in DICOM PS3.15 Annex E. It
+    contains no UIDs and omits most RT attributes, so Study, Series, SOP
+    Instance, and Frame of Reference UIDs keep their original values, as
+    do attributes such as RT Plan Label, ROI Name, Beam Name, Treatment
+    Machine Name, and RT Plan Date. Nested sequences are processed, but
+    reference sequences on the list, such as Referenced Image Sequence,
+    are replaced with a single empty item by default.
+
+    The output can still identify patients; review it before sharing it.
+    See `DICOM de-identification <https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html>`__ for these and other limitations.
 
     **We do not claim conformance to any DICOM Application Level
     Confidentiality Profile**.
@@ -53,11 +66,13 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
         The DICOM dataset to be anonymised.
 
     replace_values : ``bool``, optional
-        If set to ``True``, DICOM tags will be anonymised using dummy
-        "anonymous" values. This is often required for commercial
-        software to successfully read anonymised DICOM files. If set to
-        ``False``, anonymised tags are simply given empty string values.
-        Defaults to ``True``.
+        If ``True`` (the default), each listed attribute that has a value
+        is given a fixed dummy value for its value representation, for
+        example ``ANONYMOUS^PATIENT`` for person names, ``ANON`` for code
+        strings such as Patient's Sex (not a permitted value), and a single
+        empty item for sequences. Some commercial software needs values
+        to read the file. If ``False``, the values are emptied instead,
+        and OB and OW values become two zero bytes.
 
     keywords_to_leave_unchanged : ``sequence``, optional
         A sequence of DICOM keywords (corresponding to tags) to exclude
@@ -81,7 +96,9 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
         information.
 
     copy_dataset : ``bool``, optional
-        If ``True``, then a copy of ``ds`` is returned.
+        If ``True`` (the default), a modified copy of ``ds`` is returned
+        and ``ds`` is unchanged. If ``False``, ``ds`` is modified in place
+        and ``None`` is returned.
 
     replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
         If left as the default value of ``None``, the hardcode replacement strategy is used.
@@ -91,8 +108,9 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
 
     Returns
     -------
-    ds_anon : ``pydicom.dataset.Dataset``
-        An anonymised version of the input DICOM dataset.
+    ds_anon : ``pydicom.dataset.Dataset`` or ``None``
+        The modified copy of ``ds``, or ``None`` if ``copy_dataset`` is
+        ``False``.
     """
 
     if copy_dataset:
@@ -167,7 +185,13 @@ def anonymise_file(
     replacement_strategy=None,
     identifying_keywords=None,
 ):
-    r"""A simple tool to anonymise a DICOM file.
+    r"""Replace the values of a fixed list of identifying attributes in a
+    DICOM file, and write the result to a new file.
+
+    The attributes are processed as in ``anonymise_dataset``. The file
+    preamble and File Meta Information are written unchanged, so the
+    original Media Storage SOP Instance UID remains in the output. The
+    output can still identify patients; review it before sharing it.
 
     Parameters
     ----------
@@ -186,17 +210,19 @@ def anonymise_file(
 
         E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
-        This ensures that the filename contains no identifying
-        information. If set to ``False``, ``anonymise_file()`` simply
-        appends "_Anonymised" to the original DICOM filename. Defaults
-        to ``True``.
+        The file name therefore contains the original SOP Instance
+        UID. If set to ``False``, ``anonymise_file()`` appends
+        "_Anonymised" to the original file name, which may itself
+        contain identifying information. Defaults to ``True``.
 
     replace_values : ``bool``, optional
-        If set to ``True``, DICOM tags will be anonymised using dummy
-        "anonymous" values. This is often required for commercial
-        software to successfully read anonymised DICOM files. If set to
-        ``False``, anonymised tags are simply given empty string values.
-        Defaults to ``True``.
+        If ``True`` (the default), each listed attribute that has a value
+        is given a fixed dummy value for its value representation, for
+        example ``ANONYMOUS^PATIENT`` for person names, ``ANON`` for code
+        strings such as Patient's Sex (not a permitted value), and a single
+        empty item for sequences. Some commercial software needs values
+        to read the file. If ``False``, the values are emptied instead,
+        and OB and OW values become two zero bytes.
 
     keywords_to_leave_unchanged : ``sequence``, optional
         A sequence of DICOM keywords (corresponding to tags) to exclude
@@ -228,7 +254,8 @@ def anonymise_file(
     Returns
     -------
     ``str``
-    The file path of the anonymised file
+        The path of the file written. Without ``output_filepath``, it
+        is written beside the original.
     """
     dicom_filepath = str(dicom_filepath)
 
@@ -280,8 +307,17 @@ def anonymise_directory(
     identifying_keywords=None,
     fail_fast=True,
 ):
-    r"""A simple tool to anonymise all DICOM files in a directory and
-    its subdirectories.
+    r"""Apply ``anonymise_file`` to files matching ``*.dcm`` in a directory
+    and its subdirectories.
+
+    Matching follows Python's ``glob`` rules, including case-insensitive
+    matching on Windows. Other files are not processed.
+
+    With ``output_dirpath``, the output keeps the source folder structure,
+    so folder names, which may include
+    a patient's name, are copied; without it, each file is written beside
+    its original. The output can still identify patients; review it
+    before sharing it.
 
     Parameters
     ----------
@@ -301,17 +337,19 @@ def anonymise_directory(
 
         E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
-        This ensures that the filenames contain no identifying
-        information. If ``False``, ``anonymise_directory()`` simply
-        appends "_Anonymised" to the original DICOM filenames. Defaults
-        to ``True``.
+        The file names therefore contain the original SOP Instance
+        UIDs. If ``False``, ``anonymise_directory()`` appends
+        "_Anonymised" to the original file names, which may themselves
+        contain identifying information. Defaults to ``True``.
 
     replace_values : ``bool``, optional
-        If set to ``True``, DICOM tags will be anonymised using dummy
-        "anonymous" values. This is often required for commercial
-        software to successfully read anonymised DICOM files. If set to
-        ``False``, anonymised tags are simply given empty string values.
-        Defaults to ``True``.
+        If ``True`` (the default), each listed attribute that has a value
+        is given a fixed dummy value for its value representation, for
+        example ``ANONYMOUS^PATIENT`` for person names, ``ANON`` for code
+        strings such as Patient's Sex (not a permitted value), and a single
+        empty item for sequences. Some commercial software needs values
+        to read the file. If ``False``, the values are emptied instead,
+        and OB and OW values become two zero bytes.
 
     keywords_to_leave_unchanged : ``sequence``, optional
         A sequence of DICOM keywords (corresponding to tags) to exclude
@@ -347,7 +385,8 @@ def anonymise_directory(
 
     Returns
     -------
-    ``list`` of anonymised file paths
+    ``list`` of ``str``
+        The paths of the files written.
     """
     dicom_dirpath = str(dicom_dirpath)
 
@@ -410,6 +449,8 @@ def anonymise_directory(
 
 
 def anonymise_cli(args):
+    print(f"Warning: {LIMITATION_NOTICE}", file=sys.stderr)
+
     if args.delete_unknown_tags:
         handle_unknown_tags = True
     elif args.ignore_unknown_tags:
