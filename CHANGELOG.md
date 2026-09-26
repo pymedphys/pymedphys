@@ -64,6 +64,12 @@ This project adheres to
 
 ### Bug fixes
 
+- Archives extracted into the data cache are now extracted again when the
+  downloaded archive changes, or when an extracted file is missing or has the
+  wrong size, such as after an interrupted extraction. Previously files already
+  on disk were kept, so a new release of an archive left stale contents in
+  place. Extraction into a directory the caller chooses still only adds missing
+  files.
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
@@ -216,6 +222,15 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- `pymedphys.data_path`, `pymedphys.zip_data_paths` and
+  `pymedphys.zenodo_data_paths` now refuse a file whose hash is not recorded in
+  PyMedPhys's `hashes.json`, raising `NoHashFound` before downloading it, unless
+  `check_hash=False` is passed. Previously such a file was served unverified and
+  its hash was written into the installed package's `hashes.json`. Four
+  `urls.json` entries that had no recorded hash and that nothing used have been
+  removed: `RD.TBB_water_feet_first.dcm`, `RD.TBC_water_feet_first.dcm` (whose
+  URL pointed at the TBB file), `dicomorient_doses_only.zip` and
+  `plan-tel-monaco-upgrade.zip`.
 - The `user` extra no longer installs `anthropic` or `httpx2`, and no longer
   lists `trio` as a direct dependency. These three packages are now in the new
   `ai` extra (`pip install "pymedphys[user,ai]"`), which only the experimental
