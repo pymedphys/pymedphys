@@ -23,7 +23,9 @@ def test_angles_from_a_list_are_converted():
     angles, movement = utilities.angle_dd2dcm([-90.0, 0.0, 90.0, 90.0])
 
     assert angles == ["270.0", "0.0", "90.0", "90.0"]
-    assert movement.tolist() == ["CW", "CW", "NONE", "NONE"]
+    assert movement == ["CW", "CW", "NONE", "NONE"]
+    # Plain strings, so DICOM datasets hold str rather than numpy.str_ values.
+    assert {type(value) for value in angles + movement} == {str}
 
 
 def test_angle_conversion_leaves_the_input_array_unchanged():

@@ -54,7 +54,7 @@ def angle_dd2dcm(angle):
 
     converted_angle = converted_angle.astype(str).tolist()
 
-    return converted_angle, movement
+    return converted_angle, movement.tolist()
 
 
 def gantry_tol_from_gantry_angles(gantry_angles):
