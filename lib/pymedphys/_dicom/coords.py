@@ -49,6 +49,9 @@ def coords_from_xyz_axes(xyz_axes: Sequence["np.ndarray"]) -> "np.ndarray":
 # Direction cosines are written as decimal strings, so allow for rounding.
 _ORIENTATION_TOLERANCE = 1e-4
 
+# Physical coordinate comparisons must not become looser far from the origin.
+_COORDINATE_TOLERANCE_MM = 0.01
+
 
 def _axis_aligned_orientation(ds) -> "np.ndarray":
     orientation = np.array(ds.ImageOrientationPatient, dtype=np.float64)
@@ -100,13 +103,14 @@ def _slice_offsets(ds, position, orientation) -> "np.ndarray":
         return offsets
 
     if not np.array_equal(orientation, [1, 0, 0, 0, 1, 0]) or not np.isclose(
-        offsets[0], position[2]
+        offsets[0], position[2], rtol=0, atol=_COORDINATE_TOLERANCE_MM
     ):
         raise ValueError(
             "GridFrameOffsetVector does not start at zero, so it must hold "
             "absolute z coordinates. That form is only valid when Image "
             "Orientation (Patient) is [1, 0, 0, 0, 1, 0] and its first element "
-            "equals the z value of Image Position (Patient). Got orientation "
+            "matches the z value of Image Position (Patient) within "
+            f"{_COORDINATE_TOLERANCE_MM} mm. Got orientation "
             f"{orientation.tolist()}, first offset {offsets[0]} and IPP z "
             f"{position[2]}."
         )
@@ -186,15 +190,25 @@ class _DoseGridGeometry:
         return origin[0] + columns, origin[2] + slices, -(origin[1] + rows)[::-1]
 
     def matches_pixel_mapping(self, other):
-        """Whether equal pixel indices identify equal patient coordinates."""
-        return (
-            np.array_equal(self.basis, other.basis)
-            and np.allclose(self.position, other.position)
-            and all(
-                left.shape == right.shape and np.allclose(left, right)
-                for left, right in zip(self.local_axes, other.local_axes)
+        """Whether corresponding voxel centres are within 0.01 mm in 3D."""
+        if not np.array_equal(self.basis, other.basis) or any(
+            left.shape != right.shape
+            for left, right in zip(self.local_axes, other.local_axes)
+        ):
+            return False
+
+        # The common signed-permutation basis is orthonormal. Work in its
+        # local coordinates, combining origin and axis differences before
+        # applying one physical tolerance. Each axis varies independently,
+        # so the norm of their maxima is the largest voxel displacement.
+        origin_delta = (self.position - other.position) @ self.basis
+        maximum_displacements = [
+            np.max(np.abs(delta + (left - right)))
+            for delta, left, right in zip(
+                origin_delta, self.local_axes, other.local_axes
             )
-        )
+        ]
+        return bool(np.linalg.norm(maximum_displacements) <= _COORDINATE_TOLERANCE_MM)
 
 
 def xyz_axes_from_dataset(
@@ -317,6 +331,9 @@ def coords_in_datasets_are_equal(datasets: Sequence["pydicom.dataset.Dataset"]) 
     Equal patient-coordinate axes alone are insufficient: decubitus grids
     can have the same axes but a different row/column mapping. This check is
     used before adding raw pixel arrays, so their mappings must also agree.
+    For the supported axis-aligned geometry, the maximum Euclidean distance
+    between corresponding voxel centres must be at most 0.01 mm. This is an
+    absolute physical tolerance, independent of the coordinate origin.
 
     Parameters
     ----------

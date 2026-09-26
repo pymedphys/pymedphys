@@ -54,7 +54,10 @@ This project adheres to
   are supported. A shared origin, orientation matrix and slice-offset model
   keeps axes and dose-array permutations consistent. Dose summation checks
   the mapping from pixel indices to patient coordinates, including whether
-  rows or columns represent each axis.
+  rows or columns represent each axis. Corresponding voxel centres must be
+  within 0.01 mm in 3D, including combined origin and spacing differences;
+  the tolerance no longer grows with the coordinate origin. Absolute slice
+  offsets also use a fixed 0.01 mm tolerance when checked against the origin.
 - `pymedphys.gamma` now accepts evaluation axes in descending order. Before,
   every point of a descending evaluation grid was treated as outside the grid,
   which could leave the gamma search running indefinitely. Searches are now
@@ -168,7 +171,9 @@ This project adheres to
   `interp_algo="scipy"`. The existing shell search can miss points on such
   lower-dimensional grids, producing inaccurate gamma values or NaN. For
   comparisons within one common plane, use two-dimensional axes and dose
-  arrays. Uneven evaluation axes trigger a SciPy fallback with a warning.
+  arrays. A separate search redesign is tracked in
+  [#2070](https://github.com/pymedphys/pymedphys/issues/2070).
+  Uneven evaluation axes trigger a SciPy fallback with a warning.
   Both grids require finite coordinates.
   `pymedphys.interpolate.interp` checks axis order, spacing, finiteness and
   length even with `skip_checks=True`.

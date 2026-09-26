@@ -290,6 +290,88 @@ def test_absolute_and_relative_offsets_have_the_same_pixel_mapping():
 
 
 @pytest.mark.pydicom
+@pytest.mark.parametrize("origin", [-10000.0, 0.0, 10000.0])
+@pytest.mark.parametrize(
+    "shift, expected",
+    [
+        ([0.009, 0, 0], True),
+        ([0.011, 0, 0], False),
+        ([0.006, 0.006, 0], True),
+        ([0.006, 0.006, 0.006], False),
+    ],
+)
+def test_geometry_equality_uses_an_absolute_3d_tolerance(origin, shift, expected):
+    position = np.full(3, origin)
+    reference = rtdose("HFS", position=position)
+    shifted = rtdose("HFS", position=position + shift)
+    assert coords.coords_in_datasets_are_equal([reference, shifted]) is expected
+    assert coords.coords_in_datasets_are_equal([shifted, reference]) is expected
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
+@pytest.mark.parametrize("column_spacing_change", [0.001, 0.004])
+def test_geometry_equality_combines_origin_and_spacing_changes(
+    orientation, column_spacing_change
+):
+    reference = rtdose(orientation)
+    changed = rtdose(
+        orientation,
+        position=(100.003, -199.996, 300.002),
+        pixel_spacing=(2, 3 + column_spacing_change),
+    )
+    # Independent per-voxel matrix calculation includes all signs and
+    # dimension permutations, with no reuse of the compact comparison.
+    differences = voxel_positions(changed) - voxel_positions(reference)
+    maximum_distance = np.max(np.linalg.norm(differences, axis=-1))
+    expected = bool(maximum_distance <= 0.01)
+    assert coords.coords_in_datasets_are_equal([reference, changed]) is expected
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("position_change", [0.0, 0.006])
+def test_geometry_equality_checks_interior_slice_offsets(position_change):
+    reference = rtdose("HFS")
+    changed = rtdose(
+        "HFS",
+        position=(100, -200, 300 + position_change),
+        slice_offsets=[0, 2.506, 5],
+    )
+    # The largest difference is on the middle slice. Independent 0.006 mm
+    # allowances for the origin and offsets would wrongly accept 0.012 mm.
+    expected = position_change == 0
+    assert coords.coords_in_datasets_are_equal([reference, changed]) is expected
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("origin_z", [-10000.0, 0.1, 10000.0])
+@pytest.mark.parametrize("offset_error", [-0.011, -0.009, 0.009, 0.011])
+def test_absolute_slice_offset_validation_uses_mm_tolerance(origin_z, offset_error):
+    offsets = origin_z + offset_error + np.array([0, 2.5, 5])
+    ds = rtdose("HFS", position=(0, 0, origin_z), slice_offsets=offsets)
+    if abs(offset_error) > 0.01:
+        with pytest.raises(ValueError, match="within 0.01 mm"):
+            coords.xyz_axes_from_dataset(ds)
+    else:
+        # Accept small encoding differences without moving the stored planes.
+        np.testing.assert_allclose(
+            coords.xyz_axes_from_dataset(ds)[2], offsets, rtol=0, atol=1e-12
+        )
+
+
+@pytest.mark.pydicom
+def test_geometry_equality_compares_positions_instead_of_separate_metadata():
+    reference = rtdose("HFS")
+    changed = rtdose(
+        "HFS", position=(100, -200, 300.009), slice_offsets=[300, 302.5, 305]
+    )
+    # Absolute positions agree despite small differences in the origin and
+    # the derived relative offsets. Those differences cancel physically.
+    np.testing.assert_allclose(voxel_positions(reference), voxel_positions(changed))
+    assert coords.coords_in_datasets_are_equal([reference, changed])
+
+
+@pytest.mark.pydicom
 def test_rounded_orientation_preserves_geometry():
     expected = rtdose("HFDL")
     rounded = rtdose("HFDL")

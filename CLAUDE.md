@@ -157,6 +157,11 @@ When creating conda recipes, pull requests, or other metadata that requires main
   when reordering or comparing grids. Matching coordinate sets alone does
   not justify combining array elements. Validate fixed geometry once before
   repeated numerical work, while retaining validation at public boundaries.
+- Compare DICOM dose-grid positions with an explicit 0.01 mm absolute
+  tolerance, independent of the coordinate origin. For grid equality, apply
+  it to the maximum 3D displacement of corresponding voxel centres, combining
+  origin and spacing differences instead of allowing each a separate budget.
+  Keep dimensionless orientation-rounding tolerances separate.
 - The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
   read the rendered markdown. Data-driven scenarios use the
