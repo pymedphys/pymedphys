@@ -69,11 +69,11 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 - Neither tool records in its output that de-identification took place.
 - Neither rebuilds the DICOM file preamble or File Meta Information, so the original Media Storage SOP Instance UID and Source Application Entity Title can remain in every output file.
 - Neither detects burned-in text or recognisable faces.
-- Console output, logs, and error messages can include original file paths and attribute values.
+- Exception messages can include original file paths and attribute values, and pydicom's warnings and log messages about invalid values quote those values.
 
 ## Planned replacement
 
-Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, planned warnings and notices will state their limitations without deprecating them. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
+Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, their limitations are stated without deprecating them: experimental pseudonymisation's library functions emit a `PseudonymisationLimitationWarning`, its command prints a notice on standard error, and its app shows a banner, and planned notices for `anonymise` will do the same. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
 
 ## Further reading
 
