@@ -29,6 +29,7 @@ from pymedphys._dicom.anonymise import (
 )
 from pymedphys._dicom.anonymise import strategy as anon_strategy
 from pymedphys._dicom.anonymise.api import print_cli_summary
+from pymedphys._dicom.anonymise.diagnostics import report_errors_by_type
 from pymedphys._imports import pydicom
 
 from . import strategy
@@ -89,6 +90,7 @@ def get_default_pseudonymisation_keywords():
     return list(_get_default_pseudonymisation_keywords())
 
 
+@report_errors_by_type
 def anonymise_with_pseudo_cli(args):
     # Python warnings are easy to miss on the command line, so say it directly.
     print(f"Warning: {LIMITATION_NOTICE}", file=sys.stderr)
