@@ -26,6 +26,15 @@ This project adheres to
   and the `pymedphys dev cypress` command have been removed. The Streamlit GUI
   is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
   normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
+- **[Contributor facing only]** The `pymedphys dev build` command has been
+  removed. It drove a PyOxidizer and Electron desktop build whose Electron
+  app, PyOxidizer configuration, and `build` extra had already been removed,
+  so it could only fail.
+- **[Contributor facing only]** The unfinished Conda recipe under
+  `conda-recipe/` has been removed. The release workflow did not build or
+  publish it, and it no longer matched the project's build backend or
+  dependencies. Releases continue to be published as a wheel and source
+  distribution to PyPI and attached to the GitHub release.
 
 ### News around this release
 

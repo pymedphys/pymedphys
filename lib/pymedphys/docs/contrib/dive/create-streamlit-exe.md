@@ -4,9 +4,8 @@
 This is a historical implementation write-up for the linked 2022 source
 snapshot. Its Poetry, PyOxidizer, Electron, and GitHub Actions examples are
 preserved for that snapshot. The current project uses uv and Hatchling, has
-no `build` extra, and does not build these desktop installers in CI.
-The remaining `pymedphys dev build` command does not make this a supported
-current build procedure.
+no `build` extra, and does not build these desktop installers in CI. The
+`pymedphys dev build` command used below has been removed.
 
 To run the current app, follow the {doc}`installation guide <../../users/get-started/quick-start>`
 and launch `pymedphys gui`. For current automation, see the
