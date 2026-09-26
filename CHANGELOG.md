@@ -68,6 +68,7 @@ This project adheres to
   `is_anonymised_*` confirms anonymisation, and they state which files and
   attributes are processed. This is not a deprecation.
   [PR #2078](https://github.com/pymedphys/pymedphys/pull/2078), [PR #2086](https://github.com/pymedphys/pymedphys/pull/2086)
+- An experimental DICOM RT viewer displays a CT series with its RT Structure Set and, optionally, its RT Dose, with controls for slice, window level, and window width, and a toggle for each structure. It reads the files from paths on the local file system. When a CT slice has several Window Center or Window Width values it uses the first, and it skips, with a warning, slices that it cannot process. It is not yet part of `pymedphys gui`: run `streamlit run` on `pymedphys/_experimental/dicomrtvisualisation/visualise.py` in the installed package. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885), [PR #1907](https://github.com/pymedphys/pymedphys/pull/1907)
 
 ### Bug fixes
 
@@ -83,7 +84,6 @@ This project adheres to
   failed with a `TypeError`, and a retried file upload would have sent an
   empty file.
   [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
-
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
@@ -118,6 +118,8 @@ This project adheres to
   the GUI always used Streamlit's default port. A port that is not an integer
   is now rejected.
   [PR #2080](https://github.com/pymedphys/pymedphys/pull/2080)
+- Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports no longer fail with a `KeyError` when the plan has no `ToolType`; Manufacturer's Model Name is then left empty. RTPLAN and RTSTRUCT exports now write Manufacturer's Model Name, which a misspelt attribute name had left out of them. [PR #1956](https://github.com/pymedphys/pymedphys/pull/1956)
+- PyMedPhys works with pydicom 3. With pydicom 3, v0.41.0 failed in code that called the removed `pydicom.read_file` and `pydicom.write_file`, including the `pymedphys dicom adjust-machine-name`, `adjust-RED`, `adjust-RED-by-structure-name`, `merge-contours`, `listen`, and `send` commands, Pinnacle image export, and DICOM input in the MetersetMap app. Datasets that PyMedPhys constructs now declare a Transfer Syntax UID, defaulting to Implicit VR Little Endian, because pydicom 3 needs one to decode pixel data and uses it to choose the encoding when writing. `pymedphys.dicom.zyx_and_dose_from_dataset` no longer overwrites a dataset's Transfer Syntax UID with Implicit VR Little Endian; it sets one only when none is present. [PR #1959](https://github.com/pymedphys/pymedphys/pull/1959), [PR #1964](https://github.com/pymedphys/pymedphys/pull/1964)
 
 ### Dependency changes
 
@@ -125,10 +127,11 @@ This project adheres to
   Streamlit no longer depends on GitPython, and Pillow 12, protobuf 7, and
   pyarrow 25 follow; every dependency with an available security fix at the
   time of the change was moved to a fixed release. The disputed, unfixed
-  PyJWT advisory PYSEC-2025-183 remains explicitly ignored by the security
+  PyJWT advisory PYSEC-2025-183 is explicitly ignored by the security
   workflow. `numpy<2` is now an explicit
   constraint until the NumPy 2 migration is done.
   [PR #2036](https://github.com/pymedphys/pymedphys/pull/2036), [PR #2039](https://github.com/pymedphys/pymedphys/pull/2039), [PR #2041](https://github.com/pymedphys/pymedphys/pull/2041)
+- The `user` and `all` extras now install dash and plotly; plotly draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885)
 
 ### Contributor facing changes
 
@@ -140,12 +143,7 @@ This project adheres to
   clean-imports check no longer ignores the long-removed `pedromartinez`
   module.
   [PR #2089](https://github.com/pymedphys/pymedphys/pull/2089)
-- **[Contributor facing only]** Guidance for all coding agents now lives in
-  `AGENTS.md`, and `CLAUDE.md` keeps only the Claude Code instructions and
-  points to it. The guides keep maintainers' personal preferences out of the
-  repository, and drop outdated sections on branch names, Git timestamps,
-  permission requests, and conda recipes.
-  [PR #2087](https://github.com/pymedphys/pymedphys/pull/2087)
+- **[Contributor facing only]** Coding agents have repository guidance. `AGENTS.md` gives every agent the development commands, architecture, conventions, and workflow rules, and points to the pull request rules in `CONTRIBUTING.md`. `CLAUDE.md` points Claude Code to it and adds how the `@claude` workflow runs and how to handle workflow files, which it stages in `claude_created_workflows_preview/` when a push lacks the `workflows` permission. Maintainers' personal preferences stay in their own agent settings, not in the repository. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071), [PR #2087](https://github.com/pymedphys/pymedphys/pull/2087)
 - **[Contributor facing only]** A development command,
   `pymedphys dev deid-tables`, generates Table E.1-1 of DICOM PS3.15 as JSON
   from NEMA's HTML publication of the pinned edition, 2026d, the first step
@@ -162,17 +160,16 @@ This project adheres to
   [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093)
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
-  with each change, consolidated changelog entries, descriptions of the state
+  with each change, consolidated changelog entries that describe changes since the last stable release and link their pull requests, descriptions of the state
   being merged, stacked pull requests, no deprecation before a replacement is
   released, dependencies added with their first consumer, and design documents
-  and tracking issues for work spanning many pull requests. `CLAUDE.md` links
-  to these rules and links pull requests against their actual base.
+  and tracking issues for work spanning many pull requests.
   [PR #2076](https://github.com/pymedphys/pymedphys/pull/2076)
 - **[Contributor facing only]** CI now selects Python, documentation, tooling
   and security checks from the complete tested PR diff. Unknown inputs select
   every standard check, and symlinks, submodules or an unverifiable diff select
   every check, while required summaries reject unexpected skips. Integration and
-  database tests stay cost-gated: besides main and their labels, they run only
+  database tests are cost-gated: besides main and their labels, they run only
   for the inputs no standard check validates, such as dependency metadata, CI
   configuration, packaging filters, slow tests, doctests, shared test data, and
   the release tooling. Policy tests keep the lists of slow-test and doctest
@@ -181,11 +178,10 @@ This project adheres to
   Tool-only jobs avoid installing the scientific stack: pre-commit installs
   only its own dependency group, hash-checked from `uv.lock`. Only data
   consumers restore the manifest-specific data cache. Release validation runs
-  in parallel with one distribution build; publishing still waits for every
+  in parallel with one distribution build; publishing waits for every
   quality gate. After publishing, the published-package tests run alongside
   archive verification, and release assets wait only for verification.
   [PR #2077](https://github.com/pymedphys/pymedphys/pull/2077)
-
 - **[Contributor facing only]** Added the design document for the DICOM
   de-identification engine that will replace `pymedphys.dicom.anonymise` and
   experimental pseudonymisation
@@ -203,11 +199,7 @@ This project adheres to
   configuration at startup, so a configured log file is not opened before
   pytest isolates the home directory.
   [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
-- **[Contributor facing only]** `--include-slow`, `--include-mosaiqdb`, and
-  `--include-anthropic` add their tests to the default selection. `--slow`,
-  `--mosaiqdb`, `--anthropic`, and `--pydicom` still run only the marked tests,
-  and several of them now select the union instead of skipping every test.
-  [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- **[Contributor facing only]** `--include-slow`, `--include-mosaiqdb`, and `--include-anthropic` add their tests to the default selection. `--slow`, `--mosaiqdb`, `--pydicom`, and the new `--anthropic` (for tests that need an Anthropic API key) run only the marked tests, and combining several of them selects the union instead of skipping every test. [PR #1843](https://github.com/pymedphys/pymedphys/pull/1843), [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
 - **[Contributor facing only]** `pymedphys dev tests <path>` now runs only the
   given file, directory, or test ID, relative to `lib/pymedphys` or the current
   directory. Previously the path was ignored and the whole suite ran. Pytest
@@ -226,49 +218,18 @@ This project adheres to
   is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
   normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
   [PR #2035](https://github.com/pymedphys/pymedphys/pull/2035)
-- **[Contributor facing only]** The source distribution contains the package
-  again. Since the move to hatchling, a build-wide include meant to add the
-  built HTML documentation had become the sdist's only content, so an sdist
-  held no code. Release and integration builds now make the wheel from the
-  sdist and check both archives, then install the wheel into a fresh virtual
-  environment and check its imports and `pymedphys --version`. A published
-  release fails unless its tag is `v` followed by the package version.
-  [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
-- **[Contributor facing only]** The package version is written in canonical
-  PEP 440 form (`0.42.0.dev0`), and the exported `requirements.txt` and
-  `requirements-docs.txt` list the project once, without the development
-  dependency group.
-  [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
-- **[Contributor facing only]** The package metadata now declares its licence
-  as the SPDX expression `Apache-2.0 AND MIT` (PEP 639), naming both licence
-  files, instead of embedding the full Apache licence text. The MIT part covers
-  bundled third-party code: the Pinnacle exporter, a copy of pydicom's DICOM
-  dictionary, and the vendored `apipkg` and `deprecated` modules. The build now
-  requires hatchling 1.27 or later. The distribution check rejects incorrect
-  or missing licence expressions, missing or unexpected licence-file
-  declarations, and missing licence files. Matching omissions in both archives
-  also fail validation. The vendored logging back-port for Python 3.7 and
-  earlier has been removed.
-  [PR #2063](https://github.com/pymedphys/pymedphys/pull/2063)
-- **[Contributor facing only]** The unused `conda-recipe/` directory has been
-  removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
-  that no workflow or release step used, and it no longer matched the build.
-  [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
-- **[Contributor facing only]** After publishing, the Release workflow now
-  runs the test suite against the published wheel on Linux, Windows, and
-  macOS with dependencies resolved afresh from PyPI, reads back the GitHub
-  release assets, and fails its `Release Summary` unless every job succeeded.
-  `check_distributions.py --published` gains `--tests` and `--summary` to run
-  the same checks locally and report them. The workflow's manual trigger and
-  TestPyPI route have been removed: publishing a GitHub release is the only
-  way to publish.
-  [PR #2064](https://github.com/pymedphys/pymedphys/pull/2064), [PR #2074](https://github.com/pymedphys/pymedphys/pull/2074)
+- **[Contributor facing only]** Release and integration builds make the wheel from the sdist, check both archives, and install the wheel into a fresh virtual environment to check its imports and `pymedphys --version`. A release fails unless its tag is `v` followed by the package version. [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
+- **[Contributor facing only]** The package metadata declares its licence as the SPDX expression `Apache-2.0 AND MIT` (PEP 639) and names both licence files; v0.41.0 declared only `Apache-2.0`. The MIT part covers bundled third-party code: the Pinnacle exporter, a copy of pydicom's DICOM dictionary, and the vendored `apipkg` and `deprecated` modules. Building requires hatchling 1.27 or later. The distribution check rejects incorrect or missing licence expressions, missing or unexpected licence-file declarations, and missing licence files, including matching omissions in both archives. The vendored logging back-port for Python 3.7 and earlier has been removed. [PR #2063](https://github.com/pymedphys/pymedphys/pull/2063)
+- **[Contributor facing only]** Publishing a GitHub release is the only way to publish. After publishing, the Release workflow checks on Linux, Windows, and macOS that the files PyPI serves match the build and install cleanly, with the sdist built afresh; runs the test suite against the published wheel with dependencies resolved afresh from PyPI; reads back the GitHub release assets; and fails its `Release Summary` unless every job succeeded. `check_distributions.py --published` runs the same checks locally, with `--tests` to run the test suite and `--summary` to write a report. [PR #2064](https://github.com/pymedphys/pymedphys/pull/2064), [PR #2074](https://github.com/pymedphys/pymedphys/pull/2074)
 - **[Contributor facing only]** The `pymedphys dev build` command has been
   removed. It drove a PyOxidizer and Electron desktop build whose Electron
   app, PyOxidizer configuration, and `build` extra had already been removed,
   so it could only fail.
   [PR #2053](https://github.com/pymedphys/pymedphys/pull/2053)
-- **[Contributor facing only]** The `@claude` workflow now runs Claude Opus 5.5. Version 1 of `claude-code-action` ignores the `model` and `allowed_tools` inputs, so the model moves to `claude_args`, and the allow-list, which never took effect, is removed with the Python and uv setup steps that existed only for it. The workflow keeps the action's default tools: it still cannot run repository code or change `.github/workflows/`, and CI tests the commits it pushes. `CLAUDE.md` describes the workflow as it runs, has agents edit workflow files directly and stage them in `claude_created_workflows_preview/` only when a push lacks the `workflows` permission, and fixes a broken nested code fence and markdownlint findings. [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071)
+- **[Contributor facing only]** Mentioning `@claude` in an issue, a pull request comment, or a review, as someone with write access, runs `anthropics/claude-code-action` with Claude Opus 5.5. It replaces the Claude Assistant workflow, which replied through Claude 3 Opus to any issue comment containing "claude". The workflow uses the action's default tools: it cannot run repository code or change `.github/workflows/`, and CI tests the commits it pushes. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #1997](https://github.com/pymedphys/pymedphys/pull/1997), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071)
+- **[Contributor facing only]** Development uses uv instead of Poetry: `uv.lock` pins the development environment, `pymedphys dev propagate` exports the requirements files from it, and hatchling builds the package. Separate GitHub Actions workflows for unit and integration tests, linting, type checking, pre-commit, documentation, security scanning with pip-audit, Bandit, and zizmor, and dependency updates replace the single `Library` workflow, and a Release workflow publishes to PyPI when a GitHub release is published. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2034](https://github.com/pymedphys/pymedphys/pull/2034)
+- **[Contributor facing only]** The `tests` extra adds anthropic, imageio, matplotlib, pandas, Pillow, pydicom, pylibjpeg-libjpeg, pynetdicom, shapely, and toml. The `doctests` extra adds pytest and toml, and the `docs` and `all` extras add EconForge's `interpolation` for the interpolation comparison notebook. A new `lint` extra installs astroid, pylint, and ruff, and the `comparables` extra, which installed only flashgamma, has been removed. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2009](https://github.com/pymedphys/pymedphys/pull/2009), [PR #2013](https://github.com/pymedphys/pymedphys/pull/2013)
+- **[Contributor facing only]** The `dev` and `all` extras include mypy and type stubs for python-dateutil, PyYAML, requests, tabulate, and toml, so CI's advisory mypy check uses locked versions. The full unit-test matrix covers Python 3.10, 3.11, and 3.12 on Ubuntu, macOS, and Windows. Dependabot proposes grouped weekly updates of the GitHub Actions, and the weekly Python dependency-update workflow regenerates the derived files and runs the non-slow tests, the documentation build, and the wheel checks before opening its pull request. `SECURITY.md` says how to report a vulnerability. [PR #2037](https://github.com/pymedphys/pymedphys/pull/2037)
 
 ### News around this release
 
@@ -278,25 +239,9 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
-- The `user` extra no longer installs `anthropic` or `httpx2`, and no longer
-  lists `trio` as a direct dependency. These three packages are now in the new
-  `ai` extra (`pip install "pymedphys[user,ai]"`), which only the experimental
-  Mosaiq chat app in the GUI needs. The app sends questions and query results
-  to Anthropic's API, so it is now opt-in. Without the extra the rest of the
-  GUI still loads, and the chat app says how to install it; before, a missing
-  AI package stopped the whole GUI from loading. The `user` extra still
-  installs `trio` through `trio-asyncio`, and the `all` extra still includes
-  all three packages.
-  [PR #2091](https://github.com/pymedphys/pymedphys/pull/2091)
-- The `pymedphys claude respond-to-issue-comment` command and the private
-  `pymedphys._claude` package behind it have been removed. They posted Claude
-  replies to GitHub issues, but no workflow has run them since the `@claude`
-  workflow moved to `anthropics/claude-code-action`. PyGithub, which only they
-  used, is no longer in the `tests` and `all` extras.
-  [PR #2084](https://github.com/pymedphys/pymedphys/pull/2084)
+- The `user` extra no longer installs `anthropic` or lists `trio` as a direct dependency. Both are now in the new `ai` extra (`pip install "pymedphys[user,ai]"`), with `httpx2`, which only the experimental Mosaiq chat app in the GUI needs. The app sends questions and query results to Anthropic's API, so it is now opt-in. Without the extra the rest of the GUI still loads, and the chat app says how to install it; before, a missing AI package stopped the whole GUI from loading. The `user` extra still installs `trio` through `trio-asyncio`, and the `all` extra includes the `ai` packages. `anthropic` is no longer pinned to 0.29.0. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2091](https://github.com/pymedphys/pymedphys/pull/2091)
 - PyMedPhys now requires pydicom 3.0 or later: every extra declares
-  `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
-  no lower bound. Continuous integration only tests pydicom 3, and the planned
+  `pydicom>=3.0` instead of `>=2.0.0`. Continuous integration only tests pydicom 3, and the planned
   de-identification engine uses `dcmwrite(..., enforce_file_format=True)`,
   which pydicom 3.0 added.
   Environments pinned to pydicom 2 must upgrade it to install this release.
@@ -322,6 +267,7 @@ This project adheres to
   upgrading. To migrate, make the `redirect` an absolute path, or rewrite it
   relative to the config file that contains it.
   [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
+- The wheel and sdist no longer include the built HTML documentation, which v0.41.0 bundled under `pymedphys/docs/_build/html` and which made up most of its 7.5 MB wheel. The documentation remains at <https://docs.pymedphys.com/en/latest/>. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
 
 ## [0.41.0]
 

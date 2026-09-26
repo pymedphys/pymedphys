@@ -63,7 +63,7 @@ These rules apply to every pull request.
 - **Changelog.** Consolidate related entries made on the same branch: update
   the existing entry to describe the final effect rather than the sequence of
   edits. File each entry under the section for its main effect; a change that
-  can break existing code or installations belongs under breaking changes.
+  can break existing code or installations belongs under breaking changes. Describe changes relative to the last stable release, since development releases are not recorded: fold a change to something added since that release into that thing's entry, remove the entry when the thing itself is removed, and compare with the stable release, never a development one. End each entry with links to the pull requests that make the change.
 - **Description.** State the scope, what is deferred, how the change was
   verified, and what reviewers should check first. Describe the state being
   merged, not the revisions made during review.
