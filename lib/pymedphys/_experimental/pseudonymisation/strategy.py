@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -367,28 +368,36 @@ def _pseudonymise_OB_or_OW(value):
 
 
 def _pseudonymise_PN(
-    value, max_component_length=64, strip_name_prefix=True, strip_name_suffix=True
+    value, max_component_length=20, strip_name_prefix=True, strip_name_suffix=True
 ):
-    """
-    create a pseudonym from a person's name.
-    Break in to surname, given name, and middle name, as well as title and honorifics
-    doesn't deal with Unicode (yet)
+    """Create a pseudonym from a person's name.
+
+    The family, given, and middle names of the alphabetic component group are
+    each replaced with a truncated hash. Names containing non-ASCII characters
+    are not supported.
 
     Parameters
     ----------
-    value : string representation of Persons Name
-        DESCRIPTION.
-    max_component_length : integer, optional
-        DESCRIPTION. The default is 64.
-    strip_name_prefix : Boolean, optional
-        DESCRIPTION. The default is True.
-    strip_name_suffix : Boolean, optional
-        DESCRIPTION. The default is True.
+    value : str
+        The Person Name (PN) value.
+    max_component_length : int or None, optional
+        Number of hash characters kept for each name component. The default
+        of 20 keeps the three components and four delimiters within the 64
+        characters that DICOM PS3.5 Table 6.2-1 allows per PN component group.
+        Each component is the start of the same hash, so pseudonyms made with
+        a longer length can be linked by truncating them. None keeps the whole
+        hash.
+    strip_name_prefix : bool, optional
+        Empty the name prefix. The default is True. If False, the original
+        prefix is kept.
+    strip_name_suffix : bool, optional
+        Empty the name suffix. The default is True. If False, the original
+        suffix is kept.
 
     Returns
     -------
-    string conforming to DICOM PN format
-        A pseudonym, but doesn't deal with Unicode (yet)
+    str
+        The pseudonymised PN value.
 
     """
     persons_name_three = pydicom.valuerep.PersonName(value)

@@ -228,6 +228,18 @@ This project adheres to
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
   `ftp`, was passed through unchecked.
+- Experimental pseudonymisation now writes Person Name values within
+  DICOM's limit of 64 characters per component group (PS3.5 Table 6.2-1).
+  Previously the family, given, and middle names were each replaced with a
+  hash of 40 to 43 characters, so every pseudonymised name, including an
+  empty one, was about 126 characters long and pydicom warned about it. Each
+  name component is now the first 20 characters of the same hash, so
+  pseudonymised names differ from those written by earlier versions; to link
+  earlier output to new output, truncate each of its family, given, and
+  middle name components to 20 characters. This applies to
+  `pymedphys.experimental.pseudonymisation`, the
+  `pymedphys experimental dicom pseudonymise` command, and the DICOM
+  Pseudonymisation app.
 
 ## [0.41.0]
 
