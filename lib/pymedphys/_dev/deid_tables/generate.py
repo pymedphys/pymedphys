@@ -97,7 +97,7 @@ def _download_verified(
     source: PinnedSource, edition: str, work_dir: pathlib.Path
 ) -> bytes:
     """Download ``source`` from the first location that matches its digest."""
-    attempts = []
+    attempts: list[str] = []
     for template in _SOURCE_URLS:
         url = template.format(edition=edition, path=source.path)
         destination = work_dir / f"{len(attempts)}.html"
