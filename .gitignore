@@ -84,6 +84,7 @@ target/
 
 # Local outputs from examples/gamma_performance.py
 /gamma-performance-*/
+/gamma-scaling-*/
 
 # IPython
 profile_default/

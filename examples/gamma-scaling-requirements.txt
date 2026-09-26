@@ -1,0 +1,10 @@
+# Fixed scientific dependencies for the canonical cloud comparison.
+# Both source revisions run in the same environment; neither is pip-installed.
+numpy==1.26.4
+scipy==1.17.1
+numba==0.67.0
+llvmlite==0.49.0
+matplotlib==3.11.2
+typing-extensions==4.16.0
+setuptools==84.0.0
+tomlkit==0.15.1
