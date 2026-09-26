@@ -73,7 +73,7 @@ PyMedPhys is often used to:
 Install PyMedPhys
 *****************
 
-PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
 
 For most users, we recommend using ``uv`` to create an environment and install
 PyMedPhys:

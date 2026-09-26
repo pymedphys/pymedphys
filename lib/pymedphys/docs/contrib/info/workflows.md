@@ -138,7 +138,7 @@ Static type checking for type safety.
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
+  - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.11, 3.12, 3.13, 3.14)
   - Quick mode for other PRs (Ubuntu + Python 3.12). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
@@ -543,7 +543,7 @@ uv run pymedphys dev docs
 
 ## Version Compatibility
 
-- **Python**: 3.10, 3.11, 3.12 (tested in CI; 3.10 reaches end of life in October 2026)
+- **Python**: 3.11, 3.12, 3.13, 3.14 (tested in CI; 3.11 reaches end of life in October 2027)
 - **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)

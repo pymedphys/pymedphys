@@ -23,7 +23,7 @@ If you do not have permission to push to this repository, fork it first and
 clone your fork instead. Create a working branch before committing.
 
 The development environment uses the dependencies recorded in `uv.lock`.
-The current source supports Python 3.10–3.12; Python 3.12 matches the quick CI
+The current source supports Python 3.11–3.14; Python 3.12 matches the quick CI
 run. See the [repository guide](https://docs.pymedphys.com/en/latest/contrib/info/file-structure.html)
 for the source layout.
 
