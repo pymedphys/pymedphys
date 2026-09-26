@@ -76,11 +76,16 @@ This project adheres to
   value being replaced when no replacement was defined for its value
   representation. The commands now print only the number of files written
   on standard output, and failures are logged by file number and exception
-  type. Two channels remain: exceptions are re-raised unchanged, so their
-  messages can contain a path or a value; and pydicom quotes invalid values
-  (for example a malformed time during pseudonymisation) in validation
-  messages that it issues as Python warnings and logs through the `pydicom`
-  logger, which propagates to the root logger.
+  type. A failed command prints a one-line error naming only the exception
+  type and exits with status 1, instead of a traceback whose messages could
+  contain a path or a value, and the app reports any failed file by its
+  number and exception type. pydicom quotes invalid values (for example a
+  malformed time during pseudonymisation) in validation messages that it
+  issues as Python warnings and logs through the `pydicom` logger; while the
+  commands and the app run, those messages are logged with the value replaced
+  by `<value not shown>` and the duplicate warnings are suppressed. The
+  library functions still raise exceptions unchanged and do not redact
+  pydicom's messages.
 - `pymedphys gui --port` now takes effect. Previously the port was ignored and
   the GUI always used Streamlit's default port. A port that is not an integer
   is now rejected.

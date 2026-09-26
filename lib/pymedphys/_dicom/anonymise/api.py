@@ -24,6 +24,7 @@ from os.path import dirname, isdir, isfile
 from pymedphys._imports import pydicom
 
 from pymedphys._dicom.anonymise import core
+from pymedphys._dicom.anonymise.diagnostics import report_errors_by_type
 from pymedphys._dicom.utilities import remove_file
 
 
@@ -409,6 +410,7 @@ def anonymise_directory(
     return anon_filepaths
 
 
+@report_errors_by_type
 def anonymise_cli(args):
     if args.delete_unknown_tags:
         handle_unknown_tags = True
