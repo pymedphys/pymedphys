@@ -68,8 +68,10 @@ This project adheres to
   downloaded archive changes, or when an extracted file is missing or has the
   wrong size, such as after an interrupted extraction. Previously files already
   on disk were kept, so a new release of an archive left stale contents in
-  place. Extraction into a directory the caller chooses still only adds missing
-  files.
+  place. Extraction metadata is stored beside the archive so it cannot
+  overwrite archive members; damaged metadata triggers a refresh, and empty
+  archives return an empty list. Extraction into a directory the caller
+  chooses still only adds missing files.
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation

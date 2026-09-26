@@ -350,15 +350,14 @@ def zenodo_data_paths(
 EXTRACTED_ARCHIVE_MARKER = ".pymedphys-extracted-archive-sha1"
 
 
-def _extraction_is_current(zip_file, extract_directory, archive_hash):
+def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
     """Whether the directory holds a complete extraction of this archive.
 
     The marker names the archive the files came from; each file must also still
     have its archived size, which catches truncated or partly written files.
     """
-    marker = extract_directory.joinpath(EXTRACTED_ARCHIVE_MARKER)
     try:
-        if marker.read_text(encoding="utf-8").strip() != archive_hash:
+        if marker.read_bytes().strip() != archive_hash.encode("ascii"):
             return False
     except OSError:
         return False
@@ -381,13 +380,18 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     archive_hash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
         zip_filepath
     )
-    if _extraction_is_current(zip_file, extract_directory, archive_hash):
+    # Keep metadata outside the extracted members, with one marker per
+    # extraction directory even when several archives share that directory.
+    marker = extract_directory.with_name(
+        f".{extract_directory.name}{EXTRACTED_ARCHIVE_MARKER}"
+    )
+    if _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
         return
 
     # Record the archive only once every member has been written, so an
     # interrupted extraction is repeated in full next time.
-    marker = extract_directory.joinpath(EXTRACTED_ARCHIVE_MARKER)
     marker.unlink(missing_ok=True)
+    extract_directory.mkdir(parents=True, exist_ok=True)
     zip_file.extractall(path=extract_directory)
     marker.write_text(archive_hash, encoding="utf-8")
 

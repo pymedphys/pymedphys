@@ -158,3 +158,125 @@ def test_caller_directories_keep_edited_files(cache, tmp_path):
 
     assert again.read_text(encoding="utf-8") == "edited by the user"
     assert sorted(path.name for path in working.iterdir()) == ["config.toml"]
+
+
+@pytest.mark.parametrize(
+    "member",
+    [
+        download.EXTRACTED_ARCHIVE_MARKER,
+        f"{download.EXTRACTED_ARCHIVE_MARKER}/data.txt",
+    ],
+)
+def test_archive_members_named_like_marker_are_preserved(cache, tmp_path, member):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {member: "archived contents"})
+    _record(hashes, "archive.zip", source)
+
+    for _ in range(2):
+        (extracted,) = download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+        assert extracted.read_text(encoding="utf-8") == "archived contents"
+
+
+def test_empty_archive_returns_no_files(cache, tmp_path):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "empty.zip", {})
+    _record(hashes, "archive.zip", source)
+
+    for _ in range(2):
+        assert (
+            download.zip_data_paths(
+                "archive.zip", url=source.as_uri(), hash_filepath=hashes
+            )
+            == []
+        )
+        assert (data_dir / "archive").is_dir()
+
+
+def test_invalid_marker_refreshes_the_extraction(cache, tmp_path):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "complete contents"})
+    _record(hashes, "archive.zip", source)
+    (extracted,) = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    (marker,) = data_dir.rglob(f"*{download.EXTRACTED_ARCHIVE_MARKER}")
+    marker.write_bytes(b"\xff")
+    # Equal sizes ensure that the invalid marker itself triggers the refresh.
+    extracted.write_text("tampered contents", encoding="utf-8")
+
+    (again,) = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+
+    assert again.read_text(encoding="utf-8") == "complete contents"
+    assert marker.read_text(encoding="utf-8") == _sha1(source)
+
+
+def test_complete_extraction_is_reused(cache, tmp_path, monkeypatch):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "complete contents"})
+    _record(hashes, "archive.zip", source)
+    first = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+
+    def unexpected_extraction(*_args, **_kwargs):
+        pytest.fail("A complete, unchanged archive should not be extracted again")
+
+    monkeypatch.setattr(zipfile.ZipFile, "extractall", unexpected_extraction)
+
+    assert (
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+        == first
+    )
+
+
+def test_interrupted_refresh_is_retried(cache, tmp_path, monkeypatch):
+    data_dir, hashes = cache
+    members = {"a.txt": "complete a", "b.txt": "complete b"}
+    source = _zip(tmp_path / "source.zip", members)
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+    (data_dir / "archive/b.txt").write_text("truncated", encoding="utf-8")
+
+    def interrupted_extraction(archive, path):
+        archive.extract("a.txt", path=path)
+        raise OSError("Interrupted extraction")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(zipfile.ZipFile, "extractall", interrupted_extraction)
+        with pytest.raises(OSError, match="Interrupted extraction"):
+            download.zip_data_paths(
+                "archive.zip", url=source.as_uri(), hash_filepath=hashes
+            )
+
+    assert list(data_dir.rglob(f"*{download.EXTRACTED_ARCHIVE_MARKER}")) == []
+
+    paths = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert {path.name: path.read_text(encoding="utf-8") for path in paths} == members
+
+
+def test_archives_sharing_an_extraction_directory_refresh_each_other(cache, tmp_path):
+    _, hashes = cache
+    sources = {
+        "archive.zip": _zip(tmp_path / "one.zip", {"data.txt": "one"}),
+        "archive.npz": _zip(tmp_path / "two.zip", {"data.txt": "two"}),
+    }
+    for name, source in sources.items():
+        _record(hashes, name, source)
+
+    for name, contents in [
+        ("archive.zip", "one"),
+        ("archive.npz", "two"),
+        ("archive.zip", "one"),
+    ]:
+        (extracted,) = download.zip_data_paths(
+            name, url=sources[name].as_uri(), hash_filepath=hashes
+        )
+        assert extracted.read_text(encoding="utf-8") == contents
