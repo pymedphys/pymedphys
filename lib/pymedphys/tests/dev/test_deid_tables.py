@@ -21,10 +21,13 @@ from the standard: every attribute in it is invented.
 """
 
 import hashlib
+import json
+import urllib.error
 
 from pymedphys._imports import pytest
 
-from pymedphys._dev.deid_tables import annex_e, chtml, sources
+from pymedphys._dev.deid_tables import annex_e, chtml, generate, sources
+from pymedphys.cli import define_parser
 
 E1_1_HEADER = (
     "Attribute Name",
@@ -399,3 +402,176 @@ def test_a_malformed_expected_digest_is_rejected(tmp_path):
 
     with pytest.raises(ValueError, match="64 hexadecimal"):
         sources.read_verified_source(source, "abc")
+
+
+# The generator, with a pin for the hand-written page instead of NEMA's.
+FIXTURE_PAGE = _page(E1_1A, E1_1).encode("utf-8")
+FIXTURE_PIN = generate.Pin(
+    edition="2099a",
+    sources=(
+        generate.PinnedSource(
+            "part15/chapter_E.html", hashlib.sha256(FIXTURE_PAGE).hexdigest()
+        ),
+    ),
+)
+
+
+@pytest.fixture(name="source_dir")
+def _source_dir(tmp_path):
+    directory = tmp_path / "sources"
+    (directory / "part15").mkdir(parents=True)
+    (directory / "part15" / "chapter_E.html").write_bytes(FIXTURE_PAGE)
+    return directory
+
+
+def test_the_pinned_edition_lists_valid_digests():
+    assert generate.PIN.edition
+    for source in generate.PIN.sources:
+        assert len(source.sha256) == 64
+        int(source.sha256, 16)
+
+
+def test_generate_writes_table_e1_1_with_its_provenance(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads((output_dir / "e1_1.json").read_text(encoding="utf-8"))
+    assert document["schema"] == generate.SCHEMA
+    assert document["table"] == "PS3.15 Table E.1-1"
+    assert document["edition"] == "2099a"
+    assert document["acknowledgement"] == "DICOM PS3.15 2099a, \u00a9 NEMA"
+    assert document["sources"] == [
+        {"path": "part15/chapter_E.html", "sha256": FIXTURE_PIN.sources[0].sha256}
+    ]
+    assert [row["tag"] for row in document["rows"]] == [row[1] for row in E1_1_ROWS]
+    assert document["rows"][0] == {
+        "name": "Fixture Date",
+        "tag": "(0009,1001)",
+        "retired": False,
+        "in_standard_iod": True,
+        "basic_profile": "X/D",
+        "options": {
+            "retain_longitudinal_full_dates": "K",
+            "retain_longitudinal_modified_dates": "C",
+        },
+    }
+    canonical = json.dumps(
+        document["rows"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    assert document["content_sha256"] == hashlib.sha256(canonical).hexdigest()
+
+
+def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
+    generate.generate(FIXTURE_PIN, tmp_path / "a", source_dir=source_dir)
+    generate.generate(FIXTURE_PIN, tmp_path / "b", source_dir=source_dir)
+
+    first = (tmp_path / "a" / "e1_1.json").read_bytes()
+    assert first == (tmp_path / "b" / "e1_1.json").read_bytes()
+    assert first.endswith(b"\n")
+
+
+def test_check_passes_only_when_the_tables_are_current(source_dir, tmp_path, capsys):
+    output_dir = tmp_path / "tables"
+
+    assert (
+        generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir, check=True)
+        == 1
+    )
+    assert "e1_1.json is missing" in capsys.readouterr().err
+    assert not output_dir.exists()
+
+    generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir)
+    assert (
+        generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir, check=True)
+        == 0
+    )
+
+    table = output_dir / "e1_1.json"
+    table.write_text(
+        table.read_text(encoding="utf-8").replace("X/D", "X"), encoding="utf-8"
+    )
+    before = table.read_bytes()
+    assert (
+        generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir, check=True)
+        == 1
+    )
+    assert "e1_1.json differs" in capsys.readouterr().err
+    assert table.read_bytes() == before
+
+
+def test_a_source_with_another_digest_is_not_parsed(source_dir, tmp_path):
+    (source_dir / "part15" / "chapter_E.html").write_bytes(FIXTURE_PAGE + b" ")
+
+    with pytest.raises(sources.SourceDigestError, match="chapter_E.html"):
+        generate.generate(FIXTURE_PIN, tmp_path / "tables", source_dir=source_dir)
+    assert not (tmp_path / "tables").exists()
+
+
+def _fake_downloads(monkeypatch, responses):
+    """Serve ``responses[url]`` bytes, or a 404 for any other URL."""
+    requested = []
+
+    def download(url, filepath):
+        requested.append(url)
+        if url not in responses:
+            raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+        with open(filepath, "wb") as file:
+            file.write(responses[url])
+
+    monkeypatch.setattr(generate, "download_with_progress", download)
+    return requested
+
+
+EDITION_URL = (
+    "https://dicom.nema.org/medical/dicom/2099a/output/chtml/part15/chapter_E.html"
+)
+CURRENT_URL = (
+    "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html"
+)
+
+
+def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp_path):
+    requested = _fake_downloads(monkeypatch, {CURRENT_URL: FIXTURE_PAGE})
+
+    assert generate.generate(FIXTURE_PIN, tmp_path / "tables") == 0
+    assert requested == [EDITION_URL, CURRENT_URL]
+    assert (tmp_path / "tables" / "e1_1.json").exists()
+
+
+def test_download_rejects_a_newer_current_edition(monkeypatch, tmp_path):
+    _fake_downloads(monkeypatch, {CURRENT_URL: FIXTURE_PAGE + b"<!-- newer -->"})
+
+    with pytest.raises(
+        sources.SourceDigestError, match="no download of part15/chapter_E.html"
+    ):
+        generate.generate(FIXTURE_PIN, tmp_path / "tables")
+    assert not (tmp_path / "tables").exists()
+
+
+def test_the_command_generates_and_checks(monkeypatch, source_dir, tmp_path):
+    monkeypatch.setattr(generate, "PIN", FIXTURE_PIN)
+    output_dir = tmp_path / "tables"
+
+    def run(*options):
+        args = define_parser().parse_args(
+            [
+                "dev",
+                "deid-tables",
+                "--source-dir",
+                str(source_dir),
+                "--output-dir",
+                str(output_dir),
+                *options,
+            ]
+        )
+        args.func(args)
+
+    run()
+    assert (output_dir / "e1_1.json").exists()
+    run("--check")
+
+    (output_dir / "e1_1.json").unlink()
+    with pytest.raises(SystemExit) as exit_info:
+        run("--check")
+    assert exit_info.value.code == 1
