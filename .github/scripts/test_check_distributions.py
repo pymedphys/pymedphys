@@ -22,6 +22,7 @@ import io
 import json
 import os
 import shutil
+import sys
 import tarfile
 import tempfile
 import textwrap
@@ -35,6 +36,7 @@ from unittest import mock
 from check_distributions import (
     PackageIndex,
     _published_url,
+    _run,
     check_build,
     check_contents,
     check_install_report,
@@ -158,6 +160,7 @@ def _write_sdist(
     buildable=False,
     requires=(),
     build_requires=(),
+    build_backend=BUILD_BACKEND,
 ):
     root = f"pymedphys-{version}"
     files = {
@@ -178,7 +181,7 @@ def _write_sdist(
         files["pyproject.toml"] = BUILDABLE_PYPROJECT.replace(
             "requires = []", f"requires = {json.dumps(list(build_requires))}"
         )
-        files["backend.py"] = BUILD_BACKEND
+        files["backend.py"] = build_backend
 
     path = Path(directory, f"{root}.tar.gz")
     with tarfile.open(path, "w:gz") as archive:
@@ -590,6 +593,40 @@ class SmokeTestTests(unittest.TestCase):
         )
 
 
+class SubprocessEnvironmentTests(unittest.TestCase):
+    def test_explicit_network_settings_reach_the_child_process(self):
+        settings = {
+            "PIP_CERT": "/explicit/ca.pem",
+            "PIP_CLIENT_CERT": "/explicit/client.pem",
+            "PIP_PROXY": "http://proxy.example.invalid:8080",
+            "PIP_TIMEOUT": "120",
+            "PIP_DEFAULT_TIMEOUT": "120",
+            "PIP_RETRIES": "8",
+            "PIP_RESUME_RETRIES": "8",
+            "HTTPS_PROXY": "http://proxy.example.invalid:8080",
+            "SSL_CERT_FILE": "/explicit/ca.pem",
+            "REQUESTS_CA_BUNDLE": "/explicit/ca.pem",
+        }
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.dict(os.environ, settings),
+        ):
+            result = _run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-c",
+                    "import json, os; print(json.dumps(dict(os.environ)))",
+                ],
+                cwd=Path(directory),
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        child_environment = json.loads(result.stdout)
+        for name, value in settings.items():
+            self.assertEqual(child_environment[name], value)
+
+
 FILES_URL = "https://files.pythonhosted.org/"
 PYPI = PackageIndex(
     project_url="https://pypi.org/simple/pymedphys/", files_url=FILES_URL
@@ -832,42 +869,81 @@ class PublishedTests(unittest.TestCase):
         self.assertEqual(failures, [])
         self.assertEqual(len(sleeps), 1)
 
-    def test_runtime_and_build_dependencies_use_the_dependency_index(self):
+    def test_inherited_pip_targets_cannot_write_outside_the_environment(self):
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        target = self.root / "outside-the-environment"
+        config = self.root / "pip.ini"
+        config.write_text(f"[install]\ntarget = {target}\n", encoding="utf-8")
+
+        for settings in (
+            {"PIP_TARGET": str(target)},
+            {"PIP_CONFIG_FILE": str(config)},
+        ):
+            with self.subTest(settings=settings):
+                with mock.patch.dict(os.environ, settings):
+                    failures = check_published(VERSION, index, report_dir=self.reports)
+
+                self.assertEqual(failures, [])
+                self.assertFalse(target.exists())
+
+    def test_runtime_and_build_dependencies_ignore_inherited_pip_sources(self):
+        # Fail the source build if pip picks the competing build dependency.
+        backend = (
+            "import release_dependency\n"
+            "assert release_dependency.__version__ == '1.0.0'\n" + BUILD_BACKEND
+        )
         _write_sdist(
             self.built,
             buildable=True,
             requires=("release-dependency",),
             build_requires=("release-dependency<2",),
+            build_backend=backend,
         )
         _write_wheel(self.built, requires=("release-dependency",))
         index = self._publish(WHEEL_NAME, SDIST_NAME)
         other = self._other_index()
         for root, files, version in (
-            (self.root, self.served, "2.0.0"),
+            (self.root, self.served, "1.9.0"),
             (self.root / "other-index", self.root / "other-index/files", "1.0.0"),
         ):
             wheel = _write_wheel(
                 files,
                 version=version,
                 project_name="release_dependency",
-                package_files={"__init__.py": ""},
+                package_files={"__init__.py": f"__version__ = {version!r}\n"},
             )
             _write_simple_index(root, files, (wheel.name,), "release-dependency")
         index = dataclasses.replace(
             index, dependency_index_url=other.dependency_index_url
         )
 
-        failures = check_published(VERSION, index, report_dir=self.reports)
+        extra_index = (self.root / "simple").as_uri() + "/"
+        find_links = self.served.as_uri()
+        config = self.root / "pip.ini"
+        config.write_text(
+            f"[global]\nextra-index-url = {extra_index}\nfind-links = {find_links}\n",
+            encoding="utf-8",
+        )
+        for settings in (
+            {"PIP_EXTRA_INDEX_URL": extra_index, "PIP_FIND_LINKS": find_links},
+            {"PIP_CONFIG_FILE": str(config)},
+        ):
+            with self.subTest(settings=settings):
+                with mock.patch.dict(os.environ, settings):
+                    failures = check_published(VERSION, index, report_dir=self.reports)
 
-        self.assertEqual(failures, [])
-        for kind in ("wheel", "sdist"):
-            report = json.loads((self.reports / f"{kind}-install.json").read_text())
-            dependency = next(
-                entry
-                for entry in report["install"]
-                if entry["metadata"]["name"].replace("_", "-") == "release-dependency"
-            )
-            self.assertEqual(dependency["metadata"]["version"], "1.0.0")
+                self.assertEqual(failures, [])
+                for kind in ("wheel", "sdist"):
+                    report = json.loads(
+                        (self.reports / f"{kind}-install.json").read_text()
+                    )
+                    dependency = next(
+                        entry
+                        for entry in report["install"]
+                        if entry["metadata"]["name"].replace("_", "-")
+                        == "release-dependency"
+                    )
+                    self.assertEqual(dependency["metadata"]["version"], "1.0.0")
 
     def test_a_transient_index_error_is_retried_within_the_wait(self):
         index = self._publish(WHEEL_NAME, SDIST_NAME)

@@ -119,6 +119,19 @@ PACKAGE_INDEXES = {
 }
 FORMATS = ("wheel", "sdist")
 RETRY_INTERVAL = 30
+# Keep explicit transport settings for institutional proxies and slow links.
+# Other pip settings could change package sources or installation locations.
+PIP_NETWORK_SETTINGS = frozenset(
+    {
+        "PIP_CERT",
+        "PIP_CLIENT_CERT",
+        "PIP_PROXY",
+        "PIP_TIMEOUT",
+        "PIP_DEFAULT_TIMEOUT",
+        "PIP_RETRIES",
+        "PIP_RESUME_RETRIES",
+    }
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -315,12 +328,16 @@ def check_contents(
 def _run(
     command: Sequence[str | os.PathLike[str]], *, cwd: Path
 ) -> subprocess.CompletedProcess:
-    # A venv still honours these overrides, including in its console scripts.
+    # A venv and python -I do not isolate pip's configuration. Control it for
+    # every child, including the pip subprocesses that install build tools.
     environment = {
         key: value
         for key, value in os.environ.items()
         if key.upper() not in {"PYTHONPATH", "PYTHONHOME"}
+        and (not key.upper().startswith("PIP_") or key.upper() in PIP_NETWORK_SETTINGS)
     }
+    # This disables global, user, and per-environment pip configuration files.
+    environment["PIP_CONFIG_FILE"] = os.devnull
     return subprocess.run(
         [os.fspath(item) for item in command],
         cwd=cwd,

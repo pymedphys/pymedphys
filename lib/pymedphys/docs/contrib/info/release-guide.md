@@ -107,7 +107,7 @@ Once `main` carries the version to release (for a stable release, once its relea
 
 ### Check the publishing settings
 
-Publishing uses PyPI trusted publishing, with no stored API token. It depends on settings in GitHub and on each package index, not in `release.yml`; naming an environment or publisher in the workflow does not create it. Check them before the first release from a new setup, and after any change:
+Publishing uses PyPI trusted publishing, with no stored API token. Its protection rules and trusted publishers must be configured separately in GitHub and on each package index. A workflow that references a missing GitHub environment creates it without protection rules; it does not create a PyPI trusted publisher. Check these settings before the first release from a new setup, and after any change:
 
 1. The GitHub environment `pypi` exists, and `testpypi` too if you rehearse. Under **Deployment branches and tags**, choose **Selected branches and tags**, then add a branch rule for `main` (manual runs) and a tag rule for `v*` (releases). `pypi` has required reviewers; approving a deployment is separate from reviewing a pull request. If **Prevent self-review** is enabled, someone other than the releaser must approve.
 2. PyPI, and TestPyPI if you rehearse, each have a trusted publisher with owner `pymedphys`, repository `pymedphys`, workflow `release.yml` (the filename only), and environment `pypi` or `testpypi` respectively. See the [PyPI trusted-publisher guide](https://docs.pypi.org/trusted-publishers/adding-a-publisher/).
@@ -177,7 +177,7 @@ gh release download vVERSION --pattern "pymedphys-*" --dir release-assets
 uv run --no-project --python 3.12 python .github/scripts/check_distributions.py --published VERSION --compare-with release-assets
 ```
 
-Archive discovery uses Python's HTTPS support, including `HTTPS_PROXY` and `SSL_CERT_FILE`, with a 30-second network time-out. pip's proxy and certificate settings apply to installation; its dependency index defaults to PyPI. On a slow connection, raise pip's network time-out by setting `PIP_TIMEOUT=120` in the environment first.
+Archive discovery uses Python's HTTPS support, including `HTTPS_PROXY` and `SSL_CERT_FILE`, with a 30-second network time-out. Installation ignores pip configuration files and inherited `PIP_*` settings except the explicit network settings `PIP_PROXY`, `PIP_CERT`, `PIP_CLIENT_CERT`, `PIP_TIMEOUT`, `PIP_DEFAULT_TIMEOUT`, `PIP_RETRIES`, and `PIP_RESUME_RETRIES`. Standard proxy and certificate environment variables such as `HTTPS_PROXY` and `REQUESTS_CA_BUNDLE` remain available. If your proxy or certificate is configured only in `pip.ini` or `pip.conf`, set the corresponding environment variable before running the check. On a slow connection, set `PIP_TIMEOUT=120` first. This keeps dependency downloads on PyPI and installations inside the temporary environments.
 
 These are smoke tests. To run the test suite against the published package, create an environment in an empty directory outside the checkout and use its interpreter. In Bash:
 

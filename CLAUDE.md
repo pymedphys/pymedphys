@@ -197,7 +197,11 @@ The project uses uv with optional dependency groups:
   copies it into the metadata unchanged but canonicalises the filenames.
 - Distribution smoke tests must ignore the caller's Python path overrides,
   run outside the checkout, and verify that package imports come from the
-  test environment. A fresh venv alone does not isolate `PYTHONPATH`.
+  test environment. A fresh venv alone does not isolate `PYTHONPATH`, and
+  `python -I` does not isolate pip configuration. Disable pip configuration
+  files and inherited behavioural `PIP_*` settings for installs and their
+  build subprocesses; preserve only explicit network settings such as proxy,
+  certificate, time-out, and retry settings.
 - Include every root-level input to documentation preparation in the sdist:
   `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
 - Keep `release-guide.md` and `workflows.md` aligned with `release.yml`,
