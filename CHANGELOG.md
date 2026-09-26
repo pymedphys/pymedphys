@@ -108,6 +108,13 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** Removed unmaintained experimental code that
+  nothing imports: the `plancomplexity` and `serviceplans` modules (with the
+  service plan templates), and from `paulking` a second copy of the Profiler
+  reader, an unused narrow-PNG reader duplicating `Profile.from_narrow_png`, a
+  sinogram-to-PDF script with its sample CSV, and an editor scratch file. The
+  clean-imports check no longer ignores the long-removed `pedromartinez`
+  module.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state
