@@ -64,6 +64,16 @@ This project adheres to
 
 ### Bug fixes
 
+- `pymedphys.zip_data_paths` now refreshes archives extracted into the data
+  cache when the downloaded archive changes, extraction metadata is missing or
+  invalid, an archived member is missing, or an extracted file has the wrong
+  size. Previously existing files could keep stale or incomplete contents.
+  Extraction metadata is kept outside the extracted members, with bounded
+  filenames to avoid failures for long archive names. Empty archives return an
+  empty list, and repeated member names no longer force repeated extraction.
+  Edits that leave a file the same size are not detected. A caller-specified
+  `extract_directory` still only gains missing files, preserving existing edits.
+  [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
   read, including itself, now raises `ValueError` instead of hanging every
   command and GUI app that reads the configuration.
@@ -74,7 +84,6 @@ This project adheres to
   retried with a new one, up to three times; previously the retry always
   failed with a `TypeError`, and a retried file upload would have sent an
   empty file.
-
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
@@ -247,6 +256,18 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- `pymedphys.data_path`, `pymedphys.zip_data_paths` and
+  `pymedphys.zenodo_data_paths` now raise `NoHashFound` before downloading a
+  file without a recorded hash when `check_hash=True` (the default). Downloads
+  no longer add hashes to the installed package's `hashes.json`. For custom
+  data, pass a maintained hash manifest through `hash_filepath` to
+  `data_path` or `zip_data_paths`, or explicitly pass `check_hash=False` to
+  accept unverified data. Four download aliases without recorded hashes have
+  been removed: `RD.TBB_water_feet_first.dcm`, `RD.TBC_water_feet_first.dcm`,
+  `dicomorient_doses_only.zip` and `plan-tel-monaco-upgrade.zip`. Calls using
+  these aliases must supply `url=` as well as a hash manifest or the explicit
+  opt-out.
+  [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - The `user` extra no longer installs `anthropic` or `httpx2`, and no longer
   lists `trio` as a direct dependency. These three packages are now in the new
   `ai` extra (`pip install "pymedphys[user,ai]"`), which only the experimental
