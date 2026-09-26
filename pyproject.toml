@@ -42,13 +42,11 @@ pymedphys = "pymedphys.__main__:main"
 user = [
   "Pillow",
   "PyYAML",
-  "anthropic",
   "anyio",
   "attrs",
   "dash",
   "dbfread",
   "dicompyler-core",
-  "httpx2",
   "imageio[tifffile]",
   "keyring",
   "matplotlib",
@@ -73,12 +71,18 @@ user = [
   "timeago",
   "toml",
   "tqdm",
-  "trio",
   "trio-asyncio",
   "watchdog",
   "xmltodict",
 ]
 
+# The Mosaiq chat app and its SQL agent. They send queries and results to
+# Anthropic's API, so users opt in to them separately from ``user``.
+ai = [
+  "anthropic",
+  "httpx2",
+  "trio",
+]
 dev = [
   "doc8",
   "mypy",
@@ -252,7 +256,7 @@ docs  = ["docs"]
 user  = ["user"]
 
 # Optional aggregations if you want “full” exports in CI, etc.
-full  = ["user", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
+full  = ["user", "ai", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
 
 [dependency-groups]
 dev = [

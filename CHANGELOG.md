@@ -120,6 +120,14 @@ This project adheres to
   points to it. The guides keep maintainers' personal preferences out of the
   repository, and drop outdated sections on branch names, Git timestamps,
   permission requests, and conda recipes.
+- **[Contributor facing only]** A development-only parser in
+  `pymedphys._dev.deid_tables` reads Table E.1-1 of DICOM PS3.15 from NEMA's
+  HTML publication, the first step towards generating the de-identification
+  rule tables. It reads a source file only after checking its SHA-256 digest,
+  maps columns by their header text, and rejects unknown or missing columns,
+  merged cells, empty or otherwise inconsistent rows, a table with no rows,
+  unrecognised tags, actions not defined in Table E.1-1a, and repeated tags.
+  No tables are generated or shipped yet.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state
@@ -223,6 +231,15 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- The `user` extra no longer installs `anthropic` or `httpx2`, and no longer
+  lists `trio` as a direct dependency. These three packages are now in the new
+  `ai` extra (`pip install "pymedphys[user,ai]"`), which only the experimental
+  Mosaiq chat app in the GUI needs. The app sends questions and query results
+  to Anthropic's API, so it is now opt-in. Without the extra the rest of the
+  GUI still loads, and the chat app says how to install it; before, a missing
+  AI package stopped the whole GUI from loading. The `user` extra still
+  installs `trio` through `trio-asyncio`, and the `all` extra still includes
+  all three packages.
 - The `pymedphys claude respond-to-issue-comment` command and the private
   `pymedphys._claude` package behind it have been removed. They posted Claude
   replies to GitHub issues, but no workflow has run them since the `@claude`

@@ -49,6 +49,7 @@ They help on shells that would otherwise interpret square brackets.
 | `dicom`  | `uv pip install "pymedphys[dicom]"`  | DICOM read/write/network workflows                                   | good fit for DICOM-focused scripting or CLI work                              |
 | `icom`   | `uv pip install "pymedphys[icom]"`   | iCom-related workflows                                               | often combined with `user` or `cli`                                           |
 | `mosaiq` | `uv pip install "pymedphys[mosaiq]"` | Mosaiq data access and reporting                                     | site-specific connectivity and credentials are still required                 |
+| `ai`     | `uv pip install "pymedphys[ai]"`     | the experimental Mosaiq chat app in the GUI                          | sends questions and query results to Anthropic's API; combine with `user`     |
 | `all`    | `uv pip install "pymedphys[all]"`    | contributors and power users                                         | large install that also pulls in development, test, and documentation tooling |
 
 ## Recommended combinations
