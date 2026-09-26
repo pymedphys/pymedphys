@@ -18,19 +18,24 @@
 replaced, but until they are removed they must not write source DICOM values
 or original file paths to logs or the standard streams (decision D-020 in
 ``docs/contrib/info/deidentification-design.md``). Each test plants canary
-strings in DICOM values and in file and directory names, captures every log
-record at DEBUG level together with stdout and stderr, and checks that no
-canary appears.
+strings in DICOM values and in file and directory names, captures stdout,
+stderr, and the log records that reach the root logger with its level set to
+DEBUG, and checks that no canary appears. A logger with its own level
+contributes only records at or above it: pydicom's logger stays at WARNING.
+One strict expected failure documents a channel that remains: pydicom quotes
+invalid values in its validation messages.
 """
 
 import io
 import logging
 import pathlib
+import warnings
 
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.anonymise import api as anonymise_api
 from pymedphys._dicom.anonymise import core as anonymise_core
+from pymedphys._experimental import pseudonymisation
 from pymedphys._experimental.pseudonymisation import strategy as pseudo_strategy
 from pymedphys.cli import define_parser
 
@@ -42,6 +47,7 @@ CANARY_ID = "ZZCANARYID0451"
 # Instance UID, so printing an output path would disclose this value.
 CANARY_UID = "1.2.826.0.1.3680043.10.1234.987654321987"
 CANARY_DIR = "ZZCANARYDIR"
+CANARY_OUTPUT_DIR = "ZZCANARYOUTPUT"
 CANARIES = ("ZZCANARY", CANARY_UID)
 
 
@@ -101,7 +107,7 @@ def test_anonymise_file_does_not_print_paths(tmp_path, capsys, caplog):
 
     anon_path = anonymise_api.anonymise_file(
         input_path,
-        output_filepath=str(tmp_path / "output" / "plan.dcm"),
+        output_filepath=str(tmp_path / CANARY_OUTPUT_DIR / "plan.dcm"),
         delete_unknown_tags=True,
     )
 
@@ -142,10 +148,10 @@ def test_anonymise_directory_failure_logs_no_paths_or_error_text(
         )
 
     _assert_no_canaries(capsys, caplog)
-    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
-    assert len(warnings) == 1
-    assert "file 1 of 2" in warnings[0].getMessage()
-    assert "ValueError" in warnings[0].getMessage()
+    warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warning_records) == 1
+    assert "file 1 of 2" in warning_records[0].getMessage()
+    assert "ValueError" in warning_records[0].getMessage()
 
 
 @pytest.mark.pydicom
@@ -208,3 +214,41 @@ def test_streamlit_pseudonymise_failure_does_not_print_file_name(
     assert bad_data
     _assert_no_canaries(capsys, caplog)
     assert "ValueError" in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "pydicom quotes an invalid value in its validation message, which it "
+        "issues as a Python warning and logs through the 'pydicom' logger. "
+        "This remaining channel is tracked in the de-identification design "
+        "document."
+    ),
+)
+def test_pseudonymise_invalid_value_is_not_quoted(tmp_path, capsys, caplog):
+    caplog.set_level(logging.DEBUG)
+    ds = _canary_dataset()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ds.StudyTime = "ZZCANARYTIME"
+        input_path = tmp_path / "input.dcm"
+        pydicom.dcmwrite(input_path, ds, enforce_file_format=True)
+    capsys.readouterr()
+    caplog.clear()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        anonymise_api.anonymise_file(
+            input_path,
+            output_filepath=str(tmp_path / "output.dcm"),
+            delete_unknown_tags=True,
+            replacement_strategy=pseudo_strategy.pseudonymisation_dispatch,
+            identifying_keywords=(
+                pseudonymisation.get_default_pseudonymisation_keywords()
+            ),
+        )
+
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    _assert_no_canaries(capsys, caplog)

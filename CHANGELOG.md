@@ -47,10 +47,13 @@ This project adheres to
   the paths of all successful files, the pseudonymisation Streamlit app printed
   the failing file's name and error, and `pymedphys.dicom.anonymise` logged the
   value being replaced when no replacement was defined for its value
-  representation. The commands now print only the number of files written,
-  and failures are logged by file number and exception type. Two channels
-  remain: exceptions are re-raised unchanged, so their messages can contain a
-  path, and pydicom's own warnings about invalid values quote the value.
+  representation. The commands now print only the number of files written
+  on standard output, and failures are logged by file number and exception
+  type. Two channels remain: exceptions are re-raised unchanged, so their
+  messages can contain a path or a value; and pydicom quotes invalid values
+  (for example a malformed time during pseudonymisation) in validation
+  messages that it issues as Python warnings and logs through the `pydicom`
+  logger, which propagates to the root logger.
 
 ### Dependency changes
 
