@@ -396,3 +396,51 @@ def test_oblique_grid_cannot_be_represented_by_patient_axes():
     ds.ImageOrientationPatient = [0.8, 0.6, 0, -0.6, 0.8, 0]
     with pytest.raises(ValueError, match="orientation is not supported"):
         coords.xyz_axes_from_dataset(ds)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("orientation", sorted(ORIENTATIONS))
+def test_seeded_voxel_mapping_and_equality_against_matrix(orientation):
+    """Exercise varied grids without sharing the compact geometry algorithm."""
+    rng = np.random.default_rng(2066)
+    for trial in range(100):
+        shape = tuple(int(size) for size in rng.integers(2, 9, size=3))
+        position = np.round(rng.uniform(-1500, 1500, size=3), 5)
+        spacing = np.round(rng.uniform(0.2, 5, size=2), 5)
+        offsets = np.r_[
+            0, np.cumsum(np.round(rng.uniform(0.2, 5, size=shape[0] - 1), 5))
+        ]
+        if trial % 2:
+            offsets = -offsets
+        ds = rtdose(
+            orientation,
+            shape=shape,
+            position=position,
+            pixel_spacing=spacing,
+            slice_offsets=offsets,
+        )
+        positions = voxel_positions(ds)
+        axes, values = dose.zyx_and_dose_from_dataset(ds)
+        indices = []
+        for axis, dimension in zip(axes, (2, 1, 0)):
+            np.testing.assert_allclose(
+                axis, np.unique(positions[..., dimension]), rtol=0, atol=1e-10
+            )
+            indices.append(np.searchsorted(axis, positions[..., dimension]))
+        np.testing.assert_array_equal(
+            values[tuple(indices)], ds.pixel_array * DOSE_GRID_SCALING
+        )
+
+        changed = rtdose(
+            orientation,
+            shape=shape,
+            position=np.round(position + rng.uniform(-0.008, 0.008, 3), 8),
+            pixel_spacing=np.round(spacing + rng.uniform(-0.002, 0.002, 2), 8),
+            slice_offsets=offsets,
+        )
+        maximum_distance = np.max(
+            np.linalg.norm(voxel_positions(changed) - positions, axis=-1)
+        )
+        assert coords.coords_in_datasets_are_equal([ds, changed]) == bool(
+            maximum_distance <= 0.01
+        )

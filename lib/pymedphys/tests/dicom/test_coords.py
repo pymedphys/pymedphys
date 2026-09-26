@@ -80,9 +80,9 @@ def test_extract_iec_fixed_xyz():
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", ORIENTATIONS_SUPPORTED)
 def test_extract_dicom_patient_xyz(orientation):
-    # The stored expected_dicom_xyz.json was a snapshot of an implementation
-    # that negated every axis stored in descending order, so the real files
-    # are checked against the voxel positions defined by the standard.
+    # Check the historical files against independently calculated patient
+    # positions. The old expected_dicom_xyz.json does not match the DICOM
+    # definition for every orientation; retain the IEC FIXED baseline above.
     ds = pydicom.dcmread(get_data_file(orientation))
     positions = voxel_positions(ds)
     is_decubitus = float(ds.ImageOrientationPatient[0]) == 0
