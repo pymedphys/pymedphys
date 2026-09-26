@@ -115,7 +115,7 @@ These are the active design decisions, not statements that the code implements t
 
 - **Decision.** Require pydicom 3.0 or later, with no compatibility layer for pydicom 2.
 - **Rationale.** The package declared `pydicom>=2.0.0`, but continuous integration tests only the locked 3.0.2. The engine uses `dcmwrite(..., enforce_file_format=True)`, added in pydicom 3.0. That call updates the Media Storage SOP Class and Instance UIDs but keeps other File Meta elements and any existing preamble, so the engine builds both itself.
-- **Tests.** The installed distribution's metadata declares the minimum.
+- **Tests.** None of its own: CI runs the suite against the locked pydicom 3.
 
 ### D-003: UID replacement
 
