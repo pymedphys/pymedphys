@@ -14,7 +14,14 @@ This project adheres to
 
 ### New features and enhancements
 
-- New documentation page, [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html), explaining de-identification, pseudonymisation, and anonymisation, what software can and cannot claim, and the known limitations of the current tools. In particular, `pymedphys.dicom.anonymise` leaves identifying UIDs unchanged by default; experimental pseudonymisation replaces UIDs and some numeric values with hashes computed without a secret key; and neither tool rewrites the file preamble or the Media Storage SOP Instance UID in the File Meta Information. A standards-based replacement is planned but not yet available; this documentation change introduces no deprecation warnings or replacement presets.
+- New documentation page,
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html),
+  explaining de-identification, pseudonymisation, and anonymisation, what a
+  DICOM conformance claim does and does not establish, and the known
+  limitations of `pymedphys.dicom.anonymise` and experimental
+  pseudonymisation. Neither tool implements a DICOM confidentiality profile:
+  for example, `anonymise` leaves UIDs unchanged, and experimental
+  pseudonymisation hashes UIDs without a secret key.
 - Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
   while retaining the dose from valid beams. A missing dose file still
   aborts RTDOSE generation rather than exporting an incomplete sum.
@@ -51,23 +58,11 @@ This project adheres to
 
 ### Contributor facing changes
 
-- **[Contributor facing only]** Added a living design document and decision log
-  for the DICOM de-identification engine that will replace
-  `pymedphys.dicom.anonymise` and experimental pseudonymisation
-  (`lib/pymedphys/docs/contrib/info/deidentification-design.md`). The design
-  specifies policy-aware UID handling, validated overrides and conformance
-  claims, stable per-subject synthetic birth dates, descriptor-cleaning limits,
-  confidential QC packs separate from release reports, and risk thresholds
-  tied to validated assessment models. The roadmap supports an open-ended
-  series of small PRs, separates actual progress from future work and active
-  decisions from superseded history, and clarifies deprecation timing, planned
-  versus available capabilities, and release gates. Contributor and user
-  guidance follow the same plan, with documentation, tests, traceability, and
-  conformance evidence accompanying each implementation change. No legacy
-  interface is deprecated before its replacement is released. An independent
-  review added decisions on temporal attributes by role, required
-  de-identification markers, and key custody, and `CONTRIBUTING.md` is now the
-  single source for pull request rules, which `CLAUDE.md` refers to.
+- **[Contributor facing only]** Added the design document for the DICOM
+  de-identification engine that will replace `pymedphys.dicom.anonymise` and
+  experimental pseudonymisation
+  (`lib/pymedphys/docs/contrib/info/deidentification-design.md`), covering its
+  scope, conformance claims, architecture, presets, decisions, and roadmap.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
@@ -131,8 +126,8 @@ This project adheres to
 - PyMedPhys now requires pydicom 3.0 or later: every extra declares
   `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
   no lower bound. Continuous integration only tests pydicom 3, and the planned
-  de-identification engine uses pydicom 3 APIs such as
-  `dcmwrite(..., enforce_file_format=True)` and `Dataset.decode`.
+  de-identification engine uses `dcmwrite(..., enforce_file_format=True)`,
+  which pydicom 3.0 added.
   Environments pinned to pydicom 2 must upgrade it to install this release.
 - Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports now raise
   `MissingCTImageError` when the plan has no primary CT image. RTPLAN and

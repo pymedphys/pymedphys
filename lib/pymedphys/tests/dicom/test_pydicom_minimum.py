@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""PyMedPhys requires pydicom 3.0 or later (decision D-004).
+"""PyMedPhys requires pydicom 3.0 or later (decision D-002).
 
 The checks read the installed distribution's metadata rather than
 ``pyproject.toml``, so they also hold for an installed wheel. An editable
