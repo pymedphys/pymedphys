@@ -30,7 +30,8 @@ def main():
     try:
         from .app import main as app_main  # pylint: disable = import-outside-toplevel
     except ModuleNotFoundError as error:
-        if (error.name or "").split(".")[0] not in _AI_MODULES:
+        missing_package = str(error.name or "").split(".", maxsplit=1)[0]
+        if missing_package not in _AI_MODULES:
             raise
         st.error(
             "This app needs the optional AI dependencies. Install them with "
