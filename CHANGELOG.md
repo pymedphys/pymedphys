@@ -78,8 +78,8 @@ This project adheres to
   de-identification engine that will replace `pymedphys.dicom.anonymise` and
   experimental pseudonymisation
   (`lib/pymedphys/docs/contrib/info/deidentification-design.md`), covering its
-  scope, conformance claims, architecture, target presets, decisions, roadmap,
-  and open questions.
+  scope, conformance claims, architecture, target presets, decisions, and
+  roadmap.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
