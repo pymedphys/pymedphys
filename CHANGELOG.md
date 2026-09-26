@@ -53,12 +53,6 @@ This project adheres to
 
 ### Bug fixes
 
-- `pymedphys.experimental.pseudonymisation.pseudonymise` now leaves Patient's
-  Sex unchanged, as its documentation states. Previously it replaced the value
-  with a hash, which is not a permitted Patient's Sex value (M, F, or O).
-  Patient's Sex is now retained, so treat it as a quasi-identifier when
-  assessing output. `pymedphys experimental dicom pseudonymise` still replaces
-  it unless `--keywords_to_leave_unchanged PatientSex` is given.
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
@@ -66,6 +60,11 @@ This project adheres to
   The deprecated `pymedphys experimental pinnacle export` command calls the
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
+- The experimental `pymedphys.experimental.pseudonymisation.pseudonymise`
+  now leaves `PatientSex` unchanged, as documented. Previously it replaced the
+  value with a hash, which is not a valid value for this attribute, so outputs
+  from earlier versions differ in `PatientSex`.
+  [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
 
 ### Dependency changes
 
@@ -145,6 +144,10 @@ This project adheres to
   the same checks locally and report them. The workflow's manual trigger and
   TestPyPI route have been removed: publishing a GitHub release is the only
   way to publish.
+- **[Contributor facing only]** The `pymedphys dev build` command has been
+  removed. It drove a PyOxidizer and Electron desktop build whose Electron
+  app, PyOxidizer configuration, and `build` extra had already been removed,
+  so it could only fail.
 
 ### News around this release
 

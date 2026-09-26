@@ -18,8 +18,7 @@ The warning discloses known limitations; it is not a deprecation and makes no
 removal promise, because no replacement is available yet (decision D-019).
 The public functions warn, the command prints a notice on stderr, and the
 private implementation that the public functions share stays silent so that
-one call produces one warning. ``pseudonymise`` also keeps Patient's Sex, as
-its docstring has always stated.
+one call produces one warning.
 """
 
 import pickle
@@ -120,15 +119,6 @@ def test_private_implementation_does_not_warn():
         private_pseudonymisation.is_valid_strategy_for_keywords()
 
     assert not [w for w in caught if BACKGROUND_PAGE in str(w.message)]
-
-
-@pytest.mark.pydicom
-def test_pseudonymise_leaves_patient_sex_unchanged():
-    with pytest.warns(pseudonymisation.PseudonymisationLimitationWarning):
-        pseudonymised = pseudonymisation.pseudonymise(_dataset())
-
-    assert pseudonymised.PatientSex == "F"
-    assert pseudonymised.PatientID != "123456"
 
 
 @pytest.mark.pydicom

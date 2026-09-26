@@ -169,15 +169,20 @@ def pseudonymise(dicom_input, output_path=None):
     """Convenient API to pseudonymisation.
     Elements whose tags are not in the pydicom dictionary will be deleted
     PatientSex will not be modified/pseudonymised
-    For fine tune control, use anonymise_dataset() instead
+    For finer control, pass this module's strategy and keywords to
+    ``pymedphys.dicom.anonymise`` instead
 
     Parameters
     ----------
     dicom_input : ``pydicom.dataset.Dataset | str | pathlib.Path``
         Either a dataset, a path to a file or a path to a directory
     output_path : ``str | pathlib.Path``, optional
-        If the input is a file or a path, the directory to place the
-        pseudonymised files, by default None
+        For a file input, provide a file path with a directory component.
+        Its parent directory is used, but the filename is generated from the
+        pseudonymised dataset. For a directory input, this is the destination
+        directory. If None, output is written alongside the input. Ignored
+        for a Dataset input, which returns a new dataset without saving it.
+        Defaults to None.
 
     Returns
     -------
