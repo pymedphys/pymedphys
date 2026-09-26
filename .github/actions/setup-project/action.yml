@@ -29,6 +29,9 @@ runs:
         # Keep in step with the uv-lock hook in .pre-commit-config.yaml.
         version: "0.12.15"
         enable-cache: true
+        # Each environment must be able to save its complete dependency set.
+        # Otherwise a fast tool-only job can claim the shared immutable key.
+        cache-suffix: py${{ inputs.python-version }}-${{ inputs.extras || github.job }}
         cache-dependency-glob: |
           uv.lock
           pyproject.toml

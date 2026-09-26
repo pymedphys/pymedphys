@@ -253,7 +253,9 @@ Standardised project setup for all workflows.
 
 - **Features**:
   - Python setup with configurable version
-  - uv package manager with caching
+  - uv package manager with caches separated by Python version and extras
+    (tool-only jobs use their job ID), so a small tool cache cannot claim the
+    dependency cache needed by scientific jobs
   - PyMedPhys data caching only for jobs that consume data; manifest-specific
     keys and the prohibition on restoring across manifest changes are retained
   - Dependency installation with extras
