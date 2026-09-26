@@ -19,7 +19,7 @@ uv pip install "pymedphys[user]"
 ```
 
 If you cannot install `uv` on your workstation, use the fallback path in the
-{doc}`Quick Start Guide <quick-start>`.
+[Quick Start Guide](quick-start.rst).
 
 ## Why there is more than one install
 
@@ -99,7 +99,7 @@ If you are building a Mosaiq-backed workflow, start with `mosaiq` and add
 `cli` when you want shell automation.
 
 If you are contributing to PyMedPhys itself, follow the
-{doc}`Contributors Guide <../../contrib/index>` rather than treating this page
+[Contributors Guide](https://docs.pymedphys.com/en/latest/contrib/index.html) rather than treating this page
 as your main setup guide.
 
 ## A note on `all`
@@ -112,7 +112,7 @@ Choose it only when you deliberately want that trade-off.
 ## Next step
 
 Once you know which install you want, continue to the
-{doc}`Quick Start Guide <quick-start>`.
+[Quick Start Guide](quick-start.rst).
 
 If you are still deciding how you want to use PyMedPhys, read
-{doc}`Choose your path <choose-your-path>`.
+[Choose your path](choose-your-path.md).

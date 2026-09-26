@@ -19,7 +19,7 @@ Push / pull request -> ci.yml
 
 Schedule / manual run / main push / PR -> security.yml
 Schedule / manual run -> deps.yml
-Published release / manual run -> release.yml -> quality checks and publishing
+Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 ```
 
@@ -92,7 +92,12 @@ Comprehensive testing beyond unit tests.
 - **Test Types**:
   - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
-  - `wheel-build`: Package build verification
+  - `script-tests`: Runs the `.github/scripts` unit tests on Windows and
+    macOS; `ci.yml` runs them on Ubuntu for every pull request
+  - `wheel-build`: Builds the sdist and then the wheel from it, and runs
+    `.github/scripts/check_distributions.py`: both archives must contain the
+    package, and the wheel must install into a fresh virtual environment,
+    import, and report its version through `pymedphys --version`
   - `propagate`: `pymedphys dev propagate` must leave the generated files
     unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
     `_version.py`)
@@ -118,14 +123,40 @@ Builds documentation on PRs that change documentation sources, package Python co
 ### Release & Maintenance
 
 #### `release.yml`
-Handles PyPI package publishing with quality gates.
 
-- **Quality Checks**: Runs lint, type-check, unit, and integration tests
-- **Features**:
-  - TestPyPI dry-run capability
-  - PyPI trusted publishing (no API tokens)
-  - Automatic release asset upload
-  - Installation verification
+Publishes to PyPI behind quality gates.
+
+- **Trigger**: A published GitHub release, including a pre-release, is the
+  only trigger and the only way to publish. There is no manual run and no
+  TestPyPI route; a development release rehearses changes to the pipeline
+- **Before publishing**: Lint, type checks, the full unit-test matrix,
+  integration tests, and the same distribution checks as `wheel-build`. The
+  build also fails unless the tag is `v` followed by the package version, and
+  before publishing if the version is not in canonical PEP 440 form
+- **Publishing**: PyPI trusted publishing through the `pypi` environment,
+  with no stored API token. Files already on PyPI are skipped, so a re-run
+  after a partial upload is safe
+- **After publishing**: `verify-published` installs the wheel and the sdist
+  from PyPI, separately on Linux, Windows, and macOS, with
+  `check_distributions.py --published`, and requires both to match the files
+  built in the run. `test-published` then adds the `user` and `tests` extras
+  to the published wheel's environment on each OS and runs the test suite
+  (`--tests`), with dependencies resolved afresh from PyPI rather than from
+  `uv.lock`. After verification, `upload-release-assets` attaches the files
+  to the GitHub release and reads them back to confirm the release offers
+  exactly those files
+- **Recovery**: The original `dist` artefact is retained for 30 days. Retry
+  failed jobs using those files; rebuilding an existing release need not
+  reproduce its archive hashes. Never replace a published version's tag
+- **Release Summary**: Fails unless every job succeeded, and ends with a
+  record to paste on the release pull request. It is not a pull request check
+- **Limitation**: Assets are attached after the release is published, which
+  GitHub's [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+  forbid. Before enabling immutable releases, change the workflow to attach the
+  assets while the release is still a draft
+
+The [release procedure](release-guide.md) covers the release pull request,
+tagging, the next development version, and recovery.
 
 #### `security.yml`
 Security scanning with pinned tools run through `uvx`, so nothing is installed
@@ -233,15 +264,14 @@ Core checks, plus:
 
 | Environment | Purpose | Required setup |
 |-------------|---------|----------------|
-| `pypi` | Production publishing | Configure trusted publishing, release approvers, and allowed `main` branch / `v*` tag refs |
-| `testpypi` | Manual release dry runs | Configure TestPyPI trusted publishing and allowed `main` branch / `v*` tag refs |
+| `pypi` | Publishing releases | Configure trusted publishing, release approvers, and the allowed `v*` tag refs |
 
 Environment protection is configured in GitHub Settings, not by the workflow's
-`environment` field. Create and verify these environments before releasing;
+`environment` field. Create and verify the environment before releasing;
 referencing an absent environment can create it without protection rules.
-The publisher registered with PyPI or TestPyPI must match this repository,
-`.github/workflows/release.yml`, and the corresponding environment name.
-See the [release guide](release-guide.md) for the release procedure.
+The trusted publisher registered with PyPI must match this repository,
+`release.yml`, and the environment name; the
+[release guide](release-guide.md) lists the settings.
 
 ## Required checks and pull request reviews
 
@@ -250,8 +280,8 @@ See the [release guide](release-guide.md) for the release procedure.
 The required GitHub Actions check names for `main` are **`CI Summary`** (from
 `ci.yml`) and **`Security Summary`** (from `security.yml`). Select GitHub Actions
 as their expected source in the `main-integrity` ruleset. The release workflow's
-**`Release Summary`** is a report, not a merge gate, and must not be required on
-pull requests.
+**`Release Summary`** shows whether a release completed; it is not a merge gate
+and must not be required on pull requests.
 
 | Required check | Checks it covers |
 |----------------|------------------|

@@ -1,3 +1,4 @@
+# Copyright (C) 2025 Matthew Jennings
 # Copyright (C) 2016-2021 Matthew Jennings and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");

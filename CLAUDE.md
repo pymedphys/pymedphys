@@ -72,6 +72,16 @@ Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
 generated into `lib/pymedphys/docs/conf.py` from `_config.yml`; the generated
 file is gitignored, so edit `_config.yml`.
 
+Write procedures as instructions with their success criteria. State each
+fact once and link to it, prefer fixing a defect over documenting a workaround
+for it, and keep incident history and evidence caveats on the pull request
+rather than in the guide. Open a long procedure with a short checklist for
+readers who already know it, and move one-time setup into an appendix.
+
+Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
+Follow the relative source-path and published-URL guidance in
+[Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
+
 ## Architecture Overview
 
 ### Project Structure
@@ -165,6 +175,72 @@ The project uses uv with optional dependency groups:
 - `tests`: Testing dependencies
 - Specific features: `dicom`, `mosaiq`, `icom`, etc.
 
+### Packaging
+
+- `uv build` makes the sdist and then the wheel from it, so a file missing from
+  the sdist also breaks the wheel. Check a build with
+  `python .github/scripts/check_distributions.py dist`, which also installs the
+  wheel into a fresh virtual environment.
+- Set Hatchling file selection per build target, never build-wide: a build-wide
+  `include` is an allow-list that also replaces the sdist's contents. The sdist
+  uses `only-include`, because a full-tree walk reaches the repository-root
+  `docs` symlink first and then skips `lib/pymedphys/docs` as already seen.
+- Declare the licence as a PEP 639 SPDX expression (`license = "..."`) that
+  covers bundled third-party code as well as PyMedPhys's own, and list every
+  licence file in `license-files`. Update both when vendoring code under a new
+  licence or removing the last code under one. Keep the independent licence
+  expectations in `.github/scripts/check_distributions.py` and its test
+  fixtures in sync with these settings. Check declarations as well as file
+  presence, so removing a metadata entry cannot bypass the release guard.
+- Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
+  not `0.42.0-dev0`); the release tag must be `v` followed by it. The build
+  check fails a non-canonical version before publishing, because Hatchling
+  copies it into the metadata unchanged but canonicalises the filenames.
+- Distribution smoke tests must ignore the caller's Python path overrides,
+  run outside the checkout, and verify that package imports come from the
+  test environment. A fresh venv alone does not isolate `PYTHONPATH`, and
+  `python -I` does not isolate pip configuration. Disable pip configuration
+  files and inherited behavioural `PIP_*` settings for installs and their
+  build subprocesses; preserve only explicit network settings such as proxy,
+  certificate, time-out, and retry settings.
+- Include every root-level input to documentation preparation in the sdist:
+  `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
+- Keep `release-guide.md` and `workflows.md` aligned with `release.yml`,
+  including pre-releases, publishing destinations, and post-publication checks.
+  Record release-test evidence on the release pull request.
+- Verify a release from the published files, not the checkout: install the
+  wheel and the sdist separately into fresh environments outside the checkout,
+  force the sdist to build, and check which file pip installed and where it
+  came from. `check_distributions.py --published` does this, and with
+  `--tests` also runs the test suite against the published wheel; the release
+  workflow runs both after publishing, and `--summary` writes the report for
+  the release pull request. Extend the script or the workflow rather than
+  documenting manual steps.
+- `Release Summary` fails unless every release job succeeded; add each new
+  release job to its `needs`.
+- Publishing a GitHub release or pre-release is the only way to publish.
+  There is no manual or TestPyPI route, as the maintainers decided a library
+  release needs no rehearsal beyond the checks before publishing; rehearse a
+  change to the release pipeline with a development release on PyPI.
+- Tag a commit on `main`: for a stable release, the merge commit of its
+  reviewed release pull request, which is the state of `main` that CI tested,
+  never a commit from the release branch. After publishing, a separate pull
+  request sets `main` to the next unpublished `.devN`, so a development
+  release (`X.Y.Z.devN`, a GitHub pre-release) can be tagged from `main`
+  without a release pull request. Only a stable release pull request needs the
+  `full-test` label, and changelog entries stay under `## Unreleased` until
+  the stable release.
+- The publish job uses `skip-existing`, so a re-run after a partial upload is
+  safe; `verify-published` then requires the files on the index to match the
+  build. Release asset uploads must wait for that verification, so a skipped
+  duplicate cannot overwrite GitHub assets with different bytes.
+- Resolve PyMedPhys's published archive from PyPI's JSON Simple API and
+  install its exact URL, so no other configured index can substitute it.
+- Recover releases using their original distribution files. A rebuild of the
+  same tag can differ when the build backend changes. A failed retry does not
+  prove earlier attempts left PyPI untouched; preserve release tags and use a
+  new version for changed files.
+
 ## Important Implementation Notes
 
 1. **Beta Status**: PyMedPhys is in beta (version 0.x.x). APIs may change between releases.
@@ -195,6 +271,19 @@ When modifying DICOM functionality, be aware of:
 - Anonymization requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+### Copyright Headers
+
+Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.
+
+- When a change is meaningful, credit its author in the header of each file it touches. For Claude-assisted work, that is the person who directed it.
+- Put a new line above the existing ones (newest first). If the author already has a line of their own, extend its years instead (`2025-2026`, `2021, 2025`). Leave joint lines unchanged.
+- A change is meaningful when the author's net surviving contribution to the file is about 15 or more added or rewritten lines, cumulative across PRs. Mechanical edits do not count: API renames, import reordering, lint, typing-only and formatting fixes, and `nosec` comments.
+- A new file starts with the full header, crediting its author and the current year. Do not add a header to an existing file that has none without the maintainers' agreement, since it must also credit the original authors.
+- Every PyMedPhys copyright header must have the full Apache 2.0 licence
+  notice immediately below its copyright lines, including when adding a
+  header to an existing file. Preserve upstream licence and attribution
+  notices in third-party code.
 
 ## Claude Code Workflow Guidelines
 

@@ -2,7 +2,10 @@
 
 # Release Notes
 
-All notable changes to are documented here.
+All notable changes are documented here. Older entries describe the project
+at the time of that release; references to former hosted apps, discussion
+forums, and CI services may no longer be available. For current setup and
+usage, see the [documentation](https://docs.pymedphys.com/en/latest/).
 
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -11,6 +14,9 @@ This project adheres to
 
 ### New features and enhancements
 
+- Pinnacle RTDOSE export now skips empty and zero-filled beam dose files
+  while retaining the dose from valid beams. A missing dose file still
+  aborts RTDOSE generation rather than exporting an incomplete sum.
 - Data downloads (`pymedphys.data_path`, `pymedphys.zip_data_paths`) now time
   out after 60 seconds without data, and are written to a temporary file that
   is moved into place only once complete, so an interrupted download no longer
@@ -19,9 +25,18 @@ This project adheres to
   404 are raised at once instead of after 21 seconds of retries.
 - The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
   downloaded data cache, which defaults to `~/.pymedphys/data`.
+- `pymedphys --version` prints the installed version. Previously the option
+  was not recognised and the help text was printed instead.
 
 ### Bug fixes
 
+- Importing `pymedphys.experimental.pinnacle` no longer changes the names of
+  public Pinnacle classes and `export_cli`. This restores class signatures
+  and members in the API documentation while retaining legacy deprecation
+  warnings, which now name the legacy import path alongside its replacement.
+  The deprecated `pymedphys experimental pinnacle export` command calls the
+  public `export_cli` directly, so it emits only its existing deprecation
+  warning.
 - The experimental `pymedphys.experimental.pseudonymisation.pseudonymise`
   now leaves `PatientSex` unchanged, as documented. Previously it replaced the
   value with a hash, which is not a valid value for this attribute, so outputs
@@ -68,6 +83,38 @@ This project adheres to
   and the `pymedphys dev cypress` command have been removed. The Streamlit GUI
   is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
   normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
+- **[Contributor facing only]** The source distribution contains the package
+  again. Since the move to hatchling, a build-wide include meant to add the
+  built HTML documentation had become the sdist's only content, so an sdist
+  held no code. Release and integration builds now make the wheel from the
+  sdist and check both archives, then install the wheel into a fresh virtual
+  environment and check its imports and `pymedphys --version`. A published
+  release fails unless its tag is `v` followed by the package version.
+- **[Contributor facing only]** The package version is written in canonical
+  PEP 440 form (`0.42.0.dev0`), and the exported `requirements.txt` and
+  `requirements-docs.txt` list the project once, without the development
+  dependency group.
+- **[Contributor facing only]** The package metadata now declares its licence
+  as the SPDX expression `Apache-2.0 AND MIT` (PEP 639), naming both licence
+  files, instead of embedding the full Apache licence text. The MIT part covers
+  bundled third-party code: the Pinnacle exporter, a copy of pydicom's DICOM
+  dictionary, and the vendored `apipkg` and `deprecated` modules. The build now
+  requires hatchling 1.27 or later. The distribution check rejects incorrect
+  or missing licence expressions, missing or unexpected licence-file
+  declarations, and missing licence files. Matching omissions in both archives
+  also fail validation. The vendored logging back-port for Python 3.7 and
+  earlier has been removed.
+- **[Contributor facing only]** The unused `conda-recipe/` directory has been
+  removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
+  that no workflow or release step used, and it no longer matched the build.
+- **[Contributor facing only]** After publishing, the Release workflow now
+  runs the test suite against the published wheel on Linux, Windows, and
+  macOS with dependencies resolved afresh from PyPI, reads back the GitHub
+  release assets, and fails its `Release Summary` unless every job succeeded.
+  `check_distributions.py --published` gains `--tests` and `--summary` to run
+  the same checks locally and report them. The workflow's manual trigger and
+  TestPyPI route have been removed: publishing a GitHub release is the only
+  way to publish.
 
 ### News around this release
 
@@ -76,6 +123,13 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports now raise
+  `MissingCTImageError` when the plan has no primary CT image. RTPLAN and
+  RTDOSE exports raise `MissingTrialBeamsError` when the trial has no beams,
+  and RTDOSE export raises `MissingBeamDoseError` when all beam dose files
+  are empty or zero-filled. The exceptions are defined in
+  `pymedphys._pinnacle.pinnacle_exceptions`; callers should handle them if
+  they need to continue a batch export after these failures.
 - The `url` argument of `pymedphys.data_path` and `pymedphys.zip_data_paths`
   now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
   any other scheme. Previously every scheme that `urllib` supports, including
@@ -87,7 +141,7 @@ This project adheres to
 
 - PyMedPhys now includes its own custom, `numba`-accelerated implementation of
   multilinear interpolation. You can find the technical reference
-  [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  [here](https://docs.pymedphys.com/en/latest/users/ref/lib/interp.html).
   This was implemented for the following reasons:
     - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
      `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
@@ -383,7 +437,7 @@ this in the future should be considered a breaking change.
     [Thebe](https://thebelab.readthedocs.io/)
   - Discourse commenting now available directly within the hosted documentation
   - The ability to utilise the expanded
-    [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
+    [MyST](https://jupyterbook.org/v1/content/myst.html) Documentation formatting.
 - Increased docstring coverage of public functions
 - Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to [@termim](https://github.com/termim) who has taken
@@ -451,7 +505,7 @@ this in the future should be considered a breaking change.
   - The online demo GUI should not have sensitive information submitted to it.
 - [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
   Masters thesis on deep learning auto-segmentation to
-  [the docs](https://docs.pymedphys.com/background/autocontouring.html#details).
+  [the docs](https://docs.pymedphys.com/en/latest/users/background/autocontouring.html#details).
 - PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
   [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
   [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
@@ -567,7 +621,7 @@ this in the future should be considered a breaking change.
 
 - Within `pymedphys.experimental.pseudonymisation` both `pseudonymise` and
   `is_valid_strategy_for_keywords` were added. `pseudonymise` provides
-  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/ref/lib/experimental/pseudonymisation.html#api)
+  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pseudonymisation.html#api)
   for more information. Credit to [@sjswerdloff](https://github.com/sjswerdloff)
   for all his work here.
 
@@ -1300,9 +1354,9 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 - Pinnacle module providing a tool to export raw Pinnacle data to DICOM
   objects.
   - A CLI is provided: See
-    [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
+    [the Pinnacle CLI docs](https://docs.pymedphys.com/en/latest/users/ref/cli/pinnacle.html).
   - As well as an API: See
-    [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
+    [the Pinnacle library docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pinnacle.html).
 
 ## [0.9.0] -- 2019/06/06
 

@@ -1,3 +1,17 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Regression tests for the merge-blocking workflow summary policy."""
 
 import copy
@@ -106,6 +120,29 @@ class WorkflowStatusTests(unittest.TestCase):
                         result == "skipped" and selection == "false"
                     )
                     self.assertEqual(not check_jobs(needs, conditional), should_pass)
+
+
+class UnconditionalSummaryTests(unittest.TestCase):
+    """A summary without change selection, such as the release workflow's."""
+
+    def setUp(self):
+        self.needs = {
+            "build": {"result": "success"},
+            "publish-pypi": {"result": "success"},
+        }
+
+    def test_every_job_succeeding_passes_without_a_changes_job(self):
+        self.assertEqual(check_jobs(self.needs, {}), [])
+        summary = make_summary("Release Summary", self.needs, {}, [])
+        self.assertIn("| publish-pypi | yes | success |", summary)
+        self.assertIn("All required checks passed", summary)
+
+    def test_every_job_must_succeed(self):
+        for result in ("failure", "cancelled", "skipped", None):
+            with self.subTest(result=result):
+                needs = copy.deepcopy(self.needs)
+                needs["publish-pypi"]["result"] = result
+                self.assertTrue(check_jobs(needs, {}))
 
 
 if __name__ == "__main__":
