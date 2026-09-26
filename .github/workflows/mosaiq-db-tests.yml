@@ -28,6 +28,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
+          cache-data: 'true'
           extras: 'mosaiq tests dicom'
 
       - name: Wait for SQL Server startup

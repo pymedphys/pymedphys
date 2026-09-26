@@ -1078,7 +1078,13 @@ class PublishedTestSuiteTests(unittest.TestCase):
 
             script = shutil.which("pymedphys")
             assert script is not None
-            assert pathlib.Path(script).parent == pathlib.Path(sys.executable).parent, script
+            # macOS exposes the same temporary directory under /var and
+            # /private/var. Resolve the directories, not the Python executable:
+            # a venv's Python may itself be a symlink to the base interpreter.
+            assert (
+                pathlib.Path(script).parent.resolve()
+                == pathlib.Path(sys.executable).parent.resolve()
+            ), script
             result = subprocess.run(
                 ["pymedphys", "--version"],
                 check=True, capture_output=True, text=True,
