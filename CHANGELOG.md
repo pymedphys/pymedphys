@@ -72,6 +72,16 @@ This project adheres to
 
 ### Bug fixes
 
+- `pymedphys.zip_data_paths` now refreshes archives extracted into the data
+  cache when the downloaded archive changes, extraction metadata is missing or
+  invalid, an archived member is missing, or an extracted file has the wrong
+  size. Previously existing files could keep stale or incomplete contents.
+  Extraction metadata is kept outside the extracted members, with bounded
+  filenames to avoid failures for long archive names. Empty archives return an
+  empty list, and repeated member names no longer force repeated extraction.
+  Edits that leave a file the same size are not detected. A caller-specified
+  `extract_directory` still only gains missing files, preserving existing edits.
+  [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
   read, including itself, now raises `ValueError` instead of hanging every
   command and GUI app that reads the configuration.
@@ -239,6 +249,18 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- `pymedphys.data_path`, `pymedphys.zip_data_paths` and
+  `pymedphys.zenodo_data_paths` now raise `NoHashFound` before downloading a
+  file without a recorded hash when `check_hash=True` (the default). Downloads
+  no longer add hashes to the installed package's `hashes.json`. For custom
+  data, pass a maintained hash manifest through `hash_filepath` to
+  `data_path` or `zip_data_paths`, or explicitly pass `check_hash=False` to
+  accept unverified data. Four download aliases without recorded hashes have
+  been removed: `RD.TBB_water_feet_first.dcm`, `RD.TBC_water_feet_first.dcm`,
+  `dicomorient_doses_only.zip` and `plan-tel-monaco-upgrade.zip`. Calls using
+  these aliases must supply `url=` as well as a hash manifest or the explicit
+  opt-out.
+  [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - The `user` extra no longer installs `anthropic` or lists `trio` as a direct dependency. Both are now in the new `ai` extra (`pip install "pymedphys[user,ai]"`), with `httpx2`, which only the experimental Mosaiq chat app in the GUI needs. The app sends questions and query results to Anthropic's API, so it is now opt-in. Without the extra the rest of the GUI still loads, and the chat app says how to install it; before, a missing AI package stopped the whole GUI from loading. The `user` extra still installs `trio` through `trio-asyncio`, and the `all` extra includes the `ai` packages. `anthropic` is no longer pinned to 0.29.0. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2091](https://github.com/pymedphys/pymedphys/pull/2091)
 - PyMedPhys now requires pydicom 3.0 or later: every extra declares
   `pydicom>=3.0` instead of `>=2.0.0`. Continuous integration only tests pydicom 3, and the planned
