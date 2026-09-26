@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2018 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +17,6 @@
 """Uses Mosaiq SQL to extract patient delivery details."""
 
 import functools
-import struct
 
 from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
@@ -169,70 +169,43 @@ def get_mosaiq_delivery_details(
     return delivery_details
 
 
-def mosaiq_mlc_missing_byte_workaround(raw_bytes_list):
-    """This function checks if there is an odd number of bytes in the mlc list
-    and appends a \\x00 if the byte number is odd.
+def decode_msq_mlc(raw_bytes, leaf_count):
+    """Convert one bank's Mosaiq leaf sets to leaf positions in cm.
 
-    It is uncertain whether or not this is the correct method to restore the
-    data.
+    Mosaiq stores a bank's leaf positions for each control point as a
+    fixed-width binary record of little-endian signed 16-bit integers in
+    units of 0.01 cm. Only the first ``leaf_count`` values are in use; the
+    rest of the record is padding.
+
+    Parameters
+    ----------
+    raw_bytes : sequence of bytes
+        One record per control point, as the database returns them. Do not
+        convert them to a NumPy ``bytes`` array first: that strips trailing
+        zero bytes, which can be part of the last leaf positions.
+    leaf_count : int
+        The number of leaves in the bank (``TxFieldPoint.MLC_Leaves``).
+
+    Returns
+    -------
+    numpy.ndarray
+        Leaf positions in cm, with shape (control points, leaves).
     """
-    length = check_all_items_equal_length(raw_bytes_list, "mlc bytes")
+    leaf_count = int(leaf_count)
+    if leaf_count < 0:
+        raise ValueError(f"MLC_Leaves must not be negative, got {leaf_count}.")
 
-    if length % 2 == 1:
-        raw_bytes_list = append_x00_byte_to_all(raw_bytes_list)
+    positions = np.empty((len(raw_bytes), leaf_count))
+    for control_point, record in enumerate(raw_bytes):
+        record = b"" if record is None else bytes(record)
+        if len(record) < 2 * leaf_count:
+            raise ValueError(
+                f"A leaf set holds {len(record)} bytes, fewer than the "
+                f"{2 * leaf_count} bytes needed for {leaf_count} leaves."
+            )
+        positions[control_point] = np.frombuffer(record, dtype="<i2", count=leaf_count)
 
-    check_all_items_equal_length(raw_bytes_list, "mlc bytes")
-
-    return raw_bytes_list
-
-
-def append_x00_byte_to_all(raw_bytes_list):
-    appended_bytes_list = []
-    for item in raw_bytes_list:
-        bytes_as_list = list(item)
-        bytes_as_list.append(0)
-        appended_bytes_list.append(bytes(bytes_as_list))
-
-    return appended_bytes_list
-
-
-def check_all_items_equal_length(items, name):
-    all_lengths = {len(item) for item in items}
-
-    if len(all_lengths) != 1:
-        raise ValueError(
-            f"All {name} should be the same length. The lengths seen were "
-            f"{all_lengths}."
-        )
-
-    return list(all_lengths)[0]
-
-
-def decode_msq_mlc(raw_bytes):
-    """Convert MLCs from Mosaiq SQL byte format to cm floats."""
-    raw_bytes = mosaiq_mlc_missing_byte_workaround(raw_bytes)
-
-    length = check_all_items_equal_length(raw_bytes, "mlc bytes")
-
-    if length % 2 == 1:
-        raise ValueError(
-            "There should be an even number of bytes within an MLC record."
-        )
-
-    mlc_pos = (
-        np.array(
-            [
-                [
-                    struct.unpack("<h", control_point[2 * i : 2 * i + 2])
-                    for i in range(len(control_point) // 2)
-                ]
-                for control_point in raw_bytes
-            ]
-        )
-        / 100
-    )
-
-    return mlc_pos
+    return positions / 100
 
 
 def collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2):
@@ -274,7 +247,8 @@ def _raw_delivery_data_sql(connection, field_id):
             TxFieldPoint.Gantry_Ang,
             TxFieldPoint.Coll_Ang,
             TxFieldPoint.Coll_Y1,
-            TxFieldPoint.Coll_Y2
+            TxFieldPoint.Coll_Y2,
+            TxFieldPoint.MLC_Leaves
         FROM TxFieldPoint
         WHERE
             TxFieldPoint.FLD_ID = %(field_id)s
@@ -322,6 +296,7 @@ def delivery_data_sql(connection, field_id):
             "Coll_Ang",
             "Coll_Y1",
             "Coll_Y2",
+            "MLC_Leaves",
         ],
     )
 
@@ -332,27 +307,43 @@ class DeliveryMosaiq(DeliveryBase):
     @classmethod
     def from_mosaiq(cls, connection, field_id):
         total_mu, tx_field_points = delivery_data_sql(connection, field_id)
-        tx_field_points_index = tx_field_points["Index"].to_numpy(dtype=float)
+        total_mu = float(np.asarray(total_mu).item())
 
-        if np.shape(tx_field_points_index) == ():
-            mu_per_control_point = [0, total_mu]
-        else:
-            cumulative_mu = tx_field_points_index / tx_field_points_index[-1] * total_mu
-            mu_per_control_point = np.concatenate([[0], np.diff(cumulative_mu)])
+        leaf_counts = tx_field_points["MLC_Leaves"].unique()
+        if len(leaf_counts) != 1:
+            raise ValueError(
+                "Every control point of a field should have the same "
+                f"MLC_Leaves, but found {sorted(leaf_counts)}."
+            )
 
-        monitor_units = np.cumsum(mu_per_control_point).tolist()
-
-        raw_mlc_a = tx_field_points["A_Leaf_Set"].to_numpy(dtype=bytes)
-        mlc_a = np.squeeze(decode_msq_mlc(raw_mlc_a)).T
-
-        raw_mlc_b = tx_field_points["B_Leaf_Set"].to_numpy(dtype=bytes)
-        mlc_b = np.squeeze(decode_msq_mlc(raw_mlc_b)).T
-
+        index = tx_field_points["Index"].to_numpy(dtype=float)
+        mlc_a = decode_msq_mlc(tx_field_points["A_Leaf_Set"].tolist(), leaf_counts[0])
+        mlc_b = decode_msq_mlc(tx_field_points["B_Leaf_Set"].tolist(), leaf_counts[0])
         msq_gantry_angle = tx_field_points["Gantry_Ang"].to_numpy(dtype=float)
         msq_collimator_angle = tx_field_points["Coll_Ang"].to_numpy(dtype=float)
-
         coll_y1 = tx_field_points["Coll_Y1"].to_numpy(dtype=float)
         coll_y2 = tx_field_points["Coll_Y2"].to_numpy(dtype=float)
+
+        if len(index) == 1:
+            # A static field has a single point. Deliver its whole meterset
+            # between two copies of that point.
+            monitor_units = [0.0, total_mu]
+            mlc_a, mlc_b = (np.repeat(bank, 2, axis=0) for bank in (mlc_a, mlc_b))
+            msq_gantry_angle, msq_collimator_angle, coll_y1, coll_y2 = (
+                np.repeat(values, 2)
+                for values in (msq_gantry_angle, msq_collimator_angle, coll_y1, coll_y2)
+            )
+        else:
+            # Index is the cumulative meterset, as a percentage of the total.
+            if index[-1] <= 0 or np.any(np.diff(index) < 0):
+                raise ValueError(
+                    "TxFieldPoint.Index should be non-decreasing and end above "
+                    f"zero, but was {index.tolist()}."
+                )
+            monitor_units = ((index - index[0]) / index[-1] * total_mu).tolist()
+
+        mlc_a = mlc_a.T
+        mlc_b = mlc_b.T
 
         mlc, jaw = collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2)
         gantry = convert_IEC_angle_to_bipolar(msq_gantry_angle)

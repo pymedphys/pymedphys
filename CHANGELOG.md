@@ -53,6 +53,19 @@ This project adheres to
 
 ### Bug fixes
 
+- **`pymedphys.Delivery.from_mosaiq` misread MLC leaf positions and failed on
+  static fields.** Mosaiq stores each bank's leaf positions as a fixed-width
+  binary record followed by zero padding. Converting the records to a NumPy
+  `bytes` array stripped every trailing zero byte, including the end of the
+  last leaf positions when those were between 0 and 2.55 cm or exactly 0,
+  so records lost different numbers of bytes. Fields then failed with "All
+  mlc bytes should be the same length", or were silently decoded with too
+  few leaves. Fields with a single control point, which is how Mosaiq stores
+  static fields, failed with an `IndexError`. Leaf positions are now decoded
+  from the raw records using `TxFieldPoint.MLC_Leaves`, and a static field
+  is returned as two identical control points that deliver its whole
+  meterset. On the mock Mosaiq data, 173 of 572 fields previously decoded
+  correctly; all now do.
 - Importing `pymedphys.experimental.pinnacle` no longer changes the names of
   public Pinnacle classes and `export_cli`. This restores class signatures
   and members in the API documentation while retaining legacy deprecation
