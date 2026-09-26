@@ -42,7 +42,7 @@ In code, command-line output, reports, and documentation:
 | Normative rules | [DICOM PS3.15 Annex E](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html), edition 2026d: E.1.1 (de-identifier), E.1.3 (conformance statement), E.2 (Basic Profile), E.3 (Options), and Tables E.1-1, E.1-1a, E.3.4-1, and E.3.10-1 |
 | Supporting DICOM parts | PS3.3 (attribute Types per IOD), PS3.4 (SOP Classes), PS3.5 (UID encoding and UUID-derived UIDs), PS3.6 (data dictionary and well-known UIDs), PS3.10 (File Meta Information), PS3.16 (CID 7050 de-identification methods and CID 7005 contributing equipment purposes) |
 | Best practice | Clunie DA et al., *Report of the Medical Image De-Identification (MIDI) Task Group: Best Practices and Recommendations*, 7 February 2025, [arXiv:2303.10473](https://arxiv.org/abs/2303.10473) |
-| Validation | NCI MIDI synthetic-identifier datasets, answer keys, and validation scripts; `dciodvfy` and `dcentvfy` from dicom3tools, which check object validity, not privacy |
+| Validation | NCI MIDI synthetic-identifier datasets, answer keys, and validation script (D-018); `dciodvfy` and `dcentvfy` from dicom3tools, which check object validity, not privacy |
 | Governance context (documentation only) | GDPR Article 4(5) and Recital 26; CJEU C-413/23 P *EDPS v SRB* (4 September 2025); UK ICO anonymisation guidance; Privacy Act 1988 (Cth) and OAIC de-identification guidance; ISO 25237:2017 |
 
 The requirements register records the MIDI best practices alongside the standard's "shall" statements, so that each requirement traces to the code and tests that satisfy it. Where this document relies on an informative Note in PS3.15 or on a MIDI recommendation, the choice it supports is a design decision, not a conformance requirement. Browsing links follow the current edition; the table generator uses the pinned publication (D-001).
@@ -51,7 +51,7 @@ The requirements register records the MIDI best practices alongside the standard
 
 The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API in `pymedphys.dicom`. Its components are listed below; they are not a pull request sequence.
 
-1. **Generated standard tables.** Table E.1-1 with every option column; Tables E.1-1a, E.3.4-1, and E.3.10-1; CID 7050; well-known UIDs; the VR and VM of each listed attribute; and attribute Types for the supported IODs (D-001).
+1. **Generated standard tables.** Table E.1-1 with every option column; Tables E.1-1a and E.3.10-1; CID 7050; well-known UIDs; the VR and VM of each listed attribute; and attribute Types for the supported IODs (D-001).
 2. **Rule layers.** Rules apply in this order: generated tables (L1), reviewed supplementary rules (L2), then validated user rules (L3).
    - L2 covers attributes that Table E.1-1 omits but the de-identifier remains responsible for (E.1.1, Note 1 after Table E.1-1a). These are dates, times, and person names by VR; operator-entered RT text such as Beam Name, Dose Comment, and Radiation Machine Name; the role of every UI attribute (D-003); and the role of every temporal attribute (D-007). A test fails if the pinned dictionary contains an attribute in these categories with no rule.
    - L2 only strengthens L1. It never retains a value that L1 removes, replaces, or cleans, unless a selected option permits it.
@@ -92,7 +92,7 @@ The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API 
 | `public-release` | Collections being assessed for unrestricted public sharing | Basic Profile; Retain Longitudinal Temporal Information with Modified Dates; Clean Descriptors; Retain Safe Private |
 
 - These are target option sets. A preset is enabled only once its behaviour is implemented and validated for the documented input scope. Selecting a preset is not evidence of conformance (D-011).
-- `tps-import` makes no PS3.15 conformance claim, because its Retain Device Identity and Modified Dates options conflict (D-007). It is unavailable until the marking of nonconformant output is decided (Open questions).
+- `tps-import` makes no PS3.15 conformance claim, because its Retain Device Identity and Modified Dates options conflict (D-007). Its output is marked as D-012 describes.
 - `tps-import` writes synthetic birth dates (D-008), and retains cleaned descriptors only after pooled human review, otherwise applying the Basic Profile's actions (D-009). Each run with a new key gives UIDs and patient pseudonyms unrelated to earlier copies, so several copies of one source, such as a phantom, can coexist in one planning system (D-003).
 - `public-release` omits Retain Device Identity, because device serial numbers and machine names can identify an institution and, with dates, individual treatments.
 - Profile conformance and readiness to release are reported separately. `basic` output is not thereby ready to share. `tps-import` output is for non-clinical databases only. `public-release` output also needs a statistical assessment, pixel and face review, and a human QC attestation (D-016 and D-017).
@@ -103,9 +103,13 @@ These are the active design decisions, not statements that the code implements t
 
 ### D-001: Tables generated from a pinned edition
 
-- **Decision.** A development command generates the L1 tables from the pinned PS3.15 edition, currently 2026d. It records the edition, the source file's SHA-256, and a digest of the generated content. It verifies the source digest, then parses the published HTML and DocBook XML with `html.parser` and `xml.etree.ElementTree`, with each Bandit `nosec` justified as the security policy requires. A monthly workflow opens an issue when a new edition would change the generated tables. Generated files are never edited by hand.
-- **Rationale.** The legacy keyword list was transcribed by hand and has drifted: it has 217 entries, drawn from Supplement 142, while Table E.1-1 in 2026d has 657 rows. The standard is revised about five times a year. The standard library parsers add no dependency and only ever read verified publications, in a development-only tool.
-- **Tests.** Regeneration reproduces the committed tables and digests, and a source file with a different digest is rejected.
+- **Decision.**
+  - A development command generates the L1 tables from the pinned PS3.15 edition, currently 2026d. It downloads the published HTML and DocBook XML, verifies each file's SHA-256 against the pinned digest, and parses them with `html.parser` and `xml.etree.ElementTree`, with each Bandit `nosec` justified as the security policy requires. It records the edition, the source digests, and a digest of the generated content.
+  - The repository keeps the generated tables, not the standard's source files. Each generated file, and the package's licence notices, acknowledge the source as "DICOM PS3.x, © NEMA" for each part used.
+  - Table E.3.4-1 is not generated until the Clean Structured Content Option is designed.
+  - A monthly workflow opens an issue when a new edition would change the generated tables. Generated files are never edited by hand.
+- **Rationale.** The legacy keyword list was transcribed by hand and has drifted: it has 217 entries, drawn from Supplement 142, while Table E.1-1 in 2026d has 657 rows. The standard is revised about five times a year. NEMA holds the copyright in the standard, and the DICOM Standards Committee's policies and procedures permit portions of it to be copied, used, published, and distributed in other works when acknowledged as "DICOM Part(s) ___, © NEMA". Table E.3.4-1 also contains SNOMED CT, LOINC, NCDR, NCIt, and UMLS codes, which carry their own terms. The standard library parsers add no dependency and only ever read verified publications, in a development-only tool.
+- **Tests.** Regeneration reproduces the committed tables and digests; a source file with a different digest is rejected; and every generated file carries the acknowledgement.
 
 ### D-002: pydicom 3.0 minimum
 
@@ -123,7 +127,7 @@ These are the active design decisions, not statements that the code implements t
   - Replacement UIDs never use an organisation root.
   - Device UID (0018,1002) is replaced under the Basic Profile (U) and retained under Retain Device Identity (K).
 - **Rationale.**
-  - **Standards basis.** PS3.5 B.2 derives `2.25.` UIDs from UUIDs as defined by ISO/IEC 9834-8 and ITU-T X.667, which define name-based SHA-1 (version 5) UUIDs and reserve version 8, the custom layout that RFC 9562 adds. Using the keyed token as the name keeps the standard version 5 construction; replacing its SHA-1 step with HMAC-SHA256 would not. A `2.25.` UID needs no registered root, whereas an organisation root can identify the institution (E.3.9 Note 2).
+  - **Standards basis.** PS3.5 B.2 derives `2.25.` UIDs from UUIDs as defined by ISO/IEC 9834-8 and ITU-T X.667. X.667 defines the name-based SHA-1 UUID as version 5 (clause 14.3). Its Table 3 reserves versions 0 and 6 to 15, and a note in clause 12.2 expects any new format to use different variant bits, so the version 8 layout that RFC 9562 adds is not an X.667 UUID. X.667 does not limit names to text (Annex B), so the 32-byte token is a valid name. Using the token as the name keeps the standard version 5 construction; replacing its SHA-1 step with HMAC-SHA256 would not. A `2.25.` UID needs no registered root, whereas an organisation root can identify the institution (E.3.9 Note 2).
   - **Re-linking.** The UUID's name is a keyed token, so without the key, knowing a source UID does not reveal its replacement. Unkeyed hashes, as in the legacy pseudonymisation, and version 5 UUIDs of the source UIDs themselves both reveal it. Published SHA-1 collision attacks need inputs the attacker chooses, and without the key nobody can choose the HMAC outputs that form the names. A compromised key reveals the replacements of known source UIDs (D-004).
   - **Uniqueness.** A version 5 UUID has 122 variable bits, so the probability of any collision among $10^9$ replacement UIDs is about $10^{-19}$.
   - **State.** Replacements are computed from the key alone, so no UID map is needed: parallel workers need no coordination, output does not depend on the number of workers, and incremental export needs only the key. Random version 4 UUIDs would instead need a map equivalent to a crosswalk, protected, shared between workers, and kept for incremental export.
@@ -186,8 +190,9 @@ These are the active design decisions, not statements that the code implements t
   - Treat unresolved ambiguous text conservatively, subject to D-011. Remove optional attributes, use permitted empty or dummy values for required ones, or hold the output for confidential review.
   - Other validated methods, including removing optional descriptors, may satisfy the option. Describe the method and its limits in the conformance statement, as E.3.5 requires.
   - Claim Clean Descriptors (DCM 113105) only for output whose retained descriptor strings have passed pooled human review; otherwise apply the Basic Profile's actions and do not claim the option.
-- **Rationale.** E.3.5 specifies what to remove, not an algorithm (Note 4). A vocabulary can contain words that are also names, such as "Hand" (MIDI §1.17.2), so a token's presence in a vocabulary is not evidence that its use is safe.
-- **Tests.** Names that overlap anatomical terms; clinician names; mixed descriptive and identifying text; non-English text; and missing source identifiers. Vocabulary matching alone never produces a claim.
+  - The user supplies the vocabulary in a documented format, for example the AAPM TG-263 nomenclature downloaded from AAPM, or an institutional list. PyMedPhys bundles none. Without a vocabulary, descriptors receive the Basic Profile's actions.
+- **Rationale.** E.3.5 specifies what to remove, not an algorithm (Note 4). A vocabulary can contain words that are also names, such as "Hand" (MIDI §1.17.2), so a token's presence in a vocabulary is not evidence that its use is safe. The TG-263 journal article is licensed CC BY-NC-ND 4.0, which forbids the commercial use and adaptation that Apache-2.0 permits, and no licence permitting redistribution of its nomenclature spreadsheet has been found, so bundling a copy needs AAPM's permission.
+- **Tests.** Names that overlap anatomical terms; clinician names; mixed descriptive and identifying text; non-English text; missing source identifiers; loading a user-supplied vocabulary; and processing without one. Vocabulary matching alone never produces a claim.
 
 ### D-010: Unsupported object types
 
@@ -202,20 +207,19 @@ These are the active design decisions, not statements that the code implements t
   - Validate every L3 removal, replacement, and retention against attribute Type, VR and VM, conditional requirements, referential integrity, and the effective profile and options. Reject a change that invalidates a supported IOD.
   - A change incompatible with a selected option requires an explicitly revised policy that is revalidated in full; an option is never dropped silently.
   - Derive all report wording and De-identification Method and Code Sequence content from each instance's validated result. A run with mixed results cannot claim that every output conforms.
-  - The engine does not produce nonconformant output, including `tps-import` output, until the open question on it is resolved.
+  - `tps-import` is the only policy that produces nonconformant output, marked as D-012 describes. Any other policy that cannot conform, such as one retaining attributes its options do not keep, is rejected, and instances of Private SOP Classes are sequestered (D-010).
 - **Rationale.** E.1.1 requires that each attribute specified to be retained "shall be retained", and an option's requirements override the Profile's. Removing Patient's Weight therefore contradicts Retain Patient Characteristics, even though removal discloses less. Maintaining IOD integrity is the de-identifier's responsibility (E.1.1 step 2, Note 1).
 - **Tests.** Removal of Type 1 and Type 2 attributes; removal of retained patient characteristics; retention the profile forbids; conditional attributes; revised option sets; and agreement between report claims and inserted markers.
 
 ### D-012: De-identification markers
 
-- **Decision.** For each conformant instance, derived from its validated result (D-011):
-  - set Patient Identity Removed (0012,0062) to YES;
-  - add the CID 7050 codes for the profile and each satisfied option to De-identification Method Code Sequence (0012,0064), keeping existing items;
-  - add a value naming the tool, its version, the PS3.15 edition, and the policy digest to De-identification Method (0012,0063), keeping existing values;
-  - set Longitudinal Temporal Information Modified (0028,0303) to REMOVED, or to MODIFIED where Modified Dates is applied;
-  - add a Contributing Equipment Sequence (0018,A001) item whose purpose of reference is DCM 109104 (De-identifying Equipment, CID 7005).
-- **Rationale.** E.1.1, E.2, and E.3.6 require these markers in their text, not in Table E.1-1, so the table generator does not produce them. E.1.1 says codes and text are "added to" these attributes, so earlier markers are kept. MIDI §1.14.3 recommends recording the de-identifying equipment in Contributing Equipment Sequence.
-- **Tests.** Markers for each preset and for input that already carries markers, and agreement between markers and report claims.
+- **Decision.** Markers are derived from each instance's validated result (D-011).
+  - For conformant output, set Patient Identity Removed (0012,0062) to YES; add the CID 7050 codes for the profile and each satisfied option to De-identification Method Code Sequence (0012,0064), keeping existing items; and add a value naming the tool, its version, the PS3.15 edition, and the policy digest to De-identification Method (0012,0063), keeping existing values.
+  - For `tps-import` output, which makes no conformance claim (D-007), set Patient Identity Removed to YES; add no CID 7050 codes, keeping existing items; and add a De-identification Method value naming the tool, its version, and the policy, and stating that no PS3.15 conformance is claimed.
+  - For both, set Longitudinal Temporal Information Modified (0028,0303) to REMOVED, or to MODIFIED where Modified Dates is applied, and add a Contributing Equipment Sequence (0018,A001) item whose purpose of reference is DCM 109104 (De-identifying Equipment, CID 7005).
+  - Never set Patient Identity Removed to NO. Nonconformant output carries YES only when every deviation from the selected profile and options removes or modifies more than they require, as `tps-import`'s modification of device dates does.
+- **Rationale.** E.1.1, E.2, and E.3.6 require these markers in their text, not in Table E.1-1, so the table generator does not produce them. E.1.1 says codes and text are "added to" these attributes, so earlier markers are kept. The CID 7050 codes carry the profile claim, so output without them claims none. PS3.3 notes that De-identification Method may describe the extent of de-identification, for example a HIPAA Limited Data Set, so YES with a descriptive value is an established way to record de-identification that stops short of a profile. NO would be false for `tps-import`, whose patient identity is removed, and E.1.2 has a re-identifier set NO while removing the method attributes. MIDI §1.14.3 recommends recording the de-identifying equipment in Contributing Equipment Sequence.
+- **Tests.** Markers for each preset, including `tps-import`, and for input that already carries markers; values within their VR limits; `tps-import` output without new CID 7050 codes; no output with Patient Identity Removed set to NO; and agreement between markers and report claims.
 
 ### D-013: No Encrypted Attributes Sequence
 
@@ -262,9 +266,13 @@ These are the active design decisions, not statements that the code implements t
 
 ### D-018: Published benchmark results
 
-- **Decision.** For each release of the engine, publish results against the NCI MIDI validation resources as separate metrics rather than a single score, recording versions and supported coverage. Each implementation pull request adds its own tests and traceability, and M6 consolidates the evidence for the first supported release. Releases that change only documentation or legacy code claim no engine results.
-- **Rationale.** Separate, versioned metrics let users judge performance for their own data and coverage.
-- **Tests.** The benchmark workflow reproduces the published results.
+- **Decision.**
+  - For each release of the engine, publish results against the NCI MIDI validation resources as separate metrics rather than a single score, recording versions and supported coverage. Each implementation pull request adds its own tests and traceability, and M6 consolidates the evidence for the first supported release. Releases that change only documentation or legacy code claim no engine results.
+  - Use the MIDI-B collection, with its synthetic and curated datasets, answer keys, and mapping files ([doi:10.7937/cf2p-aw56](https://doi.org/10.7937/cf2p-aw56)), and the Pseudo-PHI-DICOM-Data collection ([doi:10.7937/s17z-r072](https://doi.org/10.7937/s17z-r072)), both licensed CC BY 4.0, with the [NCI validation script](https://github.com/CBIIT/midi_validation_script) (Apache-2.0).
+  - Benchmark runs download the collections. Tests may use small subsets cached through the PyMedPhys Zenodo data store, with attribution, the licence, and a note of changes. The validation script's repository is not copied into PyMedPhys, because it also bundles third-party executables.
+  - Report results per answer-key category, and document each category where PyMedPhys's policy deliberately differs from the answer key.
+- **Rationale.** Separate, versioned metrics let users judge performance for their own data and coverage. The validation manual states that many answers follow TCIA's original curation of each source collection rather than strict DICOM requirements, so an aggregate score would penalise deliberate, conformant differences. CC BY 4.0 permits redistribution with attribution, and the collections are too large to keep in the repository.
+- **Tests.** The benchmark workflow reproduces the published results, and cached subsets carry their attribution.
 
 ### D-019: No deprecation before a released replacement
 
@@ -291,8 +299,3 @@ Milestones group outcomes; they are not a sequence of pull requests or releases.
 | M7 Legacy removal | Removal of both legacy interfaces | The deprecation window in D-019 has passed. |
 
 Later work needs its own design, tests, and conformance review: Clean Structured Content, accompanying spreadsheets pseudonymised with the same key, the Encrypted Attributes Sequence for controlled sharing (D-013), and the unsupported objects and options listed under Scope. Generating a table in M1 does not enable the corresponding option.
-
-## Open questions
-
-- **Nonconformant output.** Some nonconformant processing is needed: `tps-import`, whose options conflict (D-007), and possibly acknowledged custom retention or opt-in processing of Private SOP Classes. How to mark such output is undecided. PS3.15 defines no markers for nonconformant output. A re-identifier sets Patient Identity Removed to NO and removes De-identification Method and its Code Sequence (E.1.2), so NO alongside method values is a combination the standard never produces. Until this is decided, such cases are rejected or sequestered, and `tps-import` is unavailable (D-010 and D-011).
-- **Licensing.** Before vendoring or caching them, confirm the licence terms for the AAPM TG-263 structure names (for the descriptor cleaner), the NCI MIDI synthetic-identifier datasets and answer keys (for tests and benchmarks), and redistributing tables generated from the DICOM standard (D-001). Check the datasets when planning the first benchmark tests, not at M6.
