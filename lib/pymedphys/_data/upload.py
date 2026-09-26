@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +17,7 @@
 import hashlib
 import json
 import pathlib
-import urllib
+import urllib.parse
 
 from pymedphys._imports import keyring, requests
 
@@ -24,28 +25,38 @@ from .zenodo import get_zenodo_access_token, get_zenodo_record_id
 
 HEADERS = {"Content-Type": "application/json"}
 
+# How many access tokens to try before giving up on a request.
+MAX_TOKEN_ATTEMPTS = 3
+
 
 def zenodo_api_with_helpful_fallback(url, method, **kwargs):
     hostname = urllib.parse.urlparse(url).hostname
+    caller_headers = kwargs.pop("headers", {})
 
-    access_token = get_zenodo_access_token(hostname)
-    kwargs["params"] = {"access_token": access_token}
+    for _ in range(MAX_TOKEN_ATTEMPTS):
+        access_token = get_zenodo_access_token(hostname)
+        # The token goes in a header so that it never appears in a URL,
+        # which server logs and exception messages can record.
+        headers = {**caller_headers, "Authorization": f"Bearer {access_token}"}
 
-    r = getattr(requests, method)(url, **kwargs)
-    if r.status_code == 401:
-        print("The access token you provided is invalid.\n")
+        r = getattr(requests, method)(url, headers=headers, **kwargs)
+        if r.status_code == 401:
+            print("The access token you provided is invalid.\n")
+        elif r.status_code == 403:
+            print(
+                "The access token you provided doesn't appear to have the right scopes. "
+                "Make sure that the access token you provide has the scopes "
+                "`deposit:actions`, `deposit:write`, and `user:email`.\n"
+            )
+        else:
+            return r
+
         keyring.delete_password("Zenodo", hostname)
-        return zenodo_api_with_helpful_fallback(url, **kwargs)
-    if r.status_code == 403:
-        print(
-            "The access token you provided doesn't appear to have the right scopes. "
-            "Make sure that the access token you provide has the scopes "
-            "`deposit:actions`, `deposit:write`, and `user:email`.\n"
-        )
-        keyring.delete_password("Zenodo", hostname)
-        return zenodo_api_with_helpful_fallback(url, **kwargs)
 
-    return r
+    raise PermissionError(
+        f"Zenodo rejected the access token {MAX_TOKEN_ATTEMPTS} times; "
+        "not trying again."
+    )
 
 
 def create_metadata(title, author=None):
@@ -134,20 +145,19 @@ def upload_filepaths(filepaths, deposition_id, use_sandbox=False):
     files_url = get_files_url(deposition_id, use_sandbox=use_sandbox)
 
     for filepath in filepaths:
+        # Send the bytes rather than the open file, so that a request retried
+        # with a new access token sends the whole file again.
+        content = filepath.read_bytes()
         # Zenodo compares this checksum against its own; it is an integrity
         # check, not a security primitive.
-        md5 = hashlib.md5(usedforsecurity=False)
+        md5 = hashlib.md5(content, usedforsecurity=False)
 
-        with open(filepath, "rb") as upload_file:
-            md5.update(upload_file.read())
-
-            upload_file.seek(0)
-            r = zenodo_api_with_helpful_fallback(
-                files_url,
-                "post",
-                data={"name": filepath.name},
-                files={"file": upload_file},
-            )
+        r = zenodo_api_with_helpful_fallback(
+            files_url,
+            "post",
+            data={"name": filepath.name},
+            files={"file": (filepath.name, content)},
+        )
 
         response = r.json()
 
