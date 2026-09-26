@@ -102,14 +102,14 @@ This project adheres to
 - **[Contributor facing only]** The unused `conda-recipe/` directory has been
   removed. It was a draft for [#1886](https://github.com/pymedphys/pymedphys/issues/1886)
   that no workflow or release step used, and it no longer matched the build.
-- **[Contributor facing only]** A release now needs one pull request, which
-  also sets `main` to the next development version; the tag goes on the
-  commit before that. After publishing, the Release workflow runs the test
-  suite against the published wheel on Linux, Windows, and macOS with
-  dependencies resolved afresh from PyPI, reads back the GitHub release
-  assets, and fails its `Release Summary` unless every job on the run's route
-  succeeded. `check_distributions.py --published` gains `--tests` and
-  `--summary` to run the same checks locally and report them.
+- **[Contributor facing only]** After publishing, the Release workflow now
+  runs the test suite against the published wheel on Linux, Windows, and
+  macOS with dependencies resolved afresh from PyPI, reads back the GitHub
+  release assets, and fails its `Release Summary` unless every job succeeded.
+  `check_distributions.py --published` gains `--tests` and `--summary` to run
+  the same checks locally and report them. The workflow's manual trigger and
+  TestPyPI route have been removed: publishing a GitHub release is the only
+  way to publish.
 
 ### News around this release
 

@@ -216,26 +216,26 @@ The project uses uv with optional dependency groups:
   workflow runs both after publishing, and `--summary` writes the report for
   the release pull request. Extend the script or the workflow rather than
   documenting manual steps.
-- `Release Summary` fails unless every job on the run's publishing route
-  succeeded; add each new release job to its `needs`, and name jobs that a
-  route skips with `check_workflow_status.py --skipped`.
-- Development releases (`X.Y.Z.devN`) are published to PyPI as GitHub
-  pre-releases. Every release has one reviewed release pull request, merged
-  with a merge commit, that ends with a commit setting `main` to the next
-  unpublished `.devN`; the release tag goes on the commit before it. A stable
-  release pull request first adds a commit setting the release version and
-  completing the changelog; for a development release, that commit is the
-  `main` commit the branch starts from. `main` therefore never carries a
-  published version. Only a stable release pull request needs the `full-test`
-  label, and changelog entries stay under `## Unreleased` until the stable
-  release.
-- The publish jobs use `skip-existing`, so a re-run after a partial upload is
+- `Release Summary` fails unless every release job succeeded; add each new
+  release job to its `needs`.
+- Publishing a GitHub release or pre-release is the only way to publish.
+  There is no manual or TestPyPI route, as the maintainers decided a library
+  release needs no rehearsal beyond the checks before publishing; rehearse a
+  change to the release pipeline with a development release on PyPI.
+- Tag a commit on `main`: for a stable release, the merge commit of its
+  reviewed release pull request, which is the state of `main` that CI tested,
+  never a commit from the release branch. After publishing, a separate pull
+  request sets `main` to the next unpublished `.devN`, so a development
+  release (`X.Y.Z.devN`, a GitHub pre-release) can be tagged from `main`
+  without a release pull request. Only a stable release pull request needs the
+  `full-test` label, and changelog entries stay under `## Unreleased` until
+  the stable release.
+- The publish job uses `skip-existing`, so a re-run after a partial upload is
   safe; `verify-published` then requires the files on the index to match the
   build. Release asset uploads must wait for that verification, so a skipped
   duplicate cannot overwrite GitHub assets with different bytes.
-- Resolve PyMedPhys's published archive from the selected index alone, then
-  install its exact URL with dependencies from PyPI. Searching TestPyPI and
-  PyPI together does not give the first index priority.
+- Resolve PyMedPhys's published archive from PyPI's JSON Simple API and
+  install its exact URL, so no other configured index can substitute it.
 - Recover releases using their original distribution files. A rebuild of the
   same tag can differ when the build backend changes. A failed retry does not
   prove earlier attempts left PyPI untouched; preserve release tags and use a
