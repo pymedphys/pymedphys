@@ -501,7 +501,6 @@ class ArgumentTests(unittest.TestCase):
     def test_build_mode_rejects_published_options(self):
         for option in (
             ["--compare-with", "x"],
-            ["--index", "testpypi"],
             ["--report-dir", "x"],
             ["--wait", "5"],
             ["--tests"],
@@ -1110,7 +1109,7 @@ class SummaryTests(unittest.TestCase):
         return results
 
     def test_a_passing_check_lists_both_files_and_their_hashes(self):
-        summary = format_summary(VERSION, "PyPI", self._results())
+        summary = format_summary(VERSION, self._results())
 
         heading = summary.splitlines()[0]
         self.assertIn(f"pymedphys {VERSION}", heading)
@@ -1131,7 +1130,7 @@ class SummaryTests(unittest.TestCase):
             tests=CheckResult("tests", WHEEL_NAME, ran=False),
         )
 
-        summary = format_summary(VERSION, "TestPyPI", results)
+        summary = format_summary(VERSION, results)
 
         self.assertIn("failed", summary.splitlines()[0])
         self.assertIn("- Installing the wheel failed\n", summary)
@@ -1152,7 +1151,7 @@ class SummaryTests(unittest.TestCase):
             arguments = ["--published", VERSION, "--report-dir", str(root / "reports")]
 
             with (
-                mock.patch.dict(check_distributions.PACKAGE_INDEXES, {"pypi": index}),
+                mock.patch.object(check_distributions, "PYPI", index),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 exit_code = main([*arguments, "--summary", str(summary)])

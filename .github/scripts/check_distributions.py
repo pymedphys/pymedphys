@@ -24,12 +24,12 @@ missing from the sdist also breaks the wheel, rather than being hidden by a
 wheel built straight from the source tree.
 
 After publishing, pass ``--published VERSION``. The wheel and the sdist are
-resolved from the index's JSON Simple API and each exact archive URL is
-installed into its own fresh environment, with dependencies from PyPI,
-pip's cache disabled, and the sdist forced to build. pip's installation report
-must show the expected file from the index's own file host, and each
-environment then gets the smoke test's import and CLI checks and ``pip check``.
-The environments use the Python running this script.
+resolved from PyPI's JSON Simple API and each exact archive URL is installed
+into its own fresh environment, with pip's configuration and cache disabled
+and the sdist forced to build, so no other index can substitute either file.
+pip's installation report must show the expected file from PyPI's file host,
+and each environment then gets the smoke test's import and CLI checks and
+``pip check``. The environments use the Python running this script.
 
 With ``--tests``, the wheel's environment then gains the ``user`` and ``tests``
 extras, resolved afresh from PyPI as a user's installation would be, and runs
@@ -88,7 +88,6 @@ SMOKE_IMPORTS = ("pymedphys", "pymedphys.dicom", "pymedphys.cli")
 # The extras and command a contributor uses to run the default test selection.
 TEST_EXTRAS = ("user", "tests")
 TEST_COMMAND = ("-m", "pymedphys", "dev", "tests")
-INDEX_LABELS = {"pypi": "PyPI", "testpypi": "TestPyPI"}
 
 IMPORT_CHECK = """\
 import importlib
@@ -107,8 +106,9 @@ print(pymedphys.__version__)
 """
 
 
-# pip's --report locates the archive it installed. Files on these indexes are
-# served from a separate host, so an index URL is not a valid download URL.
+# pip's --report locates the archive it installed. PyPI serves files from a
+# separate host, so an index URL is not a valid download URL. The tests
+# substitute a local index.
 @dataclasses.dataclass(frozen=True)
 class PackageIndex:
     project_url: str
@@ -116,18 +116,10 @@ class PackageIndex:
     dependency_index_url: str = "https://pypi.org/simple/"
 
 
-PACKAGE_INDEXES = {
-    "pypi": PackageIndex(
-        project_url="https://pypi.org/simple/pymedphys/",
-        files_url="https://files.pythonhosted.org/",
-    ),
-    # Resolve pymedphys from TestPyPI alone. Runtime and build dependencies
-    # still use PyPI, without allowing it to substitute pymedphys itself.
-    "testpypi": PackageIndex(
-        project_url="https://test.pypi.org/simple/pymedphys/",
-        files_url="https://test-files.pythonhosted.org/",
-    ),
-}
+PYPI = PackageIndex(
+    project_url="https://pypi.org/simple/pymedphys/",
+    files_url="https://files.pythonhosted.org/",
+)
 FORMATS = ("wheel", "sdist")
 RETRY_INTERVAL = 30
 # Keep explicit transport settings for institutional proxies and slow links.
@@ -860,7 +852,6 @@ def check_published(
 
 def format_summary(
     version: str,
-    index_label: str,
     results: Sequence[CheckResult],
     *,
     compare_with: Path | None = None,
@@ -869,7 +860,7 @@ def format_summary(
     outcome = "failed" if any(result.failures for result in results) else "passed"
     checked = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")
     lines = [
-        f"### pymedphys {_normalise_tag(version)} from {index_label}: {outcome}",
+        f"### pymedphys {_normalise_tag(version)} from PyPI: {outcome}",
         "",
         f"Checked on {platform.platform()} with Python "
         f"{platform.python_version()} at {checked} UTC.",
@@ -915,12 +906,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     published.add_argument(
         "--published",
         metavar="VERSION",
-        help="Check this version on the package index instead of a local build",
-    )
-    published.add_argument(
-        "--index",
-        choices=sorted(PACKAGE_INDEXES),
-        help="Package index to install from (default: pypi)",
+        help="Check this version on PyPI instead of a local build",
     )
     published.add_argument(
         "--compare-with",
@@ -958,7 +944,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.dist_dir is None:
             parser.error("give a build directory or --published VERSION")
         published_only = {
-            "--index": args.index,
             "--compare-with": args.compare_with,
             "--report-dir": args.report_dir,
             "--wait": args.wait,
@@ -971,7 +956,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         failures = check_build(args.dist_dir, args.expected_version, args.skip_install)
     else:
         if args.dist_dir is not None:
-            parser.error("--published checks the index, not a build directory")
+            parser.error("--published checks PyPI, not a build directory")
         if args.expected_version is not None or args.skip_install:
             parser.error(
                 "--expected-version and --skip-install apply only to a build "
@@ -982,10 +967,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         report_dir.mkdir(parents=True, exist_ok=True)
         print(f"Installation reports and logs: {report_dir.resolve()}")
-        index_name = args.index or "pypi"
         results = check_published_files(
             args.published,
-            PACKAGE_INDEXES[index_name],
+            PYPI,
             report_dir=report_dir.resolve(),
             compare_with=args.compare_with,
             wait=args.wait or 0,
@@ -997,7 +981,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 summary.write(
                     format_summary(
                         args.published,
-                        INDEX_LABELS[index_name],
                         results,
                         compare_with=args.compare_with,
                     )

@@ -122,43 +122,27 @@ class WorkflowStatusTests(unittest.TestCase):
                     self.assertEqual(not check_jobs(needs, conditional), should_pass)
 
 
-class RouteTests(unittest.TestCase):
+class UnconditionalSummaryTests(unittest.TestCase):
     """A summary without change selection, such as the release workflow's."""
 
     def setUp(self):
         self.needs = {
             "build": {"result": "success"},
-            "publish-testpypi": {"result": "skipped"},
             "publish-pypi": {"result": "success"},
         }
-        self.skipped = ["publish-testpypi"]
 
-    def test_jobs_off_the_route_may_be_skipped_without_a_changes_job(self):
-        self.assertEqual(check_jobs(self.needs, {}, self.skipped), [])
+    def test_every_job_succeeding_passes_without_a_changes_job(self):
+        self.assertEqual(check_jobs(self.needs, {}), [])
+        summary = make_summary("Release Summary", self.needs, {}, [])
+        self.assertIn("| publish-pypi | yes | success |", summary)
+        self.assertIn("All required checks passed", summary)
 
-    def test_jobs_off_the_route_must_not_run(self):
-        for result in ("success", "failure", "cancelled", None):
-            with self.subTest(result=result):
-                needs = copy.deepcopy(self.needs)
-                needs["publish-testpypi"]["result"] = result
-                self.assertTrue(check_jobs(needs, {}, self.skipped))
-
-    def test_jobs_on_the_route_must_succeed(self):
+    def test_every_job_must_succeed(self):
         for result in ("failure", "cancelled", "skipped", None):
             with self.subTest(result=result):
                 needs = copy.deepcopy(self.needs)
                 needs["publish-pypi"]["result"] = result
-                self.assertTrue(check_jobs(needs, {}, self.skipped))
-
-    def test_a_skipped_job_missing_from_the_dependencies_fails(self):
-        del self.needs["publish-testpypi"]
-        self.assertTrue(check_jobs(self.needs, {}, self.skipped))
-
-    def test_the_summary_marks_jobs_off_the_route_as_not_required(self):
-        summary = make_summary("Release Results", self.needs, {}, [], self.skipped)
-        self.assertIn("| publish-testpypi | no | skipped |", summary)
-        self.assertIn("| publish-pypi | yes | success |", summary)
-        self.assertIn("All required checks passed", summary)
+                self.assertTrue(check_jobs(needs, {}))
 
 
 if __name__ == "__main__":

@@ -1,17 +1,13 @@
 name: Release
 
+# Publishing a GitHub release or pre-release is the only way to publish. To
+# retry a release whose run never started, delete the GitHub release, keeping
+# its tag, and publish it again.
 on:
   release:
     types: [published]
-  workflow_dispatch:
-    inputs:
-      # The Run workflow form shows this description beside the checkbox.
-      dry_run:
-        description: "Ticked: rehearse on TestPyPI. Unticked: publish to PyPI; for recovery only, see the release guide."
-        type: boolean
-        default: true
 
-# Read-only by default. The publish jobs request id-token: write for trusted
+# Read-only by default. The publish job requests id-token: write for trusted
 # publishing and the asset upload requests contents: write.
 permissions:
   contents: read
@@ -57,22 +53,17 @@ jobs:
           uvx twine==7.0.0 check dist/*
 
       # Checks both archives' contents, installs the wheel into a fresh venv,
-      # and, for a published release, requires the tag to be v<version>.
+      # and requires the tag to be v<version>.
       - name: Check distributions
         env:
-          EVENT_NAME: ${{ github.event_name }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ "$EVENT_NAME" = "release" ]; then
-            case "$TAG" in
-              v*) ;;
-              *) echo "::error::The release tag $TAG must be v followed by the package version."
-                 exit 1 ;;
-            esac
-            python .github/scripts/check_distributions.py dist --expected-version "$TAG"
-          else
-            python .github/scripts/check_distributions.py dist
-          fi
+          case "$TAG" in
+            v*) ;;
+            *) echo "::error::The release tag $TAG must be v followed by the package version."
+               exit 1 ;;
+          esac
+          python .github/scripts/check_distributions.py dist --expected-version "$TAG"
 
       # The wheel filename carries the normalised version.
       - name: Record the version
@@ -89,38 +80,8 @@ jobs:
           path: dist/
           retention-days: 30
 
-  # Publish to TestPyPI for manual dry-run dispatches.
-  publish-testpypi:
-    needs: [build]
-    if: github.event_name == 'workflow_dispatch' && inputs.dry_run
-    runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/pymedphys
-    permissions:
-      id-token: write
-    steps:
-      - name: Download distributions
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: dist
-          path: dist/
-
-      # Skipping files already on the index makes a re-run safe after a
-      # partial upload. verify-published catches an existing file whose
-      # contents differ from this build.
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true
-
-  # Publish to PyPI for real releases or explicit non-dry-run dispatches.
   publish-pypi:
     needs: [build]
-    if: >
-      github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -134,7 +95,9 @@ jobs:
           name: dist
           path: dist/
 
-      # See publish-testpypi for skip-existing.
+      # Skipping files already on the index makes a re-run safe after a
+      # partial upload. verify-published catches an existing file whose
+      # contents differ from this build.
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
@@ -145,8 +108,7 @@ jobs:
   upload-release-assets:
     needs: [publish-pypi, verify-published]
     if: >-
-      !cancelled() && github.event_name == 'release' &&
-      needs.publish-pypi.result == 'success' &&
+      !cancelled() && needs.publish-pypi.result == 'success' &&
       needs.verify-published.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -178,18 +140,13 @@ jobs:
           (cd assets && sha256sum -- *) > assets.sha256
           diff built.sha256 assets.sha256
 
-  # Install what the index now serves, the wheel and the sdist separately, on
-  # each OS, and require the files to match the ones built and tested above.
-  # After a TestPyPI rehearsal this also exercises the job before a release.
-  # Only pymedphys comes from that index; dependencies use PyPI, so no other
-  # package can be substituted from TestPyPI, where anyone can upload.
+  # Install what PyPI now serves, the wheel and the sdist separately, on each
+  # OS, and require the files to match the ones built and tested above.
   verify-published:
     name: Verify published (${{ matrix.os }})
-    needs: [build, publish-testpypi, publish-pypi]
+    needs: [build, publish-pypi]
     if: >-
-      !cancelled() &&
-      (needs.publish-pypi.result == 'success' ||
-       needs.publish-testpypi.result == 'success')
+      !cancelled() && needs.publish-pypi.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -220,10 +177,9 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ needs.build.outputs.version }}
-          INDEX: ${{ needs.publish-pypi.result == 'success' && 'pypi' || 'testpypi' }}
         run: >-
           python .github/scripts/check_distributions.py
-          --published "$VERSION" --index "$INDEX" --compare-with dist
+          --published "$VERSION" --compare-with dist
           --report-dir reports --wait 600 --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Upload installation reports
@@ -242,7 +198,7 @@ jobs:
   # the tests download their data.
   test-published:
     name: Test published (${{ matrix.os }})
-    needs: [build, publish-testpypi, publish-pypi, verify-published]
+    needs: [build, verify-published]
     if: >-
       !cancelled() && needs.verify-published.result == 'success'
     strategy:
@@ -274,10 +230,9 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ needs.build.outputs.version }}
-          INDEX: ${{ needs.publish-pypi.result == 'success' && 'pypi' || 'testpypi' }}
         run: >-
           python .github/scripts/check_distributions.py
-          --published "$VERSION" --index "$INDEX" --compare-with dist
+          --published "$VERSION" --compare-with dist
           --report-dir reports --wait 600 --tests --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Upload test reports
@@ -288,8 +243,8 @@ jobs:
           path: reports/
           retention-days: 30
 
-  # Fails unless every job on this run's route succeeded, so a green summary
-  # means the release is complete. It is not a pull request check.
+  # Fails unless every job succeeded, so a green summary means the release is
+  # complete. It is not a pull request check.
   summary:
     name: Release Summary
     needs:
@@ -298,7 +253,6 @@ jobs:
       - unit-tests
       - integration-tests
       - build
-      - publish-testpypi
       - publish-pypi
       - upload-release-assets
       - verify-published
@@ -314,36 +268,22 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github/scripts
 
-      # Jobs on the other publishing routes must be skipped; every other job
-      # must succeed.
-      - name: Check every job on this route
+      - name: Check that every job succeeded
         id: gate
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
-          EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN: ${{ inputs.dry_run }}
-        run: |
-          if [ "$EVENT_NAME" = "release" ]; then
-            skipped=(--skipped publish-testpypi)
-          elif [ "$DRY_RUN" = "true" ]; then
-            skipped=(--skipped publish-pypi --skipped upload-release-assets)
-          else
-            skipped=(--skipped publish-testpypi --skipped upload-release-assets)
-          fi
-          python .github/scripts/check_workflow_status.py --title 'Release Summary' "${skipped[@]}"
+        run: python .github/scripts/check_workflow_status.py --title 'Release Summary'
 
       - name: Write the record for the release pull request
         if: always()
         env:
           VERSION: ${{ needs.build.outputs.version || github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN: ${{ github.event_name == 'release' && 'N/A (release event)' || inputs.dry_run }}
           COMMIT: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GATE: ${{ steps.gate.outcome }}
         run: |
           if [ "$GATE" = "success" ]; then
-            result="passed; every job on this route succeeded"
+            result="passed; every job succeeded"
           else
             result="failed; see the table above"
           fi
@@ -353,7 +293,7 @@ jobs:
 
           ~~~markdown
           - Version: ${VERSION} at ${COMMIT}
-          - Release workflow run: ${RUN_URL} (event: ${EVENT_NAME}; dry run: ${DRY_RUN})
+          - Release workflow run: ${RUN_URL}
           - Release Summary: ${result}
           ~~~
           EOF
