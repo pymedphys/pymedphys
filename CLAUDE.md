@@ -78,6 +78,8 @@ for it, and keep incident history and evidence caveats on the pull request
 rather than in the guide. Open a long procedure with a short checklist for
 readers who already know it, and move one-time setup into an appendix.
 
+Write changelog entries as informative release notes: state what changed, its effect, and what users should do, in declarative sentences. Do not phrase entries as answers to review questions or pre-empt objections ("is not limited to ...", "does not use ...", "has not been measured"); state the scope directly instead. When a fix changes results that earlier versions returned without an error, open the release section with a warning that says which inputs and functions were affected, by how much, and what to re-check, and also list the changed results and any changed return shapes or array order under (Potentially) breaking changes.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).

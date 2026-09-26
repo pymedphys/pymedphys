@@ -6,6 +6,8 @@ the original implementation on `main` at `400b61fe8` with the PR at `658c4b6f0`,
 then added the regression tests described below. It does not establish that
 every DICOM helper or every gamma search case is correct.
 
+[DICOM coordinates and gamma, illustrated](dicom-coordinates-illustrated.ipynb) demonstrates these checks with executable examples and figures, including gamma plotting and a speed comparison.
+
 ## Independent definition
 
 The governing definitions are DICOM PS3.3
