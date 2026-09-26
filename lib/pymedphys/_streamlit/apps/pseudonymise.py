@@ -18,6 +18,7 @@
 import base64
 import datetime
 import io
+import logging
 import pathlib
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -93,7 +94,9 @@ def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
     return anon_filename
 
 
-def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
+def _zip_pseudo_fifty_mbytes(
+    file_buffer_list: list, zip_bytes_io: io.BytesIO, first_file_number: int = 1
+):
     """Pseudonymises the contents of the file_buffer_list (list of DICOM files)
     and places the pseudonymised files in to a zip.
 
@@ -103,11 +106,14 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
         List of DICOM file buffers from streamlit file_uploader to pseudonymise
     zip_bytes_io : io.BytesIO
         An in memory file like object to be used for storing the Zip
+    first_file_number : int
+        Position of the first buffer among all uploaded files, counting from
+        one, so that a failure is reported by its position in the upload
 
     """
 
     bad_data = False
-    file_count = 0
+    file_count = first_file_number - 1
     keywords = get_default_pseudonymisation_keywords()
     keywords.remove("PatientSex")
     strategy = pseudonymisation_api.pseudonymisation_dispatch
@@ -122,10 +128,7 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
             # but then when the user goes to close the buffer (click x on screen)
             # there will be an error.
 
-            original_file_name = None
-
             try:
-                original_file_name = uploaded_file_buffer.name
                 ds_input: pydicom.FileDataset = pydicom.dcmread(
                     uploaded_file_buffer, force=True
                 )
@@ -143,8 +146,13 @@ def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
                 anon_filename = pathlib.Path(temp_anon_filepath).name
                 pydicom.dcmwrite(in_memory_temp_file, ds_input)
             except (KeyError, OSError, ValueError) as e_info:
-                print(e_info)
-                print(f"While processing {original_file_name}")
+                # Neither the file name nor the error message is logged: both
+                # can contain identifying information.
+                logging.warning(
+                    "Unable to pseudonymise uploaded file %d (in upload order): %s",
+                    file_count,
+                    type(e_info).__name__,
+                )
                 bad_data = True
                 break
             myzip.writestr(
@@ -196,7 +204,9 @@ def pseudonymise_buffer_list(file_buffer_list: list):
             zipfile_name = f"{zipfile_basename}.{zip_count}.zip"
             zip_bytes_io = io.BytesIO()
             bad_data = _zip_pseudo_fifty_mbytes(
-                file_buffer_list[start_index:end_index], zip_bytes_io
+                file_buffer_list[start_index:end_index],
+                zip_bytes_io,
+                first_file_number=start_index + 1,
             )
             start_index = end_index
             if bad_data:
