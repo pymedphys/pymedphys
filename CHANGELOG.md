@@ -64,8 +64,10 @@ This project adheres to
 ### Contributor facing changes
 
 - **[Contributor facing only]** CI now selects Python, documentation, tooling
-  and security checks from the complete tested PR diff, while unknown inputs
-  request every check and required summaries reject unexpected skips. Tool-only
+  and security checks from the complete tested PR diff, while unknown inputs,
+  symlinks and submodules request every check and required summaries reject
+  unexpected skips. The step summary names the reason for each selected check,
+  including the path behind any fallback. Tool-only
   jobs avoid installing the scientific stack: pre-commit installs only its own
   dependency group, hash-checked from `uv.lock`. Only data consumers restore
   the manifest-specific data cache. Release validation runs in parallel with

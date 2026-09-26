@@ -28,6 +28,7 @@ jobs:
       run-database: ${{ steps.select.outputs.run-database }}
       run-docs: ${{ steps.select.outputs.run-docs }}
       run-scripts: ${{ steps.select.outputs.run-scripts }}
+      run-full-matrix: ${{ steps.select.outputs.run-full-matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -97,15 +98,17 @@ jobs:
       needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/unit-tests.yml
     with:
-      quick: >-
-        ${{ github.event_name == 'pull_request' &&
-            !contains(github.event.pull_request.labels.*.name, 'full-test') }}
+      # The selector owns the full-test label. Only an explicit false keeps the
+      # quick matrix, so a missing or invalid output runs the full matrix.
+      quick: ${{ needs.changes.outputs.run-full-matrix == 'false' }}
 
   # Extended checks share selection outputs with the required summary.
   integration-tests:
     needs: [pre-commit, changes]
     if: |
+      (success() || failure()) &&
       needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
       needs.changes.outputs.run-integration == 'true'
     uses: ./.github/workflows/integration-tests.yml
     with:
@@ -123,7 +126,9 @@ jobs:
   docs-check:
     needs: [pre-commit, changes]
     if: |
+      (success() || failure()) &&
       needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
       needs.changes.outputs.run-docs == 'true'
     uses: ./.github/workflows/docs.yml
     permissions:

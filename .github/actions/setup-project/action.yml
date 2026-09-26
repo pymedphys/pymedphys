@@ -31,7 +31,8 @@ runs:
         enable-cache: true
         # Each environment must be able to save its complete dependency set.
         # Otherwise a fast tool-only job can claim the shared immutable key.
-        cache-suffix: py${{ inputs.python-version }}-${{ inputs.extras || github.job }}
+        # setup-uv's key already includes the OS and the full Python version.
+        cache-suffix: ${{ inputs.extras || github.job }}
         cache-dependency-glob: |
           uv.lock
           pyproject.toml
@@ -49,20 +50,7 @@ runs:
           uv sync --frozen
         fi
 
+    # Jobs that decide later whether they need data use cache-data directly.
     - name: Cache PyMedPhys data
       if: inputs.cache-data == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ~/.pymedphys
-        # The exact key is per job, so the first job to finish cannot claim a
-        # shared key with an empty cache. A cold job first restores any
-        # populated cache for the same manifest on the same OS (including
-        # this job's cache under the previous key layout), so only the first
-        # run after a manifest change contacts Zenodo, and data_path verifies
-        # hashes on restored files. Never restore across manifest hashes:
-        # zip_data_paths preserves existing extracted files even when it
-        # replaces an outdated archive.
-        key: pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-${{ github.job }}
-        restore-keys: |
-          pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-
-          pymedphys-data-v2-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/hashes.json') }}
+      uses: ./.github/actions/cache-data

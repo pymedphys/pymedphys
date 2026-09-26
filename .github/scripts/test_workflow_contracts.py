@@ -28,7 +28,8 @@ from select_checks import OUTPUTS
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 
 
-def jobs(filename):
+def jobs(filename: str) -> dict[str, str]:
+    """Map each job ID in a workflow to the text of its definition."""
     text = (WORKFLOWS / filename).read_text(encoding="utf-8")
     body = text.split("\njobs:\n", 1)[1]
     starts = list(re.finditer(r"^  ([a-z][a-z0-9-]*):$", body, re.MULTILINE))
@@ -40,7 +41,8 @@ def jobs(filename):
     }
 
 
-def needs(job):
+def needs(job: str) -> set[str]:
+    """Return the job IDs in a job definition's needs, inline or as a list."""
     match = re.search(
         r"^    needs: *(\[[^\]]*\]|(?:\n      - [^\n]+)+)", job, re.MULTILINE
     )
@@ -88,6 +90,33 @@ class WorkflowContractTests(unittest.TestCase):
                         workflow["changes"],
                     )
             self.assertIn("fetch-depth: 2", workflow["changes"])
+
+    def test_selected_jobs_still_run_when_pre_commit_fails(self):
+        # Contributors get every selected result in one run; the summary still
+        # fails on the pre-commit failure itself.
+        workflow = jobs("ci.yml")
+        for job, body in workflow.items():
+            if "pre-commit" in needs(body) and "needs.changes.outputs." in body:
+                with self.subTest(job=job):
+                    self.assertIn("(success() || failure())", body)
+                    self.assertIn("needs.changes.result == 'success'", body)
+
+    def test_the_selector_alone_reads_labels_and_the_matrix_fails_closed(self):
+        for filename in ("ci.yml", "security.yml"):
+            with self.subTest(workflow=filename):
+                text = (WORKFLOWS / filename).read_text(encoding="utf-8")
+                self.assertNotIn("pull_request.labels", text)
+        workflow = jobs("ci.yml")
+        self.assertIn(
+            "run-full-matrix: ${{ steps.select.outputs.run-full-matrix }}",
+            workflow["changes"],
+        )
+        self.assertIn("run-full-matrix", OUTPUTS)
+        self.assertRegex(
+            workflow["unit-tests"],
+            r"\n      quick: \$\{\{ needs\.changes\.outputs\.run-full-matrix "
+            r"== 'false' \}\}\n",
+        )
 
     def test_publishing_waits_for_all_original_quality_gates(self):
         workflow = jobs("release.yml")

@@ -95,6 +95,8 @@ class WorkflowStatusTests(unittest.TestCase):
         self.assertTrue(check_jobs(self.needs, self.conditional))
 
     def test_autofix_does_not_make_unverified_commit_green(self):
+        # A Python change selects these jobs; the auto-fix push skips them.
+        self.needs["changes"]["outputs"]["run-python"] = "true"
         self.needs["pre-commit"] = {
             "result": "failure",
             "outputs": {"autofix-pushed": "true"},
@@ -102,7 +104,9 @@ class WorkflowStatusTests(unittest.TestCase):
         for job in ("lint", "type-check", "unit-tests"):
             self.needs[job]["result"] = "skipped"
         failures = check_jobs(self.needs, self.conditional)
-        self.assertTrue(failures)
+        for job in ("pre-commit", "lint", "type-check", "unit-tests"):
+            with self.subTest(job=job):
+                self.assertTrue(any(f.startswith(f"{job}:") for f in failures))
         summary = make_summary("CI Results", self.needs, self.conditional, failures)
         self.assertIn("new CI run must pass", summary)
         self.assertNotIn("All required checks passed", summary)

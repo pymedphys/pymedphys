@@ -44,33 +44,41 @@ Coordinates all CI checks based on file changes, labels, and event types.
   - `docs-check`: Documentation build and artefact (conditional)
   - `summary`: Requires policy checks, pre-commit and every selected check to succeed
 
-`.github/scripts/select_checks.py` owns selection for both CI and security.
-For PRs it compares the tested merge tree with its base parent. It verifies both
-parents against the event, reads NUL-delimited paths, and disables rename
-detection so deletions and both sides of renames count. It needs only two
-checkout generations and has no API file-list limit. If the merge cannot be
-verified, every check is selected.
+`.github/scripts/select_checks.py` owns selection for both CI and security,
+including the `full-test` and `database` labels, which it matches
+case-insensitively as GitHub's `contains()` does. For PRs it compares the tested
+merge tree with its base parent. It verifies both parents against the event,
+reads NUL-delimited raw diff records, and disables rename detection so deletions
+and both sides of renames count. It needs only two checkout generations and has
+no API file-list limit. If the merge cannot be verified, every check that a
+changed path can select runs. The step summary gives each check's reason (the
+event, a label, or the first path that selected it) and names the path behind
+any fallback.
 
 | PR changes | Selected checks, in addition to policy checks and pre-commit |
 |------------|-------------------------------------------------------------|
 | Known documentation prose, notebooks and rendered assets only | Documentation |
 | Package Python modules | Lint, type checks, unit tests, generated documentation and all security scans |
 | Python tests only | Lint, type checks, unit tests and all security scans |
-| Mosaiq/database Python modules or shared imports, fixtures and data access | The Python checks above, plus database tests |
-| Dependencies, non-Python test data, build/CI configuration or any unclassified path | Every check, including integration and database tests |
+| Mosaiq/database Python modules, `conftest.py`, top-level modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` | The Python checks above, plus database tests |
+| Dependencies, non-Python test data, build/CI configuration, symlinks, submodules or any unclassified path | Every check, including integration and database tests, with the quick unit-test matrix |
 | `full-test` label | Every check and the full unit-test matrix |
 | `database` label | Adds database tests |
 
-Only recognised documentation inputs are exempt from Python checks; a Python
-file or new configuration format inside the docs tree is not exempt. Package
-modules still select documentation because autodoc and notebooks import them.
-The full OS/Python matrix and integration checks remain unconditional on main.
-ReadTheDocs publishes main documentation independently.
+Only recognised documentation inputs under `lib/pymedphys/docs/` are exempt
+from Python checks; a Python file or new configuration format inside the docs
+tree is not exempt. The repository-root `docs` is a symlink to that directory,
+so git reports only the link itself, which selects every check. A symlink or
+submodule is never exempt, whatever its name, because it can stand in for any
+content. Package modules still select documentation because autodoc and
+notebooks import them. The full OS/Python matrix and integration checks remain
+unconditional on main. ReadTheDocs publishes main documentation independently.
 
 If pre-commit pushes an auto-fix, dependent jobs are skipped for the superseded
 commit and the summary fails until a fresh run passes on the new commit.
-Upstream failures can also skip dependent jobs; the summaries reject those
-unexpected skips. Independent integration jobs can run alongside unit tests.
+Otherwise every selected job still runs when pre-commit fails, so one run
+reports every result. The summaries reject any other unexpected skip.
+Integration jobs run alongside unit tests.
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
@@ -107,7 +115,9 @@ Fast unit tests with smart matrix strategy.
 
 - **Features**:
   - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
-  - Quick mode for selected PRs (Ubuntu + Python 3.12)
+  - Quick mode for other PRs (Ubuntu + Python 3.12). The selector's
+    `run-full-matrix` output decides, and only an explicit `false` keeps the
+    quick matrix
   - Installs the `user` extra so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
@@ -131,13 +141,15 @@ Comprehensive testing beyond unit tests.
   - `propagate`: `pymedphys dev propagate` must leave the generated files
     unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
     `_version.py`)
-- **Triggers**: Main branch, `full-test`, or unclassified/shared build inputs
+- **Triggers**: Main branch, `full-test`, or an unclassified input, symlink or
+  submodule
 
 #### `mosaiq-db-tests.yml`
 SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
-- **Triggers**: Main pushes, database code changes, or `database` / `full-test` labels
+- **Triggers**: Main pushes, database or shared code changes, unclassified
+  inputs, or `database` / `full-test` labels
 - **Features**: Waits for SQL Server to accept connections, then runs the tests once;
   test failures are not hidden by retries
 
@@ -235,7 +247,8 @@ Automated dependency updates for Python packages.
   `uv sync` and `pymedphys dev propagate` (so
   the exported requirements files, `dependency-extra.txt`, and `pyproject.hash`
   stay current), then the unit tests, the docs build, and a wheel build and
-  install before a PR is opened
+  install before a PR is opened. The data cache is restored only after the
+  lockfile changes, because only those runs read data
 - **PR**: opened with the CI bot's app token so the normal CI runs on it; a PR
   opened with `GITHUB_TOKEN` triggers no workflows
 - **Dependabot** (`.github/dependabot.yml`) owns the GitHub Actions pins (one
@@ -258,13 +271,19 @@ Standardised project setup for all workflows.
 
 - **Features**:
   - Python setup with configurable version
-  - uv package manager with caches separated by Python version and extras
-    (tool-only jobs use their job ID), so a small tool cache cannot claim the
-    dependency cache needed by scientific jobs
-  - PyMedPhys data caching only for jobs that consume data; manifest-specific
-    keys and the prohibition on restoring across manifest changes are retained
+  - uv package manager with caches separated by extras (tool-only jobs use
+    their job ID), so a small tool cache cannot claim the dependency cache
+    needed by scientific jobs. setup-uv's own key adds the OS and the full
+    Python version
+  - PyMedPhys data caching, through `actions/cache-data`, only for jobs that
+    consume data
   - Dependency installation with extras
   - Tool-only setup for jobs that do not need an installed project
+
+### `actions/cache-data/action.yml`
+Restores and saves the PyMedPhys data cache. Keys are per job and per manifest,
+and never restore across a change to `hashes.json`. Jobs that decide later
+whether they need data, such as `deps.yml`, use it directly.
 
 ## PR Workflow
 
@@ -274,7 +293,7 @@ For a typical pull request:
 Always:
 ├── changes          # Selection, summary and workflow-contract regression tests
 ├── pre-commit       # All configured hooks
-├── CI Summary      # Requires every selected CI job to succeed
+├── CI Summary       # Requires every selected CI job to succeed
 └── Security Summary # Requires every selected scan to succeed
 
 Selected from the complete merge diff and labels:
@@ -289,7 +308,7 @@ Selected from the complete merge diff and labels:
 On merge to main:
 
 ```
-Core checks, plus:
+Every job except docs-check (ReadTheDocs publishes main), including:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
 ├── mosaiq-db-tests    # Database tests
@@ -362,9 +381,10 @@ request broader coverage and trigger another CI run.
 
 ### What a successful summary means
 
-- Ordinary PRs use Ubuntu and Python 3.12 when unit tests are selected. The full OS/Python
-  matrix and integration tests run on main pushes and `full-test` PRs. A green
-  ordinary PR therefore does not mean the full matrix ran before merging.
+- Ordinary PRs use Ubuntu and Python 3.12 when unit tests are selected. The
+  full OS/Python matrix runs on main pushes and `full-test` PRs; integration
+  tests also run on PRs with an unclassified input. A green ordinary PR
+  therefore does not mean the full matrix ran before merging.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.
 - Dependency vulnerabilities are advisory on PRs and pushes. Requiring either
   `Dependency Audit` or `Security Summary` does not turn pip-audit findings into

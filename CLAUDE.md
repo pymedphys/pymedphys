@@ -426,10 +426,13 @@ This ensures that:
 ### CI Gates and Review Policy
 
 - Optimise CI and releases without reducing validation: skip only checks whose
-  inputs are known to be unaffected, and select all checks for unknown paths or
-  an unverifiable diff. Keep selection and summary conditions identical, with
-  regression coverage for deletions, renames and missing outputs. Release
-  optimisation must retain fresh package verification and every publishing gate.
+  inputs are known to be unaffected, and select every check a path can select
+  for unknown paths, symlinks, submodules or an unverifiable diff. Only main and
+  the `full-test` label widen the unit-test matrix. `select_checks.py` alone
+  reads labels, and a missing selection output must mean more validation, never
+  less. Keep selection and summary conditions identical, with regression
+  coverage for deletions, renames and missing outputs. Release optimisation must
+  retain fresh package verification and every publishing gate.
 
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named
@@ -450,9 +453,10 @@ This ensures that:
   The dependency audit is advisory on pull requests and pushes and blocking on
   scheduled and manual runs, where a failure opens or updates the issue labelled
   `security-audit`. Bandit and zizmor block on every event.
-- Workflow files staged in `claude_created_workflows_preview/` count as workflow
-  changes for the pull request path filter, and zizmor audits them in place, so
-  a staged workflow must be clean before a maintainer moves it.
+- Workflow files staged in `claude_created_workflows_preview/` are unclassified
+  inputs to `.github/scripts/select_checks.py` and select every scan. Zizmor
+  audits them in place, so a staged workflow must be clean before a maintainer
+  moves it.
 - Bandit is configured in `[tool.bandit]` in `pyproject.toml`: tests are excluded
   and a reviewed list of low-severity checks is skipped. Fix any other finding.
   Where a finding is a false positive, put the justification in a comment on the
