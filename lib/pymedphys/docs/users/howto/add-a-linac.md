@@ -37,8 +37,8 @@ Before getting started you will need the following:
   * Use a reliable network connection. [Issue #849](https://github.com/pymedphys/pymedphys/issues/849)
     records a listener-disconnection problem affecting treatment recording.
     It was closed in May 2025 after a report of a vendor fix in Integrity
-    4.0.6.3. Confirm applicability with your vendor for your installed version;
-    the issue's closure does not establish that older systems are unaffected.
+    4.0.6.3. Treat Integrity versions before 4.0.6.3 as affected, and confirm
+    with your vendor for your installed version.
   * You will need permission to create a service on this iCom server and to
     set that service to be able to boot on server start.
 * A shared network drive at your centre where you will be storing the iCom and
@@ -58,20 +58,36 @@ we have set up the [PyMedPhys iCom listener CLI tool](../ref/cli/icom.rst).
 
 Use a dedicated virtual environment so the listener's dependencies are
 isolated from other software on the server. Install uv using the
-{doc}`quick start guide <../get-started/quick-start>`, then run in PowerShell:
+{doc}`quick start guide <../get-started/quick-start>`, then run in PowerShell,
+replacing `DOMAIN\svc-icom` with the account the service will log on as:
 
 ```powershell
+$env:UV_PYTHON_INSTALL_DIR = "C:\PyMedPhys\python"
+$env:UV_LINK_MODE = "copy"
 uv python install 3.12
 uv venv --python 3.12 C:\PyMedPhys\icom\.venv
-uv pip install --python C:\PyMedPhys\icom\.venv\Scripts\python.exe "pymedphys[icom]"
+uv pip install --python C:\PyMedPhys\icom\.venv\Scripts\python.exe "pymedphys[icom]" "numpy<2"
+icacls C:\PyMedPhys /grant "DOMAIN\svc-icom:(OI)(CI)RX" /T
 C:\PyMedPhys\icom\.venv\Scripts\python.exe -m pymedphys icom listen --help
 ```
 
+By default uv installs Python under the installing user's profile, and the
+virtual environment refers back to that interpreter. A separate service
+account normally cannot read another user's profile, so the service would
+fail to start. `UV_PYTHON_INSTALL_DIR` places the interpreter alongside the
+environment, and `UV_LINK_MODE=copy` copies packages from uv's cache instead
+of hard-linking them, so they do not keep the cache's profile permissions.
+The `numpy<2` constraint matches the cap in the current source; the `icom`
+extra of the 0.41.0 release does not cap NumPy.
+
 Choose a directory accessible to the service account, and use that same path
-in the service definition below. Install and test the version approved for
-your site's deployment; append `==VERSION` to the requirement to pin it.
-The original embedded-Python 3.9 / PyMedPhys 0.36.1 procedure is obsolete for
-the current source.
+in the service definition below. Before creating the service, run the
+`--help` command in a shell started as the service account (for example,
+`runas /user:DOMAIN\svc-icom powershell`) to confirm it can read the
+environment. Install and test the version approved for your site's
+deployment; append `==VERSION` to the requirement to pin it. The original
+embedded-Python 3.9 / PyMedPhys 0.36.1 procedure is obsolete for the current
+source.
 
 ### The [physics-server](https://github.com/CCA-Physics/physics-server) git repository
 
