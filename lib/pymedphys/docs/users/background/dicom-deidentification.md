@@ -16,7 +16,7 @@ A few further terms, following the MIDI report:
 - An **indirect identifier** (or quasi-identifier) can identify a person in combination with other knowledge, for example age, sex, weight, dates, or the treating institution.
 - A **sensitive attribute** is information whose disclosure could harm the person even without identifying them, for example a diagnosis.
 
-## Anonymisation and pseudonymisation are the same process
+## Anonymisation and pseudonymisation use the same process
 
 Removing identifiers and replacing them with consistent pseudonyms is the same transformation whether the result is called anonymised or pseudonymised. Two things differ:
 
@@ -27,11 +27,11 @@ Removing identifiers and replacing them with consistent pseudonyms is the same t
 
 The DICOM standard defines a Basic Application Level Confidentiality Profile and a set of Options that remove, replace, clean, or retain specific attributes. The replacement engine will claim that its output is *de-identified in accordance with* a named edition of that profile with named options only when its effective rules and output satisfy those requirements. Selecting a preset alone is not evidence of conformance. Custom removals as well as retentions can invalidate an object or contradict an option. Unsupported processing, including opt-in processing of Private SOP Classes, will be labelled as outside the conformance claim.
 
-Even full conformance does not guarantee that nobody can be identified. The standard itself notes that:
+Even full conformance does not guarantee that nobody can be identified:
 
-- identifying text can be burned into the image pixels, which the Basic Profile does not address;
-- faces can be reconstructed from head and neck CT, MR, and PET, and an RT Structure Set body contour of a head and neck case is itself a face surface;
-- anyone with access to the original images can match pixel data, whatever happens to the identifiers.
+- identifying text can be burned into the image pixels, which the Basic Profile does not address (PS3.15 E.3);
+- the standard notes that it has been suggested that a 3D rendering of high-resolution head and neck imaging may be enough to identify a person (PS3.15 E.3.2), and the MIDI report notes that some parts of some RT Structure Set contours, such as the body outline of a head and neck case, pose a similar risk;
+- the standard notes that anyone with access to the original images can match the pixel data, whatever happens to the identifiers (PS3.15 E.1).
 
 Deciding whether a collection can be shared, and with whom, therefore also needs a risk assessment for that collection and its intended recipients.
 
@@ -43,8 +43,8 @@ The planned `basic`, `tps-import`, and `public-release` presets are designs, not
 
 The tools currently in PyMedPhys do not implement the DICOM profile. Until the replacement engine is available, be aware of the following:
 
-- By default, `pymedphys.dicom.anonymise` and the `pymedphys dicom anonymise` command leave identifying UIDs such as Study, Series, SOP Instance, and Frame of Reference UIDs unchanged. UIDs can often be traced back to the original records by anyone with access to the source systems. The tool also replaces some reference sequences with empty items, which can break links between objects, and it does not record in the output that de-identification took place.
-- The experimental pseudonymisation module (`pymedphys.experimental.pseudonymisation` and `pymedphys experimental dicom pseudonymise`) replaces UIDs and some numeric values with hashes computed without a secret key. Anyone who holds the original UIDs can recompute the replacements and re-link records, and small-range values such as weight can be recovered by trying every plausible value. It shifts every patient's dates by the same offset, stored in the user's PyMedPhys configuration, and it can fail on names containing non-ASCII characters.
+- By default, `pymedphys.dicom.anonymise` and the `pymedphys dicom anonymise` command leave identifying UIDs such as Study, Series, SOP Instance, and Frame of Reference UIDs unchanged. UIDs can often be traced back to the original records by anyone with access to the source systems. Its default output file names contain the original SOP Instance UID. Its keyword list predates most RT coverage in the current standard, so RT dates (for example RT Plan, Structure Set, and treatment dates), plan and structure set labels, ROI names, beam names and descriptions, dose comments, and treatment machine names pass through unchanged. The tool also replaces some reference sequences with empty items, which can break links between objects, and it does not record in the output that de-identification took place.
+- The experimental pseudonymisation module (`pymedphys.experimental.pseudonymisation` and `pymedphys experimental dicom pseudonymise`) replaces UIDs and some numeric values with hashes computed without a secret key. Anyone who holds the original UIDs can recompute the replacements and re-link records, and small-range values such as weight can be recovered by trying every plausible value. Names and identifiers are hashed with a secret stored in plain text in the user's PyMedPhys configuration, so pseudonyms from different projects on the same installation can be linked. It shifts every patient's dates by the same offset, also stored there, keeps times unchanged, and can fail on names containing non-ASCII characters. Its keyword list excludes identifying sequences such as Icon Image, Original Attributes, and Digital Signatures, so it processes their contents element by element instead of removing them, and contents not on its list, such as icon image pixel data and digital signature certificates, are kept. It replaces Patient's Sex with a hash that is not a permitted value.
 - Neither tool rewrites the DICOM file preamble or the Media Storage SOP Instance UID in the File Meta Information, so the original SOP Instance UID can remain in every output file.
 - Neither tool detects burned-in text or recognisable faces.
 
@@ -52,7 +52,7 @@ Review any output from these tools carefully before sharing it outside your orga
 
 ## Planned transition
 
-This documentation does not introduce deprecation warnings or remove an API. Early work will add warnings and a security note for experimental pseudonymisation, including its CLI and app entry points. The stable `anonymise` API and command will start their warning period when usable replacements and migration guidance ship. They will remain for one full minor release with those warnings; removal of both legacy paths is planned for a subsequent minor release. Exact versions will be recorded in the release notes when scheduled, following D-009 in the design document. Legacy hygiene fixes do not make the current tools conform to the planned profile.
+Neither `anonymise` nor experimental pseudonymisation will be deprecated until its replacement and migration guidance are released. Until then, their known limitations are documented here, and planned warnings for experimental pseudonymisation and notices for `anonymise` will state them without deprecating either tool. Once a replacement is released, each legacy tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available, with their documented limitations. Exact versions will be recorded in the release notes when scheduled, following D-023 in the design document. Legacy hygiene fixes do not make the current tools conform to the planned profile.
 
 ## Further reading
 

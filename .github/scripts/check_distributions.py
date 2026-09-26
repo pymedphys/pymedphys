@@ -12,28 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Check a built sdist and wheel before they are published.
+"""Check a built sdist and wheel before they are published, or after.
 
-The contents check needs nothing beyond the standard library. The smoke test
-installs the wheel into a fresh virtual environment, separate from any
-development environment, so it exercises what a user would install.
+Before publishing, pass the directory holding the build. The contents check
+needs nothing beyond the standard library. The smoke test installs the wheel
+into a fresh virtual environment, separate from any development environment,
+so it exercises what a user would install.
 
 Build the wheel from the sdist (plain ``uv build`` does this) so that a file
 missing from the sdist also breaks the wheel, rather than being hidden by a
 wheel built straight from the source tree.
+
+After publishing, pass ``--published VERSION``. The wheel and the sdist are
+resolved from the index's JSON Simple API and each exact archive URL is
+installed into its own fresh environment, with dependencies from PyPI,
+pip's cache disabled, and the sdist forced to build. pip's installation report
+must show the expected file from the index's own file host, and each
+environment then gets the smoke test's import and CLI checks and ``pip check``.
+The environments use the Python running this script.
 """
 
 import argparse
 import dataclasses
 import email.parser
+import hashlib
+import json
 import os
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import venv
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 # Relative to the package root: ``pymedphys/`` in the wheel and
@@ -79,6 +94,44 @@ for name in ("pymedphys._version", *sys.argv[1:]):
 import pymedphys
 print(pymedphys.__version__)
 """
+
+
+# pip's --report locates the archive it installed. Files on these indexes are
+# served from a separate host, so an index URL is not a valid download URL.
+@dataclasses.dataclass(frozen=True)
+class PackageIndex:
+    project_url: str
+    files_url: str
+    dependency_index_url: str = "https://pypi.org/simple/"
+
+
+PACKAGE_INDEXES = {
+    "pypi": PackageIndex(
+        project_url="https://pypi.org/simple/pymedphys/",
+        files_url="https://files.pythonhosted.org/",
+    ),
+    # Resolve pymedphys from TestPyPI alone. Runtime and build dependencies
+    # still use PyPI, without allowing it to substitute pymedphys itself.
+    "testpypi": PackageIndex(
+        project_url="https://test.pypi.org/simple/pymedphys/",
+        files_url="https://test-files.pythonhosted.org/",
+    ),
+}
+FORMATS = ("wheel", "sdist")
+RETRY_INTERVAL = 30
+# Keep explicit transport settings for institutional proxies and slow links.
+# Other pip settings could change package sources or installation locations.
+PIP_NETWORK_SETTINGS = frozenset(
+    {
+        "PIP_CERT",
+        "PIP_CLIENT_CERT",
+        "PIP_PROXY",
+        "PIP_TIMEOUT",
+        "PIP_DEFAULT_TIMEOUT",
+        "PIP_RETRIES",
+        "PIP_RESUME_RETRIES",
+    }
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -275,20 +328,81 @@ def check_contents(
 def _run(
     command: Sequence[str | os.PathLike[str]], *, cwd: Path
 ) -> subprocess.CompletedProcess:
-    # A venv still honours these overrides, including in its console scripts.
+    # A venv and python -I do not isolate pip's configuration. Control it for
+    # every child, including the pip subprocesses that install build tools.
     environment = {
         key: value
         for key, value in os.environ.items()
         if key.upper() not in {"PYTHONPATH", "PYTHONHOME"}
+        and (not key.upper().startswith("PIP_") or key.upper() in PIP_NETWORK_SETTINGS)
     }
+    # This disables global, user, and per-environment pip configuration files.
+    environment["PIP_CONFIG_FILE"] = os.devnull
     return subprocess.run(
         [os.fspath(item) for item in command],
         cwd=cwd,
         env=environment,
         capture_output=True,
         text=True,
+        # The children run with -I, which ignores PYTHONIOENCODING, so decode
+        # their output leniently rather than crash on an unexpected byte.
+        errors="replace",
         check=False,
     )
+
+
+def _create_environment(env_dir: Path) -> Path:
+    """Create a virtual environment with pip and return its scripts directory."""
+    venv.create(env_dir, with_pip=True)
+    return env_dir / ("Scripts" if os.name == "nt" else "bin")
+
+
+def _executable(bin_dir: Path, name: str) -> Path:
+    return bin_dir / (f"{name}.exe" if os.name == "nt" else name)
+
+
+def _check_environment(
+    bin_dir: Path,
+    expected_version: str,
+    *,
+    imports: Sequence[str],
+    working_directory: Path,
+    pip_check: bool = False,
+) -> list[str]:
+    """Check an installed pymedphys's imports, version, and CLI."""
+    failures = []
+    python = _executable(bin_dir, "python")
+
+    check_imports = _run(
+        [python, "-I", "-c", IMPORT_CHECK, *imports],
+        cwd=working_directory,
+    )
+    if check_imports.returncode != 0:
+        failures.append(
+            f"Importing {', '.join(imports)} failed:\n{check_imports.stderr}"
+        )
+    elif check_imports.stdout.strip() != expected_version:
+        failures.append(
+            f"pymedphys.__version__ is {check_imports.stdout.strip()!r}, "
+            f"expected {expected_version!r}"
+        )
+
+    cli = _run([_executable(bin_dir, "pymedphys"), "--version"], cwd=working_directory)
+    expected_output = f"pymedphys {expected_version}"
+    if cli.returncode != 0 or cli.stdout.strip() != expected_output:
+        failures.append(
+            f"pymedphys --version exited {cli.returncode} and printed "
+            f"{cli.stdout.strip()[:200]!r}, expected {expected_output!r}"
+        )
+
+    if pip_check:
+        dependencies = _run([python, "-I", "-m", "pip", "check"], cwd=working_directory)
+        if dependencies.returncode != 0:
+            failures.append(
+                f"pip check found broken requirements:\n{dependencies.stdout}"
+            )
+
+    return failures
 
 
 def smoke_test(
@@ -299,18 +413,15 @@ def smoke_test(
     pip_args: Sequence[str] = (),
 ) -> list[str]:
     """Install the wheel into a fresh venv and check its imports and CLI."""
-    failures = []
     expected_version = _normalise_tag(expected_version)
 
     with tempfile.TemporaryDirectory(prefix="pymedphys-dist-check-") as env_dir:
-        venv.create(env_dir, with_pip=True)
         working_directory = Path(env_dir)
-        bin_dir = Path(env_dir, "Scripts" if os.name == "nt" else "bin")
-        python = bin_dir / "python"
+        bin_dir = _create_environment(working_directory)
 
         install = _run(
             [
-                python,
+                _executable(bin_dir, "python"),
                 "-I",
                 "-m",
                 "pip",
@@ -324,34 +435,286 @@ def smoke_test(
         if install.returncode != 0:
             return [f"Installing {wheel.name} failed:\n{install.stderr}"]
 
-        check_imports = _run(
-            [python, "-I", "-c", IMPORT_CHECK, *imports],
-            cwd=working_directory,
+        return _check_environment(
+            bin_dir,
+            expected_version,
+            imports=imports,
+            working_directory=working_directory,
         )
-        if check_imports.returncode != 0:
-            failures.append(
-                f"Importing {', '.join(imports)} failed:\n{check_imports.stderr}"
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for block in iter(lambda: file.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def local_hashes(dist_dir: Path) -> dict[str, str]:
+    """Map each distribution's filename to its SHA-256."""
+    distributions = find_distributions(dist_dir)
+    return {
+        path.name: _sha256(path) for path in (distributions.wheel, distributions.sdist)
+    }
+
+
+def _report_sha256(download_info: Mapping) -> str | None:
+    archive_info = download_info.get("archive_info", {})
+    sha256 = archive_info.get("hashes", {}).get("sha256")
+    if sha256 is None and archive_info.get("hash", "").startswith("sha256="):
+        sha256 = archive_info["hash"].removeprefix("sha256=")
+    return sha256
+
+
+def _filename(url: str) -> str:
+    return urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1])
+
+
+def _matches_distribution(filename: str, kind: str, version: str) -> bool:
+    if kind == "wheel":
+        return filename.startswith(f"pymedphys-{version}-") and filename.endswith(
+            ".whl"
+        )
+    return filename == f"pymedphys-{version}.tar.gz"
+
+
+def _published_url(
+    index: PackageIndex,
+    kind: str,
+    version: str,
+    *,
+    wait: float,
+    sleep: Callable[[float], None],
+) -> str:
+    """Select an exact archive from the index's JSON Simple API, with its hash."""
+    request = urllib.request.Request(
+        index.project_url,
+        headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+    )
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                listing = json.load(response)
+        except urllib.error.HTTPError as error:
+            # Not yet listed, or a transient index error: retry within wait.
+            if error.code != 404 and error.code != 429 and error.code < 500:
+                raise
+            listing = {"files": []}
+
+        api_version = listing.get("meta", {}).get("api-version", "1.0")
+        if api_version.split(".")[0] != "1":
+            raise ValueError(f"Unsupported Simple API version: {api_version}")
+        matches = [
+            entry
+            for entry in listing["files"]
+            if _matches_distribution(entry["filename"], kind, version)
+        ]
+        if matches:
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError(
+                f"The {kind} of pymedphys {version} is not available at "
+                f"{index.project_url}"
             )
-        elif check_imports.stdout.strip() != expected_version:
+        print(f"The {kind} of pymedphys {version} is not available yet; retrying")
+        sleep(min(RETRY_INTERVAL, remaining))
+
+    if len(matches) != 1:
+        raise ValueError(f"Expected one {kind} of pymedphys {version} on the index")
+    (entry,) = matches
+    url = urllib.parse.urljoin(index.project_url, entry["url"])
+    if not url.startswith(index.files_url):
+        raise ValueError(f"The index's file {url} is not served from {index.files_url}")
+    filename = _filename(url)
+    if filename != entry["filename"]:
+        raise ValueError(f"The index's filename does not match its URL: {url}")
+    sha256 = entry.get("hashes", {}).get("sha256", "")
+    if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
+        raise ValueError(f"The index has no valid SHA-256 for {filename}")
+    # pip checks the downloaded bytes against this hash before installing.
+    return urllib.parse.urldefrag(url)[0] + f"#sha256={sha256}"
+
+
+def _local_hash_mismatch(url: str, hashes: Mapping[str, str]) -> str | None:
+    """Describe how the index's archive differs from the local copy, if it does."""
+    location, fragment = urllib.parse.urldefrag(url)
+    filename = _filename(location)
+    sha256 = fragment.removeprefix("sha256=")
+    expected_sha256 = hashes.get(filename)
+    if expected_sha256 is None:
+        return f"There is no local copy of {filename} to compare"
+    if sha256 != expected_sha256:
+        return (
+            f"The published {filename} has SHA-256 {sha256}, but the local copy "
+            f"has {expected_sha256}"
+        )
+    return None
+
+
+def check_install_report(
+    report: Mapping,
+    kind: str,
+    version: str,
+    index: PackageIndex,
+    *,
+    local_hashes: Mapping[str, str] | None = None,
+) -> list[str]:
+    """Return a failure for each way the installed archive is not as published."""
+    entries = [
+        entry
+        for entry in report.get("install", [])
+        if entry["metadata"]["name"].lower() == "pymedphys"
+    ]
+    if len(entries) != 1:
+        return [f"The {kind} installation report has no pymedphys entry"]
+    (entry,) = entries
+
+    failures = []
+    installed_version = entry["metadata"]["version"]
+    if installed_version != version:
+        failures.append(
+            f"The {kind} check installed pymedphys {installed_version}, "
+            f"expected {version}"
+        )
+
+    url = entry["download_info"]["url"]
+    filename = _filename(url)
+    if not _matches_distribution(filename, kind, version):
+        failures.append(f"The {kind} check installed {filename}, which is not a {kind}")
+    if not url.startswith(index.files_url):
+        failures.append(
+            f"The {kind} check downloaded {url}, which is not served from "
+            f"{index.files_url}"
+        )
+
+    if local_hashes is not None:
+        expected_sha256 = local_hashes.get(filename)
+        sha256 = _report_sha256(entry["download_info"])
+        if expected_sha256 is None:
+            failures.append(f"There is no local copy of {filename} to compare")
+        elif sha256 != expected_sha256:
             failures.append(
-                f"pymedphys.__version__ is {check_imports.stdout.strip()!r}, "
-                f"expected {expected_version!r}"
+                f"The published {filename} has SHA-256 {sha256}, but the local "
+                f"copy has {expected_sha256}"
             )
 
-        cli = _run([bin_dir / "pymedphys", "--version"], cwd=working_directory)
-        expected_output = f"pymedphys {expected_version}"
-        if cli.returncode != 0 or cli.stdout.strip() != expected_output:
-            failures.append(
-                f"pymedphys --version exited {cli.returncode} and printed "
-                f"{cli.stdout.strip()[:200]!r}, expected {expected_output!r}"
+    return failures
+
+
+def _install_published_url(
+    python: Path,
+    kind: str,
+    url: str,
+    index: PackageIndex,
+    *,
+    report: Path,
+    working_directory: Path,
+) -> subprocess.CompletedProcess:
+    """Install the selected archive; other indexes cannot substitute it."""
+    command = [
+        python,
+        "-I",
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--progress-bar=off",
+        # A fresh environment cannot already satisfy the requirement, and no
+        # cache means no previously built or downloaded wheel is reused.
+        "--no-cache-dir",
+        "--only-binary=pymedphys" if kind == "wheel" else "--no-binary=pymedphys",
+        f"--index-url={index.dependency_index_url}",
+        f"--report={report}",
+        url,
+    ]
+    return _run(command, cwd=working_directory)
+
+
+def check_published(
+    version: str,
+    index: PackageIndex,
+    *,
+    report_dir: Path,
+    compare_with: Path | None = None,
+    wait: float = 0,
+    imports: Sequence[str] = SMOKE_IMPORTS,
+    sleep: Callable[[float], None] = time.sleep,
+) -> list[str]:
+    """Install the published wheel and sdist separately and check each one."""
+    version = _normalise_tag(version)
+    hashes = local_hashes(compare_with) if compare_with is not None else None
+    failures = []
+
+    for kind in FORMATS:
+        report = report_dir / f"{kind}-install.json"
+        log = report_dir / f"{kind}-install.log"
+        try:
+            url = _published_url(index, kind, version, wait=wait, sleep=sleep)
+        except (OSError, ValueError) as error:
+            message = f"Resolving the {kind} of pymedphys {version} failed: {error}"
+            log.write_text(message + "\n", encoding="utf-8")
+            failures.append(message)
+            continue
+        # Reject a file that differs from the local copy before pip downloads
+        # it or runs its build; the report check below confirms the install.
+        if hashes is not None:
+            mismatch = _local_hash_mismatch(url, hashes)
+            if mismatch:
+                log.write_text(mismatch + "\n", encoding="utf-8")
+                failures.append(mismatch)
+                continue
+        with tempfile.TemporaryDirectory(prefix=f"pymedphys-{kind}-check-") as env:
+            working_directory = Path(env)
+            bin_dir = _create_environment(working_directory)
+            install = _install_published_url(
+                _executable(bin_dir, "python"),
+                kind,
+                url,
+                index,
+                report=report,
+                working_directory=working_directory,
             )
+            log.write_text(install.stdout + install.stderr, encoding="utf-8")
+            if install.returncode != 0:
+                failures.append(
+                    f"Installing the {kind} of pymedphys {version} failed; the "
+                    f"log is {log}:\n{install.stderr[-2000:]}"
+                )
+                continue
+
+            kind_failures = check_install_report(
+                json.loads(report.read_text(encoding="utf-8")),
+                kind,
+                version,
+                index,
+                local_hashes=hashes,
+            )
+            kind_failures += _check_environment(
+                bin_dir,
+                version,
+                imports=imports,
+                working_directory=working_directory,
+                pip_check=True,
+            )
+
+        failures += kind_failures
+        if not kind_failures:
+            print(f"The {kind} passed. Installation report: {report}")
 
     return failures
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("dist_dir", type=Path, help="Directory holding the build")
+    parser.add_argument(
+        "dist_dir",
+        type=Path,
+        nargs="?",
+        help="Directory holding the build to check before publishing",
+    )
     parser.add_argument(
         "--expected-version",
         help="Version the distributions must carry; a leading v is ignored",
@@ -361,19 +724,70 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Check the archive contents only",
     )
+    published = parser.add_argument_group("after publishing")
+    published.add_argument(
+        "--published",
+        metavar="VERSION",
+        help="Check this version on the package index instead of a local build",
+    )
+    published.add_argument(
+        "--index",
+        choices=sorted(PACKAGE_INDEXES),
+        help="Package index to install from (default: pypi)",
+    )
+    published.add_argument(
+        "--compare-with",
+        type=Path,
+        metavar="DIST_DIR",
+        help="Also require the published files to match the sdist and wheel here",
+    )
+    published.add_argument(
+        "--report-dir",
+        type=Path,
+        help="Directory for pip's installation reports and logs (default: a new "
+        "temporary directory)",
+    )
+    published.add_argument(
+        "--wait",
+        type=float,
+        metavar="SECONDS",
+        help="Keep retrying for this long while the version is not yet available",
+    )
     args = parser.parse_args(argv)
 
-    distributions = find_distributions(args.dist_dir)
-    sdist = read_sdist(distributions.sdist)
-    wheel = read_wheel(distributions.wheel)
-    print(
-        f"{distributions.sdist.name}: {len(sdist.files)} files; "
-        f"{distributions.wheel.name}: {len(wheel.files)} files"
-    )
-
-    failures = check_contents(sdist, wheel, args.expected_version)
-    if not failures and not args.skip_install:
-        failures = smoke_test(distributions.wheel, wheel.version)
+    if args.published is None:
+        if args.dist_dir is None:
+            parser.error("give a build directory or --published VERSION")
+        published_only = {
+            "--index": args.index,
+            "--compare-with": args.compare_with,
+            "--report-dir": args.report_dir,
+            "--wait": args.wait,
+        }
+        for option, value in published_only.items():
+            if value is not None:
+                parser.error(f"{option} applies only with --published")
+        failures = check_build(args.dist_dir, args.expected_version, args.skip_install)
+    else:
+        if args.dist_dir is not None:
+            parser.error("--published checks the index, not a build directory")
+        if args.expected_version is not None or args.skip_install:
+            parser.error(
+                "--expected-version and --skip-install apply only to a build "
+                "directory"
+            )
+        report_dir = args.report_dir or Path(
+            tempfile.mkdtemp(prefix="pymedphys-published-")
+        )
+        report_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Installation reports and logs: {report_dir.resolve()}")
+        failures = check_published(
+            args.published,
+            PACKAGE_INDEXES[args.index or "pypi"],
+            report_dir=report_dir.resolve(),
+            compare_with=args.compare_with,
+            wait=args.wait or 0,
+        )
 
     for failure in failures:
         print(f"::error::{failure}")
@@ -381,6 +795,57 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("The distributions passed every check.")
 
     return 1 if failures else 0
+
+
+def check_filenames(
+    distributions: Distributions, sdist: Archive, wheel: Archive
+) -> list[str]:
+    """Require the metadata version to be the canonical one in the filenames.
+
+    The build copies the version from pyproject.toml into the metadata
+    unchanged but names the files with its canonical form, so a non-canonical
+    version would pass the tag check and then disagree with its own filenames.
+    """
+    filename_versions = (
+        (
+            "sdist",
+            distributions.sdist.name,
+            sdist,
+            distributions.sdist.name.removeprefix("pymedphys-").removesuffix(".tar.gz"),
+        ),
+        (
+            "wheel",
+            distributions.wheel.name,
+            wheel,
+            distributions.wheel.name.removeprefix("pymedphys-").split("-")[0],
+        ),
+    )
+    return [
+        f"The {kind} metadata version {archive.version!r} is not the canonical "
+        f"{filename_version!r} in its filename {filename}. Write the version in "
+        "pyproject.toml in canonical PEP 440 form."
+        for kind, filename, archive, filename_version in filename_versions
+        if archive.version != filename_version
+    ]
+
+
+def check_build(
+    dist_dir: Path, expected_version: str | None, skip_install: bool
+) -> list[str]:
+    distributions = find_distributions(dist_dir)
+    sdist = read_sdist(distributions.sdist)
+    wheel = read_wheel(distributions.wheel)
+    print(
+        f"{distributions.sdist.name}: {len(sdist.files)} files; "
+        f"{distributions.wheel.name}: {len(wheel.files)} files"
+    )
+
+    failures = check_contents(sdist, wheel, expected_version)
+    failures += check_filenames(distributions, sdist, wheel)
+    if not failures and not skip_install:
+        failures = smoke_test(distributions.wheel, wheel.version)
+
+    return failures
 
 
 if __name__ == "__main__":
