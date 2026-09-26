@@ -107,6 +107,11 @@ This project adheres to
 
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and
   collaboration has moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
+- PyMedPhys is no longer packaged for conda. The `pymedphys` package on
+  conda-forge is the 0.11.0 release from 2019 and will not be updated. Conda
+  users should install PyMedPhys from PyPI with pip inside their conda
+  environment; see
+  [Installation options](https://docs.pymedphys.com/en/latest/users/get-started/installation-options.html#conda-environments).
 
 ### (Potentially) breaking changes
 

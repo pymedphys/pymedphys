@@ -109,6 +109,19 @@ It pulls in a large dependency set, including packages that are mainly useful
 for testing, documentation, or development.
 Choose it only when you deliberately want that trade-off.
 
+## Conda environments
+
+PyMedPhys is published on PyPI only. The `pymedphys` package on conda-forge is
+the 0.11.0 release from 2019 and is no longer updated, so do not install
+PyMedPhys with `conda install`.
+
+If you work in a conda environment, activate it, check that it uses a supported
+Python version, and install PyMedPhys from PyPI with pip:
+
+```bash
+python -m pip install "pymedphys[user]"
+```
+
 ## Next step
 
 Once you know which install you want, continue to the

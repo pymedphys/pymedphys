@@ -305,7 +305,7 @@ def check_contents(
         failures.append(f"The wheel is missing {', '.join(missing_from_wheel)}")
 
     # Every packaged file must also be in the sdist, or a wheel rebuilt from
-    # the sdist (as conda-forge and Linux distributions do) would lack it.
+    # the sdist (as downstream redistributors do) would lack it.
     # Skip this when the sdist has no package at all: that is reported above.
     if not missing_from_sdist:
         not_in_sdist = sorted(
