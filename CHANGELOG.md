@@ -51,6 +51,11 @@ Coordinates now follow the DICOM definition of voxel position (PS3.3 C.7.6.2.1.1
   The deprecated `pymedphys experimental pinnacle export` command calls the
   public `export_cli` directly, so it emits only its existing deprecation
   warning.
+- The experimental `pymedphys.experimental.pseudonymisation.pseudonymise`
+  now leaves `PatientSex` unchanged, as documented. Previously it replaced the
+  value with a hash, which is not a valid value for this attribute, so outputs
+  from earlier versions differ in `PatientSex`.
+  [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
 - Direction cosines within 1e-4 of an axis-aligned orientation are accepted. Previously any rounding in `ImageOrientationPatient` raised an error.
 - `pymedphys.gamma` accepts evaluation axes in descending order. It reverses such axes together with the evaluation dose before interpolating, so the result does not depend on storage order, and it still returns gamma in the shape and index order of the reference dose. Previously the default interpolator treated every point of a descending evaluation grid as outside it, so the search returned NaN when `max_gamma` was set and otherwise did not terminate.
 - `pymedphys.gamma` uses the SciPy interpolator, with a warning, when the evaluation axes are unevenly spaced, as they are for RT Dose grids with non-uniform slice offsets. The default interpolator assumes even spacing and previously interpolated such grids incorrectly.
