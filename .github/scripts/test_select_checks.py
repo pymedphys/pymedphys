@@ -14,6 +14,7 @@
 
 """Exercise safe skips, conservative fallbacks and real merge-tree diffs."""
 
+import ast
 import os
 import subprocess
 import tempfile
@@ -134,7 +135,7 @@ class SelectionTests(unittest.TestCase):
             ".github/workflows/release.yml",
             ".github/workflows/claude.yml",
             ".pre-commit-config.yaml",
-            "lib/pymedphys/tests/fixture.csv",
+            "other-directory/fixture.csv",
             "docs/page.md",
             ".readthedocs.yml",
             "claude_created_workflows_preview/release.yml",
@@ -161,14 +162,97 @@ class SelectionTests(unittest.TestCase):
             (".github/workflows/mosaiq-db-tests.yml", {"run-database"}),
             ("docker/mosaiq/docker-compose.yml", {"run-database"}),
             ("lib/pymedphys/_mosaiq/mock/data.csv", {"run-database"}),
-            ("lib/pymedphys/_data/hashes.json", {"run-database"}),
+            ("lib/pymedphys/_data/hashes.json", both),
             (".github/workflows/claude.yml", set()),
-            ("lib/pymedphys/tests/fixture.csv", set()),
+            ("lib/pymedphys/tests/fixture.csv", {"run-integration"}),
             ("lib/pymedphys/docs/users/howto/mosaiq.md", set()),
         ):
             with self.subTest(path=path):
                 result = selected(select_checks([path]))
                 self.assertEqual(result & set(COST_GATED), expected)
+
+    def test_packaging_filters_select_distribution_checks(self):
+        for path in (
+            ".gitignore",
+            ".gitattributes",
+            ".hgignore",
+            "lib/pymedphys/.gitignore",
+            "lib/pymedphys/docs/.gitignore",
+        ):
+            with self.subTest(path=path):
+                result = select_checks([path])
+                self.assertTrue(result["run-integration"])
+                self.assertFalse(result["run-full-matrix"])
+
+    def test_slow_modules_run_without_enabling_every_test_change(self):
+        for path in (
+            "lib/pymedphys/tests/metersetmap/test_metersetmap_regression.py",
+            "lib/pymedphys/tests/pinnacle/test_pinnacle_cli.py",
+        ):
+            with self.subTest(path=path):
+                result = select_checks([path])
+                self.assertTrue(result["run-integration"])
+                self.assertFalse(result["run-full-matrix"])
+        self.assertFalse(
+            select_checks(["lib/pymedphys/tests/dicom/test_dose.py"])["run-integration"]
+        )
+
+    def test_slow_tests_in_the_repository_are_selected(self):
+        # Inspect the consumers, independently of the selector's path list.
+        # A new or renamed slow test must update selection in the same PR.
+        root = Path(__file__).resolve().parents[2]
+        tests = root / "lib/pymedphys/tests"
+        self.assertTrue(tests.is_dir(), "The tooling checkout needs the test sources")
+        slow_modules = []
+        for source in tests.rglob("*.py"):
+            tree = ast.parse(source.read_text(encoding="utf-8"))
+            if any(
+                isinstance(node, ast.Attribute)
+                and node.attr == "slow"
+                and isinstance(node.value, ast.Attribute)
+                and node.value.attr == "mark"
+                for node in ast.walk(tree)
+            ):
+                slow_modules.append(source.relative_to(root).as_posix())
+        self.assertTrue(slow_modules, "Expected to find the repository's slow tests")
+        for path in slow_modules:
+            with self.subTest(path=path):
+                self.assertTrue(select_checks([path])["run-integration"])
+
+    def test_shared_slow_inputs_select_integration_tests(self):
+        for path in (
+            "lib/pymedphys/_data/urls.json",
+            "lib/pymedphys/_data/hashes.json",
+            "lib/pymedphys/_data/download.py",
+            "lib/pymedphys/_utilities/test.py",
+            "lib/pymedphys/_imports/__init__.py",
+            "lib/pymedphys/_base/delivery.py",
+            "lib/pymedphys/conftest.py",
+            "lib/pymedphys/tests/pinnacle/conftest.py",
+            "lib/pymedphys/tests/fixture.csv",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(select_checks([path])["run-integration"])
+
+    def test_integration_input_skips_fail_the_merge_gate(self):
+        for path in (
+            ".gitignore",
+            "lib/pymedphys/_data/urls.json",
+            "lib/pymedphys/tests/metersetmap/test_metersetmap_regression.py",
+        ):
+            with self.subTest(path=path):
+                outputs = {
+                    key: str(value).lower()
+                    for key, value in select_checks([path]).items()
+                }
+                needs = {
+                    "changes": {"result": "success", "outputs": outputs},
+                    "integration-tests": {"result": "skipped"},
+                }
+                conditional = {"integration-tests": "run-integration"}
+                self.assertTrue(check_jobs(needs, conditional))
+                needs["integration-tests"]["result"] = "success"
+                self.assertEqual(check_jobs(needs, conditional), [])
 
     def test_database_and_shared_code_select_database_tests(self):
         for path in (

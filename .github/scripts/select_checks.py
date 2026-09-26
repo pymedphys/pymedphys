@@ -87,7 +87,7 @@ ROOT_DOCS = frozenset(
         "SECURITY.md",
     }
 )
-# Shared imports, fixtures and data access can affect database tests.
+# Shared imports, fixtures and data access can affect slow and database tests.
 SHARED_PREFIXES = (
     "lib/pymedphys/_imports/",
     "lib/pymedphys/_data/",
@@ -114,6 +114,22 @@ CI_CONFIGURATION_ROOTS = (".github/actions/",)
 # the example scripts.
 INTEGRATION_FILES = frozenset({".github/workflows/integration-tests.yml"})
 INTEGRATION_ROOTS = (".github/scripts/", "examples/")
+# VCS filters affect built archives even when editable imports still work.
+PACKAGING_FILTER_NAMES = frozenset({".gitignore", ".gitattributes", ".hgignore"})
+# Standard unit runs exclude slow tests. A repository-backed policy test checks
+# every pytest.mark.slow consumer so additions and renames must update this list.
+SLOW_TEST_FILES = frozenset(
+    {
+        "lib/pymedphys/tests/delivery/test_deliverydata_trf_dicom_round_trip.py",
+        "lib/pymedphys/tests/dicom/test_anonymise.py",
+        "lib/pymedphys/tests/experimental/pseudonymisation/test_pseudonymisation.py",
+        "lib/pymedphys/tests/gamma/test_agnew_mcgarry.py",
+        "lib/pymedphys/tests/metersetmap/test_metersetmap_regression.py",
+        "lib/pymedphys/tests/pinnacle/test_pinnacle.py",
+        "lib/pymedphys/tests/pinnacle/test_pinnacle_cli.py",
+        "lib/pymedphys/tests/trf/test_decode.py",
+    }
+)
 # Blob modes of ordinary files; 000000 marks the absent side of an addition or
 # a deletion. A symlink (120000) or submodule (160000) can stand in for any
 # content, so its name says nothing about which checks it affects.
@@ -157,12 +173,27 @@ def _configures_ci(name: str) -> bool:
     return name in CI_CONFIGURATION_FILES or name.startswith(CI_CONFIGURATION_ROOTS)
 
 
+def _is_shared_test_input(name: str) -> bool:
+    path = PurePosixPath(name)
+    return (
+        path.name == "conftest.py"
+        or name.startswith(SHARED_PREFIXES)
+        or (path.parent == PurePosixPath("lib/pymedphys") and path.suffix == ".py")
+    )
+
+
 def _is_integration_input(name: str) -> bool:
+    path = PurePosixPath(name)
     return (
         name in DEPENDENCY_INPUTS
         or _configures_ci(name)
         or name in INTEGRATION_FILES
         or name.startswith(INTEGRATION_ROOTS)
+        or path.name in PACKAGING_FILTER_NAMES
+        or name in SLOW_TEST_FILES
+        or _is_shared_test_input(name)
+        # A non-Python fixture may be consumed only by a slow test.
+        or (name.startswith(TESTS_ROOT) and path.suffix != ".py")
     )
 
 
@@ -170,9 +201,7 @@ def _is_database_input(name: str) -> bool:
     path = PurePosixPath(name)
     return (
         any("mosaiq" in part or "database" in part for part in path.parts)
-        or path.name == "conftest.py"
-        or name.startswith(SHARED_PREFIXES)
-        or (path.parent == PurePosixPath("lib/pymedphys") and path.suffix == ".py")
+        or _is_shared_test_input(name)
         or name in DEPENDENCY_INPUTS
         or _configures_ci(name)
     )

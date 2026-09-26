@@ -432,8 +432,11 @@ This ensures that:
   cost-gated, as the maintainers decided: beyond main and the `full-test` and
   `database` labels, integration and database tests run only for the inputs
   that no standard check validates, listed in `select_checks.py`. Add an input
-  there when only a cost-gated job validates it. `select_checks.py` alone reads
-  labels, and a missing selection output must mean more validation, never less.
+  there when only a cost-gated job validates it. Packaging filters, slow-test
+  modules and their shared fixtures/data are integration inputs. Keep the slow
+  module list in sync with the repository-backed marker check when adding or
+  renaming tests. `select_checks.py` alone reads labels, and a missing selection
+  output must mean more validation, never less.
   Keep selection and summary conditions identical, with regression coverage for
   deletions, renames and missing outputs. Release optimisation must retain
   fresh package verification and every publishing gate.

@@ -100,8 +100,9 @@ This project adheres to
   every check, while required summaries reject unexpected skips. Integration and
   database tests stay cost-gated: besides main and their labels, they run only
   for the inputs no standard check validates, such as dependency metadata, CI
-  configuration and the release tooling. The step summary names the reason for
-  each selected check, including the path behind any fallback. Tool-only jobs
+  configuration, packaging filters, slow-test modules and their shared data,
+  and the release tooling. The step summary names the reason for each selected
+  check, including the path behind any fallback. Tool-only jobs
   avoid installing the scientific stack: pre-commit installs only its own
   dependency group, hash-checked from `uv.lock`. Only data consumers restore
   the manifest-specific data cache. Release validation runs in parallel with

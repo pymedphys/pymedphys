@@ -60,10 +60,12 @@ any fallback.
 | Known documentation prose, notebooks and rendered assets only | Documentation |
 | Package Python modules | Lint, type checks, unit tests, generated documentation and all security scans |
 | Python tests only | Lint, type checks, unit tests and all security scans |
-| Non-Python test data, other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
+| Other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
 | Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests |
-| `.github/scripts/`, `integration-tests.yml` or `examples/` | Standard checks, plus integration tests |
-| Any path naming Mosaiq or a database, `conftest.py`, top-level modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` (except documentation) | Adds database tests |
+| `.github/scripts/`, `integration-tests.yml`, `examples/`, or packaging filters (`.gitignore`, `.gitattributes`, `.hgignore`, including nested files) | Standard checks, plus integration tests |
+| Slow-test modules or non-Python test fixtures | Adds integration tests |
+| Any path naming Mosaiq or a database (except documentation) | Adds database tests |
+| `conftest.py`, top-level package modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` (except documentation) | Adds integration and database tests |
 | A symlink, a submodule or an unverifiable merge diff | Every check a changed path can select, including integration and database tests |
 | `full-test` label | Every check and the full unit-test matrix |
 | `database` label | Adds database tests |
@@ -81,10 +83,16 @@ Integration tests, database tests and the full unit-test matrix are too costly
 for every PR. Apart from main and the labels, integration and database tests
 run only when a PR changes an input that no standard check validates, as the
 table lists: an input of the generated-file drift check, the wheel build, the
-Windows and macOS tooling tests or the example scripts, or the database code
-and its locked drivers. An unclassified path selects every standard check, but
-not these. Unit tests use the quick matrix unless the PR has the `full-test`
+Windows and macOS tooling tests, the example scripts or the slow tests and
+their shared inputs, or the database code and its locked drivers. An unclassified
+path selects every standard check, but not these. Unit tests use the quick matrix unless the PR has the `full-test`
 label.
+
+The selection tests inspect every `pytest.mark.slow` consumer in the repository.
+Adding or renaming a slow-test module requires updating `SLOW_TEST_FILES`; an
+omission fails the always-required policy check. Shared test data, including
+`_data/urls.json` and `_data/hashes.json`, also selects integration tests because
+ordinary unit runs exclude the slow tests that consume some datasets.
 
 If pre-commit pushes an auto-fix, dependent jobs are skipped for the superseded
 commit and the summary fails until a fresh run passes on the new commit.
