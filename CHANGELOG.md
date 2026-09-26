@@ -139,9 +139,12 @@ This project adheres to
   actions not defined in Table E.1-1a, and repeated tags. Each generated file
   records the edition, the source digests, a digest of its rows, and the
   acknowledgement "DICOM PS3.15 2026d, © NEMA", and the same input always
-  produces the same bytes. `--check` exits with status 1 when the written
-  tables are missing or out of date. No tables are shipped yet.
-  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093)
+  produces the same bytes. The generated table ships in the package, in
+  `pymedphys/_dicom/deidentify/_standard/`, with a loader,
+  `pymedphys._dicom.deidentify.standard.load_table_e1_1`, that rejects a
+  table whose rows no longer match their recorded digest. `--check` exits
+  with status 1 when the committed tables are missing or out of date.
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096)
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries that describe changes since the last stable release and link their pull requests, descriptions of the state
@@ -186,7 +189,7 @@ This project adheres to
   is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
   normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
   [PR #2035](https://github.com/pymedphys/pymedphys/pull/2035)
-- **[Contributor facing only]** The package metadata declares its licence as the SPDX expression `Apache-2.0 AND MIT` (PEP 639) and names both licence files; v0.41.0 declared only `Apache-2.0`. The MIT part covers bundled third-party code: the Pinnacle exporter, a copy of pydicom's DICOM dictionary, and the vendored `apipkg` and `deprecated` modules. Building requires hatchling 1.27 or later. The distribution check rejects incorrect or missing licence expressions, missing or unexpected licence-file declarations, and missing licence files, including matching omissions in both archives. The vendored logging back-port for Python 3.7 and earlier has been removed. [PR #2063](https://github.com/pymedphys/pymedphys/pull/2063)
+- **[Contributor facing only]** The package metadata declares its licence as the SPDX expression `Apache-2.0 AND MIT AND LicenseRef-NEMA-DICOM` (PEP 639) and names its three licence files; v0.41.0 declared only `Apache-2.0`. The MIT part covers bundled third-party code: the Pinnacle exporter, a copy of pydicom's DICOM dictionary, and the vendored `apipkg` and `deprecated` modules. `LicenseRef-NEMA-DICOM` covers the bundled tables generated from the DICOM Standard, © NEMA, whose notices are in `LICENSE-NEMA-DICOM`. Building requires hatchling 1.27 or later. The distribution check rejects incorrect or missing licence expressions, missing or unexpected licence-file declarations, and missing licence files, including matching omissions in both archives. The vendored logging back-port for Python 3.7 and earlier has been removed. [PR #2063](https://github.com/pymedphys/pymedphys/pull/2063), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096)
 - **[Contributor facing only]** Publishing a GitHub release runs the Release workflow, which is the only way to publish to PyPI. It builds the wheel from the sdist, checks both archives, installs the wheel into a fresh virtual environment to check its imports and `pymedphys --version`, and fails unless the tag is `v` followed by the package version; integration builds run the same distribution check. Release validation runs in parallel with that single build, and publishing waits for every quality gate. After publishing, the workflow checks on Linux, Windows, and macOS that the files PyPI serves match the build and install cleanly, with the sdist built afresh; runs the test suite against the published wheel with dependencies resolved afresh from PyPI; uploads the GitHub release assets once the published files are verified, and reads them back; and fails its `Release Summary` unless every job succeeded. `check_distributions.py` runs the distribution checks locally, and its `--published` mode runs the post-publication checks, with `--tests` to run the test suite and `--summary` to write a report. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060), [PR #2064](https://github.com/pymedphys/pymedphys/pull/2064), [PR #2074](https://github.com/pymedphys/pymedphys/pull/2074), [PR #2077](https://github.com/pymedphys/pymedphys/pull/2077)
 - **[Contributor facing only]** The `pymedphys dev build` command has been
   removed. It drove a PyOxidizer and Electron desktop build whose Electron
