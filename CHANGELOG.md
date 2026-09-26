@@ -109,8 +109,8 @@ This project adheres to
 ### Contributor facing changes
 
 - **[Contributor facing only]** Removed unmaintained experimental code that
-  nothing imports: the `plancomplexity` and `serviceplans` modules (with the
-  service plan templates), and from `paulking` a second copy of the Profiler
+  nothing imports: the `serviceplans` module (with the service plan
+  templates), and from `paulking` a second copy of the Profiler
   reader, an unused narrow-PNG reader duplicating `Profile.from_narrow_png`, a
   sinogram-to-PDF script with its sample CSV, and an editor scratch file. The
   clean-imports check no longer ignores the long-removed `pedromartinez`
