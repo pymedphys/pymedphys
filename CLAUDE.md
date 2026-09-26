@@ -152,6 +152,10 @@ When creating conda recipes, pull requests, or other metadata that requires main
   opening a configured log can modify user files before any test runs.
 - Data caches must not fall back across changes to `hashes.json`: ZIP archives
   are checked, but previously extracted files are not refreshed automatically.
+- Prefer small, deterministic local fixtures for regression tests. Before
+  retiring download-backed tests, record the tested revisions, fixture
+  provenance and results, and retain their useful coverage locally. Distinguish
+  changed expectations from unchanged baselines and previously skipped tests.
 - Mock data and fixtures are in `_mocks/` and test data directories
 - Test coordinate and geometry code against values derived independently
   from the governing definition (for DICOM, the voxel position formula in

@@ -1,4 +1,4 @@
-# Copyright (C) 2018, 2021 Matthew Jennings
+# Copyright (C) 2018, 2021, 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,81 +15,78 @@
 """A test suite for the DICOM RT Dose toolbox."""
 
 import copy
-import json
-from os.path import abspath, dirname
-from os.path import join as pjoin
-from zipfile import ZipFile
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-import pymedphys
-from pymedphys._data import download
 from pymedphys._dicom import collection, create, dose, orientation
 
-from . import test_coords
-
-HERE = dirname(abspath(__file__))
-DATA_DIRECTORY = pjoin(HERE, "data", "dose")
-ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
+from ._synthetic_rtdose import ORIENTATIONS, rtdose
 
 
 @pytest.mark.pydicom
-def test_dicom_dose_constancy():
-    wedge_basline_filename = "wedge_dose_baseline.json"
-
-    baseline_dicom_dose_dict_zippath = download.get_file_within_data_zip(
-        "dicom_dose_test_data.zip", "lfs-wedge_dose_baseline.zip"
+@pytest.mark.parametrize(
+    "transfer_syntax", ["1.2.840.10008.1.2", "1.2.840.10008.1.2.1"]
+)
+def test_dicom_dose_reads_known_values_and_coordinates(tmp_path, transfer_syntax):
+    # Preserve file decoding, dose scaling and DicomDose property coverage
+    # without downloading the historical wedge dose and its JSON baseline.
+    expected_dose = np.array(
+        [
+            [[1.0, 2.5, 4.0], [6.5, 9.0, 12.5]],
+            [[0.5, 1.5, 3.0], [5.0, 8.0, 10.0]],
+        ]
     )
-    test_dicom_dose_filepath = download.get_file_within_data_zip(
-        "dicom_dose_test_data.zip", "RD.wedge.dcm"
+    dataset = rtdose(
+        "HFS",
+        shape=expected_dose.shape,
+        pixel_values=np.round(expected_dose / 0.01),
     )
+    dataset.DoseGridScaling = 0.01
+    dataset.file_meta.TransferSyntaxUID = transfer_syntax
+    path = tmp_path / "dose.dcm"
+    collection.DicomDose(dataset).to_file(path)
 
-    test_dicom_dose = collection.DicomDose.from_file(test_dicom_dose_filepath)
+    actual = collection.DicomDose.from_file(path)
 
-    with ZipFile(baseline_dicom_dose_dict_zippath, "r") as zip_ref:
-        with zip_ref.open(wedge_basline_filename) as a_file:
-            expected_dicom_dose_dict = json.load(a_file)
-
-    assert np.allclose(
-        test_dicom_dose.values, np.array(expected_dicom_dose_dict["values"])
-    )
-    assert test_dicom_dose.units == expected_dicom_dose_dict["units"]
-    assert np.allclose(test_dicom_dose.x, np.array(expected_dicom_dose_dict["x"]))
-    assert np.allclose(test_dicom_dose.y, np.array(expected_dicom_dose_dict["y"]))
-    assert np.allclose(test_dicom_dose.z, np.array(expected_dicom_dose_dict["z"]))
-    assert np.allclose(
-        test_dicom_dose.coords, np.array(expected_dicom_dose_dict["coords"])
-    )
+    assert actual.dataset.file_meta.TransferSyntaxUID == transfer_syntax
+    np.testing.assert_allclose(actual.values, expected_dose, rtol=0, atol=1e-12)
+    assert actual.units == "GY"
+    np.testing.assert_array_equal(actual.x, [100, 103, 106])
+    np.testing.assert_array_equal(actual.y, [-200, -198])
+    np.testing.assert_array_equal(actual.z, [300, 302.5])
+    k, i, j = np.indices(expected_dose.shape)
+    expected_coords = np.array((100 + 3 * j, -200 + 2 * i, 300 + 2.5 * k))
+    np.testing.assert_array_equal(actual.coords, expected_coords)
 
 
 @pytest.mark.pydicom
-def test_require_dicom_patient_position():
-    test_ds_dict = {
-        key: pydicom.dcmread(test_coords.get_data_file(key))
-        for key in ORIENTATIONS_SUPPORTED
-    }
+@pytest.mark.parametrize("patient_position", sorted(ORIENTATIONS))
+@pytest.mark.parametrize("include_patient_position", [False, True])
+def test_require_dicom_patient_position(patient_position, include_patient_position):
+    dataset = rtdose(patient_position)
+    if include_patient_position:
+        dataset.PatientPosition = patient_position
+    for required_position in ORIENTATIONS:
+        if patient_position == required_position:
+            orientation.require_dicom_patient_position(dataset, required_position)
+        else:
+            with pytest.raises(ValueError):
+                orientation.require_dicom_patient_position(dataset, required_position)
 
-    ds_no_orient = pydicom.dcmread(
-        str(pymedphys.data_path("example_structures.dcm")), force=True
-    )
 
-    test_ds_dict["no orient"] = ds_no_orient
+@pytest.mark.pydicom
+def test_require_dicom_patient_position_without_orientation():
+    with pytest.raises(AttributeError, match="ImageOrientationPatient"):
+        orientation.require_dicom_patient_position(pydicom.Dataset(), "HFS")
 
-    test_orientations = ("HFS", "HFP", "FFS", "FFP")
 
-    for orient, ds in test_ds_dict.items():
-        for test_orient in test_orientations:
-            if orient == test_orient:
-                orientation.require_dicom_patient_position(ds, test_orient)
-
-            elif orient == "no orient":
-                with pytest.raises(AttributeError):
-                    orientation.require_dicom_patient_position(ds, test_orient)
-
-            else:
-                with pytest.raises(ValueError):
-                    orientation.require_dicom_patient_position(ds, test_orient)
+@pytest.mark.pydicom
+def test_require_dicom_patient_position_with_conflicting_tag():
+    dataset = rtdose("HFS")
+    dataset.PatientPosition = "HFP"
+    with pytest.raises(ValueError, match="patient position is set"):
+        orientation.require_dicom_patient_position(dataset, "HFS")
 
 
 @pytest.mark.pydicom

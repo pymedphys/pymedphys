@@ -110,8 +110,7 @@ def voxel_positions(ds):
     transform[:3, 1] = row_spacing * c
     transform[:3, 2] = n
     transform[:3, 3] = position
-    # Apply the matrix one plane at a time to keep temporary allocations
-    # small for the real-file tests that also use this reference calculation.
+    # Apply the matrix one plane at a time to bound temporary allocations.
     indices = np.ones((ds.Rows, ds.Columns, 4))
     indices[..., 0] = np.arange(ds.Columns)
     indices[..., 1] = np.arange(ds.Rows)[:, None]

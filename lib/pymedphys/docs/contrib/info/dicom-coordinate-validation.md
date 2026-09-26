@@ -81,7 +81,7 @@ descending evaluation axes. A passing self-comparison alone is insufficient.
 
 ## Evidence and its limits
 
-The persistent tests use three independent anchors:
+Validation combines ongoing local tests with recorded historical checks:
 
 1. A homogeneous 4x4 matrix implementation in
    [the synthetic fixture](https://github.com/pymedphys/pymedphys/blob/e50f96951ddc5ee4ecdf89b9de4f3d72d5504355/lib/pymedphys/tests/dicom/_synthetic_rtdose.py), checked
@@ -90,8 +90,9 @@ The persistent tests use three independent anchors:
    [the orientation invariance tests](https://github.com/pymedphys/pymedphys/blob/e50f96951ddc5ee4ecdf89b9de4f3d72d5504355/lib/pymedphys/tests/dicom/test_orientation_invariance.py).
    This starts with known patient axes and dose values and does not call the
    production geometry code or the matrix oracle to encode them.
-3. The historical real-file orientation metadata and the retained
-   `expected_fixed_xyz.json` baseline.
+3. The historical real-file orientation metadata and
+   `expected_fixed_xyz.json` baseline, verified before retiring the
+   download-backed tests as recorded below.
 
 Checks completed during this review:
 
@@ -124,6 +125,66 @@ Before the added assurance tests, the reviewed head's CI passed on Windows,
 Linux and macOS with Python 3.10, 3.11 and 3.12. The Linux 3.12 job explicitly
 ran the historical coordinate and dose tests. Fresh CI on the final commit
 remains the merge gate; an earlier green run does not validate later edits.
+
+## Retirement of downloaded test fixtures
+
+On 26 September 2026 the original tests were rerun before removing their
+download dependency. The replay used Python 3.12.14, NumPy 1.26.4, pydicom
+3.0.2 and pytest 9.1.1, with the existing cached downloads. These are results
+from the named revisions, not a claim that the old DICOM expectations pass
+against the corrected implementation.
+
+| Revision and test selection | Result |
+| --- | --- |
+| Original code at `400b61fe8`, `test_coords.py` and `test_dose.py` | **7 passed, 1 skipped** |
+| PR at `97b086739`, the same two files before retiring downloads | **14 passed** |
+
+The original IEC PATIENT test was already unconditionally skipped because
+its assertions failed; it was not a passing validation. The original DICOM
+coordinate JSON matched the original implementation in all eight
+orientations. On the PR, that JSON agrees only for HFS: the other orientations
+were deliberately checked against the independent DICOM matrix instead.
+The IEC FIXED JSON, wedge dose baseline, non-square-pixel contour test and
+patient-position checks passed without changing their expectations.
+
+The precise original tests remain available in Git history:
+[original coordinate tests](https://github.com/pymedphys/pymedphys/blob/400b61fe8bc2b836e3af543630a34addee3aaabd/lib/pymedphys/tests/dicom/test_coords.py),
+[original dose tests](https://github.com/pymedphys/pymedphys/blob/400b61fe8bc2b836e3af543630a34addee3aaabd/lib/pymedphys/tests/dicom/test_dose.py),
+and [PR coordinate tests before removal](https://github.com/pymedphys/pymedphys/blob/97b086739468c16880951a3cbd2cfb448d2b0609/lib/pymedphys/tests/dicom/test_coords.py).
+To replay either historical run in a checkout of that revision, use:
+
+```bash
+uv run -- python -m pytest -q \
+  lib/pymedphys/tests/dicom/test_coords.py \
+  lib/pymedphys/tests/dicom/test_dose.py -ra
+```
+
+Fixture provenance is retained for that optional replay:
+
+| Fixture | Source | Repository SHA-1 |
+| --- | --- | --- |
+| `dicom_dose_test_data.zip` | [Zenodo record 3870436](https://zenodo.org/record/3870436/files/dicom_dose_test_data.zip?download=1) | `e09f71ebf4d98a58bc3c00e7dd9f59e91e9f8bb6` |
+| `rtdose_non_square_pixels.dcm` | [Pinned data-repository file](https://github.com/pymedphys/data/blob/a9f530bcf9ceeb73fe6e1583ac060252b3ef9c96/rtdose_non_square_pixels.dcm) | `9d59aafe2f2f2d3b706c092e62ff90bc33430e14` |
+| `example_structures.dcm` | [Zenodo record 3576026](https://zenodo.org/record/3576026/files/example_structures.dcm?download=1) | `3600a63d8f29f2b6b42dff37f280f3d45aff2a32` |
+
+The roughly 75 MiB dose archive and separate DICOM files are no longer
+downloaded by these coordinate and dose tests. Their useful coverage is
+retained locally:
+
+| Retired downloaded check | Ongoing local coverage |
+| --- | --- |
+| DICOM axes for eight orientations | Analytic matrix tests, manually encoded physical grids, and seeded voxel checks |
+| IEC FIXED historical JSON | Independent image-axis projection tests for all eight orientations, with the exact historical agreement recorded above |
+| Non-square-pixel dose/contour example | Unequal row/column spacing in voxel-placement and interpolation tests, plus the local structure-mask regression |
+| Wedge dose values, units and coordinates | A generated asymmetric HFS dose written and read locally in implicit and explicit VR little endian; expected dose values and coordinates are defined independently |
+| Patient-position checks using orientation and structure files | Generated datasets covering all eight orientations, with and without Patient Position, missing Image Orientation (Patient), and a conflicting Patient Position |
+
+This removes recurring vendor-file regression coverage from this test group;
+the recorded historical pass is evidence for those revisions, not a substitute
+for future testing. Local DICOM serialization retains file-reading coverage,
+but it cannot represent every vendor-specific encoding. Other repository
+test groups may still download their own data. The fixture URL/hash registry
+is retained so historical tests can be replayed.
 
 ## Remaining limitations
 
@@ -177,12 +238,20 @@ uv run -- python -m pytest -q \
   lib/pymedphys/tests/interp/test_interp.py
 ```
 
-This command includes the download-backed historical tests and the explicitly
-recorded limitations. Expected failures are strict: an unexpected pass must
-be investigated and the corresponding limitation updated.
+This command uses local fixtures and includes the explicitly recorded
+limitations. Expected failures are strict: an unexpected pass must be
+investigated and the corresponding limitation updated.
 
 At the assurance test commit `e50f96951`, this targeted command completed with
 420 passed and 20 expected failures: four existing gamma-search cases and
 16 cases covering the two private decubitus helper defects above. Pre-commit,
 Pyright and MyPy passed, and Pylint using the repository configuration scored
 10.00/10 for the changed Python files.
+
+After replacing the downloaded fixtures, the same selection completed with
+**428 passed and the same 20 expected failures**. This run used an empty data
+cache and a temporary pytest guard that rejected network access and calls to
+the PyMedPhys data-download helpers; the cache remained empty. The generated
+DICOM files were written only to pytest's temporary directories. Ruff,
+Pyright and MyPy passed for the changed Python files, and Pylint with the
+repository configuration again scored 10.00/10.

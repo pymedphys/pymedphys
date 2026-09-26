@@ -87,6 +87,12 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** DICOM coordinate and dose regression tests
+  now use local fixtures instead of downloading the historical dose archive
+  and separate DICOM examples. Original test results and fixture provenance
+  are recorded in the contributor guide's DICOM coordinate validation note.
+  Generated DICOM files retain dose decoding, scaling, coordinate-property
+  and patient-position checks alongside the analytic orientation tests.
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
