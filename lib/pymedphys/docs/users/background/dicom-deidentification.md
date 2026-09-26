@@ -64,7 +64,7 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 
 ### Both tools
 
-- Directory mode recreates the source folder structure in the output, so folder names such as a patient's name are copied. Without an output directory, output is written beside the originals. Only files whose names end in `.dcm` are processed.
+- Directory mode recreates the source folder structure in the output, so folder names such as a patient's name are copied. Without an output directory, output is written beside the originals. Only files matching `*.dcm` are processed; matching follows Python's `glob` rules and is case-insensitive on Windows.
 - Overlays are kept, as are unknown or newer attributes nested inside sequences.
 - Neither tool records in its output that de-identification took place.
 - Neither rebuilds the DICOM file preamble or File Meta Information, so the original Media Storage SOP Instance UID and Source Application Entity Title can remain in every output file.
@@ -74,7 +74,7 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 
 ## Planned replacement
 
-Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, their limitations are stated without deprecating them: experimental pseudonymisation's library functions emit a `PseudonymisationLimitationWarning`, its command prints a notice on standard error, and its app shows a banner, and planned notices for `anonymise` will do the same. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
+Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, their limitations are stated without deprecating them. Experimental pseudonymisation's library functions emit a `PseudonymisationLimitationWarning`, its command prints a notice on standard error, and its app shows a banner. `pymedphys.dicom.anonymise` emits an `AnonymisationLimitationWarning`, and `pymedphys dicom anonymise` prints the same notice on standard error. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
 
 ## Further reading
 

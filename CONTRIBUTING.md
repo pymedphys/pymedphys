@@ -1,6 +1,7 @@
 # Contributing to PyMedPhys
 
-Use a branch based on `main` and open a pull request for your changes.
+Use a branch based on `main`, or on the branch of an open pull request that your
+change depends on, and open a pull request for your changes.
 The older `master` and release-maintenance branches are retained as read-only
 history.
 
@@ -42,6 +43,51 @@ The [workflow guide](https://docs.pymedphys.com/en/latest/contrib/info/workflows
 describes additional checks, conditional coverage, and troubleshooting.
 
 ## Open and review a pull request
+
+These rules apply to every pull request.
+
+- **Scope.** Keep each pull request small, digestible, and focused on one
+  concern. As a sizing guide, aim for no more than about 400 lines of
+  hand-written change, excluding tests and documentation; all files still need
+  to be reviewable. Split larger work before requesting review. Keep generated
+  data (lock files, generated tables, propagated requirements) separate from
+  hand-written logic where possible, so reviewers check the generator and its
+  tests rather than the generated lines.
+- **Documentation and evidence.** Ship relevant tests and evidence with the
+  change: NumPy-style docstrings for new or changed public functions, classes,
+  and CLI options (behaviour, failure modes, and any standard clause they
+  implement), user documentation for user-visible changes, and a
+  `CHANGELOG.md` entry. Documentation-only changes need documentation checks,
+  such as a documentation build with warnings as errors, not invented runtime
+  tests or docstrings.
+- **Changelog.** Consolidate related entries made on the same branch: update
+  the existing entry to describe the final effect rather than the sequence of
+  edits. File each entry under the section for its main effect; a change that
+  can break existing code or installations belongs under breaking changes.
+- **Description.** State the scope, what is deferred, how the change was
+  verified, and what reviewers should check first. Describe the state being
+  merged, not the revisions made during review.
+- **Stacked pull requests.** When a change depends on another open pull
+  request, open it against that pull request's branch and name the parent in
+  the description. Merge (do not rebase) the parent's changes into it before
+  review and before merge, and retarget it to `main` once the parent merges.
+- **Deprecation.** Do not deprecate an interface until its replacement and
+  migration guidance are released. Until then, disclose known limitations or
+  risks in the documentation, and with runtime warnings that are not
+  deprecations where the risk warrants them, so that a stalled replacement
+  never leaves users on a deprecated interface with nowhere to go.
+- **Dependencies.** Add a new third-party dependency with, or immediately
+  before, its first verified consumer. Correcting a declared constraint to
+  match what CI tests is not a new dependency.
+- **Programmes of work.** Record the scope, decisions, and roadmap of work
+  that spans many pull requests in a design document, and list its pull
+  requests in a tracking issue, where each pull request maintains its own
+  entry. A pull request that changes a decision updates the design document,
+  the user documentation, and affected code together. Plan milestones by
+  outcome rather than by a fixed number of pull requests, and distinguish
+  planned, merged, and released behaviour. Tests, traceability, and evidence
+  ship with each implementation, even when a later milestone consolidates
+  them.
 
 Explain the problem, the change, and how you checked it. Ask a maintainer to add
 the `full-test` label when broader OS/Python coverage and integration tests are

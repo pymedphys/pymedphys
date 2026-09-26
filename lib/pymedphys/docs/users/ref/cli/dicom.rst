@@ -4,7 +4,8 @@ DICOM Files
 .. automodule:: pymedphys.cli.dicom
     :no-members:
 
-The ``anonymise`` subcommand is a legacy interface. Read its limitations in
+The ``anonymise`` subcommand is a legacy interface. It prints a notice of its
+limitations on standard error when it runs. Read its limitations in
 :doc:`../../background/dicom-deidentification` before sharing output.
 
 .. argparse::
