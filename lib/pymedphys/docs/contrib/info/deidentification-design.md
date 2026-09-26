@@ -289,7 +289,7 @@ Milestones group outcomes; they are not a sequence of pull requests or releases.
 
 | Milestone | Outcomes | Done when |
 | --- | --- | --- |
-| M0 Legacy hygiene | Diagnostics free of identifying values and paths; limitation warnings and notices (D-019); pydicom 3.0 minimum (D-002); app bound to localhost with Streamlit usage statistics disabled | Each change has regression tests and documentation, and remaining disclosure channels are listed in the tracking issue. Hygiene does not make the legacy tools conform. |
+| M0 Legacy hygiene | Diagnostics free of identifying values and paths; limitation warnings and notices (D-019); pydicom 3.0 minimum (D-002) | Each change has regression tests and documentation, and remaining disclosure channels are listed in the tracking issue. Hygiene does not make the legacy tools conform. |
 | M1 Standard | Table generator and generated tables (D-001); requirements register; edition-check workflow | Source provenance and table coverage are verified, and the generator and generated data are reviewed separately. |
 | M2 Primitives | Keys and subject profiles; UID replacement; patient pseudonyms; date offsets; VR and VM validators and dummy values; rule layers and preset composition | Primitives and policy conflicts are validated before integration. Hypothesis is added with the first property tests that use it. |
 | M3 Engine | Dataset transformation; file container; private attributes; descriptor cleaning; bitstream metadata; dataset-level API | Each component has tests, API documentation, and conformance evidence for explicitly supported input. A dataset-level API does not establish collection integrity or readiness to release. |
