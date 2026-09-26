@@ -48,7 +48,6 @@ def run_clean_imports(_):
         "pymedphys._imports",
         # TODO: Remove the following modules if they aren't being maintained
         # see <https://github.com/pymedphys/pymedphys/issues/1382>
-        "pymedphys._experimental.pedromartinez",
         "pymedphys._experimental.paulking",
     ]
     tests_scopes = ["pymedphys.conftest", "pymedphys.tests"]
