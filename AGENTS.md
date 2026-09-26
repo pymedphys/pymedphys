@@ -313,6 +313,14 @@ around code that cannot work; fix or remove the code in the same PR, and record
 contributor-facing removals in `CHANGELOG.md`. Historical documentation pages
 are different: keep them as originally written, as described above.
 
+Justify every removal in its pull request with evidence for each item: when it
+was added and by whom, its last functional change (excluding formatting, lint,
+renames, and other repository-wide passes), what imports or tests it, and
+whether it still imports or runs. Code under `_experimental` is expected to be
+unfinished, so being experimental or unfinished is not on its own a reason to
+remove it; say plainly when removal is optional rather than required, and keep
+anything with callers, tests, or recent functional changes.
+
 ### Copyright Headers
 
 Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.
