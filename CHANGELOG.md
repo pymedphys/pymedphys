@@ -48,11 +48,6 @@ This project adheres to
   PyJWT advisory PYSEC-2025-183 remains explicitly ignored by the security
   workflow. `numpy<2` is now an explicit
   constraint until the NumPy 2 migration is done.
-- `pydicom` is now constrained to `>=3.0` instead of `>=2.0.0` in every extra,
-  including `docs`, which previously had no lower bound. Only pydicom 3 was
-  tested, and the planned de-identification engine relies on pydicom 3's
-  writing of the File Meta Information. Environments pinned to pydicom 2 must
-  upgrade it to install this release.
 
 ### Contributor facing changes
 
@@ -133,6 +128,12 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- PyMedPhys now requires pydicom 3.0 or later: every extra declares
+  `pydicom>=3.0` instead of `>=2.0.0`, including `docs`, which previously had
+  no lower bound. Continuous integration only tests pydicom 3, and the planned
+  de-identification engine uses pydicom 3 APIs such as
+  `dcmwrite(..., enforce_file_format=True)` and `Dataset.decode`.
+  Environments pinned to pydicom 2 must upgrade it to install this release.
 - Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports now raise
   `MissingCTImageError` when the plan has no primary CT image. RTPLAN and
   RTDOSE exports raise `MissingTrialBeamsError` when the trial has no beams,

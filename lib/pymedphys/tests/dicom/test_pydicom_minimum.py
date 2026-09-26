@@ -15,7 +15,10 @@
 """PyMedPhys requires pydicom 3.0 or later (decision D-004).
 
 The checks read the installed distribution's metadata rather than
-``pyproject.toml``, so they also hold for an installed wheel.
+``pyproject.toml``, so they also hold for an installed wheel. An editable
+install's metadata is only as current as its last installation, so reinstall
+or sync the environment after changing the constraint (``uv run`` and CI do
+this).
 """
 
 from importlib import metadata
