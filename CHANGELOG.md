@@ -115,6 +115,10 @@ This project adheres to
   the same checks locally and report them. The workflow's manual trigger and
   TestPyPI route have been removed: publishing a GitHub release is the only
   way to publish.
+- **[Contributor facing only]** The `pymedphys dev build` command has been
+  removed. It drove a PyOxidizer and Electron desktop build whose Electron
+  app, PyOxidizer configuration, and `build` extra had already been removed,
+  so it could only fail.
 
 ### News around this release
 

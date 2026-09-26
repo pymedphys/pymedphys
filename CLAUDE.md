@@ -279,6 +279,14 @@ When modifying DICOM functionality, be aware of:
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
 
+When you find unmaintained or non-functional material, such as a packaging
+recipe that no workflow builds or a CLI command whose inputs no longer exist,
+remove it (and anything that exists only to support it) rather than annotating
+it as a draft. Git history preserves it. Do not write documentation that hedges
+around code that cannot work; fix or remove the code in the same PR, and record
+contributor-facing removals in `CHANGELOG.md`. Historical documentation pages
+are different: keep them as originally written, as described above.
+
 ### Copyright Headers
 
 Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.
@@ -378,6 +386,11 @@ https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
 - Use THREE dots (`...`) between branch names, not two (`..`)
 - Correct: `compare/main...feature-branch`
 - Wrong: `compare/main..feature-branch`
+
+### PR Descriptions
+
+When a pull request's scope changes after it is opened, update its title and
+description to match the current diff and the validation actually run.
 
 ### Maintainer Guidance Documentation
 
