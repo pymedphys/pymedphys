@@ -224,11 +224,13 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     writes. It is very likely to return ``False`` for a dataset processed
     by a different tool.
 
-    ``True`` does not mean that the data cannot identify anyone. Only the
-    top-level values of the default identifying keywords are checked, and
-    the dummy values that ``anonymise_dataset`` writes, such as ``ANON``,
-    are accepted. UIDs, RT attributes, nested sequences, the File Meta
-    Information, and file names are not checked.
+    ``True`` does not mean that the data cannot identify anyone. The
+    default identifying keywords are checked, including within nested
+    sequences, and dummy values such as ``ANON`` are accepted. Sequences
+    on the default list are compared as whole values with the empty or
+    dummy sequence value; other sequences are checked recursively. UIDs,
+    unlisted RT attributes, the File Meta Information, and file names
+    are not checked.
 
     Parameters
     ----------
@@ -245,8 +247,10 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     Returns
     -------
     is_anonymised : ``bool``
-        ``True`` if every default identifying keyword at the top level of
-        ``ds`` is empty or holds a dummy value, ``False`` otherwise.
+        ``True`` if all checked identifying values, including those in
+        nested sequences, are accepted as empty or dummy values, and no
+        private tags are found unless ``ignore_private_tags=True``.
+        ``False`` otherwise.
     """
     for elem in ds:
         if elem.keyword in get_default_identifying_keywords():
@@ -286,11 +290,13 @@ def is_anonymised_file(filepath, ignore_private_tags=False):
     very likely to return ``False`` for a file processed by a different
     tool.
 
-    ``True`` does not mean that the data cannot identify anyone. Only the
-    top-level values of the default identifying keywords are checked, and
-    the dummy values that ``anonymise_dataset`` writes, such as ``ANON``,
-    are accepted. UIDs, RT attributes, nested sequences, the File Meta
-    Information, and file names are not checked.
+    ``True`` does not mean that the data cannot identify anyone. The
+    default identifying keywords are checked, including within nested
+    sequences, and dummy values such as ``ANON`` are accepted. Sequences
+    on the default list are compared as whole values with the empty or
+    dummy sequence value; other sequences are checked recursively. UIDs,
+    unlisted RT attributes, the File Meta Information, and file names
+    are not checked.
 
     Parameters
     ----------
@@ -316,19 +322,22 @@ def is_anonymised_file(filepath, ignore_private_tags=False):
 
 
 def is_anonymised_directory(dirpath, ignore_private_tags=False):
-    r"""Check whether the default identifying keywords in every file named
+    r"""Check whether the default identifying keywords in every file matching
     ``*.dcm`` in a directory hold only empty or dummy values.
 
-    This function applies ``is_anonymised_file`` to each file whose name
-    ends in ``.dcm`` (case-sensitive) in the directory and its
-    subdirectories; other files are not checked. It is very likely to
-    return ``False`` for files processed by a different tool.
+    This function applies ``is_anonymised_file`` to files matching
+    ``*.dcm`` in the directory and its subdirectories. Matching follows
+    Python's ``glob`` rules, including case-insensitive matching on
+    Windows; other files are not checked. It is very likely to return
+    ``False`` for files processed by a different tool.
 
-    ``True`` does not mean that the data cannot identify anyone. Only the
-    top-level values of the default identifying keywords are checked, and
-    the dummy values that ``anonymise_dataset`` writes, such as ``ANON``,
-    are accepted. UIDs, RT attributes, nested sequences, the File Meta
-    Information, and file names are not checked.
+    ``True`` does not mean that the data cannot identify anyone. The
+    default identifying keywords are checked, including within nested
+    sequences, and dummy values such as ``ANON`` are accepted. Sequences
+    on the default list are compared as whole values with the empty or
+    dummy sequence value; other sequences are checked recursively. UIDs,
+    unlisted RT attributes, the File Meta Information, and file names
+    are not checked.
 
     Parameters
     ----------

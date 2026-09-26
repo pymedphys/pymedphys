@@ -307,11 +307,14 @@ def anonymise_directory(
     identifying_keywords=None,
     fail_fast=True,
 ):
-    r"""Apply ``anonymise_file`` to every file whose name ends in ``.dcm``
-    (case-sensitive) in a directory and its subdirectories.
+    r"""Apply ``anonymise_file`` to files matching ``*.dcm`` in a directory
+    and its subdirectories.
 
-    Other files are not processed. With ``output_dirpath``, the output
-    keeps the source folder structure, so folder names, which may include
+    Matching follows Python's ``glob`` rules, including case-insensitive
+    matching on Windows. Other files are not processed.
+
+    With ``output_dirpath``, the output keeps the source folder structure,
+    so folder names, which may include
     a patient's name, are copied; without it, each file is written beside
     its original. The output can still identify patients; review it
     before sharing it.

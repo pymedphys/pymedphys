@@ -146,9 +146,9 @@ def anonymise(dicom_subparsers):
         type=str,
         help=(
             "Input file or directory path. If a directory is "
-            "supplied, every file whose name ends in '.dcm' within the "
-            "directory and its subdirectories is processed, and the output "
-            "keeps the source folder structure."
+            "supplied, files matching '*.dcm' within the directory and its "
+            "subdirectories are processed. Matching is case-insensitive on "
+            "Windows. The output keeps the source folder structure."
         ),
     )
 

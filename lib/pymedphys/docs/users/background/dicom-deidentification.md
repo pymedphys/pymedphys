@@ -64,7 +64,7 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 
 ### Both tools
 
-- Directory mode recreates the source folder structure in the output, so folder names such as a patient's name are copied. Without an output directory, output is written beside the originals. Only files whose names end in `.dcm` are processed.
+- Directory mode recreates the source folder structure in the output, so folder names such as a patient's name are copied. Without an output directory, output is written beside the originals. Only files matching `*.dcm` are processed; matching follows Python's `glob` rules and is case-insensitive on Windows.
 - Overlays are kept, as are unknown or newer attributes nested inside sequences.
 - Neither tool records in its output that de-identification took place.
 - Neither rebuilds the DICOM file preamble or File Meta Information, so the original Media Storage SOP Instance UID and Source Application Entity Title can remain in every output file.
