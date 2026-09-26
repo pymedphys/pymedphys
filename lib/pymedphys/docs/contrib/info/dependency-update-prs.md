@@ -91,10 +91,10 @@ update manually.
 
 ## Manual commands for a cautious reviewer
 
-If you want to reproduce the intended smoke suite locally:
+Run these preparation commands from the repository root in Bash or PowerShell:
 
-```bash
-uv sync --frozen --extra all --group dev
+```shell
+uv sync --python 3.12 --locked --extra all --group dev
 uv run pymedphys dev propagate
 
 uv run pymedphys dev tests -m "not slow" --maxfail=3
@@ -102,12 +102,38 @@ uv run pymedphys dev tests -m "not slow" --maxfail=3
 uv run pymedphys dev docs
 
 uv build --wheel
+```
+
+Then install and smoke-test the wheel using the block for your shell. Keep only
+the newly built PyMedPhys wheel in `dist`; move any older wheels out first.
+
+### Linux/macOS (Bash)
+
+```bash
 uv venv .wheel-test
 source .wheel-test/bin/activate
 uv pip install dist/*.whl
 pymedphys --help
 python -c "import pymedphys; print(pymedphys.__version__)"
 ```
+
+### Windows (PowerShell)
+
+```powershell
+uv venv .wheel-test
+.\.wheel-test\Scripts\Activate.ps1
+$wheelFiles = @(Get-ChildItem -Path .\dist\pymedphys-*.whl -File)
+if ($wheelFiles.Count -ne 1) {
+    throw 'Expected exactly one PyMedPhys wheel in dist. Move older wheels out first.'
+}
+$wheelPath = $wheelFiles[0].FullName
+uv pip install $wheelPath
+pymedphys --help
+python -c "import pymedphys; print(pymedphys.__version__)"
+```
+
+`$wheelPath` is the wheel's resolved absolute filename, so `uv pip install`
+receives a concrete path rather than a wildcard or a hard-coded version.
 
 ## Merge checklist
 
@@ -123,6 +149,6 @@ python -c "import pymedphys; print(pymedphys.__version__)"
 That usually means one of two things:
 
 1. `uv lock --upgrade` produced no changes
-2. the validation failed, so the workflow never opened the PR
+2. the workflow failed, including validation or CI bot authentication
 
 If you suspect the second case, run the workflow manually and inspect the logs.

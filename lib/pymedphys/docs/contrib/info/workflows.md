@@ -15,11 +15,11 @@ Push / pull request -> ci.yml
                        |-- integration-tests.yml (selected runs)
                        |-- mosaiq-db-tests.yml (selected runs)
                        |-- docs.yml (documentation PRs)
-                       `-- summary
+                       `-- CI Summary
 
 Schedule / manual run / main push / PR -> security.yml
-Schedule -> deps.yml
-Release -> release.yml -> lint, type-check, unit and integration tests
+Schedule / manual run -> deps.yml
+Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 ```
 
@@ -35,20 +35,26 @@ Coordinates all CI checks based on file changes, labels, and event types.
 - **Jobs**:
   - `changes`: Detects file changes using path filters
   - `pre-commit`: Auto-formatting and basic checks
-  - `lint`: Code quality (always runs)
-  - `type-check`: Static type checking (always runs)
-  - `unit-tests`: Fast unit tests (always runs)
+  - `lint`: Code quality
+  - `type-check`: Static type checking
+  - `unit-tests`: Fast unit tests
   - `integration-tests`: Extended tests (conditional)
   - `mosaiq-db-tests`: Database tests (conditional)
-  - `docs-check`: Documentation build and artifact (conditional)
+  - `docs-check`: Documentation build and artefact (conditional)
   - `summary`: Requires core checks and selected extended checks to succeed
+
+Lint, type checks, and unit tests normally run on every PR. If pre-commit
+pushes an auto-fix, those jobs are skipped for the superseded commit and the
+summary fails until a fresh run passes on the new commit. Upstream failures
+can also skip dependent jobs; the summaries reject those unexpected skips.
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
 
 - **Features**:
-  - Auto-fixes issues on PRs
-  - Commits fixes automatically with bot account
+  - Applies the configured hooks, including Ruff, actionlint, and offline zizmor
+  - Can push fixes on same-repository PRs when bot credentials are available
+  - Fork PR authors must apply and push their fixes themselves
   - Caches pre-commit environments
 
 #### `lint.yml`
@@ -57,7 +63,7 @@ Dedicated linting workflow for code quality.
 - **Jobs**:
   - `lint`: Comprehensive Python linting with Pylint
 - Ruff linting and formatting run through pre-commit
-- **Always runs on PRs** for early issue detection
+- Runs on PRs subject to the orchestrator's pre-commit dependency
 
 #### `type-check.yml`
 Static type checking for type safety.
@@ -65,7 +71,7 @@ Static type checking for type safety.
 - **Jobs**:
   - `pyright`: Primary type checker
   - `mypy`: Secondary checker (optional/non-blocking), run from the locked `dev` extra
-- **Always runs on PRs** to ensure type safety
+- Runs on PRs subject to the orchestrator's pre-commit dependency
 
 #### `unit-tests.yml`
 Fast unit tests with smart matrix strategy.
@@ -74,7 +80,7 @@ Fast unit tests with smart matrix strategy.
   - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
   - Quick mode for PRs (Ubuntu + Python 3.12)
   - Installs the `user` extra so the headless Streamlit GUI tests run
-  - Full OS and Python matrix for PRs labeled `full-test`
+  - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
@@ -86,7 +92,12 @@ Comprehensive testing beyond unit tests.
 - **Test Types**:
   - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests
-  - `wheel-build`: Package build verification
+  - `script-tests`: Runs the `.github/scripts` unit tests on Windows and
+    macOS; `ci.yml` runs them on Ubuntu for every pull request
+  - `wheel-build`: Builds the sdist and then the wheel from it, and runs
+    `.github/scripts/check_distributions.py`: both archives must contain the
+    package, and the wheel must install into a fresh virtual environment,
+    import, and report its version through `pymedphys --version`
   - `propagate`: `pymedphys dev propagate` must leave the generated files
     unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
     `_version.py`)
@@ -105,35 +116,63 @@ Builds documentation on PRs that change documentation sources, package Python co
 
 - **HTML build**: Sphinx warnings and unexpected notebook errors fail the build
 - **Link check**: Advisory external-link check with downloadable reports
-- **Artifact**: Built HTML is uploaded for inspection
+- **Artefact**: Built HTML is uploaded for inspection
 - **Publishing**: ReadTheDocs publishes docs.pymedphys.com independently using
   `.readthedocs.yml`
 
 ### Release & Maintenance
 
 #### `release.yml`
-Handles PyPI package publishing with quality gates.
 
-- **Quality Checks**: Runs lint, type-check, unit, and integration tests
-- **Features**:
-  - TestPyPI dry-run capability
-  - PyPI trusted publishing (no API tokens)
-  - Automatic release asset upload
-  - Installation verification
+Publishes to PyPI behind quality gates.
+
+- **Trigger**: A published GitHub release, including a pre-release, is the
+  only trigger and the only way to publish. There is no manual run and no
+  TestPyPI route; a development release rehearses changes to the pipeline
+- **Before publishing**: Lint, type checks, the full unit-test matrix,
+  integration tests, and the same distribution checks as `wheel-build`. The
+  build also fails unless the tag is `v` followed by the package version, and
+  before publishing if the version is not in canonical PEP 440 form
+- **Publishing**: PyPI trusted publishing through the `pypi` environment,
+  with no stored API token. Files already on PyPI are skipped, so a re-run
+  after a partial upload is safe
+- **After publishing**: `verify-published` installs the wheel and the sdist
+  from PyPI, separately on Linux, Windows, and macOS, with
+  `check_distributions.py --published`, and requires both to match the files
+  built in the run. `test-published` then adds the `user` and `tests` extras
+  to the published wheel's environment on each OS and runs the test suite
+  (`--tests`), with dependencies resolved afresh from PyPI rather than from
+  `uv.lock`. After verification, `upload-release-assets` attaches the files
+  to the GitHub release and reads them back to confirm the release offers
+  exactly those files
+- **Recovery**: The original `dist` artefact is retained for 30 days. Retry
+  failed jobs using those files; rebuilding an existing release need not
+  reproduce its archive hashes. Never replace a published version's tag
+- **Release Summary**: Fails unless every job succeeded, and ends with a
+  record to paste on the release pull request. It is not a pull request check
+- **Limitation**: Assets are attached after the release is published, which
+  GitHub's [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+  forbid. Before enabling immutable releases, change the workflow to attach the
+  assets while the release is still a draft
+
+The [release procedure](release-guide.md) covers the release pull request,
+tagging, the next development version, and recovery.
 
 #### `security.yml`
 Security scanning with pinned tools run through `uvx`, so nothing is installed
 into the project environment.
 
 - **Scans**:
-  - `dependency-audit`: pip-audit over the exported `uv.lock`, which covers
-    every extra and platform marker. Advisory on pull requests and pushes so a
+  - `dependency-audit`: pip-audit over an export of `uv.lock` containing all
+    extras. The audit runs on Ubuntu/Python 3.12 and evaluates dependency
+    markers for that environment; it is not a separate audit of every
+    OS/Python combination. Advisory on pull requests and pushes so a
     newly published advisory cannot turn an unrelated commit red; blocking on
     scheduled and manual runs, where a failure opens or updates the issue
     labelled `security-audit`
   - `python-security`: Bandit, configured in `[tool.bandit]` in
-    `pyproject.toml`. Blocking on every event; the SARIF report is uploaded to
-    code scanning
+    `pyproject.toml`. Blocking when selected; SARIF is uploaded as an artefact and to
+    code scanning when the event has permission (fork PRs cannot upload there)
   - `workflow-audit`: zizmor over `.github` and over any workflow files staged
     in `claude_created_workflows_preview/`, blocking at medium severity and
     above. The offline audits also run through pre-commit; the online ones,
@@ -174,7 +213,7 @@ Claude Code integration for automated code assistance.
 ## Composite Actions
 
 ### `actions/setup-project/action.yml`
-Standardized project setup for all workflows.
+Standardised project setup for all workflows.
 
 - **Features**:
   - Python setup with configurable version
@@ -187,13 +226,14 @@ Standardized project setup for all workflows.
 For a typical pull request:
 
 ```
-Always Run:
+Core checks (subject to the pre-commit dependency above):
 ├── pre-commit       # Auto-formatting
-├── lint             # Ruff + Pylint
+├── lint             # Pylint; Ruff runs in pre-commit
 ├── type-check       # Pyright
 └── unit-tests       # Quick mode (Ubuntu + Python 3.12)
 
 Conditional (also recalculated when labels change):
+├── integration-tests # full-test label
 ├── mosaiq-db-tests  # Database files changed, database or full-test label
 ├── docs-check       # Documentation sources or build tooling changed
 └── security         # If Python/config files changed
@@ -224,15 +264,14 @@ Core checks, plus:
 
 | Environment | Purpose | Required setup |
 |-------------|---------|----------------|
-| `pypi` | Production publishing | Configure trusted publishing, release approvers, and allowed `main` branch / `v*` tag refs |
-| `testpypi` | Manual release dry runs | Configure TestPyPI trusted publishing and allowed `main` branch / `v*` tag refs |
+| `pypi` | Publishing releases | Configure trusted publishing, release approvers, and the allowed `v*` tag refs |
 
 Environment protection is configured in GitHub Settings, not by the workflow's
-`environment` field. Create and verify these environments before releasing;
+`environment` field. Create and verify the environment before releasing;
 referencing an absent environment can create it without protection rules.
-The publisher registered with PyPI or TestPyPI must match this repository,
-`.github/workflows/release.yml`, and the corresponding environment name.
-See the [release guide](release-guide.md) for the release procedure.
+The trusted publisher registered with PyPI must match this repository,
+`release.yml`, and the environment name; the
+[release guide](release-guide.md) lists the settings.
 
 ## Required checks and pull request reviews
 
@@ -241,8 +280,8 @@ See the [release guide](release-guide.md) for the release procedure.
 The required GitHub Actions check names for `main` are **`CI Summary`** (from
 `ci.yml`) and **`Security Summary`** (from `security.yml`). Select GitHub Actions
 as their expected source in the `main-integrity` ruleset. The release workflow's
-**`Release Summary`** is a report, not a merge gate, and must not be required on
-pull requests.
+**`Release Summary`** shows whether a release completed; it is not a merge gate
+and must not be required on pull requests.
 
 | Required check | Checks it covers |
 |----------------|------------------|
@@ -347,17 +386,17 @@ whose workflows do not emit them. Publishing branches such as `docs` and
 
 ## Testing Workflows Locally
 
+Prefer the local commands below for reproducing individual checks.
+[act](https://nektosact.com/) can help investigate Linux jobs, but it does not
+reproduce GitHub-hosted Windows/macOS runners, repository permissions, secrets,
+or environment approvals. A local run does not replace GitHub CI.
+
 ```bash
 # Install act
 brew install act  # or appropriate for your OS
 
 # Test CI workflow
 act push -W .github/workflows/ci.yml
-
-# Test with specific inputs
-act push -W .github/workflows/unit-tests.yml \
-  --input python-matrix='["3.12"]' \
-  --input quick=true
 
 # Test PR workflow
 act pull_request -W .github/workflows/ci.yml
@@ -367,7 +406,7 @@ act pull_request -W .github/workflows/ci.yml
 
 ```bash
 # Install with dev dependencies
-uv sync --frozen --extra all --group dev
+uv sync --python 3.12 --locked --extra all --group dev
 
 # Run all pre-commit hooks
 uv run pre-commit run --all-files
@@ -379,8 +418,11 @@ uv run pyright
 uv run pymedphys dev lint
 uv run pymedphys dev tests -m "not slow"
 
-# Run slow tests locally
-uv run pymedphys dev tests --slow -m slow
+# Run only the slow tests locally
+uv run pymedphys dev tests --slow
+
+# Run the default tests plus the slow tests
+uv run pymedphys dev tests --include-slow
 
 # Build docs locally
 uv run pymedphys dev docs

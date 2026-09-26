@@ -143,14 +143,16 @@ Source Software, 7(78), 4555, https://doi.org/10.21105/joss.04555*
 Development
 ===========
 
-PyMedPhys uses `uv`_ for package and project management.
+PyMedPhys uses `uv`_ for package and project management and Hatchling to build
+distributions. See the `Contributors Guide`_ for the complete setup and PR
+workflow.
 
 After cloning the repository, install the PyMedPhys dependencies and set up
 pre-commit by running:
 
 .. code:: bash
 
-    uv sync --extra all --group dev
+    uv sync --python 3.12 --locked --extra all --group dev
     uv run -- pre-commit install
 
 Run automated tests with:
@@ -305,7 +307,7 @@ Past contributors
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
-.. _`Release Notes`: ./CHANGELOG.md
+.. _`Release Notes`: https://github.com/pymedphys/pymedphys/blob/main/CHANGELOG.md
 
 .. _`Statement of Need`: https://docs.pymedphys.com/en/latest/statement-of-need.html
 .. _`What PyMedPhys can do`: https://docs.pymedphys.com/en/latest/users/get-started/what-pymedphys-can-do.html
