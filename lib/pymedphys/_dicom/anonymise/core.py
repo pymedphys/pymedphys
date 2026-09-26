@@ -197,12 +197,8 @@ def get_anonymous_replacement_value(
     try:
         replacement_value = replacement_strategy[vr](current_value)
     except KeyError:
-        logging.error(
-            "Unable to anonymise %s with VR %s, current value is %s",
-            keyword,
-            vr,
-            current_value,
-        )
+        # The current value is not logged because it may identify the patient.
+        logging.error("Unable to anonymise %s with VR %s", keyword, vr)
         raise
 
     return replacement_value

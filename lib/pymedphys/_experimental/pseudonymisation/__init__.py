@@ -27,6 +27,7 @@ from pymedphys._dicom.anonymise import (
     get_default_identifying_keywords,
 )
 from pymedphys._dicom.anonymise import strategy as anon_strategy
+from pymedphys._dicom.anonymise.api import print_cli_summary
 from pymedphys._imports import pydicom
 
 from . import strategy
@@ -102,9 +103,10 @@ def anonymise_with_pseudo_cli(args):
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_for_pseudo,
         )
+        file_count = 1
 
     elif isdir(args.input_path):
-        anonymise_directory(
+        anon_filepaths = anonymise_directory(
             dicom_dirpath=args.input_path,
             output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,
@@ -116,11 +118,14 @@ def anonymise_with_pseudo_cli(args):
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_for_pseudo,
         )
+        file_count = len(anon_filepaths)
 
     else:
         raise FileNotFoundError(
             "No file or directory was found at the supplied input path."
         )
+
+    print_cli_summary(file_count)
 
 
 def is_valid_strategy_for_keywords(

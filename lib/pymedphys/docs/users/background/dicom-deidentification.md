@@ -69,7 +69,7 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 - Neither tool records in its output that de-identification took place.
 - Neither rebuilds the DICOM file preamble or File Meta Information, so the original Media Storage SOP Instance UID and Source Application Entity Title can remain in every output file.
 - Neither detects burned-in text or recognisable faces.
-- Console output, logs, and error messages can include original file paths and attribute values.
+- Exception messages can include original file paths and attribute values, and pydicom's warnings and log messages about invalid values quote those values.
 - `pymedphys gui`, which runs the pseudonymisation app, starts Streamlit with its default settings. It listens on all network interfaces, so other computers on the network may be able to reach the app, and Streamlit's usage statistics are enabled.
 
 ## Planned replacement
