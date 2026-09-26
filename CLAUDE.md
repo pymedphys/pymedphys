@@ -495,6 +495,9 @@ When updating dependencies:
 4. Test changes to ensure nothing breaks
 5. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
 
+Do not add tests that restate a declared dependency constraint or the locked
+version. The lockfile checks and CI's locked environment already cover them.
+
 ### GitHub Actions Pins and Dependabot
 
 - Every action is pinned to a commit SHA with the tag in a trailing comment
