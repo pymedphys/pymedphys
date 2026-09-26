@@ -1,8 +1,7 @@
 # AGENTS.md
 
-This file provides vendor-agnostic guidance for coding agents working in this
-repository. Follow these instructions for all changes within the repository,
-including the [contributor language policy](CONTRIBUTING.md#language).
+Guidance for every coding agent working in this repository. Follow it, and
+the [contributor language policy](CONTRIBUTING.md#language), for every change.
 
 ## Development Commands
 
@@ -119,7 +118,7 @@ PyMedPhys is maintained by:
 - Matthew-Jennings
 - pchlap
 
-When creating conda recipes, pull requests, or other metadata that requires maintainer information, use this list.
+Use this list wherever metadata needs the maintainers.
 
 ### Key Architectural Patterns
 
@@ -324,39 +323,36 @@ Most source files open with one or more `# Copyright (C) <years> <authors>` line
 
 ## Agent Workflow Guidelines
 
-### Always Document General Feedback
+### Recording Maintainer Guidance
 
-When maintainers provide reusable guidance or principles, implement that
-feedback in the current task and preserve it for future coding-agent sessions:
+When maintainers give guidance that applies to future work, apply it to the
+current task and record it where it belongs:
 
-- Add vendor-agnostic repository guidance to `AGENTS.md`.
-- Add vendor-specific guidance to the corresponding agent file (for example,
-  `CLAUDE.md` for Claude Code).
-- Keep task-specific decisions in the relevant design document or pull request
-  instead of an agent guide.
-- Keep repository-wide contributor rules in `CONTRIBUTING.md` and link to them
-  rather than restating them.
+- guidance for every coding agent goes in `AGENTS.md`;
+- guidance for one agent goes in that agent's file, such as `CLAUDE.md` for
+  Claude Code;
+- decisions for one programme of work go in its design document, and decisions
+  for one change go in its pull request;
+- rules for all contributors go in `CONTRIBUTING.md`, linked from here rather
+  than restated;
+- a maintainer's personal preferences, such as which areas they work on, stay
+  in that person's own agent settings and never go in the repository.
 
-Guidance in agent files should be broadly applicable. Do not add one-off
-solutions or detailed explanations of individual features.
+Keep agent files to broadly applicable guidance: no one-off solutions or
+detailed explanations of individual features.
 
-### PR Link Format
+### Pull Requests
 
-Before a pull request exists, link a comparison against its actual base:
-`https://github.com/pymedphys/pymedphys/compare/<base>...<your-branch>`, where
-`<base>` is `main` unless the pull request is stacked on another branch. Use
-three dots (`...`), not two. Once the pull request exists, link it as
-`https://github.com/pymedphys/pymedphys/pull/<number>`.
-
-### PR Descriptions
-
-When a pull request's scope changes after it is opened, update its title and
-description to match the current diff and the validation actually run.
-
-### Pull Request Rules
-
-Before opening or updating a pull request, read and follow "Open and review a
-pull request" in `CONTRIBUTING.md`.
+- Before opening or updating a pull request, read and follow
+  [Open and review a pull request](CONTRIBUTING.md#open-and-review-a-pull-request).
+- When a pull request's scope changes after it is opened, update its title and
+  description to match the current diff and the validation actually run.
+- Before a pull request exists, link a comparison against its actual base:
+  `https://github.com/pymedphys/pymedphys/compare/<base>...<your-branch>`,
+  where `<base>` is `main` unless the pull request is stacked on another
+  branch. Use three dots (`...`), not two. Once the pull request exists, link
+  it as `https://github.com/pymedphys/pymedphys/pull/<number>`.
+- Quote branch names from `git status` or the remote, not from memory.
 
 ### CI Gates and Review Policy
 
@@ -459,74 +455,8 @@ Always regenerate the lockfile with `uv lock` after touching `pyproject.toml`.
 
 ### Pre-commit Hook Exclusions
 
-When adding files that cause pre-commit validation to fail due to special syntax:
-
-**Important Principle**: Do NOT create a separate PR for pre-commit fixes when they're blocking the current PR. Instead, add the necessary exclusion patterns directly to `.pre-commit-config.yaml` to fix the immediate issue.
-
-This applies to files that use:
-
-- Template languages (Jinja2, etc.) that conflict with file format validators
-- Generated files with non-standard syntax
-- Special configuration formats that don't match standard linters
-
-### Branch and File Management
-
-#### Branch Name Accuracy
-
-**Critical**: Always provide accurate branch names when referencing branches. Incorrect branch names waste maintainer time searching for non-existent branches.
-
-**Best Practices**:
-
-- Double-check branch names before mentioning them
-- Use the actual branch name from your current git status
-- If unsure, explicitly state you're on a branch but need to verify the exact name
-
-#### Git Timestamps
-
-**Important**: Git commit timestamps reflect when commits are created, not when work began.
-
-**Key Points**:
-
-- "Branch timestamps" (as shown in GitHub's UI) indicate when the first commit was pushed to GitHub on a branch. This is not a standard Git term, but rather how GitHub displays branch activity.
-- Timestamps cannot be retroactively changed as they're part of the commit SHA
-- Work start times are not tracked by Git
-
-#### Handling File Creation Failures
-
-When unable to commit files due to permission issues:
-
-**Fallback Strategy**:
-
-1. Include the complete file content in a comment using expandable details sections
-2. Clearly explain why the file couldn't be committed
-3. Provide clear instructions for manual file creation
-
-**Example Format**:
-
-````markdown
-<details>
-<summary>Click to expand: path/to/file.ext</summary>
-
-```yaml
-# File content here
-```
-
-</details>
-````
-
-#### Permission Documentation
-
-When discussing permissions needed for operations:
-
-**Always Include**:
-
-1. **Immediate Needs**: Minimal permissions to complete the current task
-2. **Future Needs**: Additional permissions for full automation (if applicable)
-3. **Security Considerations**: Why each permission is needed
-4. **Fallback Options**: What can be done without the permissions
-
-**Format Example**:
-
-- Basic file operations: `git add`, `git commit`, `git push`
-- GitHub API operations: `mcp__github__create_branch`, `mcp__github__push_files`
-- External operations: Access to external repositories with justification
+When a file added by a pull request fails a pre-commit hook only because of
+its format, add the exclusion to `.pre-commit-config.yaml` in the same pull
+request rather than in a separate one. This applies to template languages such
+as Jinja2, generated files with non-standard syntax, and configuration formats
+that standard linters do not understand.
