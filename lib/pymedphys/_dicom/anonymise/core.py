@@ -1,5 +1,5 @@
+# Copyright (C) 2019, 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
-# Copyright (C) 2019 Matthew Jennings
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -217,12 +217,18 @@ def label_dicom_filepath_as_anonymised(filepath):
 
 
 def is_anonymised_dataset(ds, ignore_private_tags=False):
-    r"""Check whether a DICOM dataset has been (fully) anonymised.
+    r"""Check whether the default identifying keywords in a DICOM dataset
+    hold only empty or dummy values.
 
-    This function specifically checks whether the dataset has been
-    anonymised using a PyMedPhys anonymiser. It is very likely that it
-    will return ``False`` for an anonymous dataset that was anonymised
-    using a different tool.
+    This function checks for the values that PyMedPhys' anonymiser
+    writes. It is very likely to return ``False`` for a dataset processed
+    by a different tool.
+
+    ``True`` does not mean that the data cannot identify anyone. Only the
+    top-level values of the default identifying keywords are checked, and
+    the dummy values that ``anonymise_dataset`` writes, such as ``ANON``,
+    are accepted. UIDs, RT attributes, nested sequences, the File Meta
+    Information, and file names are not checked.
 
     Parameters
     ----------
@@ -239,7 +245,8 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     Returns
     -------
     is_anonymised : ``bool``
-        `True` if `ds` has been anonymised, `False` otherwise.
+        ``True`` if every default identifying keyword at the top level of
+        ``ds`` is empty or holds a dummy value, ``False`` otherwise.
     """
     for elem in ds:
         if elem.keyword in get_default_identifying_keywords():
@@ -272,12 +279,18 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
 
 
 def is_anonymised_file(filepath, ignore_private_tags=False):
-    r"""Check whether a DICOM file has been (fully) anonymised.
+    r"""Check whether the default identifying keywords in a DICOM file
+    hold only empty or dummy values.
 
-    This function specifically checks whether the DICOM file has been
-    anonymised using a PyMedPhys anonymiser. It is very likely that it
-    will return ``False`` for an anonymous DICOM file that was
-    anonymised using a different tool.
+    This function applies ``is_anonymised_dataset`` to the file. It is
+    very likely to return ``False`` for a file processed by a different
+    tool.
+
+    ``True`` does not mean that the data cannot identify anyone. Only the
+    top-level values of the default identifying keywords are checked, and
+    the dummy values that ``anonymise_dataset`` writes, such as ``ANON``,
+    are accepted. UIDs, RT attributes, nested sequences, the File Meta
+    Information, and file names are not checked.
 
     Parameters
     ----------
@@ -294,8 +307,8 @@ def is_anonymised_file(filepath, ignore_private_tags=False):
     Returns
     -------
     is_anonymised : ``bool``
-        ``True`` if the DICOM dataset read from ``filepath`` has been
-        anonymised, ``False`` otherwise.
+        The result of ``is_anonymised_dataset`` for the dataset read from
+        ``filepath``.
     """
     ds = pydicom.dcmread(str(filepath))
 
@@ -303,13 +316,19 @@ def is_anonymised_file(filepath, ignore_private_tags=False):
 
 
 def is_anonymised_directory(dirpath, ignore_private_tags=False):
-    r"""Check whether all DICOM files in a directory have been (fully)
-    anonymised.
+    r"""Check whether the default identifying keywords in every file named
+    ``*.dcm`` in a directory hold only empty or dummy values.
 
-    This function specifically checks whether the DICOM files have been
-    anonymised using a PyMedPhys anonymiser. It is very likely that it
-    will return ``False`` for an anonymous DICOM file that was
-    anonymised using a different tool.
+    This function applies ``is_anonymised_file`` to each file whose name
+    ends in ``.dcm`` (case-sensitive) in the directory and its
+    subdirectories; other files are not checked. It is very likely to
+    return ``False`` for files processed by a different tool.
+
+    ``True`` does not mean that the data cannot identify anyone. Only the
+    top-level values of the default identifying keywords are checked, and
+    the dummy values that ``anonymise_dataset`` writes, such as ``ANON``,
+    are accepted. UIDs, RT attributes, nested sequences, the File Meta
+    Information, and file names are not checked.
 
     Parameters
     ----------
@@ -328,8 +347,8 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
     Returns
     -------
     is_anonymised : ``bool``
-        ``True`` if all of the DICOM datasets read from ``dirpath`` have
-        been anonymised, ``False`` otherwise.
+        ``True`` if ``is_anonymised_file`` is ``True`` for every file
+        checked, ``False`` otherwise.
     """
     is_anonymised = True
     dicom_filepaths = glob(str(dirpath) + "/**/*.dcm", recursive=True)

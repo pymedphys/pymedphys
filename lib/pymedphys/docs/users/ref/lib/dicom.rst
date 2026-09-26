@@ -19,10 +19,14 @@ Anonymisation
 -------------
 
 This is the legacy interface. It does not implement a DICOM confidentiality
-profile. Read its limitations in
+profile, and each call emits an
+:class:`~pymedphys.dicom.AnonymisationLimitationWarning` describing its
+limitations; this is not a deprecation. Read its limitations in
 :doc:`../../background/dicom-deidentification` before sharing output.
 
 .. autofunction:: pymedphys.dicom.anonymise
+
+.. autoclass:: pymedphys.dicom.AnonymisationLimitationWarning
 
 
 Dose

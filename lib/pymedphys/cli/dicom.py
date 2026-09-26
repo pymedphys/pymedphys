@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,15 +133,22 @@ def adjust_RED_by_structure_name(dicom_subparsers):
 
 
 def anonymise(dicom_subparsers):
-    parser = dicom_subparsers.add_parser("anonymise", help="Anonymise DICOM files.")
+    parser = dicom_subparsers.add_parser(
+        "anonymise",
+        help=(
+            "Replace the values of a fixed list of identifying attributes in "
+            "DICOM files. UIDs and most RT attributes are kept."
+        ),
+    )
 
     parser.add_argument(
         "input_path",
         type=str,
         help=(
             "Input file or directory path. If a directory is "
-            "supplied, all DICOM files within the directory and its "
-            "subdirectories will be anonymised"
+            "supplied, every file whose name ends in '.dcm' within the "
+            "directory and its subdirectories is processed, and the output "
+            "keeps the source folder structure."
         ),
     )
 
@@ -169,10 +177,12 @@ def anonymise(dicom_subparsers):
         "--preserve_filenames",
         action="store_true",
         help=(
-            "Use this flag to preserve the original filenames in the "
-            "anonymised DICOM filenames. Note that '_Anonymised.dcm' "
-            "will still be appended. Use with caution, since DICOM "
-            "filenames may contain identifying information"
+            "Use this flag to keep the original file names, with "
+            "'_Anonymised.dcm' appended, instead of naming each file after "
+            "its modality and original SOP Instance UID. Either way, the "
+            "name can identify the source: original file names may contain "
+            "patient details, and the default names contain the original "
+            "SOP Instance UID."
         ),
     )
 
@@ -181,9 +191,8 @@ def anonymise(dicom_subparsers):
         "--clear_values",
         action="store_true",
         help=(
-            "Use this flag to simply clear the values of all of the "
-            "identifying elements in the anonymised DICOM files, "
-            "as opposed to replacing them with 'dummy' values."
+            "Use this flag to empty the values of the listed identifying "
+            "attributes, instead of replacing them with dummy values."
         ),
     )
 
