@@ -116,8 +116,9 @@ INTEGRATION_FILES = frozenset({".github/workflows/integration-tests.yml"})
 INTEGRATION_ROOTS = (".github/scripts/", "examples/")
 # VCS filters affect built archives even when editable imports still work.
 PACKAGING_FILTER_NAMES = frozenset({".gitignore", ".gitattributes", ".hgignore"})
-# Standard unit runs exclude slow tests. A repository-backed policy test checks
-# every pytest.mark.slow consumer so additions and renames must update this list.
+# Unit runs skip slow tests and never run doctests, so only integration tests
+# validate these modules. Tests require each list to equal what a scan of the
+# package finds, so adding, removing or renaming a module must update it here.
 SLOW_TEST_FILES = frozenset(
     {
         "lib/pymedphys/tests/delivery/test_deliverydata_trf_dicom_round_trip.py",
@@ -128,6 +129,18 @@ SLOW_TEST_FILES = frozenset(
         "lib/pymedphys/tests/pinnacle/test_pinnacle.py",
         "lib/pymedphys/tests/pinnacle/test_pinnacle_cli.py",
         "lib/pymedphys/tests/trf/test_decode.py",
+    }
+)
+# The scan also covers the directories conftest.py excludes from the doctest
+# run, so changing those exclusions cannot leave a module unselected.
+DOCTEST_FILES = frozenset(
+    {
+        "lib/pymedphys/_experimental/cube.py",
+        "lib/pymedphys/_gamma/__init__.py",
+        "lib/pymedphys/_metersetmap/metersetmap.py",
+        "lib/pymedphys/_mosaiq/api.py",
+        "lib/pymedphys/_mosaiq/sessions.py",
+        "lib/pymedphys/interpolate.py",
     }
 )
 # Blob modes of ordinary files; 000000 marks the absent side of an addition or
@@ -191,6 +204,7 @@ def _is_integration_input(name: str) -> bool:
         or name.startswith(INTEGRATION_ROOTS)
         or path.name in PACKAGING_FILTER_NAMES
         or name in SLOW_TEST_FILES
+        or name in DOCTEST_FILES
         or _is_shared_test_input(name)
         # A non-Python fixture may be consumed only by a slow test.
         or (name.startswith(TESTS_ROOT) and path.suffix != ".py")

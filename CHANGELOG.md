@@ -100,15 +100,16 @@ This project adheres to
   every check, while required summaries reject unexpected skips. Integration and
   database tests stay cost-gated: besides main and their labels, they run only
   for the inputs no standard check validates, such as dependency metadata, CI
-  configuration, packaging filters, slow-test modules and their shared data,
-  and the release tooling. The step summary names the reason for each selected
-  check, including the path behind any fallback. Tool-only jobs
-  avoid installing the scientific stack: pre-commit installs only its own
-  dependency group, hash-checked from `uv.lock`. Only data consumers restore
-  the manifest-specific data cache. Release validation runs in parallel with
-  one distribution build; publishing still waits for every quality gate. After
-  publishing, the published-package tests run alongside archive verification,
-  and release assets wait only for verification.
+  configuration, packaging filters, slow tests, doctests, shared test data, and
+  the release tooling. Policy tests keep the lists of slow-test and doctest
+  modules equal to what a scan of the package finds. The step summary names the
+  reason for each selected check, including the path behind any fallback.
+  Tool-only jobs avoid installing the scientific stack: pre-commit installs
+  only its own dependency group, hash-checked from `uv.lock`. Only data
+  consumers restore the manifest-specific data cache. Release validation runs
+  in parallel with one distribution build; publishing still waits for every
+  quality gate. After publishing, the published-package tests run alongside
+  archive verification, and release assets wait only for verification.
 
 - **[Contributor facing only]** Added the design document for the DICOM
   de-identification engine that will replace `pymedphys.dicom.anonymise` and

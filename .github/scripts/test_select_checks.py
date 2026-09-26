@@ -16,18 +16,21 @@
 
 import ast
 import os
+import re
 import subprocess
 import tempfile
 import unittest
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from unittest.mock import Mock
 
 from check_workflow_status import check_jobs
 from select_checks import (
     COST_GATED,
+    DOCTEST_FILES,
     OUTPUTS,
     PATH_SELECTABLE,
+    SLOW_TEST_FILES,
     STANDARD,
     ChangedPath,
     changed_paths,
@@ -77,6 +80,106 @@ def git_in(
         env=environment,
         stderr=subprocess.DEVNULL,
     )
+
+
+REPOSITORY = Path(__file__).resolve().parents[2]
+PACKAGE = "lib/pymedphys"
+# A doctest example starts on a line holding only indentation before ">>>".
+DOCTEST_PROMPT = re.compile(r"^[ \t]*>>>", re.MULTILINE)
+
+
+def applies_slow_marker(tree: ast.AST) -> bool:
+    """Whether a module applies pytest's slow marker in any static form."""
+    marks = {"mark"}
+    for node in ast.walk(tree):
+        # Aliases such as `from pytest import mark as m` and `m = pytest.mark`.
+        if isinstance(node, ast.ImportFrom):
+            marks.update(
+                alias.asname
+                for alias in node.names
+                if alias.name == "mark" and alias.asname is not None
+            )
+        elif (
+            isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Attribute)
+            and node.value.attr == "mark"
+        ):
+            marks.update(
+                target.id for target in node.targets if isinstance(target, ast.Name)
+            )
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr == "slow":
+            value = node.value
+            if (isinstance(value, ast.Attribute) and value.attr == "mark") or (
+                isinstance(value, ast.Name) and value.id in marks
+            ):
+                return True
+        # getattr(pytest.mark, "slow") and item.add_marker("slow").
+        if isinstance(node, ast.Call) and any(
+            isinstance(arg, ast.Constant) and arg.value == "slow" for arg in node.args
+        ):
+            function = node.func
+            if (isinstance(function, ast.Name) and function.id == "getattr") or (
+                isinstance(function, ast.Attribute) and function.attr == "add_marker"
+            ):
+                return True
+    return False
+
+
+def _assigned_name(target: ast.expr) -> str | None:
+    if isinstance(target, ast.Name):
+        return target.id
+    if isinstance(target, ast.Attribute):
+        return target.attr
+    return None
+
+
+def has_doctest_examples(tree: ast.AST) -> bool:
+    """Whether a module holds examples where doctest looks for them."""
+    for node in ast.walk(tree):
+        if isinstance(
+            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
+            texts = [ast.get_docstring(node, clean=False) or ""]
+        elif isinstance(node, ast.Assign):
+            names = {_assigned_name(target) for target in node.targets}
+            # Doctest reads every entry of a module's __test__ mapping.
+            if "__test__" in names:
+                return True
+            if "__doc__" not in names:
+                continue
+            texts = [
+                child.value
+                for child in ast.walk(node.value)
+                if isinstance(child, ast.Constant) and isinstance(child.value, str)
+            ]
+        else:
+            continue
+        if any(DOCTEST_PROMPT.search(text) for text in texts):
+            return True
+    return False
+
+
+def scan_package(predicate: Callable[[ast.AST], bool]) -> set[str]:
+    """Return the package modules, tracked or not yet added, matching a predicate."""
+    # -t tags each path; "S" marks one that a sparse checkout left out.
+    listed = subprocess.check_output(
+        ["git", "ls-files", "-z", "-t", "--cached", "--others", "--exclude-standard"]
+        + ["--", PACKAGE],
+        cwd=REPOSITORY,
+    )
+    found: set[str] = set()
+    for entry in filter(None, listed.decode("utf-8").split("\0")):
+        tag, name = entry.split(" ", 1)
+        if tag == "S":
+            raise RuntimeError(f"The package scan needs all of {PACKAGE} checked out.")
+        source = REPOSITORY / name
+        # Skip files deleted from the working tree but not yet from the index.
+        if name.endswith(".py") and source.is_file():
+            tree = ast.parse(source.read_bytes(), filename=name)
+            if predicate(tree):
+                found.add(name)
+    return found
 
 
 class SelectionTests(unittest.TestCase):
@@ -163,6 +266,9 @@ class SelectionTests(unittest.TestCase):
             ("docker/mosaiq/docker-compose.yml", {"run-database"}),
             ("lib/pymedphys/_mosaiq/mock/data.csv", {"run-database"}),
             ("lib/pymedphys/_data/hashes.json", both),
+            ("lib/pymedphys/_metersetmap/metersetmap.py", {"run-integration"}),
+            ("lib/pymedphys/_mosaiq/api.py", both),
+            ("lib/pymedphys/_gamma/implementation/shell.py", set()),
             (".github/workflows/claude.yml", set()),
             ("lib/pymedphys/tests/fixture.csv", {"run-integration"}),
             ("lib/pymedphys/docs/users/howto/mosaiq.md", set()),
@@ -196,28 +302,6 @@ class SelectionTests(unittest.TestCase):
         self.assertFalse(
             select_checks(["lib/pymedphys/tests/dicom/test_dose.py"])["run-integration"]
         )
-
-    def test_slow_tests_in_the_repository_are_selected(self):
-        # Inspect the consumers, independently of the selector's path list.
-        # A new or renamed slow test must update selection in the same PR.
-        root = Path(__file__).resolve().parents[2]
-        tests = root / "lib/pymedphys/tests"
-        self.assertTrue(tests.is_dir(), "The tooling checkout needs the test sources")
-        slow_modules = []
-        for source in tests.rglob("*.py"):
-            tree = ast.parse(source.read_text(encoding="utf-8"))
-            if any(
-                isinstance(node, ast.Attribute)
-                and node.attr == "slow"
-                and isinstance(node.value, ast.Attribute)
-                and node.value.attr == "mark"
-                for node in ast.walk(tree)
-            ):
-                slow_modules.append(source.relative_to(root).as_posix())
-        self.assertTrue(slow_modules, "Expected to find the repository's slow tests")
-        for path in slow_modules:
-            with self.subTest(path=path):
-                self.assertTrue(select_checks([path])["run-integration"])
 
     def test_shared_slow_inputs_select_integration_tests(self):
         for path in (
@@ -342,6 +426,98 @@ class SelectionTests(unittest.TestCase):
             )
             del needs["changes"]["outputs"]["run-python"]
             self.assertTrue(check_jobs(needs, conditional))
+
+
+class RepositoryScanTests(unittest.TestCase):
+    """Keep the selector's module lists equal to what the package contains."""
+
+    def assert_list_matches_scan(
+        self,
+        name: str,
+        listed: frozenset[str],
+        predicate: Callable[[ast.AST], bool],
+        description: str,
+    ) -> None:
+        found = scan_package(predicate)
+        missing = sorted(found - listed)
+        stale = sorted(listed - found)
+        if missing or stale:
+            self.fail(
+                "\n".join(
+                    [
+                        f"{name} in .github/scripts/select_checks.py must list "
+                        f"exactly the package modules that {description}, so "
+                        "that a pull request changing one runs the integration "
+                        "tests.",
+                        *(f"Add: {path}" for path in missing),
+                        *(f"Remove: {path}" for path in stale),
+                    ]
+                )
+            )
+
+    def test_slow_test_list_matches_the_package(self):
+        self.assert_list_matches_scan(
+            "SLOW_TEST_FILES",
+            SLOW_TEST_FILES,
+            applies_slow_marker,
+            "apply pytest's slow marker",
+        )
+
+    def test_doctest_list_matches_the_package(self):
+        self.assert_list_matches_scan(
+            "DOCTEST_FILES", DOCTEST_FILES, has_doctest_examples, "hold doctests"
+        )
+
+    def test_listed_modules_select_integration_tests(self):
+        for path in sorted(SLOW_TEST_FILES | DOCTEST_FILES):
+            with self.subTest(path=path):
+                result = select_checks([path])
+                self.assertTrue(result["run-integration"])
+                self.assertFalse(result["run-full-matrix"])
+
+    def test_static_slow_markers_are_detected(self):
+        for source in (
+            "import pytest\n@pytest.mark.slow\ndef test(): pass",
+            "import pytest as pt\n@pt.mark.slow\ndef test(): pass",
+            "from pytest import mark\n@mark.slow\ndef test(): pass",
+            "from pytest import mark as m\n@m.slow\ndef test(): pass",
+            "import pytest\nm = pytest.mark\n@m.slow\ndef test(): pass",
+            "import pytest\npytestmark = [pytest.mark.slow]",
+            "import pytest\nCASES = [pytest.param(1, marks=pytest.mark.slow)]",
+            "import pytest\n@getattr(pytest.mark, 'slow')\ndef test(): pass",
+            "def pytest_collection_modifyitems(items):\n"
+            "    items[0].add_marker('slow')",
+        ):
+            with self.subTest(source=source):
+                self.assertTrue(applies_slow_marker(ast.parse(source)))
+        for source in (
+            "import pytest\n@pytest.mark.slowest\ndef test(): pass",
+            "def test(options): assert options.slow",
+            "SOURCE = '@pytest.mark.slow\\ndef test(): pass'",
+            "MARKERS = {'slow': '--slow'}",
+        ):
+            with self.subTest(source=source):
+                self.assertFalse(applies_slow_marker(ast.parse(source)))
+
+    def test_doctests_are_detected_where_doctest_looks(self):
+        for source in (
+            '""">>> 1\n1\n"""',
+            'def f():\n    """Return one.\n\n    >>> f()\n    1\n    """',
+            'class C:\n    def f(self):\n        """\n        >>> C().f()\n        """',
+            'async def f():\n    """\n    >>> f\n    """',
+            'f.__doc__ = """\n>>> 1\n"""',
+            "__test__ = build_examples()",
+        ):
+            with self.subTest(source=source):
+                self.assertTrue(has_doctest_examples(ast.parse(source)))
+        for source in (
+            'SAMPLE = """\n>>> 1 + 1\n2\n"""',
+            "# >>> 1",
+            'def f():\n    """Shift with a >>> b."""',
+            "__doc__ = property(get_doc)",
+        ):
+            with self.subTest(source=source):
+                self.assertFalse(has_doctest_examples(ast.parse(source)))
 
 
 class SummaryTests(unittest.TestCase):
