@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2024 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +14,28 @@
 # limitations under the License.
 
 
-from pymedphys._streamlit import categories
+from pymedphys._imports import streamlit as st
 
-from .app import main as main
+from pymedphys._streamlit import categories
 
 CATEGORY = categories.DRAFT
 TITLE = "MOSAIQ Claude Chat"
+
+# The app's dependencies are in the optional ``ai`` extra, so import it only
+# when it is opened: the rest of the GUI must load without them.
+_AI_MODULES = {"anthropic", "httpx2", "trio"}
+
+
+def main():
+    try:
+        from .app import main as app_main  # pylint: disable = import-outside-toplevel
+    except ModuleNotFoundError as error:
+        if (error.name or "").split(".")[0] not in _AI_MODULES:
+            raise
+        st.error(
+            "This app needs the optional AI dependencies. Install them with "
+            '`pip install "pymedphys[ai]"`, then restart the GUI.'
+        )
+        return
+
+    app_main()

@@ -2470,6 +2470,11 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+ai = [
+    { name = "anthropic" },
+    { name = "httpx2" },
+    { name = "trio" },
+]
 all = [
     { name = "anthropic" },
     { name = "anyio" },
@@ -2635,13 +2640,11 @@ tests = [
     { name = "tqdm" },
 ]
 user = [
-    { name = "anthropic" },
     { name = "anyio" },
     { name = "attrs" },
     { name = "dash" },
     { name = "dbfread" },
     { name = "dicompyler-core" },
-    { name = "httpx2" },
     { name = "imageio", extra = ["tifffile"] },
     { name = "keyring" },
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -2671,7 +2674,6 @@ user = [
     { name = "timeago" },
     { name = "toml" },
     { name = "tqdm" },
-    { name = "trio" },
     { name = "trio-asyncio" },
     { name = "watchdog" },
     { name = "xmltodict" },
@@ -2687,9 +2689,9 @@ pre-commit = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anthropic", marker = "extra == 'ai'" },
     { name = "anthropic", marker = "extra == 'all'" },
     { name = "anthropic", marker = "extra == 'tests'" },
-    { name = "anthropic", marker = "extra == 'user'" },
     { name = "anyio", marker = "extra == 'all'" },
     { name = "anyio", marker = "extra == 'user'" },
     { name = "astroid", marker = "extra == 'all'" },
@@ -2706,8 +2708,8 @@ requires-dist = [
     { name = "dicompyler-core", marker = "extra == 'user'" },
     { name = "doc8", marker = "extra == 'all'" },
     { name = "doc8", marker = "extra == 'dev'" },
+    { name = "httpx2", marker = "extra == 'ai'" },
     { name = "httpx2", marker = "extra == 'all'" },
-    { name = "httpx2", marker = "extra == 'user'" },
     { name = "imageio", marker = "extra == 'tests'" },
     { name = "imageio", extras = ["tifffile"], marker = "extra == 'all'" },
     { name = "imageio", extras = ["tifffile"], marker = "extra == 'user'" },
@@ -2836,8 +2838,8 @@ requires-dist = [
     { name = "tqdm", marker = "extra == 'docs'" },
     { name = "tqdm", marker = "extra == 'tests'" },
     { name = "tqdm", marker = "extra == 'user'" },
+    { name = "trio", marker = "extra == 'ai'" },
     { name = "trio", marker = "extra == 'all'" },
-    { name = "trio", marker = "extra == 'user'" },
     { name = "trio-asyncio", marker = "extra == 'all'" },
     { name = "trio-asyncio", marker = "extra == 'user'" },
     { name = "types-python-dateutil", marker = "extra == 'all'" },
@@ -2856,7 +2858,7 @@ requires-dist = [
     { name = "xmltodict", marker = "extra == 'all'" },
     { name = "xmltodict", marker = "extra == 'user'" },
 ]
-provides-extras = ["user", "dev", "lint", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq", "propagate", "all"]
+provides-extras = ["user", "ai", "dev", "lint", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq", "propagate", "all"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "sphinx-external-toc", specifier = ">=1.0.1" }]
