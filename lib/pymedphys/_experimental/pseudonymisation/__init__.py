@@ -1,5 +1,5 @@
-# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
+# Copyright (C) 2026 Matthew Jennings
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -145,7 +145,8 @@ def pseudonymise(dicom_input, output_path=None):
     """Convenient API to pseudonymisation.
     Elements whose tags are not in the pydicom dictionary will be deleted
     PatientSex will not be modified/pseudonymised
-    For fine tune control, use anonymise_dataset() instead
+    For finer control, pass this module's strategy and keywords to
+    ``pymedphys.dicom.anonymise`` instead
 
     Parameters
     ----------
@@ -155,8 +156,9 @@ def pseudonymise(dicom_input, output_path=None):
         For a file input, provide a file path with a directory component.
         Its parent directory is used, but the filename is generated from the
         pseudonymised dataset. For a directory input, this is the destination
-        directory. Ignored for a Dataset input, which returns a new dataset
-        without saving it. Defaults to None.
+        directory. If None, output is written alongside the input. Ignored
+        for a Dataset input, which returns a new dataset without saving it.
+        Defaults to None.
 
     Returns
     -------

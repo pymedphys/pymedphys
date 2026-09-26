@@ -56,3 +56,19 @@ directory input, ``output_path`` is the destination directory:
     output_files = pseudonymisation.pseudonymise(
         "input_directory", output_path="output_directory"
     )
+
+For finer control, pass this module's replacement strategy and identifying
+keywords to :func:`pymedphys.dicom.anonymise`. The following reproduces
+``pseudonymise`` for a dataset; adjust the arguments as required:
+
+.. code-block:: python
+
+    import pymedphys.dicom
+
+    ds_pseudo = pymedphys.dicom.anonymise(
+        ds_input,
+        keywords_to_leave_unchanged=["PatientSex"],
+        delete_unknown_tags=True,
+        replacement_strategy=pseudonymisation.pseudonymisation_dispatch,
+        identifying_keywords=pseudonymisation.get_default_pseudonymisation_keywords(),
+    )
