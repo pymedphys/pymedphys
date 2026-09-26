@@ -1059,8 +1059,36 @@ class PublishedTestSuiteTests(unittest.TestCase):
             test_command=test_command,
         )
 
-    def test_the_suite_runs_with_the_test_extras_installed(self):
-        results = self._results(["-c", "import release_dependency"])
+    def test_the_suite_runs_with_its_extras_and_console_script(self):
+        # A caller's installation must not shadow the wheel being tested.
+        shadow_bin = self.root / "other-installation"
+        shadow_bin.mkdir()
+        shadow_cli = shadow_bin / ("pymedphys.exe" if os.name == "nt" else "pymedphys")
+        shadow_cli.write_text("This console script must not run.\n", encoding="utf-8")
+        shadow_cli.chmod(0o755)
+        inherited_path = os.pathsep.join((str(shadow_bin), os.environ.get("PATH", "")))
+        command = textwrap.dedent(
+            f"""\
+            import pathlib
+            import shutil
+            import subprocess
+            import sys
+
+            import release_dependency
+
+            script = shutil.which("pymedphys")
+            assert script is not None
+            assert pathlib.Path(script).parent == pathlib.Path(sys.executable).parent, script
+            result = subprocess.run(
+                ["pymedphys", "--version"],
+                check=True, capture_output=True, text=True,
+            )
+            assert result.stdout.strip() == "pymedphys {VERSION}", result.stdout
+            """
+        )
+        with mock.patch.dict(os.environ, {"PATH": inherited_path}):
+            results = self._results(["-c", command])
+            self.assertEqual(os.environ["PATH"], inherited_path)
 
         self.assertEqual([r.name for r in results], ["wheel", "sdist", "tests"])
         self.assertEqual([r.status for r in results], ["passed"] * 3, results)

@@ -376,14 +376,19 @@ def _run(
 
 
 def _run_to_log(
-    command: Sequence[str | os.PathLike[str]], *, cwd: Path, log: Path
+    command: Sequence[str | os.PathLike[str]], *, cwd: Path, log: Path, bin_dir: Path
 ) -> int:
     """Run a long command with its output written to ``log`` as it arrives."""
+    environment = _child_environment()
+    # Tests can spawn console scripts by name, so prefer this environment.
+    environment["PATH"] = os.pathsep.join(
+        (os.fspath(bin_dir), environment.get("PATH", os.defpath))
+    )
     with log.open("wb") as output:
         return subprocess.run(
             [os.fspath(item) for item in command],
             cwd=cwd,
-            env=_child_environment(),
+            env=environment,
             stdout=output,
             stderr=subprocess.STDOUT,
             check=False,
@@ -720,7 +725,10 @@ def _run_test_suite(
         test_command = (*TEST_COMMAND, f"--junitxml={junit}")
     print(f"Running the test suite; its output is written to {log}", flush=True)
     returncode = _run_to_log(
-        [python, "-I", *test_command], cwd=working_directory, log=log
+        [python, "-I", *test_command],
+        cwd=working_directory,
+        log=log,
+        bin_dir=python.parent,
     )
     print(_tail(log.read_text(encoding="utf-8", errors="replace")), flush=True)
     if returncode != 0:
