@@ -19,6 +19,8 @@ from __future__ import annotations
 import collections
 import dataclasses
 import re
+import types
+from collections.abc import Mapping
 
 from .chtml import HtmlTable, TableFormatError
 
@@ -76,9 +78,10 @@ class ProfileAttribute:
         Whether PS3.3 uses the attribute in a standard composite IOD.
     basic_profile : str
         The Basic Profile action, such as ``"X"`` or ``"X/Z/D"``.
-    options : dict of str to str
+    options : Mapping of str to str
         The action for each option that gives one, keyed by the names in
-        :data:`OPTION_COLUMNS`. Options with an empty cell are omitted.
+        :data:`OPTION_COLUMNS`. Options with an empty cell are omitted. The
+        mapping is read-only.
     """
 
     name: str
@@ -86,7 +89,8 @@ class ProfileAttribute:
     retired: bool
     in_standard_iod: bool
     basic_profile: str
-    options: dict[str, str]
+    # A mapping is not hashable, so it is left out of the hash.
+    options: Mapping[str, str] = dataclasses.field(hash=False)
 
 
 def _flag(value: str, column: str, row: int) -> bool:
@@ -145,10 +149,13 @@ def parse_table_e1_1(table: HtmlTable) -> tuple[ProfileAttribute, ...]:
     TableFormatError
         If a column is unknown, missing, or repeated; if a Y/N column holds
         anything else; if a tag has an unrecognised form or appears more than
-        once; or if an action is not defined in Table E.1-1a. The Basic
-        Profile action is required; option actions may be empty.
+        once; if an action is not defined in Table E.1-1a; or if the table
+        has no rows. The Basic Profile action is required; option actions may
+        be empty.
     """
     _check_columns(table.header)
+    if not table.rows:
+        raise TableFormatError(f"{TABLE_E1_1} has no rows")
 
     attributes = []
     for number, cells in enumerate(table.rows, start=1):
@@ -165,11 +172,13 @@ def parse_table_e1_1(table: HtmlTable) -> tuple[ProfileAttribute, ...]:
                 retired=_flag(row[_RETIRED], _RETIRED, number),
                 in_standard_iod=_flag(row[_IN_STANDARD_IOD], _IN_STANDARD_IOD, number),
                 basic_profile=_action(row[_BASIC_PROFILE], _BASIC_PROFILE, number),
-                options={
-                    option: _action(row[column], column, number)
-                    for column, option in OPTION_COLUMNS.items()
-                    if row[column]
-                },
+                options=types.MappingProxyType(
+                    {
+                        option: _action(row[column], column, number)
+                        for column, option in OPTION_COLUMNS.items()
+                        if row[column]
+                    }
+                ),
             )
         )
 

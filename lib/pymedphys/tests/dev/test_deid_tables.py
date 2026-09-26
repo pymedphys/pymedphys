@@ -363,6 +363,19 @@ def test_defined_compound_actions_are_preserved(action):
     assert attribute.basic_profile == action
 
 
+def test_a_table_without_rows_fails():
+    with pytest.raises(chtml.TableFormatError, match="no rows"):
+        annex_e.parse_table_e1_1(_e1_1_table(rows=()))
+
+
+def test_parsed_attributes_are_hashable_and_read_only():
+    attribute = annex_e.parse_table_e1_1(_e1_1_table())[0]
+
+    assert hash(attribute) == hash(annex_e.parse_table_e1_1(_e1_1_table())[0])
+    with pytest.raises(TypeError):
+        attribute.options["clean_descriptors"] = "C"  # type: ignore[index]
+
+
 def test_duplicate_tags_fail():
     with pytest.raises(chtml.TableFormatError, match=r"\(0009,1002\) appears 2 times"):
         annex_e.parse_table_e1_1(_e1_1_table(rows=(E1_1_ROWS[1], E1_1_ROWS[1])))
