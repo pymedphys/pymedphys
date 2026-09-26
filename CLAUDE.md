@@ -77,6 +77,11 @@ fact once and link to it, prefer fixing a defect over documenting a workaround
 for it, and keep incident history and evidence caveats on the pull request
 rather than in the guide.
 
+Documents, decision logs, changelog entries, and pull request descriptions
+describe the state being merged. Fold revisions made while a pull request is
+open into the text; do not record them as superseded decisions, review logs,
+or construction history.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
@@ -246,11 +251,11 @@ The project uses uv with optional dependency groups:
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
-7. **DICOM De-identification**: A standards-driven replacement for `pymedphys.dicom.anonymise` and the experimental pseudonymisation module is being developed. `lib/pymedphys/docs/contrib/info/deidentification-design.md` is the source of truth for its status, active decisions, actual PR progress, outcome-based roadmap, and rolling next steps; update it in every de-identification PR. Distinguish planned behaviour from implemented and released support. Follow active decisions, not the separate superseded history, and keep user guidance and PR descriptions consistent with them.
-   - In new or modified code, never put source DICOM attribute values, secret keys, or original file paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or release reports. Use tag/keyword paths and opaque object identifiers. Record channels that remain in legacy code in the design document until they are fixed. A confidential QC review pack may contain retained strings and image previews needed for human review; create it only in an explicitly designated restricted location, keep it separate from release outputs, and treat it as potentially identifying. Key and subject-profile stores remain separate custodian-controlled state.
-   - Rule tables generated from the DICOM standard are regenerated with their generator, never edited by hand.
-   - Never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, and never set Burned In Annotation or Recognizable Visual Features to NO. Never replace a UID merely because its value representation is UI; resolve its role and the effective action first.
-   - Claim "de-identified in accordance with" a named DICOM PS3.15 edition, profile, and options only after validating the effective policy and output. Validate both removal and retention overrides against IOD requirements and the claimed options. Explicitly label permitted nonconformant processing, including Private SOP Classes, and suppress unsupported conformance claims and method codes. Never describe output as "anonymised"; that is a legal conclusion about the release context that software cannot make.
+7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. In new or modified code that handles DICOM data:
+   - never put source attribute values, keys, or original paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or reports; use attribute paths and opaque identifiers;
+   - never describe output as "anonymised", or as "de-identified" without naming the PS3.15 edition, profile, and options it has been validated against;
+   - never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, or change Burned In Annotation or Recognizable Visual Features to NO;
+   - regenerate rule tables generated from the DICOM standard with their generator; never edit them by hand.
 
 ## Common Development Patterns
 
@@ -317,11 +322,6 @@ This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code
 - One-off fixes for specific issues
 - Detailed explanations of individual features
 
-**Where guidance belongs**: record decisions that belong to one multi-PR
-programme in that programme's design document, not here. Record
-repository-wide contributor rules in `CONTRIBUTING.md` and link to them from
-here rather than restating them.
-
 **Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behavior across all Claude Code interactions.
 
 ### Bash Command Restrictions
@@ -364,11 +364,15 @@ This approach prioritizes security over efficiency, as confirmed by maintainer @
 
 ### PR Link Format
 
-Before a pull request exists, link a comparison against its actual base:
-`https://github.com/pymedphys/pymedphys/compare/<base>...<your-branch>`, where
-`<base>` is `main` unless the pull request is stacked on another branch. Use
-three dots (`...`), not two. Once the pull request exists, link it as
-`https://github.com/pymedphys/pymedphys/pull/<number>`.
+**Always use this exact format when providing PR links**:
+```
+https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
+```
+
+**Important**:
+- Use THREE dots (`...`) between branch names, not two (`..`)
+- Correct: `compare/main...feature-branch`
+- Wrong: `compare/main..feature-branch`
 
 ### Maintainer Guidance Documentation
 
@@ -383,16 +387,6 @@ This ensures that:
 - Future Claude Code interactions will follow the same guidelines
 - Maintainers don't need to repeatedly explain the same concepts
 - Knowledge is preserved across different workflow runs
-
-### Pull Request Scope and Documentation
-
-Before opening or updating a pull request, read and follow "Open and review a
-pull request" in `CONTRIBUTING.md`, the single source for these rules:
-single-concern pull requests of reviewable size; documentation, tests, and
-evidence with every change; consolidated changelog entries; stacked pull
-requests that merge (never rebase) their parent's changes; living design
-documents for multi-PR programmes; no deprecation before a replacement is
-released; and new dependencies only with their first consumer.
 
 ### CI Gates and Review Policy
 
