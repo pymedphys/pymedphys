@@ -181,6 +181,7 @@ This project adheres to
   removed. It drove a PyOxidizer and Electron desktop build whose Electron
   app, PyOxidizer configuration, and `build` extra had already been removed,
   so it could only fail.
+- **[Contributor facing only]** The `@claude` workflow now runs Claude Opus 5.5. Version 1 of `claude-code-action` ignores the `model` and `allowed_tools` inputs, so the model moves to `claude_args`, and the allow-list, which never took effect, is removed with the Python and uv setup steps that existed only for it. The workflow keeps the action's default tools: it still cannot run repository code or change `.github/workflows/`, and CI tests the commits it pushes. `CLAUDE.md` describes the workflow as it runs, has agents edit workflow files directly and stage them in `claude_created_workflows_preview/` only when a push lacks the `workflows` permission, and fixes a broken nested code fence and markdownlint findings.
 
 ### News around this release
 

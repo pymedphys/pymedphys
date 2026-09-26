@@ -98,19 +98,20 @@ historical record.
 
 ### Project Structure
 
-PyMedPhys is a medical physics library organized as follows:
+PyMedPhys is a medical physics library organised as follows:
 
 - **lib/pymedphys/**: Main library code
   - `_<module>/`: Private implementation modules (e.g., `_dicom/`, `_gamma/`, `_mosaiq/`)
   - `<module>.py`: Public API modules that expose the private implementations
   - `cli/`: Command-line interface implementations
-  - `tests/`: Test suite organized by module
+  - `tests/`: Test suite organised by module
   - `_experimental/`: Experimental features not yet stable
   - `_streamlit/`: Streamlit web app components
 
 ### Project Maintainers
 
 PyMedPhys is maintained by:
+
 - SimonBiggs
 - sjswerdloff
 - Matthew-Jennings
@@ -180,6 +181,7 @@ When creating conda recipes, pull requests, or other metadata that requires main
 ### Dependencies and Extras
 
 The project uses uv with optional dependency groups:
+
 - `user`: Standard user installation
 - `all`: All features including development tools
 - `dev`: Development tools (linting, formatting)
@@ -263,13 +265,13 @@ The project uses uv with optional dependency groups:
 
 1. **Beta Status**: PyMedPhys is in beta (version 0.x.x). APIs may change between releases.
 
-2. **DICOM Handling**: The library provides extensive DICOM functionality including anonymization, coordinate systems, dose calculations, and RT plan manipulation.
+2. **DICOM Handling**: The library provides extensive DICOM functionality including anonymisation, coordinate systems, dose calculations, and RT plan manipulation.
 
 3. **Gamma Analysis**: Core functionality for dose distribution comparison using efficient shell-based algorithm implementation.
 
 4. **Anthropic Integration**: Built-in Claude integration for AI-assisted features (requires API key).
 
-5. **Streamlit Apps**: Web-based tools for various tasks (anonymization, metersetmap, dose analysis) in `_streamlit/apps/`.
+5. **Streamlit Apps**: Web-based tools for various tasks (anonymisation, metersetmap, dose analysis) in `_streamlit/apps/`.
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
@@ -291,8 +293,9 @@ When implementing new features:
 6. Document with docstrings following NumPy style
 
 When modifying DICOM functionality, be aware of:
+
 - Coordinate system transformations
-- Anonymization requirements
+- Anonymisation requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
 
@@ -330,9 +333,10 @@ Most source files open with one or more `# Copyright (C) <years> <authors>` line
 This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code instances. Failure to follow this results in maintainers having to repeatedly provide the same guidance, which wastes their time and degrades the development experience.
 
 **Example scenarios where this applies**:
+
 - When told how to handle certain types of files or situations
 - When given preferences about workflow or process
-- When corrected about general behavior patterns
+- When corrected about general behaviour patterns
 - When learning important information about the project while completing tasks
 
 **The goal**: Every interaction should make future interactions better by preserving knowledge.
@@ -342,64 +346,43 @@ This meta-instruction is ABSOLUTE and MUST be followed by all future Claude Code
 **Critical**: This file should only contain general principles and guidance that apply broadly across the codebase.
 
 **What to include**:
+
 - General development workflows and patterns
 - Architectural principles and conventions
 - Reusable commands and procedures
 - General principles from maintainer feedback that prevent repetition
 
 **What NOT to include**:
+
 - Task-specific examples or solutions
 - One-off fixes for specific issues
 - Detailed explanations of individual features
 
-**Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behavior across all Claude Code interactions.
+**Most Important**: When maintainers provide general feedback or principles, ALWAYS update CLAUDE.md immediately to capture this knowledge. This prevents maintainers from having to repeat the same guidance and ensures consistent behaviour across all Claude Code interactions.
 
-### Bash Command Restrictions
+### The `@claude` Workflow
 
-When the Claude workflow uses restricted bash permissions (via `allowed_tools` with specific `Bash(command)` entries):
+`.github/workflows/claude.yml` runs `anthropics/claude-code-action` when someone with write access mentions `@claude`. Its GitHub token covers contents, issues, and pull requests only.
 
-**Important**: Command chaining with `&` or `&&` is NOT allowed. Each `Bash(command)` entry is treated as an exact string match.
-
-**Problem Example**:
-```yaml
-Bash(git add file.txt),
-Bash(git commit -m "message")
-```
-This does NOT allow: `git add file.txt && git commit -m "message"`
-
-**Solution**: Execute commands sequentially:
-1. Execute first command
-2. Check result
-3. If successful, execute next command
-
-This approach prioritizes security over efficiency, as confirmed by maintainer @sjswerdloff.
-
-### Git and GitHub Tool Usage
-
-#### Known Issues and Workarounds
-
-1. **MCP GitHub commit tools**: The `mcp__github_file_ops__commit_files` tool may sometimes fail with undefined errors. When this happens:
-   - Try using sequential git commands via Bash
-   - Be aware that commit messages must be part of the allowed command string for restricted bash
-
-2. **Timing Issues with PR Merges**: Be aware that workflow runs may start with a repository state from just before a recent PR merge. If permissions appear to be missing:
-   - Check if a recent PR was merged that might have added those permissions
-   - The workflow's checkout might be from before the merge
-
-3. **GitHub Workflow File Restrictions**: The `mcp__github_file_ops__commit_files` tool cannot commit files to the `.github/workflows/` directory. This appears to be a security restriction to prevent automated creation or modification of GitHub Actions workflows. When creating workflow files:
-   - The tool will return "undefined" errors when attempting to commit to `.github/workflows/`
-   - You can successfully commit to other directories including `.github/` itself
-   - Provide the workflow content in an expandable comment section for manual creation
-   - This is NOT a general permission issue - the same tool works for other file locations
+- Set the model and any extra tools through `claude_args` (`--model`, `--allowedTools`). Version 1 of the action ignores the old `model` and `allowed_tools` inputs.
+- The workflow adds no tools to the action's defaults: reading, searching, and editing files in the workspace, and committing and pushing through the action's own `git add`, `git commit`, `git rm`, and push wrapper. It cannot run tests or other repository code; CI tests every commit it pushes. When a change needs `uv lock` or `pymedphys dev propagate`, say so in the reply instead of editing the generated files by hand.
+- Do not widen the workflow's tools or token permissions without the maintainers' agreement, and propose any widening in a pull request of its own, never as part of another change. Say which command or permission is needed and why.
+- Never allow commands that run repository code or build hooks, such as `uv run`, `uv sync`, `uv lock`, tests, or linters. The action checks out the head of a pull request from a fork, and the job holds the API key and a repository write token, so such a command would run an outside contributor's code with them.
+- Never allow `git push`, which bypasses the push wrapper's checks, or commands that switch, merge, or reset branches, which the action manages itself.
+- Keep workflow write off, as the maintainers decided: never add `workflows: write` to `additional_permissions` or pass the action a token that has it. With it, a prompt-injected run could push a workflow change that then runs with the repository's secrets.
+- An `--allowedTools` entry ending in `:*` matches that command prefix; any other entry matches only that exact command. A command chained with `&&` or `;` runs only if every part is allowed. Run commands one at a time and check each result instead of chaining them; this prioritises security over efficiency, as confirmed by maintainer @sjswerdloff.
+- A run can start from the repository state just before a recent merge, so a permission that merge added may not apply to it yet.
 
 ### PR Link Format
 
 **Always use this exact format when providing PR links**:
-```
+
+```text
 https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
 ```
 
 **Important**:
+
 - Use THREE dots (`...`) between branch names, not two (`..`)
 - Correct: `compare/main...feature-branch`
 - Wrong: `compare/main..feature-branch`
@@ -419,6 +402,7 @@ description to match the current diff and the validation actually run.
 4. **Provide the PR link** to maintainers
 
 This ensures that:
+
 - Future Claude Code interactions will follow the same guidelines
 - Maintainers don't need to repeatedly explain the same concepts
 - Knowledge is preserved across different workflow runs
@@ -487,13 +471,13 @@ This ensures that:
 ### Dependency Updates
 
 When updating dependencies:
+
 1. Update version constraints in `pyproject.toml`
 2. Run `uv lock --upgrade` and then `uv sync --python 3.12 --locked --extra all --group dev` to regenerate `uv.lock`
 3. Run `uv run pymedphys dev propagate` to regenerate the exported requirements
    files, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
 4. Test changes to ensure nothing breaks
-5. Note: If `uv lock --upgrade` or `uv sync` is not in allowed tools, request it be added
 
 Do not add tests that restate a declared dependency constraint or the locked
 version. The lockfile checks and CI's locked environment already cover them.
@@ -522,14 +506,6 @@ resolved `[package.optional-dependencies]` tables, not the `requires-dist` metad
 hand-edited lockfile can pass the check while CI silently omits the package.
 Always regenerate the lockfile with `uv lock` after touching `pyproject.toml`.
 
-### Working with Restricted Permissions
-
-When working with restricted bash permissions:
-1. Check the `.github/workflows/claude.yml` file for allowed commands
-2. If a needed command is missing, create a PR to add it to `allowed_tools`
-3. Be specific about which commands you need and why
-4. Remember that exact string matching is used for command validation
-
 ### Pre-commit Hook Exclusions
 
 When adding files that cause pre-commit validation to fail due to special syntax:
@@ -537,10 +513,10 @@ When adding files that cause pre-commit validation to fail due to special syntax
 **Important Principle**: Do NOT create a separate PR for pre-commit fixes when they're blocking the current PR. Instead, add the necessary exclusion patterns directly to `.pre-commit-config.yaml` to fix the immediate issue.
 
 This applies to files that use:
+
 - Template languages (Jinja2, etc.) that conflict with file format validators
 - Generated files with non-standard syntax
 - Special configuration formats that don't match standard linters
-
 
 ### Branch and File Management
 
@@ -549,6 +525,7 @@ This applies to files that use:
 **Critical**: Always provide accurate branch names when referencing branches. Incorrect branch names waste maintainer time searching for non-existent branches.
 
 **Best Practices**:
+
 - Double-check branch names before mentioning them
 - Use the actual branch name from your current git status
 - If unsure, explicitly state you're on a branch but need to verify the exact name
@@ -558,6 +535,7 @@ This applies to files that use:
 **Important**: Git commit timestamps reflect when commits are created, not when work began.
 
 **Key Points**:
+
 - "Branch timestamps" (as shown in GitHub's UI) indicate when the first commit was pushed to GitHub on a branch. This is not a standard Git term, but rather how GitHub displays branch activity.
 - Timestamps cannot be retroactively changed as they're part of the commit SHA
 - Work start times are not tracked by Git
@@ -567,12 +545,14 @@ This applies to files that use:
 When unable to commit files due to permission issues:
 
 **Fallback Strategy**:
+
 1. Include the complete file content in a comment using expandable details sections
 2. Clearly explain why the file couldn't be committed
 3. Provide clear instructions for manual file creation
 
 **Example Format**:
-```markdown
+
+````markdown
 <details>
 <summary>Click to expand: path/to/file.ext</summary>
 
@@ -581,58 +561,35 @@ When unable to commit files due to permission issues:
 ```
 
 </details>
-```
+````
 
 #### Permission Documentation
 
 When discussing permissions needed for operations:
 
 **Always Include**:
+
 1. **Immediate Needs**: Minimal permissions to complete the current task
 2. **Future Needs**: Additional permissions for full automation (if applicable)
 3. **Security Considerations**: Why each permission is needed
 4. **Fallback Options**: What can be done without the permissions
 
 **Format Example**:
+
 - Basic file operations: `git add`, `git commit`, `git push`
 - GitHub API operations: `mcp__github__create_branch`, `mcp__github__push_files`
 - External operations: Access to external repositories with justification
 
-### GitHub Workflow File Creation
+### Workflow Files
 
-When asked to create GitHub workflow files (`.github/workflows/*.yml`):
+GitHub accepts a push that creates or changes a file in `.github/workflows/` only from a token with the `workflows` permission. Claude Code sessions directed by a maintainer can normally push workflow changes, so edit `.github/workflows/` directly. The `@claude` workflow cannot, and its permission stays off (see "The `@claude` Workflow").
 
-**Important**: Due to permission restrictions on the `.github/workflows/` directory, use the following approach:
+When a push is rejected for lacking the `workflows` permission:
 
-1. **Create a preview directory**: Use `claude_created_workflows_preview/` in the repository root
-2. **Place the workflow file there** with the intended filename (e.g., `conda-package.yml`)
-3. **Inform the user** that they need to:
-   - Pull the branch locally
-   - Move the file from `claude_created_workflows_preview/` to `.github/workflows/`
-   - Push the change back using their own permissions
-   - Give the move command for both shells. Maintainers often work in
-     PowerShell, where `mv` is `Move-Item` and refuses to overwrite an
-     existing file unless `-Force` is passed:
-     - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
-     - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
-4. **Provide the PR creation link** with the branch as-is
+1. Commit the workflow as `claude_created_workflows_preview/<name>.yml`, under the name it will have in `.github/workflows/`, and push it to the pull request's branch.
+2. Ask a maintainer to move it within that pull request, and give the command for both shells. Maintainers often work in PowerShell, where `mv` is `Move-Item` and refuses to overwrite an existing file unless `-Force` is passed:
+   - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+   - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+3. If that commit also fails, post the file in a comment as described in "Handling File Creation Failures".
 
-**Recommended PR Workflow**: Create the PR first, then move the file. This approach:
-- Allows immediate visibility of the proposed workflow
-- Enables discussion and review before the file is in its final location
-- Permits the maintainer to make the move as part of the PR review process
-- Avoids potential confusion if the branch is updated locally but not pushed
-
-**Example response**:
-```
-I've created the workflow file at `claude_created_workflows_preview/my-workflow.yml`.
-
-To move it to the correct location:
-1. Pull this branch locally
-2. Move the file: `mv claude_created_workflows_preview/my-workflow.yml .github/workflows/`
-3. Commit and push the change
-
-[Create PR](https://github.com/pymedphys/pymedphys/compare/main...branch-name)
-```
-
-This approach ensures successful workflow file delivery despite permission restrictions.
+The staged file must pass the same workflow checks as one in place (see "Security Scanning Policy"). The move is complete when the file is in `.github/workflows/`, `claude_created_workflows_preview/` no longer holds it, and the pull request's checks pass.
