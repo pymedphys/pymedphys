@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -144,15 +145,20 @@ def pseudonymise(dicom_input, output_path=None):
     """Convenient API to pseudonymisation.
     Elements whose tags are not in the pydicom dictionary will be deleted
     PatientSex will not be modified/pseudonymised
-    For fine tune control, use anonymise_dataset() instead
+    For finer control, pass this module's strategy and keywords to
+    ``pymedphys.dicom.anonymise`` instead
 
     Parameters
     ----------
     dicom_input : ``pydicom.dataset.Dataset | str | pathlib.Path``
         Either a dataset, a path to a file or a path to a directory
     output_path : ``str | pathlib.Path``, optional
-        If the input is a file or a path, the directory to place the
-        pseudonymised files, by default None
+        For a file input, provide a file path with a directory component.
+        Its parent directory is used, but the filename is generated from the
+        pseudonymised dataset. For a directory input, this is the destination
+        directory. If None, output is written alongside the input. Ignored
+        for a Dataset input, which returns a new dataset without saving it.
+        Defaults to None.
 
     Returns
     -------
@@ -169,7 +175,7 @@ def pseudonymise(dicom_input, output_path=None):
         logging.error("Please submit issue to PyMedPhys")
         # but continue on, the data might not contain the offending keywords
         # and if it does... there will be some kind of error raised
-    keywords_to_leave_unchanged = list("PatientSex")
+    keywords_to_leave_unchanged = ["PatientSex"]
 
     if isinstance(dicom_input, pydicom.dataset.Dataset):
         pseudo_ds = anonymise_dataset(

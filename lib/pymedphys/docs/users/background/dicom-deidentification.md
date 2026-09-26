@@ -59,7 +59,7 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 - Every patient's dates are shifted by the same offset, which is also stored in that configuration, and times are unchanged. Only dates on its keyword list are shifted; RT dates keep their true values. Where a shifted date and an unshifted RT date have a known or inferable original relationship, their difference reveals the offset, and with it the true dates of every patient pseudonymised with that configuration.
 - It does not replace Referenced Dose Reference UID or most newer RT UIDs, so some references break or keep their original values.
 - Its keyword list excludes identifying sequences such as Icon Image, Original Attributes, and Digital Signatures. It processes their contents element by element instead of removing them, so contents not on its list, such as icon image pixel data and digital signature certificates, are kept.
-- The library and command line replace Patient's Sex with a hash that is not a permitted value and, with so few possible values, is easily reversed. The app leaves Patient's Sex unchanged.
+- The command replaces Patient's Sex with a hash that is not a permitted value and, with so few possible values, is easily reversed. `pseudonymise()` and the app leave it unchanged.
 - It fails on names containing non-ASCII characters, and on some ages and decimal values.
 
 ### Both tools
