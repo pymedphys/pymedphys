@@ -495,6 +495,11 @@ When updating dependencies:
 - CI pins uv (`version` on `setup-uv`) to the same version as the pre-commit
   `uv-lock` hook. Bump both together and confirm `uv lock` leaves `uv.lock`
   unchanged under the new version.
+- When CI runs a tool that `uv.lock` already pins, give it a dependency group
+  and install it with `uv sync --frozen --only-group <group>`, which checks the
+  lockfile's hashes without installing the project. `uvx --constraints`
+  applies the versions but ignores hashes. Install in a step of its own, before
+  any `continue-on-error` step, so an installation failure is not misreported.
 
 **Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
 resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.

@@ -80,8 +80,10 @@ Runs pre-commit hooks for code formatting and basic checks.
   - Can push fixes on same-repository PRs when bot credentials are available
   - Fork PR authors must apply and push their fixes themselves
   - Caches pre-commit environments
-  - Runs the tool and its transitive dependencies constrained by `uv.lock`,
-    without installing the project's scientific dependencies
+  - Installs only the `pre-commit` dependency group, hash-checked from
+    `uv.lock`, in its own step, without the project or its scientific
+    dependencies. An installation failure therefore fails that step instead
+    of being reported as a hook failure
   - Checks out the event's exact head commit before applying auto-fixes
 
 #### `lint.yml`

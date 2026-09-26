@@ -56,12 +56,11 @@ jobs:
         with:
           install-project: 'false'
 
-      # Hook environments are independent of the package. Constrain the tool
-      # and every transitive dependency to the same lockfile as development.
-      - name: Export locked tool constraints
-        run: >-
-          uv export --frozen --extra dev --no-emit-project --no-hashes
-          --output-file "$RUNNER_TEMP/pre-commit-constraints.txt"
+      # Hook environments are independent of the package. Install only the
+      # pre-commit group, hash-checked from uv.lock, and do it before the hooks
+      # run so that an installation failure is not reported as a hook failure.
+      - name: Install pre-commit
+        run: uv sync --frozen --only-group pre-commit
 
       - name: Cache pre-commit
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -73,7 +72,7 @@ jobs:
         id: pre-commit
         continue-on-error: true
         run: |
-          uvx --constraints "$RUNNER_TEMP/pre-commit-constraints.txt" pre-commit run --all-files --show-diff-on-failure
+          uv run --no-sync pre-commit run --all-files --show-diff-on-failure
 
       # Fork PRs are skipped: neither the bot token nor GITHUB_TOKEN can push
       # to a fork. The push targets the head repository, the same one checked
@@ -90,7 +89,7 @@ jobs:
           REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           # Re-run pre-commit to apply auto-fixes (formatters, trailing whitespace, etc.)
-          uvx --constraints "$RUNNER_TEMP/pre-commit-constraints.txt" pre-commit run --all-files || true
+          uv run --no-sync pre-commit run --all-files || true
 
           if [[ -n "$(git status --porcelain)" ]]; then
             git config user.email "bot@pymedphys.com"

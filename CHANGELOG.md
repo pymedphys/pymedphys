@@ -66,7 +66,8 @@ This project adheres to
 - **[Contributor facing only]** CI now selects Python, documentation, tooling
   and security checks from the complete tested PR diff, while unknown inputs
   request every check and required summaries reject unexpected skips. Tool-only
-  jobs avoid installing the scientific stack, and only data consumers restore
+  jobs avoid installing the scientific stack: pre-commit installs only its own
+  dependency group, hash-checked from `uv.lock`. Only data consumers restore
   the manifest-specific data cache. Release validation runs in parallel with
   one distribution build; publishing still waits for every quality gate.
   After publishing, the published-package tests run alongside archive
