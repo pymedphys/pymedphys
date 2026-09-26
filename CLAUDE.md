@@ -307,6 +307,10 @@ around code that cannot work; fix or remove the code in the same PR, and record
 contributor-facing removals in `CHANGELOG.md`. Historical documentation pages
 are different: keep them as originally written, as described above.
 
+Areas that another maintainer owns, such as the Monaco integration, are theirs
+to change. Do not modify or remove their code, even when it looks unmaintained;
+raise the problem with that maintainer instead.
+
 ### Copyright Headers
 
 Most source files open with one or more `# Copyright (C) <years> <authors>` lines above the Apache 2.0 notice, one for each meaningful contribution.

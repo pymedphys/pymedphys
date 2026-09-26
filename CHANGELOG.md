@@ -108,6 +108,10 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** `CLAUDE.md` now tells agents to leave
+  code in areas another maintainer owns, such as the Monaco integration, to
+  that maintainer, and to raise problems with them instead of modifying or
+  removing it.
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries, descriptions of the state
