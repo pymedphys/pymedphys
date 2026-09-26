@@ -224,6 +224,15 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- The `user` extra no longer installs `anthropic` or `httpx2`, and no longer
+  lists `trio` as a direct dependency. These three packages are now in the new
+  `ai` extra (`pip install "pymedphys[user,ai]"`), which only the experimental
+  Mosaiq chat app in the GUI needs. The app sends questions and query results
+  to Anthropic's API, so it is now opt-in. Without the extra the rest of the
+  GUI still loads, and the chat app says how to install it; before, a missing
+  AI package stopped the whole GUI from loading. The `user` extra still
+  installs `trio` through `trio-asyncio`, and the `all` extra still includes
+  all three packages.
 - The `pymedphys claude respond-to-issue-comment` command and the private
   `pymedphys._claude` package behind it have been removed. They posted Claude
   replies to GitHub issues, but no workflow has run them since the `@claude`
