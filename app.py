@@ -20,7 +20,11 @@ the requirements:
 
 Then you can start this app by running:
 
-    streamlit run app.py
+    streamlit run --server.address localhost --browser.gatherUsageStats false app.py
+
+These options, which ``pymedphys gui`` also sets, make Streamlit listen only
+on this computer and disable its usage statistics. Without them, Streamlit
+listens on every network interface, and the apps can display patient data.
 """
 
 from pymedphys._app import main

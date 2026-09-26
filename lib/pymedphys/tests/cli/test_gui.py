@@ -71,3 +71,24 @@ def test_port_must_be_an_integer(capsys):
         define_parser().parse_args(["gui", "--port", "not-a-port"])
 
     assert "--port" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("port", [None, 8600])
+def test_streamlit_parses_the_command_as_intended(port):
+    """Streamlit's own parser reads each option, and the app as the script.
+
+    Checking with Streamlit's parser, rather than by position alone, catches
+    an option that Streamlit would not recognise or would pass to the app as
+    a script argument (for example after ``--``).
+    """
+    streamlit_cli = pytest.importorskip("streamlit.web.cli")
+    command = _gui.build_streamlit_command(port=port)
+    assert command[3] == "run"
+
+    context = streamlit_cli.main_run.make_context("run", command[4:])
+
+    assert context.params["server_address"] == "localhost"
+    assert context.params["browser_gatherUsageStats"] is False
+    assert context.params["server_port"] == port
+    assert context.params["target"].endswith("_app.py")
+    assert context.params["args"] == ()
