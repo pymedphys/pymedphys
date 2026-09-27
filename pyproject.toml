@@ -274,6 +274,7 @@ dev = [
 # without the project or its scientific dependencies.
 pre-commit = [
   "pre-commit",
+  "ruff",
 ]
 # CI installs only this group, hash-checked from uv.lock, to run the
 # .github/scripts tests in parallel without the project.
@@ -307,9 +308,16 @@ timeout = 900
 # "will be removed in v4", so using one fails the test.
 filterwarnings = ["error:.*removed in v4:DeprecationWarning"]
 
-# Existing tool config stays as-is
+[tool.ruff]
+# Python sources only: `ruff check .` and `ruff format .` then cover the same
+# files as the pre-commit hooks, and leave notebooks and Markdown alone.
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+
 [tool.ruff.lint]
-extend-ignore = ["E741", "E722", "F401"]  # example: match your current settings
+# An explicit rule set, so that upgrading ruff through uv.lock does not change
+# which rules apply.
+select = ["E4", "E7", "E9", "F"]
+extend-ignore = ["E741", "E722", "F401"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["pymedphys._imports"]
