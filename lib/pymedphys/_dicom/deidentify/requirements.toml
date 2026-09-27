@@ -46,9 +46,23 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 No requirements on the size of the asymmetric key pairs used for RSA key transport are defined in this confidentiality scheme. Implementations claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall always protect (e.g., encrypt and replace) the SOP Instance UID (0008,0018) Attribute as well as all references to other SOP Instances, whether contained in the main Data Set or embedded in an Item of a Sequence of Items, that could potentially be used by unauthorized entities to identify the patient.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-003"]
+decisions = ["D-003", "D-004"]
+implementation = [
+  "_dicom/deidentify/keys.py",
+  "_dicom/deidentify/uids.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_keys.py::test_derivations_are_pinned",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_follows_d_003",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_is_a_valid_uid_from_a_version_5_uuid",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_depends_only_on_the_key_and_the_unpadded_uid",
+  "tests/dicom/test_deidentify_uids.py::test_different_uids_give_different_replacements",
+]
+note = '''
+Replacement UIDs are derived from the key, so every occurrence of a UID is replaced consistently. Remaining: the role of every UI attribute in the supplementary rules (M2), and replacing each SOP Instance UID and reference in a data set, including in sequences (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-05"
