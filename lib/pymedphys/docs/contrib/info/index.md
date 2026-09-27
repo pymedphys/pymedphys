@@ -13,5 +13,6 @@ dicom-coordinate-validation
 dicom-coordinates-illustrated
 gamma-performance
 gamma-performance-study
+gamma-uncertainty-workstation/index
 gamma-scaling-workstation/index
 ```

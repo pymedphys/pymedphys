@@ -1,0 +1,460 @@
+{
+  "models": [
+    {
+      "dimension": 2,
+      "variant": "previous-pymedphys",
+      "sizes": 3,
+      "rounds": 4,
+      "min_eligible_points": 5665,
+      "max_eligible_points": 51568,
+      "affine_offset_seconds": -0.005719593123627552,
+      "affine_slope_seconds_per_million": 5.492994848991644,
+      "origin_slope_seconds_per_million": 5.350519397577384,
+      "affine_leave_one_size_out_errors_percent": [
+        18.338277777538625,
+        -3.6597117129963053,
+        4.791226643123703
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        27.240961973170986,
+        1.5599124755102833,
+        -3.7531321030540243
+      ],
+      "origin_max_abs_holdout_error_percent": 27.240961973170986,
+      "origin_slope_repeat_interval_95": null,
+      "affine_offset_repeat_interval_95": null,
+      "affine_slope_repeat_interval_95": null,
+      "later_half_slope_change_percent": -0.1682419029576554
+    },
+    {
+      "dimension": 2,
+      "variant": "current-pymedphys",
+      "sizes": 3,
+      "rounds": 4,
+      "min_eligible_points": 5665,
+      "max_eligible_points": 51568,
+      "affine_offset_seconds": -0.0023316648415339343,
+      "affine_slope_seconds_per_million": 4.311649137365855,
+      "origin_slope_seconds_per_million": 4.2535672085181595,
+      "affine_leave_one_size_out_errors_percent": [
+        10.585634952388755,
+        -2.3484351835580064,
+        3.1118929784889504
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        13.218877760226565,
+        0.458258105498377,
+        -1.7019909231649533
+      ],
+      "origin_max_abs_holdout_error_percent": 13.218877760226565,
+      "origin_slope_repeat_interval_95": null,
+      "affine_offset_repeat_interval_95": null,
+      "affine_slope_repeat_interval_95": null,
+      "later_half_slope_change_percent": -0.31044030030982217
+    },
+    {
+      "dimension": 2,
+      "variant": "previous-scipy",
+      "sizes": 3,
+      "rounds": 4,
+      "min_eligible_points": 5665,
+      "max_eligible_points": 51568,
+      "affine_offset_seconds": -0.005412831955998297,
+      "affine_slope_seconds_per_million": 7.726003525294307,
+      "origin_slope_seconds_per_million": 7.591169515305976,
+      "affine_leave_one_size_out_errors_percent": [
+        -10.477843128490804,
+        2.5211013119405434,
+        -3.213237933787094
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        8.12555404685622,
+        4.490497097276536,
+        -4.738459865722189
+      ],
+      "origin_max_abs_holdout_error_percent": 8.12555404685622,
+      "origin_slope_repeat_interval_95": null,
+      "affine_offset_repeat_interval_95": null,
+      "affine_slope_repeat_interval_95": null,
+      "later_half_slope_change_percent": -1.8825693023332146
+    },
+    {
+      "dimension": 2,
+      "variant": "current-scipy",
+      "sizes": 3,
+      "rounds": 4,
+      "min_eligible_points": 5665,
+      "max_eligible_points": 51568,
+      "affine_offset_seconds": -0.006396083918012134,
+      "affine_slope_seconds_per_million": 7.67307228699407,
+      "origin_slope_seconds_per_million": 7.513745404153791,
+      "affine_leave_one_size_out_errors_percent": [
+        -14.93087075227313,
+        3.6060592964208826,
+        -4.538529269596115
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        8.956857167505493,
+        5.804727740237503,
+        -5.896858190389354
+      ],
+      "origin_max_abs_holdout_error_percent": 8.956857167505493,
+      "origin_slope_repeat_interval_95": null,
+      "affine_offset_repeat_interval_95": null,
+      "affine_slope_repeat_interval_95": null,
+      "later_half_slope_change_percent": -4.926831094880968
+    },
+    {
+      "dimension": 3,
+      "variant": "previous-pymedphys",
+      "sizes": 4,
+      "rounds": 8,
+      "min_eligible_points": 1764,
+      "max_eligible_points": 52711,
+      "affine_offset_seconds": 0.05051917712092924,
+      "affine_slope_seconds_per_million": 45.81296182312706,
+      "origin_slope_seconds_per_million": 47.06782442204314,
+      "affine_leave_one_size_out_errors_percent": [
+        60.22406024721207,
+        10.370017925914166,
+        -10.568479894573258,
+        13.877313523815271
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        -15.499699550670199,
+        -8.910203952915218,
+        -12.215580950273818,
+        13.884849036584601
+      ],
+      "origin_max_abs_holdout_error_percent": 15.499699550670199,
+      "origin_slope_repeat_interval_95": [
+        46.29744056367943,
+        47.92791055524606
+      ],
+      "affine_offset_repeat_interval_95": [
+        0.029104307637069914,
+        0.06520910863404383
+      ],
+      "affine_slope_repeat_interval_95": [
+        44.99150337119004,
+        46.90440825236682
+      ],
+      "later_half_slope_change_percent": -0.7776297915549568
+    },
+    {
+      "dimension": 3,
+      "variant": "current-pymedphys",
+      "sizes": 4,
+      "rounds": 8,
+      "min_eligible_points": 1764,
+      "max_eligible_points": 52711,
+      "affine_offset_seconds": 0.03514243041988141,
+      "affine_slope_seconds_per_million": 31.92866963718417,
+      "origin_slope_seconds_per_million": 32.801584123961334,
+      "affine_leave_one_size_out_errors_percent": [
+        52.94686800435164,
+        4.190000645690395,
+        -7.980067398296398,
+        10.531569749627456
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        -18.020447345338276,
+        -12.260491377456418,
+        -10.140320879109233,
+        11.950358891639778
+      ],
+      "origin_max_abs_holdout_error_percent": 18.020447345338276,
+      "origin_slope_repeat_interval_95": [
+        32.21500606957623,
+        35.498406139585235
+      ],
+      "affine_offset_repeat_interval_95": [
+        0.010654466734229762,
+        0.04085998029660465
+      ],
+      "affine_slope_repeat_interval_95": [
+        31.229423576356016,
+        35.234562133095515
+      ],
+      "later_half_slope_change_percent": -6.823922995780007
+    },
+    {
+      "dimension": 3,
+      "variant": "previous-scipy",
+      "sizes": 4,
+      "rounds": 8,
+      "min_eligible_points": 1764,
+      "max_eligible_points": 52711,
+      "affine_offset_seconds": 0.19288593366400741,
+      "affine_slope_seconds_per_million": 186.37614912951722,
+      "origin_slope_seconds_per_million": 191.16730682063675,
+      "affine_leave_one_size_out_errors_percent": [
+        46.46903529638011,
+        -1.1192883753032734,
+        -5.377636840134048,
+        7.27692003786915
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        -18.571212170511576,
+        -14.433698755495694,
+        -7.856555658328491,
+        9.732386583214335
+      ],
+      "origin_max_abs_holdout_error_percent": 18.571212170511576,
+      "origin_slope_repeat_interval_95": [
+        187.70120272511886,
+        207.84017197297672
+      ],
+      "affine_offset_repeat_interval_95": [
+        0.0920069405558901,
+        0.288388475585977
+      ],
+      "affine_slope_repeat_interval_95": [
+        182.89537688542418,
+        205.66256833838625
+      ],
+      "later_half_slope_change_percent": 1.9893304491170882
+    },
+    {
+      "dimension": 3,
+      "variant": "current-scipy",
+      "sizes": 4,
+      "rounds": 8,
+      "min_eligible_points": 1764,
+      "max_eligible_points": 52711,
+      "affine_offset_seconds": 0.07223081811299714,
+      "affine_slope_seconds_per_million": 195.15814150023937,
+      "origin_slope_seconds_per_million": 196.95230675202367,
+      "affine_leave_one_size_out_errors_percent": [
+        2.703288983597374,
+        -2.179487344185005,
+        0.4816317861867647,
+        -0.4124547357305275
+      ],
+      "origin_leave_one_size_out_errors_percent": [
+        -15.336820881113555,
+        -6.816096781490877,
+        -0.9231352562767525,
+        1.7736320422108376
+      ],
+      "origin_max_abs_holdout_error_percent": 15.336820881113555,
+      "origin_slope_repeat_interval_95": [
+        189.09369198567245,
+        200.67197593095645
+      ],
+      "affine_offset_repeat_interval_95": [
+        0.003335987647474087,
+        0.1953152842653163
+      ],
+      "affine_slope_repeat_interval_95": [
+        184.99351389913835,
+        199.8123104113556
+      ],
+      "later_half_slope_change_percent": -0.6824277099958587
+    }
+  ],
+  "ratios": [
+    {
+      "dimension": 2,
+      "revision": "previous",
+      "ratio_of_origin_slopes": 1.4187724501556087,
+      "repeat_interval_95": null
+    },
+    {
+      "dimension": 2,
+      "revision": "current",
+      "ratio_of_origin_slopes": 1.7664574310961456,
+      "repeat_interval_95": null
+    },
+    {
+      "dimension": 3,
+      "revision": "previous",
+      "ratio_of_origin_slopes": 4.061528425586374,
+      "repeat_interval_95": [
+        3.9473645783973583,
+        4.454091346690137
+      ]
+    },
+    {
+      "dimension": 3,
+      "revision": "current",
+      "ratio_of_origin_slopes": 6.004353509504785,
+      "repeat_interval_95": [
+        5.6647492237588235,
+        6.153582724723012
+      ]
+    }
+  ],
+  "diagnostic_models": [
+    {
+      "difficulty": "easy",
+      "variant": "previous-pymedphys",
+      "rounds": 4,
+      "offset_seconds": 0.0004981236853591987,
+      "grid_seconds_per_million": 0.046275207931008894,
+      "eligible_seconds_per_million": 4.688980717161612,
+      "max_abs_fitted_error_percent": 1.057002274107921,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    },
+    {
+      "difficulty": "easy",
+      "variant": "current-pymedphys",
+      "rounds": 4,
+      "offset_seconds": 2.8946209671106178e-05,
+      "grid_seconds_per_million": 0.04668516282789559,
+      "eligible_seconds_per_million": 3.5598140488163508,
+      "max_abs_fitted_error_percent": 6.508923814172373,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    },
+    {
+      "difficulty": "easy",
+      "variant": "previous-scipy",
+      "rounds": 4,
+      "offset_seconds": 5.742710405834753e-05,
+      "grid_seconds_per_million": 0.04655420515693637,
+      "eligible_seconds_per_million": 15.703839531205862,
+      "max_abs_fitted_error_percent": 3.233034323064421,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    },
+    {
+      "difficulty": "easy",
+      "variant": "current-scipy",
+      "rounds": 4,
+      "offset_seconds": -0.00055054016380858,
+      "grid_seconds_per_million": 0.06391724283107136,
+      "eligible_seconds_per_million": 15.49953512373023,
+      "max_abs_fitted_error_percent": 10.857831324381074,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    },
+    {
+      "difficulty": "hard",
+      "variant": "previous-pymedphys",
+      "rounds": 4,
+      "offset_seconds": 0.018700890456095798,
+      "grid_seconds_per_million": -0.02257753947072061,
+      "eligible_seconds_per_million": 493.24879476822366,
+      "max_abs_fitted_error_percent": 2.314612413185202,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    },
+    {
+      "difficulty": "hard",
+      "variant": "current-pymedphys",
+      "rounds": 4,
+      "offset_seconds": 0.01898323413371461,
+      "grid_seconds_per_million": 0.03710505618271931,
+      "eligible_seconds_per_million": 348.9341253437039,
+      "max_abs_fitted_error_percent": 1.651030473443038,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    },
+    {
+      "difficulty": "hard",
+      "variant": "previous-scipy",
+      "rounds": 4,
+      "offset_seconds": 0.15188967739714787,
+      "grid_seconds_per_million": -2.2918806162627945,
+      "eligible_seconds_per_million": 2116.6078168030517,
+      "max_abs_fitted_error_percent": 10.669194095351276,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    },
+    {
+      "difficulty": "hard",
+      "variant": "current-scipy",
+      "rounds": 4,
+      "offset_seconds": 0.07948827052600604,
+      "grid_seconds_per_million": -1.4696457410322665,
+      "eligible_seconds_per_million": 2261.1116046842535,
+      "max_abs_fitted_error_percent": 5.892604494557752,
+      "interpretation": "Exploratory four-cell fit; no confidence interval or independent validation"
+    }
+  ],
+  "coverage": {
+    "2d-global": {
+      "sizes": 3,
+      "common_rounds": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "3d-global": {
+      "sizes": 4,
+      "common_rounds": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  },
+  "transfer_checks": [
+    {
+      "case": "3d-prostate-nodes-1x",
+      "variant": "previous-pymedphys",
+      "measured_median_seconds": 6.157785749994218,
+      "predicted_seconds": 11.536323765842774,
+      "prediction_error_percent": 87.34532564491393,
+      "eligible_points_within_fitted_range": false
+    },
+    {
+      "case": "3d-prostate-nodes-1x",
+      "variant": "current-pymedphys",
+      "measured_median_seconds": 4.520843849997618,
+      "predicted_seconds": 8.039668268782924,
+      "prediction_error_percent": 77.83556644601117,
+      "eligible_points_within_fitted_range": false
+    },
+    {
+      "case": "3d-prostate-nodes-1x",
+      "variant": "previous-scipy",
+      "measured_median_seconds": 23.786549450000166,
+      "predicted_seconds": 46.85510690173807,
+      "prediction_error_percent": 96.98152100719149,
+      "eligible_points_within_fitted_range": false
+    },
+    {
+      "case": "3d-prostate-nodes-1x",
+      "variant": "current-scipy",
+      "measured_median_seconds": 23.433820350001042,
+      "predicted_seconds": 48.273010384921,
+      "prediction_error_percent": 105.99718553752102,
+      "eligible_points_within_fitted_range": false
+    },
+    {
+      "case": "3d-sabr-1x",
+      "variant": "previous-pymedphys",
+      "measured_median_seconds": 3.985845250004786,
+      "predicted_seconds": 7.038851938843285,
+      "prediction_error_percent": 76.59621729756903,
+      "eligible_points_within_fitted_range": false
+    },
+    {
+      "case": "3d-sabr-1x",
+      "variant": "current-pymedphys",
+      "measured_median_seconds": 3.1686532000021543,
+      "predicted_seconds": 4.905378500986045,
+      "prediction_error_percent": 54.80957338539636,
+      "eligible_points_within_fitted_range": false
+    },
+    {
+      "case": "3d-sabr-1x",
+      "variant": "previous-scipy",
+      "measured_median_seconds": 12.573666599993885,
+      "predicted_seconds": 28.588497233105763,
+      "prediction_error_percent": 127.3680235256092,
+      "eligible_points_within_fitted_range": false
+    },
+    {
+      "case": "3d-sabr-1x",
+      "variant": "current-scipy",
+      "measured_median_seconds": 12.89068865000445,
+      "predicted_seconds": 29.453626617844883,
+      "prediction_error_percent": 128.48761162061516,
+      "eligible_points_within_fitted_range": false
+    }
+  ]
+}

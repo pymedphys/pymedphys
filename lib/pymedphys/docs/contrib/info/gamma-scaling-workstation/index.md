@@ -36,7 +36,7 @@ These ranges span workload medians, not individual measurements or confidence in
 
 The largest fully repeated 3D global case gives a practical waiting-time example: **new PyMedPhys 3 min 28 s versus SciPy 18 min 5 s**, a median paired speed ratio of **5.19×**. Old PyMedPhys took 4 min 50 s versus SciPy 18 min 21 s, a ratio of 3.78×. The numerical comparisons passed. These are warmed-call times; first-use compilation and the audit's full warm-ups add to elapsed time.
 
-That case samples a **100 × 140 × 140 mm synthetic volume at approximately 0.53 mm spacing**. Its 13.2 million voxels are not evidence of clinical representativeness: dose extent, above-cutoff volume, gradients, criteria and mismatch affect gamma cost. The new audit includes separate synthetic SABR-like and prostate/nodal workloads at specified 1.25 mm and 2.5 mm spacings; their results are still pending. Do not infer their timings from these curves.
+That case samples a **100 × 140 × 140 mm synthetic volume at approximately 0.53 mm spacing**. Its 13.2 million voxels are not evidence of clinical representativeness: dose extent, above-cutoff volume, gradients, criteria and mismatch affect gamma cost. The [completed uncertainty audit](../gamma-uncertainty-workstation/index.md) separately measures synthetic SABR-like and prostate/nodal workloads at specified 1.25 mm and 2.5 mm spacings, and tests runtime-model accuracy. Do not infer their timings from these curves or pool the two sessions.
 
 ![Paired PyMedPhys to SciPy speed ratios across measured grid sizes](speed-ratios.png)
 

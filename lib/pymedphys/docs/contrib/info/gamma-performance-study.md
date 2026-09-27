@@ -11,6 +11,9 @@ uncertainty. Both include repeated measurements and two larger synthetic volumes
 “Old/new SciPy” means old/new gamma code using the same SciPy package version.
 
 The [earlier notebook](gamma-performance.ipynb) explains the optimisation.
+The [completed uncertainty audit](gamma-uncertainty-workstation/index.md) contains
+all 84 planned groups, collected in about 43 minutes, with absolute volume
+timings, repeated scaling measurements and tests of the runtime models.
 The [recorded workstation evidence](gamma-scaling-workstation/index.md) preserves
 useful partial results from the earlier long run, including a 3D example taking
 3 min 28 s with new PyMedPhys versus 18 min 5 s with SciPy. Those observations

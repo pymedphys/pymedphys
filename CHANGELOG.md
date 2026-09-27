@@ -28,13 +28,11 @@ documents the independent evidence and remaining limitations.
 ### Faster gamma calculations
 
 Gamma avoids repeated coordinate copies and interpolator setup. The
-[recorded workstation evidence](https://docs.pymedphys.com/en/latest/contrib/info/gamma-scaling-workstation/index.html)
-shows about 28% lower warmed runtime with the PyMedPhys interpolator for a
-13.2-million-point 3D global-gamma case, with unchanged numerical results.
-This is a partial synthetic study on one workstation. The
-[background workstation study](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance-study.html)
-compares both interpolation paths within two hours, with absolute timings,
-scaling models, repeatability estimates and separate synthetic volume examples.
+[completed workstation audit](https://docs.pymedphys.com/en/latest/contrib/info/gamma-uncertainty-workstation/index.html)
+measured 22–26% lower warmed runtime with the PyMedPhys interpolator on two
+synthetic SABR-like and prostate/nodal volumes, with unchanged numerical results.
+The report includes absolute comparisons with SciPy, runtime-model limitations
+and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance-study.html).
 
 ### New features and enhancements
 
