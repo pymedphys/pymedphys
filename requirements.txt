@@ -322,6 +322,8 @@ werkzeug==3.1.8
     # via
     #   dash
     #   flask
+xlrd==2.0.2
+    # via pymedphys
 xmltodict==1.0.4
     # via pymedphys
 zipp==4.1.0

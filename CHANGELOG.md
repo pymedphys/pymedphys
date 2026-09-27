@@ -51,9 +51,11 @@ This project adheres to
   (a `UserWarning`); `pymedphys experimental dicom pseudonymise` prints the
   notice on standard error; and the DICOM Pseudonymisation app shows it as a
   banner. This is not a deprecation: neither legacy tool will be deprecated
-  until a replacement is released. See
+  until a replacement is released. Until then, both are changed only to stop
+  them disclosing identifying information or to prevent harm to data, and
+  their other defects are documented rather than fixed. See
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
-  [PR #2065](https://github.com/pymedphys/pymedphys/pull/2065)
+  [PR #2065](https://github.com/pymedphys/pymedphys/pull/2065), [PR #2105](https://github.com/pymedphys/pymedphys/pull/2105)
 - **[Security]** `pymedphys.dicom.anonymise` now warns about its limitations.
   It replaces only a list of attributes; its default list keeps every UID and
   most RT attributes, such as plan, structure set, ROI, and beam labels and
@@ -141,6 +143,7 @@ This project adheres to
 ### Dependency changes
 
 - `pandas` is now required at `>=2.0` instead of `>=1.0.0`. The Mosaiq mock database loader uses `pandas.to_datetime(..., format="mixed")`, which pandas 2.0 introduced, so earlier pandas versions already failed there. The locked development environment moves from pandas 2.3.3 to pandas 3.0.6, so CI tests PyMedPhys with pandas 3; pandas 3 no longer installs `pytz`, which PyMedPhys does not use. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
+- The `user`, `tests`, and `all` extras now install `xlrd`, which reads the Excel 97-2003 workbook in which AAPM publishes the TG-263 structure names. [PR #2108](https://github.com/pymedphys/pymedphys/pull/2108)
 - PyMedPhys no longer uses the pydicom APIs that pydicom 3 deprecates for removal in pydicom 4. It writes files with `enforce_file_format` instead of `write_like_original`, and takes a dataset's encoding from its Transfer Syntax UID or `original_encoding` instead of the `is_implicit_VR` and `is_little_endian` attributes. With pydicom 4, the functions that add a missing Transfer Syntax UID, such as the dose functions in `pymedphys.dicom`, would otherwise have labelled a file read without file meta information as Implicit VR Little Endian whatever its encoding, so the dose in a big endian RT Dose file would have been decoded with the wrong byte order. pydicom 4 is not yet released, so this was checked with pydicom 3.0.2's future behaviour, which imitates it. pynetdicom 3.0 still reads the removed attributes when it sends a dataset that was not read from a file, so passing such a dataset to `DicomSender.send` will need a pynetdicom release that supports pydicom 4. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
 - For Python 3.13 and 3.14 support: the Windows `pywin32` requirement no longer excludes Python 3.13 and later; the locked environment moves to `pylibjpeg-libjpeg` 2.4.0, which has wheels for 3.13 and 3.14; on Python 3.14 the `user` and `all` extras require `altair>=6` (locked at 6.3.0), because altair 5.5.0 cannot be imported on Python 3.14 and Streamlit imports it while rendering GUI apps; and on macOS with Python 3.14, `watchdog` has no wheel, so installing either extra builds it from source and needs Apple's Command Line Tools, as the [installation guide](https://docs.pymedphys.com/en/latest/users/get-started/installation-options.html#macos-with-python-3-14) describes. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - The locked development environment moves from NumPy 1.26 to NumPy 2 (2.4 on Python 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version; a focused compatibility check runs with 1.26.4 in the existing Linux/Python 3.12 CI job. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
@@ -211,6 +214,17 @@ This project adheres to
   longer match their recorded digest. `--check` exits with status 1 when the
   committed tables are missing or out of date.
   [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104)
+- **[Contributor facing only]** A private module,
+  `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
+  Spreadsheet to JSON, the first step towards descriptor cleaning (design
+  decision D-009) and checks of structure names against TG-263. PyMedPhys
+  does not include the spreadsheet. The converter maps columns by their header
+  text; rejects unknown or missing columns, empty required values, numbers
+  where text is expected, names containing whitespace, FMA identifiers that
+  are not positive integers, and repeated names; and records the spreadsheet's
+  file name, worksheet version, SHA-256, and AAPM's attribution. Its loader
+  rejects a file edited without updating its content digest.
+  [PR #2108](https://github.com/pymedphys/pymedphys/pull/2108)
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries that describe changes since the last stable release and link their pull requests, descriptions of the state
