@@ -333,7 +333,8 @@ exclude = ["**/node_modules", "**/__pycache__"]
 # future work would be to iteratively set these to true and fix the code base.
 reportMissingImports = false
 reportGeneralTypeIssues = false
-reportUnboundVariable = false
+reportUnboundVariable = "error"
+reportPossiblyUnboundVariable = "warning"
 reportOptionalMemberAccess = false
 reportOptionalSubscript = false
 reportOptionalOperand = false
