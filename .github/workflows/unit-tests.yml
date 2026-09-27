@@ -71,11 +71,13 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # NumPy 1.26 has no wheels for Python 3.13 or later, so the lower bound is
-  # checked on Python 3.12, whichever matrix runs.
-  numpy-floor:
-    name: NumPy 1.26 compatibility
-    timeout-minutes: 15
+  # The declared minimum versions of NumPy (1.26) and pandas (2.0) are checked
+  # together, whichever matrix runs. Python 3.11 is the only supported version
+  # with wheels for both: NumPy 1.26 has none for Python 3.13 or later, and
+  # pandas 2.0 none for 3.12 or later or built against NumPy 2.
+  dependency-floors:
+    name: NumPy and pandas minimum versions
+    timeout-minutes: 30
     runs-on: ubuntu-latest
 
     steps:
@@ -85,34 +87,32 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.12'
+          cache-data: 'true'
+          python-version: '3.11'
           extras: 'dev tests user'
 
-      - name: Run NumPy 1.26 compatibility tests
+      - name: Run unit tests at the minimum NumPy and pandas versions
         id: tests
         shell: bash
+        env:
+          NUMPY_FLOOR: '1.26.4'
+          PANDAS_FLOOR: '2.0.3'
         run: |
           set -euxo pipefail
-          # Reuse the locked environment; only NumPy is overlaid. The tests
-          # are synthetic and need no data downloads. Invoke Python so it
-          # imports NumPy from uv's overlay environment.
-          uv run --no-sync --with numpy==1.26.4 -- python -m pymedphys dev tests \
-            tests/delivery/test_dicom_conversion_utilities.py \
-            tests/electronfactors/test_parameterise_insert.py \
-            tests/metersetmap/test_metersetmap_single_control_point.py \
-            tests/metersetmap/test_metersetmap_single_mlc.py \
-            tests/metersetmap/test_metersetmap_leaf_gap.py \
-            tests/mocks/test_mock_profiles.py \
-            tests/dicom/test_dose.py::test_sum_doses_in_datasets \
-            tests/dicom/structure/test_masking.py \
-            tests/pinnacle/test_export_edge_cases.py::test_export_dose_preserves_valid_beam_sum \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-numpy126.xml" -q
+          mkdir -p test-results
+          # Reuse the locked environment and overlay only NumPy and pandas.
+          # Invoke Python so it imports them from uv's overlay environment,
+          # and fail if the overlay did not take effect.
+          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --)
+          "${overlay[@]}" python -c 'import os, numpy, pandas; assert (numpy.__version__, pandas.__version__) == (os.environ["NUMPY_FLOOR"], os.environ["PANDAS_FLOOR"]), (numpy.__version__, pandas.__version__)'
+          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors.xml"
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: junit-numpy126
+          name: junit-dependency-floors
           path: test-results/*.xml
           if-no-files-found: error
           retention-days: 30
