@@ -27,12 +27,12 @@ from collections.abc import Collection, Iterable
 
 from pymedphys._dicom.deidentify.standard import (
     ACTION_CODES,
-    VM_PATTERN,
-    VR_PATTERN,
     ActionCode,
     ProfileAttribute,
     SafePrivateAttribute,
     is_private_tag,
+    is_vm,
+    is_vr_text,
 )
 
 from .chtml import HtmlTable, TableFormatError
@@ -265,9 +265,10 @@ def parse_table_e3_10_1(table: HtmlTable) -> tuple[SafePrivateAttribute, ...]:
         If a column is unknown, missing, or repeated; if the table has no
         rows; if a Data Element is not a private tag of the form
         ``(gggg,xxee)``; if a private creator is empty; if a VR is neither
-        empty nor one or more VRs such as ``OW/OB``; if a VM is not of the
-        form ``1``, ``1-n``, or ``3-4``; or if a private creator and tag
-        appear more than once, comparing tags without regard to case.
+        empty nor one or more VRs from PS3.5 Table 6.2-1 such as ``OW/OB``;
+        if a VM is not of the form ``1``, ``1-n``, or ``3-4`` with ascending
+        bounds; or if a private creator and tag appear more than once,
+        comparing tags without regard to case.
     """
     _check_columns(TABLE_E3_10_1, table.header, E3_10_1_COLUMNS)
     if not table.rows:
@@ -286,9 +287,9 @@ def parse_table_e3_10_1(table: HtmlTable) -> tuple[SafePrivateAttribute, ...]:
             )
         if not row["private_creator"]:
             raise TableFormatError(f"{where}: the private creator is empty")
-        if not VR_PATTERN.fullmatch(row["vr"]):
+        if not is_vr_text(row["vr"]):
             raise TableFormatError(f"{where}: VR {row['vr']!r} is not recognised")
-        if not VM_PATTERN.fullmatch(row["vm"]):
+        if not is_vm(row["vm"]):
             raise TableFormatError(f"{where}: VM {row['vm']!r} is not recognised")
         attributes.append(SafePrivateAttribute(**row))
 

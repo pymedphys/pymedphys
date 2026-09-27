@@ -507,8 +507,12 @@ def test_table_e3_10_1_unknown_or_missing_columns_fail(header, message):
         (2, "ds", "VR 'ds'"),
         (2, "D", "VR 'D'"),
         (2, "OW/", "VR 'OW/'"),
+        (2, "ZZ", "VR 'ZZ'"),
+        (2, "OW/ZZ", "VR 'OW/ZZ'"),
         (3, "n", "VM 'n'"),
         (3, "", "VM ''"),
+        (3, "4-3", "VM '4-3'"),
+        (3, "3-0", "VM '3-0'"),
     ],
 )
 def test_table_e3_10_1_invalid_values_fail(column, value, message):
@@ -517,6 +521,14 @@ def test_table_e3_10_1_invalid_values_fail(column, value, message):
 
     with pytest.raises(chtml.TableFormatError, match=f"row 1.*{message}"):
         annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=(tuple(row),)))
+
+
+@pytest.mark.parametrize("vm", ["0-1", "0-n", "1-1", "2-n"])
+def test_table_e3_10_1_accepts_ascending_or_open_multiplicities(vm):
+    row = E3_10_1_ROWS[0][:3] + (vm,) + E3_10_1_ROWS[0][4:]
+
+    (attribute,) = annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=(row,)))
+    assert attribute.vm == vm
 
 
 def test_table_e3_10_1_repeated_creator_and_element_fail():

@@ -60,10 +60,16 @@ OPTIONS = (
 PRIVATE_TAG_PATTERN = re.compile(r"\(([0-9A-Fa-f]{4}),xx([0-9A-Fa-f]{2})\)")
 # Groups that PS3.5 Section 7.8.1 excludes from private use, although odd.
 _RESERVED_ODD_GROUPS = frozenset({0x0001, 0x0003, 0x0005, 0x0007, 0xFFFF})
-# A VR, or alternatives such as "OW/OB"; Table E.3.10-1 leaves some empty.
-VR_PATTERN = re.compile(r"(?:[A-Z]{2}(?:/[A-Z]{2})*)?")
+# The Value Representations that PS3.5 Table 6.2-1 defines.
+VRS = frozenset(
+    {
+        "AE", "AS", "AT", "CS", "DA", "DS", "DT", "FD", "FL", "IS", "LO", "LT",
+        "OB", "OD", "OF", "OL", "OV", "OW", "PN", "SH", "SL", "SQ", "SS", "ST",
+        "SV", "TM", "UC", "UI", "UL", "UN", "UR", "US", "UT", "UV",
+    }
+)  # fmt: skip
 # A VM such as "1", "1-n", or "3-4".
-VM_PATTERN = re.compile(r"[0-9]+(?:-(?:[0-9]+|n))?")
+VM_PATTERN = re.compile(r"([0-9]+)(?:-([0-9]+|n))?")
 
 _E1_1_FIELDS = frozenset(
     {"name", "tag", "retired", "in_standard_iod", "basic_profile", "options"}
@@ -214,6 +220,32 @@ class SafePrivateTable:
     attributes: tuple[SafePrivateAttribute, ...]
 
 
+def is_vr_text(value: object) -> bool:
+    """Return whether ``value`` is a VR as Table E.3.10-1 gives one.
+
+    That is a VR from :data:`VRS`, alternatives such as ``"OW/OB"`` whose
+    every component is in :data:`VRS`, or ``""``, which the table gives for
+    some attributes.
+    """
+    if not isinstance(value, str):
+        return False
+    return value == "" or all(vr in VRS for vr in value.split("/"))
+
+
+def is_vm(value: object) -> bool:
+    """Return whether ``value`` is a VM such as ``"1"``, ``"1-n"``, or ``"3-4"``.
+
+    A range's upper bound must not be less than its lower bound.
+    """
+    if not isinstance(value, str):
+        return False
+    match = VM_PATTERN.fullmatch(value)
+    if not match:
+        return False
+    lower, upper = match.groups()
+    return upper in (None, "n") or int(lower) <= int(upper)
+
+
 def is_private_tag(value: object) -> bool:
     """Return whether ``value`` is a private Data Element such as ``(0019,xx0C)``.
 
@@ -314,10 +346,10 @@ def _e3_10_1_problem(row: dict) -> str | None:
         return "has a tag that is not a private Data Element such as (0019,xx0C)"
     if not _is_text(row["private_creator"]):
         return "has a private creator that is not non-empty text"
-    if not (_is_text(row["vr"], empty=True) and VR_PATTERN.fullmatch(row["vr"])):
-        return "has a VR that is not empty or one or more VRs such as OW/OB"
-    if not (_is_text(row["vm"]) and VM_PATTERN.fullmatch(row["vm"])):
-        return "has a VM that is not of the form 1, 1-n, or 3-4"
+    if not is_vr_text(row["vr"]):
+        return "has a VR that is not empty or one or more PS3.5 VRs such as OW/OB"
+    if not is_vm(row["vm"]):
+        return "has a VM that is not of the form 1, 1-n, or 3-4 in ascending order"
     if not _is_text(row["meaning"], empty=True):
         return "has a meaning that is not text"
     return None
@@ -475,10 +507,10 @@ def load_table_e3_10_1(path: pathlib.Path | None = None) -> SafePrivateTable:
     StandardTableError
         For any of the file-level problems :func:`load_table_e1_1` rejects;
         if a row does not have exactly a private tag (see
-        :func:`is_private_tag`), non-empty private creator text, a VR that
-        is empty or matches :data:`VR_PATTERN`, a VM matching
-        :data:`VM_PATTERN`, and meaning text; or if a private creator and
-        tag repeat, comparing tags without regard to case.
+        :func:`is_private_tag`), non-empty private creator text, a VR
+        accepted by :func:`is_vr_text`, a VM accepted by :func:`is_vm`, and
+        meaning text; or if a private creator and tag repeat, comparing tags
+        without regard to case.
     """
     return _load_table_e3_10_1(_default(path, "e3_10_1.json"))
 

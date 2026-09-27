@@ -18,7 +18,7 @@ import collections
 import json
 import pathlib
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dev.deid_tables import generate
 from pymedphys._dicom.deidentify import standard
@@ -401,7 +401,11 @@ def test_a_malformed_table_e1_1a_is_rejected(tmp_path, change, message):
         ("private_creator", "", "row 1 has a private creator"),
         ("vr", "ds", "row 1 has a VR"),
         ("vr", None, "row 1 has a VR"),
+        ("vr", "ZZ", "row 1 has a VR"),
+        ("vr", "OW/ZZ", "row 1 has a VR"),
         ("vm", "n", "row 1 has a VM"),
+        ("vm", "4-3", "row 1 has a VM"),
+        ("vm", "3-0", "row 1 has a VM"),
         ("meaning", None, "row 1 has a meaning"),
     ],
 )
@@ -425,3 +429,11 @@ def test_a_repeated_private_creator_and_tag_is_rejected(tmp_path):
         standard.load_table_e3_10_1(
             _write(tmp_path / "e3_10_1.json", _redigested(document))
         )
+
+
+@pytest.mark.pydicom
+def test_the_recognised_vrs_are_those_pydicom_defines():
+    # PS3.5 Table 6.2-1; pydicom also lists ambiguous VRs such as "US or SS".
+    vrs = {vr.value for vr in pydicom.valuerep.VR}
+
+    assert standard.VRS == {vr for vr in vrs if " or " not in vr}
