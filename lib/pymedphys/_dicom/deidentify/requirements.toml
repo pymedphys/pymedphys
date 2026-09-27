@@ -14,9 +14,20 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 Each Attribute to be protected shall then either be removed from the Data Set, or have its value replaced by a different "replacement value" that does not allow identification of the patient.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-001", "D-003", "D-005", "D-011"]
+implementation = ["_dicom/deidentify/pseudonyms.py"]
+tests = [
+  "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_follows_the_specified_derivation",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_is_valid_for_its_vr_and_conspicuous",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_different_subjects_give_different_pseudonyms",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_the_same_identifier_from_another_issuer_is_another_subject",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_does_not_contain_the_identifier",
+]
+note = '''
+Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier. Remaining: removing or replacing each Attribute to be protected in a data set (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-02"
@@ -46,9 +57,27 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 No requirements on the size of the asymmetric key pairs used for RSA key transport are defined in this confidentiality scheme. Implementations claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall always protect (e.g., encrypt and replace) the SOP Instance UID (0008,0018) Attribute as well as all references to other SOP Instances, whether contained in the main Data Set or embedded in an Item of a Sequence of Items, that could potentially be used by unauthorized entities to identify the patient.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-003"]
+decisions = ["D-003", "D-004"]
+implementation = [
+  "_dicom/deidentify/keys.py",
+  "_dicom/deidentify/uid_roles.py",
+  "_dicom/deidentify/uids.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_keys.py::test_derivations_are_pinned",
+  "tests/dicom/test_deidentify_uid_roles.py::test_every_ui_attribute_in_the_dictionary_has_exactly_one_role",
+  "tests/dicom/test_deidentify_uid_roles.py::test_every_uid_table_e1_1_replaces_is_an_instance_uid",
+  "tests/dicom/test_deidentify_uid_roles.py::test_an_instance_uid_is_replaced",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_follows_the_specified_derivation",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_is_a_valid_uid_from_a_version_5_uuid",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_depends_only_on_the_key_and_the_unpadded_uid",
+  "tests/dicom/test_deidentify_uids.py::test_different_uids_give_different_replacements",
+]
+note = '''
+Replacement UIDs are derived from the key, so every occurrence of a UID is replaced consistently, and every UI attribute has a reviewed role. Remaining: replacing each SOP Instance UID and reference in a data set, including in sequences (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-05"
