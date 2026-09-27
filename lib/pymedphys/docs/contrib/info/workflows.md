@@ -446,23 +446,27 @@ A maintainer of the Read the Docs project sets this up once:
    rules.
 2. Under **Settings**, **Pull request builds**, keep **Build pull requests for
    this project** enabled.
-3. Under **Settings**, **Automation rules**, add these two rules. Both use the
-   action **Trigger build for version**:
+3. Under **Settings**, **Automation rules**, add these two rules. Set
+   **Version predefined match pattern** to **Any version** and **Action** to
+   **Trigger build for version** in both, and leave every field not listed
+   here empty:
 
-   | Description | Match | Version types | Pull request labels |
-   |-------------|-------|---------------|---------------------|
-   | Build branches and tags | Any version | Branch, Tag | (empty) |
-   | Build labelled pull request previews | Any version | Pull request | `^rtd-preview$` |
+   | Description | Version types | Webhook labels match pattern |
+   |-------------|---------------|------------------------------|
+   | Build branches and tags | Branch, Tag | (empty) |
+   | Build labelled pull request previews | Pull request | `^rtd-preview$` |
 
 4. Create the `rtd-preview` label in the GitHub repository.
 
 Read the Docs documents that once any rule with this action is enabled, only
 events a rule matches trigger builds, so the first rule keeps `main` and tag
 builds. It builds only active versions, as Read the Docs does without rules.
-Keep its match **Any version**: rules match the Read the Docs version name,
-and the version that tracks `main` is named `latest`, so a custom match such
-as `^main$` would stop publishing it. The label pattern is a regular
-expression that may match anywhere in a label's name, so keep both anchors.
+Keep its version pattern at **Any version**: rules match the Read the Docs
+version name, and the version that tracks `main` is named `latest`, so a
+custom pattern such as `^main$` would stop publishing it. Keep the label pattern off the first
+rule: pushes carry no labels, so a label pattern there would stop every
+branch and tag build. The label pattern is a regular expression that may
+match anywhere in a label's name, so keep both anchors.
 
 To confirm the setup, check that a pull request without the label adds
 nothing to the project's build list and gets no Read the Docs status, and
