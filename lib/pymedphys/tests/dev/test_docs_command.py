@@ -38,12 +38,8 @@ def fixture_calls(monkeypatch):
     monkeypatch.setattr(
         docs.shutil, "copy", lambda *paths: calls["copies"].append(paths)
     )
-    monkeypatch.setattr(
-        docs.subprocess, "check_call", lambda command: calls["commands"].append(command)
-    )
-    monkeypatch.setattr(
-        docs.pymedphys, "data_path", lambda name: calls["downloads"].append(name)
-    )
+    monkeypatch.setattr(docs.subprocess, "check_call", calls["commands"].append)
+    monkeypatch.setattr(docs.pymedphys, "data_path", calls["downloads"].append)
 
     def build_main(argv):
         calls["sphinx"].append(argv)
@@ -92,7 +88,8 @@ def test_linkcheck_reads_sources_without_executing_or_downloading(calls, tmp_pat
     assert argv[-1] == str(tmp_path / "_build" / "linkcheck")
 
 
-def test_linkcheck_failure_is_the_exit_status(calls, monkeypatch):
+@pytest.mark.usefixtures("calls")
+def test_linkcheck_failure_is_the_exit_status(monkeypatch):
     monkeypatch.setattr(sys.modules["sphinx.cmd.build"], "build_main", lambda argv: 1)
 
     with pytest.raises(SystemExit) as raised:

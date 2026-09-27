@@ -384,7 +384,7 @@ def extraction_lock(extract_directory):
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with open(lock_path, "a+b") as lock_file:
         if sys.platform == "win32":
-            import msvcrt
+            import msvcrt  # pylint: disable = import-error
 
             while True:
                 # Lock the first byte, which may lie beyond the end of the
