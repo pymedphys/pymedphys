@@ -17,14 +17,13 @@
 ``pymedphys dev deid-tables`` runs :func:`generate`. Every source file is
 checked against the SHA-256 digest pinned here before it is parsed, and each
 generated file records the edition, the source digests, a digest of its rows,
-and the acknowledgement that NEMA's copyright policy requires (decision D-001
-of the de-identification design).
+and the acknowledgement "DICOM PS3.15 <edition>, © NEMA" (decision D-001 of
+the de-identification design).
 """
 
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import json
 import os
 import pathlib
@@ -34,13 +33,10 @@ import urllib.error
 from collections.abc import Callable, Mapping
 
 from pymedphys._data.download import download_with_progress
-
-from pymedphys._dev.paths import LIBRARY_PATH
+from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
 
 from . import annex_e, chtml
 from .sources import SourceDigestError, read_verified_source
-
-SCHEMA = "pymedphys-deid-table/1"
 
 # NEMA serves the current edition only under "current". Superseded editions
 # are served from their own directory, apparently unchanged (the archived 2026c
@@ -51,7 +47,7 @@ _SOURCE_URLS = (
     "https://dicom.nema.org/medical/dicom/current/output/chtml/{path}",
 )
 
-DEFAULT_OUTPUT_DIR = LIBRARY_PATH / "_dicom" / "deidentify" / "_standard"
+DEFAULT_OUTPUT_DIR = STANDARD_DIR
 
 
 @dataclasses.dataclass(frozen=True)
@@ -131,13 +127,6 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
         }
 
 
-def _content_sha256(rows: list[dict[str, object]]) -> str:
-    canonical = json.dumps(
-        rows, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
 def _table_e1_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     source = "part15/chapter_E.html"
     tables = chtml.extract_tables(pages[source].decode("utf-8"))
@@ -162,7 +151,7 @@ def _table_e1_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
         "edition": pin.edition,
         "acknowledgement": f"DICOM PS3.15 {pin.edition}, © NEMA",
         "sources": [{"path": source, "sha256": digests[source]}],
-        "content_sha256": _content_sha256(rows),
+        "content_sha256": content_sha256(rows),
         "rows": rows,
     }
 
