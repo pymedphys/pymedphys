@@ -6,15 +6,9 @@ readme = "README.rst"
 requires-python = ">=3.10,<3.13"
 # PEP 639 SPDX expression. The package bundles MIT-licensed code alongside its
 # own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
-# DICOM dictionary, and the vendored apipkg and deprecated modules. It also
-# bundles tables generated from the DICOM Standard, © NEMA, whose notices are
-# in LICENSE-NEMA-DICOM; SPDX has no identifier for them.
-license = "Apache-2.0 AND MIT AND LicenseRef-NEMA-DICOM"
-license-files = [
-  "LICENSE",
-  "lib/pymedphys/_pinnacle/LICENSE-MIT",
-  "lib/pymedphys/_dicom/deidentify/_standard/LICENSE-NEMA-DICOM",
-]
+# DICOM dictionary, and the vendored apipkg and deprecated modules.
+license = "Apache-2.0 AND MIT"
+license-files = ["LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT"]
 authors = [
   { name = "PyMedPhys Contributors", email = "developers@pymedphys.com" }
 ]

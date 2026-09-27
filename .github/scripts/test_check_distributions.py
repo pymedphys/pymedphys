@@ -133,10 +133,8 @@ BUILD_BACKEND = textwrap.dedent(
 )
 
 
-LICENCE_EXPRESSION = "Apache-2.0 AND MIT AND LicenseRef-NEMA-DICOM"
-MIT_LICENCE = "lib/pymedphys/_pinnacle/LICENSE-MIT"
-NEMA_LICENCE = "lib/pymedphys/_dicom/deidentify/_standard/LICENSE-NEMA-DICOM"
-LICENCE_FILES = ("LICENSE", MIT_LICENCE, NEMA_LICENCE)
+LICENCE_EXPRESSION = "Apache-2.0 AND MIT"
+LICENCE_FILES = ("LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT")
 
 
 def _metadata(
@@ -175,8 +173,7 @@ def _write_sdist(
         "PKG-INFO": _metadata(
             version, licence_expression, declared_licence_files, requires=requires
         ),
-        MIT_LICENCE: "",
-        NEMA_LICENCE: "",
+        "lib/pymedphys/_pinnacle/LICENSE-MIT": "",
         "pyproject.toml": BUILDABLE_PYPROJECT if buildable else "",
         "README.rst": "",
         "CHANGELOG.md": "",
@@ -354,20 +351,19 @@ class ContentTests(unittest.TestCase):
         failures = self._failures(sdist, wheel)
 
         self.assertEqual(len(failures), 1, failures)
-        self.assertIn(MIT_LICENCE, failures[0])
-        self.assertIn(NEMA_LICENCE, failures[0])
+        self.assertIn("lib/pymedphys/_pinnacle/LICENSE-MIT", failures[0])
 
     def test_declared_licence_file_missing_from_the_sdist_fails(self):
-        for licence in (MIT_LICENCE, NEMA_LICENCE):
-            with self.subTest(licence=licence):
-                sdist = _write_sdist(self.directory, omit=(licence,))
-                wheel = _write_wheel(self.directory)
+        sdist = _write_sdist(
+            self.directory, omit=("lib/pymedphys/_pinnacle/LICENSE-MIT",)
+        )
+        wheel = _write_wheel(self.directory)
 
-                failures = self._failures(sdist, wheel)
+        failures = self._failures(sdist, wheel)
 
-                self.assertEqual(len(failures), 1, failures)
-                self.assertIn("sdist", failures[0])
-                self.assertIn(licence, failures[0])
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("sdist", failures[0])
+        self.assertIn("LICENSE-MIT", failures[0])
 
     def test_missing_licence_file_declarations_fail(self):
         for kinds in (("sdist",), ("wheel",), ("sdist", "wheel")):
@@ -409,22 +405,23 @@ class ContentTests(unittest.TestCase):
 
     def test_both_archives_omitting_the_same_licence_fail(self):
         # Agreement between archives must not hide a coordinated omission.
-        for licence in (MIT_LICENCE, NEMA_LICENCE):
-            with self.subTest(licence=licence):
-                kept = tuple(name for name in LICENCE_FILES if name != licence)
-                sdist = _write_sdist(
-                    self.directory, declared_licence_files=kept, omit=(licence,)
-                )
-                wheel = _write_wheel(
-                    self.directory, declared_licence_files=kept, licence_files=kept
-                )
+        sdist = _write_sdist(
+            self.directory,
+            declared_licence_files=("LICENSE",),
+            omit=("lib/pymedphys/_pinnacle/LICENSE-MIT",),
+        )
+        wheel = _write_wheel(
+            self.directory,
+            declared_licence_files=("LICENSE",),
+            licence_files=("LICENSE",),
+        )
 
-                failures = self._failures(sdist, wheel)
+        failures = self._failures(sdist, wheel)
 
-                for kind in ("sdist", "wheel"):
-                    self.assertTrue(
-                        any(kind in f and licence in f for f in failures), failures
-                    )
+        for kind in ("sdist", "wheel"):
+            self.assertTrue(
+                any(kind in f and "LICENSE-MIT" in f for f in failures), failures
+            )
 
     def test_wrong_licence_expressions_fail(self):
         for sdist_expression, wheel_expression in (

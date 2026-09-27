@@ -24,7 +24,6 @@ from pymedphys._dev.deid_tables import generate
 from pymedphys._dicom.deidentify import standard
 
 E1_1 = standard.STANDARD_DIR / "e1_1.json"
-LICENCE = standard.STANDARD_DIR / "LICENSE-NEMA-DICOM"
 
 
 def _document():
@@ -111,21 +110,6 @@ def test_rows_are_hashable_and_read_only():
     hash(attribute)
     with pytest.raises(TypeError):
         attribute.options["retain_uids"] = "K"  # type: ignore[index]
-
-
-def test_the_licence_names_each_table_and_its_acknowledgement():
-    # LICENSE-NEMA-DICOM carries each table's acknowledgement and the
-    # statement that the standard is under continuous maintenance.
-    licence = LICENCE.read_text(encoding="utf-8")
-
-    assert (
-        "The DICOM Standard is under continuous maintenance, and the current "
-        "official\nversion is available at http://www.dicomstandard.org"
-    ) in licence
-    for path in sorted(standard.STANDARD_DIR.glob("*.json")):
-        document = json.loads(path.read_text(encoding="utf-8"))
-        assert f"- {path.name}:" in licence
-        assert f"Source: {document['acknowledgement']}." in licence
 
 
 def test_an_altered_row_is_rejected(tmp_path):

@@ -17,8 +17,8 @@
 ``pymedphys dev deid-tables`` generates the tables in ``_standard/`` from the
 pinned edition of DICOM PS3.15 (design decision D-001). They are never edited
 by hand, so a table whose rows do not match its recorded digest is rejected.
-The tables are "DICOM PS3.15, © NEMA"; ``_standard/LICENSE-NEMA-DICOM`` holds
-NEMA's notices for them.
+Each table carries the copyright attribution
+"DICOM PS3.15 <edition>, © NEMA".
 """
 
 from __future__ import annotations
@@ -107,7 +107,7 @@ class ProfileTable:
     edition : str
         The edition of DICOM PS3.15, such as ``"2026d"``.
     acknowledgement : str
-        The acknowledgement of the table's source, such as
+        The copyright attribution for the table's source, such as
         ``"DICOM PS3.15 2026d, © NEMA"``.
     attributes : tuple of ProfileAttribute
         One per row, in the table's order.
@@ -141,7 +141,7 @@ def _read(path: pathlib.Path, table: str) -> dict:
         raise StandardTableError(f"{path.name} is not a {SCHEMA} file for {table}")
     edition = document.get("edition")
     if document.get("acknowledgement") != f"DICOM PS3.15 {edition}, © NEMA":
-        raise StandardTableError(f"{path.name} lacks the NEMA acknowledgement")
+        raise StandardTableError(f"{path.name} lacks the copyright acknowledgement")
     rows = document.get("rows")
     if not isinstance(rows, list) or not rows:
         raise StandardTableError(f"{path.name} has no rows")
@@ -195,7 +195,7 @@ def load_table_e1_1(path: pathlib.Path | None = None) -> ProfileTable:
     ------
     StandardTableError
         If the file cannot be read, has another schema or table, lacks the
-        NEMA acknowledgement, or has rows that do not match its recorded
+        copyright acknowledgement, or has rows that do not match its recorded
         digest; if it has no rows or repeats a tag; or if a row does not have
         exactly the expected fields, with non-empty text for the name and
         tag, true or false for the flags, and actions defined in Table
