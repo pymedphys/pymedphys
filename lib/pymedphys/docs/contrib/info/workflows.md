@@ -674,3 +674,5 @@ uv run pymedphys dev docs
 - **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)
+
+<!-- Temporary line for testing the rtd-preview label; this pull request is not for merging. -->
