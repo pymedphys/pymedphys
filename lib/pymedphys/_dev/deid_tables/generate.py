@@ -85,6 +85,10 @@ PIN = Pin(
             "part15/chapter_E.html",
             "cb214710fce798ed3688b4cb1d6b2d62ebd254e6946aa3efb3fc14038a41d58d",
         ),
+        PinnedSource(
+            "part15/sect_E.3.10.html",
+            "101ac4aedd9d45fba8adaa35cab22820d6c0cbda82cdf51d7456f4bf3dafe3a0",
+        ),
     ),
 )
 
@@ -127,11 +131,35 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
         }
 
 
+_CHAPTER_E = "part15/chapter_E.html"
+_SECTION_E3_10 = "part15/sect_E.3.10.html"
+
+
+def _select(pages: Mapping[str, bytes], source: str, label: str) -> chtml.HtmlTable:
+    return chtml.select_table(
+        chtml.extract_tables(pages[source].decode("utf-8")), label
+    )
+
+
+def _document(
+    pin: Pin, source: str, label: str, rows: list[dict[str, object]]
+) -> dict[str, object]:
+    """Return a table's document, recording only the page it came from."""
+    digests = {pinned.path: pinned.sha256 for pinned in pin.sources}
+    return {
+        "schema": SCHEMA,
+        "table": f"PS3.15 {label}",
+        "edition": pin.edition,
+        "acknowledgement": f"DICOM PS3.15 {pin.edition}, © NEMA",
+        "sources": [{"path": source, "sha256": digests[source]}],
+        "content_sha256": content_sha256(rows),
+        "rows": rows,
+    }
+
+
 def _table_e1_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
-    source = "part15/chapter_E.html"
-    tables = chtml.extract_tables(pages[source].decode("utf-8"))
     attributes = annex_e.parse_table_e1_1(
-        chtml.select_table(tables, annex_e.TABLE_E1_1)
+        _select(pages, _CHAPTER_E, annex_e.TABLE_E1_1)
     )
     rows: list[dict[str, object]] = [
         {
@@ -144,21 +172,39 @@ def _table_e1_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
         }
         for attribute in attributes
     ]
-    digests = {pinned.path: pinned.sha256 for pinned in pin.sources}
-    return {
-        "schema": SCHEMA,
-        "table": "PS3.15 Table E.1-1",
-        "edition": pin.edition,
-        "acknowledgement": f"DICOM PS3.15 {pin.edition}, © NEMA",
-        "sources": [{"path": source, "sha256": digests[source]}],
-        "content_sha256": content_sha256(rows),
-        "rows": rows,
-    }
+    return _document(pin, _CHAPTER_E, annex_e.TABLE_E1_1, rows)
+
+
+def _table_e1_1a(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    codes = annex_e.parse_table_e1_1a(_select(pages, _CHAPTER_E, annex_e.TABLE_E1_1A))
+    rows: list[dict[str, object]] = [
+        {"code": action.code, "description": action.description} for action in codes
+    ]
+    return _document(pin, _CHAPTER_E, annex_e.TABLE_E1_1A, rows)
+
+
+def _table_e3_10_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    attributes = annex_e.parse_table_e3_10_1(
+        _select(pages, _SECTION_E3_10, annex_e.TABLE_E3_10_1)
+    )
+    rows: list[dict[str, object]] = [
+        {
+            "tag": attribute.tag,
+            "private_creator": attribute.private_creator,
+            "vr": attribute.vr,
+            "vm": attribute.vm,
+            "meaning": attribute.meaning,
+        }
+        for attribute in attributes
+    ]
+    return _document(pin, _SECTION_E3_10, annex_e.TABLE_E3_10_1, rows)
 
 
 # Each generated file and the function that builds its document.
 _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "e1_1.json": _table_e1_1,
+    "e1_1a.json": _table_e1_1a,
+    "e3_10_1.json": _table_e3_10_1,
 }
 
 

@@ -144,7 +144,14 @@ def _cell(tag, text):
 
 
 def _table(title, header, rows, header_tag="th"):
-    head = "".join(_cell(header_tag, text) for text in header)
+    # header is None for a table with no header row, as Table E.1-1a is published.
+    head = (
+        ""
+        if header is None
+        else '<thead><tr valign="top">'
+        + "".join(_cell(header_tag, text) for text in header)
+        + "</tr></thead>"
+    )
     body = "".join(
         '<tr valign="top">' + "".join(_cell("td", text) for text in row) + "</tr>"
         for row in rows
@@ -153,7 +160,7 @@ def _table(title, header, rows, header_tag="th"):
         '<div class="table"><a id="t" shape="rect"></a>'
         f'<p class="title"><strong>{title}</strong></p>'
         '<div class="table-contents"><table frame="box" rules="all">'
-        f'<thead><tr valign="top">{head}</tr></thead><tbody>{body}</tbody>'
+        f"{head}<tbody>{body}</tbody>"
         "</table></div></div>"
     )
 
@@ -177,11 +184,28 @@ def _page(*tables):
     )
 
 
-E1_1A = _table(
-    "Table E.1-1a. Fixture Action Codes",
-    ("Code", "Meaning"),
-    (("X", "remove"), ("Z", "zero length")),
-    header_tag="td",
+E1_1A_ROWS = tuple(
+    (code, f"fixture meaning of {code}")
+    for code in ("D", "Z", "X", "K", "C", "U", "Z/D", "X/Z", "X/D", "X/Z/D", "X/Z/U*")
+)
+E1_1A = _table("Table E.1-1a. Fixture Action Codes", None, E1_1A_ROWS)
+E3_10_1_HEADER = ("Data Element", "Private Creator", "VR", "VM", "Meaning")
+# The published table leaves some VRs and meanings empty, gives compound VRs
+# such as OW/OB, and writes some hexadecimal digits in lower case.
+E3_10_1_ROWS = (
+    ("(0009,xx01)", "FIXTURE CREATOR", "DS", "1", "Fixture factor"),
+    ("(0009,xx0a)", "FIXTURE CREATOR", "OW/OB", "1-n", "Fixture payload"),
+    ("(0011,xx02)", "OTHER FIXTURE CREATOR", "", "1", ""),
+    (
+        "(0009,xx01)",
+        "OTHER FIXTURE CREATOR",
+        "FL",
+        "3-4",
+        "Same element, other creator",
+    ),
+)
+E3_10_1 = _table(
+    "Table E.3.10-1. Fixture Safe Private Attributes", E3_10_1_HEADER, E3_10_1_ROWS
 )
 E1_1 = _table(
     "Table E.1-1. Fixture Confidentiality Profile Attributes", E1_1_HEADER, E1_1_ROWS
@@ -238,7 +262,15 @@ def test_a_table_without_a_header_row_keeps_every_row():
     table = chtml.select_table(chtml.extract_tables(_page(E1_1A)), "Table E.1-1a")
 
     assert table.header == ()
-    assert table.rows == (("Code", "Meaning"), ("X", "remove"), ("Z", "zero length"))
+    assert table.rows == E1_1A_ROWS
+
+
+def test_a_first_row_of_data_cells_is_not_a_header():
+    page = _page(_table("Table X-1. Fixture", ("A", "B"), (("1", "2"),), "td"))
+    table = chtml.select_table(chtml.extract_tables(page), "Table X-1")
+
+    assert table.header == ()
+    assert table.rows == (("A", "B"), ("1", "2"))
 
 
 def test_select_table_matches_the_whole_label():
@@ -391,6 +423,127 @@ def test_duplicate_tags_fail():
         annex_e.parse_table_e1_1(_e1_1_table(rows=(E1_1_ROWS[1], E1_1_ROWS[1])))
 
 
+def _e1_1a_table(rows=E1_1A_ROWS):
+    page = _page(_table("Table E.1-1a. Fixture", None, rows))
+    return chtml.select_table(chtml.extract_tables(page), "Table E.1-1a")
+
+
+def _e3_10_1_table(header=E3_10_1_HEADER, rows=E3_10_1_ROWS):
+    page = _page(_table("Table E.3.10-1. Fixture", header, rows))
+    return chtml.select_table(chtml.extract_tables(page), "Table E.3.10-1")
+
+
+def test_parse_table_e1_1a():
+    codes = annex_e.parse_table_e1_1a(_e1_1a_table())
+
+    assert [(c.code, c.description) for c in codes] == list(E1_1A_ROWS)
+
+
+@pytest.mark.parametrize(
+    "rows, message",
+    [
+        (E1_1A_ROWS[1:], "does not define D"),
+        (E1_1A_ROWS + (("U*", "fixture"),), "'U\\*' is not an action code"),
+        (E1_1A_ROWS + (E1_1A_ROWS[0],), "D appears 2 times"),
+        ((("D", ""),) + E1_1A_ROWS[1:], "row 1: the description is empty"),
+        ((("D", "a", "b"),) + E1_1A_ROWS[1:], "row 1 has 3 cells"),
+        ((), "has no rows"),
+    ],
+)
+def test_table_e1_1a_defines_exactly_the_implemented_codes(rows, message):
+    with pytest.raises(chtml.TableFormatError, match=message):
+        annex_e.parse_table_e1_1a(_e1_1a_table(rows))
+
+
+def test_table_e1_1a_has_no_header_row():
+    page = _page(_table("Table E.1-1a. Fixture", ("Code", "Meaning"), E1_1A_ROWS))
+    table = chtml.select_table(chtml.extract_tables(page), "Table E.1-1a")
+
+    with pytest.raises(chtml.TableFormatError, match="header row"):
+        annex_e.parse_table_e1_1a(table)
+
+
+def test_parse_table_e3_10_1():
+    attributes = annex_e.parse_table_e3_10_1(_e3_10_1_table())
+
+    assert [
+        (a.tag, a.private_creator, a.vr, a.vm, a.meaning) for a in attributes
+    ] == list(E3_10_1_ROWS)
+
+
+def test_table_e3_10_1_columns_are_mapped_by_header_text():
+    order = (4, 2, 0, 3, 1)
+    header = tuple(E3_10_1_HEADER[i] for i in order)
+    rows = tuple(tuple(row[i] for i in order) for row in E3_10_1_ROWS)
+
+    assert annex_e.parse_table_e3_10_1(
+        _e3_10_1_table(header, rows)
+    ) == annex_e.parse_table_e3_10_1(_e3_10_1_table())
+
+
+@pytest.mark.parametrize(
+    "header, message",
+    [
+        (E3_10_1_HEADER[:-1] + ("Description",), "unknown column 'Description'"),
+        (E3_10_1_HEADER[:-1], "missing column 'Meaning'"),
+    ],
+)
+def test_table_e3_10_1_unknown_or_missing_columns_fail(header, message):
+    rows = tuple(row[: len(header)] for row in E3_10_1_ROWS)
+
+    with pytest.raises(chtml.TableFormatError, match=message):
+        annex_e.parse_table_e3_10_1(_e3_10_1_table(header, rows))
+
+
+@pytest.mark.parametrize(
+    "column, value, message",
+    [
+        (0, "(0008,xx01)", "not a private"),
+        (0, "(0001,xx01)", "not a private"),
+        (0, "(FFFF,xx01)", "not a private"),
+        (0, "(0009,1001)", "not a private"),
+        (0, "0009,xx01", "not a private"),
+        (1, "", "private creator is empty"),
+        (2, "ds", "VR 'ds'"),
+        (2, "D", "VR 'D'"),
+        (2, "OW/", "VR 'OW/'"),
+        (2, "ZZ", "VR 'ZZ'"),
+        (2, "OW/ZZ", "VR 'OW/ZZ'"),
+        (3, "n", "VM 'n'"),
+        (3, "", "VM ''"),
+        (3, "4-3", "VM '4-3'"),
+        (3, "3-0", "VM '3-0'"),
+    ],
+)
+def test_table_e3_10_1_invalid_values_fail(column, value, message):
+    row = list(E3_10_1_ROWS[0])
+    row[column] = value
+
+    with pytest.raises(chtml.TableFormatError, match=f"row 1.*{message}"):
+        annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=(tuple(row),)))
+
+
+@pytest.mark.parametrize("vm", ["0-1", "0-n", "1-1", "2-n"])
+def test_table_e3_10_1_accepts_ascending_or_open_multiplicities(vm):
+    row = E3_10_1_ROWS[0][:3] + (vm,) + E3_10_1_ROWS[0][4:]
+
+    (attribute,) = annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=(row,)))
+    assert attribute.vm == vm
+
+
+def test_table_e3_10_1_repeated_creator_and_element_fail():
+    # The comparison ignores the case of the hexadecimal digits.
+    repeated = ("(0009,xx0A)",) + E3_10_1_ROWS[1][1:]
+
+    with pytest.raises(chtml.TableFormatError, match="appears 2 times"):
+        annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=E3_10_1_ROWS + (repeated,)))
+
+
+def test_table_e3_10_1_without_rows_fails():
+    with pytest.raises(chtml.TableFormatError, match="has no rows"):
+        annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=()))
+
+
 def test_a_source_is_read_only_when_its_digest_matches(tmp_path):
     source = tmp_path / "chapter_E.html"
     source.write_bytes(b"<html></html>")
@@ -413,11 +566,15 @@ def test_a_malformed_expected_digest_is_rejected(tmp_path):
 
 # The generator, with a pin for the hand-written page instead of NEMA's.
 FIXTURE_PAGE = _page(E1_1A, E1_1).encode("utf-8")
+FIXTURE_E3_10_PAGE = _page(E3_10_1).encode("utf-8")
 FIXTURE_PIN = generate.Pin(
     edition="2099a",
     sources=(
         generate.PinnedSource(
             "part15/chapter_E.html", hashlib.sha256(FIXTURE_PAGE).hexdigest()
+        ),
+        generate.PinnedSource(
+            "part15/sect_E.3.10.html", hashlib.sha256(FIXTURE_E3_10_PAGE).hexdigest()
         ),
     ),
 )
@@ -428,6 +585,7 @@ def _source_dir(tmp_path):
     directory = tmp_path / "sources"
     (directory / "part15").mkdir(parents=True)
     (directory / "part15" / "chapter_E.html").write_bytes(FIXTURE_PAGE)
+    (directory / "part15" / "sect_E.3.10.html").write_bytes(FIXTURE_E3_10_PAGE)
     return directory
 
 
@@ -467,6 +625,44 @@ def test_generate_writes_table_e1_1_with_its_provenance(source_dir, tmp_path):
         document["rows"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode("utf-8")
     assert document["content_sha256"] == hashlib.sha256(canonical).hexdigest()
+
+
+@pytest.mark.parametrize(
+    "name, table, source, rows",
+    [
+        (
+            "e1_1a.json",
+            "PS3.15 Table E.1-1a",
+            "part15/chapter_E.html",
+            [{"code": code, "description": text} for code, text in E1_1A_ROWS],
+        ),
+        (
+            "e3_10_1.json",
+            "PS3.15 Table E.3.10-1",
+            "part15/sect_E.3.10.html",
+            [
+                dict(zip(("tag", "private_creator", "vr", "vm", "meaning"), row))
+                for row in E3_10_1_ROWS
+            ],
+        ),
+    ],
+)
+def test_generate_writes_the_other_annex_e_tables(
+    source_dir, tmp_path, name, table, source, rows
+):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads((output_dir / name).read_text(encoding="utf-8"))
+    digests = {pinned.path: pinned.sha256 for pinned in FIXTURE_PIN.sources}
+    assert document["table"] == table
+    assert document["edition"] == "2099a"
+    assert document["acknowledgement"] == "DICOM PS3.15 2099a, \u00a9 NEMA"
+    # Each table records only the page it was generated from.
+    assert document["sources"] == [{"path": source, "sha256": digests[source]}]
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
 
 
 def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
@@ -539,11 +735,20 @@ CURRENT_URL = (
 
 
 def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp_path):
-    requested = _fake_downloads(monkeypatch, {CURRENT_URL: FIXTURE_PAGE})
+    e3_10_current = CURRENT_URL.replace("chapter_E.html", "sect_E.3.10.html")
+    requested = _fake_downloads(
+        monkeypatch, {CURRENT_URL: FIXTURE_PAGE, e3_10_current: FIXTURE_E3_10_PAGE}
+    )
 
     assert generate.generate(FIXTURE_PIN, tmp_path / "tables") == 0
-    assert requested == [EDITION_URL, CURRENT_URL]
-    assert (tmp_path / "tables" / "e1_1.json").exists()
+    assert requested == [
+        EDITION_URL,
+        CURRENT_URL,
+        EDITION_URL.replace("chapter_E.html", "sect_E.3.10.html"),
+        e3_10_current,
+    ]
+    for name in ("e1_1.json", "e1_1a.json", "e3_10_1.json"):
+        assert (tmp_path / "tables" / name).exists()
 
 
 def test_download_rejects_a_newer_current_edition(monkeypatch, tmp_path):
