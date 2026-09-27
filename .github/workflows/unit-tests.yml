@@ -6,7 +6,7 @@ on:
       python-matrix:
         required: false
         type: string
-        default: '["3.10", "3.11", "3.12"]'
+        default: '["3.11", "3.12", "3.13", "3.14"]'
       extra-pytest-args:
         required: false
         type: string
@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
-        python-version: ${{ inputs.quick && fromJSON('["3.12"]') || fromJSON(inputs.python-matrix) }}
+        python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -37,6 +37,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
+          cache-data: 'true'
           python-version: ${{ matrix.python-version }}
           # user is a superset of mosaiq and provides the Streamlit GUI tests
           # with the app dependencies.
@@ -66,6 +67,52 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
+          path: test-results/*.xml
+          if-no-files-found: error
+          retention-days: 30
+
+  # NumPy 1.26 has no wheels for Python 3.13 or later, so the lower bound is
+  # checked on Python 3.12, whichever matrix runs.
+  numpy-floor:
+    name: NumPy 1.26 compatibility
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: '3.12'
+          extras: 'dev tests user'
+
+      - name: Run NumPy 1.26 compatibility tests
+        id: tests
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # Reuse the locked environment; only NumPy is overlaid. The tests
+          # are synthetic and need no data downloads. Invoke Python so it
+          # imports NumPy from uv's overlay environment.
+          uv run --no-sync --with numpy==1.26.4 -- python -m pymedphys dev tests \
+            tests/delivery/test_dicom_conversion_utilities.py \
+            tests/electronfactors/test_parameterise_insert.py \
+            tests/metersetmap/test_metersetmap_single_control_point.py \
+            tests/metersetmap/test_metersetmap_single_mlc.py \
+            tests/metersetmap/test_metersetmap_leaf_gap.py \
+            tests/mocks/test_mock_profiles.py \
+            tests/dicom/test_dose.py::test_sum_doses_in_datasets \
+            tests/dicom/structure/test_masking.py \
+            tests/pinnacle/test_export_edge_cases.py::test_export_dose_preserves_valid_beam_sum \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-numpy126.xml" -q
+
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-numpy126
           path: test-results/*.xml
           if-no-files-found: error
           retention-days: 30

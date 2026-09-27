@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 South Western Sydney Local Health District,
 # University of New South Wales
 
@@ -42,9 +43,11 @@
 import os
 import subprocess
 import tempfile
+from collections import Counter
 from pathlib import Path
 from zipfile import ZipFile
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._data import download
@@ -166,3 +169,79 @@ def test_pinnacle_cli_skip_roi(data):
     ds = pydicom.dcmread(os.path.join(output_path, rts_dcm))
     for roi in ds.StructureSetROISequence:
         assert not roi.ROIName == skip_roi_name
+
+
+@pytest.mark.slow
+@pytest.mark.pydicom
+def test_pinnacle_cli_native_tar(tmp_path):
+    """Export the original Pinnacle TAR and compare its reference plan and dose."""
+    # Chlap Phillip (2020), CC BY 4.0: https://doi.org/10.5281/zenodo.3900946.
+    # Keep the native TAR unchanged, including its 33 names containing colons.
+    paths = download.zip_data_paths("pinnacle_tar_test_data.zip")
+    archive = next(path for path in paths if path.name == "test_pinnacle_16.0.tar.gz")
+    output_path = tmp_path / "dicom"
+    # Plan_2 is the plan used by the original Pinnacle export example.
+    # Confine the CLI's extracted files to the test's temporary directory.
+    result = subprocess.run(
+        [
+            str(pmp_test_utils.get_executable_even_when_embedded()),
+            "-m",
+            "pymedphys",
+            "pinnacle",
+            "export",
+            str(archive),
+            "-o",
+            str(output_path),
+            "-p",
+            "Plan_2",
+        ],
+        env={
+            **os.environ,
+            **{name: str(tmp_path) for name in ("TMPDIR", "TMP", "TEMP")},
+        },
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        # The CLI logs source identifiers; do not include its output in a failure.
+        pytest.fail("The native Pinnacle TAR export command failed")
+
+    datasets = [pydicom.dcmread(path) for path in output_path.iterdir()]
+    assert Counter(dataset.Modality for dataset in datasets) == {
+        "CT": 72,
+        "RTSTRUCT": 1,
+        "RTPLAN": 1,
+        "RTDOSE": 1,
+    }
+    exported = {dataset.Modality: dataset for dataset in datasets}
+    reference = {
+        dataset.Modality: dataset
+        for path in (archive.parent.parent / "dcm").glob("*.dcm")
+        for dataset in [pydicom.dcmread(path)]
+    }
+    assert set(reference) == {"RTPLAN", "RTDOSE"}
+
+    actual_dose = exported["RTDOSE"]
+    reference_dose = reference["RTDOSE"]
+    for attribute in (
+        "ImageOrientationPatient",
+        "ImagePositionPatient",
+        "PixelSpacing",
+        "GridFrameOffsetVector",
+    ):
+        assert np.allclose(
+            getattr(actual_dose, attribute), getattr(reference_dose, attribute)
+        )
+    actual_values = actual_dose.pixel_array.astype(float) * actual_dose.DoseGridScaling
+    reference_values = (
+        reference_dose.pixel_array.astype(float) * reference_dose.DoseGridScaling
+    )
+    assert actual_values.shape == reference_values.shape
+    assert np.allclose(actual_values, reference_values, atol=0.01, rtol=0)
+
+    actual_beams = exported["RTPLAN"].BeamSequence
+    reference_beams = reference["RTPLAN"].BeamSequence
+    assert len(actual_beams) == len(reference_beams)
+    assert [len(beam.ControlPointSequence) for beam in actual_beams] == [
+        len(beam.ControlPointSequence) for beam in reference_beams
+    ]

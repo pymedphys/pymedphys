@@ -48,7 +48,6 @@ def run_clean_imports(_):
         "pymedphys._imports",
         # TODO: Remove the following modules if they aren't being maintained
         # see <https://github.com/pymedphys/pymedphys/issues/1382>
-        "pymedphys._experimental.pedromartinez",
         "pymedphys._experimental.paulking",
     ]
     tests_scopes = ["pymedphys.conftest", "pymedphys.tests"]
@@ -185,29 +184,12 @@ def resolve_test_paths(paths, original_cwd, *, pyargs=False):
     return resolved
 
 
-class _CallerRelativeTestPaths:
-    """Resolve positional paths after pytest has parsed its own options."""
-
-    def __init__(self, original_cwd):
-        self.original_cwd = original_cwd
-
-    def pytest_load_initial_conftests(self, early_config):
-        # Pytest's own implementation of this hook runs trylast. Updating
-        # its parsed paths first lets it find caller-relative conftests and
-        # register their options before the final argument parse.
-        namespace = early_config.known_args_namespace
-        namespace.file_or_dir = resolve_test_paths(
-            namespace.file_or_dir, self.original_cwd, pyargs=namespace.pyargs
-        )
-
-    def pytest_configure(self, config):
-        # The final parse includes options registered by initial conftests.
-        # Do not rewrite argv: the same text may be both a path and a value.
-        config.args = resolve_test_paths(
-            config.getoption("file_or_dir"),
-            self.original_cwd,
-            pyargs=config.getoption("pyargs"),
-        )
+# The plugin that resolves caller-relative test paths in the controller and
+# in every pytest-xdist worker, and the variable it reads the caller's
+# directory from. Only pytest imports the plugin, so that it can rewrite its
+# assertions.
+PATH_PLUGIN = "pymedphys._dev.pytest_paths"
+CALLER_DIRECTORY_VARIABLE = "PYMEDPHYS_DEV_TESTS_CALLER_DIRECTORY"
 
 
 def _call_pytest(remaining, label):
@@ -216,10 +198,9 @@ def _call_pytest(remaining, label):
     os.chdir(LIBRARY_ROOT)
     print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
 
+    os.environ[CALLER_DIRECTORY_VARIABLE] = original_cwd
     try:
-        retcode = pytest.main(
-            remaining, plugins=[_CallerRelativeTestPaths(original_cwd)]
-        )
+        retcode = pytest.main(["-p", PATH_PLUGIN, *remaining])
     finally:
         os.chdir(original_cwd)
 

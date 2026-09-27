@@ -2,8 +2,27 @@
 Pseudonymisation Tool
 #####################
 
+This is the legacy experimental interface. Read its limitations in
+:doc:`../../../background/dicom-deidentification` before sharing output.
+
 .. automodule:: pymedphys.experimental.pseudonymisation
     :no-members:
+
+.. warning::
+
+    Experimental pseudonymisation hashes UIDs and some numeric values without
+    a secret key. Anyone who holds the original UIDs can re-link records, and
+    anyone can recover small-range values such as patient weight from the
+    output alone by hashing every plausible value. It shifts every patient's
+    dates by the same offset. Its output keeps the original file preamble and
+    the original SOP Instance UID in the File Meta Information. Its functions
+    emit a
+    :class:`~pymedphys.experimental.pseudonymisation.PseudonymisationLimitationWarning`
+    describing these limitations; this is not a deprecation.
+    ``pseudonymisation_dispatch`` is a dictionary, so it emits no warning
+    itself; :func:`pymedphys.dicom.anonymise`, which applies it in the example
+    below, emits an :class:`~pymedphys.dicom.AnonymisationLimitationWarning`.
+    Review the output before sharing it.
 
 *******
 Summary
@@ -24,6 +43,7 @@ API
 .. autofunction:: pymedphys.experimental.pseudonymisation.pseudonymise
 .. autofunction:: pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords
 .. autofunction:: pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords
+.. autoclass:: pymedphys.experimental.pseudonymisation.PseudonymisationLimitationWarning
 .. autoattribute:: pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch
     :annotation: strategy, i.e. dictionary of VR and function references for anonymisation to achieve pseudonymisation
 

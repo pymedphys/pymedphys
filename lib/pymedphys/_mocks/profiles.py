@@ -18,7 +18,7 @@ from pymedphys._imports import scipy
 
 
 def gaussian_cdf(x, mu=0, sig=1):
-    x = np.array(x, copy=False)
+    x = np.asarray(x)
     return 0.5 * (1 + scipy.special.erf((x - mu) / (sig * np.sqrt(2))))  # pylint: disable=no-member
 
 
@@ -33,7 +33,7 @@ def create_profile_function(centre, field_width, penumbra_width):
     mu = [centre - field_width / 2, centre + field_width / 2]
 
     def profile(x):
-        x = np.array(x, copy=False)
+        x = np.asarray(x)
         return gaussian_cdf(x, mu[0], sig) * gaussian_cdf(-x, -mu[1], sig)
 
     return profile
@@ -53,8 +53,8 @@ def create_rectangular_field_function(centre, side_lengths, penumbra_width, rota
     theta = -rotation / 180 * np.pi
 
     def field(x, y):
-        x = np.array(x, copy=False)
-        y = np.array(y, copy=False)
+        x = np.asarray(x)
+        y = np.asarray(y)
         x_shifted = x - centre[0]
         y_shifted = y - centre[1]
         x_rotated, y_rotated = rotate_coords(x_shifted, y_shifted, theta)

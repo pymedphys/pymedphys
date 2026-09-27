@@ -1,0 +1,59 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.15 Table E.1-1a",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "part15/chapter_E.html",
+   "sha256": "cb214710fce798ed3688b4cb1d6b2d62ebd254e6946aa3efb3fc14038a41d58d"
+  }
+ ],
+ "content_sha256": "f88f2439552d2d17a3f476e602819020091619dac9ee94545855fd569d03305c",
+ "rows": [
+  {
+   "code": "D",
+   "description": "replace with a non-zero length value that may be a dummy value and consistent with the VR"
+  },
+  {
+   "code": "Z",
+   "description": "replace with a zero length value, or a non-zero length value that may be a dummy value and consistent with the VR"
+  },
+  {
+   "code": "X",
+   "description": "remove Attribute, and if the Attribute is a Sequence, remove all Sequence Items and their contained Attributes"
+  },
+  {
+   "code": "K",
+   "description": "keep (unchanged for non-Sequence Attributes, cleaned for Sequences)"
+  },
+  {
+   "code": "C",
+   "description": "clean, that is replace with values of similar meaning known not to contain identifying information and consistent with the VR"
+  },
+  {
+   "code": "U",
+   "description": "replace with a non-zero length UID that is internally consistent within a set of Instances"
+  },
+  {
+   "code": "Z/D",
+   "description": "Z unless D is required to maintain IOD conformance (Type 2 versus Type 1)"
+  },
+  {
+   "code": "X/Z",
+   "description": "X unless Z is required to maintain IOD conformance (Type 3 versus Type 2)"
+  },
+  {
+   "code": "X/D",
+   "description": "X unless D is required to maintain IOD conformance (Type 3 versus Type 1)"
+  },
+  {
+   "code": "X/Z/D",
+   "description": "X unless Z or D is required to maintain IOD conformance (Type 3 versus Type 2 versus Type 1)"
+  },
+  {
+   "code": "X/Z/U*",
+   "description": "X unless Z or replacement of contained instance UIDs (U) is required to maintain IOD conformance (Type 3 versus Type 2 versus Type 1 sequences containing UID references)"
+  }
+ ]
+}

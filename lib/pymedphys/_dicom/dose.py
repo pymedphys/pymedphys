@@ -24,6 +24,7 @@ from pymedphys._imports import numpy as np
 from . import orientation
 from .compat import ensure_transfer_syntax
 from .coords import (
+    _COORDINATE_ACCEPTANCE_TOLERANCE_MM,
     _DoseGridGeometry,
     coords_from_xyz_axes,
     coords_in_datasets_are_equal,
@@ -109,9 +110,9 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
         An RT DICOM Dose object
     """
 
-    interp_z = np.array(interp_coords[0], copy=False)[:, None, None]
-    interp_y = np.array(interp_coords[1], copy=False)[None, :, None]
-    interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
+    interp_z = np.asarray(interp_coords[0])[:, None, None]
+    interp_y = np.asarray(interp_coords[1])[None, :, None]
+    interp_x = np.asarray(interp_coords[2])[None, None, :]
 
     coords, dicom_dose_dataset = zyx_and_dose_from_dataset(dicom_dose_dataset)
     interpolation = scipy.interpolate.RegularGridInterpolator(
@@ -155,7 +156,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
     """
     orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
-    depths = np.array(depths, copy=False)
+    depths = np.asarray(depths)
 
     surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
@@ -209,7 +210,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
 
     orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
-    displacements = np.array(displacements, copy=False)
+    displacements = np.asarray(displacements)
 
     surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
@@ -406,7 +407,10 @@ def sum_doses_in_datasets(
         )
 
     if not coords_in_datasets_are_equal(datasets):
-        raise ValueError("All dose grids must have perfectly coincident coordinates")
+        raise ValueError(
+            "All dose grids must have coincident coordinates: corresponding voxel "
+            f"centres must agree within {_COORDINATE_ACCEPTANCE_TOLERANCE_MM} mm"
+        )
 
     ds_summed = copy.deepcopy(datasets[0])
 

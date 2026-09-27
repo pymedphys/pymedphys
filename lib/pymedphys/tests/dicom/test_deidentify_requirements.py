@@ -1,0 +1,384 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The de-identification requirements register and its loader."""
+
+import collections
+import copy
+import re
+import subprocess
+import sys
+
+from pymedphys._imports import pytest, tomlkit
+
+from pymedphys._dicom.deidentify import requirements, standard
+from pymedphys._root import LIBRARY_ROOT
+
+DESIGN = LIBRARY_ROOT / "docs" / "contrib" / "info" / "deidentification-design.md"
+
+URL = (
+    "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/"
+    "chapter_E.html#para_{}-0000-0000-0000-000000000000"
+)
+
+VALID = {
+    "schema": "pymedphys-deid-requirements/1",
+    "edition": "2026d",
+    "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
+    "midi_report": "Clunie DA et al., MIDI Task Group report",
+    "requirement": [
+        {
+            "id": "PS3.15-E.1.1-01",
+            "url": URL.format("00000001"),
+            "text": "Each Attribute shall be retained.",
+            "status": "planned",
+            "milestone": "M3",
+            "decisions": ["D-001", "D-011"],
+        },
+        {
+            "id": "PS3.15-E.3.9-01",
+            "url": URL.format("00000002"),
+            "text": "UIDs shall be retained.",
+            "status": "out-of-scope",
+            "note": "Not supported.",
+        },
+        {
+            "id": "MIDI-BP-06",
+            "text": "Use the current edition.",
+            "status": "partial",
+            "milestone": "M1",
+            "implementation": ["_dicom/deidentify/standard.py"],
+            "tests": ["tests/dicom/test_deidentify_standard.py::test_x"],
+        },
+    ],
+}
+
+
+def _write(path, document):
+    path.write_text(tomlkit.dumps(document), encoding="utf-8")
+    return path
+
+
+def _changed(entry, **fields):
+    document = copy.deepcopy(VALID)
+    target = document["requirement"][entry]
+    for field, value in fields.items():
+        if value is None:
+            target.pop(field, None)
+        else:
+            target[field] = value
+    return document
+
+
+@pytest.fixture(name="register")
+def _register():
+    return requirements.load_requirements()
+
+
+def test_the_register_records_each_normative_paragraph_of_annex_e(register):
+    dicom = [entry for entry in register.requirements if entry.source == "PS3.15"]
+    # The paragraphs of PS3.15 2026d Annex E, outside Notes and tables, that
+    # contain "shall".
+    assert collections.Counter(entry.section for entry in dicom) == {
+        "E.1.1": 9,
+        "E.1.2": 3,
+        "E.1.3": 1,
+        "E.2": 1,
+        "E.3.1": 2,
+        "E.3.2": 2,
+        "E.3.3": 1,
+        "E.3.4": 1,
+        "E.3.5": 2,
+        "E.3.6": 4,
+        "E.3.7": 2,
+        "E.3.8": 1,
+        "E.3.9": 1,
+        "E.3.10": 4,
+        "E.3.11": 1,
+    }
+    # A paragraph that introduces a list keeps the list.
+    (conformance,) = (entry for entry in dicom if entry.section == "E.1.3")
+    assert conformance.text.startswith(
+        "The Conformance Statement of an application that claims conformance "
+        "to the Basic Application Level Confidentiality Profile shall describe:"
+    )
+    assert "\n- which Options are supported;\n" in conformance.text
+    assert conformance.text.endswith("(e. g. key sizes for public keys).")
+
+
+def test_the_register_records_each_midi_best_practice(register):
+    midi = [entry.id for entry in register.requirements if entry.source == "MIDI"]
+    assert midi == [f"MIDI-BP-{number:02d}" for number in range(1, 19)]
+    assert {
+        entry.section for entry in register.requirements if entry.source == "MIDI"
+    } == {"1.6"}
+
+
+def test_the_register_follows_the_edition_of_the_generated_tables(register):
+    assert register.edition == standard.load_table_e1_1().edition
+    assert register.edition == standard.load_table_e1_1a().edition
+    assert register.edition == standard.load_table_e3_10_1().edition
+    assert register.acknowledgement == f"DICOM PS3.15 {register.edition}, © NEMA"
+
+
+def test_unsupported_options_and_re_identification_are_excluded(register):
+    by_section = collections.defaultdict(set)
+    for entry in register.requirements:
+        by_section[entry.section].add(entry.status)
+    # The design document's Scope excludes these Options.
+    for section in ("E.3.1", "E.3.2", "E.3.3", "E.3.4", "E.3.9", "E.3.11"):
+        assert by_section[section] == {"out-of-scope"}, section
+    # PyMedPhys never claims conformance as a re-identifier.
+    assert by_section["E.1.2"] == {"not-applicable"}
+
+
+def test_each_cited_decision_is_in_the_design_document(register):
+    decisions = set(
+        re.findall(r"^### (D-[0-9]{3}):", DESIGN.read_text("utf-8"), re.MULTILINE)
+    )
+    cited = {
+        decision for entry in register.requirements for decision in entry.decisions
+    }
+    assert cited
+    assert cited <= decisions, sorted(cited - decisions)
+
+
+def test_each_implementation_path_exists(register):
+    paths = {path for entry in register.requirements for path in entry.implementation}
+    assert paths
+    assert not [path for path in sorted(paths) if not (LIBRARY_ROOT / path).is_file()]
+
+
+SAMPLE_TESTS = """\
+import pytest
+
+
+def _helper():
+    pass
+
+
+@pytest.fixture
+def test_data():
+    return 1
+
+
+def test_plain():
+    pass
+
+
+@pytest.mark.parametrize("value", [1, 2])
+def test_parametrised(value):
+    pass
+
+
+class TestGroup:
+    def test_method(self):
+        pass
+
+
+class Helper:
+    def test_method(self):
+        pass
+"""
+
+
+def _uncollected(node_ids, root):
+    """Return the node ids under ``root`` that pytest does not collect as tests.
+
+    pytest stops collecting at the first node id it cannot find, so each cited
+    module is collected whole and the ids are matched against its items. An id
+    for a parametrised function covers each of its cases.
+    """
+    paths = {node_id.split("::")[0] for node_id in node_ids}
+    modules = sorted(path for path in paths if (root / path).is_file())
+    collected = set()
+    if modules:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "--collect-only",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                f"--rootdir={root}",
+                *modules,
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+        collected = {line.split("[")[0] for line in result.stdout.splitlines()}
+    return [node_id for node_id in node_ids if node_id not in collected]
+
+
+def test_only_node_ids_that_pytest_collects_count_as_tests(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_sample.py").write_text(SAMPLE_TESTS, encoding="utf-8")
+    module = "tests/test_sample.py"
+    collected = [
+        f"{module}::test_plain",
+        f"{module}::test_parametrised",
+        f"{module}::TestGroup::test_method",
+    ]
+    not_tests = [
+        f"{module}::_helper",
+        f"{module}::test_data",
+        f"{module}::Helper::test_method",
+        f"{module}::test_missing",
+        "tests/test_missing.py::test_plain",
+    ]
+    assert _uncollected(collected + not_tests, tmp_path) == not_tests
+
+
+def test_pytest_collects_each_traced_test(register):
+    tests = sorted({test for entry in register.requirements for test in entry.tests})
+    assert tests
+    assert not _uncollected(tests, LIBRARY_ROOT)
+
+
+def test_a_valid_register_loads(tmp_path):
+    register = requirements.load_requirements(_write(tmp_path / "r.toml", VALID))
+    assert register.edition == "2026d"
+    assert register.midi_report == "Clunie DA et al., MIDI Task Group report"
+    first, excluded, practice = register.requirements
+    assert first == requirements.Requirement(
+        id="PS3.15-E.1.1-01",
+        source="PS3.15",
+        section="E.1.1",
+        url=URL.format("00000001"),
+        text="Each Attribute shall be retained.",
+        status="planned",
+        milestone="M3",
+        decisions=("D-001", "D-011"),
+        implementation=(),
+        tests=(),
+        note=None,
+    )
+    assert (excluded.section, excluded.note, excluded.milestone) == (
+        "E.3.9",
+        "Not supported.",
+        None,
+    )
+    assert (practice.source, practice.section, practice.url) == ("MIDI", "1.6", None)
+    assert practice.tests == ("tests/dicom/test_deidentify_standard.py::test_x",)
+    assert hash(practice)
+
+
+def test_function_and_class_node_ids_are_accepted(tmp_path):
+    tests = ["tests/a/test_b.py::test_c", "tests/a/test_b.py::TestD::test_e"]
+    path = _write(tmp_path / "r.toml", _changed(2, tests=tests))
+    assert requirements.load_requirements(path).requirements[2].tests == tuple(tests)
+
+
+def test_text_keeps_its_lines_without_surrounding_whitespace(tmp_path):
+    path = tmp_path / "r.toml"
+    path.write_text(
+        tomlkit.dumps(VALID).replace(
+            '"Each Attribute shall be retained."',
+            "'''\nEach Attribute shall be:\n\n- retained\n'''",
+        ),
+        encoding="utf-8",
+    )
+    first = requirements.load_requirements(path).requirements[0]
+    assert first.text == "Each Attribute shall be:\n\n- retained"
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        ({"schema": "other/1"}, "is not a pymedphys-deid-requirements/1 file"),
+        ({"edition": ""}, "does not name its edition as text"),
+        ({"edition": 2026}, "does not name its edition as text"),
+        ({"acknowledgement": "© NEMA"}, "lacks the copyright acknowledgement"),
+        ({"midi_report": ""}, "does not cite the MIDI report"),
+        ({"requirement": []}, "has no requirements"),
+        ({"requirement": "none"}, "has no requirements"),
+    ],
+)
+def test_a_malformed_register_is_rejected(tmp_path, change, message):
+    document = copy.deepcopy(VALID)
+    document.update(change)
+    with pytest.raises(requirements.RequirementsError, match=message):
+        requirements.load_requirements(_write(tmp_path / "r.toml", document))
+
+
+@pytest.mark.parametrize(
+    "entry, fields, message",
+    [
+        (0, {"colour": "red"}, "PS3.15-E.1.1-01 does not have only the fields"),
+        (0, {"status": None}, "PS3.15-E.1.1-01 lacks id, text, or status"),
+        (0, {"id": "E.1.1-01"}, "#1 has an id that is not of the form"),
+        (0, {"id": "PS3.15-E.1.1-1"}, "#1 has an id that is not of the form"),
+        (2, {"id": "MIDI-BP-19"}, "#3 has an id that is not of the form"),
+        (2, {"id": "MIDI-BP-00"}, "#3 has an id that is not of the form"),
+        (1, {"id": "PS3.15-E.1.1-01"}, "PS3.15-E.1.1-01 repeats an id"),
+        (0, {"url": None}, "PS3.15-E.1.1-01 lacks a url to its paragraph"),
+        (0, {"url": "https://example.com/#para_1"}, "has a url that is not"),
+        (1, {"url": URL.format("00000001")}, "PS3.15-E.3.9-01 repeats a url"),
+        (2, {"url": URL.format("00000003")}, "MIDI-BP-06 has a url"),
+        (0, {"text": ""}, "PS3.15-E.1.1-01 has text that is not non-empty"),
+        (0, {"text": ["a"]}, "PS3.15-E.1.1-01 has text that is not non-empty"),
+        (0, {"text": "Each Attribute is retained."}, "does not contain 'shall'"),
+        (0, {"status": "done"}, "PS3.15-E.1.1-01 has a status that is not one of"),
+        (0, {"milestone": None}, "PS3.15-E.1.1-01 is planned without a milestone"),
+        (0, {"milestone": "M9"}, "PS3.15-E.1.1-01 has a milestone that is not"),
+        (1, {"milestone": "M3"}, "PS3.15-E.3.9-01 is out-of-scope with a milestone"),
+        (0, {"decisions": ["D-1"]}, "has decisions that are not distinct D-NNN"),
+        (0, {"decisions": ["D-001", "D-001"]}, "that are not distinct D-NNN"),
+        (0, {"decisions": "D-001"}, "has decisions that are not distinct D-NNN"),
+        (2, {"tests": None}, "MIDI-BP-06 is partial without implementation"),
+        (2, {"implementation": []}, "MIDI-BP-06 is partial without implementation"),
+        (0, {"tests": ["tests/a/test_b.py::test_c"]}, "is planned with implementation"),
+        (1, {"implementation": ["x.py"]}, "is out-of-scope with implementation"),
+        (1, {"note": None}, "PS3.15-E.3.9-01 is out-of-scope without a note"),
+        (0, {"note": ""}, "PS3.15-E.1.1-01 has a note that is not non-empty"),
+        (2, {"implementation": ["/abs/x.py"]}, "has implementation that is not"),
+        (2, {"implementation": ["../x.py"]}, "has implementation that is not"),
+        (2, {"implementation": ["_dicom\\x.py"]}, "has implementation that is not"),
+        (2, {"implementation": [1]}, "has implementation that is not"),
+        (2, {"tests": ["tests/x.py"]}, "has tests that are not pytest node ids"),
+        (2, {"tests": ["tests/x.py::test_y[1]"]}, "has tests that are not pytest"),
+        (2, {"tests": ["x.py::test_y"]}, "has tests that are not pytest node ids"),
+        (2, {"tests": ["tests/a/test_b.py::_write"]}, "has tests that are not pytest"),
+        (2, {"tests": ["tests/a/test_b.py::Helper::test_c"]}, "has tests that are not"),
+    ],
+)
+def test_a_malformed_requirement_is_rejected(tmp_path, entry, fields, message):
+    path = _write(tmp_path / "r.toml", _changed(entry, **fields))
+    with pytest.raises(requirements.RequirementsError, match=re.escape(message)):
+        requirements.load_requirements(path)
+
+
+def test_a_requirement_that_is_not_a_table_is_rejected(tmp_path):
+    document = copy.deepcopy(VALID)
+    document["requirement"] = ["PS3.15-E.1.1-01"]
+    with pytest.raises(requirements.RequirementsError, match="#1 is not a table"):
+        requirements.load_requirements(_write(tmp_path / "r.toml", document))
+
+
+@pytest.mark.parametrize("text", ["schema = ", "[[requirement]\n", "\udcff"])
+def test_an_unreadable_register_is_rejected(tmp_path, text):
+    path = tmp_path / "r.toml"
+    path.write_bytes(text.encode("utf-8", "surrogateescape"))
+    with pytest.raises(requirements.RequirementsError, match="could not be read"):
+        requirements.load_requirements(path)
+
+
+def test_a_missing_register_is_rejected(tmp_path):
+    with pytest.raises(requirements.RequirementsError, match="could not be read"):
+        requirements.load_requirements(tmp_path / "missing.toml")

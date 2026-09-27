@@ -603,7 +603,8 @@ def window_image(img: np.ndarray, ww: float, wl: float) -> np.ndarray:
     """
     img_min = wl - (ww / 2)
     img_max = wl + (ww / 2)
-    return np.clip(img, img_min, img_max)
+    windowed: np.ndarray = np.clip(img, img_min, img_max)
+    return windowed
 
 
 def create_structure_legend(structures: Dict[str, Dict[str, Any]]) -> str:

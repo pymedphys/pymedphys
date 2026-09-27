@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
@@ -47,6 +48,47 @@ import tempfile
 from .pinnacle import PinnacleExport
 
 
+def extract_tar(archive_path, destination):
+    """Extract a Pinnacle TAR archive into ``destination``.
+
+    Members whose names contain ``:`` are skipped, because Windows cannot
+    create them. The whole archive is checked before anything is extracted,
+    and a refused member stops the extraction with ``ValueError``:
+
+    - Links and special files are refused. Pinnacle archives contain only
+      files and directories, and the known ways around tarfile's ``data``
+      filter all go through links, so this holds whatever the Python patch
+      level.
+    - Every other member must pass tarfile's ``data`` filter, which refuses a
+      path that leaves ``destination``, such as ``../name``. It strips a
+      leading ``/``, so an absolute name is extracted inside ``destination``.
+
+    The members are then extracted with the ``data`` filter. It relies on a
+    Python with CPython's June 2025 tarfile fixes (3.11.13, 3.12.11, 3.13.4,
+    or later, or a distribution build that includes them).
+    """
+    # Leave member names out of the errors: Pinnacle paths contain patient
+    # numbers.
+    with tarfile.open(archive_path) as archive:
+        members = [m for m in archive.getmembers() if ":" not in m.name]
+        for member in members:
+            if not (member.isfile() or member.isdir()):
+                raise ValueError(
+                    "The TAR archive contains a link or special file. Pinnacle "
+                    "archives contain only files and directories, so nothing "
+                    "was extracted."
+                )
+            try:
+                tarfile.data_filter(member, str(destination))
+            except tarfile.FilterError:
+                raise ValueError(
+                    "The TAR archive contains a member that would be extracted "
+                    "outside the extraction directory, so nothing was extracted."
+                ) from None
+        for member in members:
+            archive.extract(member, path=destination, filter="data")
+
+
 def export_cli(args):
     """
     expose a cli to allow export of Pinnacle raw data to DICOM objects
@@ -89,12 +131,7 @@ def export_cli(args):
 
         logger.info("Extracting TAR archive to: %s", tmp_dir)
 
-        t = tarfile.open(input_path)
-
-        for m in t.getmembers():
-            # Need to filter out files containing ":" for Windows
-            if ":" not in m.name:
-                t.extract(m, path=tmp_dir)
+        extract_tar(input_path, tmp_dir)
 
         input_path = tmp_dir
 
