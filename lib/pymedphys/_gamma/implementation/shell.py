@@ -104,7 +104,7 @@ def gamma_shell(
     local_gamma
         Designates local gamma should be used instead of global. Defaults to
         False. Local gamma is undefined where the reference dose is zero, so a
-        ``ValueError`` is raised if any evaluated reference point is zero.
+        ``ValueError`` is raised if any analysed reference point is zero.
     global_normalisation : float, optional
         The dose normalisation value that the percent inputs calculate from.
         Defaults to the maximum value of :obj:`dose_reference`. It must be
@@ -142,20 +142,24 @@ def gamma_shell(
         :func:`pymedphys.dicom.zyx_and_dose_from_dataset`, its order can differ
         from the DICOM dataset's raw ``pixel_array``.
 
-        NaN means only that a point was not evaluated: its reference dose is
-        below the lower dose cutoff, or ``random_subset`` did not select it.
-        Every evaluated point has a value. A reference point outside the
-        evaluation grid is compared with the evaluation data up to the grid's
-        edge, so it may fail; a warning gives the number of points more than
-        one search step outside. Crop the reference grid to the evaluated
-        region if only that region should be analysed.
+        A reference point is analysed when its dose is at or above the lower
+        dose cutoff and, if ``random_subset`` is set, it was selected. Every
+        analysed reference point has a value; NaN marks only the reference
+        points that were not analysed.
+
+        An analysed reference point outside the evaluation grid is compared
+        with the evaluation data up to the grid's edge, so it may fail. A
+        warning gives the number of such points more than one search step
+        (the smallest distance threshold divided by ``interp_fraction``)
+        outside the grid. Crop the reference grid to the region the
+        evaluation grid covers if only that region should be analysed.
 
     Raises
     ------
     ValueError
         If either dose grid contains NaN or infinite values, ``max_gamma`` is
         not greater than 1, ``global_normalisation`` is not finite and
-        positive, or local gamma is requested and an evaluated reference
+        positive, or local gamma is requested and an analysed reference
         point has zero dose.
     """
 
@@ -217,7 +221,7 @@ def gamma_shell(
 
             gamma_temp = current_gamma[:, i, j]
             gamma_temp = np.reshape(gamma_temp, np.shape(dose_reference))
-            # Only points that were not evaluated are still infinite.
+            # Only points that were not analysed are still infinite.
             gamma_temp[np.isinf(gamma_temp)] = np.nan
 
             with np.errstate(invalid="ignore"):
@@ -373,8 +377,8 @@ def _check_finite_dose(name, dose):
 def _warn_about_points_outside_the_grid(
     flat_mesh_axes_reference, reference_points_to_calc, axes_evaluation, resolution
 ):
-    evaluated = np.count_nonzero(reference_points_to_calc)
-    if evaluated == 0:
+    analysed = np.count_nonzero(reference_points_to_calc)
+    if analysed == 0:
         return
 
     distance = _distance_outside_grid(
@@ -387,8 +391,8 @@ def _warn_about_points_outside_the_grid(
         return
 
     warn(
-        f"{outside} of {evaluated} evaluated reference points "
-        f"({100 * outside / evaluated:.1f}%) lie more than one search step "
+        f"{outside} of {analysed} analysed reference points "
+        f"({100 * outside / analysed:.1f}%) lie more than one search step "
         f"({resolution:.3g}) outside the evaluation grid. Each is compared "
         "with the evaluation data up to the grid's edge, so these points may "
         "fail. To analyse only the region the evaluation grid covers, crop "
@@ -540,7 +544,7 @@ class GammaInternalFixedOptions:
         if local_gamma and np.any(flat_dose_reference[reference_points_to_calc] == 0):
             raise ValueError(
                 "Local gamma is undefined where the reference dose is zero, and "
-                "some evaluated reference points have zero dose. Raise "
+                "some analysed reference points have zero dose. Raise "
                 "lower_percent_dose_cutoff above zero to exclude them."
             )
 
@@ -651,7 +655,7 @@ def gamma_loop(options: GammaInternalFixedOptions):
                 force_search_distances = np.delete(force_search_distances, 0)
 
     if not np.all(np.isfinite(current_gamma[options.reference_points_to_calc])):
-        raise RuntimeError("Gamma was not found for every evaluated reference point")
+        raise RuntimeError("Gamma was not found for every analysed reference point")
 
     return current_gamma
 
@@ -660,28 +664,28 @@ def gamma_at_nearest_grid_points(options: GammaInternalFixedOptions, current_gam
     """Bound gamma at points outside the evaluation grid.
 
     The nearest point of the evaluation grid's extent is always a candidate,
-    so every evaluated point gets a gamma value, even where the search
+    so every analysed reference point gets a gamma value, even where the search
     shells cannot sample the grid: a grid narrower than one search step, a
     singleton plane, or a grid more than ``max_gamma`` times the distance
     threshold away. The shells then search for any lower value. Points inside
     the grid are their own nearest point, which the zero-distance shell
     samples, so they are left to the search.
     """
-    evaluated = np.where(options.reference_points_to_calc)[0]
+    analysed = np.where(options.reference_points_to_calc)[0]
     distance = _distance_outside_grid(
-        options.flat_mesh_axes_reference, evaluated, options.axes_evaluation
+        options.flat_mesh_axes_reference, analysed, options.axes_evaluation
     )
     outside = distance > 0
-    evaluated, distance = evaluated[outside], distance[outside]
-    if evaluated.size == 0:
+    analysed, distance = analysed[outside], distance[outside]
+    if analysed.size == 0:
         return current_gamma
 
     num_dimensions = len(options.axes_evaluation)
-    estimated_ram_needed = evaluated.size * 32 * num_dimensions * 2
+    estimated_ram_needed = analysed.size * 32 * num_dimensions * 2
     num_slices = int(estimated_ram_needed // options.ram_available) + 1
 
-    for current_slice in np.array_split(np.arange(evaluated.size), num_slices):
-        indices = evaluated[current_slice]
+    for current_slice in np.array_split(np.arange(analysed.size), num_slices):
+        indices = analysed[current_slice]
         nearest = _nearest_grid_points(
             options.flat_mesh_axes_reference, indices, options.axes_evaluation
         )
