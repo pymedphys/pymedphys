@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Keyed replacement UIDs (design decision D-003).
+"""Keyed replacement UIDs.
 
 A UID that must be replaced is replaced by a ``2.25.`` UID (PS3.5 B.2) built
 from a name-based version 5 UUID (ITU-T X.667 clause 14.3). The UUID's name is
-the 32-byte HMAC-SHA256 of the unpadded source UID under the run's key
-(D-004), and its namespace is :data:`UID_NAMESPACE`. The same key always gives
-the same replacement, so every occurrence of a UID, in any file or run under
-that key, is replaced consistently without a stored map. Without the key,
-knowing a source UID does not reveal its replacement.
+the 32-byte HMAC-SHA256 of the unpadded source UID under the run's key, and
+its namespace is :data:`UID_NAMESPACE`. The same key always gives the same
+replacement, so every occurrence of a UID, in any file or run under that key,
+is replaced consistently without a stored map. Without the key, knowing a
+source UID does not reveal its replacement.
 
 Which attributes' UIDs are transformed is decided by the rule layers before
-this module is used (D-003). :func:`transform_uid` then applies the
-attribute's role (:mod:`~pymedphys._dicom.deidentify.uid_roles`) to a value:
-a UID registered in the pinned tables is retained, because it names a public
-definition, and any other UID is replaced.
+this module is used. :func:`transform_uid` then applies the attribute's role
+(:mod:`~pymedphys._dicom.deidentify.uid_roles`) to a value: a UID registered
+in the pinned tables is retained, because it names a public definition, and
+any other UID is replaced.
 """
 
 from __future__ import annotations
@@ -110,7 +110,7 @@ class UIDOutcome(enum.Enum):
     REPLACED = "replaced"
     # A definition attribute, such as Coding Scheme UID, held a UID that the
     # pinned tables do not register, such as a local coding scheme under an
-    # institution's root. It is replaced, and reported for review (D-003).
+    # institution's root. It is replaced, and reported for review.
     REPLACED_UNREGISTERED_DEFINITION = "replaced-unregistered-definition"
 
 

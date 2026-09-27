@@ -1,5 +1,5 @@
 # Supplementary (L2) rules: the role of every UI attribute in the pinned
-# PS3.6 data dictionary (design decision D-003), curated by hand.
+# PS3.6 data dictionary, curated by hand.
 #
 # instance: identifies an instance, event, entity, device, or organisation.
 # definition: identifies a definition that a standard or vendor publishes,

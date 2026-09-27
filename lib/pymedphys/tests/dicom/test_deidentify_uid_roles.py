@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The role of every UI attribute, and how a UID value is transformed (D-003)."""
+"""The role of every UI attribute, and how a UID value is transformed."""
 
 import collections
 import re
@@ -60,7 +60,7 @@ def test_the_roles_follow_the_dictionarys_edition():
 
 
 def test_every_uid_table_e1_1_replaces_is_an_instance_uid():
-    # The supplementary rules only strengthen Table E.1-1 (D-003).
+    # The supplementary rules only strengthen Table E.1-1.
     ui = _ui_attributes()
     roles = uid_roles.load_uid_roles()
     replaced = {
@@ -191,7 +191,7 @@ def test_an_instance_uid_is_replaced():
 
 def test_an_unregistered_definition_uid_is_replaced_and_reported():
     # For example a local coding scheme under an institution's root, which
-    # could identify the institution (D-003).
+    # could identify the institution.
     value = "1.2.840.99999.4.5.6 "
 
     assert uids.transform_uid(FIXTURE_KEY, uid_roles.UIDRole.DEFINITION, value) == (

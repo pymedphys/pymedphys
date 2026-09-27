@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""De-identification keys and the values derived from them (design decision D-004).
+"""De-identification keys and the values derived from them.
 
 A key is 256 bits from a cryptographically secure generator. Each value that
-de-identification generates from source data, such as a replacement UID
-(D-003), is an HMAC-SHA256 of that data under the key in a named domain. The
-same key therefore gives the same values in every run, while different
-domains and different keys give unrelated values.
+de-identification generates from source data, such as a replacement UID, is
+an HMAC-SHA256 of that data under the key in a named domain. The same key
+therefore gives the same values in every run, while different domains and
+different keys give unrelated values.
 
 Anyone who holds a key can recompute the values for candidate source data,
 and identifiers such as medical record numbers have few enough candidates to
