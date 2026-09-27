@@ -36,11 +36,12 @@ from pymedphys._dev.deid_tables import (
     annex_e,
     chtml,
     generate,
+    ps3_3,
     ps3_6,
     ps3_16,
     sources,
 )
-from pymedphys._dicom.deidentify import codes, standard, uid_registry
+from pymedphys._dicom.deidentify import codes, iods, standard, uid_registry
 from pymedphys.cli import define_parser
 
 E1_1_HEADER = (
@@ -405,9 +406,9 @@ PS3_16 = {
     "Table CID 7005": (CID_HEADER, CID_7005_ROWS, codes.CodedConcept),
 }
 PS3_16_PAGES = {
-    "part16/chapter_8.html": ("Table 8-1", "Table 8-2"),
-    "part16/sect_CID_7050.html": ("Table CID 7050",),
-    "part16/sect_CID_7005.html": ("Table CID 7005",),
+    "chtml/part16/chapter_8.html": ("Table 8-1", "Table 8-2"),
+    "chtml/part16/sect_CID_7050.html": ("Table CID 7050",),
+    "chtml/part16/sect_CID_7005.html": ("Table CID 7005",),
 }
 
 
@@ -527,6 +528,85 @@ def test_an_empty_first_row_is_preserved_without_becoming_a_header():
 
     assert table.header == ()
     assert table.rows == ((), ("1", "2"))
+
+
+def _spanning_table(title, header, rows):
+    """Return a table whose cells are text or (text, rowspan, colspan)."""
+
+    def cell(value):
+        text, rowspan, colspan = value if isinstance(value, tuple) else (value, 1, 1)
+        return (
+            f'<td align="left" rowspan="{rowspan}" colspan="{colspan}">'
+            f"<p>{text}</p></td>"
+        )
+
+    return _table(title, header, ()).replace(
+        "<tbody></tbody>",
+        "<tbody>"
+        + "".join(
+            '<tr valign="top">' + "".join(cell(value) for value in row) + "</tr>"
+            for row in rows
+        )
+        + "</tbody>",
+    )
+
+
+SPANNING = _spanning_table(
+    "Table X-1. Fixture",
+    ("A", "B", "C"),
+    ((("x", 2, 1), "1", "2"), ("3", "4"), (("wide", 1, 3),), ("5", ("pair", 1, 2))),
+)
+
+
+def test_spans_are_expanded_on_request():
+    tables = chtml.extract_tables(_page(SPANNING), expand_spans=True)
+    table = chtml.select_table(tables, "Table X-1", allow_merged=True)
+
+    assert table.has_merged_cells
+    assert table.rows == (
+        ("x", "1", "2"),
+        ("x", "3", "4"),
+        ("wide", "wide", "wide"),
+        ("5", "pair", "pair"),
+    )
+
+
+def test_spans_are_left_as_published_by_default():
+    table = chtml.extract_tables(_page(SPANNING))[1]
+
+    assert table.has_merged_cells
+    assert table.rows == (("x", "1", "2"), ("3", "4"), ("wide",), ("5", "pair"))
+
+
+def test_allowing_merged_cells_still_checks_row_lengths():
+    tables = chtml.extract_tables(_page(SPANNING))
+
+    with pytest.raises(chtml.TableFormatError, match="row 2 has 2 cells"):
+        chtml.select_table(tables, "Table X-1", allow_merged=True)
+
+
+def test_each_table_records_the_section_it_follows():
+    def heading(section):
+        return (
+            f'<h2 class="title"><a id="sect_{section}" shape="rect"></a>{section}</h2>'
+        )
+
+    page = _page(
+        heading("X.1"),
+        _table("Table X-1. First", ("A",), (("1",),)),
+        heading("X.1.1"),
+        # An anchor that is not a section's does not change the section.
+        '<p><a id="para_1" shape="rect"></a>Prose.</p>',
+        _table("Table X-2. Second", ("A",), (("1",),)),
+    )
+
+    tables = chtml.extract_tables(page)
+    assert [(table.title, table.section) for table in tables] == [
+        ("", ""),
+        ("Table X-1. First", "X.1"),
+        ("Table X-2. Second", "X.1.1"),
+        ("", "X.1.1"),
+    ]
 
 
 def test_option_columns_map_to_the_loader_option_names():
@@ -1024,6 +1104,351 @@ def test_table_8_1_designators_may_share_a_uid():
     assert schemes[0].uid == schemes[1].uid
 
 
+# PS3.3: an IOD modules table and the attribute tables it reaches. As in the
+# published tables, an Include row's text spans the name, tag, and Type
+# columns, or all four, a heading spans the whole table, and the IE column
+# spans the rows of each information entity.
+ATTRIBUTE_HEADER = ("Attribute Name", "Tag", "Type", "Attribute Description")
+
+
+def _section(number, *tables):
+    return (
+        f'<div class="section"><h3 class="title"><a id="sect_{number}" shape="rect">'
+        f"</a>{number} Fixture Section</h3></div>" + "".join(tables)
+    )
+
+
+def _include(depth, label, title, description=None):
+    text = f"{'&gt;' * depth}Include {label} “{title}”"
+    return ((text, 1, 3), description) if description else ((text, 1, 4),)
+
+
+PS3_3_IOD = _spanning_table(
+    "Table A.99-1. Fixture Image IOD Modules",
+    ("IE", "Module", "Reference", "Usage"),
+    (
+        ("Patient", "Fixture Patient", "C.99.1", "M"),
+        (("Image", 2, 1), "Fixture Image", "C.99.2", "C - Required if invented."),
+        ("Fixture Other", "C.99.3", "U"),
+    ),
+)
+PS3_3_PATIENT = _spanning_table(
+    "Table C.99-1. Fixture Patient Module Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        ("Fixture's Name", "(0998,0010)", "2", "Invented."),
+        ("Fixture Code Sequence", "(0998,0040)", "3", "Invented."),
+        _include(1, "Table 10-99", "Fixture Code Macro Attributes", "Invented CID."),
+        ("Fixture Scan", "(0998,0060)", "1C", "Invented."),
+    ),
+)
+# In the patient module's section, but not the module's own table.
+PS3_3_PATIENT_MACRO = _spanning_table(
+    "Table C.99-1b. Fixture Patient Macro Attributes",
+    ATTRIBUTE_HEADER,
+    (("Fixture Scan", "(0998,0060)", "3", "Invented."),),
+)
+PS3_3_IMAGE = _spanning_table(
+    "Table C.99-2. Fixture Image Module Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        ("Fixture Overlay Value", "(60xx,0998)", "1", "Invented."),
+        ("Fixture Scan", "(0998,0060)", "3", "Invented."),
+        _include(0, "Table 10-98", "Fixture Wildcard Macro Attributes"),
+    ),
+)
+PS3_3_OTHER = _spanning_table(
+    "Table C.99-3. Fixture Other Module Attributes",
+    ("Attribute Name", "Tag", "Type", "Description"),
+    (("Fixture Inspection", "(0998,0050)", "2C", "Invented."),),
+)
+PS3_3_CODE_MACRO = _spanning_table(
+    "Table 10-99. Fixture Code Macro Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        (("FIXTURE HEADING", 1, 4),),
+        ("Fixture Inspection", "(0998,0050)", "1", "Invented."),
+        ("Fixture Code Sequence", "(0998,0040)", "3", "Invented."),
+        ("&gt;Fixture Scan", "(0998,0060)", "2", "Invented."),
+    ),
+)
+PS3_3_WILDCARD_MACRO = _spanning_table(
+    "Table 10-98. Fixture Wildcard Macro Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        ("Fixture Code Sequence", "(0998,0040)", "3", "Invented."),
+        (("&gt;Any Attribute from the fixture.", 1, 2), "2", "Invented."),
+        _include(1, "Table 10-99", "Fixture Code Macro Attributes"),
+    ),
+)
+PS3_3_TABLES = (
+    _section("A.99.3", PS3_3_IOD),
+    _section("C.99.1", PS3_3_PATIENT, PS3_3_PATIENT_MACRO),
+    _section("C.99.2", PS3_3_IMAGE),
+    _section("C.99.3", PS3_3_OTHER),
+    _section("10.98", PS3_3_WILDCARD_MACRO),
+    _section("10.99", PS3_3_CODE_MACRO),
+)
+PS3_3_DICTIONARY = {row[0]: row[3] for row in TABLE_6_1_ROWS}
+
+
+def _ps3_3_tables(*tables):
+    return chtml.extract_tables(_page(*(tables or PS3_3_TABLES)), expand_spans=True)
+
+
+def _ps3_3_table(label, *tables):
+    return chtml.select_table(_ps3_3_tables(*tables), label, allow_merged=True)
+
+
+def _attribute(depth, name, tag, attribute_type):
+    return {
+        "depth": depth,
+        "name": name,
+        "tag": tag,
+        "type": attribute_type,
+        "include": "",
+    }
+
+
+def _include_row(depth, label):
+    return {"depth": depth, "name": "", "tag": "", "type": "", "include": label}
+
+
+EXPECTED_IOD = {
+    "label": "Table A.99-1",
+    "iod": "Fixture Image",
+    "modules": [
+        {
+            "information_entity": "Patient",
+            "module": "Fixture Patient",
+            "section": "C.99.1",
+            "usage": "M",
+            "condition": "",
+            "table": "Table C.99-1",
+        },
+        {
+            "information_entity": "Image",
+            "module": "Fixture Image",
+            "section": "C.99.2",
+            "usage": "C",
+            "condition": "Required if invented.",
+            "table": "Table C.99-2",
+        },
+        {
+            "information_entity": "Image",
+            "module": "Fixture Other",
+            "section": "C.99.3",
+            "usage": "U",
+            "condition": "",
+            "table": "Table C.99-3",
+        },
+    ],
+}
+EXPECTED_ATTRIBUTE_TABLES = [
+    {
+        "label": "Table 10-98",
+        "title": "Fixture Wildcard Macro Attributes",
+        "rows": [
+            _attribute(0, "Fixture Code Sequence", "(0998,0040)", "3"),
+            _attribute(1, "Any Attribute from the fixture.", "", "2"),
+            _include_row(1, "Table 10-99"),
+        ],
+    },
+    {
+        "label": "Table 10-99",
+        "title": "Fixture Code Macro Attributes",
+        "rows": [
+            _attribute(0, "Fixture Inspection", "(0998,0050)", "1"),
+            _attribute(0, "Fixture Code Sequence", "(0998,0040)", "3"),
+            _attribute(1, "Fixture Scan", "(0998,0060)", "2"),
+        ],
+    },
+    {
+        "label": "Table C.99-1",
+        "title": "Fixture Patient Module Attributes",
+        "rows": [
+            _attribute(0, "Fixture's Name", "(0998,0010)", "2"),
+            _attribute(0, "Fixture Code Sequence", "(0998,0040)", "3"),
+            _include_row(1, "Table 10-99"),
+            _attribute(0, "Fixture Scan", "(0998,0060)", "1C"),
+        ],
+    },
+    {
+        "label": "Table C.99-2",
+        "title": "Fixture Image Module Attributes",
+        "rows": [
+            _attribute(0, "Fixture Overlay Value", "(60xx,0998)", "1"),
+            _attribute(0, "Fixture Scan", "(0998,0060)", "3"),
+            _include_row(0, "Table 10-98"),
+        ],
+    },
+    {
+        "label": "Table C.99-3",
+        "title": "Fixture Other Module Attributes",
+        "rows": [_attribute(0, "Fixture Inspection", "(0998,0050)", "2C")],
+    },
+]
+
+
+def test_parse_an_iod_modules_table():
+    table = _ps3_3_table("Table A.99-1")
+
+    parsed = ps3_3.parse_iod_table("Table A.99-1", table)
+
+    # The IE cell spans the rows of its entity; the table is found later.
+    assert parsed == {
+        **EXPECTED_IOD,
+        "modules": [
+            {key: value for key, value in module.items() if key != "table"}
+            for module in EXPECTED_IOD["modules"]
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "replace, message",
+    [
+        ("Fixture Image IOD Modules", "not an IOD Modules table"),
+        (">C.99.1<", "no section reference"),
+        (">M<", "unknown usage"),
+        (">C - Required if invented.<", "unknown usage"),
+        (">Fixture Other<", "Fixture Patient appears 2 times"),
+        (">Usage<", "unknown column"),
+        (">Patient<", "empty cell"),
+    ],
+)
+def test_malformed_iod_modules_tables_fail(replace, message):
+    replacement = {
+        "Fixture Image IOD Modules": "Fixture Image Modules",
+        ">C.99.1<": ">Section C.99.1<",
+        ">M<": ">R<",
+        ">C - Required if invented.<": ">C Required if invented.<",
+        ">Fixture Other<": ">Fixture Patient<",
+        ">Usage<": ">Use<",
+        ">Patient<": "><",
+    }[replace]
+    page = _page(PS3_3_IOD.replace(replace, replacement, 1))
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table A.99-1", allow_merged=True
+    )
+
+    with pytest.raises(chtml.TableFormatError, match=message):
+        ps3_3.parse_iod_table("Table A.99-1", table)
+
+
+@pytest.mark.parametrize("expected", EXPECTED_ATTRIBUTE_TABLES)
+def test_parse_attribute_tables(expected):
+    table = _ps3_3_table(expected["label"])
+
+    parsed = ps3_3.parse_attribute_table(expected["label"], table, PS3_3_DICTIONARY)
+
+    assert parsed == expected
+
+
+@pytest.mark.parametrize(
+    "old, new, message",
+    [
+        ("(0998,0060)", "(0998,0070)", "(0998,0070), which PS3.6 does not define"),
+        (">1C<", ">4<", "row 4 is not an attribute, an Include, or a heading"),
+        (">1C<", "><", "row 4 is not an attribute, an Include, or a heading"),
+        (">Fixture Scan<", ">&gt;&gt;Fixture Scan<", "row 4 is nested more deeply"),
+        (">Fixture's Name<", ">&gt;Fixture's Name<", "row 1 is nested more deeply"),
+        (">Tag<", ">Tags<", "unknown column"),
+    ],
+)
+def test_malformed_attribute_tables_fail(old, new, message):
+    page = _page(PS3_3_PATIENT.replace(old, new, 1))
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table C.99-1", allow_merged=True
+    )
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_3.parse_attribute_table("Table C.99-1", table, PS3_3_DICTIONARY)
+
+
+def test_rows_nest_only_below_a_sequence():
+    # Fixture's Name is PN, so nothing can be nested below it.
+    page = _page(
+        PS3_3_PATIENT.replace(
+            ">Fixture Code Sequence<", ">Fixture Other Name<"
+        ).replace("(0998,0040)", "(0998,0010)", 1)
+    )
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table C.99-1", allow_merged=True
+    )
+
+    with pytest.raises(chtml.TableFormatError, match="row 3 is nested more deeply"):
+        ps3_3.parse_attribute_table("Table C.99-1", table, PS3_3_DICTIONARY)
+
+
+def test_collect_finds_each_module_table_and_every_table_it_includes():
+    iod_tables, attribute_tables = ps3_3.collect(
+        _ps3_3_tables(), ("Table A.99-1",), PS3_3_DICTIONARY
+    )
+
+    assert iod_tables == [EXPECTED_IOD]
+    # Sorted by label, with numbers compared as numbers.
+    assert attribute_tables == EXPECTED_ATTRIBUTE_TABLES
+
+
+def test_labels_sort_by_their_numbers():
+    labels = [
+        "Table C.8-10",
+        "Table 10-11",
+        "Table C.8-9",
+        "Table 8.8-1a",
+        "Table 8.8-1",
+    ]
+
+    assert sorted(labels, key=ps3_3.natural_key) == [
+        "Table 8.8-1",
+        "Table 8.8-1a",
+        "Table 10-11",
+        "Table C.8-9",
+        "Table C.8-10",
+    ]
+
+
+def test_a_module_needs_exactly_one_table_in_its_section():
+    moved = tuple(
+        table.replace("C.99.2", "C.99.4") if "sect_C.99.2" in table else table
+        for table in PS3_3_TABLES
+    )
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match="no Fixture Image Module Attributes table in C.99.2",
+    ):
+        ps3_3.collect(_ps3_3_tables(*moved), ("Table A.99-1",), PS3_3_DICTIONARY)
+
+
+def test_an_include_of_a_missing_table_fails():
+    tables = tuple(table for table in PS3_3_TABLES if "sect_10.99" not in table)
+
+    with pytest.raises(chtml.TableFormatError, match="no table titled 'Table 10-99'"):
+        ps3_3.collect(_ps3_3_tables(*tables), ("Table A.99-1",), PS3_3_DICTIONARY)
+
+
+def test_a_cycle_of_includes_fails():
+    cycle = _section(
+        "10.97",
+        _spanning_table(
+            "Table 10-97. Fixture Cycle Macro Attributes",
+            ATTRIBUTE_HEADER,
+            (_include(0, "Table 10-97", "Fixture Cycle Macro Attributes"),),
+        ),
+    )
+    tables = tuple(
+        table.replace("Table 10-98", "Table 10-97", 1)
+        if "sect_C.99.2" in table
+        else table
+        for table in PS3_3_TABLES
+    ) + (cycle,)
+
+    with pytest.raises(chtml.TableFormatError, match="Table 10-97 includes itself"):
+        ps3_3.collect(_ps3_3_tables(*tables), ("Table A.99-1",), PS3_3_DICTIONARY)
+
+
 def test_a_source_is_read_only_when_its_digest_matches(tmp_path):
     source = tmp_path / "chapter_E.html"
     source.write_bytes(b"<html></html>")
@@ -1052,40 +1477,31 @@ FIXTURE_CHAPTER_A_PAGE = _page(*ANNEX_A_TABLES).encode("utf-8")
 FIXTURE_PS3_16_PAGES = {
     path: _ps3_16_page(labels).encode("utf-8") for path, labels in PS3_16_PAGES.items()
 }
+FIXTURE_PS3_3_PAGE = _page(*PS3_3_TABLES).encode("utf-8")
+# Each page at its path below output/, as NEMA publishes it.
+FIXTURE_PAGES = {
+    "chtml/part15/chapter_E.html": FIXTURE_PAGE,
+    "chtml/part15/sect_E.3.10.html": FIXTURE_E3_10_PAGE,
+    "chtml/part06/chapter_6.html": FIXTURE_CHAPTER_6_PAGE,
+    "chtml/part06/chapter_A.html": FIXTURE_CHAPTER_A_PAGE,
+    **FIXTURE_PS3_16_PAGES,
+    "html/part03.html": FIXTURE_PS3_3_PAGE,
+}
 FIXTURE_PIN = generate.Pin(
     edition="2099a",
-    sources=(
-        generate.PinnedSource(
-            "part15/chapter_E.html", hashlib.sha256(FIXTURE_PAGE).hexdigest()
-        ),
-        generate.PinnedSource(
-            "part15/sect_E.3.10.html", hashlib.sha256(FIXTURE_E3_10_PAGE).hexdigest()
-        ),
-        generate.PinnedSource(
-            "part06/chapter_6.html", hashlib.sha256(FIXTURE_CHAPTER_6_PAGE).hexdigest()
-        ),
-        generate.PinnedSource(
-            "part06/chapter_A.html", hashlib.sha256(FIXTURE_CHAPTER_A_PAGE).hexdigest()
-        ),
-        *(
-            generate.PinnedSource(path, hashlib.sha256(page).hexdigest())
-            for path, page in FIXTURE_PS3_16_PAGES.items()
-        ),
+    sources=tuple(
+        generate.PinnedSource(path, hashlib.sha256(page).hexdigest())
+        for path, page in FIXTURE_PAGES.items()
     ),
+    iod_tables=("Table A.99-1",),
 )
 
 
 @pytest.fixture(name="source_dir")
 def _source_dir(tmp_path):
     directory = tmp_path / "sources"
-    (directory / "part15").mkdir(parents=True)
-    (directory / "part15" / "chapter_E.html").write_bytes(FIXTURE_PAGE)
-    (directory / "part15" / "sect_E.3.10.html").write_bytes(FIXTURE_E3_10_PAGE)
-    (directory / "part06").mkdir()
-    (directory / "part06" / "chapter_6.html").write_bytes(FIXTURE_CHAPTER_6_PAGE)
-    (directory / "part06" / "chapter_A.html").write_bytes(FIXTURE_CHAPTER_A_PAGE)
-    (directory / "part16").mkdir()
-    for path, page in FIXTURE_PS3_16_PAGES.items():
+    for path, page in FIXTURE_PAGES.items():
+        (directory / path).parent.mkdir(parents=True, exist_ok=True)
         (directory / path).write_bytes(page)
     return directory
 
@@ -1108,7 +1524,10 @@ def test_generate_writes_table_e1_1_with_its_provenance(source_dir, tmp_path):
     assert document["edition"] == "2099a"
     assert document["acknowledgement"] == "DICOM PS3.15 2099a, \u00a9 NEMA"
     assert document["sources"] == [
-        {"path": "part15/chapter_E.html", "sha256": FIXTURE_PIN.sources[0].sha256}
+        {
+            "path": "chtml/part15/chapter_E.html",
+            "sha256": FIXTURE_PIN.sources[0].sha256,
+        }
     ]
     assert [row["tag"] for row in document["rows"]] == [row[1] for row in E1_1_ROWS]
     assert document["rows"][0] == {
@@ -1134,13 +1553,13 @@ def test_generate_writes_table_e1_1_with_its_provenance(source_dir, tmp_path):
         (
             "e1_1a.json",
             "PS3.15 Table E.1-1a",
-            "part15/chapter_E.html",
+            "chtml/part15/chapter_E.html",
             [{"code": code, "description": text} for code, text in E1_1A_ROWS],
         ),
         (
             "e3_10_1.json",
             "PS3.15 Table E.3.10-1",
-            "part15/sect_E.3.10.html",
+            "chtml/part15/sect_E.3.10.html",
             [
                 dict(zip(("tag", "private_creator", "vr", "vm", "meaning"), row))
                 for row in E3_10_1_ROWS
@@ -1182,7 +1601,10 @@ def test_generate_writes_the_data_dictionary(source_dir, tmp_path):
     assert document["edition"] == "2099a"
     assert document["acknowledgement"] == "DICOM PS3.6 2099a, \u00a9 NEMA"
     assert document["sources"] == [
-        {"path": "part06/chapter_6.html", "sha256": FIXTURE_PIN.sources[2].sha256}
+        {
+            "path": "chtml/part06/chapter_6.html",
+            "sha256": FIXTURE_PIN.sources[2].sha256,
+        }
     ]
     assert document["rows"] == rows
     assert document["content_sha256"] == standard.content_sha256(rows)
@@ -1201,7 +1623,10 @@ def test_generate_writes_the_annex_a_tables(source_dir, tmp_path, label):
     assert document["table"] == f"PS3.6 {label}"
     assert document["acknowledgement"] == "DICOM PS3.6 2099a, \u00a9 NEMA"
     assert document["sources"] == [
-        {"path": "part06/chapter_A.html", "sha256": FIXTURE_PIN.sources[3].sha256}
+        {
+            "path": "chtml/part06/chapter_A.html",
+            "sha256": FIXTURE_PIN.sources[3].sha256,
+        }
     ]
     assert document["rows"] == expected
     assert document["content_sha256"] == standard.content_sha256(expected)
@@ -1224,6 +1649,45 @@ def test_generate_writes_the_ps3_16_tables(source_dir, tmp_path, label):
     assert document["sources"] == [{"path": page, "sha256": digests[page]}]
     assert document["rows"] == expected
     assert document["content_sha256"] == standard.content_sha256(expected)
+
+
+@pytest.mark.parametrize(
+    "name, table, rows",
+    [
+        ("iod_modules.json", "PS3.3 IOD Modules", [EXPECTED_IOD]),
+        (
+            "module_attributes.json",
+            "PS3.3 Module Attributes",
+            EXPECTED_ATTRIBUTE_TABLES,
+        ),
+    ],
+)
+def test_generate_writes_the_ps3_3_tables(source_dir, tmp_path, name, table, rows):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads((output_dir / name).read_text(encoding="utf-8"))
+    assert document["table"] == table
+    assert document["acknowledgement"] == "DICOM PS3.3 2099a, \u00a9 NEMA"
+    assert document["sources"] == [
+        {"path": "html/part03.html", "sha256": FIXTURE_PIN.sources[-1].sha256}
+    ]
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
+
+
+def test_the_ps3_3_tables_are_named_as_the_loader_expects():
+    assert iods.IOD_MODULES_TABLE == "PS3.3 IOD Modules"
+    assert iods.MODULE_ATTRIBUTES_TABLE == "PS3.3 Module Attributes"
+
+
+def test_a_pin_without_iod_tables_fails(source_dir, tmp_path):
+    pin = dataclasses.replace(FIXTURE_PIN, iod_tables=())
+
+    with pytest.raises(chtml.TableFormatError, match="names no IOD modules tables"):
+        generate.generate(pin, tmp_path / "tables", source_dir=source_dir)
+    assert not (tmp_path / "tables").exists()
 
 
 def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
@@ -1265,7 +1729,9 @@ def test_check_passes_only_when_the_tables_are_current(source_dir, tmp_path, cap
 
 
 def test_a_source_with_another_digest_is_not_parsed(source_dir, tmp_path):
-    (source_dir / "part15" / "chapter_E.html").write_bytes(FIXTURE_PAGE + b" ")
+    (source_dir / "chtml" / "part15" / "chapter_E.html").write_bytes(
+        FIXTURE_PAGE + b" "
+    )
 
     with pytest.raises(sources.SourceDigestError, match="chapter_E.html"):
         generate.generate(FIXTURE_PIN, tmp_path / "tables", source_dir=source_dir)
@@ -1304,9 +1770,12 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
         "part15/chapter_E.html", "part06/chapter_A.html"
     )
     ps3_16_current = {
-        CURRENT_URL.replace("part15/chapter_E.html", path): page
+        CURRENT_URL.replace("chtml/part15/chapter_E.html", path): page
         for path, page in FIXTURE_PS3_16_PAGES.items()
     }
+    ps3_3_current = CURRENT_URL.replace(
+        "chtml/part15/chapter_E.html", "html/part03.html"
+    )
     requested = _fake_downloads(
         monkeypatch,
         {
@@ -1315,6 +1784,7 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
             chapter_6_current: FIXTURE_CHAPTER_6_PAGE,
             chapter_a_current: FIXTURE_CHAPTER_A_PAGE,
             **ps3_16_current,
+            ps3_3_current: FIXTURE_PS3_3_PAGE,
         },
     )
 
@@ -1332,11 +1802,21 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
         url
         for path in FIXTURE_PS3_16_PAGES
         for url in (
-            EDITION_URL.replace("part15/chapter_E.html", path),
-            CURRENT_URL.replace("part15/chapter_E.html", path),
+            EDITION_URL.replace("chtml/part15/chapter_E.html", path),
+            CURRENT_URL.replace("chtml/part15/chapter_E.html", path),
         )
+    ] + [
+        EDITION_URL.replace("chtml/part15/chapter_E.html", "html/part03.html"),
+        ps3_3_current,
     ]
-    for name in ("e1_1.json", "e1_1a.json", "e3_10_1.json", "data_dictionary.json") + (
+    for name in (
+        "e1_1.json",
+        "e1_1a.json",
+        "e3_10_1.json",
+        "data_dictionary.json",
+        "iod_modules.json",
+        "module_attributes.json",
+    ) + (
         tuple(spec.file for spec in uid_registry.UID_TABLES.values())
         + tuple(spec.file for spec in codes.CODE_TABLES.values())
     ):
@@ -1347,7 +1827,7 @@ def test_download_rejects_a_newer_current_edition(monkeypatch, tmp_path):
     _fake_downloads(monkeypatch, {CURRENT_URL: FIXTURE_PAGE + b"<!-- newer -->"})
 
     with pytest.raises(
-        sources.SourceDigestError, match="no download of part15/chapter_E.html"
+        sources.SourceDigestError, match="no download of chtml/part15/chapter_E.html"
     ):
         generate.generate(FIXTURE_PIN, tmp_path / "tables")
     assert not (tmp_path / "tables").exists()

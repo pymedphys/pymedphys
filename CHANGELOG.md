@@ -267,18 +267,21 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - **[Contributor facing only]** Coding agents have repository guidance. `AGENTS.md` gives every agent the development commands, architecture, conventions, and workflow rules, and points to the pull request rules in `CONTRIBUTING.md`. `CLAUDE.md` points Claude Code to it and adds how the `@claude` workflow runs and how to handle workflow files, which it stages in `claude_created_workflows_preview/` when a push lacks the `workflows` permission. Maintainers' personal preferences stay in their own agent settings, not in the repository. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071), [PR #2087](https://github.com/pymedphys/pymedphys/pull/2087)
 - **[Contributor facing only]** A development command,
   `pymedphys dev deid-tables`, generates Tables E.1-1, E.1-1a, and E.3.10-1
-  of DICOM PS3.15, Tables 6-1 and A-1 to A-4 of PS3.6, and Tables 8-1 and 8-2
-  and context groups CID 7050 and CID 7005 of PS3.16 as JSON from NEMA's
+  of DICOM PS3.15, Tables 6-1 and A-1 to A-4 of PS3.6, Tables 8-1 and 8-2
+  and context groups CID 7050 and CID 7005 of PS3.16, and the modules of the
+  CT Image, RT Dose, RT Structure Set, and RT Plan IODs with the attribute
+  tables of those modules and their macros from PS3.3, as JSON from NEMA's
   HTML publication of the pinned edition, 2026d, the first step towards the
   de-identification rule tables: the attribute confidentiality profile, its
   action codes, the safe private attributes, the data dictionary, the
   registries of UIDs, well-known frames of reference, and the UIDs of context
   groups and templates, the coding schemes and their UIDs, the codes that
-  record a de-identification method, and the purposes of reference for
-  contributing equipment. It downloads each source
+  record a de-identification method, the purposes of reference for
+  contributing equipment, and each attribute's Type in each module and
+  sequence of a supported IOD. It downloads each source
   page, or reads it from `--source-dir`, and parses it only after checking its
   SHA-256 digest against the pin. The parsers map columns by their header
-  text and reject unknown or missing columns, merged cells, empty or
+  text and reject unknown or missing columns, merged cells outside PS3.3, empty or
   otherwise inconsistent rows, a table with no rows, unrecognised tags,
   keywords, VRs, VMs, statuses, UIDs, UID types, parts, and coding scheme
   designators, code values and meanings that are too long for their VRs or
@@ -295,11 +298,14 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   `load_table_e1_1a`, `load_table_e3_10_1`, and `load_data_dictionary`),
   `pymedphys._dicom.deidentify.uid_registry` (`load_uid_values`,
   `load_frames_of_reference`, `load_context_group_uids`, and
-  `load_template_uids`), and `pymedphys._dicom.deidentify.codes`
+  `load_template_uids`), `pymedphys._dicom.deidentify.codes`
   (`load_coding_schemes`, `load_hl7v3_coding_schemes`, and
-  `load_context_group`) that
+  `load_context_group`), and `pymedphys._dicom.deidentify.iods`
+  (`load_iod_tables`) that
   check each row's fields, types, and values and reject a table whose rows no
-  longer match their recorded digest. `--check` exits with status 1 when the
+  longer match their recorded digest. PS3.3's tables are kept as published,
+  and its loader expands each IOD's modules, following every included macro,
+  into each attribute's Type at each place in the data set. `--check` exits with status 1 when the
   committed tables are missing or out of date.
   [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112)
 - **[Contributor facing only]** A private module,

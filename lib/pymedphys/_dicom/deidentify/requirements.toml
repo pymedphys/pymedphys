@@ -448,9 +448,19 @@ id = "MIDI-BP-03"
 text = '''
 Do not let de-identification compromise conformance with the standards that define the content or reduce functionality. DICOM output should still conform to its original IOD, with dummy values synthesised where needed and replacement values consistent across files within a defined scope, such as replaced UIDs that keep references intact. This covers optional attributes critical to functionality as well as required ones.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-003", "D-005", "D-008", "D-011"]
+decisions = ["D-001", "D-003", "D-005", "D-008", "D-011"]
+implementation = ["_dicom/deidentify/iods.py"]
+tests = [
+  "tests/dicom/test_deidentify_iods.py::test_the_first_supported_release_iods_are_generated",
+  "tests/dicom/test_deidentify_iods.py::test_an_attribute_can_have_a_different_type_in_each_module",
+  "tests/dicom/test_deidentify_iods.py::test_types_depend_on_the_enclosing_sequence",
+  "tests/dicom/test_deidentify_iods.py::test_macros_are_expanded_where_they_are_included",
+]
+note = '''
+The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value. Remaining: resolving compound actions and synthesising dummy values from these Types (M3), and validating output against its IOD (M4).
+'''
 
 [[requirement]]
 id = "MIDI-BP-04"

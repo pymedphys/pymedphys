@@ -1,0 +1,679 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.3 IOD Modules",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.3 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "html/part03.html",
+   "sha256": "6756c17c08913360c729b666277fb6eed6fda5d1d5b9fde427bbf27c6c1feec6"
+  }
+ ],
+ "content_sha256": "df3f59ec0ebf38a416d40ed8d1153a96ffd2a512ed129554212119312a75d813",
+ "rows": [
+  {
+   "label": "Table A.3-1",
+   "iod": "CT Image",
+   "modules": [
+    {
+     "information_entity": "Patient",
+     "module": "Patient",
+     "section": "C.7.1.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-1"
+    },
+    {
+     "information_entity": "Patient",
+     "module": "Clinical Trial Subject",
+     "section": "C.7.1.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-2b"
+    },
+    {
+     "information_entity": "Study",
+     "module": "General Study",
+     "section": "C.7.2.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-3"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Patient Study",
+     "section": "C.7.2.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4a"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Clinical Trial Study",
+     "section": "C.7.2.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4b"
+    },
+    {
+     "information_entity": "Series",
+     "module": "General Series",
+     "section": "C.7.3.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-5a"
+    },
+    {
+     "information_entity": "Series",
+     "module": "Clinical Trial Series",
+     "section": "C.7.3.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-5b"
+    },
+    {
+     "information_entity": "Series",
+     "module": "Single-Frame CT Series",
+     "section": "C.8.2.3",
+     "usage": "C",
+     "condition": "Required if the SOP Class UID of this instance is 1.2.840.10008.5.1.4.1.1.2.3 (CT Image Storage - For Processing). May be present otherwise.",
+     "table": "Table C.8.2.3-1"
+    },
+    {
+     "information_entity": "Frame of Reference",
+     "module": "Frame of Reference",
+     "section": "C.7.4.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-6"
+    },
+    {
+     "information_entity": "Frame of Reference",
+     "module": "Synchronization",
+     "section": "C.7.4.2",
+     "usage": "C",
+     "condition": "Required if time synchronization was applied.",
+     "table": "Table C.7-7"
+    },
+    {
+     "information_entity": "Equipment",
+     "module": "General Equipment",
+     "section": "C.7.5.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-8"
+    },
+    {
+     "information_entity": "Acquisition",
+     "module": "General Acquisition",
+     "section": "C.7.10.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7.10.1-1"
+    },
+    {
+     "information_entity": "Image",
+     "module": "General Image",
+     "section": "C.7.6.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-9"
+    },
+    {
+     "information_entity": "Image",
+     "module": "General Reference",
+     "section": "C.12.4",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.12-10"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Enhanced Patient Orientation",
+     "section": "C.7.6.30",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7.6.30-1"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Image Plane",
+     "section": "C.7.6.2",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-10"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Image Pixel",
+     "section": "C.7.6.3",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-11a"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Contrast/Bolus",
+     "section": "C.7.6.4",
+     "usage": "C",
+     "condition": "Required if contrast media was used in this image",
+     "table": "Table C.7-12"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Device",
+     "section": "C.7.6.12",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-18"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Specimen",
+     "section": "C.7.6.22",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7.6.22-1"
+    },
+    {
+     "information_entity": "Image",
+     "module": "CT Image",
+     "section": "C.8.2.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-3"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Multi-energy CT Image",
+     "section": "C.8.2.2",
+     "usage": "C",
+     "condition": "Required if Multi-energy CT Acquisition (0018,9361) is YES.",
+     "table": "Table C.8.2.2-1"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Overlay Plane",
+     "section": "C.9.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.9-2"
+    },
+    {
+     "information_entity": "Image",
+     "module": "VOI LUT",
+     "section": "C.11.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.11-2"
+    },
+    {
+     "information_entity": "Image",
+     "module": "SOP Common",
+     "section": "C.12.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.12-1"
+    },
+    {
+     "information_entity": "Image",
+     "module": "Common Instance Reference",
+     "section": "C.12.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.12-8"
+    }
+   ]
+  },
+  {
+   "label": "Table A.18.3-1",
+   "iod": "RT Dose",
+   "modules": [
+    {
+     "information_entity": "Patient",
+     "module": "Patient",
+     "section": "C.7.1.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-1"
+    },
+    {
+     "information_entity": "Patient",
+     "module": "Clinical Trial Subject",
+     "section": "C.7.1.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-2b"
+    },
+    {
+     "information_entity": "Study",
+     "module": "General Study",
+     "section": "C.7.2.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-3"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Patient Study",
+     "section": "C.7.2.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4a"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Clinical Trial Study",
+     "section": "C.7.2.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4b"
+    },
+    {
+     "information_entity": "Series",
+     "module": "RT Series",
+     "section": "C.8.8.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-37"
+    },
+    {
+     "information_entity": "Series",
+     "module": "Clinical Trial Series",
+     "section": "C.7.3.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-5b"
+    },
+    {
+     "information_entity": "Frame of Reference",
+     "module": "Frame of Reference",
+     "section": "C.7.4.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-6"
+    },
+    {
+     "information_entity": "Equipment",
+     "module": "General Equipment",
+     "section": "C.7.5.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-8"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "General Image",
+     "section": "C.7.6.1",
+     "usage": "C",
+     "condition": "Required if dose data contains grid-based doses.",
+     "table": "Table C.7-9"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "Image Plane",
+     "section": "C.7.6.2",
+     "usage": "C",
+     "condition": "Required if dose data contains grid-based doses.",
+     "table": "Table C.7-10"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "Image Pixel",
+     "section": "C.7.6.3",
+     "usage": "C",
+     "condition": "Required if dose data contains grid-based doses.",
+     "table": "Table C.7-11a"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "Multi-frame",
+     "section": "C.7.6.6",
+     "usage": "C",
+     "condition": "Required if dose data contains grid-based doses and pixel data is multi-frame data.",
+     "table": "Table C.7-14"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "RT Dose",
+     "section": "C.8.8.3",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-39"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "RT DVH",
+     "section": "C.8.8.4",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.8-40"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "SOP Common",
+     "section": "C.12.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.12-1"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "Common Instance Reference",
+     "section": "C.12.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.12-8"
+    },
+    {
+     "information_entity": "Dose",
+     "module": "Frame Extraction",
+     "section": "C.12.3",
+     "usage": "C",
+     "condition": "Required if the SOP Instance was created in response to a Frame-Level retrieve request",
+     "table": "Table C.12-9"
+    }
+   ]
+  },
+  {
+   "label": "Table A.19.3-1",
+   "iod": "RT Structure Set",
+   "modules": [
+    {
+     "information_entity": "Patient",
+     "module": "Patient",
+     "section": "C.7.1.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-1"
+    },
+    {
+     "information_entity": "Patient",
+     "module": "Clinical Trial Subject",
+     "section": "C.7.1.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-2b"
+    },
+    {
+     "information_entity": "Study",
+     "module": "General Study",
+     "section": "C.7.2.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-3"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Patient Study",
+     "section": "C.7.2.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4a"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Clinical Trial Study",
+     "section": "C.7.2.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4b"
+    },
+    {
+     "information_entity": "Series",
+     "module": "RT Series",
+     "section": "C.8.8.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-37"
+    },
+    {
+     "information_entity": "Series",
+     "module": "Clinical Trial Series",
+     "section": "C.7.3.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-5b"
+    },
+    {
+     "information_entity": "Equipment",
+     "module": "General Equipment",
+     "section": "C.7.5.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-8"
+    },
+    {
+     "information_entity": "Frame of Reference",
+     "module": "Frame of Reference",
+     "section": "C.7.4.1",
+     "usage": "U",
+     "condition": "See note 2.",
+     "table": "Table C.7-6"
+    },
+    {
+     "information_entity": "Structure Set",
+     "module": "Structure Set",
+     "section": "C.8.8.5",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-41"
+    },
+    {
+     "information_entity": "Structure Set",
+     "module": "ROI Contour",
+     "section": "C.8.8.6",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-42"
+    },
+    {
+     "information_entity": "Structure Set",
+     "module": "RT ROI Observations",
+     "section": "C.8.8.8",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-44"
+    },
+    {
+     "information_entity": "Structure Set",
+     "module": "Approval",
+     "section": "C.8.8.16",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.8-52"
+    },
+    {
+     "information_entity": "Structure Set",
+     "module": "General Reference",
+     "section": "C.12.4",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.12-10"
+    },
+    {
+     "information_entity": "Structure Set",
+     "module": "SOP Common",
+     "section": "C.12.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.12-1"
+    },
+    {
+     "information_entity": "Structure Set",
+     "module": "Common Instance Reference",
+     "section": "C.12.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.12-8"
+    }
+   ]
+  },
+  {
+   "label": "Table A.20.3-1",
+   "iod": "RT Plan",
+   "modules": [
+    {
+     "information_entity": "Patient",
+     "module": "Patient",
+     "section": "C.7.1.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-1"
+    },
+    {
+     "information_entity": "Patient",
+     "module": "Clinical Trial Subject",
+     "section": "C.7.1.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-2b"
+    },
+    {
+     "information_entity": "Study",
+     "module": "General Study",
+     "section": "C.7.2.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-3"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Patient Study",
+     "section": "C.7.2.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4a"
+    },
+    {
+     "information_entity": "Study",
+     "module": "Clinical Trial Study",
+     "section": "C.7.2.3",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-4b"
+    },
+    {
+     "information_entity": "Series",
+     "module": "RT Series",
+     "section": "C.8.8.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-37"
+    },
+    {
+     "information_entity": "Series",
+     "module": "Clinical Trial Series",
+     "section": "C.7.3.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-5b"
+    },
+    {
+     "information_entity": "Frame of Reference",
+     "module": "Frame of Reference",
+     "section": "C.7.4.1",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.7-6"
+    },
+    {
+     "information_entity": "Equipment",
+     "module": "General Equipment",
+     "section": "C.7.5.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.7-8"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "RT General Plan",
+     "section": "C.8.8.9",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.8-45"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "RT Prescription",
+     "section": "C.8.8.10",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.8-46"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "RT Tolerance Tables",
+     "section": "C.8.8.11",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.8-47"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "RT Patient Setup",
+     "section": "C.8.8.12",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.8-48"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "RT Fraction Scheme",
+     "section": "C.8.8.13",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.8-49"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "RT Beams",
+     "section": "C.8.8.14",
+     "usage": "C",
+     "condition": "Required if RT Fraction Scheme Module exists and Number of Beams (300A,0080) is greater than zero for one or more fraction groups. Shall not be present, if RT Brachy Application Setups Module is present. May be present otherwise.",
+     "table": "Table C.8-50"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "RT Brachy Application Setups",
+     "section": "C.8.8.15",
+     "usage": "C",
+     "condition": "Required if RT Fraction Scheme Module exists and Number of Brachy Application Setups (300A,00A0) is greater than zero for one or more fraction groups. Shall not be present, if RT Beams Module is present. May be present otherwise.",
+     "table": "Table C.8-51"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "Approval",
+     "section": "C.8.8.16",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.8-52"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "General Reference",
+     "section": "C.12.4",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.12-10"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "SOP Common",
+     "section": "C.12.1",
+     "usage": "M",
+     "condition": "",
+     "table": "Table C.12-1"
+    },
+    {
+     "information_entity": "Plan",
+     "module": "Common Instance Reference",
+     "section": "C.12.2",
+     "usage": "U",
+     "condition": "",
+     "table": "Table C.12-8"
+    }
+   ]
+  }
+ ]
+}
