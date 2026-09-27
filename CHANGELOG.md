@@ -32,6 +32,10 @@ explains affected cases, retrospective checks and plotting. The
 documents the independent evidence and remaining limitations.
 [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 
+### Gamma with single-slice evaluation doses
+
+`pymedphys.gamma` and `gamma_dicom` gave wrong, origin-dependent results when an evaluation axis had a single value: a single-slice evaluation dose such as a single-frame RT Dose read by `pymedphys.dicom.zyx_and_dose_from_dataset` (shape `(1, rows, columns)`), or any evaluation grid that is a plane, line or point. The search met such a zero-thickness grid only where rounding happened to land on it. For the same comparison, gamma could be 3.0 with the plane at z = 0 mm and 0.3 at z = 300 mm, where 0.3 is correct. **Recalculate gamma and pass rates for single-slice evaluation doses** computed with `interp_algo="scipy"`; the default interpolator rejected these grids. Gamma now searches within the plane, line or point and adds each reference point's perpendicular distance from it, so separated-plane and volume-to-plane comparisons also give correct values. Results for evaluation grids without single-value axes are unchanged. [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126)
+
 ### Faster gamma calculations
 
 Gamma avoids repeated coordinate copies and interpolator setup. The
@@ -111,6 +115,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- `pymedphys.gamma` no longer prints a `--- Logging error ---` traceback on every call when INFO logging is enabled. Its dose-threshold message formatted the threshold arrays as single numbers, which NumPy 2 rejects. `ram_available=None` now means the default budget; it raised `TypeError` when a reference point lay outside the evaluation grid. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
 - The experimental iView/iCOM alignment utility again makes iCOM gantry and collimator angles continuous where they cross ±180° when used with pandas 3. It adjusted the angles in place in arrays that pandas 3 makes read-only, so it raised `ValueError: assignment destination is read-only`; it now works on a copy and leaves its input unchanged. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
 - `pymedphys.electronfactors.plot_model` and the experimental Electrons app work with pandas 3. They called `Series.ravel`, which pandas 3 removed, so with pandas 3 they failed when given DataFrame columns, as the app does. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
 - `pymedphys dicom listen` now stores objects received with the Explicit VR Big Endian transfer syntax, which it accepts by default. Previously writing the file raised an error, so the sender received a failure status. The listener also no longer logs three pydicom deprecation warnings for every object it receives. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
@@ -214,6 +219,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- Gamma logs to its module logger, `pymedphys._gamma.implementation.shell`, instead of the root logger. The speed-up and effect-of-noise gamma how-to notebooks use `pymedphys.gamma_pass_rate`. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
 - **[Contributor facing only]** CI's documentation build is the only documentation check on pull requests, and its `docs-html` artefact holds the built pages. Read the Docs builds a hosted preview only of a pull request labelled `rtd-preview`, so routine pull requests no longer take its build slots, and it still builds and publishes `main`. Automation rules in the Read the Docs dashboard make this choice; the workflow guide lists them. The documentation guide explains how to download `docs-html` and how to run the `Documentation` workflow on a branch. [PR #2121](https://github.com/pymedphys/pymedphys/pull/2121)
 - The private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. The MetersetMap app and the delivery tests now use `pymedphys.gamma_pass_rate` instead of their own pass-rate calculations. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - **[Contributor facing only]** CI now tests the declared minimum versions of
@@ -392,6 +398,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### (Potentially) breaking changes
 
+- `pymedphys.gamma` results change for evaluation grids with a single-value axis, such as single-slice evaluation doses; see "Gamma with single-slice evaluation doses" above. The earlier values depended on the coordinate origin and could be several times too high. The default `interp_algo="pymedphys"` now accepts such grids instead of raising `ValueError`. [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126)
 - `pymedphys.gamma` now raises `ValueError` for inputs that gave silently wrong or missing results. NaN or infinite values in either dose grid: a NaN in the reference made every result NaN, and one in the evaluation made results NaN near it. A `max_gamma` of 1 or less, which could report failing points as passing. A `global_normalisation` that is not finite and positive, including the default for an all-zero reference. Local gamma where an analysed reference point has zero dose, which was reported as NaN and so excluded; raise `lower_percent_dose_cutoff` above zero to exclude such points explicitly. [PR #2119](https://github.com/pymedphys/pymedphys/pull/2119)
 - PyMedPhys now requires Python 3.11.4 or later; v0.41.0 supported Python 3.10 to 3.12. Python 3.10 reaches end of life in October 2026, and NumPy 2.3 and SciPy 1.16 already require Python 3.11. Python 3.11.4 is the first 3.11 release with the tarfile extraction filters that Pinnacle TAR import now uses. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - `pymedphys.data_path`, `pymedphys.zip_data_paths`, and
@@ -424,7 +431,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
 - The wheel and sdist no longer include the built HTML documentation, which v0.41.0 bundled under `pymedphys/docs/_build/html` and which made up most of its 7.5 MB wheel. The documentation remains at <https://docs.pymedphys.com/en/latest/>. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
 - RT Dose conversion returns ascending patient `(z, y, x)` axes with the dose reordered to match. Its shape or index order can differ from `pixel_array`; index and plot dose/gamma with the returned axes. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
-- Gamma and interpolation reject invalid axis structures, including when interpolation uses `skip_checks=True`. Compare single-plane doses in 2D; the singleton-axis search limitation remains tracked in [#2070](https://github.com/pymedphys/pymedphys/issues/2070). [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- Gamma and interpolation reject invalid axis structures, including when interpolation uses `skip_checks=True`. Evaluation grids with a single-value axis are searched directly; see [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126). [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 - The private `xyz_axes_from_dataset` option for IEC patient coordinates (`'patient'`, `'IEC patient'` or `'p'`) now raises `NotImplementedError`, because its previous output was incorrect. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 - For decubitus grids, the private `get_dose_grid_structure_mask` returns
   `(slices, rows, columns)` instead of `(slices, columns, rows)`, and

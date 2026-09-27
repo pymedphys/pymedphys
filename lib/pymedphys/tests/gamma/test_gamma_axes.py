@@ -113,11 +113,15 @@ def test_uneven_evaluation_axis_falls_back_to_scipy():
     np.testing.assert_allclose(result, expected, equal_nan=True)
 
 
-def test_single_point_evaluation_axis_is_rejected():
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
+def test_singleton_evaluation_axis_works_with_either_interpolator():
     axes, dose = _grid()
+    evaluation = ((axes[0], np.array([0.0])), dose[:, 6:7])
 
-    with pytest.raises(ValueError, match="at least two"):
-        pymedphys.gamma(axes, dose, (axes[0], np.array([0.0])), dose[:, 6:7], 2, 2)
+    expected = pymedphys.gamma(axes, dose, *evaluation, 2, 2, interp_algo="scipy")
+    result = pymedphys.gamma(axes, dose, *evaluation, 2, 2)
+
+    np.testing.assert_allclose(result, expected, rtol=0, atol=1e-12)
 
 
 @pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
@@ -147,12 +151,8 @@ def test_scipy_preserves_singleton_spatial_dimensions():
     np.testing.assert_array_equal(result, np.zeros_like(dose))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Three-dimensional shells do not reliably sample a singleton plane",
-)
-def test_scipy_planar_gamma_is_translation_invariant():
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+def test_planar_gamma_is_translation_invariant(interp_algo):
     axis = np.arange(-2.0, 3.0)
     y, _ = np.meshgrid(axis, axis, indexing="ij")
     results = []
@@ -165,7 +165,7 @@ def test_scipy_planar_gamma_is_translation_invariant():
                 (1 + 0.1 * (y - 0.9))[None, :, :],
                 3,
                 3,
-                interp_algo="scipy",
+                interp_algo=interp_algo,
             ).item()
         )
     # Independently minimise (y - 0.9)^2 / 0.3^2 + y^2 / 3^2.
