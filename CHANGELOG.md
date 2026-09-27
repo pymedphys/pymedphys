@@ -177,26 +177,27 @@ This project adheres to
 - **[Contributor facing only]** Coding agents have repository guidance. `AGENTS.md` gives every agent the development commands, architecture, conventions, and workflow rules, and points to the pull request rules in `CONTRIBUTING.md`. `CLAUDE.md` points Claude Code to it and adds how the `@claude` workflow runs and how to handle workflow files, which it stages in `claude_created_workflows_preview/` when a push lacks the `workflows` permission. Maintainers' personal preferences stay in their own agent settings, not in the repository. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071), [PR #2087](https://github.com/pymedphys/pymedphys/pull/2087)
 - **[Contributor facing only]** A development command,
   `pymedphys dev deid-tables`, generates Tables E.1-1, E.1-1a, and E.3.10-1
-  of DICOM PS3.15 as JSON from NEMA's HTML publication of the pinned edition,
-  2026d, the first step towards the de-identification rule tables: the
-  attribute confidentiality profile, its action codes, and the safe private
-  attributes. It downloads each source page, or reads it from
-  `--source-dir`, and parses it only after checking its SHA-256 digest
-  against the pin. The parsers map columns by their header text and reject
-  unknown or missing columns, merged cells, empty or otherwise inconsistent
-  rows, a table with no rows, unrecognised tags, VRs, and VMs, actions not
-  defined in Table E.1-1a, and repeated tags. Table E.1-1a must define
-  exactly the action codes PyMedPhys implements, so a new edition that adds
-  or removes one fails until the engine handles it. Each generated file
-  records the edition, its source page's digest, a digest of its rows, and
-  the copyright attribution "DICOM PS3.15 2026d, © NEMA", and the same input
-  always produces the same bytes. The generated tables ship in the package,
-  in `pymedphys/_dicom/deidentify/_standard/`, with loaders in
+  of DICOM PS3.15 and Table 6-1 of PS3.6 as JSON from NEMA's HTML publication
+  of the pinned edition, 2026d, the first step towards the de-identification
+  rule tables: the attribute confidentiality profile, its action codes, the
+  safe private attributes, and the data dictionary. It downloads each source
+  page, or reads it from `--source-dir`, and parses it only after checking its
+  SHA-256 digest against the pin. The parsers map columns by their header
+  text and reject unknown or missing columns, merged cells, empty or
+  otherwise inconsistent rows, a table with no rows, unrecognised tags,
+  keywords, VRs, VMs, and statuses, actions not defined in Table E.1-1a, and
+  repeated tags or keywords. Table E.1-1a must define exactly the action
+  codes PyMedPhys implements, so a new edition that adds or removes one fails
+  until the engine handles it. Each generated file records the edition, its
+  source page's digest, a digest of its rows, and the copyright attribution
+  of its part, such as "DICOM PS3.15 2026d, © NEMA", and the same input always
+  produces the same bytes. The generated tables ship in the package, in
+  `pymedphys/_dicom/deidentify/_standard/`, with loaders in
   `pymedphys._dicom.deidentify.standard` (`load_table_e1_1`,
-  `load_table_e1_1a`, and `load_table_e3_10_1`) that check each row's fields,
-  types, and values and reject a table whose rows no longer match their
-  recorded digest. `--check` exits with status 1 when the committed tables
-  are missing or out of date.
+  `load_table_e1_1a`, `load_table_e3_10_1`, and `load_data_dictionary`) that
+  check each row's fields, types, and values and reject a table whose rows no
+  longer match their recorded digest. `--check` exits with status 1 when the
+  committed tables are missing or out of date.
   [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100)
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
