@@ -277,6 +277,12 @@ def read_key_file(path: str | os.PathLike) -> DeidKey:
         key = DeidKey(base64.b64decode(document["key"], validate=True))
     except (TypeError, ValueError):
         raise DeidKeyError("the file does not hold a 32-byte key in base64") from None
-    if not hmac.compare_digest(str(document["key_id"]), key.key_id):
+    key_id = document["key_id"]
+    # compare_digest raises TypeError for non-ASCII text, so check first.
+    if (
+        not isinstance(key_id, str)
+        or not key_id.isascii()
+        or not hmac.compare_digest(key_id, key.key_id)
+    ):
         raise DeidKeyError("the recorded key identifier does not match the key")
     return key
