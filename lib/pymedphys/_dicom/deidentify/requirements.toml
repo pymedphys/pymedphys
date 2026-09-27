@@ -1,0 +1,607 @@
+# The requirements register for DICOM de-identification, curated by hand.
+# The "Requirements register" section of
+# docs/contrib/info/deidentification-design.md describes its fields.
+# PS3.15 text is reproduced verbatim from the edition below.
+
+schema = "pymedphys-deid-requirements/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.15 2026d, © NEMA"
+midi_report = "Clunie DA et al., Report of the Medical Image De-Identification (MIDI) Task Group: Best Practices and Recommendations, 7 February 2025, arXiv:2303.10473"
+
+[[requirement]]
+id = "PS3.15-E.1.1-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_daa1954b-9af4-4bad-aa35-41690a97fc7f"
+text = '''
+Each Attribute to be protected shall then either be removed from the Data Set, or have its value replaced by a different "replacement value" that does not allow identification of the patient.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-001", "D-003", "D-005", "D-011"]
+
+[[requirement]]
+id = "PS3.15-E.1.1-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_08a36063-841b-4499-9a4e-8501cc83acae"
+text = '''
+Each Attribute specified to be retained shall be retained. At the discretion of the de-identifier, Attributes may be added to the Data Set to be protected.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-011"]
+
+[[requirement]]
+id = "PS3.15-E.1.1-03"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_1c3d937e-b42b-4cd7-80db-092f09622605"
+text = '''
+If used, all instances of the Encrypted Attributes Data Set shall be encoded with a DICOM Transfer Syntax, encrypted, and stored in the Data Set to be protected as an Item of the Encrypted Attributes Sequence (0400,0500). The encryption shall be done using RSA [RFC 2313] for the key transport of the content-encryption keys. A de-identifier conforming to this security Profile may use either AES or Triple-DES for content-encryption. The AES key length may be any length allowed by the RFCs. The Triple-DES key length is 168 bits as defined by [ANSI X9.52]. Encoding shall be performed according to the specifications for RSA Key Transport and Triple DES Content Encryption in [RFC 3370] and for AES Content Encryption in [RFC 3565].
+'''
+status = "out-of-scope"
+decisions = ["D-013"]
+note = '''
+The engine does not write the Encrypted Attributes Sequence (D-013).
+'''
+
+[[requirement]]
+id = "PS3.15-E.1.1-04"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_bf62b269-f6b0-4598-ab70-36dec5b54ea5"
+text = '''
+No requirements on the size of the asymmetric key pairs used for RSA key transport are defined in this confidentiality scheme. Implementations claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall always protect (e.g., encrypt and replace) the SOP Instance UID (0008,0018) Attribute as well as all references to other SOP Instances, whether contained in the main Data Set or embedded in an Item of a Sequence of Items, that could potentially be used by unauthorized entities to identify the patient.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-003"]
+
+[[requirement]]
+id = "PS3.15-E.1.1-05"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_7a8255cd-d599-4fca-9414-99cca6ed47a7"
+text = '''
+The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to the Data Set with a value of YES. Additionally, one or more codes from CID 7050 “De-identification Method” corresponding to the Profile and Options used shall be added to De-identification Method Code Sequence (0012,0064), and/or a text string describing the method used shall be inserted in or added to De-identification Method (0012,0063).
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-012"]
+
+[[requirement]]
+id = "PS3.15-E.1.1-06"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_41258edc-da3a-43bb-ae04-3734051a876b"
+text = '''
+If the Data Set being de-identified is being stored within a DICOM File, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.10. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-002"]
+
+[[requirement]]
+id = "PS3.15-E.1.1-07"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_3f2a2e5f-92da-442a-847e-232d77a14d9d"
+text = '''
+If the Data Set being de-identified is being communicated by DICOM Real-Time Video, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.22. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information.
+'''
+status = "not-applicable"
+note = '''
+The engine reads and writes DICOM files, not DICOM Real-Time Video.
+'''
+
+[[requirement]]
+id = "PS3.15-E.1.1-08"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_04d7f07b-6ab7-4580-9294-c8bb7cbfec9e"
+text = '''
+All Data Elements with a Group Number of 0004 shall be removed from any SOP Instance or DICOM File other than a DICOMDIR File. If a DICOMDIR File is required, it shall either be created from the de-identified DICOM Files it references, or an existing DICOMDIR File shall be de-identifed according to this Profile. Any existing non-de-identified DICOMDIR File shall be removed from the File-set.
+'''
+status = "planned"
+milestone = "M4"
+note = '''
+Group 0004 is removed with the rest of the file container. A DICOMDIR is only ever regenerated from the de-identified files, never passed through.
+'''
+
+[[requirement]]
+id = "PS3.15-E.1.1-09"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_3980cc0a-c52c-4abd-bb2d-5598fedad2ea"
+text = '''
+The Attributes listed in Table E.1-1 for each Profile or Option are contained in Standard IODs, or may be contained in Standard Extended IODs. An implementation claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall protect or retain all instances of the Attributes listed in Table E.1-1, whether contained in the top level Data Set or embedded in an Item of a Sequence of Items. The action codes in Table E.1-1a are used in Table E.1-1.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-001", "D-011"]
+
+[[requirement]]
+id = "PS3.15-E.1.2-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_5b59ff63-97b3-463c-b620-baaf9c1d98c8"
+text = '''
+The application shall decrypt, using its recipient key, one instance of the Encrypted Content (0400,0520) Attribute within the Encrypted Attributes Sequence (0400,0500) and decode the resulting block of bytes into a DICOM Data Set using the Transfer Syntax specified in the Encrypted Content Transfer Syntax UID (0400,0510). Re-identifiers claiming conformance to this Profile shall be capable of decrypting the Encrypted Content using either AES or Triple-DES in all possible key lengths specified in this Profile.
+'''
+status = "not-applicable"
+decisions = ["D-013"]
+note = '''
+PyMedPhys does not claim conformance as a re-identifier, and its output carries no Encrypted Attributes Sequence (D-013).
+'''
+
+[[requirement]]
+id = "PS3.15-E.1.2-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_f6c7c02e-f2ab-455f-a868-449791d534b6"
+text = '''
+The application shall move all Attributes contained in the single item of the Modified Attributes Sequence (0400,0550) of the decoded Data Set into the top level Data Set, replacing "dummy value" Attributes that may be present in the top level Data Set.
+'''
+status = "not-applicable"
+decisions = ["D-013"]
+note = '''
+PyMedPhys does not claim conformance as a re-identifier, and its output carries no Encrypted Attributes Sequence (D-013).
+'''
+
+[[requirement]]
+id = "PS3.15-E.1.2-03"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_f9cea275-9cd9-4112-bd77-630521aaecf7"
+text = '''
+The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to the Data Set with a value of NO and De-identification Method (0012,0063) and De-identification Method Code Sequence (0012,0064) shall be removed.
+'''
+status = "not-applicable"
+decisions = ["D-013"]
+note = '''
+PyMedPhys does not claim conformance as a re-identifier, and its output carries no Encrypted Attributes Sequence (D-013).
+'''
+
+[[requirement]]
+id = "PS3.15-E.1.3-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html#para_6d2a4608-8e1e-4783-9841-ff86b8e54bf1"
+text = '''
+The Conformance Statement of an application that claims conformance to the Basic Application Level Confidentiality Profile shall describe:
+
+- which Attributes are removed during protection;
+- which Attributes are replaced by dummy values and how the dummy values are generated;
+- which Attributes are included in Encrypted Attributes Data Sets for later re-identification, and any pertinent details about how keys are selected for performing the encryption;
+- the scope across which the application is able to ensure referential integrity of replacement values for references such as SOP Instance UID, Frame of Reference UID, etc. if multiple SOP instances are protected (e.g., across multiple Studies, consistent replacement if the same Study processed more than once, etc.);
+- which Attributes and Attribute Values are inserted during protection of a SOP instance;
+- which Transfer Syntaxes are supported for encoding/decoding of the Encrypted Attributes Data Set;
+- which Options are supported;
+- any additional restrictions (e. g. key sizes for public keys).
+'''
+status = "planned"
+milestone = "M6"
+decisions = ["D-003", "D-004", "D-005", "D-013"]
+note = '''
+The generated conformance statement covers each item, including the key scope within which replacements stay consistent.
+'''
+
+[[requirement]]
+id = "PS3.15-E.2-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.2.html#para_5279f5b8-f623-45dc-85f9-a64d7842b064"
+text = '''
+The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "REMOVED" if none of the Retain Longitudinal Temporal Information Options is applied.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-012"]
+
+[[requirement]]
+id = "PS3.15-E.3.1-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.html#para_10d107c2-b55c-4b9f-8817-f317d1e756c4"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
+'''
+status = "out-of-scope"
+decisions = ["D-015"]
+note = '''
+The Clean Pixel Data Option is not supported.
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.1-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.html#para_caede39a-46e2-4eec-9a38-1a37dbd70926"
+text = '''
+The Attribute Burned In Annotation (0028,0301) shall be added to the Data Set with a Value of "NO".
+'''
+status = "out-of-scope"
+decisions = ["D-015"]
+note = '''
+Applies only with the Clean Pixel Data Option. Burned In Annotation is kept as received and never set to NO (D-015).
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.2-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.2.html#para_e022456d-4042-4795-88e5-80e9fc6aa308"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition.
+'''
+status = "out-of-scope"
+decisions = ["D-015"]
+note = '''
+The Clean Recognizable Visual Features Option is not supported.
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.2-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.2.html#para_94fec0c3-65fa-465b-a269-59d262066345"
+text = '''
+The Attribute Recognizable Visual Features (0028,0302) shall be added to the Data Set with a Value of "NO".
+'''
+status = "out-of-scope"
+decisions = ["D-015"]
+note = '''
+Applies only with the Clean Recognizable Visual Features Option. Recognizable Visual Features is kept as received and never set to NO (D-015).
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.3-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.3.html#para_628bbc9f-6ba4-4316-bfcd-fdc7bc2d3076"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in graphics, text annotations or overlays corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
+'''
+status = "out-of-scope"
+note = '''
+The Clean Graphics Option is not supported.
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.4-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.4.html#para_004bdf87-7f40-48e2-b5f4-eab3e21d7103"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in SR Content Items or Acquisition Context or Specimen Preparation Sequence Items corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed.
+'''
+status = "out-of-scope"
+decisions = ["D-010"]
+note = '''
+The Clean Structured Content Option is later work. Until then, Structured Reports are sequestered (D-010).
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.5-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.5.html#para_eb16943f-79ba-4765-bedf-94a66b6744ac"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-009"]
+note = '''
+The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4).
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.5-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.5.html#para_aa4daf86-3e83-4fb1-bb77-75ca192fa98b"
+text = '''
+The manner of cleaning shall be described in the Conformance Statement.
+'''
+status = "planned"
+milestone = "M6"
+decisions = ["D-009"]
+
+[[requirement]]
+id = "PS3.15-E.3.6-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.6.html#para_389c7767-f03f-4716-970d-72a2766aabfa"
+text = '''
+When the Retain Longitudinal Temporal Information With Full Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes shall be retained, as described in Table E.1-1. The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "UNMODIFIED".
+'''
+status = "out-of-scope"
+note = '''
+The Retain Longitudinal Temporal Information with Full Dates Option is not supported.
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.6-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.6.html#para_b71081d0-569f-4426-aa01-b0765ce1ab32"
+text = '''
+When the Retain Longitudinal Temporal Information With Modified Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes listed in Table E.1-1 shall be modified. The modification of the dates and times shall be performed in a manner that:
+
+- aggregates or transforms dates so as to reduce the possibility of matching for re-identification
+- preserves the gross longitudinal temporal relationships between images obtained on different dates to the extent necessary for the application
+- preserves the fine temporal relationships between images and real-world events to the extent necessary for analysis of the images for the application
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-006", "D-007"]
+
+[[requirement]]
+id = "PS3.15-E.3.6-03"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.6.html#para_eb42e924-3cfc-4d91-aa01-0f153b41b88c"
+text = '''
+The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "MODIFIED".
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-012"]
+
+[[requirement]]
+id = "PS3.15-E.3.6-04"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.6.html#para_cc45149e-ac5e-4b26-bb5f-b8af861cc54d"
+text = '''
+The manner of date modification shall be described in the Conformance Statement.
+'''
+status = "planned"
+milestone = "M6"
+decisions = ["D-006", "D-007"]
+
+[[requirement]]
+id = "PS3.15-E.3.7-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.7.html#para_2c0a8a67-3b2e-4aad-9153-8491ced6d071"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-011"]
+
+[[requirement]]
+id = "PS3.15-E.3.7-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.7.html#para_324c4b43-2572-4a19-917c-cab57003b769"
+text = '''
+The manner of cleaning of retained Attributes shall be described in the Conformance Statement.
+'''
+status = "planned"
+milestone = "M6"
+
+[[requirement]]
+id = "PS3.15-E.3.8-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.8.html#para_b25bc4b3-fc71-4f14-b464-79b8a6591b62"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the device in the Attributes shall be retained, as described in Table E.1-1.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-003", "D-007"]
+note = '''
+`tps-import` also selects Modified Dates, which conflicts with this Option for device dates, so its output claims neither (D-007).
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.9-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.9.html#para_d44e046d-c417-4283-9556-695a778ca4f5"
+text = '''
+When this Option is specified in addition to an Application Level Confidentiality Profile, UIDs shall be retained, as described in Table E.1-1.
+'''
+status = "out-of-scope"
+note = '''
+The Retain UIDs Option is not supported.
+'''
+
+[[requirement]]
+id = "PS3.15-E.3.10-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.10.html#para_bb1aaf5b-ab3d-4b05-8226-c7282cf98dc9"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, Private Attributes that are known by the de-identifier to be safe from identity leakage shall be retained, together with the Private Creator IDs that are required to fully define the retained Private Attributes; all other Private Attributes shall be removed or processed in the element-specific manner recommended by Deidentification Action (0008,0307), if present within Private Data Element Characteristics Sequence (0008,0300) (see PS3.3 Section C.12.1).
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-001"]
+
+[[requirement]]
+id = "PS3.15-E.3.10-02"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.10.html#para_0c838fa8-6930-4559-a492-67c204358848"
+text = '''
+When this Option is not specified, all Private Attributes shall be removed, as described in Table E.1-1.
+'''
+status = "planned"
+milestone = "M3"
+
+[[requirement]]
+id = "PS3.15-E.3.10-03"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.10.html#para_d9eb6fdb-b5c9-44d8-91f9-e0fe71983689"
+text = '''
+When an entire Sequence (SQ VR) Private Attribute is not known to always only contain safe content, whether that content consists of Standard Attributes or Private Attributes or a combination of both, then when the Retain Safe Private Option is used, any such Sequence Attribute shall be parsed in its entirety and each of the nested Attributes handled on its own merits, rather than removing the Sequence in its entirety without further consideration. Reviewing the content may be a sensible practice to apply even to nominally known safe Private Sequence Attributes.
+'''
+status = "planned"
+milestone = "M3"
+
+[[requirement]]
+id = "PS3.15-E.3.10-04"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.10.html#para_74598302-fb52-4831-9a57-fa49e4698746"
+text = '''
+The safe Private Attributes that are retained shall be described in the Conformance Statement.
+'''
+status = "planned"
+milestone = "M6"
+
+[[requirement]]
+id = "PS3.15-E.3.11-01"
+url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3.11.html#para_00ca9c5a-ce04-4906-ae1f-920d2e0c2c40"
+text = '''
+When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the institution in the Attributes shall be retained, as described in Table E.1-1.
+'''
+status = "out-of-scope"
+note = '''
+The Retain Institution Identity Option is not supported.
+'''
+
+# MIDI Task Group report, section 1.6, summarised in PyMedPhys's words.
+
+[[requirement]]
+id = "MIDI-BP-01"
+text = '''
+For public sharing, remove or replace all known direct identifiers and relevant indirect identifiers and sensitive information wherever they occur: collection descriptions, supporting data, structured and unstructured text, pixel data, and overlays. Justify retaining any indirect identifier with a collection-specific expert statistical analysis of residual risk against a predetermined threshold, which considers other public information about the subjects and holds only at the time it was done.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-001", "D-017"]
+note = '''
+The Basic Profile's actions remove or replace identifiers, and `public-release` retains indirect identifiers only after its statistical assessment.
+'''
+
+[[requirement]]
+id = "MIDI-BP-02"
+text = '''
+Define re-use utility for the widest range of conceivable uses, including those beyond the releasing entity's own, and quantify utility where possible when assessing residual risk.
+'''
+status = "not-applicable"
+note = '''
+A decision for whoever releases the data. The engine's Options and presets are the means it offers.
+'''
+
+[[requirement]]
+id = "MIDI-BP-03"
+text = '''
+Do not let de-identification compromise conformance with the standards that define the content or reduce functionality. DICOM output should still conform to its original IOD, with dummy values synthesised where needed and replacement values consistent across files within a defined scope, such as replaced UIDs that keep references intact. This covers optional attributes critical to functionality as well as required ones.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-003", "D-005", "D-008", "D-011"]
+
+[[requirement]]
+id = "MIDI-BP-04"
+text = '''
+Preserve as much information about image acquisition as possible, including machine identity, characteristics, and settings, unless it is shown to raise residual risk above the predetermined threshold.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-007"]
+note = '''
+`tps-import` retains device identity. `public-release` omits it, because device serial numbers and machine names can identify an institution and, with dates, individual treatments.
+'''
+
+[[requirement]]
+id = "MIDI-BP-05"
+text = '''
+Remove or replace the identities of other persons, departments, institutions, and organisations, except where they are needed for utility and a residual risk assessment supports keeping them.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-001"]
+note = '''
+The Retain Institution Identity Option is not supported.
+'''
+
+[[requirement]]
+id = "MIDI-BP-06"
+text = '''
+Use the release of PS3.15 current at the time of de-identification as the reference for which data elements to de-identify, augmented by knowledge of other unsafe attributes, including private ones. Categorise retained elements by the PS3.15 Options, and apply the approach to any DICOM object, whether or not its IOD is recognised.
+'''
+status = "partial"
+milestone = "M4"
+decisions = ["D-001", "D-010"]
+implementation = [
+  "_dev/deid_tables/annex_e.py",
+  "_dev/deid_tables/generate.py",
+  "_dicom/deidentify/standard.py",
+]
+tests = [
+  "tests/dev/test_deid_tables.py::test_generate_writes_table_e1_1_with_its_provenance",
+  "tests/dev/test_deid_tables.py::test_a_source_with_another_digest_is_not_parsed",
+  "tests/dev/test_deid_tables.py::test_check_passes_only_when_the_tables_are_current",
+  "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
+  "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
+]
+note = '''
+The rule tables are generated from the pinned edition. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+'''
+
+[[requirement]]
+id = "MIDI-BP-07"
+text = '''
+If any patient characteristic or other indirect identifier is retained, perform a collection-specific expert statistical analysis of residual risk, whether elements are kept by an allow-list or removed by a deny-list, and consider characteristics that can be derived from the pixel data.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-017"]
+note = '''
+`tps-import` retains patient characteristics for non-clinical databases, not for public sharing.
+'''
+
+[[requirement]]
+id = "MIDI-BP-08"
+text = '''
+For non-DICOM images, apply the principles of PS3.15 E.1 where no better reference exists; for clinical data elements, apply the PhUSE De-Identification Standard for CDISC SDTM.
+'''
+status = "not-applicable"
+note = '''
+The engine processes DICOM only.
+'''
+
+[[requirement]]
+id = "MIDI-BP-09"
+text = '''
+De-identify all data linked to the images by a common key, including accompanying spreadsheets and publications, and include them in the risk analysis, together with linked public data about the same subjects that the de-identifier knows of.
+'''
+status = "out-of-scope"
+decisions = ["D-017"]
+note = '''
+Pseudonymising accompanying spreadsheets with the same key is later work. The statistical assessment already accounts for earlier linked releases (D-017).
+'''
+
+[[requirement]]
+id = "MIDI-BP-10"
+text = '''
+Assess, for every image type, the risk from burned-in text, objects bearing text, and other identifying features in the pixel data. Where the risk exceeds the threshold, scan and redact, with human review, or discard the image. Do not limit checks to a subset of image types chosen from other data elements.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-015", "D-017"]
+
+[[requirement]]
+id = "MIDI-BP-11"
+text = '''
+Remove or replace all unstructured text, whether in data elements, pixel data, or overlays, or, where it is needed for utility, scan it for identifiers and sensitive information, manually or automatically with human review.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-009", "D-017"]
+
+[[requirement]]
+id = "MIDI-BP-12"
+text = '''
+Replace absolute dates and times while preserving relative temporal relationships across studies, within a useful tolerance, for short-term analyses such as dynamic contrast and nuclide decay and long-term ones such as therapy assessment.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-006", "D-007"]
+
+[[requirement]]
+id = "MIDI-BP-13"
+text = '''
+Retain private data elements only after evaluating their risk against a reliable source of elements known to be safe, such as PS3.15 E.3.10 or manufacturers' documentation; otherwise remove them selectively or entirely.
+'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-001"]
+
+[[requirement]]
+id = "MIDI-BP-14"
+text = '''
+Consider identifying information embedded in compressed bitstreams, such as JPEG APP1 (EXIF) and APP11 (JUMBF) segments or ICC profiles. Either decompress losslessly compressed data and discard the embedded elements or, where the bitstream is kept, scan it and remove or replace the elements at risk.
+'''
+status = "planned"
+milestone = "M3"
+note = '''
+Metadata in compressed pixel data is removed without recompression.
+'''
+
+[[requirement]]
+id = "MIDI-BP-15"
+text = '''
+Quantify the re-identification risk from potentially reconstructable facial information in head and neck cross-sectional images with a collection-specific expert statistical analysis. Above the threshold, remove or modify the facial features, or do not share the images publicly.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-015", "D-017"]
+
+[[requirement]]
+id = "MIDI-BP-16"
+text = '''
+Redact faces in photographic images so as to defeat recognition by people and software, with the residual risk quantified; above the threshold, do not share the images publicly.
+'''
+status = "out-of-scope"
+decisions = ["D-010"]
+note = '''
+Photographic images are outside the supported objects and are sequestered (D-010).
+'''
+
+[[requirement]]
+id = "MIDI-BP-17"
+text = '''
+Use human quality control to confirm that de-identification both removed what it should and preserved utility. Guide the proportion and type of records inspected by a documented risk assessment that sets the threshold of residual risk before and after quality control, taking account of what is removed or replaced and how reliably. Cover structured and unstructured text, pixel data, overlays, and metadata embedded in compressed bitstreams.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-016", "D-017"]
+note = '''
+D-016 provides the confidential QC pack, and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
+'''
+
+[[requirement]]
+id = "MIDI-BP-18"
+text = '''
+Document the de-identification process in detail, including the release of PS3.15 and the Options used, and publish the documentation, or a reference to it, with the collection.
+'''
+status = "planned"
+milestone = "M4"
+decisions = ["D-011", "D-012"]
+note = '''
+Each run writes a release report and a conformance statement that name the edition and Options.
+'''
