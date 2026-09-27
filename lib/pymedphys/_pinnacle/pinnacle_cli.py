@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
@@ -47,6 +48,31 @@ import tempfile
 from .pinnacle import PinnacleExport
 
 
+def extract_tar(archive_path, destination):
+    """Extract a Pinnacle TAR archive into ``destination``.
+
+    Members whose names contain ``:`` are skipped, because Windows cannot
+    create them. Every other member passes through tarfile's ``data`` filter
+    on every supported Python, so a member that would be extracted outside
+    ``destination``, such as ``../name`` or a link to an absolute path,
+    stops the extraction. A leading ``/`` is stripped, so absolute names are
+    extracted inside ``destination``.
+    """
+    with tarfile.open(archive_path) as archive:
+        for member in archive.getmembers():
+            if ":" in member.name:
+                continue
+            try:
+                archive.extract(member, path=destination, filter="data")
+            except tarfile.FilterError:
+                # Leave the member name out: Pinnacle paths contain patient
+                # numbers.
+                raise ValueError(
+                    "The TAR archive contains a member that would be extracted "
+                    "outside the extraction directory, so it was not extracted."
+                ) from None
+
+
 def export_cli(args):
     """
     expose a cli to allow export of Pinnacle raw data to DICOM objects
@@ -89,12 +115,7 @@ def export_cli(args):
 
         logger.info("Extracting TAR archive to: %s", tmp_dir)
 
-        t = tarfile.open(input_path)
-
-        for m in t.getmembers():
-            # Need to filter out files containing ":" for Windows
-            if ":" not in m.name:
-                t.extract(m, path=tmp_dir)
+        extract_tar(input_path, tmp_dir)
 
         input_path = tmp_dir
 

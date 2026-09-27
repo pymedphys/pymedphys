@@ -1,11 +1,11 @@
 version = 1
 revision = 3
-requires-python = ">=3.11"
+requires-python = ">=3.11.4"
 resolution-markers = [
-    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform != 'emscripten'",
+    "python_full_version >= '3.15'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten'",
     "python_full_version < '3.12'",
 ]
 
@@ -2434,10 +2434,10 @@ name = "numpy"
 version = "2.5.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform != 'emscripten'",
+    "python_full_version >= '3.15'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/13/01/11703282db468b85f6f7b8c7f22d058de5970d5c7e60a3a8aaa313c3de36/numpy-2.5.3.tar.gz", hash = "sha256:df2d5874ff183595a4ba404edd04f6bd9b5505c1d7708573f6a6c17489a67563", size = 20791231, upload-time = "2026-09-06T16:27:47.073Z" }
 wheels = [
@@ -3135,6 +3135,7 @@ ai = [
     { name = "trio" },
 ]
 all = [
+    { name = "altair", marker = "python_full_version >= '3.14'" },
     { name = "anthropic" },
     { name = "anyio" },
     { name = "astroid" },
@@ -3197,7 +3198,7 @@ all = [
     { name = "types-requests" },
     { name = "types-tabulate" },
     { name = "types-toml" },
-    { name = "watchdog" },
+    { name = "watchdog", marker = "python_full_version < '3.14' or sys_platform != 'darwin'" },
     { name = "xmltodict" },
 ]
 cli = [
@@ -3288,6 +3289,7 @@ tests = [
     { name = "tqdm" },
 ]
 user = [
+    { name = "altair", marker = "python_full_version >= '3.14'" },
     { name = "anyio" },
     { name = "attrs" },
     { name = "dash" },
@@ -3321,7 +3323,7 @@ user = [
     { name = "toml" },
     { name = "tqdm" },
     { name = "trio-asyncio" },
-    { name = "watchdog" },
+    { name = "watchdog", marker = "python_full_version < '3.14' or sys_platform != 'darwin'" },
     { name = "xmltodict" },
 ]
 
@@ -3335,6 +3337,8 @@ pre-commit = [
 
 [package.metadata]
 requires-dist = [
+    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'all'", specifier = ">=6" },
+    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'user'", specifier = ">=6" },
     { name = "anthropic", marker = "extra == 'ai'" },
     { name = "anthropic", marker = "extra == 'all'" },
     { name = "anthropic", marker = "extra == 'tests'" },
@@ -3499,8 +3503,8 @@ requires-dist = [
     { name = "types-toml", marker = "extra == 'all'" },
     { name = "types-toml", marker = "extra == 'dev'" },
     { name = "typing-extensions" },
-    { name = "watchdog", marker = "extra == 'all'" },
-    { name = "watchdog", marker = "extra == 'user'" },
+    { name = "watchdog", marker = "(python_full_version < '3.14' and extra == 'all') or (sys_platform != 'darwin' and extra == 'all')" },
+    { name = "watchdog", marker = "(python_full_version < '3.14' and extra == 'user') or (sys_platform != 'darwin' and extra == 'user')" },
     { name = "xmltodict", marker = "extra == 'all'" },
     { name = "xmltodict", marker = "extra == 'user'" },
 ]

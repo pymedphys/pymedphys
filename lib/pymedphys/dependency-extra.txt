@@ -4,6 +4,7 @@ ai = [
     'trio',
 ]
 all = [
+    'altair',
     'anthropic',
     'anyio',
     'astroid',
@@ -154,6 +155,7 @@ tests = [
     'tqdm',
 ]
 user = [
+    'altair',
     'anyio',
     'attrs',
     'dash',
