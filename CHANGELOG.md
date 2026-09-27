@@ -51,7 +51,9 @@ This project adheres to
   (a `UserWarning`); `pymedphys experimental dicom pseudonymise` prints the
   notice on standard error; and the DICOM Pseudonymisation app shows it as a
   banner. This is not a deprecation: neither legacy tool will be deprecated
-  until a replacement is released. See
+  until a replacement is released. Until then, both are changed only to stop
+  them disclosing identifying information or to prevent harm to data, and
+  their other defects are documented rather than fixed. See
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
   [PR #2065](https://github.com/pymedphys/pymedphys/pull/2065)
 - **[Security]** `pymedphys.dicom.anonymise` now warns about its limitations.
