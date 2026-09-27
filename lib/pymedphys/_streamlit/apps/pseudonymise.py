@@ -26,6 +26,7 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import streamlit as st
 
 from pymedphys._dicom.anonymise import anonymise_dataset
+from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys._experimental.pseudonymisation import (
@@ -119,7 +120,10 @@ def _zip_pseudo_fifty_mbytes(
     strategy = pseudonymisation_api.pseudonymisation_dispatch
     zip_stream = zip_bytes_io
 
-    with ZipFile(zip_stream, mode="w", compression=ZIP_DEFLATED) as myzip:
+    with (
+        redacted_pydicom_diagnostics(),
+        ZipFile(zip_stream, mode="w", compression=ZIP_DEFLATED) as myzip,
+    ):
         for uploaded_file_buffer in file_buffer_list:
             file_count += 1
 
@@ -145,7 +149,7 @@ def _zip_pseudo_fifty_mbytes(
                 in_memory_temp_file = io.BytesIO()
                 anon_filename = pathlib.Path(temp_anon_filepath).name
                 pydicom.dcmwrite(in_memory_temp_file, ds_input)
-            except (KeyError, OSError, ValueError) as e_info:
+            except Exception as e_info:  # pylint: disable = broad-exception-caught
                 # Neither the file name nor the error message is logged: both
                 # can contain identifying information.
                 logging.warning(
