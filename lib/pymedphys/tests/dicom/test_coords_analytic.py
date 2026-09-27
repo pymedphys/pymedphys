@@ -340,9 +340,10 @@ def _assert_equality_matches_voxel_positions(reference, changed):
         actual = coords.coords_in_datasets_are_equal([reference, changed])
     assert actual is bool(maximum_distance <= 0.1)
     assert bool(caught) is bool(0.01 < maximum_distance <= 0.1)
+    geometry = coords._DoseGridGeometry  # pylint: disable = protected-access
     np.testing.assert_allclose(
-        coords._DoseGridGeometry.from_dataset(reference).maximum_voxel_displacement(
-            coords._DoseGridGeometry.from_dataset(changed)
+        geometry.from_dataset(reference).maximum_voxel_displacement(
+            geometry.from_dataset(changed)
         ),
         maximum_distance,
         rtol=0,
