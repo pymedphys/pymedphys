@@ -187,6 +187,8 @@ def test_retirement_follows_the_name_and_part_or_the_comment():
         ("Table A-1", "name", "", "row 1 has a name"),
         ("Table A-1", "keyword", "Verification SOP", "row 1 has a keyword"),
         ("Table A-1", "uid_type", "SOP class", "row 1 has a UID type"),
+        ("Table A-1", "uid_type", [], "row 1 has a UID type"),
+        ("Table A-1", "uid_type", {}, "row 1 has a UID type"),
         ("Table A-1", "part", None, "row 1 has a part"),
         ("Table A-1", "part", "PS3.4 (2001)", "row 1 is marked retired"),
         ("Table A-1", "keyword", "", "row 1 has no keyword but is not retired"),
@@ -196,6 +198,8 @@ def test_retirement_follows_the_name_and_part_or_the_comment():
         ("Table A-3", "name", "", "row 1 has an identifier without a name"),
         ("Table A-3", "comment", "RET", "row 1 has a comment"),
         ("Table A-4", "uid_type", "SOP Class", "row 1 has a UID type"),
+        ("Table A-4", "uid_type", [], "row 1 has a UID type"),
+        ("Table A-4", "uid_type", {}, "row 1 has a UID type"),
     ],
 )
 def test_a_malformed_uid_table_row_is_rejected(tmp_path, label, field, value, message):

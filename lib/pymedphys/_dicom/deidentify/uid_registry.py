@@ -72,8 +72,8 @@ TEMPLATE_UID_TYPES = frozenset(
 )
 _RETIREMENT_YEAR = r"\([0-9]{4}[a-e]?\)"
 # The Part column of PS3.6 Tables A-1 and A-4: the part or standard that
-# defines the UID, followed by the edition that retired it, or that edition
-# alone.
+# defines the UID, followed by the last edition in which a retired UID
+# appeared, or that edition alone.
 REGISTRY_PART_PATTERN = re.compile(
     rf"(?:PS3\.[0-9]+|DICOS|DICONDE ASTM E[0-9]+)(?: {_RETIREMENT_YEAR})?"
     rf"|{_RETIREMENT_YEAR}"
@@ -99,7 +99,7 @@ class RegisteredUID:
         One of :data:`UID_TYPES`, such as ``"SOP Class"``.
     part : str
         The part or standard that defines the UID, such as ``"PS3.4"`` or
-        ``"DICOS"``, followed by the edition that retired it, as in
+        ``"DICOS"``, followed by the last edition before retirement, as in
         ``"PS3.5 (2011)"``, or that edition alone.
     """
 
@@ -145,8 +145,8 @@ class ContextGroupUID:
         The context group's name, or ``""`` where there is no identifier.
         Names can repeat.
     comment : str
-        ``""``, ``"Retired"``, or ``"RET"`` with the edition that retired
-        the group, as in ``"RET (2013)"``.
+        ``""``, ``"Retired"``, or ``"RET"`` followed by an edition in
+        parentheses, as in ``"RET (2013)"``.
     """
 
     uid: str
@@ -219,6 +219,12 @@ def _matches(pattern: re.Pattern[str], value: object) -> bool:
     return isinstance(value, str) and bool(pattern.fullmatch(value))
 
 
+def _is_one_of(value: object, options: frozenset[str]) -> bool:
+    # Checking the type first keeps an unhashable value, such as a JSON array,
+    # from raising TypeError.
+    return isinstance(value, str) and value in options
+
+
 def _retired_in_part(part: str) -> bool:
     return part.endswith(")")
 
@@ -239,12 +245,13 @@ _UID_VALUE_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
         "starting with a letter",
     ),
     (
-        lambda row: row["uid_type"] in UID_TYPES,
+        lambda row: _is_one_of(row["uid_type"], UID_TYPES),
         "has a UID type not listed in UID_TYPES",
     ),
     (
         lambda row: _matches(REGISTRY_PART_PATTERN, row["part"]),
-        "has a part that is not a part or standard, a retirement edition, or both",
+        "has a part that is not a part or standard, an edition in parentheses, "
+        "or both",
     ),
     (
         lambda row: row["name"].endswith("(Retired)") == _retired_in_part(row["part"]),
@@ -290,7 +297,7 @@ _TEMPLATE_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
     _UID,
     _NAME,
     (
-        lambda row: row["uid_type"] in TEMPLATE_UID_TYPES,
+        lambda row: _is_one_of(row["uid_type"], TEMPLATE_UID_TYPES),
         "has a UID type not listed in TEMPLATE_UID_TYPES",
     ),
     (
