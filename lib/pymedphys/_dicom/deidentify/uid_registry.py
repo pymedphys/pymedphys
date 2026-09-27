@@ -240,7 +240,7 @@ _UID_VALUE_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
         "starting with a letter",
     ),
     (
-        lambda row: row["uid_type"] in UID_TYPES,
+        lambda row: isinstance(row["uid_type"], str) and row["uid_type"] in UID_TYPES,
         "has a UID type not listed in UID_TYPES",
     ),
     (
