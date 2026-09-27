@@ -183,6 +183,15 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   the voxels at transposed row and column indices, which can lie anywhere in
   the slice. Supine and prone results are unchanged.
   [PR #2110](https://github.com/pymedphys/pymedphys/pull/2110)
+- The private `get_dose_grid_structure_mask` in `pymedphys._dicom.dose`
+  applies each contour to the dose slice at its own z. Previously a structure
+  whose contours were not listed in ascending z raised `ValueError`, even when
+  every contour lay on a dose slice. `find_dose_within_structure` and
+  `create_dvh` also accept single-slice RT Dose files, which previously raised
+  `IndexError`. Two contours on one slice, or contours beyond the dose grid, now
+  raise `ValueError` with the check's own message instead of a NumPy broadcast
+  error or `IndexError`.
+  [PR #2111](https://github.com/pymedphys/pymedphys/pull/2111)
 
 ### Dependency changes
 
@@ -227,13 +236,15 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   pydicom upgrade discarded every data cache. MyPy runs in the Pyright job,
   and the wheel build in the generated-files job. `pymedphys dev tests -n
   auto` runs tests in parallel with `pytest-xdist`, now in the `tests` and
-  `all` extras, and resolves caller-relative test paths in every worker.
+  `all` extras, and resolves caller-relative test paths in every worker. The
+  DICOM networking tests each listen on a port the operating system reports as
+  free, so parallel workers no longer collide on one fixed port.
   ReadTheDocs installs the documentation environment with `uv sync` from
   `uv.lock`, as CI does, instead of with pip from `requirements-docs.txt`,
   which `pymedphys dev propagate` no longer generates, and it cancels
   pull-request previews when every changed path is one the documentation
   never reads, such as CI configuration and tests.
-  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
+  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099), [PR #2115](https://github.com/pymedphys/pymedphys/pull/2115)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
   templates), and from `paulking` a second copy of the Profiler

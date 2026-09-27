@@ -42,6 +42,23 @@ STORAGE_ORDER = {
     "FFDR": ((0, 2, 1), (-1, -1, -1)),
 }
 
+# One patient-space rectangle (x_min, x_max, y_min, y_max) per slice of the
+# physical grid, with edges halfway between voxel centres, followed by the
+# (y, x) indices of the voxels it contains. Each slice selects different
+# voxels, so applying a contour to the wrong slice changes the mask.
+SLICE_BOXES = (
+    ((98.5, 104.5, -212.0, -210.0), (slice(1, 2), slice(1, 3))),
+    ((101.5, 107.5, -212.0, -206.0), (slice(1, 4), slice(2, 4))),
+    ((95.5, 98.5, -214.0, -208.0), (slice(0, 3), slice(0, 1))),
+)
+
+# The order in which a ContourSequence lists the contours of each slice.
+CONTOUR_ORDERS = {
+    "ascending": (0, 1, 2),
+    "descending": (2, 1, 0),
+    "shuffled": (1, 2, 0),
+}
+
 
 def _physical_grid():
     axes = (
@@ -83,6 +100,23 @@ def _encode_grid(orientation, axes, pixels, reverse_slices=False):
         ),
         slice_offsets=(raw_axes[0] - raw_axes[0][0]) * signs[0],
         pixel_values=raw,
+    )
+
+
+def _box_contour(z, box):
+    x_min, x_max, y_min, y_max = box
+    corners = ((x_min, y_min), (x_max, y_min), (x_max, y_max), (x_min, y_max))
+    return {"ContourData": [value for x, y in corners for value in (x, y, z)]}
+
+
+def _box_structure(contours):
+    return create.dicom_dataset_from_dict(
+        {
+            "StructureSetROISequence": [{"ROINumber": 1, "ROIName": "box"}],
+            "ROIContourSequence": [
+                {"ReferencedROINumber": 1, "ContourSequence": contours}
+            ],
+        }
     )
 
 
@@ -220,6 +254,99 @@ def test_structure_mask_matches_raw_dose(orientation, square, reverse_slices):
         np.sort(dose.find_dose_within_structure("box", structure, dataset)),
         np.sort(pixels[selected.astype(bool)] * DOSE_GRID_SCALING),
     )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("orientation", sorted(STORAGE_ORDER))
+@pytest.mark.parametrize("reverse_slices", [False, True])
+@pytest.mark.parametrize("contour_order", sorted(CONTOUR_ORDERS))
+def test_structure_mask_applies_each_contour_to_its_own_slice(
+    orientation, reverse_slices, contour_order
+):
+    axes, pixels = _physical_grid()
+    dataset = _encode_grid(orientation, axes, pixels, reverse_slices)
+    structure = _box_structure(
+        [
+            _box_contour(axes[0][k], SLICE_BOXES[k][0])
+            for k in CONTOUR_ORDERS[contour_order]
+        ]
+    )
+    selected = np.zeros_like(pixels)
+    for k, (_, (rows, columns)) in enumerate(SLICE_BOXES):
+        selected[k, rows, columns] = 1
+    expected = _encode_grid(
+        orientation, axes, selected, reverse_slices
+    ).pixel_array.astype(bool)
+
+    actual = dose.get_dose_grid_structure_mask("box", structure, dataset)
+
+    np.testing.assert_array_equal(actual, expected)
+    np.testing.assert_array_equal(
+        np.sort(dose.find_dose_within_structure("box", structure, dataset)),
+        np.sort(pixels[selected.astype(bool)] * DOSE_GRID_SCALING),
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("orientation", sorted(STORAGE_ORDER))
+def test_structure_mask_and_dose_on_a_single_slice(orientation):
+    axes, pixels = _physical_grid()
+    axes = (axes[0][1:2], *axes[1:])
+    pixels = pixels[1:2]
+    box, (rows, columns) = SLICE_BOXES[1]
+    dataset = _encode_grid(orientation, axes, pixels)
+    # pydicom drops the slice dimension of a single-slice pixel array.
+    assert dataset.pixel_array.ndim == 2
+    structure = _box_structure([_box_contour(axes[0][0], box)])
+    selected = np.zeros_like(pixels)
+    selected[0, rows, columns] = 1
+    expected = _encode_grid(orientation, axes, selected).pixel_array.astype(bool)
+
+    actual = dose.get_dose_grid_structure_mask("box", structure, dataset)
+
+    np.testing.assert_array_equal(actual, expected[np.newaxis])
+    np.testing.assert_array_equal(
+        np.sort(dose.find_dose_within_structure("box", structure, dataset)),
+        np.sort(pixels[selected.astype(bool)] * DOSE_GRID_SCALING),
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("orientation", sorted(STORAGE_ORDER))
+@pytest.mark.parametrize("reverse_slices", [False, True])
+@pytest.mark.parametrize(
+    "contour_z, message",
+    [
+        ((313.5, 311.0, 313.5), "one contour per slice"),
+        ((316.0, 311.0), "no gaps"),
+        ((311.0, 312.0), "no gaps"),
+        ((308.5, 311.0), "no gaps"),
+        ((316.0, 318.5), "no gaps"),
+    ],
+    ids=["two on one slice", "gap", "between slices", "below grid", "above grid"],
+)
+def test_structure_mask_rejects_contours_off_consecutive_slices(
+    orientation, reverse_slices, contour_z, message
+):
+    # The physical grid's slices are at z = 311, 313.5 and 316 mm.
+    axes, pixels = _physical_grid()
+    dataset = _encode_grid(orientation, axes, pixels, reverse_slices)
+    structure = _box_structure([_box_contour(z, SLICE_BOXES[0][0]) for z in contour_z])
+
+    with pytest.raises(ValueError, match=message):
+        dose.get_dose_grid_structure_mask("box", structure, dataset)
+
+
+@pytest.mark.pydicom
+def test_structure_mask_rejects_non_planar_contour():
+    axes, pixels = _physical_grid()
+    dataset = _encode_grid("HFS", axes, pixels)
+    contour = _box_contour(axes[0][0], SLICE_BOXES[0][0])
+    contour["ContourData"][-1] = axes[0][1]
+    structure = _box_structure([contour])
+
+    with pytest.raises(ValueError, match="one z value per contour"):
+        dose.get_dose_grid_structure_mask("box", structure, dataset)
 
 
 @pytest.mark.pydicom
