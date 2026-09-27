@@ -18,7 +18,11 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pytest
 
-from pymedphys._experimental.streamlit.utilities.iview import _angles
+pytest.importorskip("streamlit")
+
+# The iView utilities use Streamlit at import time, so this import must come
+# after the skip guard.
+from pymedphys._experimental.streamlit.utilities.iview import _angles  # noqa: E402
 
 # A continuous 4°/s rotation sampled at 4 Hz, as iCOM reports it: the sign
 # flips where the angle passes 180°.
