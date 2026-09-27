@@ -147,18 +147,6 @@ is retained so historical tests can be replayed.
   [#2070](https://github.com/pymedphys/pymedphys/issues/2070). Narrow evaluation
   grids can also be missed by discrete shells. The four existing strict
   expected-failure tests remain; geometry invariance does not solve these.
-- Two **pre-existing private decubitus helpers remain incorrect**:
-  `get_dose_grid_structure_mask` returns patient `(z, y, x)` dimensions while
-  `find_dose_within_structure` applies the mask to raw `(slice, row, column)`
-  dose, and `DicomDose.coords` similarly assumes raw rows are y and columns
-  are x. A raw shape `(3, 5, 4)` can receive a mask shaped `(3, 4, 5)`; square
-  grids can conceal the shape mismatch while selecting the wrong values.
-  Both were reproduced with the original implementation as well as the PR.
-  Sixteen additional strict expected-failure cases cover the four decubitus
-  orientations on square and rectangular grids for these two helpers.
-  They require a separate fix or an explicit restriction before claiming
-  general decubitus support for those helpers. The public
-  `zyx_and_dose_from_dataset` and `dicom_dose_interpolate` paths do not call them.
 
 ## Reproducing the committed checks
 

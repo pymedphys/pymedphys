@@ -25,8 +25,8 @@ from . import orientation
 from .compat import ensure_transfer_syntax
 from .coords import (
     _DoseGridGeometry,
+    coords_from_xyz_axes,
     coords_in_datasets_are_equal,
-    xyz_axes_from_dataset,
 )
 from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
@@ -259,6 +259,13 @@ def get_dose_grid_structure_mask(
         An RT Dose DICOM object from which the grid mask coordinates are
         determined.
 
+    Returns
+    -------
+    mask : numpy.ndarray of bool
+        Indexed ``mask[slice, row, column]`` like the dose dataset's pixel
+        array in every supported orientation, including decubitus grids,
+        whose rows run along x.
+
     Raises
     ------
     ValueError
@@ -266,10 +273,16 @@ def get_dose_grid_structure_mask(
         align with the structure planes.
 
     """
-    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dose_dataset)
+    geometry = _DoseGridGeometry.from_dataset(dose_dataset)
+    x_dose, y_dose, z_dose = geometry.dicom_axes()
 
-    xx, yy = np.meshgrid(x_dose, y_dose)
-    points = np.swapaxes(np.vstack([xx.ravel(), yy.ravel()]), 0, 1)
+    # Supported orientations are transverse, so x and y vary only within a
+    # slice. The first slice gives the patient x and y of each (row, column).
+    xx, yy, _ = coords_from_xyz_axes(
+        (x_dose, y_dose, z_dose[:1]), geometry.xyz_to_pixel_dimensions
+    )[:, 0]
+    rows, columns = xx.shape
+    points = np.column_stack((xx.ravel(), yy.ravel()))
 
     x_structure, y_structure, z_structure = pull_structure(
         structure_name, structure_dataset
@@ -300,10 +313,10 @@ def get_dose_grid_structure_mask(
                 "axis, are aligned are supported."
             )
 
-    mask_yxz = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
+    mask = np.zeros((len(z_dose), rows, columns), dtype=bool)
 
     for structure_index, z_val in enumerate(structure_z_values):
-        dose_index = int(np.where(z_dose == z_val)[0])
+        dose_index = int(np.flatnonzero(z_dose == z_val)[0])
 
         if z_structure[structure_index][0] != z_dose[dose_index]:
             raise ValueError("Structure and dose indices do not align")
@@ -319,14 +332,11 @@ def get_dose_grid_structure_mask(
         # there may be multiple contours on the one slice. That's not
         # going to be used at the moment however, as that case is not
         # yet supported in the logic above.
-        mask_yxz[:, :, dose_index] = mask_yxz[:, :, dose_index] | (
-            structure_polygon.contains_points(points).reshape(len(y_dose), len(x_dose))
+        mask[dose_index] = mask[dose_index] | (
+            structure_polygon.contains_points(points).reshape(rows, columns)
         )
 
-    mask_xyz = np.swapaxes(mask_yxz, 0, 1)
-    mask_zyx = np.swapaxes(mask_xyz, 0, 2)
-
-    return mask_zyx
+    return mask
 
 
 def find_dose_within_structure(structure_name, structure_dataset, dose_dataset):

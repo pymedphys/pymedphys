@@ -71,3 +71,23 @@ def test_coords_in_datasets_are_equal():
     ds2.ImageOrientationPatient = [1.0, 0, 0, 0, 1, 0]
     ds2.GridFrameOffsetVector = [0, -1, -2]
     assert not coords.coords_in_datasets_are_equal([ds1, ds2])
+
+
+def test_coords_from_xyz_axes_follows_pixel_dimension_mapping():
+    x, y, z = np.array([1.0, 4.0]), np.array([-2.0, -1.0, 0.0]), np.array([7.0])
+
+    # By default columns run along x and rows along y.
+    k, i, j = np.indices((1, 3, 2))
+    np.testing.assert_array_equal(
+        coords.coords_from_xyz_axes((x, y, z)), np.array((x[j], y[i], z[k]))
+    )
+
+    # Decubitus RT Dose rows run along x and columns along y.
+    k, i, j = np.indices((1, 2, 3))
+    np.testing.assert_array_equal(
+        coords.coords_from_xyz_axes((x, y, z), (1, 2, 0)),
+        np.array((x[i], y[j], z[k])),
+    )
+
+    with pytest.raises(ValueError, match="permutation"):
+        coords.coords_from_xyz_axes((x, y, z), (1, 1, 0))

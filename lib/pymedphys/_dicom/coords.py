@@ -23,7 +23,10 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom  # pylint: disable=unused-import
 
 
-def coords_from_xyz_axes(xyz_axes: Sequence["np.ndarray"]) -> "np.ndarray":
+def coords_from_xyz_axes(
+    xyz_axes: Sequence["np.ndarray"],
+    xyz_to_pixel_dimensions: Tuple[int, int, int] = (2, 1, 0),
+) -> "np.ndarray":
     """Converts a set of x, y and z axes of a regular grid (e.g. a DICOM
     pixel array) into an array of three grids whose voxels correspond to
     and contain the `x`, `y`, and `z` coordinates of the original grid.
@@ -33,18 +36,39 @@ def coords_from_xyz_axes(xyz_axes: Sequence["np.ndarray"]) -> "np.ndarray":
     xyz_axes : tuple
         A tuple containing three `numpy.ndarray`s corresponding to the `x`,
         `y` and `z` axes of a given 3D grid - usually a DICOM dataset's
-        pixel array.
+        pixel array. Each axis is in the order of the grid dimension along
+        which it varies.
+    xyz_to_pixel_dimensions : tuple of int, optional
+        The grid dimension along which each of `x`, `y` and `z` varies,
+        where 0, 1 and 2 are the slices, rows and columns of a DICOM pixel
+        array. The default, ``(2, 1, 0)``, is for columns along `x` and rows
+        along `y`. Decubitus RT Dose grids have rows along `x` and columns
+        along `y`, ``(1, 2, 0)``.
 
     Returns
     -------
     coords : ndarray
-        An array containing three grids consisting of the `x`, 'y` and
+        An array containing three grids consisting of the `x`, `y` and
         `z` coordinates of the corresponding grid (e.g. DICOM dataset's
-        pixel array) from which the original axes were extracted.
+        pixel array) from which the original axes were extracted. It is
+        indexed ``coords[xyz, slice, row, column]``.
     """
-    ZZ, YY, XX = np.meshgrid(xyz_axes[2], xyz_axes[1], xyz_axes[0], indexing="ij")
+    if sorted(xyz_to_pixel_dimensions) != [0, 1, 2]:
+        raise ValueError(
+            "xyz_to_pixel_dimensions must be a permutation of (0, 1, 2), "
+            f"got {tuple(xyz_to_pixel_dimensions)}"
+        )
 
-    coords = np.array((XX, YY, ZZ), dtype=np.float64)
+    # The inverse permutation orders the axes as (slice, row, column).
+    pixel_order_axes = [
+        xyz_axes[index] for index in np.argsort(xyz_to_pixel_dimensions)
+    ]
+    grids = np.meshgrid(*pixel_order_axes, indexing="ij")
+
+    coords = np.array(
+        [grids[pixel_dimension] for pixel_dimension in xyz_to_pixel_dimensions],
+        dtype=np.float64,
+    )
     return coords
 
 

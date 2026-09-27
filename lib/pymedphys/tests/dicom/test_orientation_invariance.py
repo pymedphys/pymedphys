@@ -182,19 +182,15 @@ def test_dicom_interpolation_uses_physical_coordinates(orientation):
 
 
 @pytest.mark.pydicom
-@pytest.mark.parametrize("orientation", ["FFDL", "FFDR", "HFDL", "HFDR"])
+@pytest.mark.parametrize("orientation", sorted(STORAGE_ORDER))
 @pytest.mark.parametrize("square", [False, True])
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Pre-existing decubitus structure masks do not follow raw pixel dimensions",
-)
-def test_decubitus_structure_mask_matches_raw_dose(orientation, square):
+@pytest.mark.parametrize("reverse_slices", [False, True])
+def test_structure_mask_matches_raw_dose(orientation, square, reverse_slices):
     axes, pixels = _physical_grid()
     if square:
         axes = (*axes[:2], axes[2][:-1])
         pixels = pixels[..., :-1]
-    dataset = _encode_grid(orientation, axes, pixels)
+    dataset = _encode_grid(orientation, axes, pixels, reverse_slices)
     contours = [
         {"ContourData": [99, -212, z, 105, -212, z, 105, -210, z, 99, -210, z]}
         for z in axes[0]
@@ -211,27 +207,31 @@ def test_decubitus_structure_mask_matches_raw_dose(orientation, square):
     # transpose differs even when rows and columns have the same length.
     selected = np.zeros_like(pixels)
     selected[:, 1, 1:3] = 1
-    expected = _encode_grid(orientation, axes, selected).pixel_array.astype(bool)
+    expected = _encode_grid(
+        orientation, axes, selected, reverse_slices
+    ).pixel_array.astype(bool)
 
     actual = dose.get_dose_grid_structure_mask("box", structure, dataset)
 
     np.testing.assert_array_equal(actual, expected)
+    # The mask selects the same physical voxels, and so the same dose values,
+    # whatever the storage order.
+    np.testing.assert_array_equal(
+        np.sort(dose.find_dose_within_structure("box", structure, dataset)),
+        np.sort(pixels[selected.astype(bool)] * DOSE_GRID_SCALING),
+    )
 
 
 @pytest.mark.pydicom
-@pytest.mark.parametrize("orientation", ["FFDL", "FFDR", "HFDL", "HFDR"])
+@pytest.mark.parametrize("orientation", sorted(STORAGE_ORDER))
 @pytest.mark.parametrize("square", [False, True])
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Pre-existing DicomDose.coords does not follow decubitus pixel dimensions",
-)
-def test_decubitus_collection_coordinates_match_raw_dose(orientation, square):
+@pytest.mark.parametrize("reverse_slices", [False, True])
+def test_collection_coordinates_match_raw_dose(orientation, square, reverse_slices):
     axes, pixels = _physical_grid()
     if square:
         axes = (*axes[:2], axes[2][:-1])
         pixels = pixels[..., :-1]
-    dataset = _encode_grid(orientation, axes, pixels)
+    dataset = _encode_grid(orientation, axes, pixels, reverse_slices)
     # Use the independent matrix oracle to verify each raw voxel's position.
     expected = voxel_positions(dataset).transpose(3, 0, 1, 2)
 
