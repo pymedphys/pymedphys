@@ -3,7 +3,7 @@
 PyMedPhys uses optional dependency groups so you can install either a broad
 end-user stack or a narrower task-specific stack.
 
-PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
 
 ## Recommended approach
 
@@ -20,6 +20,27 @@ uv pip install "pymedphys[user]"
 
 If you cannot install `uv` on your workstation, use the fallback path in the
 [Quick Start Guide](quick-start.rst).
+
+## macOS with Python 3.14
+
+The `user` and `all` extras include watchdog. Watchdog 6.0.0 has no macOS wheel
+for Python 3.14, so building its FSEvents extension needs a C compiler and the
+macOS SDK. Before installing either extra with Python 3.14, install
+[Apple's Command Line Tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools):
+
+```bash
+xcode-select --install
+```
+
+Complete the installer, then check that both the compiler and SDK are available:
+
+```bash
+xcrun --find clang
+xcrun --show-sdk-path
+```
+
+Both commands should print a path. If Xcode or its Command Line Tools are
+already installed, run these checks before installing PyMedPhys.
 
 ## Why there is more than one install
 

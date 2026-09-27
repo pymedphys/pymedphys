@@ -14,6 +14,8 @@ This project adheres to
 
 ### New features and enhancements
 
+- PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- The interpolation comparison notebook compares PyMedPhys with SciPy's `RegularGridInterpolator`, and the documentation dependencies no longer include EconForge's `interpolation`. The reference page keeps the earlier benchmark image, labelled as a historical result, and links to the executable comparison. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - New documentation page,
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html),
   explaining de-identification, pseudonymisation, and anonymisation, what a
@@ -68,6 +70,7 @@ This project adheres to
 
 ### Bug fixes
 
+- **[Security]** `pymedphys pinnacle export` given a TAR archive now checks the whole archive before extracting anything, and refuses it if any member is a link or special file, or would be extracted outside its temporary extraction directory, such as a `../` path. Pinnacle archives contain only files and directories. Previously, on Python 3.11 to 3.13, such a member was written wherever it pointed. A leading `/` on a member name is stripped, so the member is extracted inside the directory. The members are then extracted with tarfile's `data` filter, which relies on a Python with CPython's June 2025 tarfile security fixes (3.11.13, 3.12.11, 3.13.4, or later, or a distribution build that includes them); refusing links does not depend on those fixes. A regression test imports an original Pinnacle 16.0 TAR from Zenodo and checks its DICOM export against the reference plan and dose. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - PyMedPhys now works with NumPy 2. v0.41.0 allowed NumPy 2 to be installed, but several functions could fail under it: Pinnacle DICOM export called `ndarray.tostring()`, which NumPy 2 removed; building a structure mask on a dose grid called `int()` on a one-element array, which NumPy 2 rejects; `pymedphys.electronfactors.parameterise_insert` passed a one-element array as SciPy's basin-hopping temperature and step size, which fails under NumPy 2.4 and later; and delivery, MetersetMap, dose, and mock-profile helpers called `np.array(..., copy=False)`, which NumPy 2 rejects whenever a copy is needed, for example for list input. `Delivery.to_dicom` now writes gantry and beam limiting device rotation directions as plain strings rather than NumPy strings, which NumPy 2 prints as `np.str_('NONE')` when a dataset is displayed. Converting delivery gantry and collimator angles to DICOM also no longer replaces negative angles in a NumPy array passed in. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
 - `pymedphys.zip_data_paths` now extracts an archive into the data cache again when the downloaded archive has changed since it was extracted, or when an extracted file is missing or has the wrong size. Previously, files already extracted were never refreshed, so they could keep stale or incomplete contents. Archives extracted by earlier versions are extracted again on first use. Edits that leave a file the same size are not detected. A caller-specified `extract_directory` still only gains missing files, so edits there are kept. [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - Processes that share the data cache, such as parallel test workers, can
@@ -128,12 +131,20 @@ This project adheres to
 
 ### Dependency changes
 
-- The locked development environment moves from NumPy 1.26 to NumPy 2 (2.2 on Python 3.10, 2.4 on 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version; a focused compatibility check runs with 1.26.4 in the existing Linux/Python 3.12 CI job. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
+- For Python 3.13 and 3.14 support: the Windows `pywin32` requirement no longer excludes Python 3.13 and later; the locked environment moves to `pylibjpeg-libjpeg` 2.4.0, which has wheels for 3.13 and 3.14; on Python 3.14 the `user` and `all` extras require `altair>=6` (locked at 6.3.0), because altair 5.5.0 cannot be imported on Python 3.14 and Streamlit imports it while rendering GUI apps; and on macOS with Python 3.14, `watchdog` has no wheel, so installing either extra builds it from source and needs Apple's Command Line Tools, as the [installation guide](https://docs.pymedphys.com/en/latest/users/get-started/installation-options.html#macos-with-python-3-14) describes. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- The locked development environment moves from NumPy 1.26 to NumPy 2 (2.4 on Python 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version; a focused compatibility check runs with 1.26.4 in the existing Linux/Python 3.12 CI job. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. Newer Streamlit releases no longer depend on GitPython. The locked development environment moves to Pillow 12, protobuf 7, and pyarrow 25, and to a fixed release of every dependency that had a security fix available at the time; the security workflow explicitly ignores PYSEC-2025-183, a disputed PyJWT advisory with no fix. [PR #2036](https://github.com/pymedphys/pymedphys/pull/2036), [PR #2039](https://github.com/pymedphys/pymedphys/pull/2039), [PR #2041](https://github.com/pymedphys/pymedphys/pull/2041)
 - The `user` and `all` extras now install `dash` and `plotly`; `plotly` draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885)
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI defaults to Python 3.14. The quick
+  unit-test run uses it, as do every job that does not choose a version, the
+  release workflow's checks of the published files, and Read the Docs builds.
+  NumPy 1.26 has no wheels for Python 3.13 or later, so its compatibility
+  check moves to its own job on Python 3.12, which runs alongside both the
+  quick and full matrices. The contributor setup guides install Python 3.14.
+  [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - **[Contributor facing only]** CI finishes sooner without dropping a check.
   Selected checks start alongside pre-commit instead of waiting for it. The
   `.github/scripts` tests, Pylint, and the slow tests run in parallel; the
@@ -240,7 +251,7 @@ This project adheres to
   [PR #2053](https://github.com/pymedphys/pymedphys/pull/2053)
 - **[Contributor facing only]** Mentioning `@claude` in an issue, a pull request comment, or a review, as someone with write access, runs `anthropics/claude-code-action` with Claude Opus 5.5. It replaces the Claude Assistant workflow, which replied through Claude 3 Opus to any issue comment containing "claude". The workflow uses the action's default tools: it cannot run repository code or change `.github/workflows/`, and CI tests the commits it pushes. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #1997](https://github.com/pymedphys/pymedphys/pull/1997), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071)
 - **[Contributor facing only]** Development uses uv instead of Poetry: `uv.lock` pins the development environment, `pymedphys dev propagate` exports the requirements files from it, and hatchling builds the package. Separate GitHub Actions workflows for unit and integration tests, linting, type checking, pre-commit, documentation, security scanning with pip-audit, Bandit, and zizmor, dependency updates, and releases replace the single `Library` workflow. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2034](https://github.com/pymedphys/pymedphys/pull/2034)
-- **[Contributor facing only]** The `tests` extra adds `anthropic`, `imageio`, `matplotlib`, `pandas`, `Pillow`, `pydicom`, `pylibjpeg-libjpeg`, `pynetdicom`, `shapely`, and `toml`. The `doctests` extra adds `pytest` and `toml`, and the `docs` and `all` extras add EconForge's `interpolation` for the interpolation comparison notebook. A new `lint` extra installs `astroid`, `pylint`, and `ruff`, and the `comparables` extra, which installed only `flashgamma`, has been removed. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2009](https://github.com/pymedphys/pymedphys/pull/2009), [PR #2013](https://github.com/pymedphys/pymedphys/pull/2013)
+- **[Contributor facing only]** The `tests` extra adds `anthropic`, `imageio`, `matplotlib`, `pandas`, `Pillow`, `pydicom`, `pylibjpeg-libjpeg`, `pynetdicom`, `shapely`, and `toml`. The `doctests` extra adds `pytest` and `toml`. A new `lint` extra installs `astroid`, `pylint`, and `ruff`, and the `comparables` extra, which installed only `flashgamma`, has been removed. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2009](https://github.com/pymedphys/pymedphys/pull/2009), [PR #2013](https://github.com/pymedphys/pymedphys/pull/2013)
 - **[Contributor facing only]** The `dev` and `all` extras include `mypy` and the `types-python-dateutil`, `types-PyYAML`, `types-requests`, `types-tabulate`, and `types-toml` stubs, so CI's advisory mypy check uses locked versions. The full unit-test matrix covers Python 3.10, 3.11, and 3.12 on Ubuntu, macOS, and Windows. Dependabot proposes grouped weekly updates of the GitHub Actions, and the weekly Python dependency-update workflow regenerates the derived files and runs the non-slow tests, the documentation build, and the wheel checks before opening its pull request. `SECURITY.md` says how to report a vulnerability. [PR #2037](https://github.com/pymedphys/pymedphys/pull/2037)
 
 ### News around this release
@@ -251,6 +262,7 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
+- PyMedPhys now requires Python 3.11.4 or later; v0.41.0 supported Python 3.10 to 3.12. Python 3.10 reaches end of life in October 2026, and NumPy 2.3 and SciPy 1.16 already require Python 3.11. Python 3.11.4 is the first 3.11 release with the tarfile extraction filters that Pinnacle TAR import now uses. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - `pymedphys.data_path`, `pymedphys.zip_data_paths`, and
   `pymedphys.zenodo_data_paths` now raise `NoHashFound` before downloading a
   file without a recorded hash when `check_hash=True` (the default). Downloads
