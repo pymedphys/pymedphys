@@ -43,6 +43,10 @@ def _write(path, document):
         ("e1_1a.json", "part15/chapter_E.html"),
         ("e3_10_1.json", "part15/sect_E.3.10.html"),
         ("data_dictionary.json", "part06/chapter_6.html"),
+        ("uid_values.json", "part06/chapter_A.html"),
+        ("frames_of_reference.json", "part06/chapter_A.html"),
+        ("context_group_uids.json", "part06/chapter_A.html"),
+        ("template_uids.json", "part06/chapter_A.html"),
     ],
 )
 def test_each_table_is_generated_from_the_pinned_edition(name, source):

@@ -33,9 +33,11 @@ import urllib.error
 from collections.abc import Callable, Mapping
 
 from pymedphys._data.download import download_with_progress
+from pymedphys._dicom.deidentify.codes import CODE_TABLES
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
+from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
-from . import annex_e, chtml, ps3_6
+from . import annex_e, chtml, ps3_6, ps3_16
 from .sources import SourceDigestError, read_verified_source
 
 # NEMA serves the current edition only under "current". Superseded editions
@@ -93,6 +95,22 @@ PIN = Pin(
             "part06/chapter_6.html",
             "7f3518a7edfccf99f5ff90e3efc40ac96e19f34efb7a803ce14962f460a0d2b1",
         ),
+        PinnedSource(
+            "part06/chapter_A.html",
+            "778ad3e471c81885b828d814e71b9395fd06a5b64abfe43728e903173a461eff",
+        ),
+        PinnedSource(
+            "part16/chapter_8.html",
+            "14b5472ced78b0271643725b54a259ab943aafd20dc3d0ba43e6f2e7698c3471",
+        ),
+        PinnedSource(
+            "part16/sect_CID_7050.html",
+            "075a339ca7a36cd5cee07ccb66a1b03fc4e3f2fb4f527f57ea68a7111971e834",
+        ),
+        PinnedSource(
+            "part16/sect_CID_7005.html",
+            "15d1ca542b46cda0a5525f59ea8417f3d253e0259037ac5f567ccf31972f28b0",
+        ),
     ),
 )
 
@@ -138,6 +156,14 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
 _CHAPTER_E = "part15/chapter_E.html"
 _SECTION_E3_10 = "part15/sect_E.3.10.html"
 _CHAPTER_6 = "part06/chapter_6.html"
+_CHAPTER_A = "part06/chapter_A.html"
+# The page that publishes each PS3.16 table.
+_CODE_TABLE_PAGES = {
+    "Table 8-1": "part16/chapter_8.html",
+    "Table 8-2": "part16/chapter_8.html",
+    "Table CID 7050": "part16/sect_CID_7050.html",
+    "Table CID 7005": "part16/sect_CID_7005.html",
+}
 
 
 def _select(pages: Mapping[str, bytes], source: str, label: str) -> chtml.HtmlTable:
@@ -223,12 +249,34 @@ def _data_dictionary(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _CHAPTER_6, ps3_6.TABLE_6_1, rows)
 
 
+def _registry_table(
+    source: str, label: str, parse: Callable[[str, chtml.HtmlTable], tuple]
+) -> Callable[[Pin, Mapping[str, bytes]], dict[str, object]]:
+    """Return the function that builds the document for a registry table."""
+
+    def build(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+        rows = parse(label, _select(pages, source, label))
+        return _document(pin, source, label, [dataclasses.asdict(row) for row in rows])
+
+    return build
+
+
 # Each generated file and the function that builds its document.
 _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "e1_1.json": _table_e1_1,
     "e1_1a.json": _table_e1_1a,
     "e3_10_1.json": _table_e3_10_1,
     "data_dictionary.json": _data_dictionary,
+    **{
+        spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)
+        for label, spec in UID_TABLES.items()
+    },
+    **{
+        spec.file: _registry_table(
+            _CODE_TABLE_PAGES[label], label, ps3_16.parse_code_table
+        )
+        for label, spec in CODE_TABLES.items()
+    },
 }
 
 

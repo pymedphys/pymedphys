@@ -1,0 +1,183 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.6 Table A-2",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.6 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "part06/chapter_A.html",
+   "sha256": "778ad3e471c81885b828d814e71b9395fd06a5b64abfe43728e903173a461eff"
+  }
+ ],
+ "content_sha256": "64caebd18087d08561f6b3256b112b7731dbefc9b8c4106e486e25c43cbdf705",
+ "rows": [
+  {
+   "uid": "1.2.840.10008.1.4.1.1",
+   "name": "Talairach Brain Atlas Frame of Reference",
+   "keyword": "TalairachBrainAtlas",
+   "normative_reference": "Talairach J. and Tournoux P. Co-Planar stereotactic atlas of the human brain. Stuttgart: Georg Thieme Verlag, 1988."
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.2",
+   "name": "SPM2 T1 Frame of Reference",
+   "keyword": "SPM2T1",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/T1.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.3",
+   "name": "SPM2 T2 Frame of Reference",
+   "keyword": "SPM2T2",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/T2.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.4",
+   "name": "SPM2 PD Frame of Reference",
+   "keyword": "SPM2PD",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/PD.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.5",
+   "name": "SPM2 EPI Frame of Reference",
+   "keyword": "SPM2EPI",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/EPI.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.6",
+   "name": "SPM2 FIL T1 Frame of Reference",
+   "keyword": "SPM2FILT1",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/filT1.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.7",
+   "name": "SPM2 PET Frame of Reference",
+   "keyword": "SPM2PET",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/PET.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.8",
+   "name": "SPM2 TRANSM Frame of Reference",
+   "keyword": "SPM2TRANSM",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/Transm.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.9",
+   "name": "SPM2 SPECT Frame of Reference",
+   "keyword": "SPM2SPECT",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/templates/SPECT.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.10",
+   "name": "SPM2 GRAY Frame of Reference",
+   "keyword": "SPM2GRAY",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/apriori/gray.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.11",
+   "name": "SPM2 WHITE Frame of Reference",
+   "keyword": "SPM2WHITE",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/apriori/white.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.12",
+   "name": "SPM2 CSF Frame of Reference",
+   "keyword": "SPM2CSF",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/apriori/csf.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.13",
+   "name": "SPM2 BRAINMASK Frame of Reference",
+   "keyword": "SPM2BRAINMASK",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/apriori/brainmask.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.14",
+   "name": "SPM2 AVG305T1 Frame of Reference",
+   "keyword": "SPM2AVG305T1",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/canonical/avg305T1.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.15",
+   "name": "SPM2 AVG152T1 Frame of Reference",
+   "keyword": "SPM2AVG152T1",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/canonical/avg152T1.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.16",
+   "name": "SPM2 AVG152T2 Frame of Reference",
+   "keyword": "SPM2AVG152T2",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/canonical/avg152T2.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.17",
+   "name": "SPM2 AVG152PD Frame of Reference",
+   "keyword": "SPM2AVG152PD",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/canonical/avg152PD.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.1.18",
+   "name": "SPM2 SINGLESUBJT1 Frame of Reference",
+   "keyword": "SPM2SINGLESUBJT1",
+   "normative_reference": "http://github.com/spm/spm2/blob/master/canonical/single_subj_T1.mnc"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.2.1",
+   "name": "ICBM 452 T1 Frame of Reference",
+   "keyword": "ICBM452T1",
+   "normative_reference": "ICBM452 T1 Atlas http://resource.loni.usc.edu/atlasfiles/ICBM_452_T1_Atlas_Affine_Transformations.zip"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.2.2",
+   "name": "ICBM Single Subject MRI Frame of Reference",
+   "keyword": "ICBMSingleSubjectMRI",
+   "normative_reference": "ICBM Single Subject MRI Anatomical Template http://resource.loni.usc.edu/atlasfiles/ICBM_Single_Subject_MRI_Anatomical_Template.zip"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.3.1",
+   "name": "IEC 61217 Fixed Coordinate System Frame of Reference",
+   "keyword": "IEC61217FixedCoordinateSystem",
+   "normative_reference": "Fixed coordinate system (\"f\") of [IEC 61217] and Section C.36.12.2.1 “IEC 61217 Fixed Reference System Frame of Reference” in PS3.3"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.3.2",
+   "name": "Standard Robotic-Arm Coordinate System Frame of Reference",
+   "keyword": "StandardRoboticArmCoordinateSystem",
+   "normative_reference": "See Section C.36.12.2.2 “Standard Robotic-Arm Coordinate System Frame of Reference” in PS3.3 ."
+  },
+  {
+   "uid": "1.2.840.10008.1.4.3.3",
+   "name": "IEC 61217 Table Top Coordinate System Frame of Reference",
+   "keyword": "IEC61217TableTopCoordinateSystem",
+   "normative_reference": "Table top coordinate system (\"t\") of [IEC 61217]."
+  },
+  {
+   "uid": "1.2.840.10008.1.4.4.1",
+   "name": "SRI24 Frame of Reference",
+   "keyword": "SRI24",
+   "normative_reference": "http://www.nitrc.org/projects/sri24/"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.5.1",
+   "name": "Colin27 Frame of Reference",
+   "keyword": "Colin27",
+   "normative_reference": "http://www.bic.mni.mcgill.ca/ServicesAtlases/Colin27"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.6.1",
+   "name": "LPBA40/AIR Frame of Reference",
+   "keyword": "LPBA40AIR",
+   "normative_reference": "http://resource.loni.usc.edu/atlasfiles/LPBA40_AIR_Atlas_NIFTI_format.zip"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.6.2",
+   "name": "LPBA40/FLIRT Frame of Reference",
+   "keyword": "LPBA40FLIRT",
+   "normative_reference": "http://resource.loni.usc.edu/atlasfiles/LPBA40_FLIRT_Atlas_NIFTI_format.zip"
+  },
+  {
+   "uid": "1.2.840.10008.1.4.6.3",
+   "name": "LPBA40/SPM5 Frame of Reference",
+   "keyword": "LPBA40SPM5",
+   "normative_reference": "http://resource.loni.usc.edu/atlasfiles/LPBA40_SPM5_atlas_NIFTI_format.zip"
+  }
+ ]
+}
