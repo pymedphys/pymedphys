@@ -33,7 +33,7 @@ FIXTURE_IDENTITY = pseudonyms.SubjectIdentity.from_patient_id(
 any_key = st.binary(min_size=32, max_size=32).map(keys.DeidKey)
 any_identity = (
     st.text(min_size=1, max_size=16)
-    .filter(str.strip)
+    .filter(lambda value: value.strip(" \x00"))
     .map(pseudonyms.SubjectIdentity.from_patient_id)
 )
 any_weeks = st.integers(
