@@ -20,7 +20,7 @@ import collections
 import re
 import types
 
-from pymedphys._dicom.deidentify.standard import ProfileAttribute
+from pymedphys._dicom.deidentify.standard import ACTION_CODES, ProfileAttribute
 
 from .chtml import HtmlTable, TableFormatError
 
@@ -48,12 +48,6 @@ OPTION_COLUMNS = {
 }
 
 COLUMNS = (_NAME, _TAG, _RETIRED, _IN_STANDARD_IOD, _BASIC_PROFILE, *OPTION_COLUMNS)
-
-# Complete action codes from Table E.1-1a. Compound codes have defined
-# meanings; other combinations, including "U*" alone, are not defined.
-ACTION_CODES = frozenset(
-    {"D", "Z", "X", "K", "C", "U", "Z/D", "X/Z", "X/D", "X/Z/D", "X/Z/U*"}
-)
 
 # A tag, where an "x" stands for any hexadecimal digit, as in (60xx,3000).
 _TAG_PATTERN = re.compile(r"\([0-9A-Fx]{4},[0-9A-Fx]{4}\)")

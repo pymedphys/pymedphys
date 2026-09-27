@@ -16,6 +16,7 @@
 
 import collections
 import json
+import pathlib
 
 from pymedphys._imports import pytest
 
@@ -154,14 +155,95 @@ def test_another_schema_or_table_is_rejected(tmp_path, field, value):
         standard.load_table_e1_1(_write(tmp_path / "e1_1.json", document))
 
 
-def test_a_malformed_row_is_rejected(tmp_path):
-    # The digest is recomputed, so only the row's shape is wrong.
-    document = _document()
-    del document["rows"][0]["tag"]
+def _redigested(document):
+    """Record the digest of the rows as they now are, as a careful editor would."""
     document["content_sha256"] = standard.content_sha256(document["rows"])
+    return document
 
-    with pytest.raises(standard.StandardTableError, match="malformed row"):
-        standard.load_table_e1_1(_write(tmp_path / "e1_1.json", document))
+
+def _set(field, value):
+    def change(row):
+        row[field] = value
+
+    return change
+
+
+def _remove(field):
+    def change(row):
+        del row[field]
+
+    return change
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(_remove("tag"), id="missing-field"),
+        pytest.param(_set("note", "extra"), id="extra-field"),
+        pytest.param(_set("name", ["Accession Number"]), id="name-not-text"),
+        pytest.param(_set("name", ""), id="empty-name"),
+        pytest.param(_set("tag", ""), id="empty-tag"),
+        pytest.param(_set("retired", "false"), id="retired-as-text"),
+        pytest.param(_set("in_standard_iod", 1), id="in-iod-as-number"),
+        pytest.param(_set("basic_profile", "Q"), id="undefined-action"),
+        pytest.param(_set("basic_profile", ["Z"]), id="action-not-text"),
+        pytest.param(
+            _set("options", [["retain_uids", "K"]]), id="options-not-a-mapping"
+        ),
+        pytest.param(_set("options", {"retain_uids": ["K"]}), id="option-not-text"),
+        pytest.param(
+            _set("options", {"retain_uids": "Q"}), id="undefined-option-action"
+        ),
+        pytest.param(_set("options", {"retain_all": "K"}), id="unknown-option"),
+    ],
+)
+def test_a_malformed_row_is_rejected(tmp_path, change):
+    # The digest is recomputed, so only the row itself is wrong.
+    document = _document()
+    change(document["rows"][0])
+
+    with pytest.raises(standard.StandardTableError, match="row 1"):
+        standard.load_table_e1_1(_write(tmp_path / "e1_1.json", _redigested(document)))
+
+
+def test_a_row_that_is_not_an_object_is_rejected(tmp_path):
+    document = _document()
+    document["rows"][0] = ["Accession Number", "(0008,0050)"]
+
+    with pytest.raises(standard.StandardTableError, match="row 1"):
+        standard.load_table_e1_1(_write(tmp_path / "e1_1.json", _redigested(document)))
+
+
+@pytest.mark.parametrize("rows", [[], {}], ids=["empty-list", "object"])
+def test_a_table_without_a_list_of_rows_is_rejected(tmp_path, rows):
+    document = _document()
+    document["rows"] = rows
+
+    with pytest.raises(standard.StandardTableError, match="no rows"):
+        standard.load_table_e1_1(_write(tmp_path / "e1_1.json", _redigested(document)))
+
+
+def test_a_repeated_tag_is_rejected(tmp_path):
+    document = _document()
+    document["rows"].append(dict(document["rows"][0]))
+
+    with pytest.raises(standard.StandardTableError, match="row 658 repeats"):
+        standard.load_table_e1_1(_write(tmp_path / "e1_1.json", _redigested(document)))
+
+
+def test_relative_paths_are_resolved_before_caching(tmp_path, monkeypatch):
+    # The same relative path names different files in different directories.
+    valid, invalid = tmp_path / "valid", tmp_path / "invalid"
+    valid.mkdir()
+    invalid.mkdir()
+    _write(valid / "e1_1.json", _document())
+    (invalid / "e1_1.json").write_text("{", encoding="utf-8")
+
+    monkeypatch.chdir(valid)
+    standard.load_table_e1_1(pathlib.Path("e1_1.json"))
+    monkeypatch.chdir(invalid)
+    with pytest.raises(standard.StandardTableError):
+        standard.load_table_e1_1(pathlib.Path("e1_1.json"))
 
 
 @pytest.mark.parametrize("text", ["", "[]", "{"])

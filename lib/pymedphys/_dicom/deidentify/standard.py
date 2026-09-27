@@ -33,6 +33,30 @@ from collections.abc import Mapping, Sequence
 
 SCHEMA = "pymedphys-deid-table/1"
 
+# Complete action codes from Table E.1-1a. Compound codes have defined
+# meanings; other combinations, including "U*" alone, are not defined.
+ACTION_CODES = frozenset(
+    {"D", "Z", "X", "K", "C", "U", "Z/D", "X/Z", "X/D", "X/Z/D", "X/Z/U*"}
+)
+
+# The option columns of Table E.1-1, in the table's order.
+OPTIONS = (
+    "retain_safe_private",
+    "retain_uids",
+    "retain_device_identity",
+    "retain_institution_identity",
+    "retain_patient_characteristics",
+    "retain_longitudinal_full_dates",
+    "retain_longitudinal_modified_dates",
+    "clean_descriptors",
+    "clean_structured_content",
+    "clean_graphics",
+)
+
+_ROW_FIELDS = frozenset(
+    {"name", "tag", "retired", "in_standard_iod", "basic_profile", "options"}
+)
+
 STANDARD_DIR = pathlib.Path(__file__).resolve().parent / "_standard"
 
 
@@ -118,7 +142,7 @@ def _read(path: pathlib.Path, table: str) -> dict:
     edition = document.get("edition")
     if document.get("acknowledgement") != f"DICOM PS3.15 {edition}, © NEMA":
         raise StandardTableError(f"{path.name} lacks the NEMA acknowledgement")
-    if content_sha256(document.get("rows", [])) != document.get("content_sha256"):
+    if content_sha256(document.get("rows")) != document.get("content_sha256"):
         raise StandardTableError(
             f"{path.name} rows do not match their recorded digest; "
             "regenerate the tables with pymedphys dev deid-tables"
@@ -126,8 +150,34 @@ def _read(path: pathlib.Path, table: str) -> dict:
     return document
 
 
+def _is_action(value: object) -> bool:
+    return isinstance(value, str) and value in ACTION_CODES
+
+
+def _row_problem(row: object) -> str | None:
+    """Return what is wrong with a row of Table E.1-1, or None if it is valid."""
+    if not isinstance(row, dict) or row.keys() != _ROW_FIELDS:
+        return f"does not have exactly the fields {', '.join(sorted(_ROW_FIELDS))}"
+    if not all(isinstance(row[field], str) and row[field] for field in ("name", "tag")):
+        return "has a name or tag that is not non-empty text"
+    if not all(
+        isinstance(row[field], bool) for field in ("retired", "in_standard_iod")
+    ):
+        return "has a retired or in_standard_iod value that is not true or false"
+    if not _is_action(row["basic_profile"]):
+        return "has a Basic Profile action not defined in Table E.1-1a"
+    options = row["options"]
+    if not isinstance(options, dict) or not all(
+        option in OPTIONS and _is_action(action) for option, action in options.items()
+    ):
+        return "has an unknown option or an option action not defined in Table E.1-1a"
+    return None
+
+
 def load_table_e1_1(path: pathlib.Path | None = None) -> ProfileTable:
     """Load Table E.1-1 of DICOM PS3.15, as generated from the pinned edition.
+
+    Each file is read once and cached, keyed by its resolved path.
 
     Parameters
     ----------
@@ -143,16 +193,31 @@ def load_table_e1_1(path: pathlib.Path | None = None) -> ProfileTable:
     StandardTableError
         If the file cannot be read, has another schema or table, lacks the
         NEMA acknowledgement, or has rows that do not match its recorded
-        digest.
+        digest; if it has no rows or repeats a tag; or if a row does not have
+        exactly the expected fields, with non-empty text for the name and
+        tag, true or false for the flags, and actions defined in Table
+        E.1-1a for the Basic Profile and each known option.
     """
-    return _load_table_e1_1(path or STANDARD_DIR / "e1_1.json")
+    return _load_table_e1_1((path or STANDARD_DIR / "e1_1.json").resolve())
 
 
 @functools.lru_cache(maxsize=None)
 def _load_table_e1_1(path: pathlib.Path) -> ProfileTable:
     document = _read(path, "PS3.15 Table E.1-1")
-    try:
-        attributes = tuple(
+    rows = document["rows"]
+    if not isinstance(rows, list) or not rows:
+        raise StandardTableError(f"{path.name} has no rows")
+
+    attributes = []
+    tags = set()
+    for number, row in enumerate(rows, start=1):
+        problem = _row_problem(row)
+        if problem:
+            raise StandardTableError(f"{path.name} row {number} {problem}")
+        if row["tag"] in tags:
+            raise StandardTableError(f"{path.name} row {number} repeats a tag")
+        tags.add(row["tag"])
+        attributes.append(
             ProfileAttribute(
                 name=row["name"],
                 tag=row["tag"],
@@ -161,12 +226,9 @@ def _load_table_e1_1(path: pathlib.Path) -> ProfileTable:
                 basic_profile=row["basic_profile"],
                 options=types.MappingProxyType(dict(row["options"])),
             )
-            for row in document["rows"]
         )
-    except (KeyError, TypeError, ValueError) as error:
-        raise StandardTableError(f"{path.name} has a malformed row") from error
     return ProfileTable(
         edition=document["edition"],
         acknowledgement=document["acknowledgement"],
-        attributes=attributes,
+        attributes=tuple(attributes),
     )
