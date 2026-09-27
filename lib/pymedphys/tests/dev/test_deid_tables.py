@@ -20,6 +20,11 @@ of ``th`` cells, and cell text inside ``p`` elements) but contains no rows
 from the standard: every attribute in it is invented.
 """
 
+# The parser and generator tests share the fixture pages below, so they stay
+# in one module.
+# pylint: disable = too-many-lines
+
+import dataclasses
 import hashlib
 import json
 import re
@@ -27,8 +32,15 @@ import urllib.error
 
 from pymedphys._imports import pytest
 
-from pymedphys._dev.deid_tables import annex_e, chtml, generate, ps3_6, sources
-from pymedphys._dicom.deidentify import standard
+from pymedphys._dev.deid_tables import (
+    annex_e,
+    chtml,
+    generate,
+    ps3_6,
+    ps3_16,
+    sources,
+)
+from pymedphys._dicom.deidentify import codes, standard, uid_registry
 from pymedphys.cli import define_parser
 
 E1_1_HEADER = (
@@ -263,6 +275,156 @@ TABLE_6_1 = _table(
 )
 
 
+# Invented rows in the forms PS3.6 Annex A uses: retirement marked both in
+# the name and by a year in the part, a retired row with neither name nor
+# keyword, a keyword with an underscore, DICOS and DICONDE parts, a repeated
+# context group name, and context group placeholders.
+TABLE_A_1_HEADER = ("UID Value", "UID Name", "UID Keyword", "UID Type", "Part")
+TABLE_A_1_ROWS = (
+    ("1.2.3.9.1", "Fixture SOP Class", "FixtureSOPClass", "SOP Class", "PS3.4"),
+    (
+        "1.2.3.9.2",
+        "Fixture Transfer Syntax: Default for Fixtures",
+        "FixtureTransferSyntax",
+        "Transfer Syntax",
+        "PS3.5",
+    ),
+    ("1.2.3.9.3", "Fixture Scheme", "FIXTURE_SCHEME", "Coding Scheme", "PS3.16"),
+    (
+        "1.2.3.9.4",
+        "Fixture Old SOP Class (Retired)",
+        "FixtureOldSOPClass",
+        "SOP Class",
+        "PS3.4 (2001)",
+    ),
+    ("1.2.3.9.5", "(Retired)", "", "SOP Class", "(2015c)"),
+    ("1.2.3.9.6", "Fixture Scan", "FixtureScan", "SOP Class", "DICOS"),
+    ("1.2.3.9.7", "Fixture Weld", "FixtureWeld", "SOP Class", "DICONDE ASTM E9999"),
+)
+TABLE_A_2_HEADER = ("UID Value", "UID Name", "UID Keyword", "Normative Reference")
+TABLE_A_2_ROWS = (
+    (
+        "1.2.3.9.10.1",
+        "Fixture Frame of Reference",
+        "FixtureFrame",
+        "Fixture atlas, https://example.org/atlas",
+    ),
+)
+TABLE_A_3_HEADER = (
+    "Context Group UID",
+    "Context Group Identifier",
+    "Context Group Name",
+    "Comment",
+)
+TABLE_A_3_ROWS = (
+    ("1.2.3.9.11.1", "CID 9001", "Fixture Group", ""),
+    ("1.2.3.9.11.2", "CID 9002", "Fixture Group", "RET (2013)"),
+    ("1.2.3.9.11.3", "", "", "Retired"),
+    ("1.2.3.9.11.4", "", "", ""),
+)
+TABLE_A_4_HEADER = ("UID Value", "UID Name", "UID Type", "Part")
+TABLE_A_4_ROWS = (
+    ("1.2.3.9.12.1", "Fixture Document", "Document TemplateID", "PS3.20"),
+    ("1.2.3.9.12.2", "Fixture Section", "Section TemplateID", "PS3.20"),
+)
+# Each Annex A table: its header, its rows, and the type each row parses to.
+ANNEX_A = {
+    "Table A-1": (TABLE_A_1_HEADER, TABLE_A_1_ROWS, uid_registry.RegisteredUID),
+    "Table A-2": (
+        TABLE_A_2_HEADER,
+        TABLE_A_2_ROWS,
+        uid_registry.WellKnownFrameOfReference,
+    ),
+    "Table A-3": (TABLE_A_3_HEADER, TABLE_A_3_ROWS, uid_registry.ContextGroupUID),
+    "Table A-4": (TABLE_A_4_HEADER, TABLE_A_4_ROWS, uid_registry.TemplateUID),
+}
+ANNEX_A_TABLES = tuple(
+    _table(f"{label}. Fixture {label}", header, rows)
+    for label, (header, rows, _) in ANNEX_A.items()
+)
+
+
+def _annex_a(label, header=None, rows=None):
+    default_header, default_rows, _ = ANNEX_A[label]
+    header = default_header if header is None else header
+    rows = default_rows if rows is None else rows
+    page = _page(_table(f"{label}. Fixture", header, rows))
+    return chtml.select_table(chtml.extract_tables(page), label)
+
+
+# Invented rows in the forms PS3.16 uses: coding schemes without a UID or
+# name, two designators that share a UID, a resources cell listing several
+# links, and context group codes that are numbers or letters.
+TABLE_8_1_HEADER = (
+    "Coding Scheme Designator (0008,0102)",
+    "Coding Scheme UID (0008,010C)",
+    "Coding Scheme Name (0008,0115)",
+    "Coding Scheme Responsible Organization (0008,0116)",
+    "Coding Scheme Resources Sequence (0008,0109) Type: URL",
+    "Description",
+)
+TABLE_8_1_ROWS = (
+    (
+        "FIX",
+        "1.2.3.9.20",
+        "Fixture Terms",
+        "Fixture Body",
+        "DOC: https://example.org/fix OWL: https://example.org/fix.owl",
+        "Invented terms",
+    ),
+    (
+        "FIX-OLD",
+        "1.2.3.9.20",
+        "Fixture Terms",
+        "Fixture Body",
+        "",
+        "Retired designator",
+    ),
+    ("FIX_2", "", "", "", "", ""),
+)
+TABLE_8_2_HEADER = ("Coding Scheme Designator", "Coding Scheme UID", "Description")
+TABLE_8_2_ROWS = (
+    ("FixtureVocabularyName", "1.2.3.9.21", ""),
+    ("fixtureType", "1.2.3.9.22", "RFC0000"),
+)
+CID_HEADER = ("Coding Scheme Designator", "Code Value", "Code Meaning")
+CID_7050_ROWS = (
+    ("FIX", "900001", "Fixture Profile"),
+    ("FIX", "900002", "Fixture Option"),
+)
+CID_7005_ROWS = (
+    ("FIX", "900003", "Fixture Equipment"),
+    ("FIX", "FIXD", "Fixture Digitizer"),
+)
+# Each PS3.16 table: its header, its rows, the type each row parses to, and
+# the page it is published on.
+PS3_16 = {
+    "Table 8-1": (TABLE_8_1_HEADER, TABLE_8_1_ROWS, codes.CodingScheme),
+    "Table 8-2": (TABLE_8_2_HEADER, TABLE_8_2_ROWS, codes.HL7v3CodingScheme),
+    "Table CID 7050": (CID_HEADER, CID_7050_ROWS, codes.CodedConcept),
+    "Table CID 7005": (CID_HEADER, CID_7005_ROWS, codes.CodedConcept),
+}
+PS3_16_PAGES = {
+    "part16/chapter_8.html": ("Table 8-1", "Table 8-2"),
+    "part16/sect_CID_7050.html": ("Table CID 7050",),
+    "part16/sect_CID_7005.html": ("Table CID 7005",),
+}
+
+
+def _ps3_16_page(labels):
+    return _page(
+        *(_table(f"{label}. Fixture {label}", *PS3_16[label][:2]) for label in labels)
+    )
+
+
+def _ps3_16(label, header=None, rows=None):
+    default_header, default_rows, _ = PS3_16[label]
+    header = default_header if header is None else header
+    rows = default_rows if rows is None else rows
+    page = _page(_table(f"{label}. Fixture", header, rows))
+    return chtml.select_table(chtml.extract_tables(page), label)
+
+
 def _table_6_1(header=TABLE_6_1_HEADER, rows=TABLE_6_1_ROWS):
     page = _page(_table("Table 6-1. Fixture", header, rows))
     return chtml.select_table(chtml.extract_tables(page), "Table 6-1")
@@ -490,9 +652,9 @@ def _e3_10_1_table(header=E3_10_1_HEADER, rows=E3_10_1_ROWS):
 
 
 def test_parse_table_e1_1a():
-    codes = annex_e.parse_table_e1_1a(_e1_1a_table())
+    actions = annex_e.parse_table_e1_1a(_e1_1a_table())
 
-    assert [(c.code, c.description) for c in codes] == list(E1_1A_ROWS)
+    assert [(a.code, a.description) for a in actions] == list(E1_1A_ROWS)
 
 
 @pytest.mark.parametrize(
@@ -687,6 +849,181 @@ def test_table_6_1_without_rows_fails():
         ps3_6.parse_table_6_1(_table_6_1(rows=()))
 
 
+@pytest.mark.parametrize("label", list(ANNEX_A))
+def test_parse_annex_a_tables(label):
+    _, rows, row_type = ANNEX_A[label]
+
+    assert ps3_6.parse_uid_table(label, _annex_a(label)) == tuple(
+        row_type(*row) for row in rows
+    )
+
+
+@pytest.mark.parametrize("label", list(ANNEX_A))
+def test_annex_a_columns_are_mapped_by_header_text(label):
+    header, rows, _ = ANNEX_A[label]
+    reordered = _annex_a(label, header[::-1], tuple(row[::-1] for row in rows))
+
+    assert ps3_6.parse_uid_table(label, reordered) == ps3_6.parse_uid_table(
+        label, _annex_a(label)
+    )
+
+
+@pytest.mark.parametrize("label", list(ANNEX_A))
+def test_annex_a_unknown_or_missing_columns_fail(label):
+    header, rows, _ = ANNEX_A[label]
+    renamed = header[:-1] + ("Notes",)
+
+    with pytest.raises(chtml.TableFormatError, match="unknown column 'Notes'"):
+        ps3_6.parse_uid_table(label, _annex_a(label, renamed))
+    with pytest.raises(chtml.TableFormatError, match=f"missing column {header[-1]!r}"):
+        ps3_6.parse_uid_table(
+            label, _annex_a(label, header[:-1], tuple(row[:-1] for row in rows))
+        )
+
+
+@pytest.mark.parametrize("label", list(ANNEX_A))
+def test_annex_a_tables_without_rows_fail(label):
+    with pytest.raises(chtml.TableFormatError, match="has no rows"):
+        ps3_6.parse_uid_table(label, _annex_a(label, rows=()))
+
+
+@pytest.mark.parametrize(
+    "label, column, value, message",
+    [
+        ("Table A-1", 0, "1.02.3", "has a UID"),
+        ("Table A-1", 0, "1.2.a", "has a UID"),
+        ("Table A-1", 0, "1." + "2" * 63, "has a UID"),
+        ("Table A-1", 1, "", "has a name"),
+        ("Table A-1", 2, "Fixture Keyword", "has a keyword"),
+        ("Table A-1", 3, "SOP class", "has a UID type"),
+        ("Table A-1", 4, "Part 4", "has a part"),
+        ("Table A-1", 4, "PS3.4 (01)", "has a part"),
+        ("Table A-1", 4, "PS3.4 (2001)", "is marked retired in its name or its part"),
+        (
+            "Table A-1",
+            1,
+            "Fixture (Retired)",
+            "is marked retired in its name or its part",
+        ),
+        ("Table A-1", 2, "", "has no keyword but is not retired"),
+        ("Table A-2", 2, "", "has a keyword"),
+        ("Table A-2", 3, "", "has a normative reference"),
+        ("Table A-3", 1, "9001", "has an identifier"),
+        ("Table A-3", 1, "", "has an identifier without a name"),
+        ("Table A-3", 3, "Obsolete", "has a comment"),
+        ("Table A-4", 2, "Document Template", "has a UID type"),
+        ("Table A-4", 3, "", "has a part"),
+    ],
+)
+def test_annex_a_invalid_values_fail(label, column, value, message):
+    _, rows, _ = ANNEX_A[label]
+    row = list(rows[0])
+    row[column] = value
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(f"row 1 {message}")):
+        ps3_6.parse_uid_table(label, _annex_a(label, rows=(tuple(row),)))
+
+
+@pytest.mark.parametrize(
+    "label, column",
+    [("Table A-1", 0), ("Table A-1", 2), ("Table A-3", 0), ("Table A-3", 1)],
+)
+def test_annex_a_repeated_uids_keywords_or_identifiers_fail(label, column):
+    _, rows, _ = ANNEX_A[label]
+    repeated = list(rows[1])
+    repeated[column] = rows[0][column]
+
+    with pytest.raises(
+        chtml.TableFormatError, match=re.escape(f"{rows[0][column]} appears 2 times")
+    ):
+        ps3_6.parse_uid_table(label, _annex_a(label, rows=(rows[0], tuple(repeated))))
+
+
+@pytest.mark.parametrize("label", list(PS3_16))
+def test_parse_ps3_16_tables(label):
+    _, rows, row_type = PS3_16[label]
+
+    assert ps3_16.parse_code_table(label, _ps3_16(label)) == tuple(
+        row_type(*row) for row in rows
+    )
+
+
+@pytest.mark.parametrize("label", list(PS3_16))
+def test_ps3_16_columns_are_mapped_by_header_text(label):
+    header, rows, _ = PS3_16[label]
+    reordered = _ps3_16(label, header[::-1], tuple(row[::-1] for row in rows))
+
+    assert ps3_16.parse_code_table(label, reordered) == ps3_16.parse_code_table(
+        label, _ps3_16(label)
+    )
+
+
+@pytest.mark.parametrize("label", list(PS3_16))
+def test_ps3_16_unknown_or_missing_columns_fail(label):
+    header, rows, _ = PS3_16[label]
+
+    with pytest.raises(chtml.TableFormatError, match="unknown column 'Notes'"):
+        ps3_16.parse_code_table(label, _ps3_16(label, header[:-1] + ("Notes",)))
+    with pytest.raises(chtml.TableFormatError, match=f"missing column {header[-1]!r}"):
+        ps3_16.parse_code_table(
+            label, _ps3_16(label, header[:-1], tuple(row[:-1] for row in rows))
+        )
+
+
+@pytest.mark.parametrize("label", list(PS3_16))
+def test_ps3_16_tables_without_rows_fail(label):
+    with pytest.raises(chtml.TableFormatError, match="has no rows"):
+        ps3_16.parse_code_table(label, _ps3_16(label, rows=()))
+
+
+@pytest.mark.parametrize(
+    "label, column, value, message",
+    [
+        ("Table 8-1", 0, "", "has a designator"),
+        ("Table 8-1", 0, "FIX TERMS", "has a designator"),
+        ("Table 8-1", 0, "F" * 17, "has a designator"),
+        ("Table 8-1", 1, "1.02", "has a UID"),
+        ("Table 8-2", 0, "", "has a designator"),
+        ("Table 8-2", 1, "", "has a UID"),
+        ("Table CID 7050", 0, "", "has a coding scheme designator"),
+        ("Table CID 7050", 1, "", "has a code value"),
+        ("Table CID 7050", 1, "9" * 17, "has a code value"),
+        ("Table CID 7005", 2, "", "has a code meaning"),
+        ("Table CID 7005", 2, "M" * 65, "has a code meaning"),
+        ("Table CID 7050", 1, "900001\\900002", "has a code value"),
+        ("Table CID 7005", 2, "First\\Second", "has a code meaning"),
+    ],
+)
+def test_ps3_16_invalid_values_fail(label, column, value, message):
+    _, rows, _ = PS3_16[label]
+    row = list(rows[0])
+    row[column] = value
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(f"row 1 {message}")):
+        ps3_16.parse_code_table(label, _ps3_16(label, rows=(tuple(row),)))
+
+
+@pytest.mark.parametrize(
+    "label, column",
+    [("Table 8-1", 0), ("Table 8-2", 0), ("Table 8-2", 1), ("Table CID 7050", 1)],
+)
+def test_ps3_16_repeated_designators_uids_or_codes_fail(label, column):
+    _, rows, _ = PS3_16[label]
+    repeated = list(rows[1])
+    repeated[column] = rows[0][column]
+
+    with pytest.raises(
+        chtml.TableFormatError, match=re.escape(f"{rows[0][column]} appears 2 times")
+    ):
+        ps3_16.parse_code_table(label, _ps3_16(label, rows=(rows[0], tuple(repeated))))
+
+
+def test_table_8_1_designators_may_share_a_uid():
+    schemes = ps3_16.parse_code_table("Table 8-1", _ps3_16("Table 8-1"))
+
+    assert schemes[0].uid == schemes[1].uid
+
+
 def test_a_source_is_read_only_when_its_digest_matches(tmp_path):
     source = tmp_path / "chapter_E.html"
     source.write_bytes(b"<html></html>")
@@ -711,6 +1048,10 @@ def test_a_malformed_expected_digest_is_rejected(tmp_path):
 FIXTURE_PAGE = _page(E1_1A, E1_1).encode("utf-8")
 FIXTURE_E3_10_PAGE = _page(E3_10_1).encode("utf-8")
 FIXTURE_CHAPTER_6_PAGE = _page(TABLE_6_1).encode("utf-8")
+FIXTURE_CHAPTER_A_PAGE = _page(*ANNEX_A_TABLES).encode("utf-8")
+FIXTURE_PS3_16_PAGES = {
+    path: _ps3_16_page(labels).encode("utf-8") for path, labels in PS3_16_PAGES.items()
+}
 FIXTURE_PIN = generate.Pin(
     edition="2099a",
     sources=(
@@ -722,6 +1063,13 @@ FIXTURE_PIN = generate.Pin(
         ),
         generate.PinnedSource(
             "part06/chapter_6.html", hashlib.sha256(FIXTURE_CHAPTER_6_PAGE).hexdigest()
+        ),
+        generate.PinnedSource(
+            "part06/chapter_A.html", hashlib.sha256(FIXTURE_CHAPTER_A_PAGE).hexdigest()
+        ),
+        *(
+            generate.PinnedSource(path, hashlib.sha256(page).hexdigest())
+            for path, page in FIXTURE_PS3_16_PAGES.items()
         ),
     ),
 )
@@ -735,6 +1083,10 @@ def _source_dir(tmp_path):
     (directory / "part15" / "sect_E.3.10.html").write_bytes(FIXTURE_E3_10_PAGE)
     (directory / "part06").mkdir()
     (directory / "part06" / "chapter_6.html").write_bytes(FIXTURE_CHAPTER_6_PAGE)
+    (directory / "part06" / "chapter_A.html").write_bytes(FIXTURE_CHAPTER_A_PAGE)
+    (directory / "part16").mkdir()
+    for path, page in FIXTURE_PS3_16_PAGES.items():
+        (directory / path).write_bytes(page)
     return directory
 
 
@@ -836,6 +1188,44 @@ def test_generate_writes_the_data_dictionary(source_dir, tmp_path):
     assert document["content_sha256"] == standard.content_sha256(rows)
 
 
+@pytest.mark.parametrize("label", list(ANNEX_A))
+def test_generate_writes_the_annex_a_tables(source_dir, tmp_path, label):
+    output_dir = tmp_path / "tables"
+    _, rows, row_type = ANNEX_A[label]
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    name = uid_registry.UID_TABLES[label].file
+    document = json.loads((output_dir / name).read_text(encoding="utf-8"))
+    expected = [dataclasses.asdict(row_type(*row)) for row in rows]
+    assert document["table"] == f"PS3.6 {label}"
+    assert document["acknowledgement"] == "DICOM PS3.6 2099a, \u00a9 NEMA"
+    assert document["sources"] == [
+        {"path": "part06/chapter_A.html", "sha256": FIXTURE_PIN.sources[3].sha256}
+    ]
+    assert document["rows"] == expected
+    assert document["content_sha256"] == standard.content_sha256(expected)
+
+
+@pytest.mark.parametrize("label", list(PS3_16))
+def test_generate_writes_the_ps3_16_tables(source_dir, tmp_path, label):
+    output_dir = tmp_path / "tables"
+    _, rows, row_type = PS3_16[label]
+    page = next(path for path, labels in PS3_16_PAGES.items() if label in labels)
+    digests = {pinned.path: pinned.sha256 for pinned in FIXTURE_PIN.sources}
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    name = codes.CODE_TABLES[label].file
+    document = json.loads((output_dir / name).read_text(encoding="utf-8"))
+    expected = [dataclasses.asdict(row_type(*row)) for row in rows]
+    assert document["table"] == f"PS3.16 {label}"
+    assert document["acknowledgement"] == "DICOM PS3.16 2099a, \u00a9 NEMA"
+    assert document["sources"] == [{"path": page, "sha256": digests[page]}]
+    assert document["rows"] == expected
+    assert document["content_sha256"] == standard.content_sha256(expected)
+
+
 def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
     generate.generate(FIXTURE_PIN, tmp_path / "a", source_dir=source_dir)
     generate.generate(FIXTURE_PIN, tmp_path / "b", source_dir=source_dir)
@@ -910,12 +1300,21 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
     chapter_6_current = CURRENT_URL.replace(
         "part15/chapter_E.html", "part06/chapter_6.html"
     )
+    chapter_a_current = CURRENT_URL.replace(
+        "part15/chapter_E.html", "part06/chapter_A.html"
+    )
+    ps3_16_current = {
+        CURRENT_URL.replace("part15/chapter_E.html", path): page
+        for path, page in FIXTURE_PS3_16_PAGES.items()
+    }
     requested = _fake_downloads(
         monkeypatch,
         {
             CURRENT_URL: FIXTURE_PAGE,
             e3_10_current: FIXTURE_E3_10_PAGE,
             chapter_6_current: FIXTURE_CHAPTER_6_PAGE,
+            chapter_a_current: FIXTURE_CHAPTER_A_PAGE,
+            **ps3_16_current,
         },
     )
 
@@ -927,8 +1326,20 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
         e3_10_current,
         EDITION_URL.replace("part15/chapter_E.html", "part06/chapter_6.html"),
         chapter_6_current,
+        EDITION_URL.replace("part15/chapter_E.html", "part06/chapter_A.html"),
+        chapter_a_current,
+    ] + [
+        url
+        for path in FIXTURE_PS3_16_PAGES
+        for url in (
+            EDITION_URL.replace("part15/chapter_E.html", path),
+            CURRENT_URL.replace("part15/chapter_E.html", path),
+        )
     ]
-    for name in ("e1_1.json", "e1_1a.json", "e3_10_1.json", "data_dictionary.json"):
+    for name in ("e1_1.json", "e1_1a.json", "e3_10_1.json", "data_dictionary.json") + (
+        tuple(spec.file for spec in uid_registry.UID_TABLES.values())
+        + tuple(spec.file for spec in codes.CODE_TABLES.values())
+    ):
         assert (tmp_path / "tables" / name).exists()
 
 
