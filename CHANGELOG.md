@@ -111,6 +111,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- `pymedphys.gamma` no longer prints a `--- Logging error ---` traceback on every call when INFO logging is enabled. Its dose-threshold message formatted the threshold arrays as single numbers, which NumPy 2 rejects. `ram_available=None` now means the default budget; it raised `TypeError` when a reference point lay outside the evaluation grid. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
 - The experimental iView/iCOM alignment utility again makes iCOM gantry and collimator angles continuous where they cross ±180° when used with pandas 3. It adjusted the angles in place in arrays that pandas 3 makes read-only, so it raised `ValueError: assignment destination is read-only`; it now works on a copy and leaves its input unchanged. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
 - `pymedphys.electronfactors.plot_model` and the experimental Electrons app work with pandas 3. They called `Series.ravel`, which pandas 3 removed, so with pandas 3 they failed when given DataFrame columns, as the app does. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
 - `pymedphys dicom listen` now stores objects received with the Explicit VR Big Endian transfer syntax, which it accepts by default. Previously writing the file raised an error, so the sender received a failure status. The listener also no longer logs three pydicom deprecation warnings for every object it receives. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
@@ -214,6 +215,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- Gamma logs to its module logger, `pymedphys._gamma.implementation.shell`, instead of the root logger. The speed-up and effect-of-noise gamma how-to notebooks use `pymedphys.gamma_pass_rate`. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
 - The private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. The MetersetMap app and the delivery tests now use `pymedphys.gamma_pass_rate` instead of their own pass-rate calculations. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - **[Contributor facing only]** CI now tests the declared minimum versions of
   both NumPy and pandas. The NumPy 1.26 compatibility job becomes
