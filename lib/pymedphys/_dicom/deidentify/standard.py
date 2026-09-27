@@ -142,7 +142,10 @@ def _read(path: pathlib.Path, table: str) -> dict:
     edition = document.get("edition")
     if document.get("acknowledgement") != f"DICOM PS3.15 {edition}, © NEMA":
         raise StandardTableError(f"{path.name} lacks the NEMA acknowledgement")
-    if content_sha256(document.get("rows")) != document.get("content_sha256"):
+    rows = document.get("rows")
+    if not isinstance(rows, list) or not rows:
+        raise StandardTableError(f"{path.name} has no rows")
+    if content_sha256(rows) != document.get("content_sha256"):
         raise StandardTableError(
             f"{path.name} rows do not match their recorded digest; "
             "regenerate the tables with pymedphys dev deid-tables"
@@ -204,13 +207,9 @@ def load_table_e1_1(path: pathlib.Path | None = None) -> ProfileTable:
 @functools.lru_cache(maxsize=None)
 def _load_table_e1_1(path: pathlib.Path) -> ProfileTable:
     document = _read(path, "PS3.15 Table E.1-1")
-    rows = document["rows"]
-    if not isinstance(rows, list) or not rows:
-        raise StandardTableError(f"{path.name} has no rows")
-
     attributes = []
     tags = set()
-    for number, row in enumerate(rows, start=1):
+    for number, row in enumerate(document["rows"], start=1):
         problem = _row_problem(row)
         if problem:
             raise StandardTableError(f"{path.name} row {number} {problem}")
