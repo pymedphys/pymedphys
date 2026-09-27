@@ -227,6 +227,108 @@ def test_non_finite_dose_is_rejected(value, which):
         pymedphys.gamma(axis, reference, axis, evaluation, 3, 3)
 
 
+def test_nan_reference_error_names_the_opt_in():
+    axis = np.array([0.0, 1.0, 2.0])
+    with pytest.raises(ValueError, match="exclude_nan_reference=True"):
+        pymedphys.gamma(axis, np.array([1.0, np.nan, 1.0]), axis, np.ones(3), 3, 3)
+
+
+def test_nan_evaluation_error_recommends_cropping_or_swapping_roles():
+    axis = np.array([0.0, 1.0, 2.0])
+    with pytest.raises(
+        ValueError, match="(?s)Crop the evaluation grid.*as the reference"
+    ):
+        pymedphys.gamma(axis, np.ones(3), axis, np.array([1.0, np.nan, 1.0]), 3, 3)
+
+
+@pytest.mark.parametrize(
+    ("reference", "evaluation"),
+    [
+        ([1.0, np.nan, 1.0], [1.0, np.nan, 1.0]),
+        ([1.0, np.inf, 1.0], [1.0, 1.0, 1.0]),
+        ([1.0, -np.inf, 1.0], [1.0, 1.0, 1.0]),
+        ([1.0, 1.0, 1.0], [1.0, np.inf, 1.0]),
+    ],
+)
+def test_opt_in_excludes_only_nan_reference_points(reference, evaluation):
+    axis = np.array([0.0, 1.0, 2.0])
+    with pytest.raises(ValueError, match="finite"):
+        pymedphys.gamma(
+            axis,
+            np.array(reference),
+            axis,
+            np.array(evaluation),
+            3,
+            3,
+            exclude_nan_reference=True,
+        )
+
+
+@pytest.mark.parametrize("local_gamma", [False, True])
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+def test_nan_reference_points_are_not_analysed(interp_algo, local_gamma):
+    axis = np.arange(6.0)
+    reference = np.array([0.9, np.nan, 1.0, 0.95, np.nan, 1.02])
+    evaluation = np.array([0.92, 1.0, 1.01, 0.97, 0.99, 1.0])
+    options = {"local_gamma": local_gamma, "interp_algo": interp_algo}
+
+    result = pymedphys.gamma(
+        axis, reference, axis, evaluation, 3, 1, exclude_nan_reference=True, **options
+    )
+
+    # The same points, excluded instead by the lower dose cutoff.
+    below_cutoff = np.where(np.isnan(reference), 0.01, reference)
+    expected = pymedphys.gamma(axis, below_cutoff, axis, evaluation, 3, 1, **options)
+
+    np.testing.assert_array_equal(np.isnan(result), np.isnan(reference))
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_default_normalisation_ignores_nan_reference_points():
+    axis = np.arange(4.0)
+    reference = np.array([np.nan, 1.0, 0.8, 0.9])
+    evaluation = np.array([1.0, 1.02, 0.83, 0.9])
+
+    def gamma(**kwargs):
+        return pymedphys.gamma(
+            axis,
+            reference,
+            axis,
+            evaluation,
+            3,
+            1,
+            exclude_nan_reference=True,
+            **kwargs,
+        )
+
+    np.testing.assert_array_equal(gamma(), gamma(global_normalisation=1.0))
+
+
+def test_random_subset_selects_only_non_nan_reference_points():
+    axis = np.arange(20.0)
+    reference = np.where(np.arange(20) % 2 == 0, 1.0, np.nan)
+    result = pymedphys.gamma(
+        axis,
+        reference,
+        axis,
+        np.ones(20),
+        3,
+        3,
+        random_subset=100,
+        random_state=0,
+        exclude_nan_reference=True,
+    )
+    np.testing.assert_array_equal(np.isnan(result), np.isnan(reference))
+
+
+def test_all_nan_reference_is_rejected():
+    axis = np.array([0.0, 1.0])
+    with pytest.raises(ValueError, match="no finite"):
+        pymedphys.gamma(
+            axis, np.full(2, np.nan), axis, np.ones(2), 3, 3, exclude_nan_reference=True
+        )
+
+
 @pytest.mark.parametrize("max_gamma", [1, 0.5, 0, np.nan])
 def test_max_gamma_that_could_hide_a_fail_is_rejected(max_gamma):
     axis = np.array([0.0, 1.0])
