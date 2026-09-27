@@ -178,6 +178,7 @@ def test_a_datetime_moves_its_date_and_keeps_its_time_and_utc_offset(value, expe
         "20260927 1430",
         "2026092724",
         "202609271460",
+        "20260927143061",
         "20260927143015.",
         "20260927143015.1234567",
         "20260927+10",
@@ -284,11 +285,32 @@ def test_a_local_offset_outside_the_range_is_rejected(offset):
         ("2026092714+0500", "+1000", "2026092719+0000"),
         ("202609271430+0530", "+1000", "202609271900+0000"),
         ("20260927+1000", "+1000", "20260927+0000"),
-        ("20260927235960+0000", "+0100", "20260928005960+0000"),
     ],
 )
 def test_a_datetime_converts_to_local_time(value, offset, expected):
     assert dates.to_local_datetime(value, offset) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        # The leap second at the end of 2016, in UTC and at +1000.
+        "20161231235960+0000",
+        "20161231235960.5+0000",
+        "20170101095960+1000",
+        # Local time with no offset of its own.
+        "20161231235960",
+    ],
+)
+def test_a_leap_second_is_not_supported(value):
+    # PS3.5 allows a second of 60 only at a real leap second, which a shifted
+    # or converted value would no longer be.
+    with pytest.raises(ValueError, match="leap seconds are not supported"):
+        dates.shift_datetime(value, 52)
+    with pytest.raises(ValueError, match="leap seconds are not supported"):
+        dates.to_local_datetime(value, "+1000")
+    with pytest.raises(ValueError, match="leap seconds are not supported"):
+        dates.local_offset(None, [value])
 
 
 @pytest.mark.parametrize(

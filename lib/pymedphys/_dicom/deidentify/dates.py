@@ -129,13 +129,16 @@ def shift_datetime(value: str, weeks: int) -> str:
     Modified Dates, a value with its own offset is first put in the instance's
     local time with :func:`to_local_datetime`. A value without a full date,
     such as ``"2026"``, cannot be moved by whole weeks and is rejected; the
-    caller decides what to write instead.
+    caller decides what to write instead. A leap second is rejected too:
+    PS3.5 allows a second of 60 only at a real leap second, which the moved
+    value would no longer be.
 
     Raises
     ------
     ValueError
-        If ``value`` is not a valid DT value with a full date, if ``weeks``
-        is out of range, or if the shifted date would be before year 1.
+        If ``value`` is not a valid DT value with a full date or is a leap
+        second, if ``weeks`` is out of range, or if the shifted date would be
+        before year 1.
 
     Examples
     --------
@@ -148,12 +151,19 @@ def shift_datetime(value: str, weeks: int) -> str:
     match = _DT.fullmatch(stripped)
     if not match or not _valid_time(match) or not _valid_utc_offset(match):
         raise ValueError(invalid)
+    _reject_leap_second(match)
     return _shifted(match["date"], weeks, invalid) + stripped[len(match["date"]) :]
 
 
 def _valid_time(match: re.Match[str]) -> bool:
     limits = (("hour", 23), ("minute", 59), ("second", 60))
     return all(match[part] is None or int(match[part]) <= top for part, top in limits)
+
+
+def _reject_leap_second(match: re.Match[str]) -> None:
+    # These scalar transformations do not support relocating leap seconds.
+    if match["second"] == "60":
+        raise ValueError("leap seconds are not supported")
 
 
 def _valid_utc_offset(match: re.Match[str]) -> bool:
@@ -181,6 +191,7 @@ def _datetime_match(value: str) -> re.Match[str]:
     match = _DT.fullmatch(value.rstrip(_PADDING))
     if not match or not _valid_time(match) or not _valid_utc_offset(match):
         raise ValueError("the value is not a DT value with a full date")
+    _reject_leap_second(match)
     # The date must exist, whether or not the value has its own offset.
     _wall_clock(match)
     return match
@@ -205,8 +216,7 @@ def _utc_instant(match: re.Match[str]) -> tuple[int, int, int]:
     """Return a value with its own offset as UTC minutes, seconds, and microseconds.
 
     Minutes count from the start of year 1, so values at either end of the
-    calendar compare without overflow, and a leap second (60) needs no
-    ``datetime``.
+    calendar compare without overflow.
     """
     local = _wall_clock(match)
     minutes = (local.toordinal() * 24 + local.hour) * 60 + local.minute
@@ -232,8 +242,9 @@ def local_offset(timezone_offset: str | None, datetimes: Iterable[str]) -> str |
     Raises
     ------
     ValueError
-        If ``timezone_offset`` is not a UTC offset from -1200 to +1400, or a
-        value is not a valid DT value with a full date.
+        If ``timezone_offset`` is not a UTC offset from -1200 to +1400, or,
+        without it, a value is not a valid DT value with a full date or is a
+        leap second.
 
     Examples
     --------
@@ -268,16 +279,16 @@ def to_local_datetime(value: str, offset: str) -> str:
     dates and times, including across midnight. The conversion keeps the
     value's precision, and seconds and fractions are unchanged. A value
     without its own offset is already local time and is returned without its
-    padding.
+    padding. A leap second is rejected, as by :func:`shift_datetime`.
 
     Raises
     ------
     ValueError
-        If ``value`` is not a valid DT value with a full date, ``offset`` is
-        not a UTC offset from -1200 to +1400, the value's precision cannot
-        express the conversion exactly (a date alone between different
-        offsets, or hours alone by a part of an hour), or the result would be
-        outside years 1 to 9999.
+        If ``value`` is not a valid DT value with a full date or is a leap
+        second, ``offset`` is not a UTC offset from -1200 to +1400, the
+        value's precision cannot express the conversion exactly (a date alone
+        between different offsets, or hours alone by a part of an hour), or
+        the result would be outside years 1 to 9999.
 
     Examples
     --------
