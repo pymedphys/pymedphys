@@ -14,10 +14,11 @@
 
 """The de-identification requirements register and its loader."""
 
-import ast
 import collections
 import copy
 import re
+import subprocess
+import sys
 
 from pymedphys._imports import pytest, tomlkit
 
@@ -159,37 +160,95 @@ def test_each_implementation_path_exists(register):
     assert not [path for path in sorted(paths) if not (LIBRARY_ROOT / path).is_file()]
 
 
-def _defines(tree, names):
-    """Return whether a module defines the function that ``names`` locates."""
-    body = tree.body
-    for name in names[:-1]:
-        classes = [
-            node
-            for node in body
-            if isinstance(node, ast.ClassDef) and node.name == name
-        ]
-        if not classes:
-            return False
-        body = classes[0].body
-    return any(
-        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.name == names[-1]
-        for node in body
-    )
+SAMPLE_TESTS = """\
+import pytest
 
 
-def test_each_traced_test_exists(register):
-    tests = {test for entry in register.requirements for test in entry.tests}
+def _helper():
+    pass
+
+
+@pytest.fixture
+def test_data():
+    return 1
+
+
+def test_plain():
+    pass
+
+
+@pytest.mark.parametrize("value", [1, 2])
+def test_parametrised(value):
+    pass
+
+
+class TestGroup:
+    def test_method(self):
+        pass
+
+
+class Helper:
+    def test_method(self):
+        pass
+"""
+
+
+def _uncollected(node_ids, root):
+    """Return the node ids under ``root`` that pytest does not collect as tests.
+
+    pytest stops collecting at the first node id it cannot find, so each cited
+    module is collected whole and the ids are matched against its items. An id
+    for a parametrised function covers each of its cases.
+    """
+    paths = {node_id.split("::")[0] for node_id in node_ids}
+    modules = sorted(path for path in paths if (root / path).is_file())
+    collected = set()
+    if modules:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "--collect-only",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                f"--rootdir={root}",
+                *modules,
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+        collected = {line.split("[")[0] for line in result.stdout.splitlines()}
+    return [node_id for node_id in node_ids if node_id not in collected]
+
+
+def test_only_node_ids_that_pytest_collects_count_as_tests(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_sample.py").write_text(SAMPLE_TESTS, encoding="utf-8")
+    module = "tests/test_sample.py"
+    collected = [
+        f"{module}::test_plain",
+        f"{module}::test_parametrised",
+        f"{module}::TestGroup::test_method",
+    ]
+    not_tests = [
+        f"{module}::_helper",
+        f"{module}::test_data",
+        f"{module}::Helper::test_method",
+        f"{module}::test_missing",
+        "tests/test_missing.py::test_plain",
+    ]
+    assert _uncollected(collected + not_tests, tmp_path) == not_tests
+
+
+def test_pytest_collects_each_traced_test(register):
+    tests = sorted({test for entry in register.requirements for test in entry.tests})
     assert tests
-    missing = []
-    for test in sorted(tests):
-        path, *names = test.split("::")
-        module = LIBRARY_ROOT / path
-        if not module.is_file() or not _defines(
-            ast.parse(module.read_text("utf-8")), names
-        ):
-            missing.append(test)
-    assert not missing
+    assert not _uncollected(tests, LIBRARY_ROOT)
 
 
 def test_a_valid_register_loads(tmp_path):
@@ -218,6 +277,12 @@ def test_a_valid_register_loads(tmp_path):
     assert (practice.source, practice.section, practice.url) == ("MIDI", "1.6", None)
     assert practice.tests == ("tests/dicom/test_deidentify_standard.py::test_x",)
     assert hash(practice)
+
+
+def test_function_and_class_node_ids_are_accepted(tmp_path):
+    tests = ["tests/a/test_b.py::test_c", "tests/a/test_b.py::TestD::test_e"]
+    path = _write(tmp_path / "r.toml", _changed(2, tests=tests))
+    assert requirements.load_requirements(path).requirements[2].tests == tuple(tests)
 
 
 def test_text_keeps_its_lines_without_surrounding_whitespace(tmp_path):
@@ -289,6 +354,8 @@ def test_a_malformed_register_is_rejected(tmp_path, change, message):
         (2, {"tests": ["tests/x.py"]}, "has tests that are not pytest node ids"),
         (2, {"tests": ["tests/x.py::test_y[1]"]}, "has tests that are not pytest"),
         (2, {"tests": ["x.py::test_y"]}, "has tests that are not pytest node ids"),
+        (2, {"tests": ["tests/a/test_b.py::_write"]}, "has tests that are not pytest"),
+        (2, {"tests": ["tests/a/test_b.py::Helper::test_c"]}, "has tests that are not"),
     ],
 )
 def test_a_malformed_requirement_is_rejected(tmp_path, entry, fields, message):

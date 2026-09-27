@@ -60,15 +60,16 @@ Identifiers are stable and never reused. `PS3.15-E.1.1-01` numbers the paragraph
 
 | Status | Meaning | Entry also records |
 | --- | --- | --- |
-| `planned` | In scope, not yet implemented | The milestone that delivers it |
-| `partial` | Partly implemented | Modules and tests so far, and the milestone that delivers the rest |
+| `planned` | In scope, not yet implemented | The milestone that completes it |
+| `partial` | Partly implemented | Modules and tests so far, what remains, and the milestone that completes it |
 | `implemented` | Met for the supported scope | Modules and the tests that show it |
 | `out-of-scope` | Not supported, such as an Option that Scope excludes | A note saying why |
 | `not-applicable` | Outside PyMedPhys's role, such as re-identification | A note saying why |
 
 - A pull request that implements part of a requirement updates its entry in the same change.
-- `pymedphys._dicom.deidentify.requirements.load_requirements` rejects malformed or inconsistent entries, such as an implemented requirement without tests or an exclusion without a note. Tests check that every cited decision, module, and test exists, and that the register follows the edition of the generated tables.
+- `pymedphys._dicom.deidentify.requirements.load_requirements` rejects malformed or inconsistent entries, such as an implemented requirement without tests or an exclusion without a note. Tests check that every cited decision and module exists, that pytest collects every cited test, and that the register follows the edition of the generated tables.
 - A new edition updates the register with the tables: add paragraphs, update changed text, and remove deleted paragraphs without reusing their identifiers.
+- Normative text without "shall", such as the paragraphs after Table E.1-1a on actions for Sequences and on Options overriding the Profile, gets entries when the engine implements it.
 - The traceability matrix for each release (D-018) is generated from the register.
 
 ## Architecture

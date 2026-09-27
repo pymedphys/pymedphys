@@ -249,8 +249,11 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "planned"
-milestone = "M3"
+milestone = "M4"
 decisions = ["D-009"]
+note = '''
+The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.5-02"
@@ -461,7 +464,7 @@ text = '''
 Use the release of PS3.15 current at the time of de-identification as the reference for which data elements to de-identify, augmented by knowledge of other unsafe attributes, including private ones. Categorise retained elements by the PS3.15 Options, and apply the approach to any DICOM object, whether or not its IOD is recognised.
 '''
 status = "partial"
-milestone = "M1"
+milestone = "M4"
 decisions = ["D-001", "D-010"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
@@ -476,7 +479,7 @@ tests = [
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
 ]
 note = '''
-The rule tables are generated from the pinned edition; the edition-check workflow is planned. Objects outside the supported scope are sequestered rather than processed (D-010).
+The rule tables are generated from the pinned edition. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -582,11 +585,14 @@ Photographic images are outside the supported objects and are sequestered (D-010
 [[requirement]]
 id = "MIDI-BP-17"
 text = '''
-Use human quality control, with the proportion and type of records inspected guided by a documented risk assessment, covering structured and unstructured text, pixel data, overlays, and metadata embedded in compressed bitstreams.
+Use human quality control to confirm that de-identification both removed what it should and preserved utility. Guide the proportion and type of records inspected by a documented risk assessment that sets the threshold of residual risk before and after quality control, taking account of what is removed or replaced and how reliably. Cover structured and unstructured text, pixel data, overlays, and metadata embedded in compressed bitstreams.
 '''
 status = "planned"
 milestone = "M4"
 decisions = ["D-016", "D-017"]
+note = '''
+D-016 provides the confidential QC pack, and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
+'''
 
 [[requirement]]
 id = "MIDI-BP-18"

@@ -17,9 +17,9 @@
 ``requirements.toml`` records each normative paragraph of DICOM PS3.15 Annex E
 that contains "shall", and each best practice of the MIDI Task Group report,
 with its status and what satisfies it. It is curated by hand, so this loader
-checks its structure; the tests check that the decisions, paths, and tests
-it cites exist. The design document's "Requirements register" section
-describes the fields and statuses.
+checks its structure; the tests check that the decisions and paths it cites
+exist and that pytest collects the tests it cites. The design document's
+"Requirements register" section describes the fields and statuses.
 """
 
 from __future__ import annotations
@@ -51,11 +51,14 @@ _URL_PATTERN = re.compile(
     r"#para_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 )
 _DECISION_PATTERN = re.compile(r"D-[0-9]{3}")
-# Paths within the pymedphys package, and pytest node ids of its tests.
+# Paths within the pymedphys package, and pytest node ids of its tests under
+# pytest's default naming rules: test functions, optionally in Test classes.
 _PATH_PATTERN = re.compile(
     r"(?!.*(?:^|/)\.\.(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*"
 )
-_TEST_PATTERN = re.compile(r"tests/(?:[A-Za-z0-9_]+/)*test_[A-Za-z0-9_]+\.py(?:::\w+)+")
+_TEST_PATTERN = re.compile(
+    r"tests/(?:[A-Za-z0-9_]+/)*test_[A-Za-z0-9_]+\.py(?:::Test\w*)*::test\w*"
+)
 
 _REQUIRED = frozenset({"id", "text", "status"})
 _FIELDS = _REQUIRED | {
@@ -104,7 +107,9 @@ class Requirement:
         it, relative to the pymedphys package.
     tests : tuple of str
         For partial and implemented requirements, the pytest node ids of the
-        tests that show it is met, relative to the pymedphys package.
+        tests that show it is met, relative to the pymedphys package, such as
+        ``tests/x/test_y.py::test_z`` or ``tests/x/test_y.py::TestZ::test_z``.
+        An id for a parametrised test covers each of its cases.
     note : str or None
         Context for the status. Required for exclusions, to say why.
     """
