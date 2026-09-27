@@ -17,6 +17,7 @@
 import collections
 import json
 import pathlib
+import re
 
 from pymedphys._imports import pydicom, pytest
 
@@ -41,6 +42,7 @@ def _write(path, document):
         ("e1_1.json", "part15/chapter_E.html"),
         ("e1_1a.json", "part15/chapter_E.html"),
         ("e3_10_1.json", "part15/sect_E.3.10.html"),
+        ("data_dictionary.json", "part06/chapter_6.html"),
     ],
 )
 def test_each_table_is_generated_from_the_pinned_edition(name, source):
@@ -365,6 +367,7 @@ def test_the_new_rows_are_hashable():
         (standard.load_table_e1_1a, E1_1),
         (standard.load_table_e3_10_1, E1_1),
         (standard.load_table_e1_1, E3_10_1),
+        (standard.load_data_dictionary, E1_1),
     ],
 )
 def test_a_loader_rejects_another_table(tmp_path, load, path):
@@ -437,3 +440,258 @@ def test_the_recognised_vrs_are_those_pydicom_defines():
     vrs = {vr.value for vr in pydicom.valuerep.VR}
 
     assert standard.VRS == {vr for vr in vrs if " or " not in vr}
+
+
+DATA_DICTIONARY = standard.STANDARD_DIR / "data_dictionary.json"
+
+
+def test_the_data_dictionary_has_every_row_of_the_2026d_table():
+    # Counts measured from the published 2026d Table 6-1.
+    dictionary = standard.load_data_dictionary()
+
+    assert dictionary.edition == "2026d"
+    assert dictionary.acknowledgement == "DICOM PS3.6 2026d, © NEMA"
+    assert len(dictionary.attributes) == 5268
+    assert sum(1 for a in dictionary.attributes if a.retired) == 472
+    # Placeholders that are not assigned but will not be reused.
+    assert sum(1 for a in dictionary.attributes if not a.keyword) == 7
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        standard.DictionaryAttribute(
+            "(0010,0010)", "Patient's Name", "PatientName", "PN", "1", ""
+        ),
+        # A repeating group, with alternative VRs.
+        standard.DictionaryAttribute(
+            "(60xx,3000)", "Overlay Data", "OverlayData", "OB or OW", "1", ""
+        ),
+        standard.DictionaryAttribute(
+            "(0028,1200)",
+            "Gray Lookup Table Data",
+            "GrayLookupTableData",
+            "US or SS or OW",
+            "1-n or 1",
+            "RET",
+        ),
+        # No VR exists for the item and delimitation elements.
+        standard.DictionaryAttribute(
+            "(FFFE,E000)", "Item", "Item", "See Note 2", "1", ""
+        ),
+        # A placeholder.
+        standard.DictionaryAttribute(
+            "(0028,0020)", "", "", "", "", "RET (2007) - See Note 3"
+        ),
+        standard.DictionaryAttribute(
+            "(0040,A170)",
+            "Purpose of Reference Code Sequence",
+            "PurposeOfReferenceCodeSequence",
+            "SQ",
+            "1",
+            "See Note 1",
+        ),
+        standard.DictionaryAttribute(
+            "(1000,xxx0)", "Escape Triplet", "EscapeTriplet", "US", "3", "RET (2007)"
+        ),
+        standard.DictionaryAttribute(
+            "(0008,0101)",
+            "Extended Code Value",
+            "ExtendedCodeValue",
+            "LO",
+            "1",
+            "DICOS",
+        ),
+        standard.DictionaryAttribute(
+            "(0014,0025)",
+            "Component Manufacturing Procedure",
+            "ComponentManufacturingProcedure",
+            "ST",
+            "1",
+            "DICONDE",
+        ),
+        standard.DictionaryAttribute(
+            "(0018,1620)",
+            "Vertices of the Polygonal Shutter",
+            "VerticesOfThePolygonalShutter",
+            "IS",
+            "2-2n",
+            "",
+        ),
+    ],
+)
+def test_data_dictionary_rows(row):
+    assert row in standard.load_data_dictionary().attributes
+
+
+def test_dictionary_attributes_give_their_vrs_and_whether_retired():
+    by_tag = {a.tag: a for a in standard.load_data_dictionary().attributes}
+
+    assert by_tag["(0010,0010)"].vrs == ("PN",)
+    assert not by_tag["(0010,0010)"].retired
+    assert by_tag["(0028,1200)"].vrs == ("US", "SS", "OW")
+    assert by_tag["(0028,1200)"].retired
+    assert by_tag["(FFFE,E000)"].vrs == ()
+    assert by_tag["(0028,0020)"].vrs == ()
+    assert by_tag["(0028,0020)"].retired
+    assert not by_tag["(0008,0101)"].retired
+    assert not by_tag["(0040,A170)"].retired
+
+
+def test_dictionary_keywords_are_unique():
+    keywords = [a.keyword for a in standard.load_data_dictionary().attributes]
+    named = [keyword for keyword in keywords if keyword]
+
+    assert len(set(named)) == len(named)
+
+
+def test_every_table_e1_1_attribute_is_in_the_data_dictionary():
+    tags = {a.tag for a in standard.load_data_dictionary().attributes}
+    missing = {a.tag for a in standard.load_table_e1_1().attributes} - tags
+
+    # PS3.7 defines the command group (0000), and PS3.6 Tables 7-1 and 8-1 the
+    # File Meta Information (0002) and directory records (0004). Table E.1-1
+    # gives the whole Curve group, and every private attribute, in one row.
+    assert missing == {
+        "(0000,1000)",
+        "(0000,1001)",
+        "(0002,0003)",
+        "(0004,1511)",
+        "(50xx,xxxx)",
+        "(gggg,eeee) where gggg is odd",
+    }
+
+
+@pytest.mark.parametrize(
+    "vm, valid",
+    [
+        ("1", True),
+        ("1-n", True),
+        ("1-32", True),
+        ("2-2n", True),
+        ("3-3n", True),
+        ("2-3n", False),
+        ("4-3", False),
+        ("n", False),
+        ("", False),
+    ],
+)
+def test_value_multiplicities_follow_ps3_5(vm, valid):
+    assert standard.is_vm(vm) is valid
+
+
+@pytest.mark.parametrize(
+    "row, field, value, message",
+    [
+        (0, "tag", "(0009,0001)", "row 1 has a tag"),
+        (0, "tag", "(0008,001)", "row 1 has a tag"),
+        (0, "tag", "(0008,000a)", "row 1 has a tag"),
+        (0, "name", "", "row 1 has a name"),
+        (0, "keyword", "Length To End", "row 1 has a keyword"),
+        (0, "vr", "XX", "row 1 has a VR"),
+        (0, "vr", "US/SS", "row 1 has a VR"),
+        (0, "vr", "US or", "row 1 has a VR"),
+        (0, "vr", None, "row 1 has a VR"),
+        (0, "vm", "2-3n", "row 1 has a VM"),
+        (0, "vm", "1 or", "row 1 has a VM"),
+        (0, "status", "RETIRED", "row 1 has a status"),
+        (0, "status", "RET (07)", "row 1 has a status"),
+    ],
+)
+def test_a_malformed_dictionary_row_is_rejected(tmp_path, row, field, value, message):
+    document = _loaded(DATA_DICTIONARY)
+    document["rows"][row][field] = value
+
+    with pytest.raises(standard.StandardTableError, match=re.escape(message)):
+        standard.load_data_dictionary(
+            _write(tmp_path / "data_dictionary.json", _redigested(document))
+        )
+
+
+def test_a_placeholder_must_be_retired(tmp_path):
+    document = _loaded(DATA_DICTIONARY)
+    document["rows"][1].update(name="", keyword="")
+
+    with pytest.raises(standard.StandardTableError, match="row 2 has no keyword"):
+        standard.load_data_dictionary(
+            _write(tmp_path / "data_dictionary.json", _redigested(document))
+        )
+
+
+def test_a_repeated_tag_or_keyword_is_rejected(tmp_path):
+    document = _loaded(DATA_DICTIONARY)
+    rows = document["rows"]
+    unused = next(
+        tag
+        for tag in (f"(0008,{element:04X})" for element in range(0x10000))
+        if tag not in {row["tag"] for row in rows}
+    )
+
+    rows.append(dict(rows[1], keyword="FixtureKeyword"))
+    with pytest.raises(standard.StandardTableError, match="repeats a tag"):
+        standard.load_data_dictionary(
+            _write(tmp_path / "a.json", _redigested(document))
+        )
+
+    rows[-1] = dict(rows[1], tag=unused)
+    with pytest.raises(standard.StandardTableError, match="repeats a keyword"):
+        standard.load_data_dictionary(
+            _write(tmp_path / "b.json", _redigested(document))
+        )
+
+
+def _pydicom_entry(attribute):
+    """Return pydicom's tag, keyword, VR, and VM for an attribute, or None."""
+    if "x" in attribute.tag:
+        # pydicom keeps repeating groups and masked elements in a separate
+        # dictionary, keyed by the tag with its "x" digits: "60xx3000" for
+        # (60xx,3000).
+        mask = attribute.tag[1:5] + attribute.tag[6:10]
+        entry = pydicom.datadict.RepeatersDictionary.get(mask)
+        if entry is None:
+            return None
+        vr, vm, _, _, keyword = entry
+        return attribute.tag, keyword, vr, vm
+    # Placeholders have no keyword to look up.
+    if not attribute.keyword or attribute.keyword not in pydicom.datadict.keyword_dict:
+        return None
+    tag = pydicom.datadict.keyword_dict[attribute.keyword]
+    vr, vm, *_ = pydicom.datadict.DicomDictionary[tag]
+    return f"({tag >> 16:04X},{tag & 0xFFFF:04X})", attribute.keyword, vr, vm
+
+
+@pytest.mark.pydicom
+def test_the_dictionary_agrees_with_pydicom_where_both_define_an_attribute():
+    # pydicom bundles an earlier edition without the newest attributes. It
+    # writes "NONE" where PS3.6 refers to Note 2, and gives only the first VM
+    # of "1-n or 1"; any other difference means a misread row.
+    pairs = [
+        ((attribute.tag, attribute.keyword, attribute.vr, attribute.vm), theirs)
+        for attribute in standard.load_data_dictionary().attributes
+        if (theirs := _pydicom_entry(attribute)) is not None
+    ]
+
+    # Both of pydicom's dictionaries were matched, so neither was skipped.
+    assert {"x" in ours[0] for ours, _ in pairs} == {False, True}
+    assert {(ours, theirs) for ours, theirs in pairs if ours != theirs} == {
+        (
+            ("(FFFE,E000)", "Item", "See Note 2", "1"),
+            ("(FFFE,E000)", "Item", "NONE", "1"),
+        ),
+        (
+            ("(FFFE,E00D)", "ItemDelimitationItem", "See Note 2", "1"),
+            ("(FFFE,E00D)", "ItemDelimitationItem", "NONE", "1"),
+        ),
+        (
+            ("(FFFE,E0DD)", "SequenceDelimitationItem", "See Note 2", "1"),
+            ("(FFFE,E0DD)", "SequenceDelimitationItem", "NONE", "1"),
+        ),
+        (
+            ("(0028,1200)", "GrayLookupTableData", "US or SS or OW", "1-n or 1"),
+            ("(0028,1200)", "GrayLookupTableData", "US or SS or OW", "1-n"),
+        ),
+        (
+            ("(0028,3006)", "LUTData", "US or OW", "1-n or 1"),
+            ("(0028,3006)", "LUTData", "US or OW", "1-n"),
+        ),
+    }

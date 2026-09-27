@@ -15,9 +15,9 @@
 """Load the rule tables generated from the DICOM standard.
 
 ``pymedphys dev deid-tables`` generates the tables in ``_standard/`` from the
-pinned edition of DICOM PS3.15 (design decision D-001). They are never edited
-by hand, so a table whose rows do not match its recorded digest is rejected.
-Each table carries the copyright attribution
+pinned edition of DICOM PS3.15 and PS3.6 (design decision D-001). They are
+never edited by hand, so a table whose rows do not match its recorded digest
+is rejected. Each table carries the copyright attribution of its part, such as
 "DICOM PS3.15 <edition>, © NEMA".
 """
 
@@ -68,14 +68,26 @@ VRS = frozenset(
         "SV", "TM", "UC", "UI", "UL", "UN", "UR", "US", "UT", "UV",
     }
 )  # fmt: skip
-# A VM such as "1", "1-n", or "3-4".
-VM_PATTERN = re.compile(r"([0-9]+)(?:-([0-9]+|n))?")
+# A VM such as "1", "1-n", "3-4", or "2-2n".
+VM_PATTERN = re.compile(r"([0-9]+)(?:-([0-9]+|[0-9]*n))?")
+# A tag as PS3.6 gives it, where "x" stands for any hexadecimal digit of a
+# repeating group or masked element, as in (60xx,3000) or (1000,xxx0).
+DICTIONARY_TAG_PATTERN = re.compile(r"\(([0-9A-Fx]{4}),[0-9A-Fx]{4}\)")
+KEYWORD_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9]*")
+# Where PS3.6 refers to a note instead of giving a VR or a status.
+_NOTE_PATTERN = re.compile(r"See Note [0-9]+")
+# The last column of PS3.6 Table 6-1: retired, with the edition if known;
+# registered by DICOS or DICONDE; or a note.
+DICTIONARY_STATUS_PATTERN = re.compile(
+    r"DICOS|DICONDE|See Note [0-9]+|RET(?: \([0-9]{4}[a-e]?\))?(?: - See Note [0-9]+)?"
+)
 
 _E1_1_FIELDS = frozenset(
     {"name", "tag", "retired", "in_standard_iod", "basic_profile", "options"}
 )
 _E1_1A_FIELDS = frozenset({"code", "description"})
 _E3_10_1_FIELDS = frozenset({"tag", "private_creator", "vr", "vm", "meaning"})
+_DATA_DICTIONARY_FIELDS = frozenset({"tag", "name", "keyword", "vr", "vm", "status"})
 
 STANDARD_DIR = pathlib.Path(__file__).resolve().parent / "_standard"
 
@@ -220,6 +232,77 @@ class SafePrivateTable:
     attributes: tuple[SafePrivateAttribute, ...]
 
 
+@dataclasses.dataclass(frozen=True)
+class DictionaryAttribute:
+    """One row of DICOM PS3.6 Table 6-1, the registry of data elements.
+
+    Attributes
+    ----------
+    tag : str
+        The tag in the form ``(gggg,eeee)``, where ``x`` stands for any
+        hexadecimal digit of a repeating group or masked element, as in
+        ``(60xx,3000)``.
+    name : str
+        The attribute name, or ``""`` for a placeholder that is not assigned
+        but will not be reused.
+    keyword : str
+        The keyword, or ``""`` for a placeholder.
+    vr : str
+        As published: a VR; alternatives such as ``"US or SS"``; ``""``
+        where none is given; or a note such as ``"See Note 2"`` for the item
+        and delimitation elements, which have no VR. :attr:`vrs` gives the
+        VRs alone.
+    vm : str
+        As published: a VM such as ``"1-n"`` or ``"2-2n"``; alternatives such
+        as ``"1-n or 1"``; or ``""`` where none is given.
+    status : str
+        The table's unlabelled last column: ``""`` for a current attribute;
+        ``"RET"``, with the edition it was retired in if known, as in
+        ``"RET (2007)"``; ``"DICOS"`` or ``"DICONDE"`` for an attribute those
+        standards registered; or a note such as ``"See Note 1"``, which may
+        also follow a retirement.
+    """
+
+    tag: str
+    name: str
+    keyword: str
+    vr: str
+    vm: str
+    status: str
+
+    @property
+    def retired(self) -> bool:
+        """Whether the attribute is retired."""
+        return self.status.startswith("RET")
+
+    @property
+    def vrs(self) -> tuple[str, ...]:
+        """The VRs the attribute can have, or ``()`` where PS3.6 gives none."""
+        if not self.vr or _NOTE_PATTERN.fullmatch(self.vr):
+            return ()
+        return tuple(self.vr.split(" or "))
+
+
+@dataclasses.dataclass(frozen=True)
+class DataDictionary:
+    """Table 6-1 of DICOM PS3.6 as generated from one edition of the standard.
+
+    Attributes
+    ----------
+    edition : str
+        The edition of DICOM PS3.6, such as ``"2026d"``.
+    acknowledgement : str
+        The copyright attribution for the table's source, such as
+        ``"DICOM PS3.6 2026d, © NEMA"``.
+    attributes : tuple of DictionaryAttribute
+        One per row, in the table's order.
+    """
+
+    edition: str
+    acknowledgement: str
+    attributes: tuple[DictionaryAttribute, ...]
+
+
 def is_vr_text(value: object) -> bool:
     """Return whether ``value`` is a VR as Table E.3.10-1 gives one.
 
@@ -233,9 +316,11 @@ def is_vr_text(value: object) -> bool:
 
 
 def is_vm(value: object) -> bool:
-    """Return whether ``value`` is a VM such as ``"1"``, ``"1-n"``, or ``"3-4"``.
+    """Return whether ``value`` is a VM such as ``"1"``, ``"1-n"``, ``"3-4"``, or ``"2-2n"``.
 
-    A range's upper bound must not be less than its lower bound.
+    A range's upper bound must not be less than its lower bound, and an
+    unbounded multiple such as ``"2-2n"`` repeats its lower bound (PS3.5
+    Section 6.4).
     """
     if not isinstance(value, str):
         return False
@@ -243,7 +328,56 @@ def is_vm(value: object) -> bool:
     if not match:
         return False
     lower, upper = match.groups()
-    return upper in (None, "n") or int(lower) <= int(upper)
+    if upper is None:
+        return True
+    if upper.endswith("n"):
+        return upper[:-1] in ("", lower)
+    return int(lower) <= int(upper)
+
+
+def is_dictionary_tag(value: object) -> bool:
+    """Return whether ``value`` is a tag as PS3.6 Table 6-1 gives one.
+
+    That is ``(gggg,eeee)`` in upper-case hexadecimal, where ``x`` may stand
+    for any digit, as in ``(60xx,3000)``. A group whose last digit is given
+    must be even, since the table lists no private attributes.
+    """
+    if not isinstance(value, str):
+        return False
+    match = DICTIONARY_TAG_PATTERN.fullmatch(value)
+    if not match:
+        return False
+    last = match.group(1)[-1]
+    return last == "x" or int(last, 16) % 2 == 0
+
+
+def is_dictionary_vr(value: object) -> bool:
+    """Return whether ``value`` is a VR as PS3.6 Table 6-1 gives one.
+
+    That is ``""``, a note such as ``"See Note 2"``, or one or more VRs from
+    :data:`VRS` joined by ``" or "``, such as ``"US or SS"``.
+    """
+    if not isinstance(value, str):
+        return False
+    return (
+        value == ""
+        or bool(_NOTE_PATTERN.fullmatch(value))
+        or all(vr in VRS for vr in value.split(" or "))
+    )
+
+
+def is_dictionary_vm(value: object) -> bool:
+    """Return whether ``value`` is ``""`` or VMs joined by ``" or "``, such as ``"1-n or 1"``."""
+    return isinstance(value, str) and (
+        value == "" or all(is_vm(vm) for vm in value.split(" or "))
+    )
+
+
+def is_dictionary_status(value: object) -> bool:
+    """Return whether ``value`` is a status as the last column of PS3.6 Table 6-1 gives one."""
+    return isinstance(value, str) and (
+        value == "" or bool(DICTIONARY_STATUS_PATTERN.fullmatch(value))
+    )
 
 
 def is_private_tag(value: object) -> bool:
@@ -285,7 +419,8 @@ def _read(path: pathlib.Path, table: str) -> dict:
     edition = document.get("edition")
     if not isinstance(edition, str) or not edition:
         raise StandardTableError(f"{path.name} does not name its edition as text")
-    if document.get("acknowledgement") != f"DICOM PS3.15 {edition}, © NEMA":
+    part = table.split(" ", 1)[0]
+    if document.get("acknowledgement") != f"DICOM {part} {edition}, © NEMA":
         raise StandardTableError(f"{path.name} lacks the copyright acknowledgement")
     rows = document.get("rows")
     if not isinstance(rows, list) or not rows:
@@ -353,6 +488,50 @@ def _e3_10_1_problem(row: dict) -> str | None:
     if not _is_text(row["meaning"], empty=True):
         return "has a meaning that is not text"
     return None
+
+
+# Each check of a Table 6-1 row, with what is wrong if it fails, in order.
+_DATA_DICTIONARY_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
+    (
+        lambda row: is_dictionary_tag(row["tag"]),
+        "has a tag that is not of the form (gggg,eeee) with an even group",
+    ),
+    (
+        lambda row: _is_text(row["name"], empty=True)
+        and _is_text(row["keyword"], empty=True)
+        and bool(row["name"]) == bool(row["keyword"]),
+        "has a name without a keyword, or a keyword without a name",
+    ),
+    (
+        lambda row: not row["keyword"]
+        or bool(KEYWORD_PATTERN.fullmatch(row["keyword"])),
+        "has a keyword that is not letters and digits, starting with a letter",
+    ),
+    (
+        lambda row: is_dictionary_vr(row["vr"]),
+        "has a VR that is not empty, one or more PS3.5 VRs joined by 'or', or a note",
+    ),
+    (
+        lambda row: is_dictionary_vm(row["vm"]),
+        "has a VM that is not empty, or VMs such as 1-n joined by 'or'",
+    ),
+    (
+        lambda row: is_dictionary_status(row["status"]),
+        "has a status that is not empty, RET, DICOS, DICONDE, or a note",
+    ),
+    (
+        lambda row: bool(row["keyword"]) or row["status"].startswith("RET"),
+        "has no keyword but is not retired",
+    ),
+)
+
+
+def _data_dictionary_problem(row: dict) -> str | None:
+    """Return what is wrong with a row of Table 6-1, or None if it is valid."""
+    return next(
+        (message for check, message in _DATA_DICTIONARY_CHECKS if not check(row)),
+        None,
+    )
 
 
 def _checked_rows(
@@ -536,6 +715,69 @@ def _load_table_e3_10_1(path: pathlib.Path) -> SafePrivateTable:
                 vr=row["vr"],
                 vm=row["vm"],
                 meaning=row["meaning"],
+            )
+            for row in rows
+        ),
+    )
+
+
+def load_data_dictionary(path: pathlib.Path | None = None) -> DataDictionary:
+    """Load Table 6-1 of DICOM PS3.6, the registry of data elements.
+
+    Each file is read once and cached, keyed by its resolved path.
+
+    Parameters
+    ----------
+    path : pathlib.Path, optional
+        The generated file. Defaults to the one shipped with PyMedPhys.
+
+    Returns
+    -------
+    DataDictionary
+
+    Raises
+    ------
+    StandardTableError
+        For any of the file-level problems :func:`load_table_e1_1` rejects,
+        with the acknowledgement "DICOM PS3.6 <edition>, © NEMA"; if a row
+        does not have exactly a tag accepted by :func:`is_dictionary_tag`, a
+        name and a keyword that are both text and both empty or both not, a
+        keyword of letters and digits, a VR accepted by
+        :func:`is_dictionary_vr`, a VM accepted by :func:`is_dictionary_vm`,
+        and a status accepted by :func:`is_dictionary_status`; if a row
+        without a keyword is not retired; or if a tag or keyword repeats.
+    """
+    return _load_data_dictionary(_default(path, "data_dictionary.json"))
+
+
+@functools.lru_cache(maxsize=None)
+def _load_data_dictionary(path: pathlib.Path) -> DataDictionary:
+    document = _read(path, "PS3.6 Table 6-1")
+    rows = _checked_rows(
+        path,
+        document,
+        _DATA_DICTIONARY_FIELDS,
+        _data_dictionary_problem,
+        lambda row: row["tag"],
+        "a tag",
+    )
+    keywords: set[str] = set()
+    for number, row in enumerate(rows, start=1):
+        if row["keyword"] in keywords:
+            raise StandardTableError(f"{path.name} row {number} repeats a keyword")
+        if row["keyword"]:
+            keywords.add(row["keyword"])
+    return DataDictionary(
+        edition=document["edition"],
+        acknowledgement=document["acknowledgement"],
+        attributes=tuple(
+            DictionaryAttribute(
+                tag=row["tag"],
+                name=row["name"],
+                keyword=row["keyword"],
+                vr=row["vr"],
+                vm=row["vm"],
+                status=row["status"],
             )
             for row in rows
         ),
