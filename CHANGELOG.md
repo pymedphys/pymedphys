@@ -114,7 +114,7 @@ This project adheres to
 
 ### Dependency changes
 
-- The locked development environment moves from NumPy 1.26 to NumPy 2 (2.2 on Python 3.10, 2.4 on 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
+- The locked development environment moves from NumPy 1.26 to NumPy 2 (2.2 on Python 3.10, 2.4 on 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version; a focused compatibility check runs with 1.26.4 in the existing Linux/Python 3.12 CI job. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. Newer Streamlit releases no longer depend on GitPython. The locked development environment moves to Pillow 12, protobuf 7, and pyarrow 25, and to a fixed release of every dependency that had a security fix available at the time; the security workflow explicitly ignores PYSEC-2025-183, a disputed PyJWT advisory with no fix. [PR #2036](https://github.com/pymedphys/pymedphys/pull/2036), [PR #2039](https://github.com/pymedphys/pymedphys/pull/2039), [PR #2041](https://github.com/pymedphys/pymedphys/pull/2041)
 - The `user` and `all` extras now install `dash` and `plotly`; `plotly` draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885)
 
