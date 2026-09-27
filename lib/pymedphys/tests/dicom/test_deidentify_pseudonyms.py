@@ -51,7 +51,7 @@ def _frame(value):
     return len(value).to_bytes(4, "big") + value
 
 
-def test_a_pseudonym_follows_d_005():
+def test_a_pseudonym_follows_the_specified_derivation():
     identity = pseudonyms.SubjectIdentity.from_patient_id("MRN0001", "FIXTURE HOSPITAL")
     token = hmac.new(
         FIXTURE_SECRET,
