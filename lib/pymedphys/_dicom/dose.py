@@ -247,7 +247,7 @@ def get_dose_grid_structure_mask(
     inter-slice contour interpolation would be required.
 
     For now, having two contours for the same structure name on a single
-    slice is also not supported.
+    slice is also not supported. The contours may be listed in any order.
 
     Parameters
     ----------
@@ -289,44 +289,42 @@ def get_dose_grid_structure_mask(
         structure_name, structure_dataset
     )
 
-    structure_z_list = []
+    contour_z_values = []
     for item in z_structure:
         unique_item = np.unique(item)
         if len(unique_item) != 1:
             raise ValueError("Only one z value per contour supported")
-        structure_z_list.append(unique_item[0])
+        contour_z_values.append(unique_item[0])
 
-    structure_z_values = np.sort(structure_z_list)
-    unique_structure_z_values = np.unique(structure_z_values)
+    structure_z_values = np.sort(contour_z_values)
 
-    if np.any(structure_z_values != unique_structure_z_values):
+    if np.unique(structure_z_values).size != structure_z_values.size:
         raise ValueError("Only one contour per slice is currently supported")
 
+    # The contour slices must be consecutive dose slices.
     sorted_dose_z = np.sort(z_dose)
-
-    first_dose_index = np.where(sorted_dose_z == structure_z_values[0])[0][0]
-    for i, z_val in enumerate(structure_z_values):
-        dose_index = first_dose_index + i
-        if structure_z_values[i] != sorted_dose_z[dose_index]:
-            raise ValueError(
-                "Only contours where both, there are no gaps in the "
-                "z-axis of the contours, and the contour axis and dose "
-                "axis, are aligned are supported."
-            )
+    first_dose_index = int(np.searchsorted(sorted_dose_z, structure_z_values[0]))
+    aligned_dose_z = sorted_dose_z[
+        first_dose_index : first_dose_index + structure_z_values.size
+    ]
+    if not np.array_equal(aligned_dose_z, structure_z_values):
+        raise ValueError(
+            "Only contours where both, there are no gaps in the "
+            "z-axis of the contours, and the contour axis and dose "
+            "axis, are aligned are supported."
+        )
 
     mask = np.zeros((len(z_dose), rows, columns), dtype=bool)
 
-    for structure_index, z_val in enumerate(structure_z_values):
-        dose_index = int(np.flatnonzero(z_dose == z_val)[0])
-
-        if z_structure[structure_index][0] != z_dose[dose_index]:
-            raise ValueError("Structure and dose indices do not align")
+    # A ContourSequence may list its contours in any order, so apply each
+    # contour to the dose slice at its own z.
+    for x_contour, y_contour, z_contour in zip(
+        x_structure, y_structure, contour_z_values
+    ):
+        dose_index = int(np.flatnonzero(z_dose == z_contour)[0])
 
         structure_polygon = matplotlib.path.Path(
-            [
-                (x_structure[structure_index][i], y_structure[structure_index][i])
-                for i in range(len(x_structure[structure_index]))
-            ]
+            np.column_stack((x_contour, y_contour))
         )
 
         # This logical "or" here is actually in place for the case where
@@ -341,8 +339,9 @@ def get_dose_grid_structure_mask(
 
 
 def find_dose_within_structure(structure_name, structure_dataset, dose_dataset):
-    dose = dose_from_dataset(dose_dataset)
     mask = get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset)
+    # pydicom drops the slice dimension of a single-slice pixel array.
+    dose = dose_from_dataset(dose_dataset).reshape(mask.shape)
 
     return dose[mask]
 
