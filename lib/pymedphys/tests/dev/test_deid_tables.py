@@ -27,6 +27,7 @@ import urllib.error
 from pymedphys._imports import pytest
 
 from pymedphys._dev.deid_tables import annex_e, chtml, generate, sources
+from pymedphys._dicom.deidentify import standard
 from pymedphys.cli import define_parser
 
 E1_1_HEADER = (
@@ -276,6 +277,12 @@ def test_an_empty_first_row_is_preserved_without_becoming_a_header():
 
     assert table.header == ()
     assert table.rows == ((), ("1", "2"))
+
+
+def test_option_columns_map_to_the_loader_option_names():
+    # The parser writes the option names the runtime loader accepts.
+    assert tuple(annex_e.OPTION_COLUMNS.values()) == standard.OPTIONS
+    assert annex_e.ACTION_CODES is standard.ACTION_CODES
 
 
 def test_parse_table_e1_1():

@@ -105,11 +105,12 @@ These are the active design decisions, not statements that the code implements t
 
 - **Decision.**
   - A development command generates the L1 tables from the pinned PS3.15 edition, currently 2026d. It downloads the published HTML and DocBook XML, verifies each file's SHA-256 against the pinned digest, and parses them with `html.parser` and `xml.etree.ElementTree`, with each Bandit `nosec` justified as the security policy requires. It records the edition, the source digests, and a digest of the generated content.
-  - The repository keeps the generated tables, not the standard's source files. Each generated file, and the package's licence notices, acknowledge the source as "DICOM PS3.x, © NEMA" for each part used.
+  - The repository and the package keep the generated tables, not the standard's source files. Each generated file carries the copyright attribution `DICOM PS3.x <edition>, © NEMA`, such as "DICOM PS3.15 2026d, © NEMA".
+  - A loader reads each table, checks each row's fields, types, and actions, and rejects a table whose rows no longer match the digest recorded in the file. This catches a table edited without updating that digest; it does not authenticate the file.
   - Table E.3.4-1 is not generated until the Clean Structured Content Option is designed.
   - A monthly workflow opens an issue when a new edition would change the generated tables. Generated files are never edited by hand.
-- **Rationale.** The legacy keyword list was transcribed by hand and has drifted: it has 217 entries, drawn from Supplement 142, while Table E.1-1 in 2026d has 657 rows. The standard is revised about five times a year. NEMA holds the copyright in the standard, and the DICOM Standards Committee's policies and procedures permit portions of it to be copied, used, published, and distributed in other works when acknowledged as "DICOM Part(s) ___, © NEMA". Table E.3.4-1 also contains SNOMED CT, LOINC, NCDR, NCIt, and UMLS codes, which carry their own terms. The standard library parsers add no dependency and only ever read verified publications, in a development-only tool.
-- **Tests.** Regeneration reproduces the committed tables and digests; a source file with a different digest is rejected; and every generated file carries the acknowledgement.
+- **Rationale.** The legacy keyword list was transcribed by hand and has drifted: it has 217 entries, drawn from Supplement 142, while Table E.1-1 in 2026d has 657 rows. The standard is revised about five times a year. NEMA holds the copyright in the standard, and each table records that attribution. Table E.3.4-1 also contains SNOMED CT, LOINC, NCDR, NCIt, and UMLS codes, which carry their own terms. The standard library parsers add no dependency and only ever read verified publications, in a development-only tool.
+- **Tests.** Regeneration reproduces the committed tables and digests; a source file with a different digest is rejected; a table whose rows differ from their recorded digest, or whose rows have the wrong fields, types, or actions, is rejected; and every generated file carries the copyright attribution.
 
 ### D-002: pydicom 3.0 minimum
 
