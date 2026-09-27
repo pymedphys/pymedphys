@@ -55,7 +55,7 @@ implementation = [
 ]
 tests = [
   "tests/dicom/test_deidentify_keys.py::test_derivations_are_pinned",
-  "tests/dicom/test_deidentify_uids.py::test_a_replacement_follows_d_003",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_follows_the_specified_derivation",
   "tests/dicom/test_deidentify_uids.py::test_a_replacement_is_a_valid_uid_from_a_version_5_uuid",
   "tests/dicom/test_deidentify_uids.py::test_a_replacement_depends_only_on_the_key_and_the_unpadded_uid",
   "tests/dicom/test_deidentify_uids.py::test_different_uids_give_different_replacements",
