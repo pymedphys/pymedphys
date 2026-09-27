@@ -1,0 +1,517 @@
+# Supplementary (L2) rules: the role of every UI attribute in the pinned
+# PS3.6 data dictionary (design decision D-003), curated by hand.
+#
+# instance: identifies an instance, event, entity, device, or organisation.
+# definition: identifies a definition that a standard or vendor publishes,
+#   such as a SOP Class, transfer syntax, coding scheme, or context group.
+#
+# A value registered in the pinned tables is retained under either role,
+# because it names a public definition. Any other value is replaced; in a
+# definition attribute the replacement is also reported. Attributes that
+# Table E.1-1 lists without a note are instance UIDs it replaces.
+# File Meta Information (group 0002), command (group 0000), and directory
+# (group 0004) elements are not in Table 6-1; the file container rules
+# rebuild or remove them.
+
+schema = "pymedphys-deid-uid-roles/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.6 2026d, © NEMA"
+
+[[attribute]]
+tag = "(0008,0014)"
+keyword = "InstanceCreatorUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,0016)"
+keyword = "SOPClassUID"
+role = "definition"
+note = "Identifies the SOP Class."
+
+[[attribute]]
+tag = "(0008,0017)"
+keyword = "AcquisitionUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,0018)"
+keyword = "SOPInstanceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,0019)"
+keyword = "PyramidUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,001A)"
+keyword = "RelatedGeneralSOPClassUID"
+role = "definition"
+note = "Identifies SOP Classes."
+
+[[attribute]]
+tag = "(0008,001B)"
+keyword = "OriginalSpecializedSOPClassUID"
+role = "definition"
+note = "Identifies a SOP Class."
+
+[[attribute]]
+tag = "(0008,0058)"
+keyword = "FailedSOPInstanceUIDList"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,0062)"
+keyword = "SOPClassesInStudy"
+role = "definition"
+note = "Identifies SOP Classes."
+
+[[attribute]]
+tag = "(0008,010C)"
+keyword = "CodingSchemeUID"
+role = "definition"
+note = "Identifies a coding scheme. A local scheme under an institution's root is not registered, so it is replaced and reported."
+
+[[attribute]]
+tag = "(0008,010D)"
+keyword = "ContextGroupExtensionCreatorUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies the organisation that extended a context group."
+
+[[attribute]]
+tag = "(0008,0117)"
+keyword = "ContextUID"
+role = "definition"
+note = "Identifies a context group."
+
+[[attribute]]
+tag = "(0008,0118)"
+keyword = "MappingResourceUID"
+role = "definition"
+note = "Identifies a mapping resource."
+
+[[attribute]]
+tag = "(0008,040E)"
+keyword = "StoredInstanceTransferSyntaxUID"
+role = "definition"
+note = "Identifies a transfer syntax."
+
+[[attribute]]
+tag = "(0008,1150)"
+keyword = "ReferencedSOPClassUID"
+role = "definition"
+note = "Identifies a SOP Class."
+
+[[attribute]]
+tag = "(0008,1155)"
+keyword = "ReferencedSOPInstanceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,115A)"
+keyword = "SOPClassesSupported"
+role = "definition"
+note = "Identifies SOP Classes."
+
+[[attribute]]
+tag = "(0008,1167)"
+keyword = "MultiFrameSourceSOPInstanceUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies the SOP Instance a frame came from."
+
+[[attribute]]
+tag = "(0008,1195)"
+keyword = "TransactionUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,3002)"
+keyword = "AvailableTransferSyntaxUID"
+role = "definition"
+note = "Identifies transfer syntaxes."
+
+[[attribute]]
+tag = "(0008,3010)"
+keyword = "IrradiationEventUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0008,3012)"
+keyword = "RadiopharmaceuticalAdministrationEventUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies an administration event."
+
+[[attribute]]
+tag = "(0008,9123)"
+keyword = "CreatorVersionUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies the equipment and software version that created Raw Data, so it may identify the device."
+
+[[attribute]]
+tag = "(0018,1002)"
+keyword = "DeviceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0018,100B)"
+keyword = "ManufacturerDeviceClassUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0018,2042)"
+keyword = "TargetUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0018,991E)"
+keyword = "TargetFrameOfReferenceUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a frame of reference."
+
+[[attribute]]
+tag = "(0020,000D)"
+keyword = "StudyInstanceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0020,000E)"
+keyword = "SeriesInstanceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0020,0052)"
+keyword = "FrameOfReferenceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0020,0200)"
+keyword = "SynchronizationFrameOfReferenceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0020,0242)"
+keyword = "SOPInstanceUIDOfConcatenationSource"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a SOP Instance."
+
+[[attribute]]
+tag = "(0020,9161)"
+keyword = "ConcatenationUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0020,9164)"
+keyword = "DimensionOrganizationUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0020,9312)"
+keyword = "VolumeFrameOfReferenceUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a frame of reference."
+
+[[attribute]]
+tag = "(0020,9313)"
+keyword = "TableFrameOfReferenceUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a frame of reference."
+
+[[attribute]]
+tag = "(0028,0304)"
+keyword = "ReferencedColorPaletteInstanceUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a SOP Instance."
+
+[[attribute]]
+tag = "(0028,1199)"
+keyword = "PaletteColorLookupTableUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0028,1214)"
+keyword = "LargePaletteColorLookupTableUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0034,0003)"
+keyword = "FlowTransferSyntaxUID"
+role = "definition"
+note = "Identifies a transfer syntax."
+
+[[attribute]]
+tag = "(003A,0310)"
+keyword = "MultiplexGroupUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,0554)"
+keyword = "SpecimenUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,4023)"
+keyword = "ReferencedGeneralPurposeScheduledProcedureStepTransactionUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,A021)"
+keyword = "FindingsGroupUIDTrial"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a group of findings."
+
+[[attribute]]
+tag = "(0040,A022)"
+keyword = "ReferencedFindingsGroupUIDTrial"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a group of findings."
+
+[[attribute]]
+tag = "(0040,A124)"
+keyword = "UID"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,A171)"
+keyword = "ObservationUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,A172)"
+keyword = "ReferencedObservationUIDTrial"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,A402)"
+keyword = "ObservationSubjectUIDTrial"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,DB0C)"
+keyword = "TemplateExtensionOrganizationUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,DB0D)"
+keyword = "TemplateExtensionCreatorUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0040,E011)"
+keyword = "RetrieveLocationUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a retrieval location, which can identify the institution."
+
+[[attribute]]
+tag = "(0040,E030)"
+keyword = "RepositoryUniqueID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a document repository, which can identify the institution."
+
+[[attribute]]
+tag = "(0040,E031)"
+keyword = "HomeCommunityID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a community of repositories, which can identify the institution."
+
+[[attribute]]
+tag = "(0044,0102)"
+keyword = "AssertionUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies an assertion."
+
+[[attribute]]
+tag = "(0044,0108)"
+keyword = "ReferencedAssertionUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies an assertion."
+
+[[attribute]]
+tag = "(0062,0021)"
+keyword = "TrackingUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0064,0003)"
+keyword = "SourceFrameOfReferenceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0068,7004)"
+keyword = "ModelGroupUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a group of implant templates."
+
+[[attribute]]
+tag = "(006A,0003)"
+keyword = "AnnotationGroupUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0070,031A)"
+keyword = "FiducialUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0070,031B)"
+keyword = "ReferencedFiducialUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a fiducial, as Fiducial UID (0070,031A) does."
+
+[[attribute]]
+tag = "(0070,1101)"
+keyword = "PresentationDisplayCollectionUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0070,1102)"
+keyword = "PresentationSequenceCollectionUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0070,1209)"
+keyword = "VolumetricPresentationInputSetUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a set of presentation inputs."
+
+[[attribute]]
+tag = "(0070,1904)"
+keyword = "ReferencedContentItem"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a content item."
+
+[[attribute]]
+tag = "(0072,007F)"
+keyword = "SelectorUIValue"
+role = "instance"
+note = "Not in Table E.1-1. A hanging protocol selector may hold instance UIDs; registered values, such as SOP Classes, are retained."
+
+[[attribute]]
+tag = "(0088,0140)"
+keyword = "StorageMediaFileSetUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0400,0010)"
+keyword = "MACCalculationTransferSyntaxUID"
+role = "definition"
+note = "Identifies a transfer syntax."
+
+[[attribute]]
+tag = "(0400,0100)"
+keyword = "DigitalSignatureUID"
+role = "instance"
+
+[[attribute]]
+tag = "(0400,0510)"
+keyword = "EncryptedContentTransferSyntaxUID"
+role = "definition"
+note = "Identifies a transfer syntax."
+
+[[attribute]]
+tag = "(3006,0024)"
+keyword = "ReferencedFrameOfReferenceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3006,00C2)"
+keyword = "RelatedFrameOfReferenceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(300A,0013)"
+keyword = "DoseReferenceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(300A,0054)"
+keyword = "TableTopPositionAlignmentUID"
+role = "instance"
+
+[[attribute]]
+tag = "(300A,0083)"
+keyword = "ReferencedDoseReferenceUID"
+role = "instance"
+
+[[attribute]]
+tag = "(300A,0609)"
+keyword = "TreatmentPositionGroupUID"
+role = "instance"
+
+[[attribute]]
+tag = "(300A,0650)"
+keyword = "PatientSetupUID"
+role = "instance"
+
+[[attribute]]
+tag = "(300A,0675)"
+keyword = "EquipmentFrameOfReferenceUID"
+role = "instance"
+note = "Not in Table E.1-1. Identifies a frame of reference."
+
+[[attribute]]
+tag = "(300A,0700)"
+keyword = "TreatmentSessionUID"
+role = "instance"
+
+[[attribute]]
+tag = "(300A,0785)"
+keyword = "ReferencedTreatmentPositionGroupUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,0006)"
+keyword = "ConceptualVolumeUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,000B)"
+keyword = "ReferencedConceptualVolumeUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,0013)"
+keyword = "ConstituentConceptualVolumeUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,0015)"
+keyword = "SourceConceptualVolumeUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,001F)"
+keyword = "SegmentationTemplateUID"
+role = "definition"
+note = "Identifies a segmentation template. A local template is not registered, so it is replaced and reported."
+
+[[attribute]]
+tag = "(3010,0031)"
+keyword = "ReferencedFiducialsUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,003B)"
+keyword = "RTTreatmentPhaseUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,0052)"
+keyword = "PertinentSOPClassesInStudy"
+role = "definition"
+note = "Identifies SOP Classes."
+
+[[attribute]]
+tag = "(3010,0053)"
+keyword = "PertinentSOPClassesInSeries"
+role = "definition"
+note = "Identifies SOP Classes."
+
+[[attribute]]
+tag = "(3010,006E)"
+keyword = "DosimetricObjectiveUID"
+role = "instance"
+
+[[attribute]]
+tag = "(3010,006F)"
+keyword = "ReferencedDosimetricObjectiveUID"
+role = "instance"

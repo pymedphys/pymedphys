@@ -22,17 +22,23 @@ the same replacement, so every occurrence of a UID, in any file or run under
 that key, is replaced consistently without a stored map. Without the key,
 knowing a source UID does not reveal its replacement.
 
-Which UIDs are replaced and which, such as SOP Class UIDs and well-known
-coding-scheme UIDs, are retained is decided by the rule layers before this
-module is used (D-003).
+Which attributes' UIDs are transformed is decided by the rule layers before
+this module is used (D-003). :func:`transform_uid` then applies the
+attribute's role (:mod:`~pymedphys._dicom.deidentify.uid_roles`) to a value:
+a UID registered in the pinned tables is retained, because it names a public
+definition, and any other UID is replaced.
 """
 
 from __future__ import annotations
 
+import enum
+import functools
 import hashlib
 import uuid
 
+from . import codes, uid_registry
 from .keys import DeidKey
+from .uid_roles import UIDRole
 
 UID_ROOT = "2.25."
 # The namespace of every replacement UUID. It is the version 5 UUID of
@@ -95,3 +101,73 @@ def replacement_uid(key: DeidKey, uid: str) -> str:
         raise ValueError("an empty UID has no replacement")
     token = key.derive("uid", normalised)
     return f"{UID_ROOT}{uuid5(UID_NAMESPACE, token).int}"
+
+
+class UIDOutcome(enum.Enum):
+    """What :func:`transform_uid` did with a value."""
+
+    RETAINED = "retained"
+    REPLACED = "replaced"
+    # A definition attribute, such as Coding Scheme UID, held a UID that the
+    # pinned tables do not register, such as a local coding scheme under an
+    # institution's root. It is replaced, and reported for review (D-003).
+    REPLACED_UNREGISTERED_DEFINITION = "replaced-unregistered-definition"
+
+
+@functools.lru_cache(maxsize=None)
+def well_known_uids() -> frozenset[str]:
+    """Return every UID that the pinned tables register.
+
+    These are the UIDs of PS3.6 Annex A (Tables A-1 to A-4) and the coding
+    scheme UIDs of PS3.16 Tables 8-1 and 8-2: SOP Classes, transfer syntaxes,
+    well-known frames of reference and SOP Instances, context groups,
+    templates, and coding schemes.
+    """
+    return frozenset(
+        {row.uid for row in uid_registry.load_uid_values().rows}
+        | {row.uid for row in uid_registry.load_frames_of_reference().rows}
+        | {row.uid for row in uid_registry.load_context_group_uids().rows}
+        | {row.uid for row in uid_registry.load_template_uids().rows}
+        # Some coding schemes have no UID.
+        | {row.uid for row in codes.load_coding_schemes().rows if row.uid}
+        | {row.uid for row in codes.load_hl7v3_coding_schemes().rows}
+    )
+
+
+def transform_uid(key: DeidKey, role: UIDRole, uid: str) -> tuple[str, UIDOutcome]:
+    """Return the value that replaces ``uid`` in an attribute with ``role``.
+
+    Trailing padding is removed first. A UID that the pinned tables register
+    (:func:`well_known_uids`) is retained whatever the role, because it names
+    a public definition rather than an instance: replacing a well-known
+    frame of reference, for example, would change its meaning and hide
+    nothing. Any other UID is replaced by :func:`replacement_uid`. In a
+    definition attribute such a UID is reported, because it may be a local
+    definition that identifies an institution.
+
+    Parameters
+    ----------
+    key : DeidKey
+        The run's key.
+    role : UIDRole
+        The attribute's role, from its supplementary rule.
+    uid : str
+        The source value.
+
+    Returns
+    -------
+    value : str
+    outcome : UIDOutcome
+
+    Raises
+    ------
+    ValueError
+        If ``uid`` is empty once its padding is removed.
+    """
+    normalised = normalise_uid(uid)
+    if normalised in well_known_uids():
+        return normalised, UIDOutcome.RETAINED
+    replacement = replacement_uid(key, normalised)
+    if role is UIDRole.DEFINITION:
+        return replacement, UIDOutcome.REPLACED_UNREGISTERED_DEFINITION
+    return replacement, UIDOutcome.REPLACED
