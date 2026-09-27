@@ -33,7 +33,13 @@ from pymedphys._dicom.deidentify.standard import (
 
 from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
-from .chtml import HtmlTable, TableFormatError, check_columns, check_unique
+from .chtml import (
+    HtmlTable,
+    TableFormatError,
+    check_columns,
+    check_unique,
+    parse_registry_table,
+)
 
 TABLE_6_1 = "Table 6-1"
 
@@ -183,22 +189,6 @@ def parse_uid_table(label: str, table: HtmlTable) -> tuple:
         an invalid UID; or if a UID, keyword, or context group identifier
         appears more than once.
     """
-    columns = UID_TABLE_COLUMNS[label]
-    spec = UID_TABLES[label]
-    check_columns(label, table.header, columns)
-    if not table.rows:
-        raise TableFormatError(f"{label} has no rows")
-
-    rows = []
-    for number, cells in enumerate(table.rows, start=1):
-        row = {columns[column]: cell for column, cell in zip(table.header, cells)}
-        problem = spec.problem(row)
-        if problem:
-            raise TableFormatError(f"{label} row {number} {problem}")
-        rows.append(spec.row_type(**row))
-
-    for field in spec.unique:
-        check_unique(
-            label, (getattr(row, field) for row in rows if getattr(row, field))
-        )
-    return tuple(rows)
+    return parse_registry_table(
+        label, table, UID_TABLE_COLUMNS[label], UID_TABLES[label]
+    )
