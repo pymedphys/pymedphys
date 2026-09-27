@@ -152,7 +152,7 @@ pre-commit by running:
 
 .. code:: bash
 
-    uv sync --python 3.12 --locked --extra all --group dev
+    uv sync --python 3.14 --locked --extra all --group dev
     uv run -- pre-commit install
 
 Run automated tests with:

@@ -24,11 +24,11 @@ will contribute through a fork, substitute your fork's clone URL.
 
     git clone https://github.com/pymedphys/pymedphys.git
     cd pymedphys
-    uv python install 3.12
-    uv sync --python 3.12 --locked --extra all --group dev
+    uv python install 3.14
+    uv sync --python 3.14 --locked --extra all --group dev
     uv run pre-commit install
 
-The current source supports Python 3.11, 3.12, 3.13, and 3.14. Python 3.12 matches
+The current source supports Python 3.11, 3.12, 3.13, and 3.14. Python 3.14 matches
 the quick CI run; Python 3.11 must be 3.11.4 or later. uv can install
 Python for you, so a separate Python or pipx installation is not required.
 

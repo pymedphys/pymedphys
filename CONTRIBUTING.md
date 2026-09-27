@@ -14,8 +14,8 @@ for Windows, Linux, or macOS. With Git and
 ```bash
 git clone https://github.com/pymedphys/pymedphys.git
 cd pymedphys
-uv python install 3.12
-uv sync --python 3.12 --locked --extra all --group dev
+uv python install 3.14
+uv sync --python 3.14 --locked --extra all --group dev
 uv run pre-commit install
 ```
 
@@ -23,7 +23,7 @@ If you do not have permission to push to this repository, fork it first and
 clone your fork instead. Create a working branch before committing.
 
 The development environment uses the dependencies recorded in `uv.lock`.
-The current source supports Python 3.11–3.14; Python 3.12 matches the quick CI
+The current source supports Python 3.11–3.14; Python 3.14 matches the quick CI
 run. See the [repository guide](https://docs.pymedphys.com/en/latest/contrib/info/file-structure.html)
 for the source layout.
 

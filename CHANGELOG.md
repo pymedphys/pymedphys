@@ -124,6 +124,13 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI defaults to Python 3.14. The quick
+  unit-test run uses it, as do every job that does not choose a version, the
+  release workflow's checks of the published files, and Read the Docs builds.
+  NumPy 1.26 has no wheels for Python 3.13 or later, so its compatibility
+  check moves to its own job on Python 3.12, which runs alongside both the
+  quick and full matrices. The contributor setup guides install Python 3.14.
+  [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
   templates), and from `paulking` a second copy of the Profiler
