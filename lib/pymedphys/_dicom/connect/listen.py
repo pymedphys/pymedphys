@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 University of New South Wales & Ingham Institute
 # Copyright (C) 2020 Stuart Swerdloff and Simon Biggs
 
@@ -13,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import logging
+import os
 import pathlib
+import re
 import signal
 import sys
 import tempfile
@@ -26,12 +30,57 @@ from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 
 
+# Characters kept in a path component built from a received value. Anything
+# else, including path separators and drive colons, is replaced.
+_UNSAFE_CHARACTERS = re.compile(r"[^A-Za-z0-9._-]")
+_MAX_COMPONENT_LENGTH = 64
+_WINDOWS_RESERVED_NAMES = frozenset(
+    ["CON", "PRN", "AUX", "NUL"]
+    + [f"COM{i}" for i in range(1, 10)]
+    + [f"LPT{i}" for i in range(1, 10)]
+)
+
+
+def safe_path_component(value) -> str:
+    """Return a single, safe path component for a value from a received dataset.
+
+    A value that is already safe (letters, digits, ``.``, ``_`` and ``-``, with
+    no leading or trailing ``.`` or ``_``, at most 64 characters, and not a
+    Windows reserved name) is returned unchanged, so existing storage layouts
+    stay the same. Any other value has its other characters replaced with
+    ``_``, its leading and trailing ``.`` and ``_`` removed, and gains a short
+    hash of the original value. The hash keeps different values, such as ``A/B`` and
+    ``A_B``, in different directories.
+    """
+    text = str(value)
+    cleaned = _UNSAFE_CHARACTERS.sub("_", text).strip(". _")[:_MAX_COMPONENT_LENGTH]
+    reserved = cleaned.split(".")[0].upper() in _WINDOWS_RESERVED_NAMES
+    if cleaned == text and not reserved:
+        return text
+
+    if reserved:
+        cleaned = f"_{cleaned}"
+    digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:12]
+    return f"{cleaned}-{digest}" if cleaned else digest
+
+
 def hierarchical_dicom_storage_directory(
-    storage_directory, ds: "pydicom.dataset.Dataset"
+    storage_directory: str | os.PathLike[str], ds: "pydicom.dataset.Dataset"
 ) -> pathlib.Path:
-    series_path = pathlib.Path(storage_directory).joinpath(
-        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID
+    """Return the Patient/Study/Series directory for ``ds`` inside the store.
+
+    Each component comes from the received dataset, so it passes through
+    :func:`safe_path_component`, and the result must resolve inside
+    ``storage_directory``.
+    """
+    root = pathlib.Path(storage_directory)
+    series_path = root.joinpath(
+        safe_path_component(ds.PatientID),
+        safe_path_component(ds.StudyInstanceUID),
+        safe_path_component(ds.SeriesInstanceUID),
     )
+    if not series_path.resolve().is_relative_to(root.resolve()):
+        raise ValueError("Refusing to store a DICOM object outside the store.")
     return series_path
 
 
@@ -133,7 +182,9 @@ class DicomListener(DicomConnectBase):
         self.association_directory = series_dir
 
         filename = pathlib.Path(
-            "{!s}.{!s}.dcm".format(mode_prefix, dataset.SOPInstanceUID)
+            "{!s}.{!s}.dcm".format(
+                mode_prefix, safe_path_component(dataset.SOPInstanceUID)
+            )
         )
         filepath = series_dir.joinpath(filename)
 
@@ -180,12 +231,13 @@ class DicomListener(DicomConnectBase):
             file_ds.save_as(filepath, write_like_original=False)
             status_ds.Status = 0x0000  # Success
 
-            logging.info("DICOM object received: %s", filepath)
+            # The path is left out: it contains the Patient ID.
+            logging.info("DICOM object received and stored (%s)", mode_prefix)
         except OSError:
-            logging.error("Could not write file to specified directory:")
-            logging.error("    %s", filepath)
             logging.error(
-                "Directory may not exist or you may not have write permission"
+                "Could not write a received DICOM object to the storage "
+                "directory. It may not exist, or you may not have write "
+                "permission."
             )
 
             status_ds.ErrorComment = "SCP internal error - Unable to write file"

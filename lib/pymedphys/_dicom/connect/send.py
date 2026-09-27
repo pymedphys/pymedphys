@@ -15,6 +15,7 @@
 
 import logging
 import pathlib
+import sys
 
 from pymedphys._imports import pydicom, pynetdicom
 
@@ -103,16 +104,33 @@ class DicomSender(DicomConnectBase):
         return statuses
 
 
-def send_cli(args):
-    """Send files from the command line to the DICOM location"""
+def is_stored(status) -> bool:
+    """Whether a C-STORE response reports the object as stored.
 
-    # Start the listener
+    Success and warning statuses (for example ``0xB000``, coercion of data
+    elements) mean the object was stored. A failure, a cancellation, or an
+    empty response, which pynetdicom returns when the association is lost,
+    means it was not.
+    """
+    code = getattr(status, "Status", None)
+    if code is None:
+        return False
+    return pynetdicom.status.code_to_category(code) in ("Success", "Warning")
+
+
+def send_cli(args):
+    """Send files from the command line to the DICOM location.
+
+    Exits with status 1 if the host cannot be reached, a file is not DICOM, or
+    any file is not stored.
+    """
+
     dicom_sender = DicomSender(host=args.host, port=args.port, ae_title=args.aetitle)
 
     # Check we can contact the listener
     if not dicom_sender.verify():
         logging.error("Unable to connect to DICOM host")
-        return
+        sys.exit(1)
 
     # Prepare the DICOM file (check that all files are valid DICOM)
     dcm_file_paths = []
@@ -122,9 +140,17 @@ def send_cli(args):
             pydicom.dcmread(dcm_file_path)
         except pydicom.errors.InvalidDicomError:
             logging.error("Invalid DICOM file provided: %s", dcm_file)
-            return
+            sys.exit(1)
 
         dcm_file_paths.append(dcm_file_path)
 
-    # Send the files
-    dicom_sender.send(dcm_file_paths)
+    statuses = dicom_sender.send(dcm_file_paths)
+    # send() returns no statuses when the association is not established.
+    not_stored = len(dcm_file_paths) - sum(is_stored(status) for status in statuses)
+    if not_stored:
+        logging.error(
+            "%d of %d DICOM files were not stored by the DICOM host",
+            not_stored,
+            len(dcm_file_paths),
+        )
+        sys.exit(1)
