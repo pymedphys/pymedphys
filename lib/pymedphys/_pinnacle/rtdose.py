@@ -483,7 +483,7 @@ def convert_dose(plan, export_path):
     # If Feet first, flip the dose grid
     if patient_position in ("FFS", "FFP"):
         arr = ds.pixel_array
-        ds.PixelData = np.flip(arr, axis=0).tostring()
+        ds.PixelData = np.flip(arr, axis=0).tobytes()
 
     # Save the RTDose Dicom File
     output_file = os.path.join(export_path, RDfilename)

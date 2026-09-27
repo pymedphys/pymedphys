@@ -151,6 +151,14 @@ Fast unit tests with smart matrix strategy.
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
+The Linux/Python 3.12 job also runs a focused NumPy 1.26.4 compatibility step
+in both the quick and full matrices. It reuses the installed dependencies with
+`uv run --no-sync --with numpy==1.26.4` and exercises delivery conversions,
+electron inserts, MetersetMap, mock profiles, dose summation, structure masks
+and synthetic Pinnacle exports without downloading datasets. Its separate
+JUnit report is included in the job's existing artefact. A failure fails the
+unit-test job and therefore the required CI or release summary.
+
 ### Extended Workflows (Conditional)
 
 #### `integration-tests.yml`
