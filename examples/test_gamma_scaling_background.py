@@ -28,7 +28,31 @@ from gamma_scaling_background import RunLock, bundle, busy, remaining_budget, su
 from gamma_scaling_process import StudyStopped, run_command
 
 
+def heartbeat_code(heartbeat, seconds=30):
+    """Python source for a process that rewrites a heartbeat file until killed.
+
+    Stopping it is then shown by the file ceasing to change, without waiting
+    for a fixed sleep that a slowly starting process could outlast.
+    """
+    return (
+        "import time\n"
+        "from pathlib import Path\n"
+        f"path = Path({str(heartbeat)!r})\n"
+        f"end = time.monotonic() + {seconds}\n"
+        "while time.monotonic() < end:\n"
+        "    path.write_text(str(time.monotonic_ns()))\n"
+        "    time.sleep(0.05)\n"
+    )
+
+
 class BackgroundIntegrityTests(unittest.TestCase):
+    def assert_stopped(self, heartbeat, message):
+        self.assertTrue(heartbeat.exists(), "The process never started")
+        time.sleep(0.3)
+        last = heartbeat.read_text()
+        time.sleep(0.5)
+        self.assertEqual(heartbeat.read_text(), last, message)
+
     def test_resuming_does_not_reset_the_wall_clock_budget(self):
         config = {"deadline_unix": 7300, "max_seconds": 7200}
         with patch("gamma_scaling_background.time.time", return_value=7000):
@@ -38,20 +62,13 @@ class BackgroundIntegrityTests(unittest.TestCase):
 
     def test_worker_timeout_kills_the_virtualenv_python(self):
         with tempfile.TemporaryDirectory() as directory:
-            started, finished = (
-                Path(directory) / "started",
-                Path(directory) / "finished",
-            )
-            code = (
-                f"from pathlib import Path; import time; Path({str(started)!r}).touch(); "
-                f"time.sleep(2); Path({str(finished)!r}).touch()"
-            )
+            heartbeat = Path(directory) / "heartbeat"
             with self.assertRaises(subprocess.TimeoutExpired):
-                run_command([sys.executable, "-c", code], timeout=0.8)
-            self.assertTrue(started.exists())
-            time.sleep(1.5)
-            self.assertFalse(
-                finished.exists(), "The actual Python worker survived its launcher"
+                run_command(
+                    [sys.executable, "-c", heartbeat_code(heartbeat)], timeout=2
+                )
+            self.assert_stopped(
+                heartbeat, "The actual Python worker survived its launcher"
             )
 
     def test_stop_request_interrupts_an_active_worker(self):
@@ -72,14 +89,15 @@ class BackgroundIntegrityTests(unittest.TestCase):
             (output / "study/results.json").write_text('{"complete": false}')
             # A stalled report from an older attempt must not be bundled.
             (output / "study/summary.csv").write_text("stale table")
-            started, finished = output / "started", output / "finished"
-            child = (
-                f"from pathlib import Path; import time; Path({str(started)!r}).touch(); "
-                f"time.sleep(3); Path({str(finished)!r}).touch()"
-            )
+            heartbeat = output / "heartbeat"
+            child = heartbeat_code(heartbeat)
             (source / "gamma_scaling.py").write_text(
                 f"import subprocess,sys,time\nsubprocess.Popen([sys.executable, '-c', {child!r}])\ntime.sleep(30)\n"
             )
+            # A 20 s allowance reserves 4 s, and the watchdog fires halfway
+            # through that reserve: here about 4 s after the supervisor
+            # starts, leaving ample time for the driver to start its child.
+            # The remaining 2 s is too little for packaging.
             config = {
                 "repo": str(output),
                 "previous": "old",
@@ -88,12 +106,19 @@ class BackgroundIntegrityTests(unittest.TestCase):
                 "worker_timeout": 30,
                 "quick": True,
                 "max_seconds": 20,
-                "deadline_unix": time.time() + 4,
+                "deadline_unix": time.time() + 6,
             }
             (output / "run-config.json").write_text(json.dumps(config))
             before = time.monotonic()
-            self.assertEqual(supervise(output), 0)
-            self.assertLess(time.monotonic() - before, 4.5)
+            # Scanning installed packages can take seconds on a cold cache,
+            # which would consume the window before the driver starts.
+            with patch(
+                "gamma_scaling_background.environment_description",
+                return_value={"python": sys.version, "packages": {}},
+            ):
+                self.assertEqual(supervise(output), 0)
+            # The stand-in driver would otherwise run for 30 s.
+            self.assertLess(time.monotonic() - before, 10)
             state = json.loads((output / "run.json").read_text())
             self.assertEqual(state["state"], "budget_exhausted")
             self.assertTrue(state["watchdog"])
@@ -104,9 +129,7 @@ class BackgroundIntegrityTests(unittest.TestCase):
             with zipfile.ZipFile(bundle(output)) as archive:
                 self.assertIn("study/results.json", archive.namelist())
                 self.assertNotIn("study/summary.csv", archive.namelist())
-            self.assertTrue(started.exists())
-            time.sleep(1.5)
-            self.assertFalse(finished.exists(), "The watchdog left a child running")
+            self.assert_stopped(heartbeat, "The watchdog left a child running")
 
     def test_lock_blocks_another_writer_and_releases_on_exit(self):
         with tempfile.TemporaryDirectory() as directory:
