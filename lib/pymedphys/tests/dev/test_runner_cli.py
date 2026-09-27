@@ -82,7 +82,7 @@ def test_option_values_and_caller_relative_paths(tmp_path):
     suite = tmp_path / "suite"
     suite.mkdir()
     (suite / "conftest.py").write_text(
-        "def pytest_addoption(parser):\n" "    parser.addoption('--review-value')\n",
+        "def pytest_addoption(parser):\n    parser.addoption('--review-value')\n",
         encoding="utf-8",
     )
     (suite / "test_sample.py").write_text(
@@ -117,7 +117,7 @@ def test_parallel_workers_resolve_caller_relative_paths(tmp_path):
     suite = tmp_path / "suite"
     suite.mkdir()
     (suite / "conftest.py").write_text(
-        "def pytest_addoption(parser):\n" "    parser.addoption('--review-value')\n",
+        "def pytest_addoption(parser):\n    parser.addoption('--review-value')\n",
         encoding="utf-8",
     )
     (suite / "test_sample.py").write_text(

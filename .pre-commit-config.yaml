@@ -29,12 +29,23 @@ repos:
         # Offline static audits only; the security workflow runs the online
         # audits with a token. Findings below medium severity do not block.
         args: ["--no-online-audits", "--min-severity", "medium"]
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.1
+  # Ruff runs from the project environment, so its version is the one pinned in
+  # uv.lock (the pre-commit dependency group installs it in CI). Notebooks and
+  # Markdown are left out, as they were with the ruff-pre-commit hook.
+  - repo: local
     hooks:
       - id: ruff
-        args: [ --fix ]
+        name: ruff check
+        entry: uv run --no-sync ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
       - id: ruff-format
+        name: ruff format
+        entry: uv run --no-sync ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
   - repo: https://github.com/astral-sh/uv-pre-commit
     # Keep in step with the setup-uv version in .github/actions/setup-project.
     rev: 0.12.15

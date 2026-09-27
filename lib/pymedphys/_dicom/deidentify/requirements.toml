@@ -315,9 +315,30 @@ When the Retain Longitudinal Temporal Information With Modified Dates Option is 
 - preserves the gross longitudinal temporal relationships between images obtained on different dates to the extent necessary for the application
 - preserves the fine temporal relationships between images and real-world events to the extent necessary for analysis of the images for the application
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-006", "D-007"]
+implementation = [
+  "_dicom/deidentify/dates.py",
+  "_dicom/deidentify/profiles.py",
+  "_dicom/deidentify/temporal_roles.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_dates.py::test_an_offset_is_52_to_520_whole_weeks_and_never_zero",
+  "tests/dicom/test_deidentify_dates.py::test_shifting_preserves_intervals_and_weekdays",
+  "tests/dicom/test_deidentify_dates.py::test_a_datetime_moves_its_date_and_keeps_its_time_and_utc_offset",
+  "tests/dicom/test_deidentify_profiles.py::test_profiles_persist_across_runs",
+  "tests/dicom/test_deidentify_profiles.py::test_a_stored_offset_wins_over_a_changed_derivation",
+  "tests/dicom/test_deidentify_temporal_roles.py::test_every_temporal_attribute_in_the_dictionary_has_exactly_one_role",
+  "tests/dicom/test_deidentify_temporal_roles.py::test_every_attribute_modified_dates_cleans_has_a_role",
+  "tests/dicom/test_deidentify_temporal_roles.py::test_modified_dates_shifts_subject_events_and_normalises_time_zones",
+  "tests/dicom/test_deidentify_dates.py::test_local_times_keep_their_interval_to_values_with_their_own_offset",
+  "tests/dicom/test_deidentify_dates.py::test_converting_to_local_time_keeps_every_interval",
+  "tests/dicom/test_deidentify_dates.py::test_frame_origin_timestamps_keep_their_intervals",
+]
+note = '''
+Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted or replaced by a dummy value. Time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance. Remaining: modifying every date and time in a data set (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.6-03"
@@ -579,9 +600,24 @@ id = "MIDI-BP-12"
 text = '''
 Replace absolute dates and times while preserving relative temporal relationships across studies, within a useful tolerance, for short-term analyses such as dynamic contrast and nuclide decay and long-term ones such as therapy assessment.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-006", "D-007"]
+implementation = [
+  "_dicom/deidentify/dates.py",
+  "_dicom/deidentify/profiles.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_dates.py::test_an_offset_is_52_to_520_whole_weeks_and_never_zero",
+  "tests/dicom/test_deidentify_dates.py::test_shifting_preserves_intervals_and_weekdays",
+  "tests/dicom/test_deidentify_dates.py::test_a_datetime_moves_its_date_and_keeps_its_time_and_utc_offset",
+  "tests/dicom/test_deidentify_profiles.py::test_profiles_persist_across_runs",
+  "tests/dicom/test_deidentify_profiles.py::test_a_stored_offset_wins_over_a_changed_derivation",
+  "tests/dicom/test_deidentify_temporal_roles.py::test_modified_dates_shifts_subject_events_and_normalises_time_zones",
+]
+note = '''
+Offsets are whole weeks, identical across a subject's studies and runs, so intervals and times are preserved exactly, and every date, time, and datetime attribute has a reviewed role that decides whether it moves with the subject. Remaining: their modification in data sets (M3).
+'''
 
 [[requirement]]
 id = "MIDI-BP-13"

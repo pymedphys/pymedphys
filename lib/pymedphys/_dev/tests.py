@@ -78,7 +78,7 @@ def run_clean_imports(_):
 
     with tempfile.TemporaryDirectory() as temp_dir:
         subprocess.check_call([python_executable, "-m", "venv", temp_dir])
-        new_python_executable = str(pathlib.Path(temp_dir).joinpath("bin", "python"))
+        new_python_executable = str(_venv_python(pathlib.Path(temp_dir)))
 
         print("Installing PyMedPhys with minimal dependencies...\n")
         subprocess.check_call(
@@ -86,7 +86,7 @@ def run_clean_imports(_):
         )
 
         print("\nImporting all modules that should be able to handle a clean import...")
-        _import_and_print(new_python_executable, clean_import_paths)
+        failures = _import_and_print(new_python_executable, clean_import_paths)
 
         print("Installing PyMedPhys with tests dependencies...\n")
         subprocess.check_call(
@@ -94,10 +94,23 @@ def run_clean_imports(_):
         )
 
         print("\nImporting all modules that should be able to handle a tests import...")
-        _import_and_print(new_python_executable, tests_import_paths)
+        failures += _import_and_print(new_python_executable, tests_import_paths)
+
+    if failures:
+        print(f"{failures} module(s) failed to import.")
+        sys.exit(1)
+
+
+def _venv_python(venv_dir, windows=sys.platform == "win32"):
+    if windows:
+        return venv_dir.joinpath("Scripts", "python.exe")
+
+    return venv_dir.joinpath("bin", "python")
 
 
 def _import_and_print(python_executable, import_paths):
+    """Import each module in its own interpreter; return the failure count."""
+    failures = 0
     issues = set()
     for import_path in tqdm.tqdm(import_paths):
         try:
@@ -117,6 +130,13 @@ def _import_and_print(python_executable, import_paths):
         except subprocess.CalledProcessError as e:
             error_text = e.output.decode()
 
+            # A test module that calls pytest.importorskip opts out this way
+            # when an optional dependency is missing.
+            if re.search(r"^Skipped: ", error_text, re.MULTILINE):
+                continue
+
+            failures += 1
+
             match = re.search("ModuleNotFoundError: No module named '(.*)'", error_text)
             try:
                 module, line = _get_problem_module_and_line_number(error_text)
@@ -124,13 +144,15 @@ def _import_and_print(python_executable, import_paths):
 
                 issues.add((module, line, dependency))
 
-            except (AttributeError, ValueError):
+            except (AttributeError, IndexError, ValueError):
                 print(f"When importing {import_path} the following error occurred:")
                 print(error_text)
 
     print("")
     print(tabulate.tabulate(issues, headers=["Module", "Line", "Dependency"]))
     print("\n")
+
+    return failures
 
 
 def _get_problem_module_and_line_number(error_text):

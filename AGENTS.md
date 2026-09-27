@@ -519,6 +519,13 @@ there.
   lockfile's hashes without installing the project. `uvx --constraints`
   applies the versions but ignores hashes. Install in a step of its own, before
   any `continue-on-error` step, so an installation failure is not misreported.
+- Ruff is one such tool. The pre-commit `ruff` and `ruff-format` hooks are
+  local hooks that run the ruff pinned in `uv.lock` (from the `pre-commit`
+  group in CI), so `uv run -- ruff` and pre-commit always agree. Upgrade ruff
+  through `uv lock`, never with a `ruff-pre-commit` hook `rev`, and keep the
+  explicit `select` in `pyproject.toml` so an upgrade does not change the rules.
+  Put a repository-wide reformat in a commit of its own and add its full SHA to
+  `.git-blame-ignore-revs`.
 
 **Never hand-edit `uv.lock`.** CI installs with `uv sync --frozen`, which reads the
 resolved `[package.optional-dependencies]` tables, not the `requires-dist` metadata.
