@@ -47,7 +47,7 @@ def test_the_namespace_is_derived_from_its_documented_name():
     )
 
 
-def test_a_replacement_follows_d_003():
+def test_a_replacement_follows_the_specified_derivation():
     # HMAC-SHA256 of the UID under the key, as the name of a version 5 UUID
     # in the PyMedPhys namespace, written under the 2.25 root.
     token = hmac.new(

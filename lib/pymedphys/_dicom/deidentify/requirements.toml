@@ -59,7 +59,7 @@ tests = [
   "tests/dicom/test_deidentify_uid_roles.py::test_every_ui_attribute_in_the_dictionary_has_exactly_one_role",
   "tests/dicom/test_deidentify_uid_roles.py::test_every_uid_table_e1_1_replaces_is_an_instance_uid",
   "tests/dicom/test_deidentify_uid_roles.py::test_an_instance_uid_is_replaced",
-  "tests/dicom/test_deidentify_uids.py::test_a_replacement_follows_d_003",
+  "tests/dicom/test_deidentify_uids.py::test_a_replacement_follows_the_specified_derivation",
   "tests/dicom/test_deidentify_uids.py::test_a_replacement_is_a_valid_uid_from_a_version_5_uuid",
   "tests/dicom/test_deidentify_uids.py::test_a_replacement_depends_only_on_the_key_and_the_unpadded_uid",
   "tests/dicom/test_deidentify_uids.py::test_different_uids_give_different_replacements",
