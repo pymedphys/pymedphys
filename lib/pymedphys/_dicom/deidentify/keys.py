@@ -49,7 +49,7 @@ KEY_FILE_FORMAT = "pymedphys-deid-key/1"
 DERIVATION_VERSION = b"pymedphys-deid/1"
 # The domains values are derived in. Later derivations, such as patient
 # identifiers and date offsets, add their own.
-DOMAINS = frozenset({"key-id", "patient", "uid"})
+DOMAINS = frozenset({"date-offset", "key-id", "patient", "subject", "uid"})
 
 # POSIX honours the owner-only mode a key file is created with. Elsewhere,
 # such as on Windows, access depends on the directory's access control.
@@ -150,16 +150,36 @@ class DeidKey:
         return hash(self.key_id)
 
 
-def _refuse_location(
+def custodian_location_problem(
     path: pathlib.Path, protected_dirs: Iterable[str | os.PathLike]
-) -> None:
+) -> str | None:
+    """Return why ``path`` is no place for custodian data, or None if it is.
+
+    Keys and subject profiles never go inside the PyMedPhys configuration
+    directory or any of ``protected_dirs``, such as a run's output and QC
+    directories (D-004). ``path`` must already be resolved.
+    """
     if path.is_relative_to(config_dir_path().resolve()):
-        raise DeidKeyError(
-            "refusing to write a key inside the PyMedPhys configuration directory"
-        )
+        return "inside the PyMedPhys configuration directory"
     for directory in protected_dirs:
         if path.is_relative_to(pathlib.Path(directory).resolve()):
-            raise DeidKeyError("refusing to write a key inside a protected directory")
+            return "inside a protected directory"
+    return None
+
+
+def warn_where_owner_only_modes_are_not_enforced(what: str) -> None:
+    """Warn that access to a new custodian file depends on its directory.
+
+    POSIX honours the owner-only mode custodian files are created with;
+    elsewhere, such as on Windows, access depends on access control.
+    """
+    if not _OWNER_ONLY_MODE_ENFORCED:
+        warnings.warn(
+            "this platform does not apply owner-only file modes, so access to "
+            f"the {what} depends on its directory's access control",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def write_key_file(
@@ -203,7 +223,9 @@ def write_key_file(
     # Resolve the directory but not the file name, so that a symbolic link at
     # the file name is refused by the exclusive create, never followed.
     resolved = given.parent.resolve() / given.name
-    _refuse_location(resolved, protected_dirs)
+    problem = custodian_location_problem(resolved, protected_dirs)
+    if problem:
+        raise DeidKeyError(f"refusing to write a key {problem}")
     text = json.dumps(
         {
             "format": KEY_FILE_FORMAT,
@@ -223,13 +245,7 @@ def write_key_file(
     except BaseException:
         resolved.unlink(missing_ok=True)
         raise
-    if not _OWNER_ONLY_MODE_ENFORCED:
-        warnings.warn(
-            "this platform does not apply owner-only file modes, so access to "
-            "the key file depends on its directory's access control",
-            UserWarning,
-            stacklevel=2,
-        )
+    warn_where_owner_only_modes_are_not_enforced("key file")
     return resolved
 
 
