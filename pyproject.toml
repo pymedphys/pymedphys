@@ -3,7 +3,7 @@ name = "pymedphys"
 version = "0.42.0.dev1"
 description = "Medical Physics library"
 readme = "README.rst"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11.4"
 # PEP 639 SPDX expression. The package bundles MIT-licensed code alongside its
 # own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
 # DICOM dictionary, and the vendored apipkg and deprecated modules.
@@ -20,9 +20,10 @@ classifiers = [
     "Intended Audience :: Healthcare Industry",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "typing-extensions",
@@ -42,6 +43,7 @@ pymedphys = "pymedphys.__main__:main"
 user = [
   "Pillow",
   "PyYAML",
+  "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
   "anyio",
   "attrs",
   "dash",
@@ -61,7 +63,7 @@ user = [
   "pymssql",
   "pynetdicom",
   "python-dateutil",
-  "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
+  "pywin32; sys_platform == 'win32'",
   "requests",
   "scikit-learn",
   "scipy",
@@ -129,7 +131,6 @@ tests = [
 ]
 
 docs = [
-  "interpolation>=2.2.7,<3",
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
@@ -185,6 +186,7 @@ propagate = [
 all = [
     "Pillow",
     "PyYAML",
+    "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
     "anthropic",
     "anyio",
     "astroid",
@@ -195,7 +197,6 @@ all = [
     "doc8",
     "httpx2",
     "imageio[tifffile]",
-    "interpolation>=2.2.7,<3",
     "ipython>=7.31.1",
     "jupyter-book>=0.12.0,<2.0.0",
     "keyring",
@@ -221,7 +222,7 @@ all = [
     "pytest-sugar",
     "pytest-timeout",
     "python-dateutil",
-    "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
+    "pywin32; sys_platform == 'win32'",
     "readme-renderer",
     "requests",
     "rope",
