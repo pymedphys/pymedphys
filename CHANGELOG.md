@@ -83,6 +83,15 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   the voxels at transposed row and column indices, which can lie anywhere in
   the slice. Supine and prone results are unchanged.
   [PR #2110](https://github.com/pymedphys/pymedphys/pull/2110)
+- The private `get_dose_grid_structure_mask` in `pymedphys._dicom.dose`
+  applies each contour to the dose slice at its own z. Previously a structure
+  whose contours were not listed in ascending z raised `ValueError`, even when
+  every contour lay on a dose slice. `find_dose_within_structure` and
+  `create_dvh` also accept single-slice RT Dose files, which previously raised
+  `IndexError`. Two contours on one slice, or contours beyond the dose grid, now
+  raise `ValueError` with the check's own message instead of a NumPy broadcast
+  error or `IndexError`.
+  [PR #2111](https://github.com/pymedphys/pymedphys/pull/2111)
 
 ### Dependency changes
 
