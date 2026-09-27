@@ -3313,6 +3313,7 @@ dev = [
 ]
 pre-commit = [
     { name = "pre-commit" },
+    { name = "ruff" },
 ]
 script-tests = [
     { name = "pytest" },
@@ -3477,7 +3478,10 @@ provides-extras = ["user", "ai", "dev", "tests", "docs", "cli", "dicom", "icom",
 
 [package.metadata.requires-dev]
 dev = [{ name = "sphinx-external-toc", specifier = ">=1.0.1" }]
-pre-commit = [{ name = "pre-commit" }]
+pre-commit = [
+    { name = "pre-commit" },
+    { name = "ruff" },
+]
 script-tests = [
     { name = "pytest" },
     { name = "pytest-timeout" },

@@ -21,45 +21,37 @@ import string
 def get_detached_file_descriptor(filepath):
     try:
         import win32file  # type: ignore
-
-        has_win32file = True
     except ImportError:
-        has_win32file = False
+        return filepath
 
-    if has_win32file:
-        import msvcrt  # type: ignore
-        import os
+    import msvcrt  # type: ignore
+    import os
 
-        handle = win32file.CreateFile(
-            str(filepath),
-            win32file.GENERIC_READ,
-            win32file.FILE_SHARE_DELETE
-            | win32file.FILE_SHARE_READ
-            | win32file.FILE_SHARE_WRITE,
-            None,
-            win32file.OPEN_EXISTING,
-            0,
-            None,
-        )
+    handle = win32file.CreateFile(
+        str(filepath),
+        win32file.GENERIC_READ,
+        win32file.FILE_SHARE_DELETE
+        | win32file.FILE_SHARE_READ
+        | win32file.FILE_SHARE_WRITE,
+        None,
+        win32file.OPEN_EXISTING,
+        0,
+        None,
+    )
 
-        detached_handle = handle.Detach()
+    detached_handle = handle.Detach()
 
-        file_descriptor = msvcrt.open_osfhandle(detached_handle, os.O_RDONLY)
+    file_descriptor = msvcrt.open_osfhandle(detached_handle, os.O_RDONLY)
 
-        return file_descriptor
-
-    return filepath
+    return file_descriptor
 
 
 @contextlib.contextmanager
 def open_no_lock(filepath, *args, **kwargs):
     file_descriptor = get_detached_file_descriptor(filepath)
 
-    try:
-        a_file = open(file_descriptor, *args, **kwargs)
+    with open(file_descriptor, *args, **kwargs) as a_file:
         yield a_file
-    finally:
-        a_file.close()
 
 
 def make_a_valid_directory_name(proposed_directory_name):
