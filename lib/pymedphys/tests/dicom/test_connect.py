@@ -126,9 +126,19 @@ def listener_process(port, receive_directory, ae_title):
         yield proc
 
     finally:
-        for child in psutil.Process(proc.pid).children(recursive=True):
-            child.kill()
+        # A listener that failed to start has already exited, and on some
+        # platforms, such as Windows, psutil can no longer find it.
+        try:
+            children = psutil.Process(proc.pid).children(recursive=True)
+        except psutil.NoSuchProcess:
+            children = []
+        for child in children:
+            try:
+                child.kill()
+            except psutil.NoSuchProcess:
+                pass
         proc.kill()
+        proc.wait()
 
 
 @pytest.fixture()
@@ -393,6 +403,30 @@ def test_dicom_listener_cli(test_dataset):
         file_path = _build_hierarchical_path_to_plan(test_directory, test_dataset)
         read_dataset = pydicom.dcmread(file_path)
         assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "exited_listener_visible", [True, False], ids=["visible", "not visible"]
+)
+def test_listener_process_reports_a_listener_that_fails_to_start(
+    tmp_path, monkeypatch, exited_listener_visible
+):
+    """A listener that exits during startup raises with its own output, even
+    where the exited process can no longer be found during cleanup."""
+    if not exited_listener_visible:
+        # As on Windows, where psutil cannot find the exited listener.
+        def exited(pid):
+            raise psutil.NoSuchProcess(pid)
+
+        monkeypatch.setattr(psutil, "Process", exited)
+
+    # No socket can bind port -1, so the listener fails on every platform.
+    with pytest.raises(RuntimeError, match="exited before it was ready") as caught:
+        with listener_process(-1, tmp_path, "PYMEDPHYSTEST"):
+            pass
+
+    assert "OverflowError" in str(caught.value)
 
 
 @pytest.mark.pydicom
