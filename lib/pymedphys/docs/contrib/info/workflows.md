@@ -151,14 +151,15 @@ Fast unit tests with smart matrix strategy.
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
-The `numpy-floor` job runs a focused NumPy 1.26.4 compatibility check
-alongside both the quick and full matrices, on Ubuntu with Python 3.12, because
-NumPy 1.26 has no wheels for Python 3.13 or later. It installs the same locked
-environment as the unit tests, overlays NumPy with
-`uv run --no-sync --with numpy==1.26.4`, and exercises delivery conversions,
-electron inserts, MetersetMap, mock profiles, dose summation, structure masks
-and synthetic Pinnacle exports without downloading datasets. It uploads its
-JUnit report as `junit-numpy126`. A failure fails the unit-test workflow and
+The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
+data cache) at the declared minimum versions of NumPy (1.26.4) and pandas
+(2.0.3), alongside both the quick and full matrices. It runs on Ubuntu with
+Python 3.11, the only supported version with wheels for both: NumPy 1.26 has
+none for Python 3.13 or later, and pandas 2.0 none for 3.12 or later. It
+installs the same locked environment as the unit tests, overlays the two
+packages with `uv run --no-sync --with numpy==1.26.4 --with pandas==2.0.3`,
+and fails first if the overlay did not take effect. It uploads its JUnit
+report as `junit-dependency-floors`. A failure fails the unit-test workflow and
 therefore the required CI or release summary.
 
 ### Extended Workflows (Conditional)
@@ -587,7 +588,7 @@ uv run pymedphys dev docs
 
 ## Version Compatibility
 
-- **Python**: 3.11, 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy 1.26 check; 3.11 reaches end of life in October 2027)
+- **Python**: 3.11, 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy and pandas minimum-version check, which uses 3.11; 3.11 reaches end of life in October 2027)
 - **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)
