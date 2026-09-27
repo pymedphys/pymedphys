@@ -176,7 +176,7 @@ packaging==24.2
     #   plotly
     #   pymedphys
     #   streamlit
-pandas==2.3.3
+pandas==3.0.6
     # via
     #   pymedphys
     #   streamlit
@@ -222,8 +222,6 @@ python-dateutil==2.9.0.post0
     #   pymedphys
 python-multipart==0.0.32
     # via streamlit
-pytz==2026.3.post1
-    # via pandas
 pywin32==312 ; sys_platform == 'win32'
     # via pymedphys
 pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
@@ -308,7 +306,7 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
-tzdata==2026.4
+tzdata==2026.4 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
 urllib3==2.8.0
     # via requests

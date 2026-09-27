@@ -295,8 +295,8 @@ def _plot_model(width_data, length_data, factor_data):
     )
     model_width, model_length, model_factor = i, j, k
 
-    vmin = np.nanmin(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
-    vmax = np.nanmax(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
+    vmin = np.nanmin(np.concatenate([np.ravel(model_factor), np.ravel(factor_data)]))
+    vmax = np.nanmax(np.concatenate([np.ravel(model_factor), np.ravel(factor_data)]))
 
     fig, ax = plt.subplots()
     scat = ax.scatter(

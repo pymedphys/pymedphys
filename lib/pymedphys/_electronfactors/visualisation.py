@@ -86,8 +86,8 @@ def plot_model(width_data, length_data, factor_data):
     # model_width_mesh, model_length_mesh = np.meshgrid(
     #     model_width, model_length)
 
-    vmin = np.nanmin(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
-    vmax = np.nanmax(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
+    vmin = np.nanmin(np.concatenate([np.ravel(model_factor), np.ravel(factor_data)]))
+    vmax = np.nanmax(np.concatenate([np.ravel(model_factor), np.ravel(factor_data)]))
     # vrange = vmax - vmin
 
     plt.scatter(
