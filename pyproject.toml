@@ -75,6 +75,7 @@ user = [
   "tqdm",
   "trio-asyncio",
   "watchdog",
+  "xlrd",
   "xmltodict",
 ]
 
@@ -129,6 +130,7 @@ tests = [
   "shapely",
   "toml",
   "tqdm",
+  "xlrd",
 ]
 
 docs = [
@@ -248,6 +250,7 @@ all = [
     "types-tabulate",
     "types-toml",
     "watchdog",
+    "xlrd",
     "xmltodict",
 ]
 

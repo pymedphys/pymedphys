@@ -3195,6 +3195,7 @@ all = [
     { name = "types-tabulate" },
     { name = "types-toml" },
     { name = "watchdog" },
+    { name = "xlrd" },
     { name = "xmltodict" },
 ]
 cli = [
@@ -3283,6 +3284,7 @@ tests = [
     { name = "shapely" },
     { name = "toml" },
     { name = "tqdm" },
+    { name = "xlrd" },
 ]
 user = [
     { name = "altair", marker = "python_full_version >= '3.14'" },
@@ -3320,6 +3322,7 @@ user = [
     { name = "tqdm" },
     { name = "trio-asyncio" },
     { name = "watchdog" },
+    { name = "xlrd" },
     { name = "xmltodict" },
 ]
 
@@ -3506,6 +3509,9 @@ requires-dist = [
     { name = "typing-extensions" },
     { name = "watchdog", marker = "extra == 'all'" },
     { name = "watchdog", marker = "extra == 'user'" },
+    { name = "xlrd", marker = "extra == 'all'" },
+    { name = "xlrd", marker = "extra == 'tests'" },
+    { name = "xlrd", marker = "extra == 'user'" },
     { name = "xmltodict", marker = "extra == 'all'" },
     { name = "xmltodict", marker = "extra == 'user'" },
 ]
@@ -5126,6 +5132,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d0/20/50ed6bdf27dec98b568a8ae25dc599f35baa3d9709f9e83fd1edb56b9a90/wheel-0.48.0.tar.gz", hash = "sha256:94800765601e9171bf5d58d066e640662842bcedcbab982b2c90787a2c987322", size = 66471, upload-time = "2026-08-11T22:02:27.327Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2e/29/69cfbb602cd91690c55d38ba9fe53e6a7e76a6fa647bf38f19c138d25449/wheel-0.48.0-py3-none-any.whl", hash = "sha256:3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab", size = 33320, upload-time = "2026-08-11T22:02:26.1Z" },
+]
+
+[[package]]
+name = "xlrd"
+version = "2.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/5a/377161c2d3538d1990d7af382c79f3b2372e880b65de21b01b1a2b78691e/xlrd-2.0.2.tar.gz", hash = "sha256:08b5e25de58f21ce71dc7db3b3b8106c1fa776f3024c54e45b45b374e89234c9", size = 100167, upload-time = "2025-06-14T08:46:39.039Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/62/c8d562e7766786ba6587d09c5a8ba9f718ed3fa8af7f4553e8f91c36f302/xlrd-2.0.2-py2.py3-none-any.whl", hash = "sha256:ea762c3d29f4cca48d82df517b6d89fbce4db3107f9d78713e48cd321d5c9aa9", size = 96555, upload-time = "2025-06-14T08:46:37.766Z" },
 ]
 
 [[package]]

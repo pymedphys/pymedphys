@@ -91,6 +91,7 @@ import watchdog
 import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
+import xlrd
 import xlsxwriter
 import xlsxwriter.worksheet
 import xmltodict
