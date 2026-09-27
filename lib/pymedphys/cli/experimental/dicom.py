@@ -108,8 +108,7 @@ def pseudonymise(dicom_subparsers):
         "--keep_private_tags",
         action="store_true",
         help=(
-            "Use this flag to preserve private tags in the "
-            "pseudonymised DICOM files."
+            "Use this flag to preserve private tags in the pseudonymised DICOM files."
         ),
     )
 

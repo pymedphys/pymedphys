@@ -160,7 +160,7 @@ class DeliveryBase(DeliveryNamedTuple):
 
         try:
             assert np.all(np.sum(masks, axis=0) == 1), (
-                "Not all beams were captured by the gantry tolerance of " " {}".format(
+                "Not all beams were captured by the gantry tolerance of  {}".format(
                     gantry_tol
                 )
             )

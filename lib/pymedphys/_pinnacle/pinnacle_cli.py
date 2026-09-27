@@ -144,8 +144,7 @@ def export_cli(args):
 
         if len(pat_dirs) == 0:
             logger.error(
-                "No Pinnacle Patient directories were found in the "
-                "supplied TAR archive"
+                "No Pinnacle Patient directories were found in the supplied TAR archive"
             )
             sys.exit()
 

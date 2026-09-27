@@ -497,14 +497,17 @@ _DATA_DICTIONARY_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
         "has a tag that is not of the form (gggg,eeee) with an even group",
     ),
     (
-        lambda row: _is_text(row["name"], empty=True)
-        and _is_text(row["keyword"], empty=True)
-        and bool(row["name"]) == bool(row["keyword"]),
+        lambda row: (
+            _is_text(row["name"], empty=True)
+            and _is_text(row["keyword"], empty=True)
+            and bool(row["name"]) == bool(row["keyword"])
+        ),
         "has a name without a keyword, or a keyword without a name",
     ),
     (
-        lambda row: not row["keyword"]
-        or bool(KEYWORD_PATTERN.fullmatch(row["keyword"])),
+        lambda row: (
+            not row["keyword"] or bool(KEYWORD_PATTERN.fullmatch(row["keyword"]))
+        ),
         "has a keyword that is not letters and digits, starting with a letter",
     ),
     (
