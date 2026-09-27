@@ -1,6 +1,6 @@
 # DICOM de-identification design
 
-This document specifies the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, and records the decisions behind it. Nothing described here is implemented yet. The current tools share one engine in `lib/pymedphys/_dicom/anonymise/`, do not implement a DICOM confidentiality profile, and have the limitations listed in [DICOM de-identification](../../users/background/dicom-deidentification.md).
+This document specifies the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, and records the decisions behind it. Only the generated rule tables and the requirements register exist so far; the register records what is implemented. The current tools share one engine in `lib/pymedphys/_dicom/anonymise/`, do not implement a DICOM confidentiality profile, and have the limitations listed in [DICOM de-identification](../../users/background/dicom-deidentification.md).
 
 Pull requests for this work are listed in the [tracking issue](https://github.com/pymedphys/pymedphys/issues/2075). A pull request that changes a decision updates this document, the user documentation, and any affected code in the same change.
 
@@ -45,7 +45,31 @@ In code, command-line output, reports, and documentation:
 | Validation | NCI MIDI synthetic-identifier datasets, answer keys, and validation script (D-018); `dciodvfy` and `dcentvfy` from dicom3tools, which check object validity, not privacy |
 | Governance context (documentation only) | GDPR Article 4(5) and Recital 26; CJEU C-413/23 P *EDPS v SRB* (4 September 2025); UK ICO anonymisation guidance; Privacy Act 1988 (Cth) and OAIC de-identification guidance; ISO 25237:2017 |
 
-The requirements register records the MIDI best practices alongside the standard's "shall" statements, so that each requirement traces to the code and tests that satisfy it. Where this document relies on an informative Note in PS3.15 or on a MIDI recommendation, the choice it supports is a design decision, not a conformance requirement. Browsing links follow the current edition; the table generator uses the pinned publication (D-001).
+Where this document relies on an informative Note in PS3.15 or on a MIDI recommendation, the choice it supports is a design decision, not a conformance requirement. Browsing links follow the current edition; the table generator uses the pinned publication (D-001).
+
+## Requirements register
+
+The requirements register traces the standard's "shall" statements and the MIDI best practices to the decisions, code, and tests that satisfy them. It is `lib/pymedphys/_dicom/deidentify/requirements.toml`, curated by hand, and records:
+
+- every paragraph of PS3.15 Annex E in the pinned edition that contains "shall", outside Notes and tables, verbatim with any list it introduces and a link to the paragraph;
+- the 18 best practices of MIDI §1.6, summarised in PyMedPhys's words.
+
+Like the generated tables, the file carries the attribution "DICOM PS3.15 2026d, © NEMA" (D-001).
+
+Identifiers are stable and never reused. `PS3.15-E.1.1-01` numbers the paragraphs of a section in the standard's order, and `MIDI-BP-01` to `MIDI-BP-18` follow the report's numbering. Each entry cites the decisions that address it and has one of these statuses:
+
+| Status | Meaning | Entry also records |
+| --- | --- | --- |
+| `planned` | In scope, not yet implemented | The milestone that delivers it |
+| `partial` | Partly implemented | Modules and tests so far, and the milestone that delivers the rest |
+| `implemented` | Met for the supported scope | Modules and the tests that show it |
+| `out-of-scope` | Not supported, such as an Option that Scope excludes | A note saying why |
+| `not-applicable` | Outside PyMedPhys's role, such as re-identification | A note saying why |
+
+- A pull request that implements part of a requirement updates its entry in the same change.
+- `pymedphys._dicom.deidentify.requirements.load_requirements` rejects malformed or inconsistent entries, such as an implemented requirement without tests or an exclusion without a note. Tests check that every cited decision, module, and test exists, and that the register follows the edition of the generated tables.
+- A new edition updates the register with the tables: add paragraphs, update changed text, and remove deleted paragraphs without reusing their identifiers.
+- The traceability matrix for each release (D-018) is generated from the register.
 
 ## Architecture
 
