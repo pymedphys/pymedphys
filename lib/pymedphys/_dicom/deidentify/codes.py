@@ -33,6 +33,7 @@ import dataclasses
 import pathlib
 import re
 import types
+import unicodedata
 from collections.abc import Callable
 
 from .standard import _is_text
@@ -53,6 +54,7 @@ DESIGNATOR_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 # (0008,0104), which is LO.
 CODE_VALUE_MAX_LENGTH = 16
 CODE_MEANING_MAX_LENGTH = 64
+_ESC = "\x1b"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -128,7 +130,20 @@ def _is_designator(value: object, max_length: int | None = None) -> bool:
 
 
 def _is_short_text(value: object, max_length: int) -> bool:
-    return _is_text(value) and len(str(value)) <= max_length
+    """Return whether ``value`` is a valid SH or LO value of at most ``max_length``.
+
+    PS3.5 Table 6.2-1 excludes from both the backslash, which separates
+    values, and every control character except ESC, which switches
+    character sets.
+    """
+    return (
+        _is_text(value)
+        and len(str(value)) <= max_length
+        and not any(
+            char == "\\" or (unicodedata.category(char) == "Cc" and char != _ESC)
+            for char in str(value)
+        )
+    )
 
 
 def _text(field: str, description: str) -> tuple[Callable[[dict], bool], str]:
@@ -176,11 +191,13 @@ _CODED_CONCEPT_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
     ),
     (
         lambda row: _is_short_text(row["code_value"], CODE_VALUE_MAX_LENGTH),
-        "has a code value that is not non-empty text of at most 16 characters",
+        "has a code value that is not non-empty text of at most 16 characters "
+        "without a backslash or a control character other than ESC",
     ),
     (
         lambda row: _is_short_text(row["code_meaning"], CODE_MEANING_MAX_LENGTH),
-        "has a code meaning that is not non-empty text of at most 64 characters",
+        "has a code meaning that is not non-empty text of at most 64 characters "
+        "without a backslash or a control character other than ESC",
     ),
 )
 
@@ -287,8 +304,9 @@ def load_context_group(
         As :func:`load_coding_schemes`, except for the row checks: each row
         must have a coding scheme designator as Table 8-1 requires, a code
         value of at most 16 characters, and a code meaning of at most 64
-        characters, and the pair of designator and code value must not
-        repeat.
+        characters, neither containing a backslash or a control character
+        other than ESC (PS3.5 Table 6.2-1, SH and LO); and the pair of
+        designator and code value must not repeat.
     """
     spec = CODE_TABLES.get(f"Table CID {cid}")
     if spec is None:

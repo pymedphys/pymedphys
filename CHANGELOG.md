@@ -204,8 +204,8 @@ This project adheres to
   text and reject unknown or missing columns, merged cells, empty or
   otherwise inconsistent rows, a table with no rows, unrecognised tags,
   keywords, VRs, VMs, statuses, UIDs, UID types, parts, and coding scheme
-  designators, code values and meanings too long for their VRs, actions not
-  defined in Table E.1-1a, and repeated tags, UIDs, keywords, context group
+  designators, code values and meanings that are too long for their VRs or
+  contain characters those VRs exclude, actions not defined in Table E.1-1a, and repeated tags, UIDs, keywords, context group
   identifiers, designators, or codes. Table E.1-1a must define exactly the action
   codes PyMedPhys implements, so a new edition that adds or removes one fails
   until the engine handles it. Likewise, a UID type in Table A-1 that

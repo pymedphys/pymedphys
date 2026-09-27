@@ -184,6 +184,18 @@ def test_only_the_generated_context_groups_can_be_loaded():
         ("Table CID 7050", "scheme_designator", "", "row 1 has a coding scheme"),
         ("Table CID 7050", "code_value", "", "row 1 has a code value"),
         ("Table CID 7005", "code_meaning", "M" * 65, "row 1 has a code meaning"),
+        # SH and LO exclude the backslash, which separates values, and control
+        # characters other than ESC (PS3.5 Table 6.2-1).
+        ("Table CID 7050", "code_value", "113100\\113101", "row 1 has a code value"),
+        ("Table CID 7050", "code_value", "113\x00100", "row 1 has a code value"),
+        ("Table CID 7050", "code_meaning", "First\\Second", "row 1 has a code meaning"),
+        ("Table CID 7005", "code_meaning", "First\nSecond", "row 1 has a code meaning"),
+        (
+            "Table CID 7005",
+            "code_meaning",
+            "First\x7fSecond",
+            "row 1 has a code meaning",
+        ),
     ],
 )
 def test_a_malformed_code_table_row_is_rejected(tmp_path, label, field, value, message):
@@ -219,6 +231,19 @@ def test_a_repeated_designator_uid_or_code_is_rejected(
 
     with pytest.raises(standard.StandardTableError, match=f"row 2 {message}"):
         CODE_LOADERS[label](_write(tmp_path / spec.file, _redigested(document)))
+
+
+def test_a_code_meaning_can_contain_the_esc_that_switches_character_sets(tmp_path):
+    spec = codes.CODE_TABLES["Table CID 7005"]
+    document = _loaded(standard.STANDARD_DIR / spec.file)
+    meaning = "\x1b$BFixture\x1b(B"
+    document["rows"][0]["code_meaning"] = meaning
+
+    table = codes.load_context_group(
+        7005, _write(tmp_path / spec.file, _redigested(document))
+    )
+
+    assert table.rows[0].code_meaning == meaning
 
 
 def test_a_code_value_can_repeat_in_another_coding_scheme(tmp_path):

@@ -990,6 +990,8 @@ def test_ps3_16_tables_without_rows_fail(label):
         ("Table CID 7050", 1, "9" * 17, "has a code value"),
         ("Table CID 7005", 2, "", "has a code meaning"),
         ("Table CID 7005", 2, "M" * 65, "has a code meaning"),
+        ("Table CID 7050", 1, "900001\\900002", "has a code value"),
+        ("Table CID 7005", 2, "First\\Second", "has a code meaning"),
     ],
 )
 def test_ps3_16_invalid_values_fail(label, column, value, message):
