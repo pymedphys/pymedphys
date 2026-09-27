@@ -16,9 +16,9 @@
 #
 # Where Retain Longitudinal Temporal Information with Modified Dates is
 # selected, subject-event and radiation-source values move by the subject's
-# offset, time-zone values are removed, and values of every other role are
-# replaced by a fixed dummy value; where a module requires an attribute, a
-# removal becomes a dummy value instead. Otherwise Table E.1-1 decides.
+# offset, an instance with a time-zone value is sequestered until a
+# coordinated treatment of time zones is defined, and values of every other
+# role are replaced by a fixed dummy value. Otherwise Table E.1-1 decides.
 #
 # Rules also cover attributes that Table E.1-1 omits, and attributes of other
 # VRs that it cleans under Modified Dates. A subject event that Table E.1-1
@@ -125,7 +125,7 @@ note = "The local version of a context group with private extensions."
 tag = "(0008,0201)"
 keyword = "TimezoneOffsetFromUTC"
 role = "time-zone"
-note = "The time zone offset of the instance's local dates and times. Modified Dates removes it, because a daylight-saving offset would reveal the season of the original date; where a module requires it, it takes the dummy value +0000."
+note = "The time zone offset of the instance's local dates and times, which Modified Dates cleans. Retaining it would reveal the season of the original date through daylight saving, and replacing it alone would change the intervals between local times and DT values with their own offsets, so an instance that contains it is sequestered until a coordinated treatment is defined."
 
 [[attribute]]
 tag = "(0008,0404)"
@@ -472,7 +472,7 @@ role = "subject-event"
 tag = "(0034,0007)"
 keyword = "FrameOriginTimestamp"
 role = "subject-event"
-note = "The capture time of each frame, in TAI and a binary format rather than a DT value. It moves with the subject once the engine can decode it; until then it takes a dummy value, as under the Basic Profile, because it is required."
+note = "The capture time of each frame, in TAI and a binary format rather than a DT value. It moves with the subject once the engine can decode it; until then an instance that contains it is sequestered under Modified Dates, because a dummy value would lose the timing between frames."
 
 [[attribute]]
 tag = "(0038,001A)"
