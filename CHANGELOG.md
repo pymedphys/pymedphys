@@ -76,7 +76,7 @@ This project adheres to
   while it checks and refreshes that extraction; the operating system
   releases the lock when the process ends, so it cannot be left stale. A
   caller-specified `extract_directory` is not locked.
-  [PR #PRNUMBER](https://github.com/pymedphys/pymedphys/pull/PRNUMBER)
+  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 - A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
   read, including itself, now raises `ValueError` instead of hanging every
   command and GUI app that reads the configuration.
@@ -140,7 +140,7 @@ This project adheres to
   and the wheel build in the generated-files job. `pymedphys dev tests -n
   auto` runs tests in parallel with `pytest-xdist`, now in the `tests` and
   `all` extras, and resolves caller-relative test paths in every worker.
-  [PR #PRNUMBER](https://github.com/pymedphys/pymedphys/pull/PRNUMBER)
+  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
   templates), and from `paulking` a second copy of the Profiler
