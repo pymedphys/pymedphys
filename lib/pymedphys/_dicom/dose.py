@@ -57,9 +57,9 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
         An RT DICOM Dose object
     """
 
-    interp_z = np.array(interp_coords[0], copy=False)[:, None, None]
-    interp_y = np.array(interp_coords[1], copy=False)[None, :, None]
-    interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
+    interp_z = np.asarray(interp_coords[0])[:, None, None]
+    interp_y = np.asarray(interp_coords[1])[None, :, None]
+    interp_x = np.asarray(interp_coords[2])[None, None, :]
 
     coords, dicom_dose_dataset = zyx_and_dose_from_dataset(dicom_dose_dataset)
     interpolation = scipy.interpolate.RegularGridInterpolator(
@@ -103,7 +103,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
     """
     orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
-    depths = np.array(depths, copy=False)
+    depths = np.asarray(depths)
 
     surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
@@ -157,7 +157,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
 
     orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
-    displacements = np.array(displacements, copy=False)
+    displacements = np.asarray(displacements)
 
     surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
@@ -251,7 +251,7 @@ def get_dose_grid_structure_mask(
     mask_yxz = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
 
     for structure_index, z_val in enumerate(structure_z_values):
-        dose_index = int(np.where(z_dose == z_val)[0])
+        dose_index = np.where(z_dose == z_val)[0].item()
 
         if z_structure[structure_index][0] != z_dose[dose_index]:
             raise ValueError("Structure and dose indices do not align")
