@@ -283,7 +283,11 @@ The project uses uv with optional dependency groups:
 
 1. **Beta Status**: PyMedPhys is in beta (version 0.x.x). APIs may change between releases.
 
-2. **DICOM Handling**: The library provides extensive DICOM functionality including anonymisation, coordinate systems, dose calculations, and RT plan manipulation.
+2. **DICOM Handling**: The library provides extensive DICOM functionality including anonymisation, coordinate systems, dose calculations, and RT plan manipulation. Use only pydicom APIs that pydicom 4 keeps:
+   - write with `enforce_file_format=True`, not `write_like_original=False`;
+   - set the encoding through the file meta Transfer Syntax UID, the `implicit_vr` and `little_endian` arguments of `save_as` and `dcmwrite`, or the `FileDataset` constructor, never the `is_implicit_VR` and `is_little_endian` attributes, and read a decoded dataset's encoding from `original_encoding`.
+
+   The test suite fails on pydicom's "will be removed in v4" deprecation warnings. Some deprecated APIs do not warn, so test new code that reads or writes DICOM encodings with the `pydicom_behaviour` fixture (`lib/pymedphys/tests/dicom/conftest.py`), which also runs the test with pydicom's future behaviour, in which they raise. Do not run the whole suite with `PYDICOM_FUTURE`: in pydicom 3.0, `Dataset.pixel_array` itself fails with the future behaviour.
 
 3. **Gamma Analysis**: Core functionality for dose distribution comparison using efficient shell-based algorithm implementation.
 

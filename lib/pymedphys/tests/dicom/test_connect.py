@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 University of New South Wales & Ingham Institute
 # Copyright (C) 2020 Stuart Swerdloff and Simon Biggs
 
@@ -19,6 +20,7 @@ import pathlib
 import shutil
 import subprocess
 import tempfile
+import types
 from contextlib import contextmanager
 from unittest.mock import Mock
 
@@ -201,8 +203,9 @@ def test_dataset():
     )
 
     test_dataset.file_meta = file_meta
-    test_dataset.is_implicit_VR = True
-    test_dataset.is_little_endian = True
+    # pynetdicom 3.0 reads the legacy encoding flags, which pydicom 4 removes,
+    # of a dataset that has no original encoding.
+    test_dataset.set_original_encoding(is_implicit_vr=True, is_little_endian=True)
 
     return test_dataset
 
@@ -220,6 +223,43 @@ def test_hierarchical_dicom_storage_directory(test_dataset):
     )
     created_directory = hierarchical_dicom_storage_directory(test_dir, test_dataset)
     assert created_directory == expected_directory
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "transfer_syntax",
+    [
+        pydicom.uid.ImplicitVRLittleEndian,
+        pydicom.uid.ExplicitVRLittleEndian,
+        pydicom.uid.DeflatedExplicitVRLittleEndian,
+        pydicom.uid.ExplicitVRBigEndian,
+    ],
+    ids=lambda uid: uid.name,
+)
+def test_dicom_listener_stores_the_received_transfer_syntax(
+    tmp_path, test_dataset, transfer_syntax
+):
+    """A received object is stored in the DICOM File Format, encoded with
+    the transfer syntax of the presentation context it arrived on."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(transfer_syntax=transfer_syntax),
+    )
+
+    status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0x0000
+    (stored_path,) = tmp_path.rglob("*.dcm")
+    stored = pydicom.dcmread(stored_path)
+    assert stored.preamble == b"\0" * 128
+    assert stored.file_meta.TransferSyntaxUID == transfer_syntax
+    assert stored.original_encoding == (
+        transfer_syntax.is_implicit_VR,
+        transfer_syntax.is_little_endian,
+    )
+    check_dicom_agrees(stored, test_dataset)
 
 
 @pytest.mark.pydicom
@@ -291,7 +331,7 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     )
     ds = pydicom.dcmread(file_path)
     ds.Manufacturer = "PyMedPhysModified"
-    ds.save_as(file_path, write_like_original=False)
+    ds.save_as(file_path, enforce_file_format=True)
 
     # Send again, should save the file in the orphan directory
     ae = pynetdicom.AE()
@@ -376,7 +416,7 @@ def test_dicom_sender_cli(test_dataset):
         send_directory = test_directory.joinpath("send")
         send_directory.mkdir()
         send_file = send_directory.joinpath("test.dcm")
-        test_dataset.save_as(send_file, write_like_original=False)
+        test_dataset.save_as(send_file, enforce_file_format=True)
 
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
