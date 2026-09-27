@@ -124,6 +124,7 @@ tests = [
   "pytest-rerunfailures",
   "pytest-sugar",
   "pytest-timeout",
+  "pytest-xdist",
   "python-dateutil",
   "shapely",
   "toml",
@@ -221,6 +222,7 @@ all = [
     "pytest-rerunfailures",
     "pytest-sugar",
     "pytest-timeout",
+    "pytest-xdist",
     "python-dateutil",
     "pywin32; sys_platform == 'win32'",
     "readme-renderer",
@@ -267,6 +269,13 @@ dev = [
 # without the project or its scientific dependencies.
 pre-commit = [
   "pre-commit",
+]
+# CI installs only this group, hash-checked from uv.lock, to run the
+# .github/scripts tests in parallel without the project.
+script-tests = [
+  "pytest",
+  "pytest-timeout",
+  "pytest-xdist",
 ]
 
 # Each target lists its own contents: a build-wide include is an allow-list

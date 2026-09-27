@@ -252,7 +252,6 @@ class SelectionTests(unittest.TestCase):
             ("pyproject.toml", both),
             ("uv.lock", both),
             ("requirements.txt", both),
-            ("requirements-docs.txt", both),
             ("pyproject.hash", both),
             ("lib/pymedphys/dependency-extra.txt", both),
             ("lib/pymedphys/_version.py", both),

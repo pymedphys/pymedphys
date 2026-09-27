@@ -35,11 +35,14 @@ AN_UNCOMPLETED_QCL_DUE_DATETIME = "2021-05-21 23:59:59"
 QCL_COMPLETED_DATETIMES = ["2021-04-14 09:11:30.387", "2021-04-14 09:11:35.383"]
 
 
-@pytest.fixture(name="connection")
+# Loading the mimic tables takes seconds per call. The connection is read-only,
+# so no test can change them, and they are loaded once for the module.
+@pytest.fixture(name="connection", scope="module")
 def connection_base():
-    """will create the test database, if it does not already exist on the instance"""
+    """Load the mimic tables into the test database, then connect to it."""
     from_csv.create_db_with_tables_from_csv()
-    return utilities.connect(database=from_csv.DATABASE_NAME)
+    with utilities.connect(database=from_csv.DATABASE_NAME) as connection:
+        yield connection
 
 
 @pytest.fixture(name="trf_filepath")

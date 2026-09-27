@@ -101,7 +101,6 @@ DEPENDENCY_INPUTS = frozenset(
         "pyproject.toml",
         "uv.lock",
         "requirements.txt",
-        "requirements-docs.txt",
         "pyproject.hash",
         "lib/pymedphys/dependency-extra.txt",
         "lib/pymedphys/_version.py",

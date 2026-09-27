@@ -56,11 +56,16 @@ jobs:
           sparse-checkout: |
             .github
             lib/pymedphys
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: ./.github/actions/setup-project
         with:
-          python-version: '3.14'
+          install-project: 'false'
+      # The test runner only, hash-checked from uv.lock, in its own step.
+      - name: Install the script-tests group
+        run: uv sync --frozen --only-group script-tests
+      # Most of the time goes on tests that build and install distributions
+      # into fresh virtual environments, which are independent of each other.
       - name: Test distribution and workflow tooling
-        run: python -m unittest discover -s .github/scripts -p 'test_*.py'
+        run: uv run --no-sync pytest -n auto .github/scripts
 
   # Pre-commit always runs. Needs write access for auto-fix pushes on PRs.
   pre-commit:
@@ -71,34 +76,22 @@ jobs:
       PYMEDPHYS_CI_BOT_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
       PYMEDPHYS_CI_BOT_TOKEN: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
 
-  # Lint affected Python inputs unless pre-commit pushed a newer commit.
+  # Selected checks start as soon as the selection is known, alongside
+  # pre-commit, and run whatever its result. An auto-fix pushed with the bot's
+  # token starts a new run, which cancels this one.
   lint:
-    needs: [pre-commit, changes]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      needs.changes.result == 'success' &&
-      needs.changes.outputs.run-python == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/lint.yml
 
-  # Type-check affected Python inputs unless an auto-fix was pushed.
   type-check:
-    needs: [pre-commit, changes]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      needs.changes.result == 'success' &&
-      needs.changes.outputs.run-python == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/type-check.yml
 
-  # Test affected Python inputs unless an auto-fix was pushed.
   unit-tests:
-    needs: [pre-commit, changes]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      needs.changes.result == 'success' &&
-      needs.changes.outputs.run-python == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/unit-tests.yml
     with:
       # The selector owns the full-test label. Only an explicit false keeps the
@@ -107,32 +100,20 @@ jobs:
 
   # Extended checks share selection outputs with the required summary.
   integration-tests:
-    needs: [pre-commit, changes]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      needs.changes.result == 'success' &&
-      needs.changes.outputs.run-integration == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-integration == 'true'
     uses: ./.github/workflows/integration-tests.yml
     with:
       run-slow: true
 
   mosaiq-db-tests:
-    needs: [pre-commit, changes]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      needs.changes.result == 'success' &&
-      needs.changes.outputs.run-database == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-database == 'true'
     uses: ./.github/workflows/mosaiq-db-tests.yml
 
   docs-check:
-    needs: [pre-commit, changes]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      needs.changes.result == 'success' &&
-      needs.changes.outputs.run-docs == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-docs == 'true'
     uses: ./.github/workflows/docs.yml
     permissions:
       contents: read
