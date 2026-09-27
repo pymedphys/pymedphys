@@ -566,8 +566,7 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
 
         st.write(
             _exceptions.UnableToCreatePDF(
-                "Please install Image Magick to create PDF reports "
-                f"<{download_url}>."
+                f"Please install Image Magick to create PDF reports <{download_url}>."
             )
         )
 

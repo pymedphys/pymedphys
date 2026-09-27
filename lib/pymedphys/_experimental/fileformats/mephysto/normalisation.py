@@ -102,7 +102,7 @@ def normalise_pdd(
     else:
         if depth is None:
             raise ValueError(
-                "distance variable needs to be defined to normalise to a " "depth"
+                "distance variable needs to be defined to normalise to a depth"
             )
         interpolation = scipy.interpolate.interp1d(depth, filtered)
         normalisation = 100 / interpolation(normalisation_depth)
