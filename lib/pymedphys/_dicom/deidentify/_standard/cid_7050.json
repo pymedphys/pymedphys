@@ -1,0 +1,80 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.16 Table CID 7050",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "part16/sect_CID_7050.html",
+   "sha256": "075a339ca7a36cd5cee07ccb66a1b03fc4e3f2fb4f527f57ea68a7111971e834"
+  }
+ ],
+ "content_sha256": "330f85ad9db6d5a9bc00ac989064253961f917c9a63fb8f706467d6d4f9be74b",
+ "rows": [
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113100",
+   "code_meaning": "Basic Application Confidentiality Profile"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113101",
+   "code_meaning": "Clean Pixel Data Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113102",
+   "code_meaning": "Clean Recognizable Visual Features Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113103",
+   "code_meaning": "Clean Graphics Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113104",
+   "code_meaning": "Clean Structured Content Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113105",
+   "code_meaning": "Clean Descriptors Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113106",
+   "code_meaning": "Retain Longitudinal Temporal Information Full Dates Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113107",
+   "code_meaning": "Retain Longitudinal Temporal Information Modified Dates Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113108",
+   "code_meaning": "Retain Patient Characteristics Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113109",
+   "code_meaning": "Retain Device Identity Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113110",
+   "code_meaning": "Retain UIDs Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113111",
+   "code_meaning": "Retain Safe Private Option"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "113112",
+   "code_meaning": "Retain Institution Identity Option"
+  }
+ ]
+}

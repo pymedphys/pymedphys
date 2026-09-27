@@ -1,0 +1,70 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.16 Table CID 7005",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "part16/sect_CID_7005.html",
+   "sha256": "15d1ca542b46cda0a5525f59ea8417f3d253e0259037ac5f567ccf31972f28b0"
+  }
+ ],
+ "content_sha256": "58f124013e1acdb567366f168a52af25fcfcba85a907d078a38cc6790dc9a177",
+ "rows": [
+  {
+   "scheme_designator": "DCM",
+   "code_value": "109101",
+   "code_meaning": "Acquisition Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "109102",
+   "code_meaning": "Processing Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "109103",
+   "code_meaning": "Modifying Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "109104",
+   "code_meaning": "De-identifying Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "109105",
+   "code_meaning": "Frame Extracting Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "109106",
+   "code_meaning": "Enhanced Multi-frame Conversion Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "MEDIM",
+   "code_meaning": "Portable Media Importer Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "FILMD",
+   "code_meaning": "Film Digitizer"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "DOCD",
+   "code_meaning": "Document Digitizer Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "VIDD",
+   "code_meaning": "Video Tape Digitizer Equipment"
+  },
+  {
+   "scheme_designator": "DCM",
+   "code_value": "109100",
+   "code_meaning": "Synthesizing Equipment"
+  }
+ ]
+}
