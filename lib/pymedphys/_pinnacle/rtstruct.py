@@ -549,4 +549,4 @@ def convert_struct(plan, export_path, skip_pattern):
     # Save the RTDose Dicom File
     output_file = os.path.join(export_path, struct_filename)
     plan.logger.info("Creating Struct file: %s", output_file)
-    ds.save_as(output_file, write_like_original=False)
+    ds.save_as(output_file, enforce_file_format=True)
