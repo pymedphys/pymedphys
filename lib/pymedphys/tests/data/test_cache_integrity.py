@@ -23,6 +23,7 @@ import hashlib
 import json
 import os
 import pathlib
+import threading
 import zipfile
 
 from pymedphys._imports import pytest
@@ -342,6 +343,54 @@ def test_long_archive_names_can_be_extracted(cache, tmp_path, monkeypatch):
     for _ in range(2):
         (extracted,) = download.zip_data_paths(name, hash_filepath=hashes)
         assert extracted.read_text(encoding="utf-8") == "contents"
+
+
+def test_extraction_waits_for_another_process_extracting(cache, tmp_path):
+    # Parallel test workers share the data cache. One must not check or
+    # rewrite an extraction while another is writing it, or it can read, or
+    # return, partly written files. Each open of the lock file is a separate
+    # lock owner, so a thread here stands in for another process.
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "complete contents"})
+    _record(hashes, "archive.zip", source)
+    extracted: list[pathlib.Path] = []
+
+    def extract():
+        extracted.extend(
+            download.zip_data_paths(
+                "archive.zip", url=source.as_uri(), hash_filepath=hashes
+            )
+        )
+
+    extraction = threading.Thread(target=extract)
+    with download.extraction_lock(data_dir / "archive"):
+        extraction.start()
+        extraction.join(timeout=2)
+        assert extraction.is_alive(), "Extraction did not wait for the lock"
+        assert not (data_dir / "archive").exists()
+
+    extraction.join(timeout=60)
+    assert not extraction.is_alive()
+    assert [path.read_text(encoding="utf-8") for path in extracted] == [
+        "complete contents"
+    ]
+
+
+def test_extraction_lock_is_outside_the_extracted_files(cache, tmp_path):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "contents"})
+    _record(hashes, "archive.zip", source)
+
+    paths = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+
+    assert [path.name for path in paths] == ["data.txt"]
+    assert sorted(path.name for path in (data_dir / "archive").iterdir()) == [
+        "data.txt"
+    ]
+    (lock,) = data_dir.glob(f"*{download.EXTRACTION_LOCK_SUFFIX}")
+    assert lock.parent == data_dir
 
 
 def test_direct_hash_check_does_not_record_unverified_content(cache):

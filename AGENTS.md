@@ -34,6 +34,9 @@ uv run -- pymedphys dev tests -v -s -k "test_name"
 uv run -- pymedphys dev tests --include-slow
 uv run -- pymedphys dev tests --slow
 
+# Run tests in parallel, one worker per CPU (pytest-xdist)
+uv run -- pymedphys dev tests --slow -n auto
+
 # Run doctests
 uv run -- pymedphys dev doctests
 ```
@@ -148,12 +151,18 @@ Use this list wherever metadata needs the maintainers.
   or to the caller's directory; the whole package is collected only when no
   path is given. Resolve positional paths after pytest parses its arguments;
   do not maintain a list of value-taking options, since plugins can add more.
+  The `pymedphys._dev.pytest_paths` plugin does this in the controller and in
+  every pytest-xdist worker, which parse the original arguments again.
 - Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
   `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
   `--include-anthropic`) adds them to the default selection. `--slow` (and
   `--mosaiqdb`, `--anthropic`, `--pydicom`) runs only the tests with that
   marker; several of these select the union. `--all` runs everything.
   `pytest -m slow` alone selects the slow tests but still skips every one.
+- CI runs the slow tests in parallel (`-n auto`), so keep every test
+  independent of the others: no shared output paths or ordering assumptions.
+  Processes that share the data cache take turns to check and write each
+  extraction, so concurrent `zip_data_paths` calls into the cache are safe.
 - `[tool.pytest.ini_options]` in `pyproject.toml` enforces strict markers and
   strict xfail, and stops any test after 900 s (`pytest-timeout`). Register a
   new marker in `MARKER_CONFIG` in the root conftest.

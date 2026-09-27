@@ -14,12 +14,14 @@
 # limitations under the License.
 
 
+import contextlib
 import functools
 import hashlib
 import json
 import logging
 import os
 import pathlib
+import sys
 import tempfile
 import urllib.error
 import urllib.parse
@@ -349,6 +351,63 @@ def zenodo_data_paths(
 
 
 EXTRACTED_ARCHIVE_MARKER = ".pymedphys-extracted-archive-sha1"
+EXTRACTION_LOCK_SUFFIX = ".pymedphys-extraction-lock"
+
+
+def _sidecar_path(extract_directory, suffix):
+    """Return a hidden file beside an extraction directory, named after it.
+
+    Keeping metadata outside the extracted members means an archive can never
+    contain it, and naming it after the directory gives one file per
+    directory even when several archives share that directory. A valid
+    archive name can leave too little room for the suffix, so overlong names
+    are hashed to fit the usual 255-byte filename component limit.
+    """
+    name = f".{extract_directory.name}{suffix}"
+    if len(os.fsencode(name)) > 255:
+        directory_key = hashlib.sha256(
+            os.fsencode(os.path.normcase(extract_directory.name))
+        ).hexdigest()
+        name = f".{directory_key}{suffix}"
+    return extract_directory.with_name(name)
+
+
+@contextlib.contextmanager
+def extraction_lock(extract_directory):
+    """Hold the lock that serialises checking and writing one extraction.
+
+    Processes that share the data cache, such as parallel test workers, take
+    it in turn. The operating system releases it when the lock file is
+    closed, including when a process dies, so it cannot be left stale.
+    """
+    lock_path = _sidecar_path(pathlib.Path(extract_directory), EXTRACTION_LOCK_SUFFIX)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+b") as lock_file:
+        if sys.platform == "win32":
+            import msvcrt
+
+            while True:
+                # Lock the first byte, which may lie beyond the end of the
+                # empty file. LK_LOCK gives up after about ten seconds.
+                lock_file.seek(0)
+                try:
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
+                    break
+                except OSError:
+                    continue
+            try:
+                yield
+            finally:
+                lock_file.seek(0)
+                msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
 def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
@@ -390,17 +449,7 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     archive_hash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
         zip_filepath
     )
-    # Keep metadata outside the extracted members, with one marker per
-    # extraction directory even when several archives share that directory.
-    marker_name = f".{extract_directory.name}{EXTRACTED_ARCHIVE_MARKER}"
-    # A valid archive name can leave too little room for the marker suffix.
-    # Hash overlong names to fit the usual 255-byte filename component limit.
-    if len(os.fsencode(marker_name)) > 255:
-        directory_key = hashlib.sha256(
-            os.fsencode(os.path.normcase(extract_directory.name))
-        ).hexdigest()
-        marker_name = f".{directory_key}{EXTRACTED_ARCHIVE_MARKER}"
-    marker = extract_directory.with_name(marker_name)
+    marker = _sidecar_path(extract_directory, EXTRACTED_ARCHIVE_MARKER)
     if _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
         return
 
@@ -442,7 +491,8 @@ def zip_data_paths(
         namelist = zip_file.namelist()
 
         if cache_managed:
-            _refresh_cached_extraction(zip_file, zip_filepath, extract_directory)
+            with extraction_lock(extract_directory):
+                _refresh_cached_extraction(zip_file, zip_filepath, extract_directory)
         else:
             # A caller-chosen directory, such as the GUI demo's working
             # directory, may hold files the user has edited: only add the

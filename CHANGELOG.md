@@ -69,6 +69,14 @@ This project adheres to
 ### Bug fixes
 
 - `pymedphys.zip_data_paths` now extracts an archive into the data cache again when the downloaded archive has changed since it was extracted, or when an extracted file is missing or has the wrong size. Previously, files already extracted were never refreshed, so they could keep stale or incomplete contents. Archives extracted by earlier versions are extracted again on first use. Edits that leave a file the same size are not detected. A caller-specified `extract_directory` still only gains missing files, so edits there are kept. [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
+- Processes that share the data cache, such as parallel test workers, no
+  longer read or return partly written files when they extract the same
+  archive at the same time. `pymedphys.zip_data_paths` now holds an exclusive
+  lock on a hidden file beside each extraction directory in the data cache
+  while it checks and refreshes that extraction; the operating system
+  releases the lock when the process ends, so it cannot be left stale. A
+  caller-specified `extract_directory` is not locked.
+  [PR #PRNUMBER](https://github.com/pymedphys/pymedphys/pull/PRNUMBER)
 - A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
   read, including itself, now raises `ValueError` instead of hanging every
   command and GUI app that reads the configuration.
@@ -118,6 +126,21 @@ This project adheres to
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI finishes sooner without dropping a check.
+  Selected checks start alongside pre-commit instead of waiting for it. The
+  `.github/scripts` tests, Pylint, and the slow tests run in parallel; the
+  database tests load their mock tables once per module; and the
+  documentation link check runs in its own job without executing notebooks,
+  as `pymedphys dev docs --linkcheck` now does locally. The documentation
+  build reuses executed notebook outputs when nothing but prose has changed.
+  The data cache key hashes `lib/pymedphys/_data/hashes.json` by name: its
+  `**/hashes.json` pattern also walked the virtual environment, costing up to
+  13 seconds a step on Windows, and matched pydicom's own manifest, so a
+  pydicom upgrade discarded every data cache. MyPy runs in the Pyright job,
+  and the wheel build in the generated-files job. `pymedphys dev tests -n
+  auto` runs tests in parallel with `pytest-xdist`, now in the `tests` and
+  `all` extras, and resolves caller-relative test paths in every worker.
+  [PR #PRNUMBER](https://github.com/pymedphys/pymedphys/pull/PRNUMBER)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
   templates), and from `paulking` a second copy of the Profiler
