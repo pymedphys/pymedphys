@@ -245,6 +245,10 @@ def _key_document(**changes):
         (_key_document(key="not base64!"), "32-byte key"),
         (_key_document(key=base64.b64encode(bytes(31)).decode("ascii")), "32-byte key"),
         (_key_document(key_id="0" * 32), "does not match"),
+        (_key_document(key_id="\u00e9"), "does not match"),
+        (_key_document(key_id=None), "does not match"),
+        (_key_document(key_id=[]), "does not match"),
+        (_key_document(key_id=1), "does not match"),
         ([], "not a pymedphys-deid-key/1"),
     ],
 )
