@@ -50,6 +50,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### New features and enhancements
 
+- New `pymedphys.gamma_pass_rate` gives the percentage of analysed reference points in a `pymedphys.gamma` result that pass (gamma at most 1), leaving out the NaN points that were not analysed. It raises `ValueError` if no point was analysed. It replaces a private helper that counted only gamma below 1 and divided by zero when there were no points; the "Gamma from DICOM" and 1D how-to guides now use it. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
+- `pymedphys.gamma` has a `random_state` argument, an integer seed or `numpy.random.Generator`, that selects the `random_subset` reproducibly without seeding NumPy's global random state. Without it, the subset still comes from NumPy's global random state, so earlier analyses that called `numpy.random.seed` select the same points. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - The interpolation comparison notebook compares PyMedPhys with SciPy's `RegularGridInterpolator`, and the documentation dependencies no longer include EconForge's `interpolation`. The reference page keeps the earlier benchmark image, labelled as a historical result, and links to the executable comparison. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - New documentation page,
@@ -211,6 +213,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- The private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. The MetersetMap app and the delivery tests now use `pymedphys.gamma_pass_rate` instead of their own pass-rate calculations. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - **[Contributor facing only]** CI now tests the declared minimum versions of
   both NumPy and pandas. The NumPy 1.26 compatibility job becomes
   `dependency-floors`, which runs on Python 3.11 with NumPy 1.26.4 and
