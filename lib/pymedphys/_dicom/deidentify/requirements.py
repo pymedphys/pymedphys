@@ -258,6 +258,7 @@ def _requirements(name: str, entries: list) -> tuple[Requirement, ...]:
                 f"{name} requirement #{number} has an id that is not of the form "
                 "PS3.15-E.1.1-01 or MIDI-BP-01 to MIDI-BP-18"
             )
+        identifier = match.group(0)
         source = "MIDI" if match.group("section") is None else "PS3.15"
         issue = _requirement_problem(entry, source)
         if issue:
