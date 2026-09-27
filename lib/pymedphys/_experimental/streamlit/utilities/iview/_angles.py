@@ -128,6 +128,10 @@ def attempt_to_make_angles_continuous(
     range_iter=0.1,
     quiet=False,
 ):
+    # Adjusted in place below, so work on a copy: pandas 3 returns read-only
+    # views from ``Series.to_numpy()``, and the caller's data is left as is.
+    angles = np.array(angles)
+
     if init_range_to_adjust > max_range:
         if not quiet:
             st.error(
