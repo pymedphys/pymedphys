@@ -9,7 +9,7 @@ the [contributor language policy](CONTRIBUTING.md#language), for every change.
 
 ```bash
 # Install with uv (required for development)
-uv sync --python 3.12 --locked --extra all --group dev
+uv sync --python 3.14 --locked --extra all --group dev
 
 # Install pre-commit hooks
 uv run -- pre-commit install
@@ -445,7 +445,7 @@ detailed explanations of individual features.
 When updating dependencies:
 
 1. Update version constraints in `pyproject.toml`
-2. Run `uv lock --upgrade` and then `uv sync --python 3.12 --locked --extra all --group dev` to regenerate `uv.lock`
+2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked --extra all --group dev` to regenerate `uv.lock`
 3. Run `uv run pymedphys dev propagate` to regenerate the exported
    `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
