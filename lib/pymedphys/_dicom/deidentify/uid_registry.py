@@ -20,6 +20,10 @@ A-3), and the UIDs of HL7 CDA templates (Table A-4). ``pymedphys dev
 deid-tables`` generates each as a file in ``_standard/`` from the pinned
 edition (design decision D-001), and the loaders here check it as
 :mod:`~pymedphys._dicom.deidentify.standard` checks the other tables.
+
+:class:`RegistryTableSpec` and :func:`load_registry_table` also serve
+:mod:`~pymedphys._dicom.deidentify.codes`, which loads the coding schemes and
+context groups of PS3.16 in the same way.
 """
 
 from __future__ import annotations
@@ -29,7 +33,7 @@ import functools
 import pathlib
 import re
 import types
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Mapping
 from typing import Any, Generic, TypeVar
 
 from .standard import StandardTableError, _default, _is_text, _read
@@ -180,14 +184,15 @@ _Row = TypeVar("_Row")
 
 @dataclasses.dataclass(frozen=True)
 class RegistryTable(Generic[_Row]):
-    """A table of PS3.6 Annex A as generated from one edition of the standard.
+    """A registry table as generated from one edition of the standard.
 
     Attributes
     ----------
     edition : str
-        The edition of DICOM PS3.6, such as ``"2026d"``.
+        The edition of the standard, such as ``"2026d"``.
     acknowledgement : str
-        ``"DICOM PS3.6 <edition>, © NEMA"``.
+        ``"DICOM <part> <edition>, © NEMA"``, such as
+        ``"DICOM PS3.6 2026d, © NEMA"``.
     rows : tuple
         One per row, in the table's order.
     """
@@ -212,12 +217,6 @@ def is_uid(value: object) -> bool:
 
 def _matches(pattern: re.Pattern[str], value: object) -> bool:
     return isinstance(value, str) and bool(pattern.fullmatch(value))
-
-
-def _first_problem(
-    checks: Sequence[tuple[Callable[[dict], bool], str]], row: dict
-) -> str | None:
-    return next((message for check, message in checks if not check(row)), None)
 
 
 def _retired_in_part(part: str) -> bool:
@@ -302,8 +301,8 @@ _TEMPLATE_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
 
 
 @dataclasses.dataclass(frozen=True)
-class UIDTableSpec:
-    """How a table of PS3.6 Annex A is generated, checked, and loaded.
+class RegistryTableSpec:
+    """How a registry table is generated, checked, and loaded.
 
     Attributes
     ----------
@@ -315,56 +314,72 @@ class UIDTableSpec:
         The dataclass each row loads as.
     checks : tuple
         Each check of a row, with what is wrong if it fails, in order.
-    unique : tuple of str
-        Fields whose values must not repeat, ignoring empty values.
+    unique : tuple of tuple of str
+        Each key that must not repeat, as the fields that form it. A key
+        with an empty value is ignored.
     """
 
     table: str
     file: str
     row_type: type
     checks: tuple[tuple[Callable[[dict], bool], str], ...]
-    unique: tuple[str, ...]
+    unique: tuple[tuple[str, ...], ...]
 
     def problem(self, row: dict) -> str | None:
         """Return what is wrong with a row, or None if it is valid."""
-        return _first_problem(self.checks, row)
+        return next((message for check, message in self.checks if not check(row)), None)
 
     @property
     def fields(self) -> tuple[str, ...]:
         """The row type's fields, in order."""
         return tuple(field.name for field in dataclasses.fields(self.row_type))
 
+    def keys(self, row: Mapping[str, Any]) -> Iterator[tuple[str, str]]:
+        """Yield each of a row's unique keys that has no empty value.
+
+        Each is yielded with its fields' names, as in ``"uid"``, and its
+        value, with the values of several fields joined by spaces, as in
+        ``"DCM 113100"``.
+        """
+        for fields in self.unique:
+            values = [row[field] for field in fields]
+            if all(values):
+                yield (
+                    " and ".join(field.replace("_", " ") for field in fields),
+                    " ".join(values),
+                )
+
 
 # Each table of PS3.6 Annex A, keyed by its label in the standard.
 UID_TABLES = types.MappingProxyType(
     {
-        "Table A-1": UIDTableSpec(
+        "Table A-1": RegistryTableSpec(
             "PS3.6 Table A-1",
             "uid_values.json",
             RegisteredUID,
             _UID_VALUE_CHECKS,
-            ("uid", "keyword"),
+            (("uid",), ("keyword",)),
         ),
-        "Table A-2": UIDTableSpec(
+        "Table A-2": RegistryTableSpec(
             "PS3.6 Table A-2",
             "frames_of_reference.json",
             WellKnownFrameOfReference,
             _FRAME_OF_REFERENCE_CHECKS,
-            ("uid", "keyword"),
+            (("uid",), ("keyword",)),
         ),
-        "Table A-3": UIDTableSpec(
+        "Table A-3": RegistryTableSpec(
             "PS3.6 Table A-3",
             "context_group_uids.json",
             ContextGroupUID,
             _CONTEXT_GROUP_CHECKS,
-            ("uid", "identifier"),
+            (("uid",), ("identifier",)),
         ),
-        "Table A-4": UIDTableSpec(
+        "Table A-4": RegistryTableSpec(
             "PS3.6 Table A-4",
             "template_uids.json",
             TemplateUID,
             _TEMPLATE_CHECKS,
-            ("uid",),
+            (("uid",),),
         ),
     }
 )
@@ -397,7 +412,7 @@ def load_uid_values(path: pathlib.Path | None = None) -> RegistryTable[Registere
         retired in its name or its part but not both, or has no keyword but
         is not retired; or if a UID or keyword repeats.
     """
-    return _load_uid_table(_default(path, UID_TABLES["Table A-1"].file), "Table A-1")
+    return load_registry_table(UID_TABLES["Table A-1"], path)
 
 
 def load_frames_of_reference(
@@ -408,7 +423,7 @@ def load_frames_of_reference(
     As :func:`load_uid_values`, except that each row must have a UID, name,
     keyword, and normative reference, and a UID or keyword must not repeat.
     """
-    return _load_uid_table(_default(path, UID_TABLES["Table A-2"].file), "Table A-2")
+    return load_registry_table(UID_TABLES["Table A-2"], path)
 
 
 def load_context_group_uids(
@@ -421,7 +436,7 @@ def load_context_group_uids(
     that is empty, ``Retired``, or ``RET`` with an edition. A UID or
     identifier must not repeat; names can.
     """
-    return _load_uid_table(_default(path, UID_TABLES["Table A-3"].file), "Table A-3")
+    return load_registry_table(UID_TABLES["Table A-3"], path)
 
 
 def load_template_uids(path: pathlib.Path | None = None) -> RegistryTable[TemplateUID]:
@@ -431,15 +446,48 @@ def load_template_uids(path: pathlib.Path | None = None) -> RegistryTable[Templa
     a type in :data:`TEMPLATE_UID_TYPES`, and a part, and a UID must not
     repeat.
     """
-    return _load_uid_table(_default(path, UID_TABLES["Table A-4"].file), "Table A-4")
+    return load_registry_table(UID_TABLES["Table A-4"], path)
+
+
+def load_registry_table(
+    spec: RegistryTableSpec, path: pathlib.Path | None = None
+) -> RegistryTable[Any]:
+    """Load a generated registry table, checking it against ``spec``.
+
+    Each file is read once and cached, keyed by its resolved path.
+
+    Parameters
+    ----------
+    spec : RegistryTableSpec
+        The table, such as ``UID_TABLES["Table A-1"]``.
+    path : pathlib.Path, optional
+        The generated file. Defaults to ``spec.file`` as shipped with
+        PyMedPhys.
+
+    Returns
+    -------
+    RegistryTable
+        Of ``spec.row_type``.
+
+    Raises
+    ------
+    StandardTableError
+        For any of the file-level problems
+        :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1` rejects,
+        with the acknowledgement of the part ``spec.table`` names; if a row
+        does not have exactly the fields of ``spec.row_type`` or fails one of
+        ``spec.checks``; or if a key in ``spec.unique`` repeats.
+    """
+    return _load_registry_table(spec, _default(path, spec.file))
 
 
 @functools.lru_cache(maxsize=None)
-def _load_uid_table(path: pathlib.Path, label: str) -> RegistryTable[Any]:
-    spec = UID_TABLES[label]
+def _load_registry_table(
+    spec: RegistryTableSpec, path: pathlib.Path
+) -> RegistryTable[Any]:
     document = _read(path, spec.table)
     rows: list[dict] = document["rows"]
-    seen: dict[str, set] = {field: set() for field in spec.unique}
+    seen: set[tuple[str, str]] = set()
     for number, row in enumerate(rows, start=1):
         if not isinstance(row, dict) or set(row) != set(spec.fields):
             raise StandardTableError(
@@ -449,14 +497,12 @@ def _load_uid_table(path: pathlib.Path, label: str) -> RegistryTable[Any]:
         problem = spec.problem(row)
         if problem:
             raise StandardTableError(f"{path.name} row {number} {problem}")
-        for field in spec.unique:
-            value = row[field]
-            if value and value in seen[field]:
+        for key in spec.keys(row):
+            if key in seen:
                 raise StandardTableError(
-                    f"{path.name} row {number} repeats the "
-                    f"{field.replace('_', ' ')} {value!r}"
+                    f"{path.name} row {number} repeats the {key[0]} {key[1]!r}"
                 )
-            seen[field].add(value)
+            seen.add(key)
     return RegistryTable(
         edition=document["edition"],
         acknowledgement=document["acknowledgement"],
