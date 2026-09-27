@@ -170,7 +170,8 @@ investigated and the corresponding limitation updated.
 
 At the assurance test commit `e50f96951`, this targeted command completed with
 420 passed and 20 expected failures: four existing gamma-search cases and
-16 cases covering the two private decubitus helper defects above. Pre-commit,
+16 cases covering two private decubitus helper defects, which
+[#2110](https://github.com/pymedphys/pymedphys/pull/2110) fixes. Pre-commit,
 Pyright and MyPy passed, and Pylint using the repository configuration scored
 10.00/10 for the changed Python files.
 
@@ -190,6 +191,16 @@ pydicom 3.0.1 and Numba 0.61.2. The existing environment lacked pytest-timeout,
 so plugin autoload was disabled and a 180-second subprocess timeout covered
 the whole selection; per-test timeout behaviour was not exercised. Ruff,
 Pyright and the repository pre-commit checks passed.
+
+[#2110](https://github.com/pymedphys/pymedphys/pull/2110) makes
+`get_dose_grid_structure_mask` and `DicomDose.coords` follow the pixel
+array's `(slice, row, column)` order for decubitus grids. Their tests now
+cover all eight orientations, both slice orders, and square and rectangular
+grids, and check that `find_dose_within_structure` selects the same dose in
+every orientation. With the previous helpers exactly the 32 decubitus cases
+fail. The targeted selection completed with **518 passed and the four
+gamma-search expected failures**, on Linux with Python 3.12.3, NumPy 1.26.4,
+SciPy 1.17.1, pydicom 3.0.2 and Matplotlib 3.11.2.
 
 The coordinate notebook was also executed in a fresh Jupyter kernel and
 its figures inspected. Gamma performance is a separate experiment; see the

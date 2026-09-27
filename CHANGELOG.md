@@ -20,6 +20,12 @@ coordinates and recalculate where necessary.** Standard HFS grids with increasin
 relative slice offsets retain their geometry. Returned dose arrays may be
 reordered; always use their matching returned axes.
 
+For decubitus (HFDL, HFDR, FFDL, FFDR) grids, the private structure-mask
+helpers in `pymedphys._dicom.dose` and `DicomDose.coords` swapped rows and
+columns. On square grids they returned transposed masks, doses, DVHs and
+coordinates without an error. **Recalculate any such results**; see the bug
+fix below.
+
 The [illustrated guide](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinates-illustrated.html)
 explains affected cases, retrospective checks and plotting. The
 [validation record](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinate-validation.html)
@@ -67,6 +73,16 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - RT Dose conversion accepts rounded cardinal orientations and valid single-slice files, and rejects inconsistent geometry. See the illustrated guide above.
 - Gamma handles descending evaluation axes, uses SciPy for uneven spacing with a warning, and bounds its search so disjoint-grid comparisons terminate.
 - The experimental Sum Coincident DICOM Doses app checks corresponding voxel positions before adding raw arrays, with absolute geometric tolerances and warnings for small mismatches.
+- For decubitus RT Dose grids, whose pixel rows run along x, the private
+  `get_dose_grid_structure_mask`, `find_dose_within_structure` and
+  `create_dvh` in `pymedphys._dicom.dose`, and `DicomDose.coords` in
+  `pymedphys._dicom.collection`, now follow the pixel array's
+  `(slice, row, column)` order. Previously they treated rows as y and columns
+  as x: rectangular grids received a transposed mask, so
+  `find_dose_within_structure` raised `IndexError`, and square grids selected
+  the voxels at transposed row and column indices, which can lie anywhere in
+  the slice. Supine and prone results are unchanged.
+  [PR #2110](https://github.com/pymedphys/pymedphys/pull/2110)
 
 ### Dependency changes
 
@@ -167,6 +183,10 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - RT Dose conversion returns ascending patient `(z, y, x)` axes with the dose reordered to match. Its shape or index order can differ from `pixel_array`; index and plot dose/gamma with the returned axes.
 - Gamma and interpolation reject invalid axis structures, including when interpolation uses `skip_checks=True`. Compare single-plane doses in 2D; the singleton-axis search limitation remains tracked in [#2070](https://github.com/pymedphys/pymedphys/issues/2070).
 - The private IEC patient-coordinate option is disabled pending separate validation.
+- For decubitus grids, the private `get_dose_grid_structure_mask` returns
+  `(slices, rows, columns)` instead of `(slices, columns, rows)`, and
+  `DicomDose.coords` returns `(3, slices, rows, columns)` instead of
+  `(3, slices, columns, rows)`, matching `pixel_array`.
 
 ## [0.41.0]
 
