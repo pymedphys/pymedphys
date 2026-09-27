@@ -75,9 +75,11 @@ def _shifted(date: str, weeks: int, invalid: str) -> str:
     except ValueError:
         raise ValueError(invalid) from None
     try:
-        return (day - datetime.timedelta(weeks=weeks)).strftime("%Y%m%d")
+        shifted = day - datetime.timedelta(weeks=weeks)
     except OverflowError:
         raise ValueError("the shifted date would be before year 1") from None
+    # strftime("%Y") does not zero-pad years before 1000 on every platform.
+    return f"{shifted.year:04d}{shifted.month:02d}{shifted.day:02d}"
 
 
 def shift_date(value: str, weeks: int) -> str:
@@ -146,4 +148,9 @@ def _valid_utc_offset(match: re.Match[str]) -> bool:
     if offset is None:
         return True
     hours, minutes = int(offset[1:3]), int(offset[3:])
-    return minutes <= 59 and (hours <= 14 if offset[0] == "+" else hours <= 12)
+    # PS3.5 Table 6.2-1: from -1200 to +1400, with UTC as +0000.
+    return (
+        minutes <= 59
+        and hours * 60 + minutes <= (14 * 60 if offset[0] == "+" else 12 * 60)
+        and offset != "-0000"
+    )

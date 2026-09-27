@@ -41,15 +41,20 @@ any_weeks = st.integers(
 )
 # Dates far enough from year 1 to shift by up to ten years.
 any_date = st.dates(
-    min_value=datetime.date(1900, 1, 1), max_value=datetime.date(9999, 12, 31)
+    min_value=datetime.date(11, 1, 1), max_value=datetime.date(9999, 12, 31)
 )
+
+
+def _da(day):
+    # strftime("%Y") does not zero-pad years before 1000 on every platform.
+    return f"{day.year:04d}{day.month:02d}{day.day:02d}"
 
 
 def _frame(value):
     return len(value).to_bytes(4, "big") + value
 
 
-def test_an_offset_follows_d_006():
+def test_an_offset_follows_the_specified_derivation():
     token = hmac.new(
         FIXTURE_SECRET,
         _frame(b"pymedphys-deid/1")
@@ -98,7 +103,7 @@ def test_a_date_moves_back_by_whole_weeks():
 def test_shifting_preserves_intervals_and_weekdays(first, second, weeks):
     def shifted(day):
         return datetime.datetime.strptime(
-            dates.shift_date(day.strftime("%Y%m%d"), weeks), "%Y%m%d"
+            dates.shift_date(_da(day), weeks), "%Y%m%d"
         ).date()
 
     assert shifted(second) - shifted(first) == second - first
@@ -125,6 +130,14 @@ def test_an_invalid_date_is_not_shifted(value):
         dates.shift_date(value, 52)
 
 
+@pytest.mark.parametrize(
+    "value, expected", [("10000101", "09990102"), ("00020108", "00010109")]
+)
+def test_an_early_date_keeps_four_year_digits(value, expected):
+    assert dates.shift_date(value, 52) == expected
+    assert dates.shift_datetime(value + "1200+0000", 52) == expected + "1200+0000"
+
+
 def test_trailing_padding_is_ignored():
     assert dates.shift_date("20260927 ", 52) == "20250928"
 
@@ -144,6 +157,10 @@ def test_a_shift_before_year_1_is_rejected():
         ("20260927143015.123456", "20250928143015.123456"),
         ("20260927143015.123456+1000", "20250928143015.123456+1000"),
         ("20260927-0500", "20250928-0500"),
+        ("20260927-1200", "20250928-1200"),
+        ("20260927+1400", "20250928+1400"),
+        ("20260927+0000", "20250928+0000"),
+        ("20260927+0545", "20250928+0545"),
     ],
 )
 def test_a_datetime_moves_its_date_and_keeps_its_time_and_utc_offset(value, expected):
@@ -163,6 +180,11 @@ def test_a_datetime_moves_its_date_and_keeps_its_time_and_utc_offset(value, expe
         "20260927143015.",
         "20260927143015.1234567",
         "20260927+10",
+        "20260927+1401",
+        "20260927+1459",
+        "20260927-1201",
+        "20260927-1259",
+        "20260927-0000",
         "20260230",
     ],
 )
