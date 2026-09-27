@@ -9,6 +9,7 @@ updates:
   - package-ecosystem: github-actions
     directories:
       - "/"
+      - "/.github/actions/cache-data"
       - "/.github/actions/setup-project"
     schedule:
       interval: weekly

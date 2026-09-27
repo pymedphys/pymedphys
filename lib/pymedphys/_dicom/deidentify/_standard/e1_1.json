@@ -1,0 +1,6358 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.15 Table E.1-1",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "part15/chapter_E.html",
+   "sha256": "cb214710fce798ed3688b4cb1d6b2d62ebd254e6946aa3efb3fc14038a41d58d"
+  }
+ ],
+ "content_sha256": "e257bc5e1cfecb3156ad3b871c43e6d73581cba6e80df460f4a4a87694e89442",
+ "rows": [
+  {
+   "name": "Accession Number",
+   "tag": "(0008,0050)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Acquisition Comments",
+   "tag": "(0018,4000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Acquisition Context Description",
+   "tag": "(0040,0556)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Acquisition Context Sequence",
+   "tag": "(0040,0555)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "clean_structured_content": "C"
+   }
+  },
+  {
+   "name": "Acquisition Date",
+   "tag": "(0008,0022)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Acquisition DateTime",
+   "tag": "(0008,002A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Acquisition Device Processing Description",
+   "tag": "(0018,1400)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Acquisition Field of View Label",
+   "tag": "(0018,11BB)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Acquisition Protocol Description",
+   "tag": "(0018,9424)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Acquisition Time",
+   "tag": "(0008,0032)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Acquisition UID",
+   "tag": "(0008,0017)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Actual Human Performers Sequence",
+   "tag": "(0040,4035)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Additional Patient History",
+   "tag": "(0010,21B0)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Address (Trial)",
+   "tag": "(0040,A353)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Admission ID",
+   "tag": "(0038,0010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Admitting Date",
+   "tag": "(0038,0020)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Admitting Diagnoses Code Sequence",
+   "tag": "(0008,1084)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Admitting Diagnoses Description",
+   "tag": "(0008,1080)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Admitting Time",
+   "tag": "(0038,0021)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Affected SOP Instance UID",
+   "tag": "(0000,1000)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Allergies",
+   "tag": "(0010,2110)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "C",
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Annotation DateTime",
+   "tag": "(0040,B034)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Annotation Group Description",
+   "tag": "(006A,0006)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Annotation Group Label",
+   "tag": "(006A,0005)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Annotation Group UID",
+   "tag": "(006A,0003)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Approval Status DateTime",
+   "tag": "(0044,0004)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Arbitrary",
+   "tag": "(4000,0010)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Assertion DateTime",
+   "tag": "(0044,0104)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Assertion Expiration DateTime",
+   "tag": "(0044,0105)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Attribute Modification DateTime",
+   "tag": "(0400,0562)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Author Observer Sequence",
+   "tag": "(0040,A078)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Barcode Value",
+   "tag": "(2200,0005)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {}
+  },
+  {
+   "name": "Beam Description",
+   "tag": "(300A,00C3)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Beam Hold Transition DateTime",
+   "tag": "(300C,0127)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Bolus Description",
+   "tag": "(300A,00DD)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Branch of Service",
+   "tag": "(0010,1081)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Calibration Date",
+   "tag": "(0014,407E)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Calibration DateTime",
+   "tag": "(0018,1203)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Calibration Time",
+   "tag": "(0014,407C)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Camera Owner Name",
+   "tag": "(0016,004D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Cassette ID",
+   "tag": "(0018,1007)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Certificate of Signer",
+   "tag": "(0400,0115)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Certified Timestamp",
+   "tag": "(0400,0310)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Channel Derivation Description",
+   "tag": "(003A,020C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Channel Label",
+   "tag": "(003A,0203)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Clinical Trial Coordinating Center Name",
+   "tag": "(0012,0060)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Clinical Trial Protocol Ethics Committee Approval Number",
+   "tag": "(0012,0082)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Clinical Trial Protocol Ethics Committee Name",
+   "tag": "(0012,0081)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Clinical Trial Protocol ID",
+   "tag": "(0012,0020)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Clinical Trial Protocol Name",
+   "tag": "(0012,0021)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Clinical Trial Series Description",
+   "tag": "(0012,0072)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Clinical Trial Series ID",
+   "tag": "(0012,0071)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Clinical Trial Site ID",
+   "tag": "(0012,0030)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Clinical Trial Site Name",
+   "tag": "(0012,0031)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Clinical Trial Sponsor Name",
+   "tag": "(0012,0010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Clinical Trial Subject ID",
+   "tag": "(0012,0040)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Clinical Trial Subject Reading ID",
+   "tag": "(0012,0042)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Clinical Trial Time Point Description",
+   "tag": "(0012,0051)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Clinical Trial Time Point ID",
+   "tag": "(0012,0050)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Comments on Radiation Dose",
+   "tag": "(0040,0310)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Comments on the Performed Procedure Step",
+   "tag": "(0040,0280)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Compensator Description",
+   "tag": "(300A,02EB)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Concatenation UID",
+   "tag": "(0020,9161)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Conceptual Volume Combination Description",
+   "tag": "(3010,000F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Conceptual Volume Description",
+   "tag": "(3010,0017)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Conceptual Volume UID",
+   "tag": "(3010,0006)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Confidentiality Constraint on Patient Data Description",
+   "tag": "(0040,3001)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Constituent Conceptual Volume UID",
+   "tag": "(3010,0013)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Consulting Physician's Name",
+   "tag": "(0008,009C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Consulting Physician Identification Sequence",
+   "tag": "(0008,009D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Container Component ID",
+   "tag": "(0050,001B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Container Description",
+   "tag": "(0040,051A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Container Identifier",
+   "tag": "(0040,0512)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Content Creator's Identification Code Sequence",
+   "tag": "(0070,0086)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Content Creator's Name",
+   "tag": "(0070,0084)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z/D",
+   "options": {}
+  },
+  {
+   "name": "Content Date",
+   "tag": "(0008,0023)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Content Sequence",
+   "tag": "(0040,A730)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_structured_content": "C"
+   }
+  },
+  {
+   "name": "Content Time",
+   "tag": "(0008,0033)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Context Group Local Version",
+   "tag": "(0008,0107)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Context Group Version",
+   "tag": "(0008,0106)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Contrast/Bolus Agent",
+   "tag": "(0018,0010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z/D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Contrast/Bolus Start Time",
+   "tag": "(0018,1042)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Contrast/Bolus Stop Time",
+   "tag": "(0018,1043)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Contribution DateTime",
+   "tag": "(0018,A002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Contribution Description",
+   "tag": "(0018,A003)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Country of Residence",
+   "tag": "(0010,2150)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Creation Date",
+   "tag": "(2100,0040)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Creation Time",
+   "tag": "(2100,0050)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Current Observer (Trial)",
+   "tag": "(0040,A307)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Current Patient Location",
+   "tag": "(0038,0300)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Curve Data",
+   "tag": "(50xx,xxxx)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_graphics": "C"
+   }
+  },
+  {
+   "name": "Curve Date",
+   "tag": "(0008,0025)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Curve Time",
+   "tag": "(0008,0035)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Custodial Organization Sequence",
+   "tag": "(0040,A07C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Data Set Trailing Padding",
+   "tag": "(FFFC,FFFC)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Date",
+   "tag": "(0040,A121)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Date of Document or Verbal Transaction (Trial)",
+   "tag": "(0040,A110)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Date of Installation",
+   "tag": "(0018,1205)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Date of Last Calibration",
+   "tag": "(0018,1200)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Date of Last Detector Calibration",
+   "tag": "(0018,700C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Date of Manufacture",
+   "tag": "(0018,1204)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Date of Secondary Capture",
+   "tag": "(0018,1012)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "DateTime",
+   "tag": "(0040,A120)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "DateTime of Last Calibration",
+   "tag": "(0018,1202)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Decay Correction DateTime",
+   "tag": "(0018,9701)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Decomposition Description",
+   "tag": "(0018,937F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Derivation Description",
+   "tag": "(0008,2111)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Destination AE",
+   "tag": "(2100,0140)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Detector ID",
+   "tag": "(0018,700A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Device Alternate Identifier",
+   "tag": "(3010,001B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Device Description",
+   "tag": "(0050,0020)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Device Label",
+   "tag": "(3010,002D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Device Serial Number",
+   "tag": "(0018,1000)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Device Setting Description",
+   "tag": "(0016,004B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Device UID",
+   "tag": "(0018,1002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K",
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Digital Signature DateTime",
+   "tag": "(0400,0105)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Digital Signatures Sequence",
+   "tag": "(FFFA,FFFA)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Digital Signature UID",
+   "tag": "(0400,0100)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {}
+  },
+  {
+   "name": "Dimension Organization UID",
+   "tag": "(0020,9164)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Discharge Date",
+   "tag": "(0038,0030)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Discharge Diagnosis Description",
+   "tag": "(0038,0040)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Discharge Time",
+   "tag": "(0038,0032)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Displacement Reference Label",
+   "tag": "(300A,079A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Display URI",
+   "tag": "(0040,E012)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Distribution Address",
+   "tag": "(4008,011A)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Distribution Name",
+   "tag": "(4008,0119)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Dose Calculation Model Name",
+   "tag": "(3004,007F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Dose Reference Description",
+   "tag": "(300A,0016)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Dose Reference UID",
+   "tag": "(300A,0013)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Dosimetric Objective UID",
+   "tag": "(3010,006E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Effective DateTime",
+   "tag": "(0068,6226)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Effective Start DateTime",
+   "tag": "(0040,A034)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Effective Stop DateTime",
+   "tag": "(0040,A035)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Encapsulated Document",
+   "tag": "(0042,0011)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "End Acquisition DateTime",
+   "tag": "(0018,9517)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Entity Description",
+   "tag": "(3010,0037)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Entity Label",
+   "tag": "(3010,0035)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Entity Long Label",
+   "tag": "(3010,0038)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Entity Name",
+   "tag": "(3010,0036)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Equipment Frame of Reference Description",
+   "tag": "(300A,0676)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Ethics Committee Approval Effectiveness End Date",
+   "tag": "(0012,0087)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Ethics Committee Approval Effectiveness Start Date",
+   "tag": "(0012,0086)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Ethnic Group",
+   "tag": "(0010,2160)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Ethnic Group Code Sequence",
+   "tag": "(0010,2161)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Ethnic Groups",
+   "tag": "(0010,2162)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Exclusion Start DateTime",
+   "tag": "(0018,9804)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Expected Completion DateTime",
+   "tag": "(0040,4011)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Failed SOP Instance UID List",
+   "tag": "(0008,0058)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Fiducial UID",
+   "tag": "(0070,031A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Filler Order Number / Imaging Service Request",
+   "tag": "(0040,2017)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Filter Lookup Table Description",
+   "tag": "(003A,032B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Findings Group Recording Date (Trial)",
+   "tag": "(0040,A023)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Findings Group Recording Time (Trial)",
+   "tag": "(0040,A024)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "First Treatment Date",
+   "tag": "(3008,0054)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Fixation Device Description",
+   "tag": "(300A,0196)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Flow Identifier",
+   "tag": "(0034,0002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Flow Identifier Sequence",
+   "tag": "(0034,0001)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Fractionation Notes",
+   "tag": "(3010,007F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Fraction Group Description",
+   "tag": "(300A,0072)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Frame Acquisition DateTime",
+   "tag": "(0018,9074)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Frame Comments",
+   "tag": "(0020,9158)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Frame of Reference UID",
+   "tag": "(0020,0052)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Frame Origin Timestamp",
+   "tag": "(0034,0007)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Frame Reference DateTime",
+   "tag": "(0018,9151)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Functional Sync Pulse",
+   "tag": "(0018,9623)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Gantry ID",
+   "tag": "(0018,1008)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Gender Identity Code Sequence",
+   "tag": "(0010,0044)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Gender Identity Comment",
+   "tag": "(0010,0045)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Gender Identity Sequence",
+   "tag": "(0010,0041)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Generator ID",
+   "tag": "(0018,1005)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "GPS Altitude",
+   "tag": "(0016,0076)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Altitude Ref",
+   "tag": "(0016,0075)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Area Information",
+   "tag": "(0016,008C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Date Stamp",
+   "tag": "(0016,008D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "GPS Dest Bearing",
+   "tag": "(0016,0088)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Dest Bearing Ref",
+   "tag": "(0016,0087)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Dest Distance",
+   "tag": "(0016,008A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Dest Distance Ref",
+   "tag": "(0016,0089)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Dest Latitude",
+   "tag": "(0016,0084)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Dest Latitude Ref",
+   "tag": "(0016,0083)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Dest Longitude",
+   "tag": "(0016,0086)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Dest Longitude Ref",
+   "tag": "(0016,0085)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Differential",
+   "tag": "(0016,008E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS DOP",
+   "tag": "(0016,007B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Img Direction",
+   "tag": "(0016,0081)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Img Direction Ref",
+   "tag": "(0016,0080)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Latitude",
+   "tag": "(0016,0072)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Latitude Ref",
+   "tag": "(0016,0071)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Longitude",
+   "tag": "(0016,0074)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Longitude Ref",
+   "tag": "(0016,0073)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Map Datum",
+   "tag": "(0016,0082)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Measure Mode",
+   "tag": "(0016,007A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Processing Method",
+   "tag": "(0016,008B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Satellites",
+   "tag": "(0016,0078)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Speed",
+   "tag": "(0016,007D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Speed Ref",
+   "tag": "(0016,007C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Status",
+   "tag": "(0016,0079)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Time Stamp",
+   "tag": "(0016,0077)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Track",
+   "tag": "(0016,007F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Track Ref",
+   "tag": "(0016,007E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "GPS Version ID",
+   "tag": "(0016,0070)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Graphic Annotation Sequence",
+   "tag": "(0070,0001)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_graphics": "C"
+   }
+  },
+  {
+   "name": "Hanging Protocol Creation DateTime",
+   "tag": "(0072,000A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Hardcopy Creation Device ID",
+   "tag": "(0018,1011)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Histological Diagnoses Code Sequence",
+   "tag": "(0008,1304)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "HL7 Document Effective Time",
+   "tag": "(0040,E004)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Human Performer's Name",
+   "tag": "(0040,4037)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Human Performer's Organization",
+   "tag": "(0040,4036)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Icon Image Sequence (see Note 11)",
+   "tag": "(0088,0200)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Identifying Comments",
+   "tag": "(0008,4000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Image Comments",
+   "tag": "(0020,4000)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Image Presentation Comments",
+   "tag": "(0028,4000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Imaging Service Request Comments",
+   "tag": "(0040,2400)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Impedance Measurement DateTime",
+   "tag": "(003A,0314)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Impressions",
+   "tag": "(4008,0300)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Information Issue DateTime",
+   "tag": "(0068,6270)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Instance Coercion DateTime",
+   "tag": "(0008,0015)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Instance Creation Date",
+   "tag": "(0008,0012)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Instance Creation Time",
+   "tag": "(0008,0013)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Instance Creator UID",
+   "tag": "(0008,0014)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Instance Origin Status",
+   "tag": "(0400,0600)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Institution Address",
+   "tag": "(0008,0081)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Institutional Department Name",
+   "tag": "(0008,1040)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Institutional Department Type Code Sequence",
+   "tag": "(0008,1041)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Institution Code Sequence",
+   "tag": "(0008,0082)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Institution Name",
+   "tag": "(0008,0080)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Instruction Performed DateTime",
+   "tag": "(0018,9919)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Insurance Plan Identification",
+   "tag": "(0010,1050)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Intended Fraction Start Time",
+   "tag": "(3010,0085)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Intended Phase End Date",
+   "tag": "(3010,004D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Intended Phase Start Date",
+   "tag": "(3010,004C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Intended Recipients of Results Identification Sequence",
+   "tag": "(0040,1011)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Interlock DateTime",
+   "tag": "(300A,0741)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Interlock Description",
+   "tag": "(300A,0742)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Interlock Origin Description",
+   "tag": "(300A,0783)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Interpretation Approval Date",
+   "tag": "(4008,0112)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Interpretation Approval Time",
+   "tag": "(4008,0113)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Interpretation Approver Sequence",
+   "tag": "(4008,0111)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Interpretation Author",
+   "tag": "(4008,010C)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Interpretation Diagnosis Description",
+   "tag": "(4008,0115)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Interpretation ID",
+   "tag": "(4008,0200)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Interpretation ID Issuer",
+   "tag": "(4008,0202)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Interpretation Recorded Date",
+   "tag": "(4008,0100)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Interpretation Recorded Time",
+   "tag": "(4008,0101)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Interpretation Recorder",
+   "tag": "(4008,0102)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Interpretation Text",
+   "tag": "(4008,010B)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Interpretation Transcriber",
+   "tag": "(4008,010A)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Interpretation Transcription Date",
+   "tag": "(4008,0108)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Interpretation Transcription Time",
+   "tag": "(4008,0109)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Intervention Drug Start Time",
+   "tag": "(0018,0035)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Intervention Drug Stop Time",
+   "tag": "(0018,0027)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Irradiation Event UID",
+   "tag": "(0008,3010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Issue Date of Imaging Service Request",
+   "tag": "(0040,2004)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Issuer of Admission ID",
+   "tag": "(0038,0011)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Admission ID Sequence",
+   "tag": "(0038,0014)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Clinical Trial Protocol ID",
+   "tag": "(0012,0022)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Clinical Trial Series ID",
+   "tag": "(0012,0073)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Clinical Trial Site ID",
+   "tag": "(0012,0032)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Clinical Trial Subject ID",
+   "tag": "(0012,0041)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Clinical Trial Subject Reading ID",
+   "tag": "(0012,0043)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Clinical Trial Time Point ID",
+   "tag": "(0012,0055)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Patient ID",
+   "tag": "(0010,0021)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Service Episode ID",
+   "tag": "(0038,0061)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of Service Episode ID Sequence",
+   "tag": "(0038,0064)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Issuer of the Container Identifier Sequence",
+   "tag": "(0040,0513)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Issuer of the Specimen Identifier Sequence",
+   "tag": "(0040,0562)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Issue Time of Imaging Service Request",
+   "tag": "(0040,2005)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Label Text",
+   "tag": "(2200,0002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Large Palette Color Lookup Table UID",
+   "tag": "(0028,1214)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Last Menstrual Date",
+   "tag": "(0010,21D0)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Lens Make",
+   "tag": "(0016,004F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Lens Model",
+   "tag": "(0016,0050)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Lens Serial Number",
+   "tag": "(0016,0051)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Lens Specification",
+   "tag": "(0016,004E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Long Device Description",
+   "tag": "(0050,0021)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "MAC",
+   "tag": "(0400,0404)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Maker Note",
+   "tag": "(0016,002B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Manufacturer's Device Class UID",
+   "tag": "(0018,100B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K",
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Manufacturer's Device Identifier",
+   "tag": "(3010,0043)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Media Storage SOP Instance UID",
+   "tag": "(0002,0003)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Medical Alerts",
+   "tag": "(0010,2000)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Medical Record Locator",
+   "tag": "(0010,1090)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Military Rank",
+   "tag": "(0010,1080)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Modified Attributes Sequence",
+   "tag": "(0400,0550)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Modified Image Date",
+   "tag": "(0020,3403)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Modified Image Description",
+   "tag": "(0020,3406)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Modified Image Time",
+   "tag": "(0020,3405)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Modifying Device ID",
+   "tag": "(0020,3401)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Modifying System",
+   "tag": "(0400,0563)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Montage Channel Label",
+   "tag": "(0040,B03F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Montage Name",
+   "tag": "(0040,B03B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Most Recent Treatment Date",
+   "tag": "(3008,0056)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Multi-energy Acquisition Description",
+   "tag": "(0018,937B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Multiplex Group Label",
+   "tag": "(003A,0020)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Multiplex Group UID",
+   "tag": "(003A,0310)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Name of Physician(s) Reading Study",
+   "tag": "(0008,1060)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Names of Intended Recipients of Results",
+   "tag": "(0040,1010)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Name to Use",
+   "tag": "(0010,0012)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Name to Use Comment",
+   "tag": "(0010,0013)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Network ID",
+   "tag": "(0008,1000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Nonconforming Data Element Value",
+   "tag": "(0400,0552)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Nonconforming Modified Attributes Sequence",
+   "tag": "(0400,0551)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Observation Date (Trial)",
+   "tag": "(0040,A192)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Observation DateTime",
+   "tag": "(0040,A032)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Observation Start DateTime",
+   "tag": "(0040,A033)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Observation Subject UID (Trial)",
+   "tag": "(0040,A402)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Observation Time (Trial)",
+   "tag": "(0040,A193)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Observation UID",
+   "tag": "(0040,A171)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Occupation",
+   "tag": "(0010,2180)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Operator Identification Sequence",
+   "tag": "(0008,1072)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {}
+  },
+  {
+   "name": "Operators' Name",
+   "tag": "(0008,1070)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {}
+  },
+  {
+   "name": "Order Callback Phone Number",
+   "tag": "(0040,2010)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Order Callback Telecom Information",
+   "tag": "(0040,2011)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Order Entered By",
+   "tag": "(0040,2008)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Order Enterer's Location",
+   "tag": "(0040,2009)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Original Attributes Sequence",
+   "tag": "(0400,0561)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Originator",
+   "tag": "(2100,0070)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Other Clinical Trial Protocol IDs Sequence",
+   "tag": "(0012,0023)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Other Patient IDs",
+   "tag": "(0010,1000)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Other Patient IDs Sequence",
+   "tag": "(0010,1002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Other Patient Names",
+   "tag": "(0010,1001)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Overlay Comments",
+   "tag": "(60xx,4000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_graphics": "C"
+   }
+  },
+  {
+   "name": "Overlay Data",
+   "tag": "(60xx,3000)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_graphics": "C"
+   }
+  },
+  {
+   "name": "Overlay Date",
+   "tag": "(0008,0024)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Overlay Time",
+   "tag": "(0008,0034)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Override DateTime",
+   "tag": "(300A,0760)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Palette Color Lookup Table UID",
+   "tag": "(0028,1199)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Participant Sequence",
+   "tag": "(0040,A07A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Participation DateTime",
+   "tag": "(0040,A082)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Patient's Address",
+   "tag": "(0010,1040)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Age",
+   "tag": "(0010,1010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Patient's Birth Date",
+   "tag": "(0010,0030)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Patient's Birth Name",
+   "tag": "(0010,1005)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Birth Time",
+   "tag": "(0010,0032)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Institution Residence",
+   "tag": "(0038,0400)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Insurance Plan Code Sequence",
+   "tag": "(0010,0050)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Mother's Birth Name",
+   "tag": "(0010,1060)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Name",
+   "tag": "(0010,0010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Patient's Primary Language Code Sequence",
+   "tag": "(0010,0101)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Primary Language Modifier Code Sequence",
+   "tag": "(0010,0102)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Religious Preference",
+   "tag": "(0010,21F0)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Sex",
+   "tag": "(0010,0040)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Patient's Sex Neutered",
+   "tag": "(0010,2203)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Patient's Size",
+   "tag": "(0010,1020)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Patient's Telecom Information",
+   "tag": "(0010,2155)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Telephone Numbers",
+   "tag": "(0010,2154)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient's Weight",
+   "tag": "(0010,1030)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Patient Comments",
+   "tag": "(0010,4000)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Patient ID",
+   "tag": "(0010,0020)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z/D",
+   "options": {}
+  },
+  {
+   "name": "Patient Setup Photo Description",
+   "tag": "(300A,0794)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Patient Setup UID",
+   "tag": "(300A,0650)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Patient State",
+   "tag": "(0038,0500)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "C",
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Patient Transport Arrangements",
+   "tag": "(0040,1004)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Patient Treatment Preparation Method Description",
+   "tag": "(300A,0792)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Patient Treatment Preparation Procedure Parameter Description",
+   "tag": "(300A,078E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Performed Location",
+   "tag": "(0040,0243)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Performed Procedure Step Description",
+   "tag": "(0040,0254)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Performed Procedure Step End Date",
+   "tag": "(0040,0250)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Performed Procedure Step End DateTime",
+   "tag": "(0040,4051)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Performed Procedure Step End Time",
+   "tag": "(0040,0251)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Performed Procedure Step ID",
+   "tag": "(0040,0253)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Performed Procedure Step Start Date",
+   "tag": "(0040,0244)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Performed Procedure Step Start DateTime",
+   "tag": "(0040,4050)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Performed Procedure Step Start Time",
+   "tag": "(0040,0245)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Performed Station AE Title",
+   "tag": "(0040,0241)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Performed Station Geographic Location Code Sequence",
+   "tag": "(0040,4030)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Performed Station Name",
+   "tag": "(0040,0242)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Performed Station Name Code Sequence",
+   "tag": "(0040,4028)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Performing Physician's Name",
+   "tag": "(0008,1050)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Performing Physician Identification Sequence",
+   "tag": "(0008,1052)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Person's Address",
+   "tag": "(0040,1102)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Person's Telecom Information",
+   "tag": "(0040,1104)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Person's Telephone Numbers",
+   "tag": "(0040,1103)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Person Identification Code Sequence",
+   "tag": "(0040,1101)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Person Name",
+   "tag": "(0040,A123)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Person Names to Use Sequence",
+   "tag": "(0010,0011)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Physician(s) of Record",
+   "tag": "(0008,1048)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Physician(s) of Record Identification Sequence",
+   "tag": "(0008,1049)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Physician(s) Reading Study Identification Sequence",
+   "tag": "(0008,1062)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Physician Approving Interpretation",
+   "tag": "(4008,0114)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Placer Order Number / Imaging Service Request",
+   "tag": "(0040,2016)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Plate ID",
+   "tag": "(0018,1004)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Position Acquisition Template Description",
+   "tag": "(3002,0123)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Position Acquisition Template Name",
+   "tag": "(3002,0121)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Pregnancy Status",
+   "tag": "(0010,21C0)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Pre-Medication",
+   "tag": "(0040,0012)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "C"
+   }
+  },
+  {
+   "name": "Prescription Description",
+   "tag": "(300A,000E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Prescription Notes",
+   "tag": "(3010,007B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Prescription Notes Sequence",
+   "tag": "(3010,0081)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Presentation Creation Date",
+   "tag": "(0070,0082)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Presentation Creation Time",
+   "tag": "(0070,0083)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Presentation Display Collection UID",
+   "tag": "(0070,1101)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Presentation Sequence Collection UID",
+   "tag": "(0070,1102)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Primary Diagnosis Code Sequence",
+   "tag": "(0008,1302)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Principal Diagnosis Code Sequence",
+   "tag": "(0008,1301)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Prior Treatment Dose Description",
+   "tag": "(3010,0061)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Private Attributes",
+   "tag": "(gggg,eeee) where gggg is odd",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_safe_private": "C"
+   }
+  },
+  {
+   "name": "Procedure Step Cancellation DateTime",
+   "tag": "(0040,4052)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Product Expiration DateTime",
+   "tag": "(0044,000B)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Pronoun Code Sequence",
+   "tag": "(0010,0015)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Pronoun Comment",
+   "tag": "(0010,0016)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Protocol Name",
+   "tag": "(0018,1030)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Pyramid Description",
+   "tag": "(0008,1088)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Pyramid Label",
+   "tag": "(0020,0027)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Pyramid UID",
+   "tag": "(0008,0019)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Radiation Dose Identification Label",
+   "tag": "(300A,0619)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Radiation Dose In-Vivo Measurement Label",
+   "tag": "(300A,0623)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Radiation Generation Mode Description",
+   "tag": "(300A,067D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Radiation Generation Mode Label",
+   "tag": "(300A,067C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Radiopharmaceutical Start DateTime",
+   "tag": "(0018,1078)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Radiopharmaceutical Start Time",
+   "tag": "(0018,1072)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Radiopharmaceutical Stop DateTime",
+   "tag": "(0018,1079)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Radiopharmaceutical Stop Time",
+   "tag": "(0018,1073)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Reason for Omission Description",
+   "tag": "(300C,0113)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for Requested Procedure Code Sequence",
+   "tag": "(0040,100A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for Study",
+   "tag": "(0032,1030)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for Superseding",
+   "tag": "(3010,005C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for the Attribute Modification",
+   "tag": "(0400,0565)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for the Imaging Service Request",
+   "tag": "(0040,2001)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for the Requested Procedure",
+   "tag": "(0040,1002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for Visit",
+   "tag": "(0032,1066)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Reason for Visit Code Sequence",
+   "tag": "(0032,1067)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Receiving AE",
+   "tag": "(0074,1234)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Recorded RT Control Point DateTime",
+   "tag": "(300A,073A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Referenced Conceptual Volume UID",
+   "tag": "(3010,000B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced DateTime",
+   "tag": "(0040,A13A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Referenced Digital Signature Sequence",
+   "tag": "(0400,0402)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Referenced Dose Reference UID",
+   "tag": "(300A,0083)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Dosimetric Objective UID",
+   "tag": "(3010,006F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Fiducials UID",
+   "tag": "(3010,0031)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Frame of Reference UID",
+   "tag": "(3006,0024)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced General Purpose Scheduled Procedure Step Transaction UID",
+   "tag": "(0040,4023)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Image Sequence",
+   "tag": "(0008,1140)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/U*",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Observation UID (Trial)",
+   "tag": "(0040,A172)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Patient Alias Sequence",
+   "tag": "(0038,0004)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Referenced Patient Photo Sequence",
+   "tag": "(0010,1100)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Referenced Patient Sequence",
+   "tag": "(0008,1120)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Performed Procedure Step Sequence",
+   "tag": "(0008,1111)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced SOP Instance MAC Sequence",
+   "tag": "(0400,0403)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Referenced SOP Instance UID",
+   "tag": "(0008,1155)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced SOP Instance UID in File",
+   "tag": "(0004,1511)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Study Sequence",
+   "tag": "(0008,1110)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referenced Treatment Position Group UID",
+   "tag": "(300A,0785)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Referring Physician's Address",
+   "tag": "(0008,0092)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Referring Physician's Name",
+   "tag": "(0008,0090)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Referring Physician's Telephone Numbers",
+   "tag": "(0008,0094)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Referring Physician Identification Sequence",
+   "tag": "(0008,0096)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Region of Residence",
+   "tag": "(0010,2152)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Related Frame of Reference UID",
+   "tag": "(3006,00C2)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Request Attributes Sequence",
+   "tag": "(0040,0275)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Requested Contrast Agent",
+   "tag": "(0032,1070)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Requested Procedure Comments",
+   "tag": "(0040,1400)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Requested Procedure Description",
+   "tag": "(0032,1060)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Requested Procedure ID",
+   "tag": "(0040,1001)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Requested Procedure Location",
+   "tag": "(0040,1005)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Requested Series Description",
+   "tag": "(0018,9937)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Requested SOP Instance UID",
+   "tag": "(0000,1001)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Requesting AE",
+   "tag": "(0074,1236)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Requesting Physician",
+   "tag": "(0032,1032)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Requesting Service",
+   "tag": "(0032,1033)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Respiratory Motion Compensation Technique Description",
+   "tag": "(0018,9185)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Responsible Organization",
+   "tag": "(0010,2299)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Responsible Person",
+   "tag": "(0010,2297)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Results Comments",
+   "tag": "(4008,4000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Results Distribution List Sequence",
+   "tag": "(4008,0118)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Results ID",
+   "tag": "(4008,0040)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Results ID Issuer",
+   "tag": "(4008,0042)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Retrieve AE Title",
+   "tag": "(0008,0054)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Review Date",
+   "tag": "(300E,0004)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Reviewer Name",
+   "tag": "(300E,0008)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {}
+  },
+  {
+   "name": "Review Time",
+   "tag": "(300E,0005)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "ROI Creator Sequence",
+   "tag": "(3006,004D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "ROI DateTime",
+   "tag": "(3006,002D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "ROI Description",
+   "tag": "(3006,0028)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "ROI Generation Description",
+   "tag": "(3006,0038)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "ROI Interpreter",
+   "tag": "(3006,00A6)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "ROI Interpreter Sequence",
+   "tag": "(3006,004E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "ROI Name",
+   "tag": "(3006,0026)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "ROI Observation DateTime",
+   "tag": "(3006,002E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "ROI Observation Description",
+   "tag": "(3006,0088)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "ROI Observation Label",
+   "tag": "(3006,0085)",
+   "retired": true,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Accessory Device Slot ID",
+   "tag": "(300A,0615)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "RT Accessory Holder Slot ID",
+   "tag": "(300A,0611)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "RT Physician Intent Narrative",
+   "tag": "(3010,005A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Plan Date",
+   "tag": "(300A,0006)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "RT Plan Description",
+   "tag": "(300A,0004)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Plan Label",
+   "tag": "(300A,0002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Plan Name",
+   "tag": "(300A,0003)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Plan Time",
+   "tag": "(300A,0007)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "RT Prescription Label",
+   "tag": "(3010,0054)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Tolerance Set Label",
+   "tag": "(300A,062A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Treatment Approach Label",
+   "tag": "(3010,0056)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "RT Treatment Phase UID",
+   "tag": "(3010,003B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Safe Position Exit Date",
+   "tag": "(3008,0162)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Safe Position Exit Time",
+   "tag": "(3008,0164)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Safe Position Return Date",
+   "tag": "(3008,0166)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Safe Position Return Time",
+   "tag": "(3008,0168)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Admission Date",
+   "tag": "(0038,001A)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Admission Time",
+   "tag": "(0038,001B)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Discharge Date",
+   "tag": "(0038,001C)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Discharge Time",
+   "tag": "(0038,001D)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Human Performers Sequence",
+   "tag": "(0040,4034)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Scheduled Patient Institution Residence",
+   "tag": "(0038,001E)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Scheduled Performing Physician's Name",
+   "tag": "(0040,0006)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Scheduled Performing Physician Identification Sequence",
+   "tag": "(0040,000B)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Scheduled Procedure Step Description",
+   "tag": "(0040,0007)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step End Date",
+   "tag": "(0040,0004)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step End Time",
+   "tag": "(0040,0005)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step Expiration DateTime",
+   "tag": "(0040,4008)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step ID",
+   "tag": "(0040,0009)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Scheduled Procedure Step Location",
+   "tag": "(0040,0011)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step Modification DateTime",
+   "tag": "(0040,4010)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step Start Date",
+   "tag": "(0040,0002)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step Start DateTime",
+   "tag": "(0040,4005)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Procedure Step Start Time",
+   "tag": "(0040,0003)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Station AE Title",
+   "tag": "(0040,0001)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Scheduled Station Geographic Location Code Sequence",
+   "tag": "(0040,4027)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Scheduled Station Name",
+   "tag": "(0040,0010)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Scheduled Station Name Code Sequence",
+   "tag": "(0040,4025)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Scheduled Study Location",
+   "tag": "(0032,1020)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Scheduled Study Location AE Title",
+   "tag": "(0032,1021)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Scheduled Study Start Date",
+   "tag": "(0032,1000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Study Start Time",
+   "tag": "(0032,1001)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Study Stop Date",
+   "tag": "(0032,1010)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Scheduled Study Stop Time",
+   "tag": "(0032,1011)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Secondary Capture Device ID",
+   "tag": "(0018,1010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Secondary Diagnoses Code Sequence",
+   "tag": "(0008,1303)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Segment Definition DateTime",
+   "tag": "(0040,B036)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Selector AE Value",
+   "tag": "(0072,005E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Selector AS Value",
+   "tag": "(0072,005F)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Selector DA Value",
+   "tag": "(0072,0061)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Selector DT Value",
+   "tag": "(0072,0063)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Selector LO Value",
+   "tag": "(0072,0066)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Selector LT Value",
+   "tag": "(0072,0068)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Selector OB Value",
+   "tag": "(0072,0065)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Selector PN Value",
+   "tag": "(0072,006A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Selector SH Value",
+   "tag": "(0072,006C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Selector ST Value",
+   "tag": "(0072,006E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Selector TM Value",
+   "tag": "(0072,006B)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Selector UN Value",
+   "tag": "(0072,006D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Selector UR Value",
+   "tag": "(0072,0071)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Selector UT Value",
+   "tag": "(0072,0070)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Series Date",
+   "tag": "(0008,0021)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Series Description",
+   "tag": "(0008,103E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Series Instance UID",
+   "tag": "(0020,000E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Series Time",
+   "tag": "(0008,0031)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Service Episode Description",
+   "tag": "(0038,0062)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Service Episode ID",
+   "tag": "(0038,0060)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Setup Technique Description",
+   "tag": "(300A,01B2)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Sex Parameters for Clinical Use Category Code Sequence",
+   "tag": "(0010,0046)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Sex Parameters for Clinical Use Category Comment",
+   "tag": "(0010,0042)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "C",
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Sex Parameters for Clinical Use Category Reference",
+   "tag": "(0010,0047)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Sex Parameters for Clinical Use Category Sequence",
+   "tag": "(0010,0043)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "Shielding Device Description",
+   "tag": "(300A,01A6)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Slide Identifier",
+   "tag": "(0040,06FA)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Smoking Status",
+   "tag": "(0010,21A0)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "K"
+   }
+  },
+  {
+   "name": "SOP Authorization DateTime",
+   "tag": "(0100,0420)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "SOP Instance UID",
+   "tag": "(0008,0018)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Source Conceptual Volume UID",
+   "tag": "(3010,0015)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Source End DateTime",
+   "tag": "(0018,936A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Source Frame of Reference UID",
+   "tag": "(0064,0003)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Source Identifier",
+   "tag": "(0034,0005)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Source Image Sequence",
+   "tag": "(0008,2112)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/U*",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Source Manufacturer",
+   "tag": "(300A,0216)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Source of Previous Values",
+   "tag": "(0400,0564)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_institution_identity": "K"
+   }
+  },
+  {
+   "name": "Source Serial Number",
+   "tag": "(3008,0105)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Source Start DateTime",
+   "tag": "(0018,9369)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Source Strength Reference Date",
+   "tag": "(300A,022C)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Source Strength Reference Time",
+   "tag": "(300A,022E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Special Needs",
+   "tag": "(0038,0050)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_patient_characteristics": "C"
+   }
+  },
+  {
+   "name": "Specimen Accession Number",
+   "tag": "(0040,050A)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Specimen Detailed Description",
+   "tag": "(0040,0602)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Specimen Identifier",
+   "tag": "(0040,0551)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Specimen Preparation Sequence",
+   "tag": "(0040,0610)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_structured_content": "C"
+   }
+  },
+  {
+   "name": "Specimen Short Description",
+   "tag": "(0040,0600)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Specimen UID",
+   "tag": "(0040,0554)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Start Acquisition DateTime",
+   "tag": "(0018,9516)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Station AE Title",
+   "tag": "(0008,0055)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "C"
+   }
+  },
+  {
+   "name": "Station Name",
+   "tag": "(0008,1010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z/D",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Storage Media File-set UID",
+   "tag": "(0088,0140)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Structure Set Date",
+   "tag": "(3006,0008)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Structure Set Description",
+   "tag": "(3006,0006)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Structure Set Label",
+   "tag": "(3006,0002)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Structure Set Name",
+   "tag": "(3006,0004)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Structure Set Time",
+   "tag": "(3006,0009)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Arrival Date",
+   "tag": "(0032,1040)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Arrival Time",
+   "tag": "(0032,1041)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Comments",
+   "tag": "(0032,4000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Study Completion Date",
+   "tag": "(0032,1050)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Completion Time",
+   "tag": "(0032,1051)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Date",
+   "tag": "(0008,0020)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Description",
+   "tag": "(0008,1030)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Study ID",
+   "tag": "(0020,0010)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Study ID Issuer",
+   "tag": "(0032,0012)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Study Instance UID",
+   "tag": "(0020,000D)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Study Read Date",
+   "tag": "(0032,0034)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Read Time",
+   "tag": "(0032,0035)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Time",
+   "tag": "(0008,0030)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Verified Date",
+   "tag": "(0032,0032)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Study Verified Time",
+   "tag": "(0032,0033)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Substance Administration DateTime",
+   "tag": "(0044,0010)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Synchronization Frame of Reference UID",
+   "tag": "(0020,0200)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Table Top Position Alignment UID",
+   "tag": "(300A,0054)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Target UID",
+   "tag": "(0018,2042)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Telephone Number (Trial)",
+   "tag": "(0040,A354)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Template Extension Creator UID",
+   "tag": "(0040,DB0D)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Template Extension Organization UID",
+   "tag": "(0040,DB0C)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Template Local Version",
+   "tag": "(0040,DB07)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Template Version",
+   "tag": "(0040,DB06)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Text Comments",
+   "tag": "(4000,4000)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Text String",
+   "tag": "(2030,0020)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Third Person Pronouns Sequence",
+   "tag": "(0010,0014)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Time",
+   "tag": "(0040,A122)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Time of Document Creation or Verbal Transaction (Trial)",
+   "tag": "(0040,A112)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Time of Last Calibration",
+   "tag": "(0018,1201)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Time of Last Detector Calibration",
+   "tag": "(0018,700E)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_device_identity": "K",
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Time of Secondary Capture",
+   "tag": "(0018,1014)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Timezone Offset From UTC",
+   "tag": "(0008,0201)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Topic Author",
+   "tag": "(0088,0910)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Topic Keywords",
+   "tag": "(0088,0912)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Topic Subject",
+   "tag": "(0088,0906)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Topic Title",
+   "tag": "(0088,0904)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Tracking UID",
+   "tag": "(0062,0021)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Transaction UID",
+   "tag": "(0008,1195)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Transducer Identification Sequence",
+   "tag": "(0018,5011)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Treatment Control Point Date",
+   "tag": "(3008,0024)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Treatment Control Point Time",
+   "tag": "(3008,0025)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Treatment Date",
+   "tag": "(3008,0250)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Treatment Machine Name",
+   "tag": "(300A,00B2)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/Z",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "Treatment Position Group Label",
+   "tag": "(300A,0608)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Treatment Position Group UID",
+   "tag": "(300A,0609)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Treatment Session UID",
+   "tag": "(300A,0700)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {
+    "retain_uids": "K"
+   }
+  },
+  {
+   "name": "Treatment Site",
+   "tag": "(3010,0077)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Treatment Sites",
+   "tag": "(300A,000B)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Treatment Technique Notes",
+   "tag": "(3010,007A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Treatment Time",
+   "tag": "(3008,0251)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Treatment Tolerance Violation DateTime",
+   "tag": "(300A,0736)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Treatment Tolerance Violation Description",
+   "tag": "(300A,0734)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "UDI Sequence",
+   "tag": "(0018,100A)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "UID",
+   "tag": "(0040,A124)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "U",
+   "options": {}
+  },
+  {
+   "name": "Unformatted Text Value",
+   "tag": "(0070,0006)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Unique Device Identifier",
+   "tag": "(0018,1009)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "User Content Label",
+   "tag": "(3010,0033)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "User Content Long Label",
+   "tag": "(3010,0034)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Verbal Source (Trial)",
+   "tag": "(0040,A352)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Verbal Source Identifier Code Sequence (Trial)",
+   "tag": "(0040,A358)",
+   "retired": true,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "name": "Verification DateTime",
+   "tag": "(0040,A030)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "name": "Verifying Observer Identification Code Sequence",
+   "tag": "(0040,A088)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "Z",
+   "options": {}
+  },
+  {
+   "name": "Verifying Observer Name",
+   "tag": "(0040,A075)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Verifying Observer Sequence",
+   "tag": "(0040,A073)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Verifying Organization",
+   "tag": "(0040,A027)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {}
+  },
+  {
+   "name": "Visit Comments",
+   "tag": "(0038,4000)",
+   "retired": false,
+   "in_standard_iod": false,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "Waveform Annotation Sequence",
+   "tag": "(0040,B020)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X/D",
+   "options": {
+    "clean_structured_content": "C"
+   }
+  },
+  {
+   "name": "Waveform Filter Description",
+   "tag": "(003A,0329)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "name": "X-Ray Detector ID",
+   "tag": "(0018,9371)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "X-Ray Detector Label",
+   "tag": "(0018,9373)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  },
+  {
+   "name": "X-Ray Source ID",
+   "tag": "(0018,9367)",
+   "retired": false,
+   "in_standard_iod": true,
+   "basic_profile": "D",
+   "options": {
+    "retain_device_identity": "K"
+   }
+  }
+ ]
+}

@@ -3,7 +3,7 @@ name = "pymedphys"
 version = "0.42.0.dev1"
 description = "Medical Physics library"
 readme = "README.rst"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11.4"
 # PEP 639 SPDX expression. The package bundles MIT-licensed code alongside its
 # own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
 # DICOM dictionary, and the vendored apipkg and deprecated modules.
@@ -20,9 +20,10 @@ classifiers = [
     "Intended Audience :: Healthcare Industry",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "typing-extensions",
@@ -42,28 +43,27 @@ pymedphys = "pymedphys.__main__:main"
 user = [
   "Pillow",
   "PyYAML",
-  "anthropic",
+  "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
   "anyio",
   "attrs",
   "dash",
   "dbfread",
   "dicompyler-core",
-  "httpx2",
   "imageio[tifffile]",
   "keyring",
   "matplotlib",
   "natsort",
   "numba",
-  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
+  "numpy>=1.26",
   "packaging",
   "pandas>=1.0.0",
   "plotly",
-  "pydicom>=2.0.0",
+  "pydicom>=3.0",
   "pylibjpeg-libjpeg>=1.3.2",
   "pymssql",
   "pynetdicom",
   "python-dateutil",
-  "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
+  "pywin32; sys_platform == 'win32'",
   "requests",
   "scikit-learn",
   "scipy",
@@ -73,12 +73,18 @@ user = [
   "timeago",
   "toml",
   "tqdm",
-  "trio",
   "trio-asyncio",
   "watchdog",
   "xmltodict",
 ]
 
+# The Mosaiq chat app and its SQL agent. They send queries and results to
+# Anthropic's API, so users opt in to them separately from ``user``.
+ai = [
+  "anthropic",
+  "httpx2",
+  "trio",
+]
 dev = [
   "doc8",
   "mypy",
@@ -110,15 +116,15 @@ tests = [
   "pandas>=1.0.0",
   "Pillow",
   "psutil",
-  "pydicom>=2.0.0",
+  "pydicom>=3.0",
   "pynetdicom",
-  "PyGithub",
   "pylibjpeg-libjpeg>=1.3.2",
   "pylint",
   "pytest",
   "pytest-rerunfailures",
   "pytest-sugar",
   "pytest-timeout",
+  "pytest-xdist",
   "python-dateutil",
   "shapely",
   "toml",
@@ -126,14 +132,13 @@ tests = [
 ]
 
 docs = [
-  "interpolation>=2.2.7,<3",
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
   "networkx",
   "numba",
-  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
-  "pydicom",
+  "numpy>=1.26",
+  "pydicom>=3.0",
   "scipy",
   "sphinx-argparse",
   "sphinx-book-theme",
@@ -158,12 +163,12 @@ cli = [
 ]
 
 dicom = [
-    "pydicom>=2.0.0",
+    "pydicom>=3.0",
     "pynetdicom",
 ]
 
 icom = [
-    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
+    "numpy>=1.26",
 ]
 
 mosaiq = [
@@ -182,6 +187,7 @@ propagate = [
 all = [
     "Pillow",
     "PyYAML",
+    "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
     "anthropic",
     "anyio",
     "astroid",
@@ -192,7 +198,6 @@ all = [
     "doc8",
     "httpx2",
     "imageio[tifffile]",
-    "interpolation>=2.2.7,<3",
     "ipython>=7.31.1",
     "jupyter-book>=0.12.0,<2.0.0",
     "keyring",
@@ -201,14 +206,13 @@ all = [
     "natsort",
     "networkx",
     "numba",
-    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
+    "numpy>=1.26",
     "packaging",
     "pandas>=1.0.0",
     "plotly",
     "pre-commit",
     "psutil",
-    "pydicom>=2.0.0",
-    "PyGithub",
+    "pydicom>=3.0",
     "pylibjpeg-libjpeg>=1.3.2",
     "pylint",
     "pymssql",
@@ -218,8 +222,9 @@ all = [
     "pytest-rerunfailures",
     "pytest-sugar",
     "pytest-timeout",
+    "pytest-xdist",
     "python-dateutil",
-    "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
+    "pywin32; sys_platform == 'win32'",
     "readme-renderer",
     "requests",
     "rope",
@@ -254,11 +259,23 @@ docs  = ["docs"]
 user  = ["user"]
 
 # Optional aggregations if you want “full” exports in CI, etc.
-full  = ["user", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
+full  = ["user", "ai", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
 
 [dependency-groups]
 dev = [
   "sphinx-external-toc>=1.0.1",
+]
+# CI installs only this group, hash-checked from uv.lock, to run pre-commit
+# without the project or its scientific dependencies.
+pre-commit = [
+  "pre-commit",
+]
+# CI installs only this group, hash-checked from uv.lock, to run the
+# .github/scripts tests in parallel without the project.
+script-tests = [
+  "pytest",
+  "pytest-timeout",
+  "pytest-xdist",
 ]
 
 # Each target lists its own contents: a build-wide include is an allow-list
@@ -281,6 +298,9 @@ minversion = "8.0"
 addopts = ["--strict-markers"]
 xfail_strict = true
 timeout = 900
+# pydicom 4 removes every API whose pydicom 3 deprecation warning says it
+# "will be removed in v4", so using one fails the test.
+filterwarnings = ["error:.*removed in v4:DeprecationWarning"]
 
 # Existing tool config stays as-is
 [tool.ruff.lint]

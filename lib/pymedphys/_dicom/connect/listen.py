@@ -167,17 +167,22 @@ class DicomListener(DicomConnectBase):
 
         # The following is not mandatory, set for convenience
         meta.ImplementationVersionName = pynetdicom.PYNETDICOM_IMPLEMENTATION_VERSION
+        # The encoding given here must match the transfer syntax: save_as
+        # refuses to convert between little and big endian.
         file_ds = pydicom.FileDataset(
-            filepath, {}, file_meta=meta, preamble=b"\0" * 128
+            filepath,
+            {},
+            file_meta=meta,
+            preamble=b"\0" * 128,
+            is_implicit_VR=context.transfer_syntax.is_implicit_VR,
+            is_little_endian=context.transfer_syntax.is_little_endian,
         )
         file_ds.update(dataset)
-        file_ds.is_little_endian = context.transfer_syntax.is_little_endian
-        file_ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
         try:
-            # We use `write_like_original=False` to ensure that a compliant
-            # File Meta Information Header is written
-            file_ds.save_as(filepath, write_like_original=False)
+            # `enforce_file_format` ensures that a compliant File Meta
+            # Information Header is written
+            file_ds.save_as(filepath, enforce_file_format=True)
             status_ds.Status = 0x0000  # Success
 
             logging.info("DICOM object received: %s", filepath)

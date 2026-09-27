@@ -9,6 +9,7 @@ docs-guide
 release-guide
 workflows
 dependency-update-prs
+deidentification-design
 dicom-coordinate-validation
 dicom-coordinates-illustrated
 gamma-performance

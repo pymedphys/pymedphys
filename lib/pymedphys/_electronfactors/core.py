@@ -327,9 +327,9 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
     boundary = insert.boundary
     centroid = insert.centroid
 
-    furthest_distance = np.hypot(
-        np.diff(insert.bounds[::2]), np.diff(insert.bounds[1::2])
-    )
+    # A scalar: basinhopping's temperature and step size must not be arrays.
+    min_x, min_y, max_x, max_y = insert.bounds
+    furthest_distance = np.hypot(max_x - min_x, max_y - min_y)
 
     def minimising_function(optimiser_input):
         x, y = optimiser_input

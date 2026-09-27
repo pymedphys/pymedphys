@@ -49,13 +49,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
-          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'all'
+          install-project: 'false'
+
+      # Hook environments are independent of the package. Install only the
+      # pre-commit group, hash-checked from uv.lock, and do it before the hooks
+      # run so that an installation failure is not reported as a hook failure.
+      # This job checks out the PR head, so a branch that predates the group
+      # must merge main first, as the up-to-date branch rule requires anyway.
+      - name: Install pre-commit
+        run: |
+          uv sync --frozen --only-group pre-commit || {
+            echo "::error::Installing the pre-commit dependency group failed. If this branch predates that group, merge main into it."
+            exit 1
+          }
 
       - name: Cache pre-commit
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -67,7 +78,7 @@ jobs:
         id: pre-commit
         continue-on-error: true
         run: |
-          uv run pre-commit run --all-files --show-diff-on-failure
+          uv run --no-sync pre-commit run --all-files --show-diff-on-failure
 
       # Fork PRs are skipped: neither the bot token nor GITHUB_TOKEN can push
       # to a fork. The push targets the head repository, the same one checked
@@ -84,7 +95,7 @@ jobs:
           REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           # Re-run pre-commit to apply auto-fixes (formatters, trailing whitespace, etc.)
-          uv run pre-commit run --all-files || true
+          uv run --no-sync pre-commit run --all-files || true
 
           if [[ -n "$(git status --porcelain)" ]]; then
             git config user.email "bot@pymedphys.com"

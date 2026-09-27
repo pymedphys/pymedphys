@@ -109,3 +109,28 @@ def test_option_values_and_caller_relative_paths(tmp_path):
     assert len(cases) == 1
     assert cases[0].get("classname").startswith("suite.")
     assert str(tmp_path) not in cases[0].get("classname")
+
+
+def test_parallel_workers_resolve_caller_relative_paths(tmp_path):
+    # pytest-xdist workers parse the original arguments again, in the library
+    # directory, so they must resolve the path as the controller does.
+    suite = tmp_path / "suite"
+    suite.mkdir()
+    (suite / "conftest.py").write_text(
+        "def pytest_addoption(parser):\n" "    parser.addoption('--review-value')\n",
+        encoding="utf-8",
+    )
+    (suite / "test_sample.py").write_text(
+        "import pytest\n\n\n"
+        "@pytest.mark.parametrize('index', range(4))\n"
+        "def test_sample(pytestconfig, index):\n"
+        "    assert pytestconfig.getoption('--review-value') == 'suite'\n",
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        tmp_path, "tests", "suite", "--review-value", "suite", "-n", "2", "-q"
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "4 passed" in result.stdout
