@@ -176,11 +176,11 @@ def test_attribute_roles(keyword, role):
         (Role.RADIATION_SOURCE, Action.SHIFT),
         (Role.DEVICE, Action.DUMMY),
         (Role.VOCABULARY_VERSION, Action.DUMMY),
-        (Role.TIME_ZONE, Action.SEQUESTER),
+        (Role.TIME_ZONE, Action.NOMINAL_OFFSET),
         (Role.OTHER, Action.DUMMY),
     ],
 )
-def test_modified_dates_shifts_subject_events_and_sequesters_time_zones(role, action):
+def test_modified_dates_shifts_subject_events_and_normalises_time_zones(role, action):
     assert role.action is action
 
 

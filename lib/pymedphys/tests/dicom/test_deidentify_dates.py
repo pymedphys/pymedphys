@@ -17,6 +17,7 @@
 import datetime
 import hashlib
 import hmac
+import re
 
 from pymedphys._imports import hypothesis, pytest
 
@@ -197,3 +198,166 @@ def test_a_partial_or_invalid_datetime_is_not_shifted(value):
 def test_an_offset_outside_the_range_is_rejected(weeks):
     with pytest.raises(ValueError, match="52 to 520"):
         dates.shift_date("20260927", weeks)
+
+
+def _instant(value, local):
+    """Return the instant a DT value denotes, at its own offset or ``local``."""
+    match = re.fullmatch(r"([0-9]{12})([0-9.]*)([+-][0-9]{4})?", value)
+    offset = match[3] or local
+    minutes = int(offset[1:3]) * 60 + int(offset[3:])
+    zone = datetime.timezone(
+        datetime.timedelta(minutes=-minutes if offset[0] == "-" else minutes)
+    )
+    return datetime.datetime.strptime(match[1], "%Y%m%d%H%M").replace(tzinfo=zone)
+
+
+def test_the_local_offset_is_the_instances_timezone_offset():
+    # PS3.3 C.12.1.1.8: it governs every date and time without its own offset.
+    assert dates.local_offset("+1000 ", ["20260927013000+0000"]) == "+1000"
+
+
+def test_without_a_timezone_offset_the_earliest_own_offset_is_local():
+    values = ["20260927120000+1000", "20260927013000+0000", "20260927090000"]
+
+    assert dates.local_offset(None, values) == "+0000"
+
+
+def test_without_any_offset_there_is_no_local_offset():
+    assert dates.local_offset(None, ["20260927120000", "20260927"]) is None
+
+
+@pytest.mark.parametrize("offset", ["+1500", "-1201", "-0000", "1000", "+10"])
+def test_a_local_offset_outside_the_range_is_rejected(offset):
+    with pytest.raises(ValueError, match="-1200 to \\+1400"):
+        dates.local_offset(offset, [])
+
+
+@pytest.mark.parametrize(
+    "value, offset, expected",
+    [
+        # Already local: returned without padding.
+        ("20260927120000 ", "+1000", "20260927120000"),
+        ("20260927113000+1000", "+1000", "20260927113000+0000"),
+        ("20260927013000+0000", "+1000", "20260927113000+0000"),
+        # Across midnight, forwards and backwards.
+        ("20260926233000.5-0200", "+1000", "20260927113000.5+0000"),
+        ("20260927003000+1400", "-1000", "20260926003000+0000"),
+        # Precision is kept.
+        ("2026092714+0500", "+1000", "2026092719+0000"),
+        ("202609271430+0530", "+1000", "202609271900+0000"),
+        ("20260927+1000", "+1000", "20260927+0000"),
+        ("20260927235960+0000", "+0100", "20260928005960+0000"),
+    ],
+)
+def test_a_datetime_converts_to_local_time(value, offset, expected):
+    assert dates.to_local_datetime(value, offset) == expected
+
+
+@pytest.mark.parametrize(
+    "value, offset, message",
+    [
+        ("20260927+1000", "+1100", "precision"),
+        ("2026092714+0530", "+1000", "precision"),
+        ("20260927120000+1000", "+1500", "local offset"),
+        ("20260927120000+1401", "+1000", "not a DT value"),
+        ("2026+1000", "+1000", "not a DT value"),
+        ("00010101000000+0100", "-1200", "before year 1"),
+    ],
+)
+def test_a_datetime_that_cannot_convert_exactly_is_rejected(value, offset, message):
+    with pytest.raises(ValueError, match=message):
+        dates.to_local_datetime(value, offset)
+
+
+def test_local_times_keep_their_interval_to_values_with_their_own_offset():
+    # An instance at +1000: a local time 30 minutes after a value with its own
+    # offset, and one 30 minutes before a value recorded in UTC.
+    local = dates.local_offset("+1000", [])
+    pairs = [
+        ("20260927120000", "20260927113000+1000", 30),
+        ("20260927010000", "20260926153000+0000", -30),
+    ]
+    for implicit, explicit, minutes in pairs:
+        before = _instant(implicit, local) - _instant(explicit, local)
+        shifted = [
+            dates.shift_datetime(dates.to_local_datetime(v, local), 52)
+            for v in (implicit, explicit)
+        ]
+        after = _instant(shifted[0], dates.NOMINAL_UTC_OFFSET) - _instant(
+            shifted[1], dates.NOMINAL_UTC_OFFSET
+        )
+
+        assert before == after == datetime.timedelta(minutes=minutes)
+
+
+any_offset = (
+    st.integers(min_value=-12 * 60, max_value=14 * 60)
+    .map(lambda m: f"{'-' if m < 0 else '+'}{abs(m) // 60:02d}{abs(m) % 60:02d}")
+    .filter(lambda o: o != "-0000")
+)
+any_minute = st.datetimes(
+    min_value=datetime.datetime(1900, 1, 1), max_value=datetime.datetime(9990, 1, 1)
+).map(lambda d: d.replace(second=0, microsecond=0))
+
+
+@hypothesis.given(st.lists(st.tuples(any_minute, any_offset), min_size=2, max_size=5))
+def test_converting_to_local_time_keeps_every_interval(values):
+    texts = [f"{d:%Y%m%d%H%M}{o}" for d, o in values]
+    local = dates.local_offset(None, texts)
+    converted = [dates.to_local_datetime(text, local) for text in texts]
+
+    originals = [_instant(text, local) for text in texts]
+    locals_ = [_instant(text, dates.NOMINAL_UTC_OFFSET) for text in converted]
+    assert all(value.endswith(dates.NOMINAL_UTC_OFFSET) for value in converted)
+    assert [b - a for a, b in zip(originals, originals[1:])] == [
+        b - a for a, b in zip(locals_, locals_[1:])
+    ]
+
+
+def _ptp(seconds, nanoseconds=0):
+    return seconds.to_bytes(6, "big") + nanoseconds.to_bytes(4, "big")
+
+
+def test_a_frame_origin_timestamp_moves_back_by_whole_weeks():
+    shifted = dates.shift_frame_origin_timestamp(_ptp(1_790_000_000, 123), 52)
+
+    assert shifted == _ptp(1_790_000_000 - 52 * 7 * 24 * 60 * 60, 123)
+
+
+@hypothesis.given(
+    st.lists(
+        st.tuples(
+            st.integers(min_value=10**9, max_value=2**48 - 1),
+            st.integers(min_value=0, max_value=10**9 - 1),
+        ),
+        min_size=2,
+        max_size=5,
+    ),
+    any_weeks,
+)
+def test_frame_origin_timestamps_keep_their_intervals(timestamps, weeks):
+    def nanoseconds(value):
+        return int.from_bytes(value[:6], "big") * 10**9 + int.from_bytes(
+            value[6:], "big"
+        )
+
+    originals = [_ptp(s, n) for s, n in timestamps]
+    shifted = [dates.shift_frame_origin_timestamp(v, weeks) for v in originals]
+
+    assert [nanoseconds(b) - nanoseconds(a) for a, b in zip(shifted, shifted[1:])] == [
+        nanoseconds(b) - nanoseconds(a) for a, b in zip(originals, originals[1:])
+    ]
+
+
+@pytest.mark.parametrize(
+    "value, message",
+    [
+        (bytes(9), "IEEE 1588"),
+        (bytes(11), "IEEE 1588"),
+        (_ptp(10**9, 10**9), "IEEE 1588"),
+        (_ptp(1000), "before 1970"),
+    ],
+)
+def test_an_invalid_frame_origin_timestamp_is_rejected(value, message):
+    with pytest.raises(ValueError, match=message):
+        dates.shift_frame_origin_timestamp(value, 52)

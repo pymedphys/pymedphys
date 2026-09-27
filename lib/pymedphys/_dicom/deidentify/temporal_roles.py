@@ -27,11 +27,13 @@ offset (:mod:`~pymedphys._dicom.deidentify.dates`), which keeps the intervals
 between them, such as a brachytherapy source's decay from its reference date to
 treatment. Device, vocabulary-version, and other values are replaced by a fixed
 dummy value: shifting a date whose original may be known, such as a published
-version or a calibration date, would disclose the offset. An instance with a
-time zone offset is sequestered: the option cleans the offset, but no
-replacement is yet defined that keeps the intervals between local times and
-DT values with their own offsets and does not reveal the season of the
-original date. Without the option, Table E.1-1 decides. The file's format and
+version or a calibration date, would disclose the offset. Every UTC offset
+becomes :data:`~pymedphys._dicom.deidentify.dates.NOMINAL_UTC_OFFSET` once each
+DT value with its own offset is converted to the instance's local time
+(:func:`~pymedphys._dicom.deidentify.dates.to_local_datetime`). That keeps
+every interval within the instance and does not reveal the season of the
+original date through daylight saving. Without the option, Table E.1-1
+decides. The file's format and
 loader are shared with the other roles files
 (:mod:`~pymedphys._dicom.deidentify.attribute_roles`).
 """
@@ -50,13 +52,15 @@ TEMPORAL_ROLES_PATH = pathlib.Path(__file__).resolve().parent / "temporal_roles.
 class TemporalAction(enum.Enum):
     """What Modified Dates does to a value.
 
-    ``SEQUESTER`` means the instance is not exported under the option, because
-    no conforming treatment of the value is defined yet.
+    ``NOMINAL_OFFSET`` replaces a time zone offset with
+    :data:`~pymedphys._dicom.deidentify.dates.NOMINAL_UTC_OFFSET`, after the
+    instance's DT values with their own offsets are converted to its local
+    time.
     """
 
     SHIFT = "shift"
     DUMMY = "dummy"
-    SEQUESTER = "sequester"
+    NOMINAL_OFFSET = "nominal-offset"
 
 
 class TemporalRole(enum.Enum):
@@ -73,14 +77,14 @@ class TemporalRole(enum.Enum):
     def action(self) -> TemporalAction:
         """What Modified Dates does to a value with this role.
 
-        Subject events and radiation sources move by the subject's offset, an
-        instance with a time zone offset is sequestered, and every other role
+        Subject events and radiation sources move by the subject's offset, a
+        time zone offset becomes the nominal offset, and every other role
         takes a fixed dummy value.
         """
         if self in (TemporalRole.SUBJECT_EVENT, TemporalRole.RADIATION_SOURCE):
             return TemporalAction.SHIFT
         if self is TemporalRole.TIME_ZONE:
-            return TemporalAction.SEQUESTER
+            return TemporalAction.NOMINAL_OFFSET
         return TemporalAction.DUMMY
 
 
