@@ -102,7 +102,7 @@ def test_links_are_refused_before_anything_is_extracted(tmp_path, link_type, tar
     with pytest.raises(ValueError, match="link or special file"):
         pinnacle_cli.extract_tar(archive, destination)
 
-    assert list(destination.iterdir()) == []
+    assert not list(destination.iterdir())
 
 
 def test_chained_links_cannot_reach_outside(tmp_path):
@@ -121,7 +121,7 @@ def test_chained_links_cannot_reach_outside(tmp_path):
         pinnacle_cli.extract_tar(archive, destination)
 
     assert not (tmp_path / "escaped").exists()
-    assert list(destination.iterdir()) == []
+    assert not list(destination.iterdir())
 
 
 def test_absolute_name_is_extracted_inside_the_destination(tmp_path):
