@@ -168,9 +168,9 @@ Comprehensive testing beyond unit tests.
   - `doctests`: Documentation code examples and the StackOverflow example
   - `slow-tests`: Long-running integration tests, run in parallel with
     pytest-xdist (`-n auto`). Processes that share the data cache take turns
-    with each archive, from downloading or repairing it to extracting it, so
-    parallel workers never replace an open archive or read a partly written
-    file
+    with each file, and with each archive from downloading or repairing it to
+    extracting it, so parallel workers never replace an open file or read a
+    partly written one
   - `script-tests`: Runs the `.github/scripts` unit tests on Windows and
     macOS; `ci.yml` runs the full script suite on Ubuntu when selected,
     and the selection, summary and workflow-contract tests on every PR. The

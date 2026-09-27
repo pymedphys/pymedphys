@@ -477,6 +477,112 @@ def test_callers_repair_an_outdated_archive_once(cache, tmp_path, monkeypatch):
         ]
 
 
+def _start_data_path_callers(count, filename, **kwargs):
+    """Start callers of data_path on threads; return them and their results."""
+    results: list[pathlib.Path] = []
+    errors: list[BaseException] = []
+
+    def call():
+        try:
+            results.append(download.data_path(filename, **kwargs))
+        except BaseException as error:  # pylint: disable = broad-exception-caught
+            errors.append(error)
+
+    threads = [threading.Thread(target=call) for _ in range(count)]
+    for thread in threads:
+        thread.start()
+    return threads, results, errors
+
+
+def _count_downloads(monkeypatch) -> list[pathlib.Path]:
+    downloads: list[pathlib.Path] = []
+    real_download = download.download_with_progress
+
+    def counted_download(url, filepath):
+        downloads.append(filepath)
+        real_download(url, filepath)
+
+    monkeypatch.setattr(download, "download_with_progress", counted_download)
+    return downloads
+
+
+def test_data_path_callers_sharing_an_empty_cache_download_once(
+    cache, tmp_path, monkeypatch
+):
+    # The same race as for archives, for any cached file: callers that both
+    # find it missing must not both download it and replace it.
+    data_dir, hashes = cache
+    source = tmp_path / "source.txt"
+    source.write_text("complete contents", encoding="utf-8")
+    _record(hashes, "data.txt", source)
+    downloads = _count_downloads(monkeypatch)
+
+    with download.download_lock(data_dir / "data.txt"):
+        threads, results, errors = _start_data_path_callers(
+            2, "data.txt", url=source.as_uri(), hash_filepath=hashes
+        )
+        threads[0].join(timeout=2)
+        assert all(thread.is_alive() for thread in threads)
+        assert not downloads
+        assert not (data_dir / "data.txt").exists()
+
+    for thread in threads:
+        thread.join(timeout=60)
+        assert not thread.is_alive()
+    assert not errors
+    assert len(downloads) == 1
+    assert [path.read_text(encoding="utf-8") for path in results] == [
+        "complete contents"
+    ] * 2
+
+
+def test_data_path_callers_repair_an_outdated_file_once(cache, tmp_path, monkeypatch):
+    # Repairing a file downloads it again from inside the same call, which
+    # must not wait for the lock that call already holds.
+    data_dir, hashes = cache
+    source = tmp_path / "source.txt"
+    source.write_text("current contents", encoding="utf-8")
+    _record(hashes, "data.txt", source)
+    data_dir.mkdir()
+    outdated = data_dir / "data.txt"
+    outdated.write_text("outdated contents", encoding="utf-8")
+    downloads = _count_downloads(monkeypatch)
+
+    with download.download_lock(outdated):
+        threads, results, errors = _start_data_path_callers(
+            2, "data.txt", url=source.as_uri(), hash_filepath=hashes
+        )
+        threads[0].join(timeout=2)
+        assert all(thread.is_alive() for thread in threads)
+        assert outdated.read_text(encoding="utf-8") == "outdated contents"
+        assert not downloads
+
+    for thread in threads:
+        thread.join(timeout=60)
+        assert not thread.is_alive()
+    assert not errors
+    assert len(downloads) == 1
+    assert [path.read_text(encoding="utf-8") for path in results] == [
+        "current contents"
+    ] * 2
+
+
+def test_download_lock_is_a_hidden_file_beside_the_data(cache, tmp_path):
+    data_dir, hashes = cache
+    source = tmp_path / "source.txt"
+    source.write_text("contents", encoding="utf-8")
+    _record(hashes, "nested/data.txt", source)
+
+    path = download.data_path(
+        "nested/data.txt", url=source.as_uri(), hash_filepath=hashes
+    )
+
+    assert path == (data_dir / "nested" / "data.txt").resolve()
+    (lock,) = data_dir.rglob(f"*{download.DOWNLOAD_LOCK_SUFFIX}")
+    assert lock.parent == path.parent
+    assert lock.name.startswith(".")
+
+
 def test_extraction_lock_is_outside_the_extracted_files(cache, tmp_path):
     data_dir, hashes = cache
     source = _zip(tmp_path / "source.zip", {"data.txt": "contents"})

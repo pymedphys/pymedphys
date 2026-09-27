@@ -225,6 +225,33 @@ def data_path(
     containing_directory = pathlib.Path(filepath).parent
     containing_directory.mkdir(exist_ok=True, parents=True)
 
+    # Callers of the same file take turns to check, download, or repair it, so
+    # two of them cannot both replace or delete it; replacing a file that
+    # another process has open fails on Windows. A valid file is never
+    # modified, so callers can use the returned path after the lock is
+    # released.
+    with download_lock(filepath):
+        return _checked_data_path(
+            filename,
+            filepath,
+            check_hash=check_hash,
+            redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+            delete_when_no_hash_found=delete_when_no_hash_found,
+            url=url,
+            hash_filepath=hash_filepath,
+        )
+
+
+def _checked_data_path(
+    filename,
+    filepath,
+    check_hash,
+    redownload_on_hash_mismatch,
+    delete_when_no_hash_found,
+    url,
+    hash_filepath,
+):
+    """Check, download, or repair one cached file; the caller holds its lock."""
     logging.debug("Filepath saving to is %s", filepath)
     logging.debug("Does filepath exist? %s", filepath.exists())
 
@@ -250,9 +277,13 @@ def data_path(
         if not hash_agrees:
             if redownload_on_hash_mismatch:
                 filepath.unlink()
-                return data_path(
+                # Retry inside the lock this call already holds.
+                return _checked_data_path(
                     filename,
+                    filepath,
+                    check_hash=True,
                     redownload_on_hash_mismatch=False,
+                    delete_when_no_hash_found=True,
                     url=url,
                     hash_filepath=hash_filepath,
                 )
@@ -352,37 +383,55 @@ def zenodo_data_paths(
 
 EXTRACTED_ARCHIVE_MARKER = ".pymedphys-extracted-archive-sha1"
 EXTRACTION_LOCK_SUFFIX = ".pymedphys-extraction-lock"
+DOWNLOAD_LOCK_SUFFIX = ".pymedphys-download-lock"
 
 
-def _sidecar_path(extract_directory, suffix):
-    """Return a hidden file beside an extraction directory, named after it.
+def _sidecar_path(path, suffix):
+    """Return a hidden file beside a cached file or directory, named after it.
 
     Keeping metadata outside the extracted members means an archive can never
     contain it, and naming it after the directory gives one file per
     directory even when several archives share that directory. A valid
-    archive name can leave too little room for the suffix, so overlong names
-    are hashed to fit the usual 255-byte filename component limit.
+    name can leave too little room for the suffix, so overlong names are
+    hashed to fit the usual 255-byte filename component limit.
     """
-    name = f".{extract_directory.name}{suffix}"
+    name = f".{path.name}{suffix}"
     if len(os.fsencode(name)) > 255:
-        directory_key = hashlib.sha256(
-            os.fsencode(os.path.normcase(extract_directory.name))
-        ).hexdigest()
-        name = f".{directory_key}{suffix}"
-    return extract_directory.with_name(name)
+        path_key = hashlib.sha256(os.fsencode(os.path.normcase(path.name))).hexdigest()
+        name = f".{path_key}{suffix}"
+    return path.with_name(name)
 
 
-@contextlib.contextmanager
 def extraction_lock(extract_directory):
     """Hold the lock that serialises the use of one cached archive.
 
     ``zip_data_paths`` holds it, for the archive's extraction directory in the
     data cache, while it downloads or repairs the archive, opens it, and
-    extracts it. Processes that share the data cache, such as parallel test
-    workers, take it in turn. The operating system releases it when the lock
-    file is closed, including when a process dies, so it cannot be left stale.
+    extracts it.
     """
-    lock_path = _sidecar_path(pathlib.Path(extract_directory), EXTRACTION_LOCK_SUFFIX)
+    return _exclusive_lock(
+        _sidecar_path(pathlib.Path(extract_directory), EXTRACTION_LOCK_SUFFIX)
+    )
+
+
+def download_lock(filepath):
+    """Hold the lock that serialises checking, downloading, or repairing a file.
+
+    ``data_path`` holds it for each cached file.
+    """
+    return _exclusive_lock(_sidecar_path(pathlib.Path(filepath), DOWNLOAD_LOCK_SUFFIX))
+
+
+@contextlib.contextmanager
+def _exclusive_lock(lock_path):
+    """Hold an exclusive lock on a lock file, shared by every process.
+
+    Processes that share the data cache, such as parallel test workers, take
+    it in turn. Each open of the lock file is a separate owner, so threads in
+    one process also take turns. The operating system releases it when the
+    lock file is closed, including when a process dies, so it cannot be left
+    stale.
+    """
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with open(lock_path, "a+b") as lock_file:
         if sys.platform == "win32":

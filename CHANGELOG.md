@@ -71,15 +71,18 @@ This project adheres to
 - PyMedPhys now works with NumPy 2. v0.41.0 allowed NumPy 2 to be installed, but several functions could fail under it: Pinnacle DICOM export called `ndarray.tostring()`, which NumPy 2 removed; building a structure mask on a dose grid called `int()` on a one-element array, which NumPy 2 rejects; `pymedphys.electronfactors.parameterise_insert` passed a one-element array as SciPy's basin-hopping temperature and step size, which fails under NumPy 2.4 and later; and delivery, MetersetMap, dose, and mock-profile helpers called `np.array(..., copy=False)`, which NumPy 2 rejects whenever a copy is needed, for example for list input. `Delivery.to_dicom` now writes gantry and beam limiting device rotation directions as plain strings rather than NumPy strings, which NumPy 2 prints as `np.str_('NONE')` when a dataset is displayed. Converting delivery gantry and collimator angles to DICOM also no longer replaces negative angles in a NumPy array passed in. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
 - `pymedphys.zip_data_paths` now extracts an archive into the data cache again when the downloaded archive has changed since it was extracted, or when an extracted file is missing or has the wrong size. Previously, files already extracted were never refreshed, so they could keep stale or incomplete contents. Archives extracted by earlier versions are extracted again on first use. Edits that leave a file the same size are not detected. A caller-specified `extract_directory` still only gains missing files, so edits there are kept. [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
 - Processes that share the data cache, such as parallel test workers, can
-  now call `pymedphys.zip_data_paths` for the same archive at the same time.
-  Previously they could each download or repair the archive, which fails on
-  Windows when another process has it open, and could read or return files
-  that another process was still extracting. Each call now holds an exclusive
-  lock, on a hidden file beside the archive's extraction directory in the
-  data cache, from checking or downloading the archive until its extraction
-  is complete, including when the caller extracts into its own directory. The
-  operating system releases the lock when the process ends, so it cannot be
-  left stale.
+  now call `pymedphys.data_path` and `pymedphys.zip_data_paths` for the same
+  file at the same time. Previously they could each download or repair it,
+  which fails on Windows when another process has the file open, and could
+  read or return files that another process was still extracting.
+  `data_path` now holds an exclusive lock, on a hidden file beside each
+  cached file, while it checks, downloads, or repairs that file; a valid file
+  is never modified, so the returned path stays safe to use.
+  `zip_data_paths` also holds a lock, beside the archive's extraction
+  directory, from checking or downloading the archive until its extraction
+  is complete, including when the caller extracts into its own directory.
+  The operating system releases each lock when the process ends, so neither
+  can be left stale.
   [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 - A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
   read, including itself, now raises `ValueError` instead of hanging every
