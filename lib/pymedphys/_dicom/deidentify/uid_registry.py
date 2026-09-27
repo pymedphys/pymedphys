@@ -95,7 +95,7 @@ class RegisteredUID:
         One of :data:`UID_TYPES`, such as ``"SOP Class"``.
     part : str
         The part or standard that defines the UID, such as ``"PS3.4"`` or
-        ``"DICOS"``, followed by the edition that retired it, as in
+        ``"DICOS"``, followed by the last edition before retirement, as in
         ``"PS3.5 (2011)"``, or that edition alone.
     """
 
