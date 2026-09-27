@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# Default to read-only. Jobs that need more override at the job level.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Label changes queue behind an in-flight run instead of discarding it.
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request' &&
+        github.event.action != 'labeled' &&
+        github.event.action != 'unlabeled' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      run-python: ${{ steps.select.outputs.run-python }}
+      run-integration: ${{ steps.select.outputs.run-integration }}
+      run-database: ${{ steps.select.outputs.run-database }}
+      run-docs: ${{ steps.select.outputs.run-docs }}
+      run-scripts: ${{ steps.select.outputs.run-scripts }}
+      run-full-matrix: ${{ steps.select.outputs.run-full-matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Test selection and summary policy
+        run: |
+          python -m unittest discover -s .github/scripts -p 'test_select_checks.py'
+          python -m unittest discover -s .github/scripts -p 'test_check_workflow_status.py'
+          python -m unittest discover -s .github/scripts -p 'test_workflow_contracts.py'
+      - name: Select affected checks
+        id: select
+        run: python .github/scripts/select_checks.py
+
+  script-tests:
+    needs: [changes]
+    if: needs.changes.outputs.run-scripts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Selection tests scan the package for slow markers and doctests.
+          sparse-checkout: |
+            .github
+            lib/pymedphys
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - name: Test distribution and workflow tooling
+        run: python -m unittest discover -s .github/scripts -p 'test_*.py'
+
+  # Pre-commit always runs. Needs write access for auto-fix pushes on PRs.
+  pre-commit:
+    uses: ./.github/workflows/pre-commit.yml
+    permissions:
+      contents: write
+    secrets:
+      PYMEDPHYS_CI_BOT_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+      PYMEDPHYS_CI_BOT_TOKEN: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+
+  # Lint affected Python inputs unless pre-commit pushed a newer commit.
+  lint:
+    needs: [pre-commit, changes]
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-python == 'true'
+    uses: ./.github/workflows/lint.yml
+
+  # Type-check affected Python inputs unless an auto-fix was pushed.
+  type-check:
+    needs: [pre-commit, changes]
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-python == 'true'
+    uses: ./.github/workflows/type-check.yml
+
+  # Test affected Python inputs unless an auto-fix was pushed.
+  unit-tests:
+    needs: [pre-commit, changes]
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-python == 'true'
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      # The selector owns the full-test label. Only an explicit false keeps the
+      # quick matrix, so a missing or invalid output runs the full matrix.
+      quick: ${{ needs.changes.outputs.run-full-matrix == 'false' }}
+
+  # Extended checks share selection outputs with the required summary.
+  integration-tests:
+    needs: [pre-commit, changes]
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-integration == 'true'
+    uses: ./.github/workflows/integration-tests.yml
+    with:
+      run-slow: true
+
+  mosaiq-db-tests:
+    needs: [pre-commit, changes]
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-database == 'true'
+    uses: ./.github/workflows/mosaiq-db-tests.yml
+
+  docs-check:
+    needs: [pre-commit, changes]
+    if: |
+      (success() || failure()) &&
+      needs.pre-commit.outputs.autofix-pushed != 'true' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.run-docs == 'true'
+    uses: ./.github/workflows/docs.yml
+    permissions:
+      contents: read
+
+  # main-integrity requires the exact check name "CI Summary".
+  # See the contributor workflow guide before changing this name or its needs.
+  # The summary must fail when a required check fails or never runs.
+  summary:
+    name: CI Summary
+    needs: [changes, pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, script-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check required status and generate summary
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: >-
+          python .github/scripts/check_workflow_status.py
+          --title 'CI Results'
+          --conditional lint=run-python
+          --conditional type-check=run-python
+          --conditional unit-tests=run-python
+          --conditional script-tests=run-scripts
+          --conditional integration-tests=run-integration
+          --conditional mosaiq-db-tests=run-database
+          --conditional docs-check=run-docs

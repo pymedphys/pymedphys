@@ -300,11 +300,13 @@ def _get_filtered_table(connection, table, column_name, column_value):
     column_value = str(column_value)
     column_names, _ = _get_all_columns(connection, table)
 
+    # table and column_name are validated against the allowlists above and the
+    # value is parameterised.
     sql_string = f"""
         SELECT *
         FROM {table}
         WHERE {table}.{column_name} = %(column_value)s
-        """
+        """  # nosec B608
 
     raw_results = pymedphys.mosaiq.execute(
         connection,

@@ -1,3 +1,4 @@
+# Copyright (C) 2025 Matthew Jennings
 # Copyright (C) 2016-2021 Matthew Jennings and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +18,11 @@
 import copy
 from typing import Sequence
 
-from pymedphys._imports import matplotlib
+from pymedphys._imports import matplotlib, plt, pydicom, scipy
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom, scipy
 
 from . import orientation
+from .compat import ensure_transfer_syntax
 from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
 from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
@@ -38,15 +39,10 @@ def zyx_and_dose_from_dataset(dataset):
     return coords, dose
 
 
-def dose_from_dataset(ds, set_transfer_syntax_uid=True):
+def dose_from_dataset(ds):
     r"""Extract the dose grid from a DICOM RT Dose file."""
-
-    if set_transfer_syntax_uid:
-        ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
-
-    dose = ds.pixel_array * ds.DoseGridScaling
-
-    return dose
+    ensure_transfer_syntax(ds)
+    return ds.pixel_array * ds.DoseGridScaling
 
 
 def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
@@ -57,13 +53,13 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
     interp_coords : tuple(z, y, x)
         A tuple of coordinates in DICOM order, z axis first, then y, then x
         where x, y, and z are DICOM axes.
-    dose : pydicom.Dataset
+    dicom_dose_dataset : pydicom.Dataset
         An RT DICOM Dose object
     """
 
-    interp_z = np.array(interp_coords[0], copy=False)[:, None, None]
-    interp_y = np.array(interp_coords[1], copy=False)[None, :, None]
-    interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
+    interp_z = np.asarray(interp_coords[0])[:, None, None]
+    interp_y = np.asarray(interp_coords[1])[None, :, None]
+    interp_x = np.asarray(interp_coords[2])[None, None, :]
 
     coords, dicom_dose_dataset = zyx_and_dose_from_dataset(dicom_dose_dataset)
     interpolation = scipy.interpolate.RegularGridInterpolator(
@@ -98,7 +94,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
         defined as the surface of the phantom using either the
         ``SurfaceEntryPoint`` parameter or a combination of
         ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
-        ``IsocentrePosition``.
+        ``IsocenterPosition``.
     dose_dataset : pydicom.dataset.Dataset
         The RT DICOM dose dataset to be interpolated
     plan_dataset : pydicom.dataset.Dataset
@@ -107,7 +103,7 @@ def depth_dose(depths, dose_dataset, plan_dataset):
     """
     orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
-    depths = np.array(depths, copy=False)
+    depths = np.asarray(depths)
 
     surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
@@ -147,7 +143,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
         defined as the surface of the phantom using either the
         ``SurfaceEntryPoint`` parameter or a combination of
         ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
-        ``IsocentrePosition``.
+        ``IsocenterPosition``.
     direction : str, one of ('inplane', 'inline', 'crossplane', 'crossline')
         Corresponds to the axis upon which to apply the displacements.
          - 'inplane' or 'inline' converts to DICOM z direction
@@ -161,7 +157,7 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
 
     orientation.require_dicom_patient_position(dose_dataset, "HFS")
     require_gantries_be_zero(plan_dataset)
-    displacements = np.array(displacements, copy=False)
+    displacements = np.asarray(displacements)
 
     surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
@@ -227,14 +223,14 @@ def get_dose_grid_structure_mask(
         structure_name, structure_dataset
     )
 
-    structure_z_values = []
+    structure_z_list = []
     for item in z_structure:
-        item = np.unique(item)
-        if len(item) != 1:
+        unique_item = np.unique(item)
+        if len(unique_item) != 1:
             raise ValueError("Only one z value per contour supported")
-        structure_z_values.append(item[0])
+        structure_z_list.append(unique_item[0])
 
-    structure_z_values = np.sort(structure_z_values)
+    structure_z_values = np.sort(structure_z_list)
     unique_structure_z_values = np.unique(structure_z_values)
 
     if np.any(structure_z_values != unique_structure_z_values):
@@ -255,7 +251,7 @@ def get_dose_grid_structure_mask(
     mask_yxz = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
 
     for structure_index, z_val in enumerate(structure_z_values):
-        dose_index = int(np.where(z_dose == z_val)[0])
+        dose_index = np.where(z_dose == z_val)[0].item()
 
         if z_structure[structure_index][0] != z_dose[dose_index]:
             raise ValueError("Structure and dose indices do not align")
@@ -328,6 +324,8 @@ def sum_doses_in_datasets(
         A new DICOM RT Dose dataset whose dose is the sum of all doses
         within `datasets`
     """
+    for ds in datasets:
+        ensure_transfer_syntax(ds)
 
     if not all(ds.Modality == "RTDOSE" for ds in datasets):
         raise ValueError("`datasets` must only contain DICOM RT Dose datasets.")

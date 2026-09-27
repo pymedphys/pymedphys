@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2024 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +17,9 @@
 import json
 import random
 import re
+from typing import Any
 
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
 
 from pymedphys._ai import model_versions
 
@@ -153,10 +154,10 @@ async def get_system_prompt(
 
 async def get_top_k_query_ids(
     anthropic_client: AsyncAnthropic,
-    messages: list[Message],
+    messages: list[dict[str, Any]],
     sub_agent_prompt: str,
     query_result_pairs: list[tuple[str, str]],
-) -> tuple[str, ...]:
+) -> tuple[int, ...]:
     shuffled_index = list(range(len(query_result_pairs)))
     random.shuffle(shuffled_index)
 
@@ -177,16 +178,22 @@ async def get_top_k_query_ids(
             continue
 
         match = re.search(r"<query_id>(.*)</query_id>", line)
+        if match is None:
+            continue
         selected_shuffled_query_ids.append(int(match.group(1)))
 
-    unshuffled_query_ids = [shuffled_index[i] for i in selected_shuffled_query_ids]
+    unshuffled_query_ids = tuple(
+        shuffled_index[i]
+        for i in selected_shuffled_query_ids
+        if 0 <= i < len(shuffled_index)
+    )
 
     return unshuffled_query_ids
 
 
 async def _get_raw_top_k_query_ids(
     anthropic_client: AsyncAnthropic,
-    messages: list[Message],
+    messages: list[dict[str, Any]],
     sub_agent_prompt: str,
     query_result_pairs: list[tuple[str, str]],
 ) -> str:

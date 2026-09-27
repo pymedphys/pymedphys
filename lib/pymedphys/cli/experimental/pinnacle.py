@@ -21,7 +21,7 @@
 
 import warnings
 
-from pymedphys.experimental.pinnacle import export_cli
+from pymedphys.pinnacle import export_cli
 
 
 def pinnacle_cli(subparsers):

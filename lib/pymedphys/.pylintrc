@@ -1,5 +1,8 @@
 [MASTER]
 init-hook = "import sys; sys.setrecursionlimit(2000)"
+# Every documentation build generates docs/conf.py (gitignored) inside the
+# package, so keep it out of the lint run.
+ignore-paths = ^.*/docs/conf[.]py$
 
 [MESSAGES CONTROL]
 disable =

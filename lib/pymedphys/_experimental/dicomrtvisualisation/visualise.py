@@ -1,3 +1,17 @@
+# Copyright (C) 2024 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import pathlib
 from dataclasses import dataclass
@@ -27,8 +41,8 @@ class CTSlice:
     PixelArray: np.ndarray
     RescaleSlope: float = 1.0
     RescaleIntercept: float = 0.0
-    WindowCenter: int = 0
-    WindowWidth: int = 500
+    WindowCenter: float = 0
+    WindowWidth: float = 500
     BitsStored: int = 16
 
     def __post_init__(self):
@@ -72,9 +86,11 @@ def preprocess_ct_slice_datasets(
                 RescaleSlope=float(getattr(ds, "RescaleSlope", 1.0)),
                 RescaleIntercept=float(getattr(ds, "RescaleIntercept", 0.0)),
                 WindowCenter=float(
-                    getattr(ds, "WindowCenter", DEFAULT_WINDOW_LEVEL)[0]
+                    getattr(ds, "WindowCenter", [DEFAULT_WINDOW_LEVEL])[0]
                 ),
-                WindowWidth=float(getattr(ds, "WindowWidth", DEFAULT_WINDOW_WIDTH)[0]),
+                WindowWidth=float(
+                    getattr(ds, "WindowWidth", [DEFAULT_WINDOW_WIDTH])[0]
+                ),
                 BitsStored=int(getattr(ds, "BitsStored", 16)),
             )
             preprocessed_data.append(preprocessed_slice)
@@ -257,6 +273,7 @@ def load_ct_as_memmap(
 
     bits_stored = bits_stored_set.pop()
 
+    dtype: type[np.int16] | type[np.float32]
     if bits_stored <= 16:
         dtype = np.int16
         st.info(f"Selected dtype: {dtype} based on BitsStored={bits_stored}")
@@ -427,7 +444,7 @@ def preprocess_contours(
     Returns:
         Dict[float, List[Tuple[str, np.ndarray]]]: Mapping of Z-coordinate to contours for each structure.
     """
-    contour_map = {}
+    contour_map: Dict[float, List[Tuple[str, np.ndarray]]] = {}
     for structure_name, structure_data in structures.items():
         for contour in structure_data["Contours"]:
             contour_z = contour[:, 2]
@@ -586,7 +603,8 @@ def window_image(img: np.ndarray, ww: float, wl: float) -> np.ndarray:
     """
     img_min = wl - (ww / 2)
     img_max = wl + (ww / 2)
-    return np.clip(img, img_min, img_max)
+    windowed: np.ndarray = np.clip(img, img_min, img_max)
+    return windowed
 
 
 def create_structure_legend(structures: Dict[str, Dict[str, Any]]) -> str:

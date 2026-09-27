@@ -1,3 +1,18 @@
+# Copyright (C) 2026 Matthew Jennings
+# Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 import os
 import pathlib
@@ -20,6 +35,7 @@ from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 from pymedphys.tests.dicom.test_anonymise import (
+    copy_test_file_into,
     dicom_dataset_from_dict,
     get_test_filepaths,
 )
@@ -51,8 +67,9 @@ def _assert_values_changed_and_not_hardcoded(test_file_path, pseudonymised_file_
 
 
 @pytest.mark.pydicom
-def test_pseudonymise_convenience_api():
-    for test_file_path in get_test_filepaths():
+def test_pseudonymise_convenience_api(tmp_path):
+    for source_path in get_test_filepaths():
+        test_file_path = copy_test_file_into(tmp_path, source_path)
         output_file = pseudonymisation_api.pseudonymise(test_file_path)  # using facade
         assert exists(output_file)
         os.remove(output_file)
@@ -76,6 +93,31 @@ def test_pseudonymise_convenience_api():
             # the hardcode values.
             for input_file, pseudo_file in zip(get_test_filepaths(), pseudo_file_list):
                 _assert_values_changed_and_not_hardcoded(input_file, pseudo_file)
+
+
+@pytest.mark.pydicom
+def test_pseudonymise_leaves_patient_sex_unchanged(tmp_path):
+    from pydicom.data import get_testdata_file
+
+    # PatientSex is CS with enumerated values, so a hashed replacement would
+    # break DICOM conformance. Use pydicom's bundled files to avoid downloads.
+    for filename in ["rtplan.dcm", "CT_small.dcm"]:
+        source_path = get_testdata_file(filename)
+        ds_input = pydicom.dcmread(source_path, force=True)
+        ds_input.PatientSex = "F"
+
+        ds_pseudo = pseudonymisation_api.pseudonymise(ds_input)
+        assert ds_pseudo.PatientSex == "F"
+        assert ds_pseudo.PatientID != ds_input.PatientID
+
+        input_path = tmp_path / os.path.basename(source_path)
+        ds_input.save_as(input_path)
+        output_file = pseudonymisation_api.pseudonymise(
+            input_path, output_path=tmp_path / "output" / "pseudonymised.dcm"
+        )
+        ds_output = pydicom.dcmread(output_file, force=True)
+        assert ds_output.PatientSex == "F"
+        assert ds_output.PatientID != ds_input.PatientID
 
 
 @pytest.mark.pydicom
@@ -171,8 +213,8 @@ def test_identifier_is_sequence_vr():
         "RequestAttributesSequence",
     ]
 
-    identifying_requested_procedure_id = "Tumour Identification"
-    non_identifying_scheduled_procedure_step_id = "Tumour ID with Dual Energy"
+    identifying_requested_procedure_id = "Tumour ID"
+    non_identifying_scheduled_procedure_step_id = "Dual Energy"
     ds_input = dicom_dataset_from_dict(
         {
             "PatientID": "ABC123",

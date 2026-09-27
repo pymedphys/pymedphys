@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +15,17 @@
 
 
 import functools
+import hashlib
 import json
 import logging
 import os
 import pathlib
+import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
+from http import HTTPStatus
 
 from pymedphys._imports import tqdm
 
@@ -33,30 +38,133 @@ HERE = pathlib.Path(__file__).resolve().parent
 DEFAULT_HASHES_PATH = HERE.joinpath("hashes.json")
 
 
-@functools.lru_cache()
-def create_download_progress_bar():
-    class DownloadProgressBar(tqdm.tqdm):
-        def update_to(self, b=1, bsize=1, tsize=None):
-            if tsize is not None:
-                self.total = tsize
-            self.update(b * bsize - self.n)
+# Every URL comes from the package's own urls.json, a Zenodo record listing,
+# or the caller of data_path(url=...). file: is kept for local mirrors; the
+# caller already has filesystem access, so it grants nothing new. Every other
+# scheme, including the ftp: and data: schemes that urllib would accept, is
+# rejected.
+SUPPORTED_URL_SCHEMES = ("http", "https", "file")
 
-    return DownloadProgressBar
+# Seconds to wait for the server to respond, and for each socket read after
+# that. A stalled connection then raises instead of hanging the caller
+# indefinitely.
+DOWNLOAD_TIMEOUT_SECONDS = 60
+
+# HTTP statuses worth retrying. Anything else (404, 403, and so on) will not
+# change on a second attempt, so the download gives up at once.
+RETRYABLE_HTTP_STATUSES = frozenset(
+    {
+        HTTPStatus.REQUEST_TIMEOUT,
+        HTTPStatus.TOO_EARLY,
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        HTTPStatus.BAD_GATEWAY,
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.GATEWAY_TIMEOUT,
+    }
+)
+
+DATA_DIR_ENVIRONMENT_VARIABLE = "PYMEDPHYS_DATA_DIR"
+
+# Bytes read per iteration. The progress bar updates once per chunk, so this
+# keeps it responsive on slow links (about 0.6 s per update at 100 kB/s) while
+# the per-call overhead stays negligible. It does not affect stall detection:
+# the timeout applies to each socket read, whatever the chunk size.
+_CHUNK_SIZE = 64 * 1024
 
 
-@retry.retry((urllib.error.HTTPError, ConnectionResetError))
-def download_with_progress(url, filepath):
-    DownloadProgressBar = create_download_progress_bar()
+def _is_permanent_failure(error: BaseException) -> bool:
+    return (
+        isinstance(error, urllib.error.HTTPError)
+        and error.code not in RETRYABLE_HTTP_STATUSES
+    )
 
-    with DownloadProgressBar(
-        unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
-    ) as t:
-        urllib.request.urlretrieve(url, filepath, reporthook=t.update_to)
+
+@retry.retry(
+    (urllib.error.URLError, ConnectionError, TimeoutError),
+    giveup=_is_permanent_failure,
+)
+def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
+    """Download ``url`` to ``filepath`` while showing a progress bar.
+
+    The download is written to a temporary file beside ``filepath`` and only
+    moved into place once it is complete, so an interrupted download never
+    leaves a truncated file behind. Network errors, timeouts, and transient
+    HTTP statuses are retried with an exponential backoff; other HTTP errors,
+    such as 404, are raised immediately.
+
+    Parameters
+    ----------
+    url : str
+        An ``http``, ``https``, or ``file`` URL. Any other scheme raises
+        ``ValueError``.
+    filepath : str or os.PathLike
+        Where the download is written.
+    """
+    scheme = urllib.parse.urlsplit(url).scheme
+    if scheme not in SUPPORTED_URL_SCHEMES:
+        raise ValueError(
+            f"Unsupported URL scheme {scheme!r} in {url!r}; "
+            f"expected one of {SUPPORTED_URL_SCHEMES}"
+        )
+
+    filepath = pathlib.Path(filepath)
+
+    # The scheme was checked against SUPPORTED_URL_SCHEMES above, and the
+    # note on that constant explains why file: is acceptable here.
+    with urllib.request.urlopen(  # nosec B310
+        url, timeout=DOWNLOAD_TIMEOUT_SECONDS
+    ) as response:
+        content_length = response.headers.get("Content-Length")
+        expected_size = int(content_length) if content_length else None
+
+        file_descriptor, temp_name = tempfile.mkstemp(
+            dir=filepath.parent, prefix=f".{filepath.name}.", suffix=".part"
+        )
+        temp_path = pathlib.Path(temp_name)
+        try:
+            with (
+                os.fdopen(file_descriptor, "wb") as temp_file,
+                tqdm.tqdm(
+                    total=expected_size,
+                    unit="B",
+                    unit_scale=True,
+                    miniters=1,
+                    desc=url.split("/")[-1],
+                ) as progress,
+            ):
+                received = 0
+                while chunk := response.read(_CHUNK_SIZE):
+                    temp_file.write(chunk)
+                    received += len(chunk)
+                    progress.update(len(chunk))
+
+            if expected_size is not None and received < expected_size:
+                raise urllib.error.ContentTooShortError(
+                    f"Download of {url} stopped after {received} of "
+                    f"{expected_size} bytes",
+                    (str(filepath), response.headers),
+                )
+
+            os.replace(temp_path, filepath)
+        except BaseException:
+            temp_path.unlink(missing_ok=True)
+            raise
 
 
 def get_data_dir():
-    data_dir = pmp_config.get_config_dir().joinpath("data")
-    data_dir.mkdir(exist_ok=True)
+    """Return the directory that caches downloaded data, creating it if needed.
+
+    The ``PYMEDPHYS_DATA_DIR`` environment variable overrides the default of
+    ``~/.pymedphys/data``.
+    """
+    override = os.environ.get(DATA_DIR_ENVIRONMENT_VARIABLE)
+    if override:
+        data_dir = pathlib.Path(override)
+    else:
+        data_dir = pmp_config.get_config_dir().joinpath("data")
+
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     return data_dir
 
@@ -118,13 +226,15 @@ def data_path(
     logging.debug("Filepath saving to is %s", filepath)
     logging.debug("Does filepath exist? %s", filepath.exists())
 
-    if check_hash and filepath.exists():
+    if check_hash:
         try:
             get_cached_filehash(filename, hash_filepath=hash_filepath)
         except NoHashFound:
-            if delete_when_no_hash_found:
-                logging.warning("No hash found, deleting current file")
-                filepath.unlink()  # Force a redownload
+            # Unverifiable data is never served: remove any cached copy so a
+            # later call cannot pick it up, and do not download it.
+            if delete_when_no_hash_found and filepath.exists():
+                filepath.unlink()
+            raise
 
     if not filepath.exists():
         if url is None:
@@ -133,10 +243,7 @@ def data_path(
         download_with_progress(url, filepath)
 
     if check_hash:
-        try:
-            hash_agrees = data_file_hash_check(filename, hash_filepath=hash_filepath)
-        except NoHashFound:
-            return filepath.resolve()
+        hash_agrees = data_file_hash_check(filename, hash_filepath=hash_filepath)
 
         if not hash_agrees:
             if redownload_on_hash_mismatch:
@@ -154,7 +261,7 @@ def data_path(
 
 
 class NoHashFound(KeyError):
-    pass
+    """The file has no recorded hash, so its contents cannot be verified."""
 
 
 def get_cached_filehash(filename, hash_filepath=None):
@@ -169,9 +276,11 @@ def get_cached_filehash(filename, hash_filepath=None):
     try:
         cached_filehash = hashes[filename]
     except KeyError:
-        logging.warning("No hash found for file '%s'", filename)
-        logging.debug("Hashes found were %s", hashes.keys())
-        raise NoHashFound
+        raise NoHashFound(
+            f"No hash is recorded for '{filename}' in {hash_filepath}, so it "
+            "cannot be verified. Record its hash, or pass check_hash=False to "
+            "use it unverified."
+        ) from None
 
     return cached_filehash
 
@@ -189,21 +298,8 @@ def data_file_hash_check(filename, hash_filepath=None):
 
     logging.debug("Calculated filehash is %s", calculated_filehash)
 
-    try:
-        cached_filehash = get_cached_filehash(filename, hash_filepath=hash_filepath)
-
-        logging.debug("Cached filehash is %s", cached_filehash)
-    except NoHashFound:
-        logging.warning("Hash not found in %s. File will be updated.", hash_filepath)
-        with open(hash_filepath) as hash_file:
-            hashes = json.load(hash_file)
-
-        hashes[filename] = calculated_filehash
-
-        with open(hash_filepath, "w") as hash_file:
-            json.dump(hashes, hash_file, indent=2, sort_keys=True)
-
-        raise
+    cached_filehash = get_cached_filehash(filename, hash_filepath=hash_filepath)
+    logging.debug("Cached filehash is %s", cached_filehash)
 
     return cached_filehash == calculated_filehash
 
@@ -252,6 +348,70 @@ def zenodo_data_paths(
     return data_paths
 
 
+EXTRACTED_ARCHIVE_MARKER = ".pymedphys-extracted-archive-sha1"
+
+
+def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
+    """Whether the directory holds a complete extraction of this archive.
+
+    The marker names the archive the files came from; each file must also still
+    have its archived size, which catches truncated or partly written files.
+    """
+    try:
+        if (
+            not extract_directory.is_dir()
+            or marker.read_bytes().strip() != archive_hash.encode("ascii")
+        ):
+            return False
+    except OSError:
+        return False
+
+    # extractall() resolves names to their final ZipInfo entry when an archive
+    # contains duplicates, so check the same entries that it actually writes.
+    for name in zip_file.namelist():
+        info = zip_file.getinfo(name)
+        path = extract_directory.joinpath(name)
+        if info.is_dir():
+            if not path.is_dir():
+                return False
+            continue
+        try:
+            size = path.stat().st_size
+        except OSError:
+            return False
+        if size != info.file_size:
+            return False
+
+    return True
+
+
+def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
+    """Extract the archive again unless the cache already holds it intact."""
+    archive_hash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
+        zip_filepath
+    )
+    # Keep metadata outside the extracted members, with one marker per
+    # extraction directory even when several archives share that directory.
+    marker_name = f".{extract_directory.name}{EXTRACTED_ARCHIVE_MARKER}"
+    # A valid archive name can leave too little room for the marker suffix.
+    # Hash overlong names to fit the usual 255-byte filename component limit.
+    if len(os.fsencode(marker_name)) > 255:
+        directory_key = hashlib.sha256(
+            os.fsencode(os.path.normcase(extract_directory.name))
+        ).hexdigest()
+        marker_name = f".{directory_key}{EXTRACTED_ARCHIVE_MARKER}"
+    marker = extract_directory.with_name(marker_name)
+    if _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
+        return
+
+    # Record the archive only once every member has been written, so an
+    # interrupted extraction is repeated in full next time.
+    marker.unlink(missing_ok=True)
+    extract_directory.mkdir(parents=True, exist_ok=True)
+    zip_file.extractall(path=extract_directory)
+    marker.write_text(archive_hash, encoding="utf-8")
+
+
 def zip_data_paths(
     filename,
     check_hash=True,
@@ -273,15 +433,23 @@ def zip_data_paths(
     if extract_directory is None:
         relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
         extract_directory = get_data_dir().joinpath(relative_extract_directory)
+        cache_managed = True
     else:
         extract_directory = pathlib.Path(extract_directory)
+        cache_managed = False
 
     with zipfile.ZipFile(zip_filepath, "r") as zip_file:
         namelist = zip_file.namelist()
 
-        for zipped_filename in namelist:
-            if not extract_directory.joinpath(zipped_filename).exists():
-                zip_file.extract(zipped_filename, path=extract_directory)
+        if cache_managed:
+            _refresh_cached_extraction(zip_file, zip_filepath, extract_directory)
+        else:
+            # A caller-chosen directory, such as the GUI demo's working
+            # directory, may hold files the user has edited: only add the
+            # files that are missing.
+            for zipped_filename in namelist:
+                if not extract_directory.joinpath(zipped_filename).exists():
+                    zip_file.extract(zipped_filename, path=extract_directory)
 
     resolved_paths = [
         extract_directory.joinpath(zipped_filename).resolve()

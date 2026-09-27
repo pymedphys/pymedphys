@@ -91,7 +91,7 @@ def create_image_files(image, export_path):
         dateofscan = image_set["scan_date"]
         timeofscan = image_set["scan_time"]
 
-        file_meta = pydicom.dataset.Dataset()
+        file_meta = pydicom.dataset.FileMetaDataset()
         file_meta.MediaStorageSOPClassUID = classuid
         file_meta.MediaStorageSOPInstanceUID = instuid
         file_meta.TransferSyntaxUID = GTransferSyntaxUID
@@ -176,7 +176,7 @@ def create_image_files(image, export_path):
             float(image_header["y_pixdim"]) * 10,
         ]
 
-        ds.PixelData = allframeslist[curframe].tostring()
+        ds.PixelData = allframeslist[curframe].tobytes()
 
         output_file = os.path.join(export_path, image_file_name)
         image.logger.info("Creating image: %s", output_file)
@@ -203,7 +203,7 @@ def convert_image(image, export_path):
 
     for file in os.listdir(dicom_directory):
         # try:
-        imageds = pydicom.read_file(os.path.join(dicom_directory, file), force=True)
+        imageds = pydicom.dcmread(os.path.join(dicom_directory, file), force=True)
 
         imageds.PatientName = image.pinnacle.patient_info["FullName"]
         imageds.PatientID = image.pinnacle.patient_info["MedicalRecordNumber"]

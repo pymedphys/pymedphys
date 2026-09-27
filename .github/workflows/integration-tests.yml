@@ -1,0 +1,143 @@
+name: Integration Tests
+
+on:
+  workflow_call:
+    inputs:
+      run-wheel-build:
+        description: Build and smoke-test distributions (the release builds its own)
+        type: boolean
+        default: true
+        required: false
+      run-slow:
+        type: boolean
+        default: false
+        required: false
+  workflow_dispatch:
+    inputs:
+      run-wheel-build:
+        description: Build and smoke-test distributions (the release builds its own)
+        type: boolean
+        default: true
+        required: false
+      run-slow:
+        type: boolean
+        default: true
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  doctests:
+    name: Doctests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'all'
+          cache-data: 'true'
+
+      - name: Run doctests
+        run: |
+          uv run pymedphys dev doctests -v
+
+      - name: Run the StackOverflow example
+        run: uv run python examples/stackoverflow/gamma.py
+
+  slow-tests:
+    name: Slow Tests
+    if: ${{ inputs.run-slow }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev tests'
+          cache-data: 'true'
+
+      - name: Run slow tests
+        run: |
+          uv run -- pymedphys dev tests --slow -v
+
+  # The distribution checks create venvs, run console scripts, and build from
+  # file:// indexes, which differ on Windows and macOS. Ubuntu runs these
+  # tests in ci.yml whenever the tooling checks are selected.
+  script-tests:
+    name: Script Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Selection tests scan the package for slow markers and doctests.
+          sparse-checkout: |
+            .github
+            lib/pymedphys
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      - name: Run the script tests
+        run: python -m unittest discover -s .github/scripts -p 'test_*.py'
+
+  # Builds the wheel from the sdist, so a file missing from the sdist fails
+  # here, then installs the wheel into a fresh venv outside the project's
+  # environment. See .github/scripts/check_distributions.py.
+  wheel-build:
+    if: inputs.run-wheel-build
+    name: Wheel Build Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          install-project: 'false'
+
+      - name: Build the sdist, then the wheel from it
+        run: uv build
+
+      - name: Check the distributions
+        run: python .github/scripts/check_distributions.py dist
+
+  # The exported requirements files, dependency-extra.txt, pyproject.hash, and
+  # _version.py are generated from pyproject.toml and uv.lock; a commit that
+  # changes the sources without regenerating them fails here.
+  propagate:
+    name: Generated Files Are Current
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'dev'
+
+      - name: Regenerate the propagated files and check for drift
+        run: |
+          uv run pymedphys dev propagate
+          git diff --exit-code -- \
+            requirements.txt requirements-docs.txt pyproject.hash \
+            lib/pymedphys/dependency-extra.txt lib/pymedphys/_version.py

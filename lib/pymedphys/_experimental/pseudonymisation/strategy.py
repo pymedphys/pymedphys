@@ -495,7 +495,7 @@ def _pseudonymise_SH(value):
     return _pseudonymise_plaintext(value)[:16]
 
 
-def _pseudonymise_SQ(value):
+def _pseudonymise_SQ(_value):
     # returning an empty sequence addresses issue #1034,
     # should the programmer choose to include a sequence
     # in the list of identifying keywords.
@@ -503,9 +503,9 @@ def _pseudonymise_SQ(value):
     # pseudonymisation has had sequences removed
     # so that the contents will be pseudonymised rather
     # than the sequences themselves
+    # The value is not logged because it may identify the patient.
     logging.warning(
-        "Recommend against using identifying keywords that are Sequences in pseudonymisation: %s",
-        value,
+        "Recommend against using identifying keywords that are Sequences in pseudonymisation"
     )
     return [pydicom.Dataset()]
 

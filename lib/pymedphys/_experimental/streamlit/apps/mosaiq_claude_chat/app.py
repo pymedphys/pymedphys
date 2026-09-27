@@ -16,7 +16,7 @@
 import json
 import os
 
-import httpx
+import httpx2
 import trio
 from anthropic import AsyncAnthropic
 from pymedphys._imports import streamlit as st
@@ -97,8 +97,8 @@ def main():
 
 @st.cache_resource
 def _async_anthropic(anthropic_api_limit: int):
-    limits = httpx.Limits(max_connections=anthropic_api_limit)
-    client = httpx.AsyncClient(limits=limits)
+    limits = httpx2.Limits(max_connections=anthropic_api_limit)
+    client = httpx2.AsyncClient(limits=limits)
     return AsyncAnthropic(http_client=client, max_retries=10)
 
 

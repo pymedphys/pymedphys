@@ -60,7 +60,7 @@ def loaded_doses():
 
 @pytest.fixture
 def loaded_plan():
-    plan = pydicom.read_file(
+    plan = pydicom.dcmread(
         str(
             download.get_file_within_data_zip(
                 "tps_compare_dicom_files.zip", DICOM_PLAN_FILEPATH

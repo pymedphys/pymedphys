@@ -1,219 +1,37 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Development Commands
-
-### Setup and Installation
-
-```bash
-# Install with Poetry (required for development)
-poetry install -E all
-
-# Install pre-commit hooks
-poetry run pre-commit install
-
-# Install for user use only
-pip install pymedphys[user]
-```
-
-### Testing
-
-```bash
-# Run all tests
-poetry run pymedphys dev tests
-
-# Run specific test file or directory
-poetry run pymedphys dev tests tests/path/to/test.py
-
-# Run with specific pytest options
-poetry run pymedphys dev tests -v -s -k "test_name"
-
-# Run doctests
-poetry run pymedphys dev doctests
-
-# Run E2E tests with Cypress
-poetry run pymedphys dev tests --cypress
-```
-
-### Code Quality
-
-```bash
-# Run linting with ruff (automatically fixes issues)
-poetry run ruff check --fix .
-poetry run ruff format .
-
-# Run type checking with pyright
-poetry run pyright
-
-# Run pre-commit on all files
-poetry run pre-commit run --all-files
-
-# Check imports are clean
-poetry run pymedphys dev imports
-```
-
-### Documentation
-
-```bash
-# Build documentation
-poetry run pymedphys dev docs
-
-# The docs use Jupyter Book and are located in lib/pymedphys/docs/
-```
-
-## Architecture Overview
-
-### Project Structure
-
-PyMedPhys is a medical physics library organized as follows:
-
-- **lib/pymedphys/**: Main library code
-  - `_<module>/`: Private implementation modules (e.g., `_dicom/`, `_gamma/`, `_mosaiq/`)
-  - `<module>.py`: Public API modules that expose the private implementations
-  - `cli/`: Command-line interface implementations
-  - `tests/`: Test suite organized by module
-  - `_experimental/`: Experimental features not yet stable
-  - `_streamlit/`: Streamlit web app components
-
-### Key Architectural Patterns
-
-1. **Private/Public Module Pattern**: Implementation details are in `_module/` directories, with public APIs exposed through `module.py` files at the package root.
-
-2. **Delivery Abstraction**: The `Delivery` class (`_base/delivery.py`) provides a unified interface for treatment delivery data from various sources (DICOM, TRF files, Mosaiq, Monaco).
-
-3. **CLI Architecture**: The CLI is modular with subcommands defined in `cli/` subdirectory. Each major feature has its own CLI module (e.g., `dicom_cli`, `trf_cli`).
-
-4. **Data Management**:
-   - External data is managed through Zenodo with hashes stored in `_data/hashes.json`
-   - The `_data` module provides utilities for downloading and caching external datasets
-
-5. **Vendor-Specific Integrations**:
-   - **Mosaiq**: SQL-based integration for Elekta's oncology information system
-   - **Monaco**: Support for Elekta Monaco treatment planning system files
-   - **Pinnacle**: DICOM export functionality for Philips Pinnacle
-   - **iCOM**: Real-time treatment delivery monitoring for Elekta linacs
-
-### Testing Strategy
-
-- Unit tests are in `lib/pymedphys/tests/` mirroring the source structure
-- Tests use pytest with fixtures defined in `conftest.py`
-- Mock data and fixtures are in `_mocks/` and test data directories
-- E2E tests use Cypress for Streamlit app testing
-
-### Dependencies and Extras
-
-The project uses Poetry with optional dependency groups:
-- `user`: Standard user installation
-- `all`: All features including development tools
-- `dev`: Development tools (linting, formatting)
-- `docs`: Documentation building
-- `tests`: Testing dependencies
-- Specific features: `dicom`, `mosaiq`, `icom`, etc.
-
-## Important Implementation Notes
-
-1. **Beta Status**: PyMedPhys is in beta (version 0.x.x). APIs may change between releases.
-
-2. **DICOM Handling**: The library provides extensive DICOM functionality including anonymization, coordinate systems, dose calculations, and RT plan manipulation.
-
-3. **Gamma Analysis**: Core functionality for dose distribution comparison using efficient shell-based algorithm implementation.
-
-4. **Anthropic Integration**: Built-in Claude integration for AI-assisted features (requires API key).
-
-5. **Streamlit Apps**: Web-based tools for various tasks (anonymization, metersetmap, dose analysis) in `_streamlit/apps/`.
-
-6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
-
-## Common Development Patterns
-
-When implementing new features:
-
-1. Place implementation in appropriate `_module/` directory
-2. Expose public API through module-level `__init__.py` or dedicated public module
-3. Add corresponding CLI command if user-facing
-4. Include comprehensive tests following existing patterns
-5. Use type hints and follow existing code style
-6. Document with docstrings following NumPy style
-
-When modifying DICOM functionality, be aware of:
-- Coordinate system transformations
-- Anonymization requirements
-- VR (Value Representation) handling
-- RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+Before working in this repository, read and follow [`AGENTS.md`](AGENTS.md).
+It contains the shared development commands, architecture, implementation
+conventions, and workflow rules for all coding agents. The instructions below
+are additional requirements specific to Claude Code.
 
 ## Claude Code Workflow Guidelines
 
-### Bash Command Restrictions
+### The `@claude` Workflow
 
-When the Claude workflow uses restricted bash permissions (via `allowed_tools` with specific `Bash(command)` entries):
+`.github/workflows/claude.yml` runs `anthropics/claude-code-action` when someone with write access mentions `@claude`. Its GitHub token covers contents, issues, and pull requests only.
 
-**Important**: Command chaining with `&` or `&&` is NOT allowed. Each `Bash(command)` entry is treated as an exact string match.
+- Set the model and any extra tools through `claude_args` (`--model`, `--allowedTools`). Version 1 of the action ignores the old `model` and `allowed_tools` inputs.
+- The workflow adds no tools to the action's defaults: reading, searching, and editing files in the workspace, and committing and pushing through the action's own `git add`, `git commit`, `git rm`, and push wrapper. It cannot run tests or other repository code; CI tests every commit it pushes. When a change needs `uv lock` or `pymedphys dev propagate`, say so in the reply instead of editing the generated files by hand.
+- Do not widen the workflow's tools or token permissions without the maintainers' agreement, and propose any widening in a pull request of its own, never as part of another change. Say which command or permission is needed and why.
+- Never allow commands that run repository code or build hooks, such as `uv run`, `uv sync`, `uv lock`, tests, or linters. The action checks out the head of a pull request from a fork, and the job holds the API key and a repository write token, so such a command would run an outside contributor's code with them.
+- Never allow `git push`, which bypasses the push wrapper's checks, or commands that switch, merge, or reset branches, which the action manages itself.
+- Keep workflow write off, as the maintainers decided: never add `workflows: write` to `additional_permissions` or pass the action a token that has it. With it, a prompt-injected run could push a workflow change that then runs with the repository's secrets.
+- An `--allowedTools` entry ending in `:*` matches that command prefix; any other entry matches only that exact command. A command chained with `&&` or `;` runs only if every part is allowed. Run commands one at a time and check each result instead of chaining them, which puts security before efficiency.
+- A run can start from the repository state just before a recent merge, so a permission that merge added may not apply to it yet.
 
-**Problem Example**:
-```yaml
-Bash(git add file.txt),
-Bash(git commit -m "message")
-```
-This does NOT allow: `git add file.txt && git commit -m "message"`
+### Workflow Files
 
-**Solution**: Execute commands sequentially:
-1. Execute first command
-2. Check result
-3. If successful, execute next command
+GitHub accepts a push that creates or changes a file in `.github/workflows/` only from a token with the `workflows` permission. Claude Code sessions directed by a maintainer can normally push workflow changes, so edit `.github/workflows/` directly. The `@claude` workflow cannot, and its permission stays off (see "The `@claude` Workflow").
 
-This approach prioritizes security over efficiency, as confirmed by maintainer @sjswerdloff.
+When a push is rejected for lacking the `workflows` permission:
 
-### Git and GitHub Tool Usage
+1. Commit the workflow as `claude_created_workflows_preview/<name>.yml`, under the name it will have in `.github/workflows/`, and push it to the pull request's branch.
+2. Ask a maintainer to move it within that pull request, and give the command for both bash and PowerShell, where `mv` is `Move-Item` and refuses to overwrite an existing file unless `-Force` is passed:
+   - bash: `mv claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+   - PowerShell: `Move-Item -Force claude_created_workflows_preview/x.yml .github/workflows/x.yml`
+3. If that commit also fails, post the complete file in a pull request
+   comment inside a collapsed `<details>` block, say why it could not be
+   committed, and say where it belongs.
 
-#### Known Issues and Workarounds
-
-1. **MCP GitHub commit tools**: The `mcp__github_file_ops__commit_files` tool may sometimes fail with undefined errors. When this happens:
-   - Try using sequential git commands via Bash
-   - Be aware that commit messages must be part of the allowed command string for restricted bash
-
-2. **Timing Issues with PR Merges**: Be aware that workflow runs may start with a repository state from just before a recent PR merge. If permissions appear to be missing:
-   - Check if a recent PR was merged that might have added those permissions
-   - The workflow's checkout might be from before the merge
-
-### PR Link Format
-
-**Always use this exact format when providing PR links**:
-```
-https://github.com/pymedphys/pymedphys/compare/main...<your-branch>
-```
-
-**Important**:
-- Use THREE dots (`...`) between branch names, not two (`..`)
-- Correct: `compare/main...feature-branch`
-- Wrong: `compare/main..feature-branch`
-
-### Maintainer Guidance Documentation
-
-**Critical**: Any time you receive guidance, feedback, or learn something important from maintainers:
-
-1. **Immediately update CLAUDE.md** with the new information
-2. **Commit the changes** to your branch
-3. **Create a PR** using the format above
-4. **Provide the PR link** to maintainers
-
-This ensures that:
-- Future Claude Code interactions will follow the same guidelines
-- Maintainers don't need to repeatedly explain the same concepts
-- Knowledge is preserved across different workflow runs
-
-### Dependency Updates
-
-When updating dependencies:
-1. Update version constraints in `pyproject.toml`
-2. Run `poetry update` to regenerate `poetry.lock`
-3. Test changes to ensure nothing breaks
-4. Note: If `poetry update` is not in allowed tools, request it be added
-
-### Working with Restricted Permissions
-
-When working with restricted bash permissions:
-1. Check the `.github/workflows/claude.yml` file for allowed commands
-2. If a needed command is missing, create a PR to add it to `allowed_tools`
-3. Be specific about which commands you need and why
-4. Remember that exact string matching is used for command validation
+The staged file must pass the same workflow checks as one in place (see [Security Scanning Policy](AGENTS.md#security-scanning-policy)). The move is complete when the file is in `.github/workflows/`, `claude_created_workflows_preview/` no longer holds it, and the pull request's checks pass.

@@ -13,115 +13,38 @@ on:
 jobs:
   claude:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
+
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: true
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        # The Claude action pushes branches and needs the checkout credentials.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-opus-4-20250514
-          allowed_tools: >
-            View,
-            Edit,
-            Write,
-            GlobTool,
-            GrepTool,
-            Bash(git status),
-            Bash(git log),
-            Bash(git log --oneline),
-            Bash(git diff),
-            Bash(git diff --staged),
-            Bash(git diff HEAD),
-            Bash(git branch),
-            Bash(git branch -a),
-            Bash(git remote -v),
-            Bash(git config user.name),
-            Bash(git config user.email),
-            Bash(git fetch),
-            Bash(git fetch origin),
-            Bash(git checkout -b),
-            Bash(git checkout),
-            Bash(git branch -D),
-            Bash(git merge),
-            Bash(git add),
-            Bash(git add .),
-            Bash(git add -A),
-            Bash(git commit -m),
-            Bash(git commit --amend),
-            Bash(git reset),
-            Bash(git reset --hard),
-            Bash(git push),
-            Bash(git push origin),
-            Bash(git push -u origin),
-            Bash(gh auth status),
-            Bash(gh pr create),
-            Bash(gh pr create --title),
-            Bash(gh pr list),
-            Bash(gh pr view),
-            Bash(gh pr comment),
-            Bash(gh issue comment),
-            Bash(poetry install),
-            Bash(poetry install -E all),
-            Bash(poetry run pymedphys:*),
-            Bash(poetry run pytest),
-            Bash(poetry run pre-commit run),
-            Bash(poetry run pre-commit run --all-files),
-            Bash(poetry add),
-            Bash(poetry remove),
-            Bash(poetry update),
-            Bash(poetry lock),
-            Bash(poetry lock --no-update),
-            Bash(poetry show),
-            Bash(poetry show --tree),
-            Bash(poetry show --outdated),
-            Bash(poetry check),
-            Bash(poetry version),
-            Bash(poetry env info),
-            Bash(poetry env use),
-            Bash(poetry cache clear),
-            Bash(uv pip install),
-            Bash(uv pip install -e),
-            Bash(uv pip install -r),
-            Bash(uv venv),
-            Bash(uv run),
-            Bash(uv sync),
-            Bash(uv lock),
-            Bash(uv add),
-            Bash(uv remove),
-            Bash(uv tool install),
-            Bash(uv tool run),
-            Bash(poetry run ruff check),
-            Bash(poetry run ruff check --fix),
-            Bash(poetry run ruff format),
-            Bash(poetry run pyright),
-            Bash(poetry run mypy),
-            Bash(uv run ruff check),
-            Bash(uv run ruff check --fix),
-            Bash(uv run ruff format),
-            Bash(uv run pyright),
-            Bash(uv run mypy),
-            Bash(ls),
-            Bash(ls -la),
-            Bash(pwd),
-            Bash(cat),
-            Bash(head),
-            Bash(tail),
-            Bash(which),
-            Bash(echo),
-            mcp__github_file_ops__commit_files,
-            mcp__github__create_pull_request
+          # claude-code-action v1 takes the model and any extra tools only
+          # through claude_args. With no extra tools, a run can read, search,
+          # and edit files in the workspace, and commit and push through the
+          # action's own git add, git commit, git rm, and push wrapper. Widen
+          # this only with the maintainers' agreement, in a pull request of its
+          # own; see "The @claude Workflow" in CLAUDE.md.
+          claude_args: --model claude-opus-5-5

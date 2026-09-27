@@ -16,8 +16,9 @@
 import logging
 import pathlib
 
-from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._imports import pydicom, pynetdicom
+
+from pymedphys._dicom.connect.base import DicomConnectBase
 
 
 class DicomSender(DicomConnectBase):
@@ -88,7 +89,7 @@ class DicomSender(DicomConnectBase):
                     )
 
                 if not isinstance(dataset, pydicom.Dataset):
-                    dataset = pydicom.read_file(dataset)
+                    dataset = pydicom.dcmread(dataset)
 
                 logging.debug(
                     "Sending DICOM object with SOPInstanceUID: %s",
@@ -118,7 +119,7 @@ def send_cli(args):
     for dcm_file in args.dcmfiles:
         dcm_file_path = pathlib.Path(dcm_file)
         try:
-            pydicom.read_file(dcm_file_path)
+            pydicom.dcmread(dcm_file_path)
         except pydicom.errors.InvalidDicomError:
             logging.error("Invalid DICOM file provided: %s", dcm_file)
             return

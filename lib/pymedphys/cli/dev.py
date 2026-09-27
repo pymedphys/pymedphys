@@ -1,4 +1,5 @@
-from pymedphys._dev import build, docs, propagate, tests
+from pymedphys._dev import docs, propagate, tests
+from pymedphys._dev.deid_tables import generate as deid_tables
 
 
 def dev_cli(subparsers):
@@ -8,11 +9,10 @@ def dev_cli(subparsers):
     add_test_parser(dev_subparsers)
     add_lint_parser(dev_subparsers)
     add_propagate_parser(dev_subparsers)
+    add_deid_tables_parser(dev_subparsers)
     add_doctests_parser(dev_subparsers)
-    add_cypress_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
     add_mosaiq_mssql_parser(dev_subparsers)
-    add_build_parser(dev_subparsers)
 
     return dev_parser
 
@@ -53,28 +53,42 @@ def add_propagate_parser(dev_subparsers):
 
     parser.add_argument(
         "--update",
-        help="Run poetry update first.",
+        help="Run uv lock --upgrade first.",
         action="store_true",
     )
 
     parser.set_defaults(func=propagate.propagate_all)
 
 
-def add_build_parser(dev_subparsers):
-    parser = dev_subparsers.add_parser("build")
-
-    parser.add_argument(
-        "--install",
-        help="Run yarn install first.",
-        action="store_true",
+def add_deid_tables_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser(
+        "deid-tables",
+        help=(
+            "Generate the de-identification rule tables from the pinned edition "
+            "of DICOM PS3.15, after checking each source page's SHA-256 digest."
+        ),
     )
-
-    parser.set_defaults(func=build.build_binary)
-
-
-def add_cypress_parser(dev_subparsers):
-    parser = dev_subparsers.add_parser("cypress")
-    parser.set_defaults(func=tests.run_cypress)
+    parser.add_argument(
+        "--source-dir",
+        help=(
+            "Read the source pages from this directory, laid out as NEMA's "
+            "output/chtml/ tree, instead of downloading them."
+        ),
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(deid_tables.DEFAULT_OUTPUT_DIR),
+        help=(
+            "Where the tables are written or checked. Defaults to the "
+            "package's _dicom/deidentify/_standard directory."
+        ),
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit with status 1 if the tables in --output-dir are missing or differ.",
+    )
+    parser.set_defaults(func=deid_tables.deid_tables_cli)
 
 
 def add_clean_imports_parser(dev_subparsers):

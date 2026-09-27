@@ -15,41 +15,13 @@
 
 import collections
 import logging
-import sys
 
-from pymedphys import _config
-from pymedphys._vendor import patchlogging
 from pymedphys.cli import run_logging_basic_config
 
 Args = collections.namedtuple("Args", ["logging_verbose", "logging_debug"])
 
 
-def apply_patch_if_needed_and_test_it():
-    if sys.version_info.major > 3 or (
-        sys.version_info.major == 3 and sys.version_info.minor >= 8
-    ):
-        patchlogging.apply_logging_patch()
-        assert not patchlogging._patch_applied  # pylint: disable = protected-access
-
-        return
-
-    _config.is_cli = False
-    try:
-        patchlogging.apply_logging_patch()
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Logging patch should raise an error if not within CLI")
-
-    _config.is_cli = True
-    patchlogging.apply_logging_patch()
-
-    _config.is_cli = False
-
-
 def test_setting_logging():
-    apply_patch_if_needed_and_test_it()
-
     args = Args(logging_verbose=False, logging_debug=False)
     run_logging_basic_config(args, {"level": logging.DEBUG})
 

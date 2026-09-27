@@ -19,7 +19,8 @@ import hashlib
 
 def hash_file(filename, dot_feedback=False):
     BLOCKSIZE = 65536
-    hasher = hashlib.sha1()
+    # Content fingerprint for the data cache, not a security primitive.
+    hasher = hashlib.sha1(usedforsecurity=False)
     with open(filename, "rb") as afile:
         buf = afile.read(BLOCKSIZE)
         while len(buf) > 0:

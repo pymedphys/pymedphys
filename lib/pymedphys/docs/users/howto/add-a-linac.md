@@ -1,5 +1,11 @@
 # Adding a Linac
 
+```{note}
+This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
+
+[Issue #849](https://github.com/pymedphys/pymedphys/issues/849), described below as unresolved, was closed in May 2025 after a report that Elekta fixed the underlying behaviour in Integrity 4.0.6.3.
+```
+
 ## Background
 
 PyMedPhys has a range of tools that interface with an Elekta Linac. All of
@@ -77,8 +83,8 @@ Make sure to adjust the above versions appropriately to match what is current.
 
 ### The [physics-server](https://github.com/CCA-Physics/physics-server) git repository
 
-To facilitate SSH tunnelling between the sites there is
-a server with the hostname `physics-server` at each site. The relevant software
+To facilitate SSH tunnelling between the sites there is a server with the
+hostname `physics-server` at each site. The relevant software
 and configuration on these servers is stored within a public GitHub repository
 at <https://github.com/CCA-Physics/physics-server>. All of the code snippets
 presented within this iCom section are adapted from the code found within

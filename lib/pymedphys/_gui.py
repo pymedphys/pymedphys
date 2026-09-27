@@ -28,13 +28,12 @@ def main(args):
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))
 
-    config = {}
-
-    if args.port:
-        config["server.port"] = args.port
+    options = []
+    if args.port is not None:
+        options += ["--server.port", str(args.port)]
 
     subprocess.check_call(
-        [sys.executable, "-m", "streamlit", "run", streamlit_script_path]
+        [sys.executable, "-m", "streamlit", "run", *options, streamlit_script_path]
     )
 
 
