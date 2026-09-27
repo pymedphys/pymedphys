@@ -114,8 +114,8 @@ Do not edit their generated copies.
 
 Read the Docs publishes the public site separately, using
 ``.readthedocs.yml``. The ``latest`` site describes the development branch,
-``main``; select the documentation version matching an installed release when
-checking release-specific behaviour.
+``main``, and the ``stable`` site matches the latest release; use ``stable``
+when checking released behaviour.
 
 Writing portable links
 ----------------------
@@ -135,8 +135,9 @@ In notebooks that readers can download individually, use published
 documentation URLs so links work without the rest of the repository. Also use
 a published URL when the target is a generated page with no checked-in source
 at that path, such as
-``https://docs.pymedphys.com/en/latest/contrib/index.html``. Choose a release
-version instead of ``latest`` when the surrounding instructions require one.
+``https://docs.pymedphys.com/en/latest/contrib/index.html``. Link to ``stable``
+instead of ``latest`` when the surrounding instructions describe released
+behaviour.
 
 Check both the source-view destination and the built HTML after changing links.
 Keep native reStructuredText cross-references such as ``:doc:`` in
