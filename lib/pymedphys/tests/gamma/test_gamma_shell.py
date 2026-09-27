@@ -18,6 +18,7 @@
 """Tests for gamma shell."""
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 import pymedphys
 import pymedphys._utilities.createshells
@@ -77,6 +78,7 @@ def test_multiple_threshold_inputs():
     )
 
 
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
 def test_lower_dose_threshold():
     """Verify that the lower dose threshold works as expected"""
     ref = [0, 1, 1.9, 2, 2.1, 3, 4, 5, 10, 10]
