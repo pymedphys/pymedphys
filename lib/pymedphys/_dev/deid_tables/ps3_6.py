@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Parse the DICOM PS3.6 table that de-identification needs.
+"""Parse the DICOM PS3.6 tables that de-identification needs.
 
-This is Table 6-1, the registry of DICOM data elements, which gives each
-attribute's tag, name, keyword, VR, and VM.
+These are Table 6-1, the registry of DICOM data elements, which gives each
+attribute's tag, name, keyword, VR, and VM; and Tables A-1 to A-4 of Annex A,
+which register UIDs, well-known frames of reference, the UIDs of context
+groups, and the UIDs of HL7 CDA templates.
 """
 
 from __future__ import annotations
@@ -28,6 +30,8 @@ from pymedphys._dicom.deidentify.standard import (
     is_dictionary_vm,
     is_dictionary_vr,
 )
+
+from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
 from .chtml import HtmlTable, TableFormatError, check_columns, check_unique
 
@@ -117,3 +121,84 @@ def parse_table_6_1(table: HtmlTable) -> tuple[DictionaryAttribute, ...]:
     check_unique(TABLE_6_1, (a.tag for a in attributes))
     check_unique(TABLE_6_1, (a.keyword for a in attributes if a.keyword))
     return tuple(attributes)
+
+
+# Each Annex A table's columns, by header text, and the fields they fill.
+UID_TABLE_COLUMNS = {
+    "Table A-1": {
+        "UID Value": "uid",
+        "UID Name": "name",
+        "UID Keyword": "keyword",
+        "UID Type": "uid_type",
+        "Part": "part",
+    },
+    "Table A-2": {
+        "UID Value": "uid",
+        "UID Name": "name",
+        "UID Keyword": "keyword",
+        "Normative Reference": "normative_reference",
+    },
+    "Table A-3": {
+        "Context Group UID": "uid",
+        "Context Group Identifier": "identifier",
+        "Context Group Name": "name",
+        "Comment": "comment",
+    },
+    "Table A-4": {
+        "UID Value": "uid",
+        "UID Name": "name",
+        "UID Type": "uid_type",
+        "Part": "part",
+    },
+}
+
+
+def parse_uid_table(label: str, table: HtmlTable) -> tuple:
+    """Parse Table A-1, A-2, A-3, or A-4 of DICOM PS3.6.
+
+    Cell text is kept as published, including the "(Retired)" that ends a
+    retired UID's name and the empty identifiers and names of unused context
+    group UIDs.
+
+    Parameters
+    ----------
+    label : str
+        ``"Table A-1"``, ``"Table A-2"``, ``"Table A-3"``, or ``"Table A-4"``.
+    table : HtmlTable
+        The table, as :func:`~pymedphys._dev.deid_tables.chtml.select_table`
+        returns it for ``label``.
+
+    Returns
+    -------
+    tuple
+        One row of the type
+        :data:`~pymedphys._dicom.deidentify.uid_registry.UID_TABLES` gives for
+        ``label``, per row of the table, in order.
+
+    Raises
+    ------
+    TableFormatError
+        If a column is unknown, missing, or repeated; if the table has no
+        rows; if a row fails a check that the table's loader applies, such as
+        an invalid UID; or if a UID, keyword, or context group identifier
+        appears more than once.
+    """
+    columns = UID_TABLE_COLUMNS[label]
+    spec = UID_TABLES[label]
+    check_columns(label, table.header, columns)
+    if not table.rows:
+        raise TableFormatError(f"{label} has no rows")
+
+    rows = []
+    for number, cells in enumerate(table.rows, start=1):
+        row = {columns[column]: cell for column, cell in zip(table.header, cells)}
+        problem = spec.problem(row)
+        if problem:
+            raise TableFormatError(f"{label} row {number} {problem}")
+        rows.append(spec.row_type(**row))
+
+    for field in spec.unique:
+        check_unique(
+            label, (getattr(row, field) for row in rows if getattr(row, field))
+        )
+    return tuple(rows)

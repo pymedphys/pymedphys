@@ -76,7 +76,7 @@ Identifiers are stable and never reused. `PS3.15-E.1.1-01` numbers the paragraph
 
 The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API in `pymedphys.dicom`. Its components are listed below; they are not a pull request sequence.
 
-1. **Generated standard tables.** Table E.1-1 with every option column; Tables E.1-1a and E.3.10-1; the PS3.6 data dictionary (Table 6-1), with each attribute's keyword, VR, VM, and retirement; CID 7050; well-known UIDs; and attribute Types for the supported IODs (D-001).
+1. **Generated standard tables.** Table E.1-1 with every option column; Tables E.1-1a and E.3.10-1; the PS3.6 data dictionary (Table 6-1), with each attribute's keyword, VR, VM, and retirement; the PS3.6 Annex A registries of UIDs, well-known frames of reference, and the UIDs of context groups and templates (Tables A-1 to A-4); CID 7050; and attribute Types for the supported IODs (D-001).
 2. **Rule layers.** Rules apply in this order: generated tables (L1), reviewed supplementary rules (L2), then validated user rules (L3).
    - L2 covers attributes that Table E.1-1 omits but the de-identifier remains responsible for (E.1.1, Note 1 after Table E.1-1a). These are dates, times, and person names by VR; operator-entered RT text such as Beam Name, Dose Comment, and Radiation Machine Name; the role of every UI attribute (D-003); and the role of every temporal attribute (D-007). A test fails if the pinned dictionary contains an attribute in these categories with no rule.
    - L2 only strengthens L1. It never retains a value that L1 removes, replaces, or cleans, unless a selected option permits it.
@@ -129,7 +129,7 @@ These are the active design decisions, not statements that the code implements t
 ### D-001: Tables generated from a pinned edition
 
 - **Decision.**
-  - A development command generates the L1 tables from the pinned edition of the standard, currently 2026d. It downloads the published HTML pages, verifies each page's SHA-256 against the pinned digest, and parses them with `html.parser`. It records the edition, the source digests, and a digest of the generated content. The PS3.6 data dictionary parses from the HTML as reliably as the Annex E tables, so no DocBook XML parser is needed.
+  - A development command generates the L1 tables from the pinned edition of the standard, currently 2026d. It downloads the published HTML pages, verifies each page's SHA-256 against the pinned digest, and parses them with `html.parser`. It records the edition, the source digests, and a digest of the generated content. The PS3.6 data dictionary and Annex A tables parse from the HTML as reliably as the Annex E tables, so no DocBook XML parser is needed.
   - The repository and the package keep the generated tables, not the standard's source files. Each generated file carries the copyright attribution `DICOM PS3.x <edition>, © NEMA`, such as "DICOM PS3.15 2026d, © NEMA".
   - A loader reads each table, checks each row's fields, types, and actions, and rejects a table whose rows no longer match the digest recorded in the file. This catches a table edited without updating that digest; it does not authenticate the file.
   - Table E.1-1a must define exactly the action codes the engine implements, so a new edition that adds or removes a code fails generation until the engine handles it.
