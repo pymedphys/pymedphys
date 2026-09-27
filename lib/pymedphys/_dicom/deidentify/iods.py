@@ -59,9 +59,10 @@ _MODULE_FIELDS = frozenset(
 )
 _TABLE_FIELDS = frozenset({"label", "title", "rows"})
 _ROW_FIELDS = frozenset({"depth", "name", "tag", "type", "include"})
-# Groups 5000-501E and 6000-601E repeat (PS3.5 Section 7.6); PS3.3 gives
-# their attributes with "xx" in place of the group's last two digits.
-_REPEATING_GROUP = re.compile(r"\((50|60)([0-1][0-9A-E]),([0-9A-F]{4})\)")
+# The even groups 5000-501E and 6000-601E repeat (PS3.5 Section 7.6); PS3.3
+# gives their attributes with "xx" in place of the group's last two digits.
+# Odd groups, such as 6001, are private.
+_REPEATING_GROUP = re.compile(r"\((50|60)([01][02468ACE]),([0-9A-F]{4})\)")
 
 
 @dataclasses.dataclass(frozen=True)

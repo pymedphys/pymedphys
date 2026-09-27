@@ -571,6 +571,17 @@ def test_spans_are_expanded_on_request():
     )
 
 
+def test_a_place_no_cell_covers_is_empty():
+    page = _page(
+        _spanning_table(
+            "Table X-1. Fixture", ("A", "B", "C"), (("1", "2", ("x", 2, 1)), ("3",))
+        )
+    )
+    table = chtml.extract_tables(page, expand_spans=True)[1]
+
+    assert table.rows == (("1", "2", "x"), ("3", "", "x"))
+
+
 def test_spans_are_left_as_published_by_default():
     table = chtml.extract_tables(_page(SPANNING))[1]
 

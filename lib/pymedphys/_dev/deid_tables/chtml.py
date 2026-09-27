@@ -169,9 +169,13 @@ def _expanded(rows: list[list[_Cell]]) -> list[tuple[str, ...]]:
                 for across in range(cell.colspan):
                     grid[number + below, column + across] = text
             column += cell.colspan
-    width = collections.Counter(number for number, _ in grid)
+    width: dict[int, int] = collections.defaultdict(int)
+    for number, column in grid:
+        width[number] = max(width[number], column + 1)
+    # A place no cell covers, as in a row whose cells stop short of a cell
+    # spanning down from a row above, is empty.
     return [
-        tuple(grid[number, column] for column in range(width[number]))
+        tuple(grid.get((number, column), "") for column in range(width[number]))
         for number in range(len(rows))
     ]
 

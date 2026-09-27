@@ -143,8 +143,9 @@ def test_an_attribute_of_a_repeating_group_matches_its_group(tables):
     # Overlay Data (60xx,3000), in the Overlay Plane Module.
     assert _types(ct, "(6002,3000)") == {("Overlay Plane", "1")}
     assert ct.lookup("(6002,3000)") == ct.lookup("(60xx,3000)")
-    # 6020 is outside the repeating range.
+    # 6020 is outside the repeating range, and 6001 is a private group.
     assert ct.lookup("(6020,3000)") == ()
+    assert ct.lookup("(6001,3000)") == ()
 
 
 def test_an_attribute_the_iod_does_not_define_has_no_definition(tables):
