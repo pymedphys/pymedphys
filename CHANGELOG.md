@@ -173,7 +173,7 @@ This project adheres to
   decisions, code, and tests that satisfy it. Its loader checks each entry's
   fields and statuses, and tests check that the decisions, code, and tests
   it cites exist and that it follows the edition of the generated tables.
-  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061)
+  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101)
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
