@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Keyed replacement UIDs (design decision D-003).
+"""Keyed replacement UIDs.
 
 A UID that must be replaced is replaced by a ``2.25.`` UID (PS3.5 B.2) built
 from a name-based version 5 UUID (ITU-T X.667 clause 14.3). The UUID's name is
-the 32-byte HMAC-SHA256 of the unpadded source UID under the run's key
-(D-004), and its namespace is :data:`UID_NAMESPACE`. The same key always gives
-the same replacement, so every occurrence of a UID, in any file or run under
-that key, is replaced consistently without a stored map. Without the key,
-knowing a source UID does not reveal its replacement.
+the 32-byte HMAC-SHA256 of the unpadded source UID under the run's key, and
+its namespace is :data:`UID_NAMESPACE`. The same key always gives the same
+replacement, so every occurrence of a UID, in any file or run under that key,
+is replaced consistently without a stored map. Without the key, knowing a
+source UID does not reveal its replacement.
 
 Which UIDs are replaced and which, such as SOP Class UIDs and well-known
 coding-scheme UIDs, are retained is decided by the rule layers before this
-module is used (D-003).
+module is used.
 """
 
 from __future__ import annotations
