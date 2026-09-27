@@ -73,11 +73,12 @@ def gamma_shell(
         The evaluation coordinates. Axes may be ascending or descending.
         Descending axes and their dose values are reversed together internally;
         this does not change the reference grid or the output order.
-        Uneven spacing uses the SciPy interpolator with a warning. Singleton
-        axes are accepted when ``interp_algo="scipy"`` is selected explicitly,
-        but the shell search can miss points on these lower-dimensional grids
-        and overestimate gamma. For comparisons within one common plane, use
-        two-dimensional axes and dose arrays.
+        Uneven spacing uses the SciPy interpolator with a warning. An axis
+        with a single value makes the evaluation grid a plane, line or point
+        with no thickness, such as a single-frame RT Dose. Gamma then searches
+        within that plane, line or point only, and adds each reference
+        point's perpendicular distance from it, so results do not depend on
+        the coordinate origin.
     dose_evaluation : np.array
         The evaluation dose grid. Evaluation here is defined as the grid which
         is interpolated and searched over at increasing distances away from
@@ -287,14 +288,8 @@ def _prepare_evaluation_grid(axes_evaluation, dose_evaluation, interp_algo):
                 f"Evaluation axis {dimension} must be a non-empty finite 1D array"
             )
         if axis.size == 1:
-            if interp_algo.lower() == "scipy":
-                continue
-            raise ValueError(
-                f"Evaluation axis {dimension} has {axis.size} value(s), but each "
-                "evaluation axis needs at least two for the 'pymedphys' "
-                "interpolator. Use interp_algo='scipy' to retain singleton "
-                "spatial dimensions."
-            )
+            # A fixed coordinate: the grid is a plane, line or point there.
+            continue
         diff = np.diff(axis)
         if np.all(diff < 0):
             axes[dimension] = axis[::-1]
@@ -459,11 +454,22 @@ class GammaInternalFixedOptions:
     quiet: Any = None
     interp_algo: str = "pymedphys"
     minimum_test_distance: float = 0.0
+    # Evaluation axes with more than one value. The search runs over these
+    # only; singleton axes fix a coordinate of a plane, line or point.
+    free_axes: Optional[tuple] = None
+    # Each reference point's distance from the fixed coordinates, or None
+    # when every evaluation axis is free.
+    flat_perpendicular_distance: Any = None
 
     def __post_init__(self):
         self.set_defaults()
 
     def set_defaults(self):
+        if self.free_axes is None:
+            object.__setattr__(
+                self, "free_axes", tuple(range(len(self.axes_evaluation)))
+            )
+
         if self.maximum_test_distance == -1:
             object.__setattr__(self, "maximum_test_distance", np.inf)
 
@@ -476,12 +482,25 @@ class GammaInternalFixedOptions:
     def global_dose_threshold(self):
         return self.dose_percent_threshold / 100 * self.global_normalisation
 
+    @property
+    def free_axes_evaluation(self):
+        return tuple(self.axes_evaluation[axis] for axis in self.free_axes)
+
+    @cached_property
+    def free_dose_evaluation(self):
+        """The evaluation dose over the free axes alone.
+
+        Singleton axes have one value each, so dropping them is a reshape.
+        """
+        shape = tuple(axis.size for axis in self.free_axes_evaluation)
+        return np.ascontiguousarray(np.reshape(self.dose_evaluation, shape))
+
     @cached_property
     def scipy_interpolator(self):
         """Reuse the fixed evaluation grid across every shell and RAM chunk."""
         return scipy.interpolate.RegularGridInterpolator(
-            self.axes_evaluation,
-            self.dose_evaluation,
+            self.free_axes_evaluation,
+            self.free_dose_evaluation,
             bounds_error=False,
             fill_value=np.inf,
         )
@@ -543,8 +562,15 @@ class GammaInternalFixedOptions:
 
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
+        # Validates every reference axis; the search itself only moves
+        # within the free evaluation axes.
+        _grid_distance_bounds(axes_reference, axes_evaluation)
+        free_axes = tuple(
+            axis for axis, values in enumerate(axes_evaluation) if values.size > 1
+        )
         minimum_test_distance, spatial_limit = _grid_distance_bounds(
-            axes_reference, axes_evaluation
+            [axes_reference[axis] for axis in free_axes],
+            [axes_evaluation[axis] for axis in free_axes],
         )
         maximum_test_distance = min(
             np.max(distance_mm_threshold) * max_gamma, spatial_limit
@@ -557,6 +583,16 @@ class GammaInternalFixedOptions:
         flat_mesh_axes_reference = np.array(
             [np.ravel(item) for item in mesh_axes_reference]
         )
+
+        flat_perpendicular_distance = None
+        if len(free_axes) < len(axes_evaluation):
+            squared_distance = np.zeros(flat_mesh_axes_reference.shape[1])
+            for axis, values in enumerate(axes_evaluation):
+                if axis not in free_axes:
+                    squared_distance += (
+                        flat_mesh_axes_reference[axis] - values[0]
+                    ) ** 2
+            flat_perpendicular_distance = np.sqrt(squared_distance)
 
         reference_points_to_calc = reference_dose_above_threshold
         reference_points_to_calc = np.ravel(reference_points_to_calc)
@@ -614,6 +650,8 @@ class GammaInternalFixedOptions:
             quiet,
             interp_algo,
             minimum_test_distance=minimum_test_distance,
+            free_axes=free_axes,
+            flat_perpendicular_distance=flat_perpendicular_distance,
         )
 
 
@@ -630,6 +668,10 @@ def gamma_loop(options: GammaInternalFixedOptions):
         )
     )
     current_gamma = gamma_at_nearest_grid_points(options, current_gamma)
+
+    if not options.free_axes:
+        # A single evaluation point: its gamma is the only candidate.
+        return current_gamma
 
     distance_step_size = np.min(options.distance_mm_threshold) / options.interp_fraction
 
@@ -715,7 +757,9 @@ def gamma_at_nearest_grid_points(options: GammaInternalFixedOptions, current_gam
     distance = _distance_outside_grid(
         options.flat_mesh_axes_reference, analysed, options.axes_evaluation
     )
-    outside = distance > 0
+    # Points inside the grid are sampled by the zero-radius shell, unless
+    # the grid is a single point, which has no shells.
+    outside = distance > 0 if options.free_axes else np.full(distance.shape, True)
     analysed, distance = analysed[outside], distance[outside]
     if analysed.size == 0:
         return current_gamma
@@ -729,7 +773,9 @@ def gamma_at_nearest_grid_points(options: GammaInternalFixedOptions, current_gam
         nearest = _nearest_grid_points(
             options.flat_mesh_axes_reference, indices, options.axes_evaluation
         )
-        evaluation_dose = interpolate_evaluation_dose(options, nearest[None])
+        evaluation_dose = interpolate_evaluation_dose(
+            options, nearest[None][..., list(options.free_axes or ())]
+        )
         relative_dose_difference = np.abs(
             calculate_relative_dose_difference(options, evaluation_dose, indices)[0]
         )
@@ -757,13 +803,23 @@ def multi_thresholds_gamma_calc(
     distance,
     to_be_checked,
 ):
+    # The shell radius lies within the free axes. Off a plane, line or
+    # point, the perpendicular distance adds in quadrature; hypot(r, 0) is
+    # exactly r, so free-only grids are unaffected.
+    if options.flat_perpendicular_distance is None:
+        total_distance = np.full(len(options.flat_dose_reference), distance)
+    else:
+        total_distance = np.hypot(distance, options.flat_perpendicular_distance)
+    total_distance = total_distance[:, None, None]
+
     gamma_at_distance = np.sqrt(
         (
             min_relative_dose_difference[:, None, None]
             / (options.dose_percent_threshold[None, :, None] / 100)
         )
         ** 2
-        + (distance / options.distance_mm_threshold[None, None, :]) ** 2
+        + (total_distance[to_be_checked] / options.distance_mm_threshold[None, None, :])
+        ** 2
     )
 
     current_gamma[to_be_checked, :, :] = np.min(
@@ -778,7 +834,7 @@ def multi_thresholds_gamma_calc(
     )
 
     still_searching_for_gamma = current_gamma > (
-        distance / options.distance_mm_threshold[None, None, :]
+        total_distance / options.distance_mm_threshold[None, None, :]
     )
 
     if options.skip_once_passed:
@@ -797,7 +853,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
         options.flat_dose_reference[to_be_checked]
     )
 
-    num_dimensions = np.shape(options.flat_mesh_axes_reference)[0]
+    num_dimensions = len(options.free_axes)
 
     coordinates_at_distance_shell = (
         pymedphys._utilities.createshells.calculate_coordinates_shell(  # pylint: disable = protected-access
@@ -838,7 +894,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
         assert np.all(to_be_checked[to_be_checked_sliced])
 
         axes_reference_to_be_checked = options.flat_mesh_axes_reference[
-            :, to_be_checked_sliced
+            np.ix_(options.free_axes, to_be_checked_sliced)
         ]
 
         evaluation_dose = interpolate_evaluation_dose_at_distance(
@@ -888,10 +944,14 @@ def interpolate_evaluation_dose_at_distance(
 
 
 def interpolate_evaluation_dose(options, all_points):
-    """Interpolate the evaluation dose at points shaped ``(..., dimensions)``.
+    """Interpolate the evaluation dose at points shaped ``(..., free axes)``.
 
-    Points outside the evaluation grid are given infinite dose.
+    Points give coordinates on the free evaluation axes only. Points outside
+    the evaluation grid are given infinite dose.
     """
+    if not options.free_axes:
+        return np.full(all_points.shape[:-1], options.dose_evaluation.item())
+
     if options.interp_algo.lower() == "pymedphys":
         evaluation_dose = _run_custom_interp(options, all_points)
     elif options.interp_algo.lower() == "scipy":
@@ -910,8 +970,8 @@ def _run_custom_interp(options, all_points):
     # _prepare_evaluation_grid has already validated and normalised these
     # arrays. Reuse that guarantee throughout the shell/chunk loop.
     return _interp_validated(
-        axes_known=options.axes_evaluation,
-        values=options.dose_evaluation,
+        axes_known=options.free_axes_evaluation,
+        values=options.free_dose_evaluation,
         points_interp=points,
         extrap_fill_value=np.inf,
     ).reshape(all_points.shape[:-1])

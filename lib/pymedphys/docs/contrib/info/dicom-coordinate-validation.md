@@ -140,10 +140,14 @@ is retained so historical tests can be replayed.
 - Oblique geometry is outside the three-independent-patient-axes contract.
   The private IEC PATIENT option of `xyz_axes_from_dataset` raises
   `NotImplementedError`.
-- The existing singleton-plane gamma search defect remains tracked in
-  [#2070](https://github.com/pymedphys/pymedphys/issues/2070). Narrow evaluation
-  grids can also be missed by discrete shells. The four existing strict
-  expected-failure tests remain; geometry invariance does not solve these.
+- When this record was written, gamma could miss singleton evaluation planes
+  ([#2070](https://github.com/pymedphys/pymedphys/issues/2070)) and evaluation
+  grids narrower than one search step, and four strict expected-failure tests
+  recorded this. Both have since been fixed:
+  [#2119](https://github.com/pymedphys/pymedphys/pull/2119) gives every analysed
+  reference point a value, and
+  [#2126](https://github.com/pymedphys/pymedphys/pull/2126) searches singleton
+  evaluation axes directly. Those four tests now pass as ordinary tests.
 
 ## Reproducing the committed checks
 
