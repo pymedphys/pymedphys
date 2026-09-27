@@ -104,13 +104,15 @@ This project adheres to
   type. A failed command prints a one-line error naming only the exception
   type and exits with status 1, instead of a traceback whose messages could
   contain a path or a value, and the app reports any failed file by its
-  number and exception type. pydicom quotes invalid values (for example a
-  malformed time during pseudonymisation) in validation messages that it
-  issues as Python warnings and logs through the `pydicom` logger; while the
-  commands and the app run, those messages are logged with the value replaced
-  by `<value not shown>` and the duplicate warnings are suppressed. The
-  library functions still raise exceptions unchanged and do not redact
-  pydicom's messages.
+  number and exception type. pydicom issues each of its warnings as a Python
+  warning and logs it through the `pydicom` logger, and these messages can
+  quote values (for example a malformed time during pseudonymisation) or name
+  the file being read. While the commands and the app run, each such log
+  record is replaced by a fixed summary; a report of an invalid value keeps
+  only its VR, as in `Invalid value for VR TM: <value not shown>.`. pydicom's
+  duplicate warnings are suppressed for the rest of the process. The library
+  functions still raise exceptions unchanged and pass pydicom's messages
+  through unchanged.
   [PR #2062](https://github.com/pymedphys/pymedphys/pull/2062), [PR #2082](https://github.com/pymedphys/pymedphys/pull/2082)
 - `pymedphys gui --port` now takes effect. Previously the port was ignored and
   the GUI always used Streamlit's default port. A port that is not an integer

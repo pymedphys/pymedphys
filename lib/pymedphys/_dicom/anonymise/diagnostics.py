@@ -32,25 +32,42 @@ import warnings
 from collections.abc import Callable, Iterator
 from typing import Any
 
+from pymedphys._imports import pydicom
+
 REDACTED = "<value not shown>"
+SUMMARY = (
+    "pydicom reported a problem. Details are not shown because they can "
+    "contain file paths or DICOM values."
+)
 
-# pydicom quotes values inconsistently: with repr() in some messages and in
-# bare single or double quotes in others, so a value can contain the quote
-# character that surrounds it. Everything from the first quote to the last is
-# therefore replaced, together with a bytes prefix.
-_QUOTED = re.compile(r"""(?:\bb)?['"].*['"]""", re.DOTALL)
-
-
-def redact_quoted(text: str) -> str:
-    """Replace everything from the first quote character to the last."""
-    return _QUOTED.sub(REDACTED, text)
+# pydicom's messages can quote values, and can include file paths without
+# quotes, so only messages recognised here keep any detail, and only fields
+# checked against a closed set.
+_INVALID_VALUE = re.compile(r"Invalid value for VR (?P<vr>[A-Z]{2})\b")
 
 
-class _RedactQuotedText(logging.Filter):
-    """Redact quoted text, and drop any traceback, from each log record."""
+@functools.cache
+def _value_representations() -> frozenset[str]:
+    return frozenset(vr.value for vr in pydicom.valuerep.VR)
+
+
+def safe_summary(message: str) -> str:
+    """Return a pydicom diagnostic with nothing that could identify anyone.
+
+    A report of an invalid value keeps the VR, when it is one that PS3.5
+    defines. Any other message is replaced by :data:`SUMMARY`.
+    """
+    match = _INVALID_VALUE.match(message)
+    if match and match["vr"] in _value_representations():
+        return f"Invalid value for VR {match['vr']}: {REDACTED}."
+    return SUMMARY
+
+
+class _SummariseRecord(logging.Filter):
+    """Replace each log record's message with its safe summary, without traceback."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.msg = redact_quoted(record.getMessage())
+        record.msg = safe_summary(record.getMessage())
         record.args = ()
         record.exc_info = None
         record.exc_text = None
@@ -59,7 +76,7 @@ class _RedactQuotedText(logging.Filter):
 
 
 class _PydicomLogRedaction:
-    """Redact the ``pydicom`` logger's records while any caller needs it.
+    """Summarise the ``pydicom`` logger's records while any caller needs it.
 
     Streamlit runs each session in its own thread, so the filter is counted
     rather than removed by whichever caller finishes first.
@@ -68,7 +85,7 @@ class _PydicomLogRedaction:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._users = 0
-        self._filter = _RedactQuotedText()
+        self._filter = _SummariseRecord()
 
     @contextlib.contextmanager
     def active(self) -> Iterator[None]:
@@ -91,20 +108,22 @@ _PYDICOM_LOG_REDACTION = _PydicomLogRedaction()
 
 @contextlib.contextmanager
 def redacted_pydicom_diagnostics() -> Iterator[None]:
-    """Keep DICOM values out of pydicom's warnings and log records.
+    """Keep file paths and DICOM values out of pydicom's warnings and log records.
 
-    pydicom reports each invalid value it reads or converts twice, in a log
-    record on the ``pydicom`` logger and in a ``UserWarning`` from
-    ``pydicom.valuerep``, and both quote the value. Within this context, the
-    log record keeps its message with the quoted text replaced by
-    ``<value not shown>``.
+    pydicom sends each of its warnings to the ``pydicom`` logger as well as
+    issuing it as a Python warning, and either can quote a value or name a
+    file. Within this context, each ``pydicom`` log record's message is
+    replaced by :func:`safe_summary`.
 
-    The warning is ignored for the rest of the process, since the log record
-    carries the same report. Python's warning filters are process-wide, and
-    ``warnings.catch_warnings`` is not thread-safe, so the filter cannot be
-    removed again safely.
+    Warnings from pydicom's modules are ignored for the rest of the process,
+    since the log record carries the same report. Python's warning filters
+    are process-wide, and ``warnings.catch_warnings`` is not thread-safe, so
+    the filter cannot be removed again safely. Other code in the same
+    process, such as the other GUI apps, therefore no longer sees pydicom's
+    warnings. pydicom's log records are summarised only while this context is
+    active, so outside it they still carry the original message.
     """
-    warnings.filterwarnings("ignore", category=UserWarning, module=r"pydicom\.valuerep")
+    warnings.filterwarnings("ignore", module=r"pydicom(\.|$)")
     with _PYDICOM_LOG_REDACTION.active():
         yield
 

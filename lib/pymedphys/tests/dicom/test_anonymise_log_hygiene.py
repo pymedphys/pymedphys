@@ -32,12 +32,15 @@ failure documents that channel.
 import io
 import logging
 import pathlib
+import struct
+import sys
 import warnings
 
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.anonymise import api as anonymise_api
 from pymedphys._dicom.anonymise import core as anonymise_core
+from pymedphys._dicom.anonymise import diagnostics
 from pymedphys._experimental import pseudonymisation
 from pymedphys._experimental.pseudonymisation import strategy as pseudo_strategy
 from pymedphys.cli import define_parser
@@ -92,6 +95,31 @@ def _write_raw_canary_file(path, keyword, raw_value, character_set=None):
     path.parent.mkdir(parents=True, exist_ok=True)
     pydicom.dcmwrite(path, ds, enforce_file_format=True)
     return path
+
+
+def _write_undelimited_canary_file(path):
+    """Write a file ending in an undefined-length element with no delimiter.
+
+    pydicom reports it with a warning, from ``pydicom.filereader``, and a log
+    record that both end with the file's name, unquoted.
+    """
+    buffer = io.BytesIO()
+    pydicom.dcmwrite(buffer, _canary_dataset(), enforce_file_format=True)
+    undelimited = (
+        struct.pack("<HH", 0x0009, 0x1010)
+        + b"OB\0\0"
+        + struct.pack("<I", 0xFFFFFFFF)
+        + b"\0" * 16
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(buffer.getvalue() + undelimited)
+    return path
+
+
+class _NamedUpload(io.BytesIO):
+    """An upload named like a Streamlit ``UploadedFile``."""
+
+    name = "ZZCANARYUPLOAD.dcm"
 
 
 def _run_cli(command, input_path, output_path):
@@ -301,7 +329,9 @@ def test_cli_reports_errors_without_paths(tmp_path, capsys, caplog, command):
 
     assert exit_info.value.code == 1
     captured = _assert_no_canaries(capsys, caplog)
-    assert "IsADirectoryError" in captured.err
+    # Opening a directory as a file raises PermissionError on Windows.
+    expected = "PermissionError" if sys.platform == "win32" else "IsADirectoryError"
+    assert f"Error: {expected}." in captured.err
 
 
 @pytest.mark.pydicom
@@ -394,3 +424,67 @@ def test_streamlit_pseudonymise_redacts_pydicom_value_messages(
     assert not bad_data
     assert not [w for w in caught if "ZZCANARY" in str(w.message)]
     _assert_no_canaries(capsys, caplog)
+
+
+@pytest.mark.parametrize(
+    "message, summary",
+    [
+        (
+            "Invalid value for VR TM: 'ZZCANARYTIME'",
+            "Invalid value for VR TM: <value not shown>.",
+        ),
+        # Only a VR that PS3.5 defines is shown.
+        ("Invalid value for VR ZZ: 'ZZCANARY'", diagnostics.SUMMARY),
+        (
+            "End of file reached before delimiter (FFFE,E0DD) found in file "
+            "ZZCANARYDIR/input.dcm",
+            diagnostics.SUMMARY,
+        ),
+        ("ZZCANARY", diagnostics.SUMMARY),
+    ],
+)
+def test_only_recognised_pydicom_messages_keep_any_detail(message, summary):
+    assert diagnostics.safe_summary(message) == summary
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("command", COMMANDS)
+def test_commands_keep_paths_out_of_pydicom_reading_diagnostics(
+    tmp_path, capsys, caplog, command
+):
+    caplog.set_level(logging.DEBUG)
+    input_dir = tmp_path / CANARY_DIR
+    _write_undelimited_canary_file(input_dir / "input.dcm")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            _run_cli(command, input_dir, tmp_path / CANARY_OUTPUT_DIR)
+        except SystemExit:
+            pass
+
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    _assert_no_canaries(capsys, caplog)
+    # The problem is still reported, without its details.
+    assert diagnostics.SUMMARY in caplog.text
+
+
+@pytest.mark.pydicom
+def test_streamlit_pseudonymise_keeps_upload_names_out_of_pydicom_diagnostics(
+    tmp_path, capsys, caplog
+):
+    from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
+
+    caplog.set_level(logging.DEBUG)
+    input_path = _write_undelimited_canary_file(tmp_path / "input.dcm")
+    uploaded = _NamedUpload(input_path.read_bytes())
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        pseudonymise_app._zip_pseudo_fifty_mbytes(  # pylint: disable = protected-access
+            [uploaded], io.BytesIO()
+        )
+
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    _assert_no_canaries(capsys, caplog)
+    assert diagnostics.SUMMARY in caplog.text
