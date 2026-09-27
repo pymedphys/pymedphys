@@ -55,7 +55,7 @@ This project adheres to
   them disclosing identifying information or to prevent harm to data, and
   their other defects are documented rather than fixed. See
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
-  [PR #2065](https://github.com/pymedphys/pymedphys/pull/2065)
+  [PR #2065](https://github.com/pymedphys/pymedphys/pull/2065), [PR #2105](https://github.com/pymedphys/pymedphys/pull/2105)
 - **[Security]** `pymedphys.dicom.anonymise` now warns about its limitations.
   It replaces only a list of attributes; its default list keeps every UID and
   most RT attributes, such as plan, structure set, ROI, and beam labels and
