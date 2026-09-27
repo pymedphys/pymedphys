@@ -214,6 +214,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI's documentation build is the only documentation check on pull requests, and its `docs-html` artefact holds the built pages. Read the Docs builds a hosted preview only of a pull request labelled `rtd-preview`, so routine pull requests no longer take its build slots, and it still builds and publishes `main`. Automation rules in the Read the Docs dashboard make this choice; the workflow guide lists them. The documentation guide explains how to download `docs-html` and how to run the `Documentation` workflow on a branch. [PR #2121](https://github.com/pymedphys/pymedphys/pull/2121)
 - The private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. The MetersetMap app and the delivery tests now use `pymedphys.gamma_pass_rate` instead of their own pass-rate calculations. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - **[Contributor facing only]** CI now tests the declared minimum versions of
   both NumPy and pandas. The NumPy 1.26 compatibility job becomes
@@ -251,9 +252,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   free, so parallel workers no longer collide on one fixed port.
   ReadTheDocs installs the documentation environment with `uv sync` from
   `uv.lock`, as CI does, instead of with pip from `requirements-docs.txt`,
-  which `pymedphys dev propagate` no longer generates, and it cancels
-  pull-request previews when every changed path is one the documentation
-  never reads, such as CI configuration and tests.
+  which `pymedphys dev propagate` no longer generates.
   [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099), [PR #2115](https://github.com/pymedphys/pymedphys/pull/2115)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
@@ -319,7 +318,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   file name, worksheet version, SHA-256, and AAPM's attribution. Its loader
   rejects a file edited without updating its content digest.
   [PR #2108](https://github.com/pymedphys/pymedphys/pull/2108)
-- **[Contributor facing only]** Private modules `pymedphys._dicom.deidentify.keys` and `pymedphys._dicom.deidentify.uids` hold the keys and replacement UIDs of the de-identification engine. A key is 256 bits from the operating system's secure generator, with a non-secret identifier for reports, and derives each value as a domain-separated HMAC-SHA256. A key file is created exclusively, readable only by its owner where the platform enforces file modes, and never inside the PyMedPhys configuration directory or a protected output directory. A replacement UID is the `2.25.` form of a version 5 UUID whose name is the keyed hash of the source UID, so the same key replaces a UID the same way in every file and run without a stored map. A reviewed supplementary rule gives every UI attribute of the pinned data dictionary a role, `instance` or `definition`; a UID that the pinned tables register is retained whatever the role, and any other UID is replaced. Hypothesis joins the `tests` and `all` extras for their property tests. [PR #2113](https://github.com/pymedphys/pymedphys/pull/2113), [PR #2116](https://github.com/pymedphys/pymedphys/pull/2116)
+- **[Contributor facing only]** Private modules `pymedphys._dicom.deidentify.keys` and `pymedphys._dicom.deidentify.uids` hold the keys and replacement UIDs of the de-identification engine. A key is 256 bits from the operating system's secure generator, with a non-secret identifier for reports, and derives each value as a domain-separated HMAC-SHA256. A key file is created exclusively, readable only by its owner where the platform enforces file modes, and never inside the PyMedPhys configuration directory or a protected output directory. A replacement UID is the `2.25.` form of a version 5 UUID whose name is the keyed hash of the source UID, so the same key replaces a UID the same way in every file and run without a stored map. Patient ID and Patient's Name are replaced by keyed pseudonyms, `DEID-<code>` and `DEIDENTIFIED^<code>`, derived from the Patient ID and its issuer, or from a curated subject identifier, in `pymedphys._dicom.deidentify.pseudonyms`. A reviewed supplementary rule gives every UI attribute of the pinned data dictionary a role, `instance` or `definition`; a UID that the pinned tables register is retained whatever the role, and any other UID is replaced. Hypothesis joins the `tests` and `all` extras for their property tests. [PR #2113](https://github.com/pymedphys/pymedphys/pull/2113), [PR #2116](https://github.com/pymedphys/pymedphys/pull/2116), [PR #2117](https://github.com/pymedphys/pymedphys/pull/2117)
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries that describe changes since the last stable release and link their pull requests, descriptions of the state

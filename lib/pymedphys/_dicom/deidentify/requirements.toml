@@ -14,9 +14,20 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 Each Attribute to be protected shall then either be removed from the Data Set, or have its value replaced by a different "replacement value" that does not allow identification of the patient.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-001", "D-003", "D-005", "D-011"]
+implementation = ["_dicom/deidentify/pseudonyms.py"]
+tests = [
+  "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_follows_the_specified_derivation",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_is_valid_for_its_vr_and_conspicuous",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_different_subjects_give_different_pseudonyms",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_the_same_identifier_from_another_issuer_is_another_subject",
+  "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_does_not_contain_the_identifier",
+]
+note = '''
+Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier. Remaining: removing or replacing each Attribute to be protected in a data set (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-02"
