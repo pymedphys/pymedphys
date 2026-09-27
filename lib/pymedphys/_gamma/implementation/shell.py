@@ -50,6 +50,7 @@ def gamma_shell(
     quiet=None,
     interp_algo="pymedphys",
     random_state=None,
+    exclude_nan_reference=False,
 ):
     """Compare two dose grids with the gamma index.
 
@@ -132,6 +133,14 @@ def gamma_shell(
         Seed or generator that selects the ``random_subset``, so the subset
         can be reproduced. Defaults to None, which uses NumPy's global random
         state as before, so :func:`numpy.random.seed` still applies.
+    exclude_nan_reference : bool, optional
+        Leave reference points whose dose is NaN out of the analysis, for
+        example unmeasured detector positions or points outside a region of
+        interest. They are reported as NaN, and the default
+        ``global_normalisation`` ignores them. Defaults to False, which
+        raises ``ValueError`` if ``dose_reference`` contains NaN, so that
+        NaN from an upstream error is not silently dropped. Infinite
+        reference doses, and NaN or infinite evaluation doses, always raise.
 
     Returns
     -------
@@ -143,7 +152,8 @@ def gamma_shell(
         from the DICOM dataset's raw ``pixel_array``.
 
         A reference point is analysed when its dose is at or above the lower
-        dose cutoff and, if ``random_subset`` is set, it was selected. Every
+        dose cutoff (so NaN, excluded with ``exclude_nan_reference``, is not)
+        and, if ``random_subset`` is set, it was selected. Every
         analysed reference point has a value; NaN marks only the reference
         points that were not analysed. :func:`pymedphys.gamma_pass_rate`
         gives the percentage of analysed reference points that pass.
@@ -158,7 +168,9 @@ def gamma_shell(
     Raises
     ------
     ValueError
-        If either dose grid contains NaN or infinite values, ``max_gamma`` is
+        If either dose grid contains infinite values, ``dose_evaluation``
+        contains NaN, ``dose_reference`` contains NaN (unless
+        ``exclude_nan_reference=True``) or no finite values, ``max_gamma`` is
         not greater than 1, ``global_normalisation`` is not finite and
         positive, or local gamma is requested and an analysed reference
         point has zero dose.
@@ -192,6 +204,7 @@ def gamma_shell(
         quiet,
         interp_algo,
         random_state,
+        exclude_nan_reference,
     )
 
     if options.local_gamma:
@@ -367,11 +380,29 @@ def _distance_outside_grid(flat_mesh_axes_reference, index, axes_evaluation):
     return np.sqrt(squared_distance)
 
 
-def _check_finite_dose(name, dose):
-    if not np.all(np.isfinite(dose)):
+def _check_finite_doses(dose_reference, dose_evaluation, exclude_nan_reference):
+    """Reject doses gamma cannot use, saying how to express the intent."""
+    if np.any(np.isinf(dose_reference)):
+        raise ValueError("dose_reference must be finite, but contains infinite values.")
+
+    if not exclude_nan_reference and np.any(np.isnan(dose_reference)):
         raise ValueError(
-            f"{name} must be finite, but contains NaN or infinite values. "
-            "Replace or crop them before calculating gamma."
+            "dose_reference must be finite, but contains NaN values. To leave "
+            "those reference points out of the analysis, pass "
+            "exclude_nan_reference=True; they are then reported as NaN."
+        )
+
+    if np.all(np.isnan(dose_reference)):
+        raise ValueError("dose_reference has no finite values to analyse.")
+
+    if not np.all(np.isfinite(dose_evaluation)):
+        raise ValueError(
+            "dose_evaluation must be finite, but contains NaN or infinite "
+            "values. Gamma searches the evaluation dose between grid points, "
+            "so it cannot skip missing values. Crop the evaluation grid to "
+            "the region with valid dose. If the missing values are "
+            "unmeasured points, use the measurement as the reference instead, "
+            "with exclude_nan_reference=True."
         )
 
 
@@ -470,6 +501,7 @@ class GammaInternalFixedOptions:
         quiet=None,
         interp_algo="pymedphys",
         random_state=None,
+        exclude_nan_reference=False,
     ):
         if max_gamma is None:
             max_gamma = np.inf
@@ -484,8 +516,7 @@ class GammaInternalFixedOptions:
         axes_reference, axes_evaluation = run_input_checks(
             axes_reference, dose_reference, axes_evaluation, dose_evaluation
         )
-        _check_finite_dose("dose_reference", dose_reference)
-        _check_finite_dose("dose_evaluation", dose_evaluation)
+        _check_finite_doses(dose_reference, dose_evaluation, exclude_nan_reference)
         axes_evaluation, dose_evaluation, interp_algo = _prepare_evaluation_grid(
             axes_evaluation, dose_evaluation, interp_algo
         )
@@ -494,7 +525,7 @@ class GammaInternalFixedOptions:
         distance_mm_threshold = expand_dims_to_1d(distance_mm_threshold)
 
         if global_normalisation is None:
-            global_normalisation = np.max(dose_reference)
+            global_normalisation = np.nanmax(dose_reference)
 
         if not (np.isfinite(global_normalisation) and global_normalisation > 0):
             raise ValueError(
