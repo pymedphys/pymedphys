@@ -111,6 +111,7 @@ lint = [
 tests = [
   "anthropic",
   "astroid",
+  "hypothesis",
   "imageio",
   "matplotlib",
   "numba",
@@ -199,6 +200,7 @@ all = [
     "dicompyler-core",
     "doc8",
     "httpx2",
+    "hypothesis",
     "imageio[tifffile]",
     "ipython>=7.31.1",
     "jupyter-book>=0.12.0,<2.0.0",
