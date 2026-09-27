@@ -109,7 +109,7 @@ jobs:
   # .github/scripts/check_distributions.py. It runs first, on the checkout as
   # committed.
   #
-  # The exported requirements files, dependency-extra.txt, pyproject.hash, and
+  # The exported requirements.txt, dependency-extra.txt, pyproject.hash, and
   # _version.py are generated from pyproject.toml and uv.lock; a commit that
   # changes the sources without regenerating them fails the drift check, which
   # reports even when the wheel checks fail.
@@ -139,5 +139,5 @@ jobs:
         run: |
           uv run pymedphys dev propagate
           git diff --exit-code -- \
-            requirements.txt requirements-docs.txt pyproject.hash \
+            requirements.txt pyproject.hash \
             lib/pymedphys/dependency-extra.txt lib/pymedphys/_version.py

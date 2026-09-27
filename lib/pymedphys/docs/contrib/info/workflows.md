@@ -214,7 +214,15 @@ Builds documentation on PRs that change documentation sources, package modules, 
   finishes before the build
 - **Artefact**: Built HTML is uploaded for inspection
 - **Publishing**: ReadTheDocs publishes docs.pymedphys.com independently using
-  `.readthedocs.yml`
+  `.readthedocs.yml`. It installs the same locked environment as this job,
+  with `uv sync` from `uv.lock` (the project, the `docs` extra, and the
+  default `dev` group). It also builds a preview of each pull request, except
+  that `.github/scripts/readthedocs_skip.sh` cancels a preview when every path
+  that differs from `main` is one the documentation never reads: `.github/`,
+  `lib/pymedphys/tests/`, `AGENTS.md`, `CLAUDE.md`, `SECURITY.md`,
+  `.pre-commit-config.yaml`, and `claude_created_workflows_preview/`. Read the
+  Docs reports a cancelled build to GitHub as failed; its status is not a
+  required check
 
 ### Release & Maintenance
 
@@ -299,7 +307,7 @@ Automated dependency updates for Python packages.
 - **Schedule**: Weekly (Mondays), or manually
 - **Steps**: `uv lock --upgrade`, then (only if the lockfile changed)
   `uv sync` and `pymedphys dev propagate` (so
-  the exported requirements files, `dependency-extra.txt`, and `pyproject.hash`
+  the exported `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`
   stay current), then the unit tests, the docs build, and a wheel build and
   install before a PR is opened. The data cache is restored only after the
   lockfile changes, because only those runs read data

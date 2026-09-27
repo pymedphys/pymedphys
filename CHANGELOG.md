@@ -142,6 +142,11 @@ This project adheres to
   and the wheel build in the generated-files job. `pymedphys dev tests -n
   auto` runs tests in parallel with `pytest-xdist`, now in the `tests` and
   `all` extras, and resolves caller-relative test paths in every worker.
+  ReadTheDocs installs the documentation environment with `uv sync` from
+  `uv.lock`, as CI does, instead of with pip from `requirements-docs.txt`,
+  which `pymedphys dev propagate` no longer generates, and it cancels
+  pull-request previews when every changed path is one the documentation
+  never reads, such as CI configuration and tests.
   [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan

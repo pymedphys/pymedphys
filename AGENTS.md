@@ -69,7 +69,8 @@ uv run -- pymedphys dev docs
 
 Documentation notebooks must use declared, locked dependencies rather than
 installing packages while running. Add documentation dependencies to both the
-`docs` and `all` extras and regenerate the exported ReadTheDocs requirements.
+`docs` and `all` extras and regenerate `uv.lock`; CI and ReadTheDocs both
+install the documentation environment from it.
 Unexpected notebook errors and documentation build warnings fail the build.
 An install cell kept for readers running a notebook elsewhere (for example on
 Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
@@ -444,8 +445,8 @@ When updating dependencies:
 
 1. Update version constraints in `pyproject.toml`
 2. Run `uv lock --upgrade` and then `uv sync --python 3.12 --locked --extra all --group dev` to regenerate `uv.lock`
-3. Run `uv run pymedphys dev propagate` to regenerate the exported requirements
-   files, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
+3. Run `uv run pymedphys dev propagate` to regenerate the exported
+   `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
 4. Test changes to ensure nothing breaks
 

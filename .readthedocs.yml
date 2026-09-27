@@ -5,12 +5,20 @@ build:
   tools:
     python: "3.12"
   jobs:
+    # Cancels pull-request builds that cannot change the site.
+    post_checkout:
+      - bash .github/scripts/readthedocs_skip.sh
     pre_build:
       - "pymedphys dev docs --prep"
 
+# The locked environment that CI's documentation build uses: uv sync installs
+# the project, the docs extra, and the default dev group from uv.lock.
 python:
   install:
-    - requirements: requirements-docs.txt
+    - method: uv
+      command: sync
+      extras:
+        - docs
 
 sphinx:
   builder: html
