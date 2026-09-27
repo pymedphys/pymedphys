@@ -9,9 +9,10 @@ tolerances and plotting guidance, read
 That notebook is the physicist-facing explanation; those examples are not
 repeated here.
 
-The original review compared `main` at `400b61fe8` with the PR at `658c4b6f0`.
-Later checks and their source/environment scope are recorded below. These
-results do not establish that every DICOM helper or gamma search case is correct.
+Unless a row states otherwise, the one-off checks below compared the original
+implementation at `400b61fe8` with this implementation at `658c4b6f0`. The
+limitations section lists the DICOM helpers and gamma search cases that these
+checks do not cover.
 
 ## Independence of the checks
 
@@ -47,7 +48,7 @@ Validation combines ongoing local tests with recorded historical checks:
    `expected_fixed_xyz.json` baseline, verified before retiring the
    download-backed tests as recorded below.
 
-Checks completed during this review:
+One-off independent checks:
 
 | Check | Result |
 | --- | --- |
@@ -59,7 +60,7 @@ Checks completed during this review:
 | Historical metadata files for all eight orientations | Zero difference from the independent DICOM matrix calculation |
 | Historical IEC FIXED baseline and pre-PR implementation | Exactly equal in all eight orientations |
 | 800 additional seeded random grids, including unequal spacing and uneven/decreasing slice offsets | Zero coordinate difference from the matrix calculation; every dose value retains its physical voxel |
-| 800 seeded perturbed grid pairs | Original 0.01 mm equality decision agrees with exhaustive 3D voxel displacement for exact cardinal directions; the revised regression also checks rounded cosines and both physical limits |
+| 800 seeded perturbed grid pairs | The 0.01 mm equality decision at `658c4b6f0` agrees with exhaustive 3D voxel displacement for exact cardinal directions; the committed regression checks the final comparison, including rounded cosines and both physical limits |
 | IEC FIXED on those 800 grids | Exactly equal to the original implementation |
 | Negative control using the original dose conversion | New physical-grid tests detect all 15 changed encoding cases; ordinary HFS with increasing offsets passes |
 
@@ -73,11 +74,6 @@ real metadata and the IEC convention, not nonzero real dose registration.
 The dose-order and gamma checks deliberately use asymmetric, nonzero
 synthetic dose data. The downloaded archive matched the repository's SHA-1
 `e09f71ebf4d98a58bc3c00e7dd9f59e91e9f8bb6`.
-
-Before the added assurance tests, the reviewed head's CI passed on Windows,
-Linux and macOS with Python 3.10, 3.11 and 3.12. The Linux 3.12 job explicitly
-ran the historical coordinate and dose tests. Fresh CI on the final commit
-remains the merge gate; an earlier green run does not validate later edits.
 
 ## Retirement of downloaded test fixtures
 
@@ -142,7 +138,8 @@ is retained so historical tests can be replayed.
 ## Remaining limitations
 
 - Oblique geometry is outside the three-independent-patient-axes contract.
-  The private IEC PATIENT option is disabled pending separate validation.
+  The private IEC PATIENT option of `xyz_axes_from_dataset` raises
+  `NotImplementedError`.
 - The existing singleton-plane gamma search defect remains tracked in
   [#2070](https://github.com/pymedphys/pymedphys/issues/2070). Narrow evaluation
   grids can also be missed by discrete shells. The four existing strict
@@ -176,34 +173,12 @@ uv run -- python -m pytest -q \
   lib/pymedphys/tests/interp/test_interp.py
 ```
 
-This command uses local fixtures and includes the explicitly recorded
-limitations. Expected failures are strict: an unexpected pass must be
-investigated and the corresponding limitation updated.
+The selection uses only generated local fixtures, needs no network access or
+downloaded data, and writes generated DICOM files only to pytest's temporary
+directories. It includes 20 strict expected failures: the four gamma-search
+cases and the 16 private decubitus helper cases above. An unexpected pass must
+be investigated and the corresponding limitation updated.
 
-At the assurance test commit `e50f96951`, this targeted command completed with
-420 passed and 20 expected failures: four existing gamma-search cases and
-16 cases covering the two private decubitus helper defects above. Pre-commit,
-Pyright and MyPy passed, and Pylint using the repository configuration scored
-10.00/10 for the changed Python files.
-
-After replacing the downloaded fixtures, the same selection completed with
-**428 passed and the same 20 expected failures**. This run used an empty data
-cache and a temporary pytest guard that rejected network access and calls to
-the PyMedPhys data-download helpers; the cache remained empty. The generated
-DICOM files were written only to pytest's temporary directories. Ruff,
-Pyright and MyPy passed for the changed Python files, and Pylint with the
-repository configuration again scored 10.00/10.
-
-The follow-up review on 26 September 2026 revised the equality limits and
-retained encoded direction cosines in the physical comparison. Its targeted
-selection completed with **453 passed and the same 20 strict expected
-failures**, on Windows with Python 3.12.14, NumPy 1.26.4, SciPy 1.16.2,
-pydicom 3.0.1 and Numba 0.61.2. The existing environment lacked pytest-timeout,
-so plugin autoload was disabled and a 180-second subprocess timeout covered
-the whole selection; per-test timeout behaviour was not exercised. Ruff,
-Pyright and the repository pre-commit checks passed.
-
-The coordinate notebook was also executed in a fresh Jupyter kernel and
-its figures inspected. Gamma performance is a separate experiment; see the
+Gamma performance is a separate experiment; see the
 [workstation study and upload instructions](gamma-performance-study.md) and
 the [recorded fixed-grid demonstration](gamma-performance.ipynb).

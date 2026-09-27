@@ -214,9 +214,9 @@ For publication, all 17 input sets were independently regenerated: dose-array
 hashes, total/eligible counts and gamma settings matched. The archived runner
 hashes and pinned source were checked, the saved model report was reproduced,
 and the fitted coefficients and paired ratios were independently recalculated.
-The original full gamma arrays were removed after the runner's comparisons;
-gamma itself was not rerun during publication review. The numerical findings
-above therefore rely on the recorded full-array checks.
+The original full gamma arrays were removed after the runner's comparisons,
+and gamma was not rerun for this page, so the numerical findings above rely on
+the recorded full-array checks.
 
 The comparison used [old source `866f83edad85`](https://github.com/pymedphys/pymedphys/commit/866f83edad8586a42a739094e488f45242b72c95)
 and [new source `9b3a8aa00b75`](https://github.com/pymedphys/pymedphys/commit/9b3a8aa00b752fd70bd92acd6d24f1089288dde5).
