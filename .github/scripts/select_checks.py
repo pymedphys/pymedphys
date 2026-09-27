@@ -135,6 +135,7 @@ SLOW_TEST_FILES = frozenset(
 DOCTEST_FILES = frozenset(
     {
         "lib/pymedphys/_dicom/deidentify/keys.py",
+        "lib/pymedphys/_dicom/deidentify/pseudonyms.py",
         "lib/pymedphys/_dicom/deidentify/uids.py",
         "lib/pymedphys/_experimental/cube.py",
         "lib/pymedphys/_gamma/__init__.py",
