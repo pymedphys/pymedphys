@@ -50,6 +50,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### New features and enhancements
 
+- `pymedphys.gamma` has a `random_state` argument, an integer seed or `numpy.random.Generator`, that selects the `random_subset` reproducibly without seeding NumPy's global random state. Without it, the subset still comes from NumPy's global random state, so earlier analyses that called `numpy.random.seed` select the same points. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - The interpolation comparison notebook compares PyMedPhys with SciPy's `RegularGridInterpolator`, and the documentation dependencies no longer include EconForge's `interpolation`. The reference page keeps the earlier benchmark image, labelled as a historical result, and links to the executable comparison. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - New documentation page,
@@ -211,6 +212,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- The private gamma pass-rate helper, `pymedphys._gamma.utilities.calculate_pass_rate`, now counts gamma of exactly 1 as a pass, as the MetersetMap app and the delivery tests already did, and raises `ValueError` when no point was evaluated instead of dividing by zero. The MetersetMap app and the delivery tests now use it. The unused private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - **[Contributor facing only]** Tests now fail on pydicom's "will be removed in v4" deprecation warnings, and the new `pydicom_behaviour` fixture in `tests/dicom/conftest.py` runs a test with pydicom's current behaviour and with its future behaviour, which imitates pydicom 4. The implicit versus explicit VR example notebook now sets the Transfer Syntax UID; with pydicom 3 its explicit VR example was written as implicit VR. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
 - **[Contributor facing only]** CI defaults to Python 3.14. The quick
   unit-test run uses it, as do every job that does not choose a version, the
