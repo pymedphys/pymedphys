@@ -14,22 +14,25 @@
 
 from pymedphys._imports import pytest
 
-from pymedphys._utilities.filesystem import open_no_lock
+from pymedphys._utilities import filesystem
 
 
 def test_open_no_lock_reads_a_file(tmp_path):
     path = tmp_path / "log.txt"
     path.write_text("contents")
 
-    with open_no_lock(path) as a_file:
+    with filesystem.open_no_lock(path) as a_file:
         assert a_file.read() == "contents"
 
     assert a_file.closed
 
 
-def test_open_no_lock_raises_the_original_error(tmp_path):
-    # The cleanup used to reference the unopened file, replacing this error
-    # with an UnboundLocalError.
+def test_open_no_lock_raises_the_error_from_open(tmp_path, monkeypatch):
+    # The cleanup used to reference the unopened file, replacing the error
+    # from open() with an UnboundLocalError. On Windows, pywin32 reports a
+    # missing file before open() is reached, so skip that step here.
+    monkeypatch.setattr(filesystem, "get_detached_file_descriptor", lambda path: path)
+
     with pytest.raises(FileNotFoundError):
-        with open_no_lock(tmp_path / "missing.txt"):
+        with filesystem.open_no_lock(tmp_path / "missing.txt"):
             pass
