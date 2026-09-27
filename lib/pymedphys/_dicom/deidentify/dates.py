@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Per-subject date offsets and shifted dates (design decision D-006).
+"""Per-subject date offsets and shifted dates.
 
 Where Retain Longitudinal Temporal Information with Modified Dates is
-selected, a subject's subject-event and radiation-source dates (D-007) move
-backwards by the same whole number of weeks, between 52 and 520 and never
-zero. Whole weeks keep intervals, times of day, and weekdays, which
-fractionation analyses need, and moving backwards avoids future-dated plans.
-Under a project key the offset is read from the subject's profile (D-004);
-:func:`date_offset_weeks` gives the offset a new subject receives.
+selected, a subject's subject-event and radiation-source dates move backwards
+by the same whole number of weeks, between 52 and 520 and never zero. Whole
+weeks keep intervals, times of day, and weekdays, which fractionation analyses
+need, and moving backwards avoids future-dated plans. Under a project key the
+offset is read from the subject's profile; :func:`date_offset_weeks` gives the
+offset a new subject receives.
 """
 
 from __future__ import annotations

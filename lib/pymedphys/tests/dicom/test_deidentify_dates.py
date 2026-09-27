@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Date offsets and shifted dates (design decision D-006)."""
+"""Date offsets and shifted dates."""
 
 import datetime
 import hashlib

@@ -157,7 +157,7 @@ def custodian_location_problem(
 
     Keys and subject profiles never go inside the PyMedPhys configuration
     directory or any of ``protected_dirs``, such as a run's output and QC
-    directories (D-004). ``path`` must already be resolved.
+    directories. ``path`` must already be resolved.
     """
     if path.is_relative_to(config_dir_path().resolve()):
         return "inside the PyMedPhys configuration directory"

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Subject profiles, the persisted per-subject values (design decision D-004)."""
+"""Subject profiles, the persisted per-subject values."""
 
 import json
 import os

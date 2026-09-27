@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Subject profiles: the persisted per-subject values (design decision D-004).
+"""Subject profiles: the persisted per-subject values.
 
-A subject's date offset (D-006), and later its other synthetic values, are
+A subject's date offset, and later its other synthetic values, are
 derived when the subject is first exported and persisted in its profile. The
 profile is then the single source of truth: it is read back for every later
 export, so a change of derivation never silently changes an exported subject.
@@ -61,7 +61,7 @@ class SubjectProfile:
     Attributes
     ----------
     date_offset_weeks : int
-        How far the subject's dates move back, 52 to 520 whole weeks (D-006).
+        How far the subject's dates move back, 52 to 520 whole weeks.
     derivation : str
         The derivation version that produced the values, such as
         ``"pymedphys-deid/1"``.

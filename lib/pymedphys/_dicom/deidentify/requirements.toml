@@ -319,7 +319,7 @@ tests = [
   "tests/dicom/test_deidentify_profiles.py::test_a_stored_offset_wins_over_a_changed_derivation",
 ]
 note = '''
-Each subject's offset is persisted in its profile, and DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times. Remaining: the role of every temporal attribute in the supplementary rules (D-007, M2), and modifying every date and time in a data set (M3).
+Each subject's offset is persisted in its profile, and DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times. Remaining: the role of every temporal attribute in the supplementary rules (M2), and modifying every date and time in a data set (M3).
 '''
 
 [[requirement]]
