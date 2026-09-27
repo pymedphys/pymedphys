@@ -55,7 +55,7 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
 
             else:
                 raise ValueError(
-                    "Can only use numpy arrays as input " "for one dimensional gamma."
+                    "Can only use numpy arrays as input for one dimensional gamma."
                 )
         else:
             raise ValueError(
