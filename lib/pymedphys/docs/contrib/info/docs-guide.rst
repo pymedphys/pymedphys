@@ -6,14 +6,6 @@ This documentation site is built with Sphinx, MyST, and Jupyter Book 1.x. This p
 document aims to help contributors to improve the PyMedPhys
 documentation.
 
-Documentation structure and philosophy
---------------------------------------
-
-The PyMedPhys documentation adheres to the `"Grand Unified Theory of
-Documentation"
-<https://documentation.divio.com/>`__ by Daniele Procida.
-
-
 Building the documentation on your workstation
 ----------------------------------------------
 
