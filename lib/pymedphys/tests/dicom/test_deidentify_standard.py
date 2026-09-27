@@ -39,14 +39,16 @@ def _write(path, document):
 @pytest.mark.parametrize(
     "name, source",
     [
-        ("e1_1.json", "part15/chapter_E.html"),
-        ("e1_1a.json", "part15/chapter_E.html"),
-        ("e3_10_1.json", "part15/sect_E.3.10.html"),
-        ("data_dictionary.json", "part06/chapter_6.html"),
-        ("uid_values.json", "part06/chapter_A.html"),
-        ("frames_of_reference.json", "part06/chapter_A.html"),
-        ("context_group_uids.json", "part06/chapter_A.html"),
-        ("template_uids.json", "part06/chapter_A.html"),
+        ("e1_1.json", "chtml/part15/chapter_E.html"),
+        ("e1_1a.json", "chtml/part15/chapter_E.html"),
+        ("e3_10_1.json", "chtml/part15/sect_E.3.10.html"),
+        ("data_dictionary.json", "chtml/part06/chapter_6.html"),
+        ("uid_values.json", "chtml/part06/chapter_A.html"),
+        ("frames_of_reference.json", "chtml/part06/chapter_A.html"),
+        ("context_group_uids.json", "chtml/part06/chapter_A.html"),
+        ("template_uids.json", "chtml/part06/chapter_A.html"),
+        ("iod_modules.json", "html/part03.html"),
+        ("module_attributes.json", "html/part03.html"),
     ],
 )
 def test_each_table_is_generated_from_the_pinned_edition(name, source):

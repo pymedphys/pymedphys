@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Extract titled tables from NEMA's chtml pages of the DICOM standard."""
+"""Extract titled tables from NEMA's HTML pages of the DICOM standard.
+
+NEMA publishes each part both as chtml pages, one per section, and as a single
+HTML page. Both mark up tables in the same way.
+"""
 
 from __future__ import annotations
 
 import collections
 import dataclasses
 import re
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING
 
@@ -51,12 +55,16 @@ class HtmlTable:
         Every other row, including empty rows.
     has_merged_cells : bool
         Whether any cell spans more than one row or column.
+    section : str
+        The number of the last section whose anchor comes before the table,
+        such as ``"C.7.1.1"``, or ``""`` if none does.
     """
 
     title: str
     header: tuple[str, ...]
     rows: tuple[tuple[str, ...], ...]
     has_merged_cells: bool
+    section: str = ""
 
 
 def _normalise(text: str) -> str:
@@ -66,13 +74,15 @@ def _normalise(text: str) -> str:
 @dataclasses.dataclass
 class _Cell:
     is_header: bool
-    merged: bool
+    rowspan: int
+    colspan: int
     parts: list[str] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
 class _Table:
     title: str
+    section: str
     rows: list[list[_Cell]] = dataclasses.field(default_factory=list)
     cell: _Cell | None = None
 
@@ -86,7 +96,7 @@ def _span(attrs: dict[str, str | None], name: str) -> int:
 
 
 class _TableCollector(HTMLParser):
-    """Collect every table in document order, with the title before it."""
+    """Collect every table in document order, with its title and section."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -94,16 +104,20 @@ class _TableCollector(HTMLParser):
         self._open: list[_Table] = []
         self._title_parts: list[str] | None = None
         self._pending_title = ""
+        self._section = ""
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
         if tag == "table":
-            table = _Table(title=self._pending_title)
+            table = _Table(title=self._pending_title, section=self._section)
             self._pending_title = ""
             self._open.append(table)
             self.tables.append(table)
         elif not self._open:
-            if tag == "p":
+            anchor = attributes.get("id") or ""
+            if tag == "a" and anchor.startswith("sect_"):
+                self._section = anchor.removeprefix("sect_")
+            elif tag == "p":
                 # A title applies to the next table only if no other
                 # paragraph comes between them.
                 self._pending_title = ""
@@ -115,10 +129,11 @@ class _TableCollector(HTMLParser):
             table = self._open[-1]
             if not table.rows:
                 table.rows.append([])
-            merged = (
-                _span(attributes, "colspan") != 1 or _span(attributes, "rowspan") != 1
+            table.cell = _Cell(
+                is_header=tag == "th",
+                rowspan=_span(attributes, "rowspan"),
+                colspan=_span(attributes, "colspan"),
             )
-            table.cell = _Cell(is_header=tag == "th", merged=merged)
             table.rows[-1].append(table.cell)
         elif tag == "br" and self._open[-1].cell is not None:
             self._open[-1].cell.parts.append(" ")
@@ -141,13 +156,41 @@ class _TableCollector(HTMLParser):
             self._title_parts.append(data)
 
 
-def extract_tables(page: str) -> list[HtmlTable]:
-    """Return every table on a chtml page, in document order.
+def _expanded(rows: list[list[_Cell]]) -> list[tuple[str, ...]]:
+    """Return each row's text with every merged cell's text in each place it covers."""
+    grid: dict[tuple[int, int], str] = {}
+    for number, row in enumerate(rows):
+        column = 0
+        for cell in row:
+            while (number, column) in grid:
+                column += 1
+            text = _normalise("".join(cell.parts))
+            for below in range(cell.rowspan):
+                for across in range(cell.colspan):
+                    grid[number + below, column + across] = text
+            column += cell.colspan
+    width: dict[int, int] = collections.defaultdict(int)
+    for number, column in grid:
+        width[number] = max(width[number], column + 1)
+    # A place no cell covers, as in a row whose cells stop short of a cell
+    # spanning down from a row above, is empty.
+    return [
+        tuple(grid.get((number, column), "") for column in range(width[number]))
+        for number in range(len(rows))
+    ]
+
+
+def extract_tables(page: str, *, expand_spans: bool = False) -> list[HtmlTable]:
+    """Return every table on a page, in document order.
 
     Parameters
     ----------
     page : str
         The decoded HTML of one page.
+    expand_spans : bool, optional
+        Repeat the text of a cell that spans several rows or columns in each
+        place it covers, so every row of a regular table has one cell per
+        column. By default a merged cell appears once, in its first row.
 
     Returns
     -------
@@ -162,30 +205,45 @@ def extract_tables(page: str) -> list[HtmlTable]:
     tables = []
     for table in collector.tables:
         rows = table.rows
-        texts = [tuple(_normalise("".join(cell.parts)) for cell in row) for row in rows]
+        texts = (
+            _expanded(rows)
+            if expand_spans
+            else [
+                tuple(_normalise("".join(cell.parts)) for cell in row) for row in rows
+            ]
+        )
         has_header = bool(rows and rows[0]) and all(cell.is_header for cell in rows[0])
         tables.append(
             HtmlTable(
                 title=table.title,
                 header=texts[0] if has_header else (),
                 rows=tuple(texts[1:] if has_header else texts),
-                has_merged_cells=any(cell.merged for row in rows for cell in row),
+                has_merged_cells=any(
+                    (cell.rowspan, cell.colspan) != (1, 1)
+                    for row in rows
+                    for cell in row
+                ),
+                section=table.section,
             )
         )
     return tables
 
 
-def select_table(tables: list[HtmlTable], label: str) -> HtmlTable:
+def select_table(
+    tables: Sequence[HtmlTable], label: str, *, allow_merged: bool = False
+) -> HtmlTable:
     """Return the one table whose title starts with ``label``.
 
     Parameters
     ----------
-    tables : list of HtmlTable
+    tables : sequence of HtmlTable
         Tables from :func:`extract_tables`.
     label : str
         The table's label as the standard numbers it, such as
         ``"Table E.1-1"``. It must be followed in the title by a full stop or
         a space, so ``"Table E.1-1"`` does not select ``"Table E.1-1a"``.
+    allow_merged : bool, optional
+        Accept a table with merged cells, as extracted with ``expand_spans``.
 
     Returns
     -------
@@ -195,8 +253,8 @@ def select_table(tables: list[HtmlTable], label: str) -> HtmlTable:
     ------
     TableFormatError
         If no table or more than one table has the label, if the table has
-        merged cells, or if a row has a different number of cells from the
-        header.
+        merged cells and ``allow_merged`` is false, or if a row has a
+        different number of cells from the header.
     """
     matches = [
         table
@@ -209,7 +267,7 @@ def select_table(tables: list[HtmlTable], label: str) -> HtmlTable:
         raise TableFormatError(f"{len(matches)} tables titled {label!r}")
 
     table = matches[0]
-    if table.has_merged_cells:
+    if table.has_merged_cells and not allow_merged:
         raise TableFormatError(f"{label} has merged cells, which are not supported")
     if table.header:
         for number, row in enumerate(table.rows, start=1):
