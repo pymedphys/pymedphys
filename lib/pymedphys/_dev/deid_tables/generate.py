@@ -17,14 +17,13 @@
 ``pymedphys dev deid-tables`` runs :func:`generate`. Every source file is
 checked against the SHA-256 digest pinned here before it is parsed, and each
 generated file records the edition, the source digests, a digest of its rows,
-and the acknowledgement that NEMA's copyright policy requires (decision D-001
-of the de-identification design).
+and the acknowledgement "DICOM PS3.15 <edition>, © NEMA" (decision D-001 of
+the de-identification design).
 """
 
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import json
 import os
 import pathlib
@@ -34,13 +33,10 @@ import urllib.error
 from collections.abc import Callable, Mapping
 
 from pymedphys._data.download import download_with_progress
-
-from pymedphys._dev.paths import LIBRARY_PATH
+from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
 
 from . import annex_e, chtml
 from .sources import SourceDigestError, read_verified_source
-
-SCHEMA = "pymedphys-deid-table/1"
 
 # NEMA serves the current edition only under "current". Superseded editions
 # are served from their own directory, apparently unchanged (the archived 2026c
@@ -51,7 +47,7 @@ _SOURCE_URLS = (
     "https://dicom.nema.org/medical/dicom/current/output/chtml/{path}",
 )
 
-DEFAULT_OUTPUT_DIR = LIBRARY_PATH / "_dicom" / "deidentify" / "_standard"
+DEFAULT_OUTPUT_DIR = STANDARD_DIR
 
 
 @dataclasses.dataclass(frozen=True)
@@ -88,6 +84,10 @@ PIN = Pin(
         PinnedSource(
             "part15/chapter_E.html",
             "cb214710fce798ed3688b4cb1d6b2d62ebd254e6946aa3efb3fc14038a41d58d",
+        ),
+        PinnedSource(
+            "part15/sect_E.3.10.html",
+            "101ac4aedd9d45fba8adaa35cab22820d6c0cbda82cdf51d7456f4bf3dafe3a0",
         ),
     ),
 )
@@ -131,18 +131,35 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
         }
 
 
-def _content_sha256(rows: list[dict[str, object]]) -> str:
-    canonical = json.dumps(
-        rows, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+_CHAPTER_E = "part15/chapter_E.html"
+_SECTION_E3_10 = "part15/sect_E.3.10.html"
+
+
+def _select(pages: Mapping[str, bytes], source: str, label: str) -> chtml.HtmlTable:
+    return chtml.select_table(
+        chtml.extract_tables(pages[source].decode("utf-8")), label
     )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _document(
+    pin: Pin, source: str, label: str, rows: list[dict[str, object]]
+) -> dict[str, object]:
+    """Return a table's document, recording only the page it came from."""
+    digests = {pinned.path: pinned.sha256 for pinned in pin.sources}
+    return {
+        "schema": SCHEMA,
+        "table": f"PS3.15 {label}",
+        "edition": pin.edition,
+        "acknowledgement": f"DICOM PS3.15 {pin.edition}, © NEMA",
+        "sources": [{"path": source, "sha256": digests[source]}],
+        "content_sha256": content_sha256(rows),
+        "rows": rows,
+    }
 
 
 def _table_e1_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
-    source = "part15/chapter_E.html"
-    tables = chtml.extract_tables(pages[source].decode("utf-8"))
     attributes = annex_e.parse_table_e1_1(
-        chtml.select_table(tables, annex_e.TABLE_E1_1)
+        _select(pages, _CHAPTER_E, annex_e.TABLE_E1_1)
     )
     rows: list[dict[str, object]] = [
         {
@@ -155,21 +172,39 @@ def _table_e1_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
         }
         for attribute in attributes
     ]
-    digests = {pinned.path: pinned.sha256 for pinned in pin.sources}
-    return {
-        "schema": SCHEMA,
-        "table": "PS3.15 Table E.1-1",
-        "edition": pin.edition,
-        "acknowledgement": f"DICOM PS3.15 {pin.edition}, © NEMA",
-        "sources": [{"path": source, "sha256": digests[source]}],
-        "content_sha256": _content_sha256(rows),
-        "rows": rows,
-    }
+    return _document(pin, _CHAPTER_E, annex_e.TABLE_E1_1, rows)
+
+
+def _table_e1_1a(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    codes = annex_e.parse_table_e1_1a(_select(pages, _CHAPTER_E, annex_e.TABLE_E1_1A))
+    rows: list[dict[str, object]] = [
+        {"code": action.code, "description": action.description} for action in codes
+    ]
+    return _document(pin, _CHAPTER_E, annex_e.TABLE_E1_1A, rows)
+
+
+def _table_e3_10_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    attributes = annex_e.parse_table_e3_10_1(
+        _select(pages, _SECTION_E3_10, annex_e.TABLE_E3_10_1)
+    )
+    rows: list[dict[str, object]] = [
+        {
+            "tag": attribute.tag,
+            "private_creator": attribute.private_creator,
+            "vr": attribute.vr,
+            "vm": attribute.vm,
+            "meaning": attribute.meaning,
+        }
+        for attribute in attributes
+    ]
+    return _document(pin, _SECTION_E3_10, annex_e.TABLE_E3_10_1, rows)
 
 
 # Each generated file and the function that builds its document.
 _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "e1_1.json": _table_e1_1,
+    "e1_1a.json": _table_e1_1a,
+    "e3_10_1.json": _table_e3_10_1,
 }
 
 

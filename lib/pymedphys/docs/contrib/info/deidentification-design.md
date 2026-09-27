@@ -1,6 +1,6 @@
 # DICOM de-identification design
 
-This document specifies the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, and records the decisions behind it. Nothing described here is implemented yet. The current tools share one engine in `lib/pymedphys/_dicom/anonymise/`, do not implement a DICOM confidentiality profile, and have the limitations listed in [DICOM de-identification](../../users/background/dicom-deidentification.md).
+This document specifies the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, and records the decisions behind it. Only the generated rule tables and the requirements register exist so far; the register records what is implemented. The current tools share one engine in `lib/pymedphys/_dicom/anonymise/`, do not implement a DICOM confidentiality profile, and have the limitations listed in [DICOM de-identification](../../users/background/dicom-deidentification.md).
 
 Pull requests for this work are listed in the [tracking issue](https://github.com/pymedphys/pymedphys/issues/2075). A pull request that changes a decision updates this document, the user documentation, and any affected code in the same change.
 
@@ -45,7 +45,32 @@ In code, command-line output, reports, and documentation:
 | Validation | NCI MIDI synthetic-identifier datasets, answer keys, and validation script (D-018); `dciodvfy` and `dcentvfy` from dicom3tools, which check object validity, not privacy |
 | Governance context (documentation only) | GDPR Article 4(5) and Recital 26; CJEU C-413/23 P *EDPS v SRB* (4 September 2025); UK ICO anonymisation guidance; Privacy Act 1988 (Cth) and OAIC de-identification guidance; ISO 25237:2017 |
 
-The requirements register records the MIDI best practices alongside the standard's "shall" statements, so that each requirement traces to the code and tests that satisfy it. Where this document relies on an informative Note in PS3.15 or on a MIDI recommendation, the choice it supports is a design decision, not a conformance requirement. Browsing links follow the current edition; the table generator uses the pinned publication (D-001).
+Where this document relies on an informative Note in PS3.15 or on a MIDI recommendation, the choice it supports is a design decision, not a conformance requirement. Browsing links follow the current edition; the table generator uses the pinned publication (D-001).
+
+## Requirements register
+
+The requirements register traces the standard's "shall" statements and the MIDI best practices to the decisions, code, and tests that satisfy them. It is `lib/pymedphys/_dicom/deidentify/requirements.toml`, curated by hand, and records:
+
+- every paragraph of PS3.15 Annex E in the pinned edition that contains "shall", outside Notes and tables, verbatim with any list it introduces and a link to the paragraph;
+- the 18 best practices of MIDI §1.6, summarised in PyMedPhys's words.
+
+Like the generated tables, the file carries the attribution "DICOM PS3.15 2026d, © NEMA" (D-001).
+
+Identifiers are stable and never reused. `PS3.15-E.1.1-01` numbers the paragraphs of a section in the standard's order, and `MIDI-BP-01` to `MIDI-BP-18` follow the report's numbering. Each entry cites the decisions that address it and has one of these statuses:
+
+| Status | Meaning | Entry also records |
+| --- | --- | --- |
+| `planned` | In scope, not yet implemented | The milestone that completes it |
+| `partial` | Partly implemented | Modules and tests so far, what remains, and the milestone that completes it |
+| `implemented` | Met for the supported scope | Modules and the tests that show it |
+| `out-of-scope` | Not supported, such as an Option that Scope excludes | A note saying why |
+| `not-applicable` | Outside PyMedPhys's role, such as re-identification | A note saying why |
+
+- A pull request that implements part of a requirement updates its entry in the same change.
+- `pymedphys._dicom.deidentify.requirements.load_requirements` rejects malformed or inconsistent entries, such as an implemented requirement without tests or an exclusion without a note. Tests check that every cited decision and module exists, that pytest collects every cited test, and that the register follows the edition of the generated tables.
+- A new edition updates the register with the tables: add paragraphs, update changed text, and remove deleted paragraphs without reusing their identifiers.
+- Normative text without "shall", such as the paragraphs after Table E.1-1a on actions for Sequences and on Options overriding the Profile, gets entries when the engine implements it.
+- The traceability matrix for each release (D-018) is generated from the register.
 
 ## Architecture
 
@@ -105,11 +130,13 @@ These are the active design decisions, not statements that the code implements t
 
 - **Decision.**
   - A development command generates the L1 tables from the pinned PS3.15 edition, currently 2026d. It downloads the published HTML and DocBook XML, verifies each file's SHA-256 against the pinned digest, and parses them with `html.parser` and `xml.etree.ElementTree`, with each Bandit `nosec` justified as the security policy requires. It records the edition, the source digests, and a digest of the generated content.
-  - The repository keeps the generated tables, not the standard's source files. Each generated file, and the package's licence notices, acknowledge the source as "DICOM PS3.x, © NEMA" for each part used.
+  - The repository and the package keep the generated tables, not the standard's source files. Each generated file carries the copyright attribution `DICOM PS3.x <edition>, © NEMA`, such as "DICOM PS3.15 2026d, © NEMA".
+  - A loader reads each table, checks each row's fields, types, and actions, and rejects a table whose rows no longer match the digest recorded in the file. This catches a table edited without updating that digest; it does not authenticate the file.
+  - Table E.1-1a must define exactly the action codes the engine implements, so a new edition that adds or removes a code fails generation until the engine handles it.
   - Table E.3.4-1 is not generated until the Clean Structured Content Option is designed.
   - A monthly workflow opens an issue when a new edition would change the generated tables. Generated files are never edited by hand.
-- **Rationale.** The legacy keyword list was transcribed by hand and has drifted: it has 217 entries, drawn from Supplement 142, while Table E.1-1 in 2026d has 657 rows. The standard is revised about five times a year. NEMA holds the copyright in the standard, and the DICOM Standards Committee's policies and procedures permit portions of it to be copied, used, published, and distributed in other works when acknowledged as "DICOM Part(s) ___, © NEMA". Table E.3.4-1 also contains SNOMED CT, LOINC, NCDR, NCIt, and UMLS codes, which carry their own terms. The standard library parsers add no dependency and only ever read verified publications, in a development-only tool.
-- **Tests.** Regeneration reproduces the committed tables and digests; a source file with a different digest is rejected; and every generated file carries the acknowledgement.
+- **Rationale.** The legacy keyword list was transcribed by hand and has drifted: it has 217 entries, drawn from Supplement 142, while Table E.1-1 in 2026d has 657 rows. The standard is revised about five times a year. NEMA holds the copyright in the standard, and each table records that attribution. Table E.3.4-1 also contains SNOMED CT, LOINC, NCDR, NCIt, and UMLS codes, which carry their own terms. The standard library parsers add no dependency and only ever read verified publications, in a development-only tool.
+- **Tests.** Regeneration reproduces the committed tables and digests; a source file with a different digest is rejected; a table whose rows differ from their recorded digest, or whose rows have the wrong fields, types, or actions, is rejected; and every generated file carries the copyright attribution.
 
 ### D-002: pydicom 3.0 minimum
 
