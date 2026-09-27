@@ -9,7 +9,7 @@ are additional requirements specific to Claude Code.
 
 ### The `@claude` Workflow
 
-`.github/workflows/claude.yml` runs `anthropics/claude-code-action` when someone with write access mentions `@claude`. Its GitHub token covers contents, issues, and pull requests only.
+`.github/workflows/claude.yml` runs `anthropics/claude-code-action` when an owner, member, or collaborator of the repository mentions `@claude` in an issue, comment, or review. The workflow checks the author's association with the repository, and the action checks that the triggering user has write access. Its GitHub token covers contents, issues, and pull requests only.
 
 - Set the model and any extra tools through `claude_args` (`--model`, `--allowedTools`). Version 1 of the action ignores the old `model` and `allowed_tools` inputs.
 - The workflow adds no tools to the action's defaults: reading, searching, and editing files in the workspace, and committing and pushing through the action's own `git add`, `git commit`, `git rm`, and push wrapper. It cannot run tests or other repository code; CI tests every commit it pushes. When a change needs `uv lock` or `pymedphys dev propagate`, say so in the reply instead of editing the generated files by hand.
