@@ -16,8 +16,8 @@
 
 ``pymedphys.dicom.anonymise`` and experimental pseudonymisation are being
 replaced, but until they are removed they must not write source DICOM values
-or original file paths to logs or the standard streams (decision D-016 in
-``docs/contrib/info/deidentification-design.md``). Each test plants canary
+or original file paths to logs or the standard streams, as the design in
+``docs/contrib/info/deidentification-design.md`` requires. Each test plants canary
 strings in DICOM values and in file and directory names, captures stdout,
 stderr, and the log records that reach the root logger with its level set to
 DEBUG, and checks that no canary appears. A logger with its own level

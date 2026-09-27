@@ -305,8 +305,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112)
 - **[Contributor facing only]** A private module,
   `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
-  Spreadsheet to JSON, the first step towards descriptor cleaning (design
-  decision D-009) and checks of structure names against TG-263. PyMedPhys
+  Spreadsheet to JSON, the first step towards descriptor cleaning
+  and checks of structure names against TG-263. PyMedPhys
   does not include the spreadsheet. The converter maps columns by their header
   text; rejects unknown or missing columns, empty required values, numbers
   where text is expected, names containing whitespace, FMA identifiers that
