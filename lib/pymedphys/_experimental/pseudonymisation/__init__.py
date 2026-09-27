@@ -54,8 +54,7 @@ class PseudonymisationLimitationWarning(UserWarning):
     """Experimental pseudonymisation has known security limitations.
 
     This is not a deprecation warning. No replacement is available yet, so
-    experimental pseudonymisation is not scheduled for removal (decision
-    D-019 in the de-identification design document).
+    experimental pseudonymisation is not scheduled for removal.
     """
 
 

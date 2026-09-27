@@ -19,8 +19,7 @@ Radiation Oncology Nomenclature Resource Page. PyMedPhys does not include the
 workbook: :func:`read_spreadsheet` reads a copy the user has downloaded, and
 :func:`to_json` writes it as JSON that records its source, the source file's
 SHA-256, and AAPM's attribution. :func:`load_json` reads that JSON back and
-rejects a file edited without updating its content digest (design decision
-D-009).
+rejects a file edited without updating its content digest.
 
 The conversion keeps each entry as published, with three exceptions. Leading
 and trailing whitespace is removed from every cell. The "N Characters" column
