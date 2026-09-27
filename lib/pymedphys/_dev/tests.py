@@ -128,8 +128,14 @@ def _import_and_print(python_executable, import_paths):
                 stderr=subprocess.STDOUT,
             )
         except subprocess.CalledProcessError as e:
-            failures += 1
             error_text = e.output.decode()
+
+            # A test module that calls pytest.importorskip opts out this way
+            # when an optional dependency is missing.
+            if re.search(r"^Skipped: ", error_text, re.MULTILINE):
+                continue
+
+            failures += 1
 
             match = re.search("ModuleNotFoundError: No module named '(.*)'", error_text)
             try:

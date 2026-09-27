@@ -66,6 +66,25 @@ def test_import_failures_are_counted(monkeypatch, capsys):
     assert "When importing pymedphys._broken" in output
 
 
+def test_test_modules_that_skip_are_not_failures(monkeypatch):
+    # pytest.importorskip raises Skipped when an optional dependency is
+    # missing, which is how a test module opts out.
+    monkeypatch.setattr(
+        dev_tests.subprocess,
+        "check_output",
+        _fake_imports(
+            {
+                "pymedphys.tests.test_gui": (
+                    "Skipped: could not import 'streamlit': "
+                    "No module named 'streamlit'\n"
+                )
+            }
+        ),
+    )
+
+    assert import_and_print("python", ["pymedphys.tests.test_gui"]) == 0
+
+
 def test_clean_imports_pass(monkeypatch):
     monkeypatch.setattr(dev_tests.subprocess, "check_call", lambda *_, **__: 0)
     monkeypatch.setattr(dev_tests, "_import_and_print", lambda *_: 0)
