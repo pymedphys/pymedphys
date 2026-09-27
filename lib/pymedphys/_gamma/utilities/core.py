@@ -15,28 +15,21 @@
 from pymedphys._imports import numpy as np
 
 
-def create_point_combination(coords):
-    mesh_index = np.meshgrid(*coords)
-    point_combination = np.reshape(np.array(mesh_index), (3, -1))
+def calculate_pass_rate(gamma_array) -> float:
+    """Percentage of evaluated points that pass, with gamma <= 1.
 
-    return point_combination
+    NaN marks points that were not evaluated, so they are not counted.
+    Raises ``ValueError`` if no point was evaluated.
+    """
+    gamma_array = np.asarray(gamma_array, dtype=float)
+    valid_gamma = gamma_array[~np.isnan(gamma_array)]
+    if valid_gamma.size == 0:
+        raise ValueError(
+            "No gamma values were evaluated, so there is no pass rate. Check "
+            "the lower dose cutoff and random_subset."
+        )
 
-
-def convert_to_ravel_index(points):
-    ravel_index = (
-        points[2, :]
-        + (points[2, -1] + 1) * points[1, :]
-        + (points[2, -1] + 1) * (points[1, -1] + 1) * points[0, :]
-    )
-
-    return ravel_index
-
-
-def calculate_pass_rate(gamma_array):
-    valid_gamma = gamma_array[np.invert(np.isnan(gamma_array))]
-    percent_pass = 100 * np.sum(valid_gamma < 1) / len(valid_gamma)
-
-    return percent_pass
+    return float(100 * np.count_nonzero(valid_gamma <= 1) / valid_gamma.size)
 
 
 def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evaluation):

@@ -30,6 +30,7 @@ from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
 
 import pymedphys
+from pymedphys._gamma.utilities import calculate_pass_rate
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc
 
@@ -225,11 +226,11 @@ def plot_gamma_hist(gamma, percent, dist):
     valid_gamma = gamma[~np.isnan(gamma)]
 
     plt.hist(valid_gamma, 50, density=True)
-    pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
+    percent_pass = calculate_pass_rate(gamma)
 
     plt.title(
         "Local Gamma ({}%/{}mm) | Percent Pass: {:.2f} % | Mean Gamma: {:.2f} | Max Gamma: {:.2f}".format(
-            percent, dist, pass_ratio * 100, np.mean(valid_gamma), np.max(valid_gamma)
+            percent, dist, percent_pass, np.mean(valid_gamma), np.max(valid_gamma)
         )
     )
 

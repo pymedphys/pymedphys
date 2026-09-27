@@ -49,6 +49,7 @@ def gamma_shell(
     ram_available=DEFAULT_RAM,
     quiet=None,
     interp_algo="pymedphys",
+    random_state=None,
 ):
     """Compare two dose grids with the gamma index.
 
@@ -127,6 +128,10 @@ def gamma_shell(
     interp_algo : {"pymedphys", "scipy"}, optional
         Interpolation implementation. Defaults to "pymedphys". The "scipy"
         option uses scipy.interpolate.RegularGridInterpolator.
+    random_state : int or numpy.random.Generator, optional
+        Seed or generator that selects the ``random_subset``, so the subset
+        can be reproduced. Defaults to None, which uses NumPy's global random
+        state as before, so :func:`numpy.random.seed` still applies.
 
     Returns
     -------
@@ -181,6 +186,7 @@ def gamma_shell(
         ram_available,
         quiet,
         interp_algo,
+        random_state,
     )
 
     if options.local_gamma:
@@ -458,6 +464,7 @@ class GammaInternalFixedOptions:
         ram_available=None,
         quiet=None,
         interp_algo="pymedphys",
+        random_state=None,
     ):
         if max_gamma is None:
             max_gamma = np.inf
@@ -513,7 +520,12 @@ class GammaInternalFixedOptions:
         if random_subset is not None:
             to_calc_index = np.where(reference_points_to_calc)[0]
 
-            np.random.shuffle(to_calc_index)
+            if random_state is None:
+                np.random.shuffle(to_calc_index)
+            else:
+                to_calc_index = np.random.default_rng(random_state).permutation(
+                    to_calc_index
+                )
             random_subset_to_calc = np.full_like(
                 reference_points_to_calc, False, dtype=bool
             )
