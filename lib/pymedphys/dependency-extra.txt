@@ -67,6 +67,7 @@ all = [
     'types-tabulate',
     'types-toml',
     'watchdog',
+    'xlrd',
     'xmltodict',
 ]
 cli = [
@@ -153,6 +154,7 @@ tests = [
     'shapely',
     'toml',
     'tqdm',
+    'xlrd',
 ]
 user = [
     'altair',
@@ -189,5 +191,6 @@ user = [
     'tqdm',
     'trio-asyncio',
     'watchdog',
+    'xlrd',
     'xmltodict',
 ]
