@@ -15,7 +15,7 @@ This project adheres to
 ### New features and enhancements
 
 - PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
-- The interpolation comparison notebook compares PyMedPhys with SciPy's `RegularGridInterpolator`. It no longer benchmarks EconForge's `interpolation`, whose latest release, 2.2.7 from July 2024, cannot be imported on Python 3.13 or later. The interpolation reference page links to the notebook, whose plot every documentation build regenerates, instead of showing a saved benchmark image. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- The interpolation comparison notebook compares PyMedPhys with SciPy's `RegularGridInterpolator`, and the documentation dependencies no longer include EconForge's `interpolation`. The reference page keeps the earlier benchmark image, labelled as a historical result, and links to the executable comparison. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - New documentation page,
   [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html),
   explaining de-identification, pseudonymisation, and anonymisation, what a
