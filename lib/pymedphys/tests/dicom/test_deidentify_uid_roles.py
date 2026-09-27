@@ -20,6 +20,7 @@ import re
 from pymedphys._imports import hypothesis, pytest, tomlkit
 
 from pymedphys._dicom.deidentify import (
+    attribute_roles,
     codes,
     keys,
     standard,
@@ -104,7 +105,7 @@ def test_attribute_roles(keyword, role):
 
 
 def test_an_attribute_without_a_role_is_rejected():
-    with pytest.raises(uid_roles.UIDRoleError, match="no role"):
+    with pytest.raises(attribute_roles.RoleError, match="no role"):
         uid_roles.load_uid_roles().role("(0010,0010)")
 
 
@@ -143,7 +144,7 @@ def test_a_malformed_roles_file_is_rejected(tmp_path, change, message):
     document = _document()
     change(document)
 
-    with pytest.raises(uid_roles.UIDRoleError, match=re.escape(message)):
+    with pytest.raises(attribute_roles.RoleError, match=re.escape(message)):
         uid_roles.load_uid_roles(_write(tmp_path / "uid_roles.toml", document))
 
 
