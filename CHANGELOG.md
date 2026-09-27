@@ -33,8 +33,8 @@ shows about 28% lower warmed runtime with the PyMedPhys interpolator for a
 13.2-million-point 3D global-gamma case, with unchanged numerical results.
 This is a partial synthetic study on one workstation. The
 [background workstation study](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance-study.html)
-compares both interpolation paths with absolute timings and logarithmic plots,
-with a calibrated two-hour audit and separate synthetic volume examples.
+compares both interpolation paths within two hours, with absolute timings,
+scaling models, repeatability estimates and separate synthetic volume examples.
 
 ### New features and enhancements
 

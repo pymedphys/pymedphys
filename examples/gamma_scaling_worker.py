@@ -27,7 +27,7 @@ def digest_arrays(arrays):
     return digest.hexdigest()
 
 
-def dose_field(axes, shift=None, scale=1.0):
+def dose_field(axes, shift=None, scale=1.0, width_scale=1.0):
     """Sample one continuous Gaussian-blurred box model at any resolution.
 
     Nominal dose scale is 2 Gy; the fixed normalisation is independent of the
@@ -46,6 +46,7 @@ def dose_field(axes, shift=None, scale=1.0):
         for dimension, (axis, half, origin, offset) in enumerate(
             zip(axes, widths, centre, shift)
         ):
+            half, origin = half * width_scale, origin * width_scale
             coordinate = axis - origin - offset
             factor = 0.5 * (
                 erf((coordinate + half) / (6 * np.sqrt(2)))
@@ -107,7 +108,29 @@ def inputs(config):
     ndim = config["dimension"]
     extents = (50, 70, 70) if ndim == 3 else (100, 100)
     scenario = config.get("scenario")
-    if scenario:
+    geometry = config.get("model_geometry")
+    if geometry:
+        # Padding retains every original grid coordinate and the same spacing.
+        axes = tuple(
+            (np.arange(n, dtype=np.float64) - (n - 1) / 2) * (2 * extent / (base - 1))
+            for n, base, extent in zip(
+                config["shape"], geometry["base_shape"], (60, 80, 80)
+            )
+        )
+        reference = dose_field(axes, width_scale=geometry["width_scale"])
+        difficult = geometry["difficulty"] == "hard"
+        evaluation = dose_field(
+            axes,
+            shift=(4, -5, 2) if difficult else (0.375, -0.5, 0.1875),
+            scale=1.08 if difficult else 1.005,
+            width_scale=geometry["width_scale"],
+        )
+        if any(
+            np.any(np.take(reference, [0, -1], axis=axis) >= 0.2)
+            for axis in range(ndim)
+        ):
+            raise ValueError("Diagnostic reference field reaches the grid boundary")
+    elif scenario:
         specification = SCENARIOS[scenario]
         if tuple(config["shape"]) != specification["shape"]:
             raise ValueError(
@@ -143,8 +166,10 @@ def inputs(config):
         )
     if config["profile"] == "cap2":
         options["max_gamma"] = 2
+    if geometry:
+        options["max_gamma"] = 2
     if scenario:
-        options["distance_mm_threshold"] = 2
+        options["distance_mm_threshold"] = config.get("distance_mm_threshold", 2)
     return axes, reference, evaluation, options
 
 
@@ -203,6 +228,7 @@ def main():
                 "gamma_sha256": digest_arrays((gamma,)),
                 "repeat_equality": True,
                 "options": options,
+                "model_geometry": config.get("model_geometry"),
                 "origins": origins,
                 "python": sys.version,
                 "platform": platform.platform(),

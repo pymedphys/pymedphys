@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 
 import gamma_scaling as study
+import gamma_uncertainty as uncertainty
 from gamma_performance import checked_checkout, machine_description
 from gamma_scaling_worker import SCENARIOS, scenario_field
 
@@ -192,6 +193,9 @@ def main():
     parser.add_argument("--previous-ref", required=True)
     parser.add_argument("--current-ref", required=True)
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument(
+        "--design", choices=("coverage", "uncertainty"), default="coverage"
+    )
     parser.add_argument("--worker-timeout", type=float, default=1200)
     parser.add_argument("--deadline", type=float, required=True)
     parser.add_argument("--stop-file", type=Path)
@@ -217,6 +221,7 @@ def main():
     if len(set(revisions.values())) != 2:
         raise ValueError("Choose two distinct source revisions")
     config = {
+        "audit_design": args.design,
         "revisions": revisions,
         "dimensions": [2, 3],
         "profiles": ["global", "cap2", "local", *SCENARIOS],
@@ -247,9 +252,17 @@ def main():
                 "gamma_scaling_worker.py",
                 "gamma_scaling_process.py",
                 "gamma_performance.py",
+                "gamma_uncertainty.py",
+                "gamma_uncertainty_report.py",
             )
         },
     }
+    if args.design == "uncertainty":
+        config.update(
+            profiles=["global", "diagnostic", *SCENARIOS],
+            round_indices=list(range(8)),
+            cases={},
+        )
     host = {
         "processor": machine_description(),
         "platform": platform.platform(),
@@ -271,12 +284,20 @@ def main():
     result = empty_result(config, host, cloud)
     if args.resume:
         result = json.loads((output / "results.json").read_text(encoding="utf-8"))
-        for key in config.keys() - {"plan", "scales"}:
+        derived = {"plan", "scales"}
+        if args.design == "uncertainty":
+            derived.add("cases")
+        for key in config.keys() - derived:
             if result["config"][key] != config[key]:
                 raise ValueError(f"Resume requires the original {key}")
         if result["host"] != host or result["cloud"] != cloud:
             raise ValueError("Resume requires the original host")
         config = result["config"]
+        if args.design == "uncertainty" and config["plan"]:
+            selections = json.loads(
+                (output / "calibration.json").read_text(encoding="utf-8")
+            )["selections"]
+            uncertainty.validate_plan(config, selections)
         result.pop("stop_reason", None)
     study.write_json(output / "results.json", result)
     with tempfile.TemporaryDirectory(prefix="pymedphys-audit-") as directory:
@@ -288,7 +309,10 @@ def main():
                 roots[version] = root
                 checked_checkout(root, revision)
             if not config["plan"]:
-                selections = calibrate(
+                calibration = (
+                    uncertainty.calibrate if args.design == "uncertainty" else calibrate
+                )
+                selections = calibration(
                     config, roots, output, host, cloud, args.stop_file, deadline
                 )
                 if selections is None:
@@ -298,7 +322,10 @@ def main():
                         else "time_budget"
                     )
                 else:
-                    config["plan"] = audit_plan(selections)
+                    if args.design == "uncertainty":
+                        config["plan"], config["cases"] = uncertainty.design(selections)
+                    else:
+                        config["plan"] = audit_plan(selections)
                     config["scales"] = sorted({g[2] for g in config["plan"]})
                     result["config"] = config
                     study.write_json(
@@ -306,10 +333,18 @@ def main():
                         {
                             "plan": config["plan"],
                             "cases": config["cases"],
-                            "routine_groups": 72,
-                            "scenario_groups": 2,
-                            "maximum_measurement_seconds": maximum_measurement_seconds(),
-                            "calibration_target_seconds": CALIBRATION_TARGET,
+                            "design": args.design,
+                            "routine_groups": sum(
+                                g[1] not in SCENARIOS for g in config["plan"]
+                            ),
+                            "scenario_groups": sum(
+                                g[1] in SCENARIOS for g in config["plan"]
+                            ),
+                            "maximum_measurement_seconds": (
+                                uncertainty.maximum_measurement_seconds()
+                                if args.design == "uncertainty"
+                                else maximum_measurement_seconds()
+                            ),
                         },
                     )
                     study.write_json(output / "results.json", result)
@@ -322,15 +357,21 @@ def main():
                 git("worktree", "remove", "--force", str(root))
     result["routine_complete"] = bool(config["plan"]) and all(
         f"{study.case_id(d, p, s)}-round-{r}" in result["comparisons"]
-        for d, p, s, r in config["plan"][:72]
+        for d, p, s, r in config["plan"]
+        if p not in SCENARIOS
     )
     study.validate_records(result)
     study.write_json(output / "results.json", result)
     if result["comparisons"]:
-        study.save_report(result, output)
+        if args.design == "uncertainty":
+            from gamma_uncertainty_report import save_report
+
+            save_report(result, output)
+        else:
+            study.save_report(result, output)
         save_scenarios(output)
     print(
-        f"Audit complete: {result['complete']}; routine matrix complete: {result['routine_complete']}; {len(result['comparisons'])}/74 groups verified",
+        f"Audit complete: {result['complete']}; routine matrix complete: {result['routine_complete']}; {len(result['comparisons'])}/{result['expected_groups']} groups verified",
         flush=True,
     )
     return 0

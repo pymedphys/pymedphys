@@ -34,6 +34,8 @@ SOURCE_FILES = (
     "gamma_scaling_worker.py",
     "gamma_scaling_process.py",
     "gamma_performance_audit.py",
+    "gamma_uncertainty.py",
+    "gamma_uncertainty_report.py",
     "gamma_performance.py",
     "gamma-scaling-requirements.txt",
 )
@@ -122,6 +124,10 @@ def bundle(output):
                 "speed-ratios.svg",
                 "audit-scenarios.png",
                 "README.md",
+                "uncertainty.json",
+                "model-coefficients.csv",
+                "uncertainty.png",
+                "uncertainty.svg",
             )
         ]
         paths += list(study.glob("scaling-*.png")) + list(study.glob("scaling-*.svg"))
@@ -232,6 +238,8 @@ def supervise(output):
                 "--round-indices",
                 "0",
             ]
+        else:
+            command += ["--design", config.get("design", "coverage")]
         command += [
             "--resume" if (study / "results.json").exists() else "--output",
             str(study),
@@ -327,7 +335,9 @@ def show_status(output):
         result = json.loads(result_path.read_text(encoding="utf-8"))
         config = result["config"]
         if "plan" in config:
-            expected = len(config["plan"]) or 74
+            expected = len(config["plan"]) or (
+                84 if config.get("audit_design") == "uncertainty" else 74
+            )
         else:
             expected = 1
             for key in ("dimensions", "profiles", "scales", "round_indices"):
@@ -357,6 +367,12 @@ def main():
     parser.add_argument("--previous-ref", default=PREVIOUS)
     parser.add_argument("--current-ref", default="HEAD")
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument(
+        "--design",
+        choices=("coverage", "uncertainty"),
+        default="coverage",
+        help="Coverage across criteria, or repeatability and voxel-count model testing",
+    )
     parser.add_argument("--worker-timeout", type=int, default=14400)
     parser.add_argument(
         "--max-seconds",
@@ -448,6 +464,7 @@ def main():
             "threads": args.threads,
             "worker_timeout": args.worker_timeout,
             "quick": args.quick,
+            "design": args.design,
             "max_seconds": args.max_seconds,
             "deadline_unix": launched + args.max_seconds,
         }

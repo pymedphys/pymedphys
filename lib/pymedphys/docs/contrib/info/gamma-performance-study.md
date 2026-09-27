@@ -6,7 +6,8 @@ seconds, scaling curves and **PyMedPhys speed / SciPy speed**, checks the numeri
 results and packages the evidence. All measurements run on one workstation.
 
 The workflow has a fixed, calibrated scope and a **two-hour overall deadline**.
-It includes a repeated scaling matrix and two larger synthetic volume examples.
+Choose coverage across gamma criteria or a focused audit of runtime-model
+uncertainty. Both include repeated measurements and two larger synthetic volumes.
 “Old/new SciPy” means old/new gamma code using the same SciPy package version.
 
 The [earlier notebook](gamma-performance.ipynb) explains the optimisation.
@@ -55,6 +56,96 @@ variants at small sizes, with one round. It does not exercise the large volume
 examples or support the full audit claim.
 
 ## A fixed scope that fits the budget
+
+### Runtime-model uncertainty: recommended for testing the fitted speed ratios
+
+```console
+python examples/gamma_scaling_background.py --design uncertainty --output gamma-uncertainty-2h
+```
+
+This design addresses three different questions: how much repeated timings
+vary; whether eligible voxel count predicts runtime across sizes; and whether
+the relationship transfers to other synthetic dose distributions. It uses the
+same background launcher, numerical checks, upload ZIP and two-hour watchdog.
+It does not rerun the earlier unbounded sweep.
+
+| Stage | Scope | Maximum allowance |
+| --- | --- | ---: |
+| Calibration | Up to three probes each for 2D, 3D and the diagnostic matrix | 9.5 min |
+| 3D global scaling | Four sizes × eight balanced rounds | 30.7 min |
+| 2D global scaling | Three sizes × four balanced rounds | 8 min |
+| Diagnostic matrix | Two padding levels × two field widths × two mismatch levels × four rounds | 24 min |
+| Larger volumes | SABR-like and prostate/nodal cases, four rounds each | 40 min |
+| Remaining allowance | Setup, checkpointing, reporting, ZIP creation and margin | 7.8 min |
+
+The maximum measurement allowance is 6,730 seconds; table values are rounded.
+Calibration chooses the largest tested size meeting its target: 30 seconds for
+2D/diagnostics or 65 seconds for 3D. Smaller scaling cases divide that nominal
+point count by successive factors of three. The resulting range depends on the
+workstation and can be much smaller than the original long study; this run
+cannot tighten estimates at its largest sizes without measuring them again.
+
+After calibration the plan freezes **84 four-way groups across 17 workloads**,
+or **336 timed calls and 336 full warm-ups**. The core 3D cases run in eight
+rounds; other cases run in four rounds distributed across the study. A fixed
+random seed shuffles workload order within each round, and each four-round
+cycle balances implementation position and immediate predecessor. Calibration
+observations remain separate from the reported measurements.
+
+Each small scaling comparison has a shared 35–100-second limit depending on
+size; diagnostic comparisons have 45 seconds; each larger-volume comparison
+has five minutes. These limits cover all four implementations, full warm-ups
+and checking, including the existing 11-second termination/checkpoint reserve.
+Timeouts remain missing observations. The watchdog and completeness rules
+below apply equally to both designs.
+
+The diagnostic matrix uses the same physical grid spacing at both padding
+levels. Padding extends the field of view by a factor of approximately 1.5
+along each axis while preserving the original coordinates and dose samples.
+The reference field remains below cutoff at every boundary, so padding changes
+total grid voxels without changing eligible voxels. The unpadded extent is
+120 × 160 × 160 mm. Field-width factors 0.35 and 0.65 scale the box half-widths
+and centres while retaining the 6 mm Gaussian smoothing width. They change
+eligible count and spatial dose distribution together, rather than isolating
+eligible count perfectly.
+
+The easy evaluation differs by a (0.375, −0.5, 0.1875) mm translation and 0.5%
+dose scaling; the harder one uses (4, −5, 2) mm and 8%. Both use global 3% / 3 mm,
+10% cutoff and gamma capped at 2. This checks how search difficulty changes the
+cost of a given reference volume. It is a computational experiment, not a
+clinical acceptance recommendation.
+
+The SABR-like and prostate/nodal grids retain the dimensions and spacings
+described below. **For this design they use global 3% / 3 mm**, matching the core
+runtime model; the coverage design uses 3% / 2 mm. The report predicts their
+times without including them in the fit. It flags when their eligible counts
+also lie outside the fitted range, so extrapolation is not mistaken for an
+independent test within that range.
+
+The generated `study/README.md` and `uncertainty.json` provide:
+
+- Absolute timings and paired PyMedPhys/SciPy speed ratios, with observed ranges.
+- Affine and proportional runtime models against eligible voxels, and errors
+  from withholding an entire grid size at a time.
+- For eight complete common rounds, exploratory 95% bootstrap intervals for
+  slopes, offsets and slope ratios. Resampling keeps sizes and implementations
+  paired within each round; it does not treat dependent calls as independent.
+- Early-versus-late slope changes to help detect timing drift.
+- Exploratory separate total-grid and eligible-voxel coefficients from the
+  diagnostic matrix, plus prediction errors on the larger volume examples.
+
+The intervals describe repeat-timing uncertainty on this workstation,
+conditional on the measured workloads and exchangeable rounds. They are not
+prediction intervals for arbitrary plans, and four-round cases receive no
+bootstrap interval. Dose-field variation, extrapolation and thermal/load drift
+can dominate a narrow repeat-timing interval. This focused design covers global
+gamma; use the coverage design for local-gamma and capped-global scaling.
+
+Upload **`gamma-uncertainty-2h/gamma-scaling-upload.zip`**. It includes the raw
+checkpoint, all timings, coefficients, figures, frozen plan, runner scripts and
+environment. A screenshot is optional; the ZIP permits independent checking.
+
+### Coverage across criteria: the default design
 
 | Stage | Scope | Maximum allowance |
 | --- | --- | ---: |

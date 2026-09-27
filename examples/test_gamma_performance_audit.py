@@ -133,6 +133,55 @@ class AuditTests(unittest.TestCase):
         self.assertTrue(np.isfinite(pelvis).all())
         self.assertTrue((pelvis >= 0).all())
 
+    def test_verification_timeout_does_not_abandon_later_groups(self):
+        config = {
+            "plan": [[2, "global", 0.1, r] for r in range(2)],
+            "threads": 1,
+            "worker_timeout": 60,
+            "ram_bytes": 1024,
+            "repeats": 1,
+            "revisions": {"previous": "old", "current": "new"},
+            "comparison_seconds": 45,
+        }
+        result = audit.empty_result(config, {}, {})
+        checks = []
+
+        def worker(command, *, timeout, **_):
+            if "--compare-arrays" in command:
+                checks.append(command)
+                raise subprocess.TimeoutExpired(command, timeout)
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                json.dumps(
+                    {
+                        "numba_threads": 1,
+                        "shape": list(study.shape_for(2, 0.1)),
+                        "finite_points": 1,
+                        "eligible_points": 1,
+                        "times": [0.1],
+                        "warmup_seconds": 0.1,
+                        "input_sha256": "same",
+                        "versions": {},
+                    }
+                ),
+            )
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            with (
+                patch("gamma_scaling.run_command", side_effect=worker),
+                patch("gamma_scaling.checked_checkout"),
+            ):
+                study.run_study(
+                    config, {"previous": output, "current": output}, output, result
+                )
+        self.assertEqual(len(checks), 2)
+        self.assertEqual(len(result["records"]), 8)
+        self.assertEqual(len(result["incomplete_groups"]), 2)
+        self.assertFalse(result["comparisons"])
+        self.assertNotIn("stop_reason", result)
+
 
 if __name__ == "__main__":
     unittest.main()

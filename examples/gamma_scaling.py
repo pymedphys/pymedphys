@@ -326,7 +326,9 @@ def run_study(config, roots, output, result, stop_file=None, deadline=None):
                     elif deadline is not None and time.monotonic() >= deadline:
                         result["stop_reason"] = "time_budget"
                     write_json(output / "results.json", result)
-                    return result
+                    if result.get("stop_reason"):
+                        return result
+                    continue
             else:
                 comparison = compare_arrays(paths)
             comparison["wall_seconds"] = time.monotonic() - group_started
