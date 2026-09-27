@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2015 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +16,35 @@
 from pymedphys._imports import numpy as np
 
 
-def calculate_pass_rate(gamma_array) -> float:
-    """Percentage of evaluated points that pass, with gamma <= 1.
+def calculate_pass_rate(gamma) -> float:
+    """The percentage of analysed reference points that pass gamma.
 
-    NaN marks points that were not evaluated, so they are not counted.
-    Raises ``ValueError`` if no point was evaluated.
+    A point passes when its gamma is at most 1. NaN marks reference points
+    that :func:`pymedphys.gamma` did not analyse (below the lower dose
+    cutoff, or not selected by ``random_subset``), so they are left out of
+    both the count and the total.
+
+    Parameters
+    ----------
+    gamma : array_like
+        Gamma values of any shape, as returned by :func:`pymedphys.gamma` for
+        one pair of dose and distance thresholds.
+
+    Returns
+    -------
+    float
+        The pass rate, in percent.
+
+    Raises
+    ------
+    ValueError
+        If no reference point was analysed, so every value is NaN.
     """
-    gamma_array = np.asarray(gamma_array, dtype=float)
-    valid_gamma = gamma_array[~np.isnan(gamma_array)]
+    gamma = np.asarray(gamma, dtype=float)
+    valid_gamma = gamma[~np.isnan(gamma)]
     if valid_gamma.size == 0:
         raise ValueError(
-            "No gamma values were evaluated, so there is no pass rate. Check "
+            "No reference point was analysed, so there is no pass rate. Check "
             "the lower dose cutoff and random_subset."
         )
 

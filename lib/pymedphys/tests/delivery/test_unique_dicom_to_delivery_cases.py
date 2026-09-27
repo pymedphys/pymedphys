@@ -19,7 +19,6 @@
 from pymedphys._imports import pytest
 
 import pymedphys
-from pymedphys._gamma.utilities import calculate_pass_rate
 
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
 MAX_LEAF_GAP = 410
@@ -76,7 +75,7 @@ def test_dicom_trf_comparison(_data_paths):
             **GAMMA_OPTIONS,
         )
 
-        assert calculate_pass_rate(gamma) >= 98
+        assert pymedphys.gamma_pass_rate(gamma) >= 98
 
 
 @pytest.fixture()

@@ -21,6 +21,21 @@ import pymedphys
 from pymedphys._gamma.utilities import calculate_pass_rate
 
 
+def test_pass_rate_is_public():
+    assert pymedphys.gamma_pass_rate is calculate_pass_rate
+
+
+def test_pass_rate_of_a_gamma_calculation():
+    axis = np.arange(5.0)
+    reference = np.array([0.1, 1.0, 1.0, 1.0, 1.0])
+    evaluation = np.array([0.1, 1.0, 1.02, 1.05, 1.0])
+    gamma = pymedphys.gamma(axis, reference, axis, evaluation, 3, 0.1)
+
+    # The first point is below the cutoff; 1.05 fails even at its neighbours.
+    assert np.isnan(gamma[0])
+    assert pymedphys.gamma_pass_rate(gamma) == pytest.approx(75)
+
+
 def test_gamma_of_exactly_one_passes():
     # NaN points were not evaluated, so they are not counted.
     gamma = np.array([0.5, 1.0, np.nextafter(1.0, 2.0), np.nan])
@@ -34,7 +49,7 @@ def test_pass_rate_accepts_any_array_shape():
 
 @pytest.mark.parametrize("gamma", [np.array([np.nan, np.nan]), np.array([])])
 def test_pass_rate_without_evaluated_points_is_rejected(gamma):
-    with pytest.raises(ValueError, match="No gamma values"):
+    with pytest.raises(ValueError, match="No reference point was analysed"):
         calculate_pass_rate(gamma)
 
 

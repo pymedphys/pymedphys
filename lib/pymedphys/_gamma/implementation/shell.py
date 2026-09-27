@@ -145,7 +145,8 @@ def gamma_shell(
         A reference point is analysed when its dose is at or above the lower
         dose cutoff and, if ``random_subset`` is set, it was selected. Every
         analysed reference point has a value; NaN marks only the reference
-        points that were not analysed.
+        points that were not analysed. :func:`pymedphys.gamma_pass_rate`
+        gives the percentage of analysed reference points that pass.
 
         An analysed reference point outside the evaluation grid is compared
         with the evaluation data up to the grid's edge, so it may fail. A
