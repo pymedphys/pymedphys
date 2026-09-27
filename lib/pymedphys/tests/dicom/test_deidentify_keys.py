@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""De-identification keys and their derivations (design decision D-004)."""
+"""De-identification keys and their derivations."""
 
 import base64
 import hashlib

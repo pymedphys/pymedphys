@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Keyed patient pseudonyms (design decision D-005).
+"""Keyed patient pseudonyms.
 
 Every preset replaces Patient ID (0010,0020) and Patient's Name (0010,0010)
-with values derived from the subject's identity under the key (D-004), rather
-than emptying them, so subjects stay separate within a collection and, under a
+with values derived from the subject's identity under the key, rather than
+emptying them, so subjects stay separate within a collection and, under a
 project key, consistent across runs. The values are conspicuously synthetic,
 so a research copy is not mistaken for a clinical record, and they do not
 contain the source identifier.

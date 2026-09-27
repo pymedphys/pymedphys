@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Keyed patient pseudonyms (design decisions D-004 and D-005)."""
+"""Keyed patient pseudonyms."""
 
 import base64
 import hashlib
@@ -162,8 +162,8 @@ def test_a_pseudonym_does_not_contain_the_identifier():
 
 
 def test_a_key_enumerates_low_entropy_identifiers():
-    # Why a project key is as sensitive as a crosswalk (D-004): whoever holds
-    # it can try every plausible medical record number.
+    # Why a project key is as sensitive as a crosswalk: whoever holds it can
+    # try every plausible medical record number.
     secret = pseudonyms.patient_pseudonym(
         FIXTURE_KEY, pseudonyms.SubjectIdentity.from_patient_id("004217")
     )
