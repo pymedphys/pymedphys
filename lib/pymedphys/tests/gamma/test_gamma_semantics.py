@@ -14,8 +14,8 @@
 
 """What gamma reports, which points it excludes, and which inputs it rejects.
 
-NaN in the output means only that a point was not evaluated: it is below the
-lower dose cutoff, or was not selected by ``random_subset``. Every evaluated
+NaN in the output means only that a point was not analysed: it is below the
+lower dose cutoff, or was not selected by ``random_subset``. Every analysed
 point has a gamma value, including points outside the evaluation grid.
 """
 
@@ -125,9 +125,9 @@ def test_points_beyond_max_gamma_fail_at_max_gamma():
     np.testing.assert_array_equal(result, [2, 2])
 
 
-def test_only_unevaluated_points_are_nan():
+def test_only_points_not_analysed_are_nan():
     # Points at |x| = 5 and 6 are beyond max_gamma * DTA = 4.5 mm from the
-    # grid, but are still evaluated and so must still get a value.
+    # grid, but are still analysed and so must still get a value.
     reference_x = np.arange(-8.0, 9.0)
     reference_dose = np.where(np.abs(reference_x) > 6, 0.1, 1.0)
 
@@ -146,9 +146,9 @@ def test_only_unevaluated_points_are_nan():
 
 
 def test_outside_warning_reports_the_count_and_fraction():
-    # Two of the five evaluated points are more than one search step
+    # Two of the five analysed points are more than one search step
     # (0.3 mm) outside the grid; the point below the cutoff is not counted.
-    with pytest.warns(UserWarning, match=r"2 of 5 evaluated reference points \(40"):
+    with pytest.warns(UserWarning, match=r"2 of 5 analysed reference points \(40"):
         pymedphys.gamma(
             np.array([-2.0, -0.2, 0.0, 1.0, 3.0, 9.0]),
             np.array([1.0, 1.0, 1.0, 1.0, 1.0, 0.0]),
