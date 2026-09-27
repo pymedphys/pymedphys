@@ -24,6 +24,7 @@ from pymedphys._imports import numpy as np
 from . import orientation
 from .compat import ensure_transfer_syntax
 from .coords import (
+    _COORDINATE_ACCEPTANCE_TOLERANCE_MM,
     _DoseGridGeometry,
     coords_in_datasets_are_equal,
     xyz_axes_from_dataset,
@@ -396,7 +397,10 @@ def sum_doses_in_datasets(
         )
 
     if not coords_in_datasets_are_equal(datasets):
-        raise ValueError("All dose grids must have perfectly coincident coordinates")
+        raise ValueError(
+            "All dose grids must have coincident coordinates: corresponding voxel "
+            f"centres must agree within {_COORDINATE_ACCEPTANCE_TOLERANCE_MM} mm"
+        )
 
     ds_summed = copy.deepcopy(datasets[0])
 
