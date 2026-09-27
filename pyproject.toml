@@ -26,8 +26,6 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "typing-extensions",
-  "setuptools",
   "tomlkit",
 ]
 
@@ -44,18 +42,14 @@ user = [
   "Pillow",
   "PyYAML",
   "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
-  "anyio",
   "attrs",
-  "dash",
   "dbfread",
-  "dicompyler-core",
   "imageio[tifffile]",
   "keyring",
   "matplotlib",
   "natsort",
   "numba",
   "numpy>=1.26",
-  "packaging",
   "pandas>=2.0",
   "plotly",
   "pydicom>=3.0",
@@ -73,7 +67,6 @@ user = [
   "timeago",
   "toml",
   "tqdm",
-  "trio-asyncio",
   "watchdog",
   "xlrd",
   "xmltodict",
@@ -102,15 +95,8 @@ dev = [
   "types-toml",
 ]
 
-lint = [
-  "astroid",
-  "pylint",
-  "ruff",
-]
-
 tests = [
   "anthropic",
-  "astroid",
   "hypothesis",
   "imageio",
   "matplotlib",
@@ -138,7 +124,6 @@ docs = [
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
-  "networkx",
   "numba",
   "numpy>=1.26",
   "pydicom>=3.0",
@@ -147,14 +132,6 @@ docs = [
   "sphinx-book-theme",
   "toml",
   "tqdm",
-]
-
-doctests = [
-  "pytest",
-  "ruff",
-  "sphinx-book-theme",
-  "tabulate",
-  "toml"
 ]
 
 # comparables = [
@@ -183,21 +160,13 @@ mosaiq = [
     "toml",
 ]
 
-propagate = [
-    "ruff",
-]
-
 all = [
     "Pillow",
     "PyYAML",
     "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
     "anthropic",
-    "anyio",
-    "astroid",
     "attrs",
-    "dash",
     "dbfread",
-    "dicompyler-core",
     "doc8",
     "httpx2",
     "hypothesis",
@@ -208,10 +177,8 @@ all = [
     "matplotlib",
     "mypy",
     "natsort",
-    "networkx",
     "numba",
     "numpy>=1.26",
-    "packaging",
     "pandas>=2.0",
     "plotly",
     "pre-commit",
@@ -245,7 +212,6 @@ all = [
     "toml",
     "tqdm",
     "trio",
-    "trio-asyncio",
     "types-PyYAML",
     "types-python-dateutil",
     "types-requests",
@@ -255,16 +221,6 @@ all = [
     "xlrd",
     "xmltodict",
 ]
-
-[tool.pymedphys.extra-groups]
-# Groups are consumed by propagate_extras(); this table is authoritative.
-# Each value lists EXTRA NAMES defined under [project.optional-dependencies].
-dev   = ["tests", "docs", "cli", "propagate"]
-docs  = ["docs"]
-user  = ["user"]
-
-# Optional aggregations if you want “full” exports in CI, etc.
-full  = ["user", "ai", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
 
 [dependency-groups]
 dev = [
