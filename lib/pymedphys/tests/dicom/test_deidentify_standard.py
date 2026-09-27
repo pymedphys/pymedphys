@@ -640,25 +640,58 @@ def test_a_repeated_tag_or_keyword_is_rejected(tmp_path):
         )
 
 
+def _pydicom_entry(attribute):
+    """Return pydicom's tag, keyword, VR, and VM for an attribute, or None."""
+    if "x" in attribute.tag:
+        # pydicom keeps repeating groups and masked elements in a separate
+        # dictionary, keyed by the tag with its "x" digits: "60xx3000" for
+        # (60xx,3000).
+        mask = attribute.tag[1:5] + attribute.tag[6:10]
+        entry = pydicom.datadict.RepeatersDictionary.get(mask)
+        if entry is None:
+            return None
+        vr, vm, _, _, keyword = entry
+        return attribute.tag, keyword, vr, vm
+    # Placeholders have no keyword to look up.
+    if not attribute.keyword or attribute.keyword not in pydicom.datadict.keyword_dict:
+        return None
+    tag = pydicom.datadict.keyword_dict[attribute.keyword]
+    vr, vm, *_ = pydicom.datadict.DicomDictionary[tag]
+    return f"({tag >> 16:04X},{tag & 0xFFFF:04X})", attribute.keyword, vr, vm
+
+
 @pytest.mark.pydicom
 def test_the_dictionary_agrees_with_pydicom_where_both_define_an_attribute():
     # pydicom bundles an earlier edition without the newest attributes. It
     # writes "NONE" where PS3.6 refers to Note 2, and gives only the first VM
     # of "1-n or 1"; any other difference means a misread row.
-    keywords = pydicom.datadict.keyword_dict
-    differences = set()
-    for attribute in standard.load_data_dictionary().attributes:
-        # Placeholders have no keyword to compare by.
-        if not attribute.keyword or attribute.keyword not in keywords:
-            continue
-        vr, vm, *_ = pydicom.datadict.DicomDictionary[keywords[attribute.keyword]]
-        if (attribute.vr, attribute.vm) != (vr, vm):
-            differences.add((attribute.keyword, attribute.vr, attribute.vm, vr, vm))
+    pairs = [
+        ((attribute.tag, attribute.keyword, attribute.vr, attribute.vm), theirs)
+        for attribute in standard.load_data_dictionary().attributes
+        if (theirs := _pydicom_entry(attribute)) is not None
+    ]
 
-    assert differences == {
-        ("Item", "See Note 2", "1", "NONE", "1"),
-        ("ItemDelimitationItem", "See Note 2", "1", "NONE", "1"),
-        ("SequenceDelimitationItem", "See Note 2", "1", "NONE", "1"),
-        ("GrayLookupTableData", "US or SS or OW", "1-n or 1", "US or SS or OW", "1-n"),
-        ("LUTData", "US or OW", "1-n or 1", "US or OW", "1-n"),
+    # Both of pydicom's dictionaries were matched, so neither was skipped.
+    assert {"x" in ours[0] for ours, _ in pairs} == {False, True}
+    assert {(ours, theirs) for ours, theirs in pairs if ours != theirs} == {
+        (
+            ("(FFFE,E000)", "Item", "See Note 2", "1"),
+            ("(FFFE,E000)", "Item", "NONE", "1"),
+        ),
+        (
+            ("(FFFE,E00D)", "ItemDelimitationItem", "See Note 2", "1"),
+            ("(FFFE,E00D)", "ItemDelimitationItem", "NONE", "1"),
+        ),
+        (
+            ("(FFFE,E0DD)", "SequenceDelimitationItem", "See Note 2", "1"),
+            ("(FFFE,E0DD)", "SequenceDelimitationItem", "NONE", "1"),
+        ),
+        (
+            ("(0028,1200)", "GrayLookupTableData", "US or SS or OW", "1-n or 1"),
+            ("(0028,1200)", "GrayLookupTableData", "US or SS or OW", "1-n"),
+        ),
+        (
+            ("(0028,3006)", "LUTData", "US or OW", "1-n or 1"),
+            ("(0028,3006)", "LUTData", "US or OW", "1-n"),
+        ),
     }
