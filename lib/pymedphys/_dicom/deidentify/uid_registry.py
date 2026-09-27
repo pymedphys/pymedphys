@@ -18,7 +18,7 @@ Annex A registers the UIDs that the standard defines (Table A-1), the
 well-known frames of reference (Table A-2), the UIDs of context groups (Table
 A-3), and the UIDs of HL7 CDA templates (Table A-4). ``pymedphys dev
 deid-tables`` generates each as a file in ``_standard/`` from the pinned
-edition (design decision D-001), and the loaders here check it as
+edition, and the loaders here check it as
 :mod:`~pymedphys._dicom.deidentify.standard` checks the other tables.
 
 :class:`RegistryTableSpec` and :func:`load_registry_table` also serve

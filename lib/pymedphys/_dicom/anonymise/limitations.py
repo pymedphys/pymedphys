@@ -30,6 +30,5 @@ class AnonymisationLimitationWarning(UserWarning):
     """``pymedphys.dicom.anonymise`` has known limitations.
 
     This is not a deprecation warning. No replacement is available yet, so
-    ``pymedphys.dicom.anonymise`` is not scheduled for removal (decision
-    D-019 in the de-identification design document).
+    ``pymedphys.dicom.anonymise`` is not scheduled for removal.
     """

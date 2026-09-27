@@ -36,6 +36,18 @@ def test_pass_rate_of_a_gamma_calculation():
     assert pymedphys.gamma_pass_rate(gamma) == pytest.approx(75)
 
 
+def test_nan_reference_points_left_out_of_gamma_are_not_counted():
+    axis = np.arange(5.0)
+    reference = np.array([np.nan, 1.0, 1.0, 1.0, 1.0])
+    evaluation = np.array([1.0, 1.0, 1.02, 1.05, 1.0])
+    gamma = pymedphys.gamma(
+        axis, reference, axis, evaluation, 3, 0.1, exclude_nan_reference=True
+    )
+
+    assert np.isnan(gamma[0])
+    assert pymedphys.gamma_pass_rate(gamma) == pytest.approx(75)
+
+
 def test_gamma_of_exactly_one_passes():
     # NaN points were not evaluated, so they are not counted.
     gamma = np.array([0.5, 1.0, np.nextafter(1.0, 2.0), np.nan])
@@ -47,7 +59,42 @@ def test_pass_rate_accepts_any_array_shape():
     assert calculate_pass_rate(gamma) == pytest.approx(100 * 2 / 3)
 
 
-@pytest.mark.parametrize("gamma", [np.array([np.nan, np.nan]), np.array([])])
+def test_masked_points_are_not_counted():
+    # Counting the masked 3.0 would give 1 pass in 3 points.
+    gamma = np.ma.masked_array(
+        [0.5, 2.0, 3.0, np.nan], mask=[False, False, True, False]
+    )
+    assert calculate_pass_rate(gamma) == pytest.approx(50)
+
+
+def test_infinite_gamma_fails():
+    assert calculate_pass_rate([0.5, np.inf]) == pytest.approx(50)
+
+
+@pytest.mark.parametrize("negative", [-0.5, -np.inf])
+def test_negative_gamma_is_rejected(negative):
+    with pytest.raises(ValueError, match="Gamma cannot be negative"):
+        calculate_pass_rate([0.5, negative])
+
+
+def test_results_for_several_thresholds_are_rejected():
+    axis = np.arange(5.0)
+    dose = np.ones(5)
+    gamma = pymedphys.gamma(axis, dose, axis, dose, [2, 3], 3)
+
+    with pytest.raises(TypeError, match="one pair of thresholds"):
+        calculate_pass_rate(gamma)
+    assert calculate_pass_rate(gamma[(2, 3)]) == pytest.approx(100)
+
+
+@pytest.mark.parametrize(
+    "gamma",
+    [
+        np.array([np.nan, np.nan]),
+        np.array([]),
+        np.ma.masked_array([0.5, np.nan], mask=[True, False]),
+    ],
+)
 def test_pass_rate_without_evaluated_points_is_rejected(gamma):
     with pytest.raises(ValueError, match="No reference point was analysed"):
         calculate_pass_rate(gamma)

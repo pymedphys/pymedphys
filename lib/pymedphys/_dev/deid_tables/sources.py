@@ -30,9 +30,9 @@ class SourceDigestError(ValueError):
 def read_verified_source(path: str | pathlib.Path, expected_sha256: str) -> bytes:
     """Return a source file's bytes after checking its SHA-256 digest.
 
-    Decision D-001 requires every source file to be verified against its
-    pinned digest before it is parsed, so a changed, truncated, or substituted
-    publication is never read.
+    Every source file is verified against its pinned digest before it is
+    parsed, so a changed, truncated, or substituted publication is never
+    read.
 
     Parameters
     ----------

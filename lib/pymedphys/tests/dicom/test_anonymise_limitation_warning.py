@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""``pymedphys.dicom.anonymise`` warns about its limitations (decision D-019).
+"""``pymedphys.dicom.anonymise`` warns about its limitations.
 
 The warning discloses known limitations; it is not a deprecation and makes no
 removal promise. The public function warns, the command prints a notice on
