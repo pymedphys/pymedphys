@@ -15,7 +15,6 @@ all = [
     'doc8',
     'httpx2',
     'imageio',
-    'interpolation',
     'ipython',
     'jupyter-book',
     'keyring',
@@ -92,7 +91,6 @@ dicom = [
     'pynetdicom',
 ]
 docs = [
-    'interpolation',
     'ipython',
     'jupyter-book',
     'matplotlib',

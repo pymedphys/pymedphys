@@ -131,7 +131,6 @@ tests = [
 ]
 
 docs = [
-  "interpolation>=2.2.7,<3; python_version < '3.13'",  # imports cgi, removed in 3.13
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
@@ -198,7 +197,6 @@ all = [
     "doc8",
     "httpx2",
     "imageio[tifffile]",
-    "interpolation>=2.2.7,<3; python_version < '3.13'",  # imports cgi, removed in 3.13
     "ipython>=7.31.1",
     "jupyter-book>=0.12.0,<2.0.0",
     "keyring",

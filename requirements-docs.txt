@@ -68,8 +68,6 @@ importlib-metadata==9.0.1
     # via
     #   jupyter-cache
     #   myst-nb
-interpolation==2.2.7 ; python_full_version < '3.13'
-    # via pymedphys
 ipykernel==7.3.0
     # via myst-nb
 ipython==9.17.1
@@ -150,9 +148,7 @@ nest-asyncio2==1.7.2
 networkx==3.6.1
     # via pymedphys
 numba==0.67.0
-    # via
-    #   interpolation
-    #   pymedphys
+    # via pymedphys
 numpy==2.4.6 ; python_full_version < '3.12'
     # via
     #   contourpy
@@ -240,9 +236,7 @@ rpds-py==2026.6.3
     #   jsonschema
     #   referencing
 scipy==1.17.1
-    # via
-    #   interpolation
-    #   pymedphys
+    # via pymedphys
 setuptools==84.0.0
     # via
     #   pymedphys
