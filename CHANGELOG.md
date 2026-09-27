@@ -234,7 +234,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   which `pymedphys dev propagate` no longer generates, and it cancels
   pull-request previews when every changed path is one the documentation
   never reads, such as CI configuration and tests.
-  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
+  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099), [PR #2115](https://github.com/pymedphys/pymedphys/pull/2115)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
   templates), and from `paulking` a second copy of the Profiler
