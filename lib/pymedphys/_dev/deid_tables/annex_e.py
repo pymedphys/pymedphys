@@ -20,10 +20,8 @@ its action codes; and Table E.3.10-1, the safe private attributes.
 
 from __future__ import annotations
 
-import collections
 import re
 import types
-from collections.abc import Collection, Iterable
 
 from pymedphys._dicom.deidentify.standard import (
     ACTION_CODES,
@@ -35,7 +33,7 @@ from pymedphys._dicom.deidentify.standard import (
     is_vr_text,
 )
 
-from .chtml import HtmlTable, TableFormatError
+from .chtml import HtmlTable, TableFormatError, check_columns, check_unique
 
 TABLE_E1_1 = "Table E.1-1"
 TABLE_E1_1A = "Table E.1-1a"
@@ -95,27 +93,6 @@ def _tag(value: str, row: int) -> str:
     return value
 
 
-def _check_columns(
-    label: str, header: tuple[str, ...], columns: Collection[str]
-) -> None:
-    for column in header:
-        if column not in columns:
-            raise TableFormatError(f"{label} has an unknown column {column!r}")
-    for column in columns:
-        count = header.count(column)
-        if count == 0:
-            raise TableFormatError(f"{label} is missing column {column!r}")
-        if count > 1:
-            raise TableFormatError(f"{label} has column {column!r} {count} times")
-
-
-def _check_unique(label: str, keys: Iterable[str]) -> None:
-    counts = collections.Counter(keys)
-    repeated = [f"{key} appears {n} times" for key, n in counts.items() if n > 1]
-    if repeated:
-        raise TableFormatError(f"{label}: " + "; ".join(repeated))
-
-
 def parse_table_e1_1(table: HtmlTable) -> tuple[ProfileAttribute, ...]:
     """Parse Table E.1-1 of DICOM PS3.15 Annex E.
 
@@ -139,7 +116,7 @@ def parse_table_e1_1(table: HtmlTable) -> tuple[ProfileAttribute, ...]:
         has no rows. The Basic Profile action is required; option actions may
         be empty.
     """
-    _check_columns(TABLE_E1_1, table.header, COLUMNS)
+    check_columns(TABLE_E1_1, table.header, COLUMNS)
     if not table.rows:
         raise TableFormatError(f"{TABLE_E1_1} has no rows")
 
@@ -168,7 +145,7 @@ def parse_table_e1_1(table: HtmlTable) -> tuple[ProfileAttribute, ...]:
             )
         )
 
-    _check_unique(TABLE_E1_1, (attribute.tag for attribute in attributes))
+    check_unique(TABLE_E1_1, (attribute.tag for attribute in attributes))
     return tuple(attributes)
 
 
@@ -223,7 +200,7 @@ def parse_table_e1_1a(table: HtmlTable) -> tuple[ActionCode, ...]:
             )
         codes.append(ActionCode(code=code, description=description))
 
-    _check_unique(TABLE_E1_1A, (action.code for action in codes))
+    check_unique(TABLE_E1_1A, (action.code for action in codes))
     missing = ACTION_CODES - {action.code for action in codes}
     if missing:
         raise TableFormatError(
@@ -270,7 +247,7 @@ def parse_table_e3_10_1(table: HtmlTable) -> tuple[SafePrivateAttribute, ...]:
         bounds; or if a private creator and tag appear more than once,
         comparing tags without regard to case.
     """
-    _check_columns(TABLE_E3_10_1, table.header, E3_10_1_COLUMNS)
+    check_columns(TABLE_E3_10_1, table.header, E3_10_1_COLUMNS)
     if not table.rows:
         raise TableFormatError(f"{TABLE_E3_10_1} has no rows")
 
@@ -293,7 +270,7 @@ def parse_table_e3_10_1(table: HtmlTable) -> tuple[SafePrivateAttribute, ...]:
             raise TableFormatError(f"{where}: VM {row['vm']!r} is not recognised")
         attributes.append(SafePrivateAttribute(**row))
 
-    _check_unique(
+    check_unique(
         TABLE_E3_10_1,
         (f"{a.private_creator} {a.tag.upper()}" for a in attributes),
     )

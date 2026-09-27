@@ -16,8 +16,10 @@
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import re
+from collections.abc import Collection, Iterable
 from html.parser import HTMLParser
 
 # Zero-width characters appear inside some cell text in the published pages.
@@ -213,3 +215,30 @@ def select_table(tables: list[HtmlTable], label: str) -> HtmlTable:
                     f"but the header has {len(table.header)}"
                 )
     return table
+
+
+def check_columns(
+    label: str, header: tuple[str, ...], columns: Collection[str]
+) -> None:
+    """Check that ``header`` has each of ``columns`` exactly once, and no other.
+
+    Columns are matched by their header text, so a new edition that reorders
+    them still parses, and one that adds, renames, or removes one fails.
+    """
+    for column in header:
+        if column not in columns:
+            raise TableFormatError(f"{label} has an unknown column {column!r}")
+    for column in columns:
+        count = header.count(column)
+        if count == 0:
+            raise TableFormatError(f"{label} is missing column {column!r}")
+        if count > 1:
+            raise TableFormatError(f"{label} has column {column!r} {count} times")
+
+
+def check_unique(label: str, keys: Iterable[str]) -> None:
+    """Check that no key repeats, listing each one that does."""
+    counts = collections.Counter(keys)
+    repeated = [f"{key} appears {n} times" for key, n in counts.items() if n > 1]
+    if repeated:
+        raise TableFormatError(f"{label}: " + "; ".join(repeated))

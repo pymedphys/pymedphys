@@ -17,8 +17,8 @@
 ``pymedphys dev deid-tables`` runs :func:`generate`. Every source file is
 checked against the SHA-256 digest pinned here before it is parsed, and each
 generated file records the edition, the source digests, a digest of its rows,
-and the acknowledgement "DICOM PS3.15 <edition>, © NEMA" (decision D-001 of
-the de-identification design).
+and the acknowledgement of its part, such as "DICOM PS3.15 <edition>, © NEMA"
+(decision D-001 of the de-identification design).
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from collections.abc import Callable, Mapping
 from pymedphys._data.download import download_with_progress
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
 
-from . import annex_e, chtml
+from . import annex_e, chtml, ps3_6
 from .sources import SourceDigestError, read_verified_source
 
 # NEMA serves the current edition only under "current". Superseded editions
@@ -89,6 +89,10 @@ PIN = Pin(
             "part15/sect_E.3.10.html",
             "101ac4aedd9d45fba8adaa35cab22820d6c0cbda82cdf51d7456f4bf3dafe3a0",
         ),
+        PinnedSource(
+            "part06/chapter_6.html",
+            "7f3518a7edfccf99f5ff90e3efc40ac96e19f34efb7a803ce14962f460a0d2b1",
+        ),
     ),
 )
 
@@ -133,6 +137,7 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
 
 _CHAPTER_E = "part15/chapter_E.html"
 _SECTION_E3_10 = "part15/sect_E.3.10.html"
+_CHAPTER_6 = "part06/chapter_6.html"
 
 
 def _select(pages: Mapping[str, bytes], source: str, label: str) -> chtml.HtmlTable:
@@ -146,11 +151,13 @@ def _document(
 ) -> dict[str, object]:
     """Return a table's document, recording only the page it came from."""
     digests = {pinned.path: pinned.sha256 for pinned in pin.sources}
+    # The page's directory names the part, as in "part06/chapter_6.html".
+    part = f"PS3.{int(source.split('/')[0].removeprefix('part'))}"
     return {
         "schema": SCHEMA,
-        "table": f"PS3.15 {label}",
+        "table": f"{part} {label}",
         "edition": pin.edition,
-        "acknowledgement": f"DICOM PS3.15 {pin.edition}, © NEMA",
+        "acknowledgement": f"DICOM {part} {pin.edition}, © NEMA",
         "sources": [{"path": source, "sha256": digests[source]}],
         "content_sha256": content_sha256(rows),
         "rows": rows,
@@ -200,11 +207,28 @@ def _table_e3_10_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _SECTION_E3_10, annex_e.TABLE_E3_10_1, rows)
 
 
+def _data_dictionary(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    attributes = ps3_6.parse_table_6_1(_select(pages, _CHAPTER_6, ps3_6.TABLE_6_1))
+    rows: list[dict[str, object]] = [
+        {
+            "tag": attribute.tag,
+            "name": attribute.name,
+            "keyword": attribute.keyword,
+            "vr": attribute.vr,
+            "vm": attribute.vm,
+            "status": attribute.status,
+        }
+        for attribute in attributes
+    ]
+    return _document(pin, _CHAPTER_6, ps3_6.TABLE_6_1, rows)
+
+
 # Each generated file and the function that builds its document.
 _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "e1_1.json": _table_e1_1,
     "e1_1a.json": _table_e1_1a,
     "e3_10_1.json": _table_e3_10_1,
+    "data_dictionary.json": _data_dictionary,
 }
 
 

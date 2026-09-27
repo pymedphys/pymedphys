@@ -469,6 +469,7 @@ decisions = ["D-001", "D-010"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
   "_dev/deid_tables/generate.py",
+  "_dev/deid_tables/ps3_6.py",
   "_dicom/deidentify/standard.py",
 ]
 tests = [
@@ -477,9 +478,10 @@ tests = [
   "tests/dev/test_deid_tables.py::test_check_passes_only_when_the_tables_are_current",
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
+  "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
 ]
 note = '''
-The rule tables are generated from the pinned edition. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
