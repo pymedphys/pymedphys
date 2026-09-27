@@ -59,13 +59,15 @@ The HTML output is in ``lib/pymedphys/docs/_build/html``. Serve it locally:
 Open ``http://localhost:8000`` and inspect the pages you changed, including their
 navigation, code examples, and links. Stop the server with Ctrl+C.
 
-To produce the same external-link report as CI, run this after an HTML build:
+To produce the same external-link report as CI, run:
 
 .. code-block:: bash
 
-    uv run python -m sphinx -b linkcheck -d lib/pymedphys/docs/_build/.doctrees lib/pymedphys/docs lib/pymedphys/docs/_build/linkcheck
+    uv run -- pymedphys dev docs --linkcheck
 
-Read ``output.txt`` or ``output.json`` in the linkcheck directory. A failed
+It reads the sources without executing notebooks, so it needs no HTML build
+first. Read ``output.txt`` or ``output.json`` in
+``lib/pymedphys/docs/_build/linkcheck``. A failed
 request may be a rate limit, authentication requirement, or temporary outage;
 verify it before replacing a link. CI reports external-link failures as
 advisory, so a green summary alone does not establish that every link works.

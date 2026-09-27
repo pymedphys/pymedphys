@@ -16,8 +16,9 @@ on patient treatment plans.
 The two volume examples use global **3% / 3 mm gamma**, a 10% reference-dose
 cutoff, fixed 2 Gy normalisation and `interp_fraction=10`. Every eligible
 reference voxel is evaluated, without a random subset or early stopping on a
-pass. See the [study guide](../gamma-performance-study.md#two-volume-examples-motivated-by-clinical-workflows)
-for the field construction and limitations.
+pass. The "Two volume examples motivated by clinical workflows" section of the
+[study guide](../gamma-performance-study.md) describes the field construction
+and limitations.
 
 | Synthetic volume | Shape | Isotropic spacing | Total voxels | Above-cutoff voxels |
 | --- | --- | ---: | ---: | ---: |
@@ -213,9 +214,9 @@ For publication, all 17 input sets were independently regenerated: dose-array
 hashes, total/eligible counts and gamma settings matched. The archived runner
 hashes and pinned source were checked, the saved model report was reproduced,
 and the fitted coefficients and paired ratios were independently recalculated.
-The original full gamma arrays were removed after the runner's comparisons;
-gamma itself was not rerun during publication review. The numerical findings
-above therefore rely on the recorded full-array checks.
+The original full gamma arrays were removed after the runner's comparisons,
+and gamma was not rerun for this page, so the numerical findings above rely on
+the recorded full-array checks.
 
 The comparison used [old source `866f83edad85`](https://github.com/pymedphys/pymedphys/commit/866f83edad8586a42a739094e488f45242b72c95)
 and [new source `9b3a8aa00b75`](https://github.com/pymedphys/pymedphys/commit/9b3a8aa00b752fd70bd92acd6d24f1089288dde5).
@@ -241,8 +242,8 @@ SHA-256 of the uncompressed checkpoint:
 `42c959f1757d4bdd156f83ce77ac2414b7108a2b1f14c962090643f89673688e`.
 The original upload's SHA-256 is retained in the provenance file.
 
-With the [study dependencies](../gamma-performance-study.md#start) installed,
-rebuild these figures and tables from the repository root, without rerunning
+With the dependencies from the "Start" section of the
+[study guide](../gamma-performance-study.md) installed, rebuild these figures and tables from the repository root, without rerunning
 gamma:
 
 ```console
@@ -251,5 +252,6 @@ python examples/gamma_uncertainty_evidence.py --input lib/pymedphys/docs/contrib
 
 The generator verifies the pinned checkpoint and calculations. It leaves this
 authored explanation untouched. To collect a fresh audit on another workstation,
-follow the [two-hour workflow](../gamma-performance-study.md#runtime-model-uncertainty-recommended-for-testing-the-fitted-speed-ratios)
-and retain its separate provenance and results.
+follow the runtime-model uncertainty design in the
+[two-hour workflow](../gamma-performance-study.md) and retain its separate
+provenance and results.

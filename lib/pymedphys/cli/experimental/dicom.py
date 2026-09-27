@@ -16,8 +16,9 @@
 
 """Experimental command line DICOM tools.
 
-If you wish to utilise standard anonymisation, please instead use `pymedphys dicom anonymise`
-as opposed to `pymedphys experimental dicom pseudonymise`."""
+To replace a fixed list of identifying attributes with dummy values
+instead of pseudonyms, use `pymedphys dicom anonymise`. Neither command
+implements a DICOM confidentiality profile."""
 
 from pymedphys.cli import dicom
 

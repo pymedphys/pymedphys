@@ -26,18 +26,25 @@ def ensure_transfer_syntax(ds: pydicom.dataset.Dataset) -> pydicom.dataset.Datas
     write. Historical or programmatically constructed datasets may lack
     it. An existing TransferSyntaxUID is never modified.
 
-    When it is missing, the transfer syntax is inferred from the legacy
-    ``is_implicit_VR`` and ``is_little_endian`` flags if the dataset
-    carries them (pydicom sets both when it reads a file that has no file
-    meta information). Any flag that is unset defaults to Implicit VR
+    When it is missing, the transfer syntax is inferred from the dataset's
+    encoding:
+
+    1. the legacy ``is_implicit_VR`` and ``is_little_endian`` flags, when
+       pydicom provides them and they are set. pydicom 3 deprecates them
+       and pydicom 4 removes them, but on pydicom 3 they still decide how
+       a dataset without a Transfer Syntax UID is written;
+    2. otherwise ``Dataset.original_encoding``, which pydicom sets when it
+       reads a file or buffer, including one with no file meta
+       information.
+
+    Any part of the encoding that is still unknown defaults to Implicit VR
     Little Endian, the DICOM default transfer syntax. Unlike the explicit
     VR transfer syntaxes it has no 64 kB element length limit, which
     matters for large programmatically built elements such as RT Structure
     Set ContourData.
 
-    The flags are only read, never written. pydicom 3 deprecates them and
-    pydicom 4 removes them, and every supported pydicom version derives
-    the write encoding from the Transfer Syntax UID when they are unset.
+    The encoding is only read, never written, so no deprecated attribute is
+    set.
     """
     transfer_syntax_map = {
         (True, True): pydicom.uid.ImplicitVRLittleEndian,
@@ -50,8 +57,14 @@ def ensure_transfer_syntax(ds: pydicom.dataset.Dataset) -> pydicom.dataset.Datas
         ds.file_meta = pydicom.dataset.FileMetaDataset()
 
     if not hasattr(ds.file_meta, "TransferSyntaxUID"):
+        original_implicit_vr, original_little_endian = ds.original_encoding
+        # pydicom 4 removes the legacy flags, so getattr returns None there.
         is_implicit_VR = getattr(ds, "is_implicit_VR", None)
         is_little_endian = getattr(ds, "is_little_endian", None)
+        if is_implicit_VR is None:
+            is_implicit_VR = original_implicit_vr
+        if is_little_endian is None:
+            is_little_endian = original_little_endian
 
         ds.file_meta.TransferSyntaxUID = transfer_syntax_map[
             (

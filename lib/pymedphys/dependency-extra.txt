@@ -1,4 +1,10 @@
+ai = [
+    'anthropic',
+    'httpx2',
+    'trio',
+]
 all = [
+    'altair',
     'anthropic',
     'anyio',
     'astroid',
@@ -9,7 +15,6 @@ all = [
     'doc8',
     'httpx2',
     'imageio',
-    'interpolation',
     'ipython',
     'jupyter-book',
     'keyring',
@@ -26,7 +31,6 @@ all = [
     'pre-commit',
     'psutil',
     'pydicom',
-    'PyGithub',
     'pylibjpeg-libjpeg',
     'pylint',
     'pymssql',
@@ -36,6 +40,7 @@ all = [
     'pytest-rerunfailures',
     'pytest-sugar',
     'pytest-timeout',
+    'pytest-xdist',
     'python-dateutil',
     'pywin32',
     'PyYAML',
@@ -62,6 +67,7 @@ all = [
     'types-tabulate',
     'types-toml',
     'watchdog',
+    'xlrd',
     'xmltodict',
 ]
 cli = [
@@ -87,7 +93,6 @@ dicom = [
     'pynetdicom',
 ]
 docs = [
-    'interpolation',
     'ipython',
     'jupyter-book',
     'matplotlib',
@@ -137,7 +142,6 @@ tests = [
     'Pillow',
     'psutil',
     'pydicom',
-    'PyGithub',
     'pylibjpeg-libjpeg',
     'pylint',
     'pynetdicom',
@@ -145,19 +149,20 @@ tests = [
     'pytest-rerunfailures',
     'pytest-sugar',
     'pytest-timeout',
+    'pytest-xdist',
     'python-dateutil',
     'shapely',
     'toml',
     'tqdm',
+    'xlrd',
 ]
 user = [
-    'anthropic',
+    'altair',
     'anyio',
     'attrs',
     'dash',
     'dbfread',
     'dicompyler-core',
-    'httpx2',
     'imageio',
     'keyring',
     'matplotlib',
@@ -184,8 +189,8 @@ user = [
     'timeago',
     'toml',
     'tqdm',
-    'trio',
     'trio-asyncio',
     'watchdog',
+    'xlrd',
     'xmltodict',
 ]

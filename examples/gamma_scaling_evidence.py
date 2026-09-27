@@ -1,5 +1,17 @@
 # Copyright (C) 2026 Matthew Jennings
-# Licensed under the Apache License, Version 2.0.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Rebuild the retained September 2026 workstation evidence, without timing.
 
 python examples/gamma_scaling_evidence.py --input results.json --output evidence
@@ -132,7 +144,7 @@ def generate(source, output):
     lines = [
         "# Gamma scaling: recorded workstation evidence",
         "",
-        "**Partial study, recorded 26–27 September 2026.** These are saved workstation measurements from the original continuous-field scaling run, before the two-hour scheduler was introduced. They are distinct from the earlier fixed-grid notebook and from cloud measurements.",
+        "**Partial study, recorded 26–27 September 2026.** These are saved workstation measurements from the original continuous-field scaling run, before the two-hour scheduler was introduced. They are distinct from the earlier fixed-grid notebook.",
         "",
         f"**{groups}/{result['expected_groups']} planned four-way groups are verified**, giving {len(verified)} plotted timed calls across {len(cases)} workloads. The run was stopped; the missing groups are listed in the raw record. In particular, no 3D local-criterion case was reached.",
         "",
