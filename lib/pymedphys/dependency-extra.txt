@@ -14,6 +14,7 @@ all = [
     'dicompyler-core',
     'doc8',
     'httpx2',
+    'hypothesis',
     'imageio',
     'ipython',
     'jupyter-book',
@@ -135,6 +136,7 @@ propagate = [
 tests = [
     'anthropic',
     'astroid',
+    'hypothesis',
     'imageio',
     'matplotlib',
     'numba',
