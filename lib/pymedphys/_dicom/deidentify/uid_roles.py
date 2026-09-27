@@ -108,11 +108,13 @@ def _rule_problem(entry: object, ui: Mapping[str, str]) -> str | None:
         _FIELDS <= entry.keys() <= _FIELDS | {"note"}
     ):
         return "does not have exactly the fields tag, keyword, role, and note"
-    if entry["tag"] not in ui:
+    if not isinstance(entry["tag"], str) or entry["tag"] not in ui:
         return "is not a UI attribute of the data dictionary"
     if entry["keyword"] != ui[entry["tag"]]:
         return "names its attribute differently from the data dictionary"
-    if entry["role"] not in {role.value for role in UIDRole}:
+    if not isinstance(entry["role"], str) or entry["role"] not in {
+        role.value for role in UIDRole
+    }:
         return "has a role that is not instance or definition"
     note = entry.get("note")
     if note is not None and not (isinstance(note, str) and note.strip()):
@@ -134,12 +136,13 @@ def load_uid_roles(path: pathlib.Path | None = None) -> UIDRoles:
     ------
     UIDRoleError
         If the file cannot be read; has another schema; covers another
-        edition than the data dictionary or lacks its acknowledgement; has a
-        rule without exactly the fields tag, keyword, role, and an optional
-        non-empty note; has a rule for an attribute that is not a UI
-        attribute of the data dictionary, or with another keyword; has a
-        role other than ``instance`` or ``definition``; repeats a tag; or
-        has no role for a UI attribute of the data dictionary.
+        edition than the data dictionary or lacks its acknowledgement; does
+        not give its rules as an array of tables; has a rule without exactly
+        the fields tag, keyword, role, and an optional non-empty note; has a
+        rule for an attribute that is not a UI attribute of the data
+        dictionary, or with another keyword; has a role other than
+        ``instance`` or ``definition``; repeats a tag; or has no role for a
+        UI attribute of the data dictionary.
     """
     return _load_uid_roles((path or UID_ROLES_PATH).resolve())
 
@@ -163,8 +166,11 @@ def _load_uid_roles(path: pathlib.Path) -> UIDRoles:
         raise UIDRoleError(f"{path.name} lacks the acknowledgement {acknowledgement}")
 
     ui = {a.tag: a.keyword for a in dictionary.attributes if a.vr == "UI"}
+    attributes = document.get("attribute", [])
+    if not isinstance(attributes, list):
+        raise UIDRoleError(f"{path.name} rules are not an array of tables")
     rules: dict[str, UIDRule] = {}
-    for number, entry in enumerate(document.get("attribute", []), start=1):
+    for number, entry in enumerate(attributes, start=1):
         problem = _rule_problem(entry, ui)
         if problem:
             raise UIDRoleError(f"{path.name} rule {number} {problem}")
