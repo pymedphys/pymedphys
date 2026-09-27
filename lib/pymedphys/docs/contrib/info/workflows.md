@@ -319,7 +319,8 @@ into the project environment.
 #### `deps.yml`
 Automated dependency updates for Python packages.
 
-- **Schedule**: Weekly (Mondays), or manually
+- **Schedule**: Weekly (Mondays), or manually on `main`; runs are serialised
+  because they share one update branch
 - **Steps**: `uv lock --upgrade`, then (only if the lockfile changed)
   `uv sync` and `pymedphys dev propagate` (so
   the exported `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`

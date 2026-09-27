@@ -85,5 +85,5 @@ def test_site_reporting_handles_fewer_than_two_treatments(monkeypatch, times):
 
 def test_empty_site_has_no_offsets_or_mean(monkeypatch):
     monkeypatch.setattr(sessions.api, "execute", lambda *_: [])
-    assert list(sessions.session_offsets_for_site(None, 1)) == []
+    assert not list(sessions.session_offsets_for_site(None, 1))
     assert sessions.mean_session_offset_for_site(None, 1) is None

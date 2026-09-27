@@ -18,8 +18,9 @@ This project adheres to
 from `interval`. An interval of exactly one or more days became zero, giving
 one session per treatment; for example, treatments 30 hours apart gave two
 sessions for a two-day interval and now give one. **Recalculate session counts
-and boundaries obtained with intervals of a day or more.** The default
-three-hour interval retains its threshold.
+and boundaries obtained with intervals of a day or more.** Fractional seconds in `interval` are also retained, so a 500 ms threshold
+now groups treatments 250 ms apart. Re-check counts produced with fractional-second
+thresholds too. The default three-hour interval retains its threshold.
 [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 
 ### Corrected DICOM RT Dose coordinates
@@ -125,7 +126,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
-- `pymedphys._mosaiq.sessions.cluster_sessions`, which Mosaiq session reporting uses, now honours an `interval` of a day or more. It used `timedelta.seconds`, which drops whole days, so a two-day interval became zero and every treatment was reported as a session of its own. A single treatment is now one session, and no treatments give no sessions; both raised `ValueError` before. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
+- `pymedphys._mosaiq.sessions.cluster_sessions`, which Mosaiq session reporting uses, now honours whole days and fractional seconds in `interval`. It used `timedelta.seconds`, which drops whole days, so a two-day interval became zero and every treatment was reported as a session of its own. A single treatment is now one session, and no treatments give no sessions; both raised `ValueError` before. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 - Reading a Monaco file, or an iCOM file watched by the iCOM observer, now raises the error from opening the file when it cannot be opened, for example `FileNotFoundError`. The helper that opens these files without locking them replaced that error with `UnboundLocalError`. On Windows with pywin32 installed, a missing file was already reported by pywin32 before this point. [PR #2135](https://github.com/pymedphys/pymedphys/pull/2135)
 - `pymedphys.gamma` no longer prints a `--- Logging error ---` traceback on every call when INFO logging is enabled. Its dose-threshold message formatted the threshold arrays as single numbers, which NumPy 2 rejects. `ram_available=None` now means the default budget; it raised `TypeError` when a reference point lay outside the evaluation grid. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
 - The experimental iView/iCOM alignment utility again makes iCOM gantry and collimator angles continuous where they cross ±180° when used with pandas 3. It adjusted the angles in place in arrays that pandas 3 makes read-only, so it raised `ValueError: assignment destination is read-only`; it now works on a copy and leaves its input unchanged. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
@@ -412,7 +413,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### (Potentially) breaking changes
 
-- `pymedphys._mosaiq.sessions.cluster_sessions` can return fewer sessions for intervals of a day or more; see "Corrected Mosaiq session counts for multi-day intervals" above. Empty and single-treatment inputs now return zero or one session respectively. Empty sites also return no sessions or offsets and a mean offset of `None` through the Mosaiq reporting helpers. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
+- `pymedphys._mosaiq.sessions.cluster_sessions` can return fewer sessions for intervals of a day or more or with fractional seconds; see "Corrected Mosaiq session counts for multi-day intervals" above. Empty and single-treatment inputs now return zero or one session respectively. Empty sites also return no sessions or offsets and a mean offset of `None` through the Mosaiq reporting helpers. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 - `pymedphys.gamma` results change for evaluation grids with a single-value axis, such as single-slice evaluation doses; see "Gamma with single-slice evaluation doses" above. The earlier values depended on the coordinate origin and could be several times too high. The default `interp_algo="pymedphys"` now accepts such grids instead of raising `ValueError`. [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126)
 - `pymedphys.gamma` now raises `ValueError` for inputs that gave silently wrong or missing results. NaN or infinite values in either dose grid: a NaN in the reference made every result NaN, and one in the evaluation made results NaN near it. A `max_gamma` of 1 or less, which could report failing points as passing. A `global_normalisation` that is not finite and positive, including the default for an all-zero reference. Local gamma where an analysed reference point has zero dose, which was reported as NaN and so excluded; raise `lower_percent_dose_cutoff` above zero to exclude such points explicitly. [PR #2119](https://github.com/pymedphys/pymedphys/pull/2119)
 - PyMedPhys now requires Python 3.11.4 or later; v0.41.0 supported Python 3.10 to 3.12. Python 3.10 reaches end of life in October 2026, and NumPy 2.3 and SciPy 1.16 already require Python 3.11. Python 3.11.4 is the first 3.11 release with the tarfile extraction filters that Pinnacle TAR import now uses. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)

@@ -50,6 +50,18 @@ def needs(job: str) -> set[str]:
 
 
 class WorkflowContractTests(unittest.TestCase):
+    def test_weekly_updates_share_one_branch_and_base(self):
+        # A manual run on a feature branch must not repurpose the shared PR.
+        update = jobs("deps.yml")["update"]
+        self.assertIn("    if: github.ref == 'refs/heads/main'", update)
+        self.assertIn("          branch: deps/weekly-update", update)
+        workflow = (WORKFLOWS / "deps.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "concurrency:\n  group: weekly-dependency-update\n"
+            "  cancel-in-progress: false",
+            workflow,
+        )
+
     def test_summaries_always_cover_every_job(self):
         for filename, summary_id, name in (
             ("ci.yml", "summary", "CI Summary"),

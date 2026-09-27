@@ -11,8 +11,15 @@ on:
 permissions:
   contents: read
 
+# Scheduled and manual runs share a single update branch.
+concurrency:
+  group: weekly-dependency-update
+  cancel-in-progress: false
+
 jobs:
   update:
+    # A shared PR branch must always be based on main.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -133,7 +140,7 @@ jobs:
           title="Weekly dependency update failed"
           body="The scheduled dependency update failed: $RUN_URL"
           number=$(gh issue list --state open --search "\"$title\" in:title" \
-            --json number,title --jq ".[] | select(.title == \"$title\") | .number" | head -n 1)
+            --json number,title --jq "map(select(.title == \"$title\")) | first | .number // empty")
           if [[ -n "$number" ]]; then
             gh issue comment "$number" --body "$body"
           else
