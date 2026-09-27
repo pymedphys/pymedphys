@@ -65,7 +65,7 @@ jobs:
           cache-data: 'true'
 
       # The slow tests are independent, and processes that share the data
-      # cache take turns to check and write each extraction.
+      # cache take turns with each archive, from download to extraction.
       - name: Run slow tests
         run: |
           uv run -- pymedphys dev tests --slow -v -n auto --durations=15

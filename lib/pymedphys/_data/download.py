@@ -374,11 +374,13 @@ def _sidecar_path(extract_directory, suffix):
 
 @contextlib.contextmanager
 def extraction_lock(extract_directory):
-    """Hold the lock that serialises checking and writing one extraction.
+    """Hold the lock that serialises the use of one cached archive.
 
-    Processes that share the data cache, such as parallel test workers, take
-    it in turn. The operating system releases it when the lock file is
-    closed, including when a process dies, so it cannot be left stale.
+    ``zip_data_paths`` holds it, for the archive's extraction directory in the
+    data cache, while it downloads or repairs the archive, opens it, and
+    extracts it. Processes that share the data cache, such as parallel test
+    workers, take it in turn. The operating system releases it when the lock
+    file is closed, including when a process dies, so it cannot be left stale.
     """
     lock_path = _sidecar_path(pathlib.Path(extract_directory), EXTRACTION_LOCK_SUFFIX)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -470,36 +472,43 @@ def zip_data_paths(
     extract_directory=None,
     hash_filepath=None,
 ):
-    zip_filepath = data_path(
-        filename,
-        check_hash=check_hash,
-        redownload_on_hash_mismatch=redownload_on_hash_mismatch,
-        delete_when_no_hash_found=delete_when_no_hash_found,
-        url=url,
-        hash_filepath=hash_filepath,
+    cache_directory = get_data_dir().joinpath(
+        pathlib.Path(os.path.splitext(filename)[0])
     )
-
     if extract_directory is None:
-        relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
-        extract_directory = get_data_dir().joinpath(relative_extract_directory)
+        extract_directory = cache_directory
         cache_managed = True
     else:
         extract_directory = pathlib.Path(extract_directory)
         cache_managed = False
 
-    with zipfile.ZipFile(zip_filepath, "r") as zip_file:
-        namelist = zip_file.namelist()
+    # Every caller of this archive, including one that extracts into its own
+    # directory, holds the lock from checking or downloading the archive until
+    # the extraction is complete. Otherwise another process could replace or
+    # delete the archive while it is open, which fails on Windows, or rewrite
+    # files while they are read.
+    with extraction_lock(cache_directory):
+        zip_filepath = data_path(
+            filename,
+            check_hash=check_hash,
+            redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+            delete_when_no_hash_found=delete_when_no_hash_found,
+            url=url,
+            hash_filepath=hash_filepath,
+        )
 
-        if cache_managed:
-            with extraction_lock(extract_directory):
+        with zipfile.ZipFile(zip_filepath, "r") as zip_file:
+            namelist = zip_file.namelist()
+
+            if cache_managed:
                 _refresh_cached_extraction(zip_file, zip_filepath, extract_directory)
-        else:
-            # A caller-chosen directory, such as the GUI demo's working
-            # directory, may hold files the user has edited: only add the
-            # files that are missing.
-            for zipped_filename in namelist:
-                if not extract_directory.joinpath(zipped_filename).exists():
-                    zip_file.extract(zipped_filename, path=extract_directory)
+            else:
+                # A caller-chosen directory, such as the GUI demo's working
+                # directory, may hold files the user has edited: only add the
+                # files that are missing.
+                for zipped_filename in namelist:
+                    if not extract_directory.joinpath(zipped_filename).exists():
+                        zip_file.extract(zipped_filename, path=extract_directory)
 
     resolved_paths = [
         extract_directory.joinpath(zipped_filename).resolve()

@@ -162,8 +162,9 @@ Use this list wherever metadata needs the maintainers.
   `pytest -m slow` alone selects the slow tests but still skips every one.
 - CI runs the slow tests in parallel (`-n auto`), so keep every test
   independent of the others: no shared output paths or ordering assumptions.
-  Processes that share the data cache take turns to check and write each
-  extraction, so concurrent `zip_data_paths` calls into the cache are safe.
+  Processes that share the data cache take turns with each archive, from
+  downloading or repairing it to extracting it, so concurrent
+  `zip_data_paths` calls are safe.
 - `[tool.pytest.ini_options]` in `pyproject.toml` enforces strict markers and
   strict xfail, and stops any test after 900 s (`pytest-timeout`). Register a
   new marker in `MARKER_CONFIG` in the root conftest.

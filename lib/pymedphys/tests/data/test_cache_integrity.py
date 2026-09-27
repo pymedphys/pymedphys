@@ -376,6 +376,107 @@ def test_extraction_waits_for_another_process_extracting(cache, tmp_path):
     ]
 
 
+def _start_callers(count, **kwargs):
+    """Start callers of zip_data_paths on threads; return them and their results.
+
+    Each open of the lock file is a separate lock owner, so threads stand in
+    for separate processes.
+    """
+    results: list[list[pathlib.Path]] = []
+    errors: list[BaseException] = []
+
+    def call():
+        try:
+            results.append(download.zip_data_paths("archive.zip", **kwargs))
+        except BaseException as error:  # pylint: disable = broad-exception-caught
+            errors.append(error)
+
+    threads = [threading.Thread(target=call) for _ in range(count)]
+    for thread in threads:
+        thread.start()
+    return threads, results, errors
+
+
+@pytest.mark.parametrize("own_directory", [False, True])
+def test_callers_sharing_an_empty_cache_download_the_archive_once(
+    cache, tmp_path, monkeypatch, own_directory
+):
+    # Callers that both find the archive missing must not both download it:
+    # on Windows, replacing the archive while another caller has it open
+    # fails. The lock covers every caller of the archive, including one that
+    # extracts into its own directory, from the download until extraction
+    # ends.
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "complete contents"})
+    _record(hashes, "archive.zip", source)
+    downloads = []
+    real_download = download.download_with_progress
+
+    def counted_download(url, filepath):
+        downloads.append(filepath)
+        real_download(url, filepath)
+
+    monkeypatch.setattr(download, "download_with_progress", counted_download)
+    kwargs = {"url": source.as_uri(), "hash_filepath": hashes}
+    if own_directory:
+        kwargs["extract_directory"] = tmp_path / "own"
+
+    with download.extraction_lock(data_dir / "archive"):
+        threads, results, errors = _start_callers(2, **kwargs)
+        threads[0].join(timeout=2)
+        assert all(thread.is_alive() for thread in threads)
+        assert not downloads
+        assert not (data_dir / "archive.zip").exists()
+
+    for thread in threads:
+        thread.join(timeout=60)
+        assert not thread.is_alive()
+    assert not errors
+    assert len(downloads) == 1
+    for paths in results:
+        assert [path.read_text(encoding="utf-8") for path in paths] == [
+            "complete contents"
+        ]
+
+
+def test_callers_repair_an_outdated_archive_once(cache, tmp_path, monkeypatch):
+    # Callers that both find a cached archive that no longer matches its
+    # recorded hash must not both delete and download it again.
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "current contents"})
+    _record(hashes, "archive.zip", source)
+    data_dir.mkdir()
+    outdated = _zip(data_dir / "archive.zip", {"data.txt": "outdated contents"})
+    outdated_bytes = outdated.read_bytes()
+    downloads = []
+    real_download = download.download_with_progress
+
+    def counted_download(url, filepath):
+        downloads.append(filepath)
+        real_download(url, filepath)
+
+    monkeypatch.setattr(download, "download_with_progress", counted_download)
+
+    with download.extraction_lock(data_dir / "archive"):
+        threads, results, errors = _start_callers(
+            2, url=source.as_uri(), hash_filepath=hashes
+        )
+        threads[0].join(timeout=2)
+        assert all(thread.is_alive() for thread in threads)
+        assert outdated.read_bytes() == outdated_bytes
+        assert not downloads
+
+    for thread in threads:
+        thread.join(timeout=60)
+        assert not thread.is_alive()
+    assert not errors
+    assert len(downloads) == 1
+    for paths in results:
+        assert [path.read_text(encoding="utf-8") for path in paths] == [
+            "current contents"
+        ]
+
+
 def test_extraction_lock_is_outside_the_extracted_files(cache, tmp_path):
     data_dir, hashes = cache
     source = _zip(tmp_path / "source.zip", {"data.txt": "contents"})
