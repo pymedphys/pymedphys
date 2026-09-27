@@ -75,6 +75,7 @@ user = [
   "tqdm",
   "trio-asyncio",
   "watchdog",
+  "xlrd",
   "xmltodict",
 ]
 
@@ -129,6 +130,7 @@ tests = [
   "shapely",
   "toml",
   "tqdm",
+  "xlrd",
 ]
 
 docs = [
@@ -248,6 +250,7 @@ all = [
     "types-tabulate",
     "types-toml",
     "watchdog",
+    "xlrd",
     "xmltodict",
 ]
 
@@ -298,6 +301,9 @@ minversion = "8.0"
 addopts = ["--strict-markers"]
 xfail_strict = true
 timeout = 900
+# pydicom 4 removes every API whose pydicom 3 deprecation warning says it
+# "will be removed in v4", so using one fails the test.
+filterwarnings = ["error:.*removed in v4:DeprecationWarning"]
 
 # Existing tool config stays as-is
 [tool.ruff.lint]

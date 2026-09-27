@@ -17,14 +17,15 @@
 
 import logging
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Optional
 from warnings import warn
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from pymedphys import interpolate as pmp_interp
 import pymedphys._utilities.createshells
+from pymedphys._interp.interp import _interp_validated
 
 from ..utilities import run_input_checks
 
@@ -58,13 +59,21 @@ def gamma_shell(
     Parameters
     ----------
     axes_reference : tuple
-        The reference coordinates.
+        The reference coordinates, in the same order as the dose dimensions.
+        Ascending or descending axes retain their supplied order in the output.
     dose_reference : np.array
         The reference dose grid. Each point in the reference grid becomes the
         centre of a Gamma ellipsoid. For each point of the reference, nearby
         evaluation points are searched at increasing distances.
     axes_evaluation : tuple
-        The evaluation coordinates.
+        The evaluation coordinates. Axes may be ascending or descending.
+        Descending axes and their dose values are reversed together internally;
+        this does not change the reference grid or the output order.
+        Uneven spacing uses the SciPy interpolator with a warning. Singleton
+        axes are accepted when ``interp_algo="scipy"`` is selected explicitly,
+        but the shell search can miss points on these lower-dimensional grids
+        and return inaccurate gamma values or NaN. For comparisons within one
+        common plane, use two-dimensional axes and dose arrays.
     dose_evaluation : np.array
         The evaluation dose grid. Evaluation here is defined as the grid which
         is interpolated and searched over at increasing distances away from
@@ -86,7 +95,8 @@ def gamma_shell(
     max_gamma : float, optional
         The maximum gamma searched for. This can be used to speed up
         calculation, once a search distance is reached that would give gamma
-        values larger than this parameter, the search stops. Defaults to :obj:`np.inf`
+        values larger than this parameter, the search stops. Defaults to :obj:`np.inf`.
+        The search also stops when shells can no longer reach the evaluation grid.
     local_gamma
         Designates local gamma should be used instead of global. Defaults to
         False.
@@ -116,8 +126,11 @@ def gamma_shell(
     Returns
     -------
     gamma
-        The array of gamma values the same shape as that
-        given by the reference coordinates and dose.
+        Each returned gamma array has the same shape and index order as
+        ``dose_reference``. Its values belong to ``axes_reference``; use those
+        coordinates when plotting. If the reference was obtained from
+        :func:`pymedphys.dicom.zyx_and_dose_from_dataset`, its order can differ
+        from the DICOM dataset's raw ``pixel_array``.
     """
 
     if quiet is not None:
@@ -206,6 +219,93 @@ def expand_dims_to_1d(array):
     raise ValueError("Expected a 0-d or 1-d array")
 
 
+def _prepare_evaluation_grid(axes_evaluation, dose_evaluation, interp_algo):
+    """Return the evaluation grid as the interpolators require it.
+
+    Each axis becomes a contiguous, strictly ascending float64 array, with
+    the dose flipped along any axis that was descending, so that grids
+    stored in either order (as DICOM data often is) give the same gamma.
+    The reference grid is left as given, because gamma is returned on it.
+    """
+    axes = [np.asarray(axis, dtype=np.float64) for axis in axes_evaluation]
+    dose = np.asarray(dose_evaluation, dtype=np.float64)
+
+    for dimension, axis in enumerate(axes):
+        if axis.ndim != 1 or axis.size == 0 or not np.all(np.isfinite(axis)):
+            raise ValueError(
+                f"Evaluation axis {dimension} must be a non-empty finite 1D array"
+            )
+        if axis.size == 1:
+            if interp_algo.lower() == "scipy":
+                continue
+            raise ValueError(
+                f"Evaluation axis {dimension} has {axis.size} value(s), but each "
+                "evaluation axis needs at least two for the 'pymedphys' "
+                "interpolator. Use interp_algo='scipy' to retain singleton "
+                "spatial dimensions."
+            )
+        diff = np.diff(axis)
+        if np.all(diff < 0):
+            axes[dimension] = axis[::-1]
+            dose = np.flip(dose, axis=dimension)
+        elif not np.all(diff > 0):
+            raise ValueError(
+                f"Evaluation axis {dimension} must be strictly ascending or "
+                "strictly descending"
+            )
+
+    is_uneven = any(
+        axis.size > 1 and not np.allclose(np.diff(axis), axis[1] - axis[0])
+        for axis in axes
+    )
+    if is_uneven and interp_algo.lower() == "pymedphys":
+        warn(
+            "The evaluation axes are not evenly spaced, which the 'pymedphys' "
+            "interpolator requires. Falling back to interp_algo='scipy'.",
+            UserWarning,
+            stacklevel=4,
+        )
+        interp_algo = "scipy"
+
+    axes = tuple(np.ascontiguousarray(axis) for axis in axes)
+
+    return axes, np.ascontiguousarray(dose), interp_algo
+
+
+def _grid_distance_bounds(axes_reference, axes_evaluation):
+    """Bounds on distances between reference and evaluation points.
+
+    Disjoint grids can have valid gamma values. Shells below the lower bound
+    or above the upper bound cannot intersect the evaluation grid. The upper
+    bound also ensures termination when no finite candidate is sampled.
+    """
+    nearest, farthest = [], []
+    for dimension, (reference, evaluation) in enumerate(
+        zip(axes_reference, axes_evaluation)
+    ):
+        reference = np.asarray(reference)
+        if (
+            reference.ndim != 1
+            or reference.size == 0
+            or not np.all(np.isfinite(reference))
+        ):
+            raise ValueError(
+                f"Reference axis {dimension} must be a non-empty finite 1D array"
+            )
+        reference_min, reference_max = np.min(reference), np.max(reference)
+        nearest.append(
+            max(evaluation[0] - reference_max, reference_min - evaluation[-1], 0)
+        )
+        farthest.append(
+            max(
+                abs(reference_min - evaluation[-1]),
+                abs(reference_max - evaluation[0]),
+            )
+        )
+
+    return np.linalg.norm(nearest), np.linalg.norm(farthest)
+
+
 @dataclass(frozen=True)
 class GammaInternalFixedOptions:
     axes_evaluation: Any
@@ -225,6 +325,7 @@ class GammaInternalFixedOptions:
     ram_available: Optional[int] = DEFAULT_RAM
     quiet: Any = None
     interp_algo: str = "pymedphys"
+    minimum_test_distance: float = 0.0
 
     def __post_init__(self):
         self.set_defaults()
@@ -241,6 +342,16 @@ class GammaInternalFixedOptions:
     @property
     def global_dose_threshold(self):
         return self.dose_percent_threshold / 100 * self.global_normalisation
+
+    @cached_property
+    def scipy_interpolator(self):
+        """Reuse the fixed evaluation grid across every shell and RAM chunk."""
+        return scipy.interpolate.RegularGridInterpolator(
+            self.axes_evaluation,
+            self.dose_evaluation,
+            bounds_error=False,
+            fill_value=np.inf,
+        )
 
     @classmethod
     def from_user_inputs(
@@ -268,6 +379,9 @@ class GammaInternalFixedOptions:
         axes_reference, axes_evaluation = run_input_checks(
             axes_reference, dose_reference, axes_evaluation, dose_evaluation
         )
+        axes_evaluation, dose_evaluation, interp_algo = _prepare_evaluation_grid(
+            axes_evaluation, dose_evaluation, interp_algo
+        )
 
         dose_percent_threshold = expand_dims_to_1d(dose_percent_threshold)
         distance_mm_threshold = expand_dims_to_1d(distance_mm_threshold)
@@ -277,7 +391,12 @@ class GammaInternalFixedOptions:
 
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
-        maximum_test_distance = np.max(distance_mm_threshold) * max_gamma
+        minimum_test_distance, spatial_limit = _grid_distance_bounds(
+            axes_reference, axes_evaluation
+        )
+        maximum_test_distance = min(
+            np.max(distance_mm_threshold) * max_gamma, spatial_limit
+        )
 
         dose_reference = np.array(dose_reference)
         reference_dose_above_threshold = dose_reference >= lower_dose_cutoff
@@ -307,7 +426,7 @@ class GammaInternalFixedOptions:
 
         return cls(
             axes_evaluation,
-            np.array(dose_evaluation),
+            dose_evaluation,
             flat_mesh_axes_reference,
             flat_dose_reference,
             reference_points_to_calc,
@@ -323,6 +442,7 @@ class GammaInternalFixedOptions:
             ram_available,
             quiet,
             interp_algo,
+            minimum_test_distance=minimum_test_distance,
         )
 
 
@@ -343,12 +463,17 @@ def gamma_loop(options: GammaInternalFixedOptions):
 
     to_be_checked = options.reference_points_to_calc & still_searching_for_gamma
 
-    distance = 0.0
+    distance = options.minimum_test_distance
 
-    force_search_distances = np.sort(options.distance_mm_threshold)
+    # Include the spatial endpoint even when it is not a multiple of the
+    # interpolation step; it can be the only sampled evaluation point.
+    force_search_distances = np.unique(
+        np.append(options.distance_mm_threshold, options.maximum_test_distance)
+    )
+    force_search_distances = force_search_distances[force_search_distances > distance]
     while distance <= options.maximum_test_distance:
         logging.debug(
-            "Current distance: %.2f mm | " "Number of reference points remaining: %i",
+            "Current distance: %.2f mm | Number of reference points remaining: %i",
             distance,
             np.sum(to_be_checked),
         )
@@ -540,31 +665,21 @@ def interpolate_evaluation_dose_at_distance(
 
 
 def _run_custom_interp(options, all_points):
-    points = np.column_stack(
-        [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
-    )
+    # add_shells_to_ref_coords returns contiguous points, so this is a view.
+    points = all_points.reshape(-1, all_points.shape[-1])
 
-    return pmp_interp.interp(
+    # _prepare_evaluation_grid has already validated and normalised these
+    # arrays. Reuse that guarantee throughout the shell/chunk loop.
+    return _interp_validated(
         axes_known=options.axes_evaluation,
         values=options.dose_evaluation,
         points_interp=points,
-        bounds_error=False,
         extrap_fill_value=np.inf,
-        skip_checks=True,
     ).reshape(all_points.shape[:-1])
 
 
 def _run_interp_with_scipy(options, all_points):
-    evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
-        options.axes_evaluation,
-        options.dose_evaluation,
-        bounds_error=False,
-        fill_value=np.inf,
-    )
-
-    evaluation_dose = evaluation_interpolation(all_points)
-
-    return evaluation_dose
+    return options.scipy_interpolator(all_points)
 
 
 def add_shells_to_ref_coords(

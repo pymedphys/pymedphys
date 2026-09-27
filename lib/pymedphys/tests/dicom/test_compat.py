@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Matthew Jennings
+# Copyright (C) 2025-2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import warnings
 
 import pytest
+from pydicom import dcmread, dcmwrite
 from pydicom.dataset import Dataset, FileMetaDataset
 from pydicom.uid import (
     ExplicitVRBigEndian,
@@ -44,6 +46,13 @@ def test_does_not_set_deprecated_encoding_flags():
     assert ds.file_meta.TransferSyntaxUID == ImplicitVRLittleEndian
 
 
+# pydicom 3 deprecates the legacy flags that these tests set.
+LEGACY_FLAGS = pytest.mark.filterwarnings(
+    "ignore:.*is_(implicit_VR|little_endian)' will be removed in v4:DeprecationWarning"
+)
+
+
+@LEGACY_FLAGS
 @pytest.mark.parametrize(
     "is_implicit,is_little_endian,expected_uid",
     [
@@ -67,6 +76,7 @@ def test_sets_transfer_syntax_when_missing_and_flags_known(
     assert ds.file_meta.TransferSyntaxUID == expected_uid
 
 
+@LEGACY_FLAGS
 def test_does_not_overwrite_existing_transfer_syntax():
     """If TransferSyntaxUID already exists, it must not be changed even if flags are inconsistent."""
     ds = Dataset()
@@ -86,6 +96,7 @@ def test_does_not_overwrite_existing_transfer_syntax():
     assert after_uid == before_uid, "Existing TransferSyntaxUID should be preserved"
 
 
+@LEGACY_FLAGS
 def test_unsupported_combo_raises_keyerror():
     """
     The (True, False) combo corresponds to Implicit VR Big Endian (retired),
@@ -98,3 +109,38 @@ def test_unsupported_combo_raises_keyerror():
 
     with pytest.raises(KeyError):
         ensure_transfer_syntax(ds)
+
+
+def _read_without_file_meta(is_implicit, is_little_endian):
+    """Encode a dataset with no file meta information, then decode it."""
+    ds = Dataset()
+    ds.PatientName = "Test^Patient"
+    buffer = io.BytesIO()
+    dcmwrite(buffer, ds, implicit_vr=is_implicit, little_endian=is_little_endian)
+    buffer.seek(0)
+
+    return dcmread(buffer, force=True)
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "is_implicit,is_little_endian,expected_uid",
+    [
+        (True, True, ImplicitVRLittleEndian),
+        (False, True, ExplicitVRLittleEndian),
+        (False, False, ExplicitVRBigEndian),
+    ],
+)
+def test_file_without_file_meta_keeps_its_encoding(
+    is_implicit, is_little_endian, expected_uid
+):
+    """A file read without file meta keeps the encoding it was read with.
+
+    pydicom 4 removes the legacy flags, so its original encoding decides.
+    """
+    ds = _read_without_file_meta(is_implicit, is_little_endian)
+    assert ds.original_encoding == (is_implicit, is_little_endian)
+
+    ensure_transfer_syntax(ds)
+
+    assert ds.file_meta.TransferSyntaxUID == expected_uid

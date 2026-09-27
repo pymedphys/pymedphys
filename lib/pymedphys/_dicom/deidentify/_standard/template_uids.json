@@ -1,0 +1,159 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.6 Table A-4",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.6 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "part06/chapter_A.html",
+   "sha256": "778ad3e471c81885b828d814e71b9395fd06a5b64abfe43728e903173a461eff"
+  }
+ ],
+ "content_sha256": "bfaed02c45a621d437b4684b833f1a187b1a5486bbc9bbd4773dc1bf1f77ad86",
+ "rows": [
+  {
+   "uid": "1.2.840.10008.9.1",
+   "name": "Imaging Report",
+   "uid_type": "Document TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.2",
+   "name": "Clinical Information",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.3",
+   "name": "Imaging Procedure Description",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.4",
+   "name": "Comparison Study",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.5",
+   "name": "Impression",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.6",
+   "name": "Addendum",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.7",
+   "name": "Request",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.8",
+   "name": "Radiation Exposure and Protection Information",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.9",
+   "name": "Fetus Findings",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.10",
+   "name": "Labeled Subsection",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.11",
+   "name": "Communication of Actionable Findings",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.12",
+   "name": "Recommendation",
+   "uid_type": "Section TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.13",
+   "name": "Procedural Medication",
+   "uid_type": "Entry TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.14",
+   "name": "Procedure Technique",
+   "uid_type": "Entry TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.15",
+   "name": "Image Quality",
+   "uid_type": "Entry TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.16",
+   "name": "Study Act",
+   "uid_type": "Entry TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.17",
+   "name": "Series Act",
+   "uid_type": "Entry TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.18",
+   "name": "SOP Instance Observation",
+   "uid_type": "Entry TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.19",
+   "name": "Section Text",
+   "uid_type": "Element Set TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.20",
+   "name": "General Header",
+   "uid_type": "Element Set TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.21",
+   "name": "Imaging Header",
+   "uid_type": "Element Set TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.22",
+   "name": "Parent Document",
+   "uid_type": "Element Set TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.23",
+   "name": "General Section Entries",
+   "uid_type": "Element Set TemplateID",
+   "part": "PS3.20"
+  },
+  {
+   "uid": "1.2.840.10008.9.24",
+   "name": "Imaging Addendum Report",
+   "uid_type": "Document TemplateID",
+   "part": "PS3.20"
+  }
+ ]
+}

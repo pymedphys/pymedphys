@@ -167,7 +167,8 @@ therefore the required CI or release summary.
 Comprehensive testing beyond unit tests.
 
 - **Test Types**:
-  - `doctests`: Documentation code examples and the StackOverflow example
+  - `doctests`: Documentation code examples, the StackOverflow example, and
+    the unit tests of the gamma benchmark tooling in `examples/`
   - `slow-tests`: Long-running integration tests, run in parallel with
     pytest-xdist (`-n auto`). Processes that share the data cache take turns
     with each file, and with each archive from downloading or repairing it to

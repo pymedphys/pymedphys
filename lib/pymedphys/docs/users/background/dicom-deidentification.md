@@ -69,12 +69,12 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 - Neither tool records in its output that de-identification took place.
 - Neither rebuilds the DICOM file preamble or File Meta Information, so the original Media Storage SOP Instance UID and Source Application Entity Title can remain in every output file.
 - Neither detects burned-in text or recognisable faces.
-- Exception messages can include original file paths and attribute values, and pydicom's warnings and log messages about invalid values quote those values.
+- The library functions raise exceptions whose messages can include original file paths and attribute values, and pydicom's warnings and log messages can quote values or name the file being read. The commands and the app report errors by exception type only, replace each pydicom log message with a fixed summary that keeps at most the VR of an invalid value, and suppress pydicom's duplicate warnings. To see an error's full message, reproduce it by calling the library function in Python.
 - `pymedphys gui`, which runs the pseudonymisation app, listens on the network so that it can be served from a department server. It has no login, so anyone who can reach it can use the app and see the data loaded into it.
 
 ## Planned replacement
 
-Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, their limitations are stated without deprecating them. Experimental pseudonymisation's library functions emit a `PseudonymisationLimitationWarning`, its command prints a notice on standard error, and its app shows a banner. `pymedphys.dicom.anonymise` emits an `AnonymisationLimitationWarning`, and `pymedphys dicom anonymise` prints the same notice on standard error. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
+Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, their limitations are stated without deprecating them, and they are changed only to stop them disclosing identifying information or to prevent harm to data; other defects are listed above rather than fixed. Experimental pseudonymisation's library functions emit a `PseudonymisationLimitationWarning`, its command prints a notice on standard error, and its app shows a banner. `pymedphys.dicom.anonymise` emits an `AnonymisationLimitationWarning`, and `pymedphys dicom anonymise` prints the same notice on standard error. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
 
 ## Further reading
 

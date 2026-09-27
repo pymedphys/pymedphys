@@ -16,9 +16,15 @@
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import re
+from collections.abc import Collection, Iterable, Mapping
 from html.parser import HTMLParser
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pymedphys._dicom.deidentify.uid_registry import RegistryTableSpec
 
 # Zero-width characters appear inside some cell text in the published pages.
 _INVISIBLE = re.compile("[\u200b\u200c\u200d\u2060\ufeff]")
@@ -213,3 +219,84 @@ def select_table(tables: list[HtmlTable], label: str) -> HtmlTable:
                     f"but the header has {len(table.header)}"
                 )
     return table
+
+
+def check_columns(
+    label: str, header: tuple[str, ...], columns: Collection[str]
+) -> None:
+    """Check that ``header`` has each of ``columns`` exactly once, and no other.
+
+    Columns are matched by their header text, so a new edition that reorders
+    them still parses, and one that adds, renames, or removes one fails.
+    """
+    for column in header:
+        if column not in columns:
+            raise TableFormatError(f"{label} has an unknown column {column!r}")
+    for column in columns:
+        count = header.count(column)
+        if count == 0:
+            raise TableFormatError(f"{label} is missing column {column!r}")
+        if count > 1:
+            raise TableFormatError(f"{label} has column {column!r} {count} times")
+
+
+def check_unique(label: str, keys: Iterable[str]) -> None:
+    """Check that no key repeats, listing each one that does."""
+    counts = collections.Counter(keys)
+    repeated = [f"{key} appears {n} times" for key, n in counts.items() if n > 1]
+    if repeated:
+        raise TableFormatError(f"{label}: " + "; ".join(repeated))
+
+
+def parse_registry_table(
+    label: str,
+    table: HtmlTable,
+    columns: Mapping[str, str],
+    spec: RegistryTableSpec,
+) -> tuple:
+    """Parse a registry table, applying the checks its loader applies.
+
+    Cell text is kept as published.
+
+    Parameters
+    ----------
+    label : str
+        The table's label, such as ``"Table A-1"``, for messages.
+    table : HtmlTable
+        The table, as :func:`select_table` returns it for ``label``.
+    columns : mapping of str to str
+        Each column's header text and the field of ``spec.row_type`` it fills.
+    spec : RegistryTableSpec
+        How the table is checked and loaded.
+
+    Returns
+    -------
+    tuple
+        One ``spec.row_type`` per row of the table, in order.
+
+    Raises
+    ------
+    TableFormatError
+        If a column is unknown, missing, or repeated; if the table has no
+        rows; if a row fails one of ``spec.checks``; or if a key in
+        ``spec.unique`` appears more than once.
+    """
+    check_columns(label, table.header, columns)
+    if not table.rows:
+        raise TableFormatError(f"{label} has no rows")
+
+    rows = []
+    for number, cells in enumerate(table.rows, start=1):
+        row = {columns[column]: cell for column, cell in zip(table.header, cells)}
+        problem = spec.problem(row)
+        if problem:
+            raise TableFormatError(f"{label} row {number} {problem}")
+        rows.append(row)
+
+    keys = collections.defaultdict(list)
+    for row in rows:
+        for name, value in spec.keys(row):
+            keys[name].append(value)
+    for values in keys.values():
+        check_unique(label, values)
+    return tuple(spec.row_type(**row) for row in rows)

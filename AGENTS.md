@@ -88,6 +88,8 @@ describe the state being merged. Fold revisions made while a pull request is
 open into the text; do not record them as superseded decisions, review logs,
 or construction history.
 
+Write changelog entries as informative release notes: state what changed, its effect, and what users should do, in declarative sentences. Do not phrase entries as answers to review questions or pre-empt objections ("is not limited to ...", "does not use ...", "has not been measured"); state the scope directly instead. When a fix changes results that earlier versions returned without an error, open the release section with a warning that says which inputs and functions were affected, by how much, and what to re-check, and also list the changed results and any changed return shapes or array order under (Potentially) breaking changes.
+
 Use ordinary Markdown links in Markdown pages and notebook Markdown cells.
 Follow the relative source-path and published-URL guidance in
 [Writing portable links](lib/pymedphys/docs/contrib/info/docs-guide.rst#writing-portable-links).
@@ -183,7 +185,39 @@ Use this list wherever metadata needs the maintainers.
   is missing or invalid, an archived member is missing, or a file's size no
   longer matches. Directories a caller chooses, such as the GUI demo's working
   directory, only gain missing files, so user edits there survive.
+- Prefer small, deterministic local fixtures for regression tests. Before
+  retiring download-backed tests, record the tested revisions, fixture
+  provenance and results, and retain their useful coverage locally. Distinguish
+  changed expectations from unchanged baselines and previously skipped tests.
 - Mock data and fixtures are in `_mocks/` and test data directories
+- Test coordinate and geometry code against values derived independently
+  from the governing definition (for DICOM, the voxel position formula in
+  PS3.3), on off-centre grids with non-square spacing and every supported
+  orientation. Never use a stored snapshot of the implementation's own
+  output as the expected value: such snapshots can enshrine sign errors.
+- Keep the mapping from array dimensions to physical coordinates explicit
+  when reordering or comparing grids. Matching coordinate sets alone does
+  not justify combining array elements. Validate fixed geometry once before
+  repeated numerical work, while retaining validation at public boundaries.
+- When replacing established geometry code, preserve its validated behaviour
+  and explain every intended difference with an independently worked example.
+  Test physical invariance across storage orientations and different grid
+  extents; self-comparisons alone can hide a shared error. Changelog impact
+  statements must distinguish expected usage frequency from error severity
+  and must not imply that unmeasured incidence is known.
+- For coordinate fixes, trace and document the affected public workflows.
+  Distinguish physical positions from array storage order, and state which
+  coordinates belong to each returned array. Include plotting and indexing
+  guidance when an ordering change affects existing callers.
+- Keep floating-point round-off, small physical discrepancies and clinical
+  significance separate. Dose-grid equality accepts up to 0.01 mm silently,
+  warns but still accepts above 0.01 mm through 0.1 mm, and rejects larger
+  mismatches, with a separate 1e-9 mm numerical allowance. Apply these absolute
+  limits to the maximum 3D displacement of corresponding voxel centres across
+  every dataset pair. Combine origin, spacing and original encoded direction
+  cosines; snapping cosines before comparison can conceal a growing edge
+  error. Acceptance does not resample a grid or assess clinical significance.
+  Keep orientation rounding and absolute-offset metadata validation separate.
 - The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
   `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
   read the rendered markdown. Data-driven scenarios use the
@@ -283,7 +317,11 @@ The project uses uv with optional dependency groups:
 
 1. **Beta Status**: PyMedPhys is in beta (version 0.x.x). APIs may change between releases.
 
-2. **DICOM Handling**: The library provides extensive DICOM functionality including anonymisation, coordinate systems, dose calculations, and RT plan manipulation.
+2. **DICOM Handling**: The library provides extensive DICOM functionality including anonymisation, coordinate systems, dose calculations, and RT plan manipulation. Use only pydicom APIs that pydicom 4 keeps:
+   - write with `enforce_file_format=True`, not `write_like_original=False`;
+   - set the encoding through the file meta Transfer Syntax UID, the `implicit_vr` and `little_endian` arguments of `save_as` and `dcmwrite`, or the `FileDataset` constructor, never the `is_implicit_VR` and `is_little_endian` attributes, and read a decoded dataset's encoding from `original_encoding`.
+
+   The test suite fails on pydicom's "will be removed in v4" deprecation warnings. Some deprecated APIs do not warn, so test new code that reads or writes DICOM encodings with the `pydicom_behaviour` fixture (`lib/pymedphys/tests/dicom/conftest.py`), which also runs the test with pydicom's future behaviour, in which they raise. Do not run the whole suite with `PYDICOM_FUTURE`: in pydicom 3.0, `Dataset.pixel_array` itself fails with the future behaviour.
 
 3. **Gamma Analysis**: Core functionality for dose distribution comparison using efficient shell-based algorithm implementation.
 
@@ -316,6 +354,10 @@ When modifying DICOM functionality, be aware of:
 - Anonymisation requirements
 - VR (Value Representation) handling
 - RT-specific DICOM objects (RTDose, RTPlan, RTStruct)
+
+Prefer "slices" for spatial image and dose planes in identifiers, comments,
+docstrings, and documentation. Preserve official DICOM attribute names such as
+`NumberOfFrames` and `GridFrameOffsetVector`.
 
 When you find unmaintained or non-functional material, such as a packaging
 recipe that no workflow builds or a CLI command whose inputs no longer exist,
