@@ -177,8 +177,15 @@ This project adheres to
   experimental pseudonymisation
   (`lib/pymedphys/docs/contrib/info/deidentification-design.md`), covering its
   scope, conformance claims, architecture, target presets, decisions, and
-  roadmap.
-  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061)
+  roadmap. Its requirements register,
+  `pymedphys/_dicom/deidentify/requirements.toml`, records each "shall"
+  paragraph of DICOM PS3.15 Annex E (2026d) verbatim and each best practice
+  of the MIDI Task Group report in summary, with its status and the
+  decisions, code, and tests that satisfy it. Its loader checks each entry's
+  fields and statuses, and tests check that the decisions and code it cites
+  exist, that pytest collects the tests it cites, and that it follows the
+  edition of the generated tables.
+  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101)
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
