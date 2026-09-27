@@ -142,7 +142,39 @@ nest-asyncio==1.6.0
     # via dash
 numba==0.67.0
     # via pymedphys
-numpy==1.26.4
+numpy==2.2.6 ; python_full_version < '3.11'
+    # via
+    #   contourpy
+    #   dicompyler-core
+    #   imageio
+    #   matplotlib
+    #   numba
+    #   pandas
+    #   pydeck
+    #   pylibjpeg-libjpeg
+    #   pymedphys
+    #   scikit-learn
+    #   scipy
+    #   shapely
+    #   streamlit
+    #   tifffile
+numpy==2.4.6 ; python_full_version == '3.11.*'
+    # via
+    #   contourpy
+    #   dicompyler-core
+    #   imageio
+    #   matplotlib
+    #   numba
+    #   pandas
+    #   pydeck
+    #   pylibjpeg-libjpeg
+    #   pymedphys
+    #   scikit-learn
+    #   scipy
+    #   shapely
+    #   streamlit
+    #   tifffile
+numpy==2.5.3 ; python_full_version >= '3.12'
     # via
     #   contourpy
     #   dicompyler-core

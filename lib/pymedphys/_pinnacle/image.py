@@ -176,7 +176,7 @@ def create_image_files(image, export_path):
             float(image_header["y_pixdim"]) * 10,
         ]
 
-        ds.PixelData = allframeslist[curframe].tostring()
+        ds.PixelData = allframeslist[curframe].tobytes()
 
         output_file = os.path.join(export_path, image_file_name)
         image.logger.info("Creating image: %s", output_file)

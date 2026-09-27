@@ -62,6 +62,26 @@ jobs:
           uv run -- pymedphys dev tests -m "not slow" \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
 
+      - name: Run NumPy 1.26 compatibility tests
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # Reuse the locked environment; only NumPy is overlaid. Run once in
+          # either matrix, with synthetic tests that need no data downloads.
+          # Invoke Python so it imports NumPy from uv's overlay environment.
+          uv run --no-sync --with numpy==1.26.4 -- python -m pymedphys dev tests \
+            tests/delivery/test_dicom_conversion_utilities.py \
+            tests/electronfactors/test_parameterise_insert.py \
+            tests/metersetmap/test_metersetmap_single_control_point.py \
+            tests/metersetmap/test_metersetmap_single_mlc.py \
+            tests/metersetmap/test_metersetmap_leaf_gap.py \
+            tests/mocks/test_mock_profiles.py \
+            tests/dicom/test_dose.py::test_sum_doses_in_datasets \
+            tests/dicom/structure/test_masking.py \
+            tests/pinnacle/test_export_edge_cases.py::test_export_dose_preserves_valid_beam_sum \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-numpy126.xml" -q
+
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

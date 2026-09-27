@@ -52,7 +52,7 @@ user = [
   "matplotlib",
   "natsort",
   "numba",
-  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
+  "numpy>=1.26",
   "packaging",
   "pandas>=1.0.0",
   "plotly",
@@ -135,7 +135,7 @@ docs = [
   "matplotlib",
   "networkx",
   "numba",
-  "numpy>=1.26,<2",  # NumPy 2 is a separate migration
+  "numpy>=1.26",
   "pydicom>=3.0",
   "scipy",
   "sphinx-argparse",
@@ -166,7 +166,7 @@ dicom = [
 ]
 
 icom = [
-    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
+    "numpy>=1.26",
 ]
 
 mosaiq = [
@@ -204,7 +204,7 @@ all = [
     "natsort",
     "networkx",
     "numba",
-    "numpy>=1.26,<2",  # NumPy 2 is a separate migration
+    "numpy>=1.26",
     "packaging",
     "pandas>=1.0.0",
     "plotly",
