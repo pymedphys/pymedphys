@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Matthew Jennings
+# Copyright (C) 2025-2026 Matthew Jennings
 # Copyright (C) 2016-2021 Matthew Jennings and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,12 @@ from pymedphys._imports import numpy as np
 
 from . import orientation
 from .compat import ensure_transfer_syntax
-from .coords import coords_in_datasets_are_equal, xyz_axes_from_dataset
+from .coords import (
+    _COORDINATE_ACCEPTANCE_TOLERANCE_MM,
+    _DoseGridGeometry,
+    coords_from_xyz_axes,
+    coords_in_datasets_are_equal,
+)
 from .header import patient_ids_in_datasets_are_equal
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 from .structure import pull_structure
@@ -32,11 +37,59 @@ from .structure import pull_structure
 
 
 def zyx_and_dose_from_dataset(dataset):
-    x, y, z = xyz_axes_from_dataset(dataset)
-    coords = (z, y, x)
-    dose = dose_from_dataset(dataset)
+    """Return a DICOM RT Dose grid with ascending (z, y, x) DICOM axes.
 
-    return coords, dose
+    Parameters
+    ----------
+    dataset : pydicom.dataset.Dataset
+        An RT Dose dataset whose Image Orientation (Patient) is one of the
+        eight supported transverse cardinal orientations (head or feet first; supine,
+        prone, or decubitus left or right).
+
+    Returns
+    -------
+    coords : tuple of numpy.ndarray
+        The (z, y, x) DICOM axes of the dose grid, each strictly ascending.
+    dose : numpy.ndarray
+        The dose, indexed ``dose[i_z, i_y, i_x]`` at ``(z[i_z], y[i_y], x[i_x])``.
+
+    Notes
+    -----
+    The pixel array is reordered to match the axes: an axis the scanner
+    stored in descending order (for example x for head first prone, or z
+    for feet first) is flipped, and for decubitus orientations, whose rows
+    run along x, rows and columns are swapped. For head first supine with
+    increasing slice offsets the dose is the pixel array unchanged. Head
+    first supine grids with decreasing slice offsets are reversed in z.
+
+    Accepted direction cosines within 1e-4 of a supported cardinal orientation
+    are snapped to it for axis extraction; the positional effect grows with
+    grid extent. The rearrangement itself does not resample dose or move voxels. Keep the
+    returned coordinates and dose together when indexing or plotting.
+    Gamma calculated with this pair as its reference has the same shape and
+    index order as the returned dose, which can differ from ``pixel_array``.
+    To recover raw storage order, apply the inverse reversals and dimension
+    permutation to the result.
+    """
+    geometry = _DoseGridGeometry.from_dataset(dataset)
+    x, y, z = geometry.dicom_axes()
+    dose = dose_from_dataset(dataset)
+    # pydicom drops the slice dimension of a single-slice pixel array.
+    slices = geometry.local_axes[2].size
+    dose = dose.reshape(slices, int(dataset.Rows), int(dataset.Columns))
+
+    # Map pixel dimensions (slice, row, column) onto patient (z, y, x).
+    dose = np.transpose(dose, geometry.xyz_to_pixel_dimensions[::-1])
+
+    axes = [z, y, x]
+    for dimension, axis in enumerate(axes):
+        if axis.size > 1 and axis[1] < axis[0]:
+            axes[dimension] = axis[::-1]
+            dose = np.flip(dose, axis=dimension)
+
+    coords = tuple(np.ascontiguousarray(axis) for axis in axes)
+
+    return coords, np.ascontiguousarray(dose)
 
 
 def dose_from_dataset(ds):
@@ -207,6 +260,13 @@ def get_dose_grid_structure_mask(
         An RT Dose DICOM object from which the grid mask coordinates are
         determined.
 
+    Returns
+    -------
+    mask : numpy.ndarray of bool
+        Indexed ``mask[slice, row, column]`` like the dose dataset's pixel
+        array in every supported orientation, including decubitus grids,
+        whose rows run along x.
+
     Raises
     ------
     ValueError
@@ -214,10 +274,16 @@ def get_dose_grid_structure_mask(
         align with the structure planes.
 
     """
-    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dose_dataset)
+    geometry = _DoseGridGeometry.from_dataset(dose_dataset)
+    x_dose, y_dose, z_dose = geometry.dicom_axes()
 
-    xx, yy = np.meshgrid(x_dose, y_dose)
-    points = np.swapaxes(np.vstack([xx.ravel(), yy.ravel()]), 0, 1)
+    # Supported orientations are transverse, so x and y vary only within a
+    # slice. The first slice gives the patient x and y of each (row, column).
+    xx, yy, _ = coords_from_xyz_axes(
+        (x_dose, y_dose, z_dose[:1]), geometry.xyz_to_pixel_dimensions
+    )[:, 0]
+    rows, columns = xx.shape
+    points = np.column_stack((xx.ravel(), yy.ravel()))
 
     x_structure, y_structure, z_structure = pull_structure(
         structure_name, structure_dataset
@@ -248,10 +314,10 @@ def get_dose_grid_structure_mask(
                 "axis, are aligned are supported."
             )
 
-    mask_yxz = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
+    mask = np.zeros((len(z_dose), rows, columns), dtype=bool)
 
     for structure_index, z_val in enumerate(structure_z_values):
-        dose_index = np.where(z_dose == z_val)[0].item()
+        dose_index = int(np.flatnonzero(z_dose == z_val)[0])
 
         if z_structure[structure_index][0] != z_dose[dose_index]:
             raise ValueError("Structure and dose indices do not align")
@@ -267,14 +333,11 @@ def get_dose_grid_structure_mask(
         # there may be multiple contours on the one slice. That's not
         # going to be used at the moment however, as that case is not
         # yet supported in the logic above.
-        mask_yxz[:, :, dose_index] = mask_yxz[:, :, dose_index] | (
-            structure_polygon.contains_points(points).reshape(len(y_dose), len(x_dose))
+        mask[dose_index] = mask[dose_index] | (
+            structure_polygon.contains_points(points).reshape(rows, columns)
         )
 
-    mask_xyz = np.swapaxes(mask_yxz, 0, 1)
-    mask_zyx = np.swapaxes(mask_xyz, 0, 2)
-
-    return mask_zyx
+    return mask
 
 
 def find_dose_within_structure(structure_name, structure_dataset, dose_dataset):
@@ -344,7 +407,10 @@ def sum_doses_in_datasets(
         )
 
     if not coords_in_datasets_are_equal(datasets):
-        raise ValueError("All dose grids must have perfectly coincident coordinates")
+        raise ValueError(
+            "All dose grids must have coincident coordinates: corresponding voxel "
+            f"centres must agree within {_COORDINATE_ACCEPTANCE_TOLERANCE_MM} mm"
+        )
 
     ds_summed = copy.deepcopy(datasets[0])
 
