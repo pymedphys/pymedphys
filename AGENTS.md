@@ -496,6 +496,12 @@ When updating dependencies:
 Do not add tests that restate a declared dependency constraint or the locked
 version. The lockfile checks and CI's locked environment already cover them.
 
+The `dependency-floors` job in `.github/workflows/unit-tests.yml` runs the unit
+tests with NumPy and pandas at their declared minimum versions. When a change
+needs a newer NumPy or pandas, raise the minimum in `pyproject.toml` and the
+versions pinned in that job together, rather than working around a failure
+there.
+
 ### GitHub Actions Pins and Dependabot
 
 - Every action is pinned to a commit SHA with the tag in a trailing comment
