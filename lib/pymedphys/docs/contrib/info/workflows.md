@@ -67,8 +67,8 @@ any fallback.
 | Other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
 | Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests |
 | `.github/scripts/`, `integration-tests.yml`, `examples/`, or packaging filters (`.gitignore`, `.gitattributes`, `.hgignore`, including nested files) | Standard checks, plus integration tests |
-| Slow-test modules, modules with doctests, or non-Python test fixtures | Adds integration tests |
-| Any path naming Mosaiq or a database (except documentation) | Adds database tests |
+| Slow-test modules, their production inputs in `SLOW_TEST_SOURCES`, modules with doctests, or non-Python test fixtures | Adds integration tests |
+| Any path naming Mosaiq or a database (except documentation), or TRF, DICOM delivery, RT Plan and MetersetMap code in `DATABASE_SOURCES` | Adds database tests |
 | `conftest.py`, top-level package modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` | Adds integration and database tests |
 | A symlink, a submodule or an unverifiable merge diff | Every check a changed path can select, including integration and database tests |
 | `full-test` label | Every check and the full unit-test matrix |
@@ -102,6 +102,14 @@ each module to add or remove, so update the list in the PR that adds, removes
 or renames such a module. Shared test data, including `_data/urls.json` and
 `_data/hashes.json`, also selects integration tests because ordinary unit runs
 exclude the slow tests that consume some datasets.
+
+`SLOW_TEST_SOURCES` also selects the production code exercised by slow tests:
+TRF and DICOM delivery, RT Plan, MetersetMap, Pinnacle export, gamma and
+interpolation, RT Dose reading, anonymisation and pseudonymisation, and their
+DICOM helpers and CLI entry points. `DATABASE_SOURCES` covers the TRF, DICOM
+delivery, RT Plan and MetersetMap code used by the Mosaiq database comparisons.
+Update these lists when the tests gain a dependency or a module moves; policy
+tests verify that every listed source path exists.
 
 Selected jobs need only `changes`, so they start alongside pre-commit and run
 whatever its result, and one run reports every result. The summary waits for
@@ -318,8 +326,13 @@ Automated dependency updates for Python packages.
   stay current), then the unit tests, the docs build, and a wheel build and
   install before a PR is opened. The data cache is restored only after the
   lockfile changes, because only those runs read data
-- **PR**: opened with the CI bot's app token so the normal CI runs on it; a PR
-  opened with `GITHUB_TOKEN` triggers no workflows
+- **PR**: creates or updates `deps/weekly-update` with the `dependencies` and
+  `full-test` labels, selecting the full unit-test matrix, slow tests and
+  database tests. The CI bot's app token is generated after validation,
+  immediately before creating or updating the PR, so CI runs on the update
+- **Failures**: a failed scheduled run opens or comments on the issue titled
+  "Weekly dependency update failed", linking to the run. Close the issue after
+  a successful update; a later failure opens a new one
 - **Dependabot** (`.github/dependabot.yml`) owns the GitHub Actions pins (one
   grouped weekly PR) and raises security-fix PRs for Python packages; it does
   not open version-update PRs for Python packages

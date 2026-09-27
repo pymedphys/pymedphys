@@ -267,7 +267,7 @@ class SelectionTests(unittest.TestCase):
             ("docker/mosaiq/docker-compose.yml", {"run-database"}),
             ("lib/pymedphys/_mosaiq/mock/data.csv", {"run-database"}),
             ("lib/pymedphys/_data/hashes.json", both),
-            ("lib/pymedphys/_metersetmap/metersetmap.py", {"run-integration"}),
+            ("lib/pymedphys/_metersetmap/metersetmap.py", both),
             ("lib/pymedphys/_mosaiq/api.py", both),
             ("lib/pymedphys/_gamma/implementation/shell.py", {"run-integration"}),
             ("lib/pymedphys/_trf/manage/identify.py", both),
@@ -317,6 +317,13 @@ class SelectionTests(unittest.TestCase):
             "lib/pymedphys/_dicom/dose.py",
             "lib/pymedphys/_dicom/anonymise/core.py",
             "lib/pymedphys/_experimental/pseudonymisation/strategy.py",
+            "lib/pymedphys/_dicom/compat.py",
+            "lib/pymedphys/_dicom/constants/core.py",
+            "lib/pymedphys/_dicom/uid.py",
+            "lib/pymedphys/_dicom/utilities/files.py",
+            "lib/pymedphys/experimental/pseudonymisation.py",
+            "lib/pymedphys/cli/__init__.py",
+            "lib/pymedphys/cli/experimental/__init__.py",
         ):
             with self.subTest(path=path):
                 result = select_checks([path])
@@ -375,6 +382,8 @@ class SelectionTests(unittest.TestCase):
             "lib/pymedphys/_utilities/constants.py",
             "lib/pymedphys/_base/delivery.py",
             "lib/pymedphys/mosaiq.py",
+            "lib/pymedphys/_metersetmap/metersetmap.py",
+            "lib/pymedphys/_dicom/rtplan/core.py",
             "lib/pymedphys/_trf/manage/identify.py",
             "lib/pymedphys/_dicom/delivery/core.py",
         ):

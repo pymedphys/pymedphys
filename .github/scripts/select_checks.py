@@ -141,6 +141,7 @@ SLOW_TEST_SOURCES = (
     "lib/pymedphys/_dicom/rtplan/",
     "lib/pymedphys/_metersetmap/",
     # Pinnacle export and its command-line interface
+    "lib/pymedphys/_dicom/compat.py",
     "lib/pymedphys/_pinnacle/",
     "lib/pymedphys/cli/pinnacle.py",
     "lib/pymedphys/cli/experimental/pinnacle.py",
@@ -152,15 +153,25 @@ SLOW_TEST_SOURCES = (
     "lib/pymedphys/_dicom/orientation.py",
     # Anonymisation and pseudonymisation, and their command-line interfaces
     "lib/pymedphys/_dicom/anonymise/",
+    "lib/pymedphys/_dicom/constants/",
+    "lib/pymedphys/_dicom/uid.py",
+    "lib/pymedphys/_dicom/utilities/",
     "lib/pymedphys/_experimental/pseudonymisation/",
+    "lib/pymedphys/experimental/pseudonymisation.py",
+    # CLI registration used by the slow command-line tests
+    "lib/pymedphys/cli/__init__.py",
+    "lib/pymedphys/cli/experimental/__init__.py",
     "lib/pymedphys/cli/dicom.py",
     "lib/pymedphys/cli/experimental/dicom.py",
 )
 # Package code outside the Mosaiq modules that the database tests call: they
-# build deliveries from TRF and DICOM files and identify TRF files in Mosaiq.
+# build deliveries from TRF and DICOM files, compare their metersetmaps, and
+# identify TRF files in Mosaiq.
 DATABASE_SOURCES = (
     "lib/pymedphys/_trf/",
     "lib/pymedphys/_dicom/delivery/",
+    "lib/pymedphys/_dicom/rtplan/",
+    "lib/pymedphys/_metersetmap/",
 )
 # The scan also covers the directories conftest.py excludes from the doctest
 # run, so changing those exclusions cannot leave a module unselected.

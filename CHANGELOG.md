@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Corrected Mosaiq session counts for multi-day intervals
+
+`pymedphys._mosaiq.sessions.cluster_sessions` previously discarded whole days
+from `interval`. An interval of exactly one or more days became zero, giving
+one session per treatment; for example, treatments 30 hours apart gave two
+sessions for a two-day interval and now give one. **Recalculate session counts
+and boundaries obtained with intervals of a day or more.** The default
+three-hour interval retains its threshold.
+[PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
+
 ### Corrected DICOM RT Dose coordinates
 
 Corrected patient coordinates and dose ordering for non-HFS orientations and
@@ -220,7 +230,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
-- **[Contributor facing only]** A pull request that changes code the slow tests check against real data now runs them, instead of leaving them to `main`. This covers the TRF, delivery and MetersetMap round trips, Pinnacle export, gamma against published pass rates, and anonymisation and pseudonymisation. Changes to TRF and DICOM delivery code also run the Mosaiq database tests, which use them. The weekly dependency update keeps one pull request up to date, labels it `full-test`, creates its app token just before opening the pull request, and opens or updates an issue when a scheduled run fails. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
+- **[Contributor facing only]** A pull request that changes code the slow tests check against real data now runs them, instead of leaving them to `main`. This covers the TRF, delivery and MetersetMap round trips, Pinnacle export, gamma against published pass rates, and anonymisation and pseudonymisation. Changes to TRF, DICOM delivery, RT Plan and MetersetMap code also run the Mosaiq database tests, which use them. The weekly dependency update keeps one pull request up to date, labels it `full-test`, creates its app token just before opening the pull request, and opens or updates an issue when a scheduled run fails. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 - Gamma logs to its module logger, `pymedphys._gamma.implementation.shell`, instead of the root logger. The speed-up and effect-of-noise gamma how-to notebooks use `pymedphys.gamma_pass_rate`. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
 - **[Contributor facing only]** CI's documentation build is the only documentation check on pull requests, and its `docs-html` artefact holds the built pages. Read the Docs builds a hosted preview only of a pull request labelled `rtd-preview`, so routine pull requests no longer take its build slots, and it still builds and publishes `main`. Automation rules in the Read the Docs dashboard make this choice; the workflow guide lists them. The documentation guide explains how to download `docs-html` and how to run the `Documentation` workflow on a branch. [PR #2121](https://github.com/pymedphys/pymedphys/pull/2121)
 - The private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. The MetersetMap app and the delivery tests now use `pymedphys.gamma_pass_rate` instead of their own pass-rate calculations. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
@@ -400,6 +410,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### (Potentially) breaking changes
 
+- `pymedphys._mosaiq.sessions.cluster_sessions` can return fewer sessions for intervals of a day or more; see "Corrected Mosaiq session counts for multi-day intervals" above. Empty and single-treatment inputs now return zero or one session respectively. Empty sites also return no sessions or offsets and a mean offset of `None` through the Mosaiq reporting helpers. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 - `pymedphys.gamma` results change for evaluation grids with a single-value axis, such as single-slice evaluation doses; see "Gamma with single-slice evaluation doses" above. The earlier values depended on the coordinate origin and could be several times too high. The default `interp_algo="pymedphys"` now accepts such grids instead of raising `ValueError`. [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126)
 - `pymedphys.gamma` now raises `ValueError` for inputs that gave silently wrong or missing results. NaN or infinite values in either dose grid: a NaN in the reference made every result NaN, and one in the evaluation made results NaN near it. A `max_gamma` of 1 or less, which could report failing points as passing. A `global_normalisation` that is not finite and positive, including the default for an all-zero reference. Local gamma where an analysed reference point has zero dose, which was reported as NaN and so excluded; raise `lower_percent_dose_cutoff` above zero to exclude such points explicitly. [PR #2119](https://github.com/pymedphys/pymedphys/pull/2119)
 - PyMedPhys now requires Python 3.11.4 or later; v0.41.0 supported Python 3.10 to 3.12. Python 3.10 reaches end of life in October 2026, and NumPy 2.3 and SciPy 1.16 already require Python 3.11. Python 3.11.4 is the first 3.11 release with the tarfile extraction filters that Pinnacle TAR import now uses. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
