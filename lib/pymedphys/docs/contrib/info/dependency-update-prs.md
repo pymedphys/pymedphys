@@ -12,7 +12,7 @@ That workflow should:
 1. run on a schedule and also allow manual dispatch
 2. check out the repository
 3. run `uv lock --upgrade`, sync the environment, and run
-   `pymedphys dev propagate` so the exported requirements files,
+   `pymedphys dev propagate` so the exported `requirements.txt`,
    `dependency-extra.txt`, and `pyproject.hash` match the new lock
 4. stop without opening a PR if `uv.lock` did not change
 5. run a focused validation suite if `uv.lock` changed

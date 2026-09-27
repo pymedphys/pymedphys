@@ -24,9 +24,20 @@ def add_docs_parser(dev_subparsers):
     parser.add_argument(
         "--clean", help="Delete all of the built files.", action="store_true"
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--prep",
         help="Undergo preparation steps for building with sphinx directly.",
+        action="store_true",
+    )
+    mode.add_argument(
+        "--linkcheck",
+        help=(
+            "Check external links instead of building HTML. Notebooks are not "
+            "executed, so no data is downloaded. The report is written to "
+            "_build/linkcheck, and the exit status is non-zero when a link "
+            "fails."
+        ),
         action="store_true",
     )
 

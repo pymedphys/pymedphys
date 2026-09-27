@@ -34,6 +34,9 @@ uv run -- pymedphys dev tests -v -s -k "test_name"
 uv run -- pymedphys dev tests --include-slow
 uv run -- pymedphys dev tests --slow
 
+# Run tests in parallel, one worker per CPU (pytest-xdist)
+uv run -- pymedphys dev tests --slow -n auto
+
 # Run doctests
 uv run -- pymedphys dev doctests
 ```
@@ -66,7 +69,8 @@ uv run -- pymedphys dev docs
 
 Documentation notebooks must use declared, locked dependencies rather than
 installing packages while running. Add documentation dependencies to both the
-`docs` and `all` extras and regenerate the exported ReadTheDocs requirements.
+`docs` and `all` extras and regenerate `uv.lock`; CI and ReadTheDocs both
+install the documentation environment from it.
 Unexpected notebook errors and documentation build warnings fail the build.
 An install cell kept for readers running a notebook elsewhere (for example on
 Colab) must carry the `skip-execution` cell tag. Sphinx configuration is
@@ -148,12 +152,19 @@ Use this list wherever metadata needs the maintainers.
   or to the caller's directory; the whole package is collected only when no
   path is given. Resolve positional paths after pytest parses its arguments;
   do not maintain a list of value-taking options, since plugins can add more.
+  The `pymedphys._dev.pytest_paths` plugin does this in the controller and in
+  every pytest-xdist worker, which parse the original arguments again.
 - Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
   `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
   `--include-anthropic`) adds them to the default selection. `--slow` (and
   `--mosaiqdb`, `--anthropic`, `--pydicom`) runs only the tests with that
   marker; several of these select the union. `--all` runs everything.
   `pytest -m slow` alone selects the slow tests but still skips every one.
+- CI runs the slow tests in parallel (`-n auto`), so keep every test
+  independent of the others: no shared output paths or ordering assumptions.
+  Processes that share the data cache take turns with each file, and with
+  each archive from downloading or repairing it to extracting it, so
+  concurrent `data_path` and `zip_data_paths` calls are safe.
 - `[tool.pytest.ini_options]` in `pyproject.toml` enforces strict markers and
   strict xfail, and stops any test after 900 s (`pytest-timeout`). Register a
   new marker in `MARKER_CONFIG` in the root conftest.
@@ -435,8 +446,8 @@ When updating dependencies:
 
 1. Update version constraints in `pyproject.toml`
 2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked --extra all --group dev` to regenerate `uv.lock`
-3. Run `uv run pymedphys dev propagate` to regenerate the exported requirements
-   files, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
+3. Run `uv run pymedphys dev propagate` to regenerate the exported
+   `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
 4. Test changes to ensure nothing breaks
 

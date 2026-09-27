@@ -10,13 +10,16 @@ runs:
         path: ~/.pymedphys
         # The exact key is per job, so the first job to finish cannot claim a
         # shared key with an empty cache. A cold job first restores any
-        # populated cache for the same manifest on the same OS (including
-        # this job's cache under the previous key layout), so only the first
-        # run after a manifest change contacts Zenodo, and data_path verifies
-        # hashes on restored files. Never restore across manifest hashes:
-        # zip_data_paths preserves existing extracted files even when it
-        # replaces an outdated archive.
-        key: pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-${{ github.job }}
+        # populated cache for the same manifest on the same OS, so only the
+        # first run after a manifest change contacts Zenodo, and data_path
+        # verifies hashes on restored files. Never restore across manifest
+        # hashes: zip_data_paths preserves existing extracted files even when
+        # it replaces an outdated archive.
+        #
+        # Name the manifest exactly. This step runs after uv sync, so a
+        # **/hashes.json glob would walk every file in .venv (tens of seconds
+        # on Windows) and would also hash pydicom's own data manifest, tying
+        # the key to the installed pydicom version.
+        key: pymedphys-data-v4-${{ runner.os }}-${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-${{ github.job }}
         restore-keys: |
-          pymedphys-data-v3-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}-
-          pymedphys-data-v2-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/hashes.json') }}
+          pymedphys-data-v4-${{ runner.os }}-${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-

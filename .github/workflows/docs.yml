@@ -22,20 +22,53 @@ jobs:
           cache-data: 'true'
           extras: 'docs'
 
+      # Executing the notebooks is most of the build. jupyter-cache keeps the
+      # outputs of each notebook whose code is unchanged, and this cache keeps
+      # its store between runs, but only for an exact key over everything
+      # execution can read. See .github/scripts/notebook_cache_key.py.
+      - name: Key the executed-notebook cache
+        id: notebook-key
+        run: uv run --no-sync python .github/scripts/notebook_cache_key.py >> "$GITHUB_OUTPUT"
+
+      - name: Cache executed notebooks
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: lib/pymedphys/docs/_build/.jupyter_cache
+          key: docs-notebooks-v1-${{ runner.os }}-${{ steps.notebook-key.outputs.hash }}
+
       - name: Build documentation
         run: uv run pymedphys dev docs
+
+      - name: Upload documentation HTML
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-html
+          path: lib/pymedphys/docs/_build/html
+          if-no-files-found: error
+
+  # Runs alongside the HTML build. It reads the sources without executing
+  # notebooks, so it needs no data and finishes first.
+  linkcheck:
+    name: Check external links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'docs'
 
       - name: Check external links
         id: linkcheck
         continue-on-error: true
         timeout-minutes: 10
-        run: |
-          # Link-check settings live in _config.yml. Reuse the HTML build's
-          # environment: nothing is re-read or re-executed, and the report
-          # exists seconds after the step starts.
-          uv run python -m sphinx -b linkcheck \
-            -d lib/pymedphys/docs/_build/.doctrees \
-            lib/pymedphys/docs lib/pymedphys/docs/_build/linkcheck
+        # Link-check settings live in _config.yml.
+        run: uv run pymedphys dev docs --linkcheck
 
       - name: Validate link-check report
         if: ${{ !cancelled() && steps.linkcheck.outcome != 'skipped' }}
@@ -56,12 +89,4 @@ jobs:
         with:
           name: docs-linkcheck
           path: lib/pymedphys/docs/_build/linkcheck
-          if-no-files-found: error
-
-      - name: Upload documentation HTML
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: docs-html
-          path: lib/pymedphys/docs/_build/html
           if-no-files-found: error

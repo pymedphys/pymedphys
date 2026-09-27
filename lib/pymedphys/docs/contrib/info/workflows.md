@@ -98,11 +98,12 @@ or renames such a module. Shared test data, including `_data/urls.json` and
 `_data/hashes.json`, also selects integration tests because ordinary unit runs
 exclude the slow tests that consume some datasets.
 
-If pre-commit pushes an auto-fix, dependent jobs are skipped for the superseded
-commit and the summary fails until a fresh run passes on the new commit.
-Otherwise every selected job still runs when pre-commit fails, so one run
-reports every result. The summaries reject any other unexpected skip.
-Integration jobs run alongside unit tests.
+Selected jobs need only `changes`, so they start alongside pre-commit and run
+whatever its result, and one run reports every result. The summary waits for
+pre-commit and fails when it fails. An auto-fix pushed with the bot's token
+starts a new run, which cancels the run for the superseded commit; either way,
+the summary fails until a fresh run passes on the new commit. The summaries
+reject any other unexpected skip. Integration jobs run alongside unit tests.
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
@@ -122,7 +123,8 @@ Runs pre-commit hooks for code formatting and basic checks.
 Dedicated linting workflow for code quality.
 
 - **Jobs**:
-  - `lint`: Comprehensive Python linting with Pylint
+  - `lint`: Comprehensive Python linting with Pylint, one process per CPU
+    (`jobs = 0` in `lib/pymedphys/.pylintrc`)
 - Ruff linting and formatting run through pre-commit
 - Runs when the selector chooses the Python checks, even if pre-commit fails
 
@@ -130,8 +132,10 @@ Dedicated linting workflow for code quality.
 Static type checking for type safety.
 
 - **Jobs**:
-  - `pyright`: Primary type checker
-  - `mypy`: Secondary checker (optional/non-blocking), run from the locked `dev` extra
+  - `type-check`: Pyright, the blocking type checker, then MyPy, a secondary
+    checker run from the locked `dev` extra. MyPy is optional: its step uses
+    `continue-on-error`, so a MyPy failure marks the step and adds a run
+    annotation but leaves the job green. It runs even when Pyright fails
 - Runs when the selector chooses the Python checks, even if pre-commit fails
 
 #### `unit-tests.yml`
@@ -164,17 +168,25 @@ Comprehensive testing beyond unit tests.
 
 - **Test Types**:
   - `doctests`: Documentation code examples and the StackOverflow example
-  - `slow-tests`: Long-running integration tests
+  - `slow-tests`: Long-running integration tests, run in parallel with
+    pytest-xdist (`-n auto`). Processes that share the data cache take turns
+    with each file, and with each archive from downloading or repairing it to
+    extracting it, so parallel workers never replace an open file or read a
+    partly written one
   - `script-tests`: Runs the `.github/scripts` unit tests on Windows and
     macOS; `ci.yml` runs the full script suite on Ubuntu when selected,
-    and the selection, summary and workflow-contract tests on every PR
-  - `wheel-build`: Builds the sdist and then the wheel from it, and runs
-    `.github/scripts/check_distributions.py`: both archives must contain the
-    package, and the wheel must install into a fresh virtual environment,
-    import, and report its version through `pymedphys --version`
-  - `propagate`: `pymedphys dev propagate` must leave the generated files
-    unchanged (exported requirements, `dependency-extra.txt`, `pyproject.hash`,
-    `_version.py`)
+    and the selection, summary and workflow-contract tests on every PR. The
+    full suite runs in parallel with pytest-xdist, installed with pytest from
+    the locked `script-tests` dependency group without the project
+  - `packaging`: One job for two checks that each take seconds. The wheel
+    build, skipped when the release calls this workflow, builds the sdist and
+    then the wheel from it, and runs `.github/scripts/check_distributions.py`:
+    both archives must contain the package, and the wheel must install into a
+    fresh virtual environment, import, and report its version through
+    `pymedphys --version`. Then `pymedphys dev propagate` must leave the
+    generated files unchanged (exported requirements, `dependency-extra.txt`,
+    `pyproject.hash`, `_version.py`); this check reports even when the wheel
+    checks fail
 - **Triggers**: Main branch, `full-test`, or a PR that changes dependency or
   build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
   `integration-tests.yml` or `examples/`, or a symlink or submodule
@@ -186,16 +198,34 @@ SQL Server integration tests for Mosaiq database functionality.
 - **Triggers**: Main pushes, database or shared code changes, dependency
   metadata or shared CI configuration, or `database` / `full-test` labels
 - **Features**: Waits for SQL Server to accept connections, then runs the tests once;
-  test failures are not hidden by retries
+  test failures are not hidden by retries. The CSV-backed tests load the mimic
+  tables once per module through a read-only connection
 
 #### `docs.yml`
 Builds documentation on PRs that change documentation sources, package modules, or any unclassified input.
 
-- **HTML build**: Sphinx warnings and unexpected notebook errors fail the build
-- **Link check**: Advisory external-link check with downloadable reports
+- **HTML build**: Sphinx warnings and unexpected notebook errors fail the build.
+  The executed-notebook store (`_build/.jupyter_cache`) is cached between runs
+  under an exact key over everything notebook execution can read: every
+  tracked file under `lib/pymedphys` except documentation prose,
+  `pyproject.toml`, `uv.lock`, the interpreter, and the runner image
+  (`.github/scripts/notebook_cache_key.py`). A prose-only change reuses the
+  outputs; any other change executes every notebook again
+- **Link check**: Advisory external-link check with downloadable reports, in
+  its own job alongside the HTML build (`pymedphys dev docs --linkcheck`). It
+  reads the sources without executing notebooks, so it needs no data and
+  finishes before the build
 - **Artefact**: Built HTML is uploaded for inspection
 - **Publishing**: ReadTheDocs publishes docs.pymedphys.com independently using
-  `.readthedocs.yml`
+  `.readthedocs.yml`. It installs the same locked environment as this job,
+  with `uv sync` from `uv.lock` (the project, the `docs` extra, and the
+  default `dev` group). It also builds a preview of each pull request, except
+  that `.github/scripts/readthedocs_skip.sh` cancels a preview when every path
+  that differs from `main` is one the documentation never reads: `.github/`,
+  `lib/pymedphys/tests/`, `AGENTS.md`, `CLAUDE.md`, `SECURITY.md`,
+  `.pre-commit-config.yaml`, and `claude_created_workflows_preview/`. Read the
+  Docs reports a cancelled build to GitHub as failed; its status is not a
+  required check
 
 ### Release & Maintenance
 
@@ -280,7 +310,7 @@ Automated dependency updates for Python packages.
 - **Schedule**: Weekly (Mondays), or manually
 - **Steps**: `uv lock --upgrade`, then (only if the lockfile changed)
   `uv sync` and `pymedphys dev propagate` (so
-  the exported requirements files, `dependency-extra.txt`, and `pyproject.hash`
+  the exported `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`
   stay current), then the unit tests, the docs build, and a wheel build and
   install before a PR is opened. The data cache is restored only after the
   lockfile changes, because only those runs read data
@@ -318,8 +348,11 @@ Standardised project setup for all workflows.
 ### `actions/cache-data/action.yml`
 
 Restores and saves the PyMedPhys data cache. Keys are per job and per manifest,
-and never restore across a change to `hashes.json`. Jobs that decide later
-whether they need data, such as `deps.yml`, use it directly.
+and never restore across a change to `hashes.json`. The key hashes
+`lib/pymedphys/_data/hashes.json` by its exact path: the step runs after
+`uv sync`, so a `**` pattern would walk the whole virtual environment and also
+match pydicom's own `hashes.json`. Jobs that decide later whether they need
+data, such as `deps.yml`, use it directly.
 
 ## PR Workflow
 

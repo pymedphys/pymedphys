@@ -57,10 +57,12 @@ def build_docs(args):
     for original_path, target_path in FILE_COPY_MAPPING:
         shutil.copy(original_path, target_path)
 
-    for file_name in FILES_TO_PRE_DOWNLOAD:
-        # Implemented to remove the downloading prompts from appearing
-        # within the online doc notebooks
-        pymedphys.data_path(file_name)
+    # The link check does not execute notebooks, so it needs no data.
+    if not args.linkcheck:
+        for file_name in FILES_TO_PRE_DOWNLOAD:
+            # Implemented to remove the downloading prompts from appearing
+            # within the online doc notebooks
+            pymedphys.data_path(file_name)
 
     # Use the same generated Sphinx configuration for local builds and ReadTheDocs.
     subprocess.check_call(["jupyter-book", "config", "sphinx", str(DOCS_PATH)])
@@ -72,18 +74,35 @@ def build_docs(args):
     # requested, so import here rather than at module import time.
     import sphinx.cmd.build
 
-    status = sphinx.cmd.build.build_main(
-        [
+    build_directory = output_directory.joinpath("_build")
+    if args.linkcheck:
+        # Links are read from the sources, so notebooks are not executed. The
+        # separate environment keeps doctrees read without notebook outputs
+        # away from HTML builds. Link-check settings live in _config.yml.
+        argv = [
+            "-b",
+            "linkcheck",
+            "-T",
+            "-D",
+            "nb_execution_mode=off",
+            "-d",
+            str(build_directory.joinpath(".doctrees-linkcheck")),
+            str(DOCS_PATH),
+            str(build_directory.joinpath("linkcheck")),
+        ]
+    else:
+        argv = [
             "-b",
             "html",
             "-W",
             "-T",
             "--keep-going",
             "-d",
-            str(output_directory.joinpath("_build", ".doctrees")),
+            str(build_directory.joinpath(".doctrees")),
             str(DOCS_PATH),
-            str(output_directory.joinpath("_build", "html")),
+            str(build_directory.joinpath("html")),
         ]
-    )
+
+    status = sphinx.cmd.build.build_main(argv)
     if status:
         raise SystemExit(status)

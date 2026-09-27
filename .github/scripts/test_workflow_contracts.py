@@ -91,15 +91,19 @@ class WorkflowContractTests(unittest.TestCase):
                     )
             self.assertIn("fetch-depth: 2", workflow["changes"])
 
-    def test_selected_jobs_still_run_when_pre_commit_fails(self):
-        # Contributors get every selected result in one run; the summary still
-        # fails on the pre-commit failure itself.
+    def test_selected_jobs_do_not_wait_for_pre_commit(self):
+        # Selected checks start alongside pre-commit and run whatever its
+        # result, so contributors get every result in one run. The summary
+        # still waits for pre-commit and fails on its failure.
         workflow = jobs("ci.yml")
-        for job, body in workflow.items():
-            if "pre-commit" in needs(body) and "needs.changes.outputs." in body:
-                with self.subTest(job=job):
-                    self.assertIn("(success() || failure())", body)
-                    self.assertIn("needs.changes.result == 'success'", body)
+        selected = [
+            job for job, body in workflow.items() if "needs.changes.outputs." in body
+        ]
+        self.assertTrue(selected)
+        for job in selected:
+            with self.subTest(job=job):
+                self.assertEqual(needs(workflow[job]), {"changes"})
+        self.assertIn("pre-commit", needs(workflow["summary"]))
 
     def test_the_selector_alone_reads_labels_and_the_matrix_fails_closed(self):
         for filename in ("ci.yml", "security.yml"):
