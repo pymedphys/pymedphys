@@ -130,6 +130,38 @@ SLOW_TEST_FILES = frozenset(
         "lib/pymedphys/tests/trf/test_decode.py",
     }
 )
+# Package code that the slow tests check against real data, such as reference
+# DICOM, TRF and Pinnacle exports and published gamma pass rates. Unit runs
+# skip those tests, so a change here runs them before merging, not only on
+# main. Tests require each entry to exist.
+SLOW_TEST_SOURCES = (
+    # Delivery round trips and TRF decoding
+    "lib/pymedphys/_trf/",
+    "lib/pymedphys/_dicom/delivery/",
+    "lib/pymedphys/_dicom/rtplan/",
+    "lib/pymedphys/_metersetmap/",
+    # Pinnacle export and its command-line interface
+    "lib/pymedphys/_pinnacle/",
+    "lib/pymedphys/cli/pinnacle.py",
+    "lib/pymedphys/cli/experimental/pinnacle.py",
+    # Gamma against published pass rates, from RT Dose files
+    "lib/pymedphys/_gamma/",
+    "lib/pymedphys/_interp/",
+    "lib/pymedphys/_dicom/coords.py",
+    "lib/pymedphys/_dicom/dose.py",
+    "lib/pymedphys/_dicom/orientation.py",
+    # Anonymisation and pseudonymisation, and their command-line interfaces
+    "lib/pymedphys/_dicom/anonymise/",
+    "lib/pymedphys/_experimental/pseudonymisation/",
+    "lib/pymedphys/cli/dicom.py",
+    "lib/pymedphys/cli/experimental/dicom.py",
+)
+# Package code outside the Mosaiq modules that the database tests call: they
+# build deliveries from TRF and DICOM files and identify TRF files in Mosaiq.
+DATABASE_SOURCES = (
+    "lib/pymedphys/_trf/",
+    "lib/pymedphys/_dicom/delivery/",
+)
 # The scan also covers the directories conftest.py excludes from the doctest
 # run, so changing those exclusions cannot leave a module unselected.
 DOCTEST_FILES = frozenset(
@@ -207,6 +239,7 @@ def _is_integration_input(name: str) -> bool:
         or name.startswith(INTEGRATION_ROOTS)
         or path.name in PACKAGING_FILTER_NAMES
         or name in SLOW_TEST_FILES
+        or name.startswith(SLOW_TEST_SOURCES)
         or name in DOCTEST_FILES
         or _is_shared_test_input(name)
         # A non-Python fixture may be consumed only by a slow test.
@@ -218,6 +251,7 @@ def _is_database_input(name: str) -> bool:
     path = PurePosixPath(name)
     return (
         any("mosaiq" in part or "database" in part for part in path.parts)
+        or name.startswith(DATABASE_SOURCES)
         or _is_shared_test_input(name)
         or name in DEPENDENCY_INPUTS
         or _configures_ci(name)
