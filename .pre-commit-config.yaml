@@ -15,6 +15,9 @@ repos:
       - id: check-toml
       - id: check-added-large-files
         args: ["--maxkb", "500"]
+        # Generated from the DICOM standard and checked against their recorded
+        # digests; the PS3.6 data dictionary alone exceeds 500 KB.
+        exclude: ^lib/pymedphys/_dicom/deidentify/_standard/
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:

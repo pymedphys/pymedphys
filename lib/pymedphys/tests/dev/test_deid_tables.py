@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Parsing DICOM PS3.15 Annex E tables from NEMA's chtml pages.
+"""Parsing DICOM PS3.15 Annex E and PS3.6 tables from NEMA's chtml pages.
 
 The HTML below is hand-written. It follows the structure of the published
 chtml pages (navigation tables, a ``p.title`` before each table, a header row
@@ -22,11 +22,12 @@ from the standard: every attribute in it is invented.
 
 import hashlib
 import json
+import re
 import urllib.error
 
 from pymedphys._imports import pytest
 
-from pymedphys._dev.deid_tables import annex_e, chtml, generate, sources
+from pymedphys._dev.deid_tables import annex_e, chtml, generate, ps3_6, sources
 from pymedphys._dicom.deidentify import standard
 from pymedphys.cli import define_parser
 
@@ -210,6 +211,61 @@ E3_10_1 = _table(
 E1_1 = _table(
     "Table E.1-1. Fixture Confidentiality Profile Attributes", E1_1_HEADER, E1_1_ROWS
 )
+
+
+TABLE_6_1_HEADER = ("Tag", "Name", "Keyword", "VR", "VM", "")
+# Invented elements in the forms the published table uses: repeating groups
+# and masked elements, alternative VRs and VMs, notes in place of a VR or a
+# status, a placeholder without a name, and the DICOS and DICONDE registries.
+TABLE_6_1_ROWS = (
+    ("(0998,0010)", "Fixture's Name", "FixtureName", "PN", "1", ""),
+    (
+        "(60xx,0998)",
+        "Fixture Overlay Value",
+        "FixtureOverlayValue",
+        "OB or OW",
+        "1",
+        "",
+    ),
+    (
+        "(0998,0020)",
+        "Fixture Lookup Data",
+        "FixtureLookupData",
+        "US or SS or OW",
+        "1-n or 1",
+        "RET",
+    ),
+    (
+        "(0998,00x1)",
+        "Fixture Coefficient",
+        "FixtureCoefficient",
+        "US",
+        "2-2n",
+        "RET (2007)",
+    ),
+    ("(0998,0030)", "", "", "", "", "RET (2004) - See Note 3"),
+    ("(FFFE,E0F0)", "Fixture Item", "FixtureItem", "See Note 2", "1", ""),
+    (
+        "(0998,0040)",
+        "Fixture Code Sequence",
+        "FixtureCodeSequence",
+        "SQ",
+        "1",
+        "See Note 1",
+    ),
+    ("(0998,0050)", "Fixture Inspection", "FixtureInspection", "DS", "3", "DICONDE"),
+    ("(0998,0060)", "Fixture Scan", "FixtureScan", "CS", "1-n", "DICOS"),
+)
+TABLE_6_1 = _table(
+    "Table 6-1. Fixture Registry of DICOM Data Elements",
+    TABLE_6_1_HEADER,
+    TABLE_6_1_ROWS,
+)
+
+
+def _table_6_1(header=TABLE_6_1_HEADER, rows=TABLE_6_1_ROWS):
+    page = _page(_table("Table 6-1. Fixture", header, rows))
+    return chtml.select_table(chtml.extract_tables(page), "Table 6-1")
 
 
 def _e1_1_table(header=E1_1_HEADER, rows=E1_1_ROWS):
@@ -544,6 +600,93 @@ def test_table_e3_10_1_without_rows_fails():
         annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=()))
 
 
+def test_parse_table_6_1():
+    attributes = ps3_6.parse_table_6_1(_table_6_1())
+
+    assert attributes == tuple(
+        standard.DictionaryAttribute(*row) for row in TABLE_6_1_ROWS
+    )
+
+
+def test_table_6_1_columns_are_mapped_by_header_text():
+    order = (5, 3, 0, 4, 2, 1)
+    header = tuple(TABLE_6_1_HEADER[i] for i in order)
+    rows = tuple(tuple(row[i] for i in order) for row in TABLE_6_1_ROWS)
+
+    assert ps3_6.parse_table_6_1(_table_6_1(header, rows)) == ps3_6.parse_table_6_1(
+        _table_6_1()
+    )
+
+
+@pytest.mark.parametrize(
+    "header, message",
+    [
+        (TABLE_6_1_HEADER[:-1] + ("Status",), "unknown column 'Status'"),
+        (TABLE_6_1_HEADER[:-1], "missing column ''"),
+    ],
+)
+def test_table_6_1_unknown_or_missing_columns_fail(header, message):
+    rows = tuple(row[: len(header)] for row in TABLE_6_1_ROWS)
+
+    with pytest.raises(chtml.TableFormatError, match=message):
+        ps3_6.parse_table_6_1(_table_6_1(header, rows))
+
+
+@pytest.mark.parametrize(
+    "column, value, message",
+    [
+        (0, "(0999,0010)", "tag '(0999,0010)'"),
+        (0, "(0998,010)", "tag '(0998,010)'"),
+        (0, "(0998,00aa)", "tag '(0998,00aa)'"),
+        (1, "", "a name without a keyword"),
+        (2, "", "a name without a keyword"),
+        (2, "Fixture Name", "keyword 'Fixture Name'"),
+        (3, "XX", "VR 'XX'"),
+        (3, "US/SS", "VR 'US/SS'"),
+        (3, "US or", "VR 'US or'"),
+        (4, "2-3n", "VM '2-3n'"),
+        (4, "1 or", "VM '1 or'"),
+        (5, "RETIRED", "status 'RETIRED'"),
+        (5, "RET (07)", "status 'RET (07)'"),
+    ],
+)
+def test_table_6_1_invalid_values_fail(column, value, message):
+    row = list(TABLE_6_1_ROWS[0])
+    row[column] = value
+
+    with pytest.raises(chtml.TableFormatError, match=f"row 1.*{re.escape(message)}"):
+        ps3_6.parse_table_6_1(_table_6_1(rows=(tuple(row),)))
+
+
+def test_table_6_1_placeholders_must_be_retired():
+    placeholder = ("(0998,0030)", "", "", "", "", "")
+
+    with pytest.raises(chtml.TableFormatError, match="row 1.*not retired"):
+        ps3_6.parse_table_6_1(_table_6_1(rows=(placeholder,)))
+
+
+@pytest.mark.parametrize(
+    "repeated, message",
+    [
+        (("(0998,0010)", "Other Name", "OtherName", "PN", "1", ""), "(0998,0010)"),
+        (
+            ("(0998,0070)", "Fixture's Name", "FixtureName", "PN", "1", ""),
+            "FixtureName",
+        ),
+    ],
+)
+def test_table_6_1_repeated_tags_or_keywords_fail(repeated, message):
+    with pytest.raises(
+        chtml.TableFormatError, match=re.escape(f"{message} appears 2 times")
+    ):
+        ps3_6.parse_table_6_1(_table_6_1(rows=TABLE_6_1_ROWS + (repeated,)))
+
+
+def test_table_6_1_without_rows_fails():
+    with pytest.raises(chtml.TableFormatError, match="has no rows"):
+        ps3_6.parse_table_6_1(_table_6_1(rows=()))
+
+
 def test_a_source_is_read_only_when_its_digest_matches(tmp_path):
     source = tmp_path / "chapter_E.html"
     source.write_bytes(b"<html></html>")
@@ -567,6 +710,7 @@ def test_a_malformed_expected_digest_is_rejected(tmp_path):
 # The generator, with a pin for the hand-written page instead of NEMA's.
 FIXTURE_PAGE = _page(E1_1A, E1_1).encode("utf-8")
 FIXTURE_E3_10_PAGE = _page(E3_10_1).encode("utf-8")
+FIXTURE_CHAPTER_6_PAGE = _page(TABLE_6_1).encode("utf-8")
 FIXTURE_PIN = generate.Pin(
     edition="2099a",
     sources=(
@@ -575,6 +719,9 @@ FIXTURE_PIN = generate.Pin(
         ),
         generate.PinnedSource(
             "part15/sect_E.3.10.html", hashlib.sha256(FIXTURE_E3_10_PAGE).hexdigest()
+        ),
+        generate.PinnedSource(
+            "part06/chapter_6.html", hashlib.sha256(FIXTURE_CHAPTER_6_PAGE).hexdigest()
         ),
     ),
 )
@@ -586,6 +733,8 @@ def _source_dir(tmp_path):
     (directory / "part15").mkdir(parents=True)
     (directory / "part15" / "chapter_E.html").write_bytes(FIXTURE_PAGE)
     (directory / "part15" / "sect_E.3.10.html").write_bytes(FIXTURE_E3_10_PAGE)
+    (directory / "part06").mkdir()
+    (directory / "part06" / "chapter_6.html").write_bytes(FIXTURE_CHAPTER_6_PAGE)
     return directory
 
 
@@ -665,6 +814,28 @@ def test_generate_writes_the_other_annex_e_tables(
     assert document["content_sha256"] == standard.content_sha256(rows)
 
 
+def test_generate_writes_the_data_dictionary(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads(
+        (output_dir / "data_dictionary.json").read_text(encoding="utf-8")
+    )
+    rows = [
+        dict(zip(("tag", "name", "keyword", "vr", "vm", "status"), row))
+        for row in TABLE_6_1_ROWS
+    ]
+    assert document["table"] == "PS3.6 Table 6-1"
+    assert document["edition"] == "2099a"
+    assert document["acknowledgement"] == "DICOM PS3.6 2099a, \u00a9 NEMA"
+    assert document["sources"] == [
+        {"path": "part06/chapter_6.html", "sha256": FIXTURE_PIN.sources[2].sha256}
+    ]
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
+
+
 def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
     generate.generate(FIXTURE_PIN, tmp_path / "a", source_dir=source_dir)
     generate.generate(FIXTURE_PIN, tmp_path / "b", source_dir=source_dir)
@@ -736,8 +907,16 @@ CURRENT_URL = (
 
 def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp_path):
     e3_10_current = CURRENT_URL.replace("chapter_E.html", "sect_E.3.10.html")
+    chapter_6_current = CURRENT_URL.replace(
+        "part15/chapter_E.html", "part06/chapter_6.html"
+    )
     requested = _fake_downloads(
-        monkeypatch, {CURRENT_URL: FIXTURE_PAGE, e3_10_current: FIXTURE_E3_10_PAGE}
+        monkeypatch,
+        {
+            CURRENT_URL: FIXTURE_PAGE,
+            e3_10_current: FIXTURE_E3_10_PAGE,
+            chapter_6_current: FIXTURE_CHAPTER_6_PAGE,
+        },
     )
 
     assert generate.generate(FIXTURE_PIN, tmp_path / "tables") == 0
@@ -746,8 +925,10 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
         CURRENT_URL,
         EDITION_URL.replace("chapter_E.html", "sect_E.3.10.html"),
         e3_10_current,
+        EDITION_URL.replace("part15/chapter_E.html", "part06/chapter_6.html"),
+        chapter_6_current,
     ]
-    for name in ("e1_1.json", "e1_1a.json", "e3_10_1.json"):
+    for name in ("e1_1.json", "e1_1a.json", "e3_10_1.json", "data_dictionary.json"):
         assert (tmp_path / "tables" / name).exists()
 
 

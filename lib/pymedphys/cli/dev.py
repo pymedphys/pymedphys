@@ -76,7 +76,8 @@ def add_deid_tables_parser(dev_subparsers):
         "deid-tables",
         help=(
             "Generate the de-identification rule tables from the pinned edition "
-            "of DICOM PS3.15, after checking each source page's SHA-256 digest."
+            "of DICOM PS3.15 and PS3.6, after checking each source page's "
+            "SHA-256 digest."
         ),
     )
     parser.add_argument(
