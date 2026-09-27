@@ -43,6 +43,7 @@ pymedphys = "pymedphys.__main__:main"
 user = [
   "Pillow",
   "PyYAML",
+  "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
   "anyio",
   "attrs",
   "dash",
@@ -186,6 +187,7 @@ propagate = [
 all = [
     "Pillow",
     "PyYAML",
+    "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
     "anthropic",
     "anyio",
     "astroid",
