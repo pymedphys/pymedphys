@@ -4,8 +4,10 @@ requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
     "python_full_version >= '3.15' and sys_platform != 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform != 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform != 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten'",
     "python_full_version < '3.12'",
 ]
 
@@ -2436,8 +2438,10 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
     "python_full_version >= '3.15' and sys_platform != 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform != 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform != 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/13/01/11703282db468b85f6f7b8c7f22d058de5970d5c7e60a3a8aaa313c3de36/numpy-2.5.3.tar.gz", hash = "sha256:df2d5874ff183595a4ba404edd04f6bd9b5505c1d7708573f6a6c17489a67563", size = 20791231, upload-time = "2026-09-06T16:27:47.073Z" }
 wheels = [
@@ -3135,6 +3139,7 @@ ai = [
     { name = "trio" },
 ]
 all = [
+    { name = "altair", marker = "python_full_version >= '3.14'" },
     { name = "anthropic" },
     { name = "anyio" },
     { name = "astroid" },
@@ -3288,6 +3293,7 @@ tests = [
     { name = "tqdm" },
 ]
 user = [
+    { name = "altair", marker = "python_full_version >= '3.14'" },
     { name = "anyio" },
     { name = "attrs" },
     { name = "dash" },
@@ -3335,6 +3341,8 @@ pre-commit = [
 
 [package.metadata]
 requires-dist = [
+    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'all'", specifier = ">=6.0.0" },
+    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'user'", specifier = ">=6.0.0" },
     { name = "anthropic", marker = "extra == 'ai'" },
     { name = "anthropic", marker = "extra == 'all'" },
     { name = "anthropic", marker = "extra == 'tests'" },
