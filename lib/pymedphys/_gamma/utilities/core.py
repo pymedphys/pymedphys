@@ -23,8 +23,9 @@ def calculate_pass_rate(gamma) -> float:
 
     A point passes when its gamma is at most 1. NaN marks reference points
     that :func:`pymedphys.gamma` did not analyse (below the lower dose
-    cutoff, or not selected by ``random_subset``), so they are left out of
-    both the count and the total, as are the masked values of a masked array.
+    cutoff, not selected by ``random_subset``, or with NaN dose left out by
+    ``exclude_nan_reference``), so they are left out of both the count and
+    the total, as are the masked values of a masked array.
 
     Every NaN is taken to mark a point that was not analysed. Gamma from other
     software, or from :func:`pymedphys.gamma` before version 0.42.0, can also

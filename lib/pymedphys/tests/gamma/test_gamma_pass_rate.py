@@ -36,6 +36,18 @@ def test_pass_rate_of_a_gamma_calculation():
     assert pymedphys.gamma_pass_rate(gamma) == pytest.approx(75)
 
 
+def test_nan_reference_points_left_out_of_gamma_are_not_counted():
+    axis = np.arange(5.0)
+    reference = np.array([np.nan, 1.0, 1.0, 1.0, 1.0])
+    evaluation = np.array([1.0, 1.0, 1.02, 1.05, 1.0])
+    gamma = pymedphys.gamma(
+        axis, reference, axis, evaluation, 3, 0.1, exclude_nan_reference=True
+    )
+
+    assert np.isnan(gamma[0])
+    assert pymedphys.gamma_pass_rate(gamma) == pytest.approx(75)
+
+
 def test_gamma_of_exactly_one_passes():
     # NaN points were not evaluated, so they are not counted.
     gamma = np.array([0.5, 1.0, np.nextafter(1.0, 2.0), np.nan])
