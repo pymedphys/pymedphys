@@ -1,6 +1,6 @@
 # Gamma scaling: recorded workstation evidence
 
-**Partial study, recorded 26–27 September 2026.** These are saved workstation measurements from the original continuous-field scaling run, before the two-hour scheduler was introduced. They are distinct from the earlier fixed-grid notebook and from cloud measurements.
+**Partial study, recorded 26–27 September 2026.** These are saved workstation measurements from the original continuous-field scaling run, before the two-hour scheduler was introduced. They are distinct from the earlier fixed-grid notebook.
 
 **98/120 planned four-way groups are verified**, giving 392 plotted timed calls across 25 workloads. The run was stopped; the missing groups are listed in the raw record. In particular, no 3D local-criterion case was reached.
 
