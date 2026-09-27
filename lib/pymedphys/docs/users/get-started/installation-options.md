@@ -3,7 +3,7 @@
 PyMedPhys uses optional dependency groups so you can install either a broad
 end-user stack or a narrower task-specific stack.
 
-PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
 
 ## Recommended approach
 
@@ -20,6 +20,13 @@ uv pip install "pymedphys[user]"
 
 If you cannot install `uv` on your workstation, use the fallback path in the
 [Quick Start Guide](quick-start.rst).
+
+## macOS with Python 3.14
+
+watchdog 6.0.0 has no macOS wheel for Python 3.14, so on that combination the
+`user` and `all` extras do not install it rather than build it from source. No
+compiler is needed. The GUI still works: Streamlit polls for file changes
+instead of using watchdog's file-system events.
 
 ## Why there is more than one install
 

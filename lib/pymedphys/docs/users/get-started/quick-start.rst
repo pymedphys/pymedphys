@@ -14,7 +14,7 @@ For most users, the recommended install is:
     uv venv --python 3.12
     uv pip install "pymedphys[user]"
 
-PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
 
 We recommend using ``uv`` for this guide. It can install Python, create a
 virtual environment, and install packages with one tool.
