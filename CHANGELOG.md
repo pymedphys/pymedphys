@@ -143,10 +143,14 @@ This project adheres to
   otherwise inconsistent rows, a table with no rows, unrecognised tags,
   actions not defined in Table E.1-1a, and repeated tags. Each generated file
   records the edition, the source digests, a digest of its rows, and the
-  acknowledgement "DICOM PS3.15 2026d, © NEMA", and the same input always
-  produces the same bytes. `--check` exits with status 1 when the written
-  tables are missing or out of date. No tables are shipped yet.
-  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093)
+  copyright attribution "DICOM PS3.15 2026d, © NEMA", and the same input always
+  produces the same bytes. The generated table ships in the package, in
+  `pymedphys/_dicom/deidentify/_standard/`, with a loader,
+  `pymedphys._dicom.deidentify.standard.load_table_e1_1`, that checks each
+  row's fields, types, and actions and rejects a table whose rows no longer
+  match their recorded digest. `--check` exits
+  with status 1 when the committed tables are missing or out of date.
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096)
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries that describe changes since the last stable release and link their pull requests, descriptions of the state

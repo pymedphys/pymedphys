@@ -17,10 +17,10 @@
 from __future__ import annotations
 
 import collections
-import dataclasses
 import re
 import types
-from collections.abc import Mapping
+
+from pymedphys._dicom.deidentify.standard import ACTION_CODES, ProfileAttribute
 
 from .chtml import HtmlTable, TableFormatError
 
@@ -49,48 +49,10 @@ OPTION_COLUMNS = {
 
 COLUMNS = (_NAME, _TAG, _RETIRED, _IN_STANDARD_IOD, _BASIC_PROFILE, *OPTION_COLUMNS)
 
-# Complete action codes from Table E.1-1a. Compound codes have defined
-# meanings; other combinations, including "U*" alone, are not defined.
-ACTION_CODES = frozenset(
-    {"D", "Z", "X", "K", "C", "U", "Z/D", "X/Z", "X/D", "X/Z/D", "X/Z/U*"}
-)
-
 # A tag, where an "x" stands for any hexadecimal digit, as in (60xx,3000).
 _TAG_PATTERN = re.compile(r"\([0-9A-Fx]{4},[0-9A-Fx]{4}\)")
 # The row that covers every private attribute.
 PRIVATE_ATTRIBUTES_TAG = "(gggg,eeee) where gggg is odd"
-
-
-@dataclasses.dataclass(frozen=True)
-class ProfileAttribute:
-    """One row of Table E.1-1.
-
-    Attributes
-    ----------
-    name : str
-        The attribute name, as the table gives it.
-    tag : str
-        The tag in the form ``(gggg,eeee)``, where ``x`` may stand for any
-        hexadecimal digit, or :data:`PRIVATE_ATTRIBUTES_TAG`.
-    retired : bool
-        Whether PS3.6 lists the attribute as retired.
-    in_standard_iod : bool
-        Whether PS3.3 uses the attribute in a standard composite IOD.
-    basic_profile : str
-        The Basic Profile action, such as ``"X"`` or ``"X/Z/D"``.
-    options : Mapping of str to str
-        The action for each option that gives one, keyed by the names in
-        :data:`OPTION_COLUMNS`. Options with an empty cell are omitted. The
-        mapping is read-only.
-    """
-
-    name: str
-    tag: str
-    retired: bool
-    in_standard_iod: bool
-    basic_profile: str
-    # A mapping is not hashable, so it is left out of the hash.
-    options: Mapping[str, str] = dataclasses.field(hash=False)
 
 
 def _flag(value: str, column: str, row: int) -> bool:
