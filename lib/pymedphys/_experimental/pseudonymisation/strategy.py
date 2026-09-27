@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -366,129 +367,79 @@ def _pseudonymise_OB_or_OW(value):
     return _pseudonymise_unchanged(value)
 
 
+# DICOM PS3.5 Table 6.2-1 allows at most 64 characters per PN component group,
+# delimiters included.
+_PN_COMPONENT_GROUP_MAX_LENGTH = 64
+# The family, given, and middle names and the four "^" delimiters must fit.
+_PN_NAME_MAX_LENGTH = (_PN_COMPONENT_GROUP_MAX_LENGTH - 4) // 3
+
+
 def _pseudonymise_PN(
-    value, max_component_length=64, strip_name_prefix=True, strip_name_suffix=True
+    value, max_component_length=20, strip_name_prefix=True, strip_name_suffix=True
 ):
-    """
-    create a pseudonym from a person's name.
-    Break in to surname, given name, and middle name, as well as title and honorifics
-    doesn't deal with Unicode (yet)
+    """Create a pseudonym from a person's name.
+
+    The family, given, and middle names of the alphabetic component group are
+    each replaced with the start of a hash, and empty ones stay empty. Other
+    component groups are dropped. Names containing non-ASCII characters are
+    not supported.
 
     Parameters
     ----------
-    value : string representation of Persons Name
-        DESCRIPTION.
-    max_component_length : integer, optional
-        Maximum length for each component INCLUDING the '^' delimiter. The default is 64. The delimiter used to separate components is the '^' character.
-    strip_name_prefix : Boolean, optional
-        DESCRIPTION. The default is True.
-    strip_name_suffix : Boolean, optional
-        DESCRIPTION. The default is True.
+    value : str
+        The Person Name (PN) value.
+    max_component_length : int, optional
+        Number of hash characters kept for each non-empty family, given, and
+        middle name, from 1 to 20. The default of 20 keeps the three names and
+        the four ``^`` delimiters within the 64 characters that DICOM PS3.5
+        Table 6.2-1 allows per PN component group. Earlier versions wrote each
+        name as the whole hash, so their output can be linked by truncating
+        its non-empty names to this length.
+    strip_name_prefix : bool, optional
+        Empty the name prefix. The default is True. If False, the original
+        prefix is kept, cut to the room left in the component group.
+    strip_name_suffix : bool, optional
+        Empty the name suffix. The default is True. If False, the original
+        suffix is kept, cut to the room left after the prefix.
 
     Returns
     -------
-    string conforming to DICOM PN format
-        A pseudonym, but doesn't deal with Unicode (yet)
+    str
+        The pseudonymised value, ``family^given^middle^prefix^suffix``, of at
+        most 64 characters.
 
+    Raises
+    ------
+    ValueError
+        If ``max_component_length`` is not between 1 and 20.
     """
-    # Validate max_component_length to prevent negative slicing
-    if max_component_length < 2:
+    if not 1 <= max_component_length <= _PN_NAME_MAX_LENGTH:
         raise ValueError(
-            "max_component_length must be at least 2 to accommodate a character and delimiter"
+            f"max_component_length must be between 1 and {_PN_NAME_MAX_LENGTH}, "
+            "so that the name fits one PN component group"
         )
     persons_name_three = pydicom.valuerep.PersonName(value)
-    family_name = persons_name_three.family_name
-    given_name = persons_name_three.given_name
-    middle_name = persons_name_three.middle_name
 
-    # Process each component - preserve empty components
-    if family_name:
-        base64_pseudo_family = _pseudonymise_plaintext(family_name)
-        pseudo_family = _strip_plus_slash_from_base64(base64_pseudo_family)
-        if pseudo_family is None:
-            pseudo_family = ""
-    else:
-        pseudo_family = ""
-
-    if given_name:
-        pseudo_given = _strip_plus_slash_from_base64(
-            _pseudonymise_plaintext(given_name)
+    pseudo_names = []
+    for name in (
+        persons_name_three.family_name,
+        persons_name_three.given_name,
+        persons_name_three.middle_name,
+    ):
+        # An empty name stays empty.
+        pseudo_name = (
+            _strip_plus_slash_from_base64(_pseudonymise_plaintext(name))
+            if name
+            else None
         )
-        if pseudo_given is None:
-            pseudo_given = ""
-    else:
-        pseudo_given = ""
+        pseudo_names.append((pseudo_name or "")[:max_component_length])
 
-    if middle_name:
-        pseudo_middle = _strip_plus_slash_from_base64(
-            _pseudonymise_plaintext(middle_name)
-        )
-        if pseudo_middle is None:
-            pseudo_middle = ""
-    else:
-        pseudo_middle = ""
+    room = _PN_COMPONENT_GROUP_MAX_LENGTH - 4 - sum(map(len, pseudo_names))
+    prefix = "" if strip_name_prefix else persons_name_three.name_prefix[:room]
+    room -= len(prefix)
+    suffix = "" if strip_name_suffix else persons_name_three.name_suffix[:room]
 
-    prefix = persons_name_three.name_prefix
-    suffix = persons_name_three.name_suffix
-    if strip_name_prefix:
-        prefix = ""
-    if strip_name_suffix:
-        suffix = ""
-
-    # Build the PN value with proper length limits
-    # According to DICOM standard, each component group can be max 64 chars INCLUDING delimiter
-    # So we need to account for the ^ delimiter when slicing
-    components = []
-
-    # Family name - if not empty and not the last component, reserve 1 char for delimiter
-    if pseudo_family:
-        # Check if there are any subsequent non-empty components
-        has_subsequent = bool(pseudo_given or pseudo_middle or prefix or suffix)
-        if has_subsequent:
-            components.append(pseudo_family[: max_component_length - 1])
-        else:
-            components.append(pseudo_family[:max_component_length])
-    else:
-        components.append("")
-
-    # Given name - if not empty and not the last component, reserve 1 char for delimiter
-    if pseudo_given:
-        has_subsequent = bool(pseudo_middle or prefix or suffix)
-        if has_subsequent:
-            components.append(pseudo_given[: max_component_length - 1])
-        else:
-            components.append(pseudo_given[:max_component_length])
-    else:
-        components.append("")
-
-    # Middle name - if not empty and not the last component, reserve 1 char for delimiter
-    if pseudo_middle:
-        has_subsequent = bool(prefix or suffix)
-        if has_subsequent:
-            components.append(pseudo_middle[: max_component_length - 1])
-        else:
-            components.append(pseudo_middle[:max_component_length])
-    else:
-        components.append("")
-
-    # Prefix - if not empty and not the last component, reserve 1 char for delimiter
-    if prefix:
-        has_subsequent = bool(suffix)
-        if has_subsequent:
-            components.append(prefix[: max_component_length - 1])
-        else:
-            components.append(prefix[:max_component_length])
-    else:
-        components.append("")
-
-    # Suffix - last component, no delimiter after it
-    if suffix:
-        components.append(suffix[:max_component_length])
-    else:
-        components.append("")
-
-    pseudonym = "^".join(components)
-    return pseudonym
+    return "^".join([*pseudo_names, prefix, suffix])
 
 
 def _pseudonymise_SH(value):

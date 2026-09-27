@@ -1,163 +1,146 @@
-import pytest
+# Copyright (C) 2026 Matthew Jennings
+# Copyright (C) 2025 Stuart Swerdloff
 
-from pymedphys._experimental.pseudonymisation.strategy import _pseudonymise_PN
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Pseudonymised Person Name (PN) values fit the VR's length limit.
+
+DICOM PS3.5 Table 6.2-1 allows at most 64 characters per PN component group,
+which is the whole of ``family^given^middle^prefix^suffix``, delimiters
+included. The components within a group have no limit of their own.
+"""
+
+# pylint: disable = protected-access
+
+import warnings
+
+from pymedphys._imports import pydicom, pytest
+
+from pymedphys._experimental.pseudonymisation import strategy
+from pymedphys.experimental import pseudonymisation
+
+PN_COMPONENT_GROUP_MAX_LENGTH = 64
+
+LONG = "A" * 100
+NAMES = [
+    "",
+    "SMITH",
+    "SMITH^JANE",
+    "SMITH^JANE^QUINN",
+    "SMITH^JANE^QUINN^DR^JR",
+    "Smith^^John",
+    f"{LONG}^{LONG}^{LONG}^{LONG}^{LONG}",
+]
 
 
-@pytest.mark.pydicom
-def test_pn_length_compliance_with_delimiter():
-    """Test that PN components respect the 64-char limit INCLUDING delimiter."""
-
-    # Test case 1: Long family name only
-    long_name = "A" * 100  # Create a name longer than 64 chars
-    pn_value = long_name
-    result = _pseudonymise_PN(pn_value)
-
-    # Since there's only one component, it should be truncated to 64 chars
-    components = result.split("^")
-    assert len(components) == 5  # PN always has 5 components
-    assert len(components[0]) <= 64
-
-    # Test case 2: Two components - first should be max 63 chars to leave room for delimiter
-    pn_value = f"{long_name}^{long_name}"
-    result = _pseudonymise_PN(pn_value)
-    components = result.split("^")
-    assert len(components) == 5  # PN always has 5 components
-
-    # First component + delimiter should be <= 64
-    assert len(components[0]) <= 63  # Room for the ^ delimiter
-    # Second component can be 64 chars if it's effectively the last non-empty
-    assert len(components[1]) <= 64
-
-    # Test case 3: All five components populated with long prefix and suffix
-    long_prefix = "P" * 100
-    long_suffix = "S" * 100
-    pn_value = f"{long_name}^{long_name}^{long_name}^{long_prefix}^{long_suffix}"
-    result = _pseudonymise_PN(
-        pn_value, strip_name_prefix=False, strip_name_suffix=False
+def _full_hash(name_part):
+    """The whole hash that a name part's pseudonym is the start of."""
+    return strategy._strip_plus_slash_from_base64(
+        strategy._pseudonymise_plaintext(name_part)
     )
-    components = result.split("^")
-    assert len(components) == 5  # PN always has 5 components
-
-    # First four components should be max 63 chars (room for delimiter)
-    assert len(components[0]) <= 63
-    assert len(components[1]) <= 63
-    assert len(components[2]) <= 63
-    assert len(components[3]) <= 63  # Prefix with delimiter
-    assert len(components[4]) <= 64  # Last component (suffix), no delimiter after
-
-    # Verify total length per component group (content + delimiter)
-    # Check each component explicitly to avoid loops in tests
-    assert len(f"{components[0]}^") <= 64
-    assert len(f"{components[1]}^") <= 64
-    assert len(f"{components[2]}^") <= 64
-    assert len(f"{components[3]}^") <= 64
-    # Last component has no delimiter
 
 
 @pytest.mark.pydicom
-def test_pn_empty_components():
-    """Test that empty components are handled correctly."""
+@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("strip", [True, False])
+def test_pseudonymised_names_are_valid_person_names(name, strip):
+    pseudonym = strategy._pseudonymise_PN(
+        name, strip_name_prefix=strip, strip_name_suffix=strip
+    )
 
-    # Test with some empty components
-    pn_value = "Smith^^John"
-    result = _pseudonymise_PN(pn_value)
-    components = result.split("^")
+    assert len(pseudonym) <= PN_COMPONENT_GROUP_MAX_LENGTH
+    assert pydicom.valuerep.validate_pn("PN", pseudonym) == (True, "")
+    assert len(pseudonym.split("^")) == 5
 
-    # Should have 5 components (family, given, middle, prefix, suffix)
-    assert len(components) == 5
 
-    # Family name should be pseudonymised and limited
-    assert components[0] != "Smith"
-    assert len(components[0]) <= 63  # Has subsequent components
+@pytest.mark.pydicom
+def test_empty_name_parts_stay_empty():
+    components = strategy._pseudonymise_PN("Smith^^John").split("^")
 
-    # Middle component should be empty
+    assert components[0] == _full_hash("Smith")[:20]
     assert components[1] == ""
-
-    # Given name should be pseudonymised
-    assert components[2] != "John"
-
-    # Last two should be empty (stripped by default)
-    assert components[3] == ""
-    assert components[4] == ""
+    assert components[2] == _full_hash("John")[:20]
+    assert components[3:] == ["", ""]
 
 
 @pytest.mark.pydicom
-def test_pn_real_world_example():
-    """Test with a realistic PersonName that might appear in DICOM."""
-
-    # Create a name that would cause issues with the old implementation
-    # Each part is exactly 64 chars, which would become 65 with delimiter
-    family = "A" * 64
-    given = "B" * 64
-    middle = "C" * 64
-
-    pn_value = f"{family}^{given}^{middle}"
-    result = _pseudonymise_PN(pn_value)
-
-    # Parse the result
-    components = result.split("^")
-
-    # Verify each component + delimiter doesn't exceed 64
-    assert len(components[0]) <= 63  # Family has subsequent components
-    assert len(components[1]) <= 63  # Given has subsequent components
-    assert len(components[2]) <= 64  # Middle might be last non-empty
-
-    # Verify the DICOM standard compliance
-    # "The Value Length of each component group is 64 characters maximum,
-    # including the delimiter for the component group"
-    # Check each component explicitly (avoiding loops and conditionals)
-    assert len(f"{components[0]}^") <= 64
-    assert len(f"{components[1]}^") <= 64
-    assert len(f"{components[2]}^") <= 64
-    # Last two components might be empty, but still check
-    assert components[3] == "" or len(f"{components[3]}^") <= 64
-    assert components[4] == "" or len(components[4]) <= 64
+def test_an_empty_name_stays_empty():
+    assert strategy._pseudonymise_PN("").split("^") == ["", "", "", "", ""]
 
 
 @pytest.mark.pydicom
-def test_pn_empty_string():
-    """Test that entirely empty PN string is handled correctly."""
+@pytest.mark.parametrize("name", NAMES)
+def test_name_parts_are_the_start_of_their_former_pseudonyms(name):
+    # Earlier versions wrote each name part as its whole hash, so earlier
+    # output can be linked by truncating its non-empty parts to 20 characters.
+    person = pydicom.valuerep.PersonName(name)
+    parts = [person.family_name, person.given_name, person.middle_name]
+    components = strategy._pseudonymise_PN(name).split("^")
 
-    # Test with completely empty PN
-    pn_value = ""
-    result = _pseudonymise_PN(pn_value)
-    components = result.split("^")
-
-    # Should have 5 empty components
-    assert len(components) == 5
-    assert components == ["", "", "", "", ""]
+    assert components[:3] == [_full_hash(part)[:20] if part else "" for part in parts]
 
 
 @pytest.mark.pydicom
-def test_pseudonymise_PN_nondefault_max_component_length():
-    """Test with non-default max_component_length parameter."""
-    # Example input with long components
-    pn = "FAMILYNAME^GIVENNAME^MIDDLENAME^PREFIX^SUFFIX"
-    max_component_length = 32
+def test_a_shorter_component_length_is_honoured():
+    components = strategy._pseudonymise_PN(
+        "FAMILYNAME^GIVENNAME^MIDDLENAME", max_component_length=8
+    ).split("^")
 
-    result = _pseudonymise_PN(
-        pn,
-        max_component_length=max_component_length,
+    assert [len(component) for component in components[:3]] == [8, 8, 8]
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("max_component_length", [0, -1, 21, 64])
+def test_component_lengths_that_cannot_fit_the_limit_are_rejected(
+    max_component_length,
+):
+    with pytest.raises(ValueError, match="between 1 and 20"):
+        strategy._pseudonymise_PN(
+            "SMITH^JANE", max_component_length=max_component_length
+        )
+
+
+@pytest.mark.pydicom
+def test_a_retained_prefix_and_suffix_fill_only_the_room_left():
+    kept = strategy._pseudonymise_PN(
+        "SMITH^^^DR^JR", strip_name_prefix=False, strip_name_suffix=False
+    )
+    assert kept.split("^")[3:] == ["DR", "JR"]
+
+    # Two 20-character name parts and four delimiters leave 20 characters,
+    # which the prefix takes before the suffix.
+    cut = strategy._pseudonymise_PN(
+        f"SMITH^JANE^^{'P' * 30}^{'S' * 30}",
         strip_name_prefix=False,
         strip_name_suffix=False,
     )
+    assert cut.split("^")[3:] == ["P" * 20, ""]
+    assert len(cut) == PN_COMPONENT_GROUP_MAX_LENGTH
 
-    # Split the result into components
-    components = result.split("^")
-    assert len(components) == 5
 
-    # All components except the last non-empty one must be <= max_component_length - 1
-    # Since all components are non-empty, components 0-3 need room for delimiter
-    assert len(components[0]) <= max_component_length - 1
-    assert len(components[1]) <= max_component_length - 1
-    assert len(components[2]) <= max_component_length - 1
-    assert len(components[3]) <= max_component_length - 1
+@pytest.mark.pydicom
+def test_pseudonymise_writes_names_without_length_warnings():
+    ds = pydicom.Dataset()
+    ds.PatientName = "SMITH^JANE^QUINN"
+    ds.PatientID = "123456"
+    ds.OperatorsName = "JONES^ALEX"
 
-    # The last component can be up to max_component_length
-    assert len(components[4]) <= max_component_length
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        pseudonymised = pseudonymisation.pseudonymise(ds)
 
-    # Verify with delimiter included
-    assert len(f"{components[0]}^") <= max_component_length
-    assert len(f"{components[1]}^") <= max_component_length
-    assert len(f"{components[2]}^") <= max_component_length
-    assert len(f"{components[3]}^") <= max_component_length
+    assert not [w for w in caught if "PN component length" in str(w.message)]
+    for keyword in ("PatientName", "OperatorsName"):
+        value = str(pseudonymised[keyword].value)
+        assert value != str(ds[keyword].value)
+        assert len(value) <= PN_COMPONENT_GROUP_MAX_LENGTH

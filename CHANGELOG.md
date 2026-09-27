@@ -265,6 +265,7 @@ This project adheres to
   relative to the config file that contains it.
   [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
 - The wheel and sdist no longer include the built HTML documentation, which v0.41.0 bundled under `pymedphys/docs/_build/html` and which made up most of its 7.5 MB wheel. The documentation remains at <https://docs.pymedphys.com/en/latest/>. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
+- Experimental pseudonymisation now writes Person Name values within DICOM's limit of 64 characters per component group (PS3.5 Table 6.2-1). Previously the family, given, and middle names were each replaced with a hash of about 40 characters, even when empty, so every pseudonymised name was about 126 characters long and pydicom warned about it. Each non-empty name is now the first 20 characters of the same hash, and empty names stay empty. A retained name prefix or suffix is cut to the room left in the 64 characters. Pseudonymised names therefore differ from those written by earlier versions. To link earlier output to new output, truncate each of its family, given, and middle names to 20 characters, and treat the hash an empty name produced as empty. This applies to `pymedphys.experimental.pseudonymisation`, the `pymedphys experimental dicom pseudonymise` command, and the DICOM Pseudonymisation app. [PR #1944](https://github.com/pymedphys/pymedphys/pull/1944)
 
 ## [0.41.0]
 
