@@ -17,10 +17,14 @@ Push / pull request -> ci.yml
                        |-- docs.yml (documentation PRs)
                        `-- CI Summary
 
+Manual run -> docs.yml
 Schedule / manual run / main push / PR -> security.yml
 Schedule / manual run -> deps.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
+
+Outside GitHub Actions:
+Main push / PR labelled rtd-preview -> Read the Docs (see "Read the Docs" below)
 ```
 
 ## Workflow Structure
@@ -77,8 +81,9 @@ so git reports only the link itself, which selects every check that a changed
 path can select. A symlink or submodule is never exempt, whatever its name,
 because it can stand in for any content. Package modules still select
 documentation because autodoc and notebooks import them. The full OS/Python
-matrix and integration checks remain unconditional on main. ReadTheDocs
-publishes main documentation independently.
+matrix and integration checks remain unconditional on main. Read the Docs
+publishes main documentation independently, as "Read the Docs" below
+describes.
 
 Integration tests, database tests and the full unit-test matrix are too costly
 for every PR. Apart from main and the labels, integration and database tests
@@ -203,7 +208,7 @@ SQL Server integration tests for Mosaiq database functionality.
   tables once per module through a read-only connection
 
 #### `docs.yml`
-Builds documentation on PRs that change documentation sources, package modules, or any unclassified input.
+Builds documentation on PRs that change documentation sources, package modules, or any unclassified input. It is the only documentation check on pull requests.
 
 - **HTML build**: Sphinx warnings and unexpected notebook errors fail the build.
   The executed-notebook store (`_build/.jupyter_cache`) is cached between runs
@@ -216,17 +221,14 @@ Builds documentation on PRs that change documentation sources, package modules, 
   its own job alongside the HTML build (`pymedphys dev docs --linkcheck`). It
   reads the sources without executing notebooks, so it needs no data and
   finishes before the build
-- **Artefact**: Built HTML is uploaded for inspection
-- **Publishing**: ReadTheDocs publishes docs.pymedphys.com independently using
-  `.readthedocs.yml`. It installs the same locked environment as this job,
-  with `uv sync` from `uv.lock` (the project, the `docs` extra, and the
-  default `dev` group). It also builds a preview of each pull request, except
-  that `.github/scripts/readthedocs_skip.sh` cancels a preview when every path
-  that differs from `main` is one the documentation never reads: `.github/`,
-  `lib/pymedphys/tests/`, `AGENTS.md`, `CLAUDE.md`, `SECURITY.md`,
-  `.pre-commit-config.yaml`, and `claude_created_workflows_preview/`. Read the
-  Docs reports a cancelled build to GitHub as failed; its status is not a
-  required check
+- **Artefact**: Built HTML is uploaded as `docs-html` for inspection, and the
+  link-check report as `docs-linkcheck`
+- **Manual run**: Someone with write access can run the `Documentation`
+  workflow on any branch of this repository from the Actions tab
+  (`workflow_dispatch`), for example when a PR's changes do not select the
+  documentation check. The run builds and uploads the same artefacts
+- **Publishing**: Read the Docs publishes the public site independently
+  using `.readthedocs.yml`, as "Read the Docs" below describes
 
 ### Release & Maintenance
 
@@ -378,7 +380,7 @@ Selected from the complete merge diff and labels:
 On merge to main:
 
 ```
-Every job except docs-check (ReadTheDocs publishes main), including:
+Every job except docs-check (Read the Docs publishes main), including:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
 ├── mosaiq-db-tests    # Database tests
@@ -406,6 +408,81 @@ referencing an absent environment can create it without protection rules.
 The trusted publisher registered with PyPI must match this repository,
 `release.yml`, and the environment name; the
 [release guide](release-guide.md) lists the settings.
+
+## Read the Docs
+
+Read the Docs builds and hosts
+[docs.pymedphys.com](https://docs.pymedphys.com/), outside GitHub Actions. It
+reads `.readthedocs.yml`, which installs the same locked environment as the
+`Documentation` workflow, with `uv sync` from `uv.lock` (the project, the
+`docs` extra, and the default `dev` group), runs `pymedphys dev docs --prep`,
+and fails on Sphinx warnings. Automation rules in the Read the Docs dashboard,
+not this repository, decide which pushes and pull requests it builds:
+
+| Event | GitHub Actions | Read the Docs |
+|-------|----------------|---------------|
+| Pull request | `docs-check` when selected, with the `docs-html` artefact | No build |
+| Pull request labelled `rtd-preview` | The same | A hosted preview of each new commit |
+| Push to `main` | No documentation build | Builds and publishes `latest` |
+| Other branches and tags | No documentation build | Builds active versions |
+
+A Read the Docs status on a pull request is informational and never a
+required check. Without the rules below, Read the Docs builds every pull
+request, and each build waits for and occupies one of the project's
+concurrent build slots. The rules decide before a build exists, so an
+unlabelled pull request never enters the queue. Filtering inside the build,
+such as a `build.jobs` command that exits with code 183 to cancel it, runs
+only once the build has been queued and started, so do not use it to limit
+pull request builds.
+
+### Dashboard configuration
+
+A maintainer of the Read the Docs project sets this up once:
+
+1. Connect the project to `pymedphys/pymedphys` through the Read the Docs
+   GitHub App. Rules can filter on pull request labels only through it; with
+   the older webhook integration, every pull request builds regardless of the
+   rules.
+2. Under **Settings**, **Pull request builds**, keep **Build pull requests for
+   this project** enabled.
+3. Under **Settings**, **Automation rules**, add these two rules. Both use the
+   action **Trigger build for version**:
+
+   | Description | Match | Version types | Pull request labels |
+   |-------------|-------|---------------|---------------------|
+   | Build branches and tags | Any version | Branch, Tag | (empty) |
+   | Build labelled pull request previews | Any version | Pull request | `^rtd-preview$` |
+
+4. Create the `rtd-preview` label in the GitHub repository.
+
+Read the Docs documents that once any rule with this action is enabled, only
+events a rule matches trigger builds, so the first rule keeps `main` and tag
+builds. It builds only active versions, as Read the Docs does without rules.
+Keep its match **Any version**: rules match the Read the Docs version name,
+and the version that tracks `main` is named `latest`, so a custom match such
+as `^main$` would stop publishing it. The label pattern is a regular
+expression that may match anywhere in a label's name, so keep both anchors.
+
+To confirm the setup, check that a pull request without the label adds
+nothing to the project's build list and gets no Read the Docs status, and
+that the next merge to `main` builds `latest`.
+
+If the project cannot use the GitHub App, disable **Build pull requests for
+this project** instead; hosted previews are then unavailable.
+
+### Requesting a hosted preview
+
+Anyone who can label pull requests (triage access or above) can request a
+preview:
+
+1. Add the `rtd-preview` label to the pull request.
+2. Push a commit to the pull request. Read the Docs evaluates the rules only
+   when a pull request is opened, reopened, or receives commits, so adding
+   the label alone does not start a build.
+3. Follow the Read the Docs status on the pull request to the preview.
+
+While the label remains, every new commit builds a preview; remove it to
+stop. Adding or removing any label also re-runs CI and the security workflow.
 
 ## Required checks and pull request reviews
 
@@ -518,6 +595,7 @@ whose workflows do not emit them. Publishing branches such as `docs` and
 
 - `full-test` - Run the full unit-test matrix, slow integration tests, and database tests on a PR
 - `database` - Force database tests to run
+- `rtd-preview` - Build a Read the Docs preview of each later commit on a PR. Read the Docs reads this label, not GitHub Actions; see "Read the Docs" above
 
 
 ## Testing Workflows Locally

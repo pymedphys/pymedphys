@@ -205,6 +205,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI's documentation build is the only documentation check on pull requests, and its `docs-html` artefact holds the built pages. Read the Docs builds a hosted preview only of a pull request labelled `rtd-preview`, so routine pull requests no longer take its build slots, and it still builds and publishes `main`. Automation rules in the Read the Docs dashboard make this choice; the workflow guide lists them. The documentation guide explains how to download `docs-html` and how to run the `Documentation` workflow on a branch.
 - **[Contributor facing only]** Tests now fail on pydicom's "will be removed in v4" deprecation warnings, and the new `pydicom_behaviour` fixture in `tests/dicom/conftest.py` runs a test with pydicom's current behaviour and with its future behaviour, which imitates pydicom 4. The implicit versus explicit VR example notebook now sets the Transfer Syntax UID; with pydicom 3 its explicit VR example was written as implicit VR. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
 - **[Contributor facing only]** CI defaults to Python 3.14. The quick
   unit-test run uses it, as do every job that does not choose a version, the
@@ -229,9 +230,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   `all` extras, and resolves caller-relative test paths in every worker.
   ReadTheDocs installs the documentation environment with `uv sync` from
   `uv.lock`, as CI does, instead of with pip from `requirements-docs.txt`,
-  which `pymedphys dev propagate` no longer generates, and it cancels
-  pull-request previews when every changed path is one the documentation
-  never reads, such as CI configuration and tests.
+  which `pymedphys dev propagate` no longer generates.
   [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
