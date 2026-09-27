@@ -330,11 +330,11 @@ tests = [
   "tests/dicom/test_deidentify_profiles.py::test_profiles_persist_across_runs",
   "tests/dicom/test_deidentify_profiles.py::test_a_stored_offset_wins_over_a_changed_derivation",
   "tests/dicom/test_deidentify_temporal_roles.py::test_every_temporal_attribute_in_the_dictionary_has_exactly_one_role",
-  "tests/dicom/test_deidentify_temporal_roles.py::test_every_attribute_modified_dates_cleans_has_a_role_or_is_known",
-  "tests/dicom/test_deidentify_temporal_roles.py::test_only_subject_event_and_radiation_source_dates_are_shifted",
+  "tests/dicom/test_deidentify_temporal_roles.py::test_every_attribute_modified_dates_cleans_has_a_role",
+  "tests/dicom/test_deidentify_temporal_roles.py::test_modified_dates_shifts_subject_events_and_removes_time_zones",
 ]
 note = '''
-Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every DA, DT, and TM attribute has a reviewed role that decides whether it is shifted. Remaining: rules for the three attributes of other VRs that Table E.1-1 also cleans under Modified Dates (M2), and modifying every date and time in a data set (M3).
+Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted, replaced by a dummy value, or removed. Remaining: modifying every date and time in a data set (M3).
 '''
 
 [[requirement]]
@@ -600,7 +600,7 @@ tests = [
   "tests/dicom/test_deidentify_dates.py::test_a_datetime_moves_its_date_and_keeps_its_time_and_utc_offset",
   "tests/dicom/test_deidentify_profiles.py::test_profiles_persist_across_runs",
   "tests/dicom/test_deidentify_profiles.py::test_a_stored_offset_wins_over_a_changed_derivation",
-  "tests/dicom/test_deidentify_temporal_roles.py::test_only_subject_event_and_radiation_source_dates_are_shifted",
+  "tests/dicom/test_deidentify_temporal_roles.py::test_modified_dates_shifts_subject_events_and_removes_time_zones",
 ]
 note = '''
 Offsets are whole weeks, identical across a subject's studies and runs, so intervals and times are preserved exactly, and every date, time, and datetime attribute has a reviewed role that decides whether it moves with the subject. Remaining: their modification in data sets (M3).

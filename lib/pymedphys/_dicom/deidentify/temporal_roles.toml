@@ -1,6 +1,8 @@
 # Supplementary (L2) rules: the role of every date, time, and datetime (DA,
-# DT, and TM) attribute in the pinned PS3.6 data dictionary, curated by hand
-# against the attribute descriptions in PS3.3.
+# DT, and TM) attribute in the pinned PS3.6 data dictionary, and of every
+# other attribute that Table E.1-1 cleans under Retain Longitudinal Temporal
+# Information with Modified Dates, curated by hand against the attribute
+# descriptions in PS3.3.
 #
 # subject-event: an event in the subject's record, such as an acquisition,
 #   a treatment, or a review of the subject's data.
@@ -8,15 +10,20 @@
 #   strength.
 # device: a property of equipment, such as its calibration or installation.
 # vocabulary-version: the version of a context group or template.
+# time-zone: a time zone offset.
 # other: any other date, such as a product's expiry or a clinical trial's
 #   ethics approval.
 #
 # Where Retain Longitudinal Temporal Information with Modified Dates is
 # selected, subject-event and radiation-source values move by the subject's
-# offset, and values of every other role are replaced by a fixed dummy value.
-# Otherwise Table E.1-1 decides. Rules also cover attributes that Table E.1-1
-# omits. A subject event that Table E.1-1 lists with C under Modified Dates
-# has no note; every other rule says why it has its role.
+# offset, time-zone values are removed, and values of every other role are
+# replaced by a fixed dummy value; where a module requires an attribute, a
+# removal becomes a dummy value instead. Otherwise Table E.1-1 decides.
+#
+# Rules also cover attributes that Table E.1-1 omits, and attributes of other
+# VRs that it cleans under Modified Dates. A subject event that Table E.1-1
+# lists with C under Modified Dates needs no note; every other rule says why
+# it has its role.
 
 schema = "pymedphys-deid-temporal-roles/1"
 edition = "2026d"
@@ -113,6 +120,12 @@ tag = "(0008,0107)"
 keyword = "ContextGroupLocalVersion"
 role = "vocabulary-version"
 note = "The local version of a context group with private extensions."
+
+[[attribute]]
+tag = "(0008,0201)"
+keyword = "TimezoneOffsetFromUTC"
+role = "time-zone"
+note = "The time zone offset of the instance's local dates and times. Modified Dates removes it, because a daylight-saving offset would reveal the season of the original date; where a module requires it, it takes the dummy value +0000."
 
 [[attribute]]
 tag = "(0008,0404)"
@@ -456,6 +469,12 @@ keyword = "StudyCompletionTime"
 role = "subject-event"
 
 [[attribute]]
+tag = "(0034,0007)"
+keyword = "FrameOriginTimestamp"
+role = "subject-event"
+note = "The capture time of each frame, in TAI and a binary format rather than a DT value. It moves with the subject once the engine can decode it; until then it takes a dummy value, as under the Basic Profile, because it is required."
+
+[[attribute]]
 tag = "(0038,001A)"
 keyword = "ScheduledAdmissionDate"
 role = "subject-event"
@@ -776,6 +795,12 @@ role = "subject-event"
 tag = "(0400,0105)"
 keyword = "DigitalSignatureDateTime"
 role = "subject-event"
+
+[[attribute]]
+tag = "(0400,0310)"
+keyword = "CertifiedTimestamp"
+role = "other"
+note = "A signed timestamp that occurs only inside the Digital Signatures Sequence (FFFA,FFFA), which Table E.1-1 removes under every option."
 
 [[attribute]]
 tag = "(0400,0562)"

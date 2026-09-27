@@ -22,6 +22,14 @@ from pymedphys._imports import pytest, tomlkit
 from pymedphys._dicom.deidentify import attribute_roles, standard, temporal_roles
 
 Role = temporal_roles.TemporalRole
+Action = temporal_roles.TemporalAction
+
+# Attributes of other VRs that Table E.1-1 cleans under Modified Dates.
+OTHER_VRS = {
+    "(0008,0201)": Role.TIME_ZONE,  # Timezone Offset From UTC, SH
+    "(0034,0007)": Role.SUBJECT_EVENT,  # Frame Origin Timestamp, OB
+    "(0400,0310)": Role.OTHER,  # Certified Timestamp, OB
+}
 
 # Table E.1-1 gives these K under Retain Device Identity and C under Retain
 # Longitudinal Temporal Information with Modified Dates, so no output can
@@ -49,6 +57,14 @@ def _temporal_attributes():
     }
 
 
+def _tag(keyword):
+    return next(
+        attribute.tag
+        for attribute in standard.load_data_dictionary().attributes
+        if attribute.keyword == keyword
+    )
+
+
 def _table_e1_1():
     return {row.tag: row for row in standard.load_table_e1_1().attributes}
 
@@ -56,13 +72,14 @@ def _table_e1_1():
 def test_every_temporal_attribute_in_the_dictionary_has_exactly_one_role():
     roles = temporal_roles.load_temporal_roles()
 
-    assert set(roles.rules) == set(_temporal_attributes())
+    assert set(roles.rules) == set(_temporal_attributes()) | set(OTHER_VRS)
     assert collections.Counter(rule.role for rule in roles.rules.values()) == {
-        Role.SUBJECT_EVENT: 151,
+        Role.SUBJECT_EVENT: 152,
         Role.RADIATION_SOURCE: 2,
         Role.DEVICE: 12,
         Role.VOCABULARY_VERSION: 4,
-        Role.OTHER: 15,
+        Role.TIME_ZONE: 1,
+        Role.OTHER: 16,
     }
 
 
@@ -88,10 +105,10 @@ def test_the_conflicting_options_affect_only_the_listed_attributes():
     assert {tag: roles.role(tag) for tag in conflicting} == CONFLICTING
 
 
-def test_every_attribute_modified_dates_cleans_has_a_role_or_is_known():
+def test_every_attribute_modified_dates_cleans_has_a_role():
     # Table E.1-1 gives C under Modified Dates to 166 temporal attributes and
-    # to three of other VRs, which need rules of their own. A new edition that
-    # cleans another attribute of another VR fails here.
+    # to three of other VRs. A new edition that cleans another attribute of
+    # any VR has no rule until one is reviewed, so the file fails to load.
     cleaned = {
         tag
         for tag, row in _table_e1_1().items()
@@ -99,12 +116,10 @@ def test_every_attribute_modified_dates_cleans_has_a_role_or_is_known():
     }
     roles = temporal_roles.load_temporal_roles()
 
-    assert len(cleaned & set(roles.rules)) == 166
-    assert cleaned - set(roles.rules) == {
-        "(0008,0201)",  # Timezone Offset From UTC, SH
-        "(0034,0007)",  # Frame Origin Timestamp, OB
-        "(0400,0310)",  # Certified Timestamp, OB
-    }
+    assert len(cleaned) == 169
+    assert cleaned <= set(roles.rules)
+    assert cleaned - set(_temporal_attributes()) == set(OTHER_VRS)
+    assert {tag: roles.role(tag) for tag in OTHER_VRS} == OTHER_VRS
 
 
 def test_a_role_that_is_not_obvious_has_a_note():
@@ -144,26 +159,29 @@ def test_a_role_that_is_not_obvious_has_a_note():
         ("EffectiveDateTime", Role.OTHER),
         ("HangingProtocolCreationDateTime", Role.OTHER),
         ("SelectorDAValue", Role.OTHER),
+        # Attributes of other VRs that Modified Dates cleans.
+        ("TimezoneOffsetFromUTC", Role.TIME_ZONE),
+        ("FrameOriginTimestamp", Role.SUBJECT_EVENT),
+        ("CertifiedTimestamp", Role.OTHER),
     ],
 )
 def test_attribute_roles(keyword, role):
-    tag = next(tag for tag, a in _temporal_attributes().items() if a.keyword == keyword)
-
-    assert temporal_roles.load_temporal_roles().role(tag) is role
+    assert temporal_roles.load_temporal_roles().role(_tag(keyword)) is role
 
 
 @pytest.mark.parametrize(
-    "role, shifted",
+    "role, action",
     [
-        (Role.SUBJECT_EVENT, True),
-        (Role.RADIATION_SOURCE, True),
-        (Role.DEVICE, False),
-        (Role.VOCABULARY_VERSION, False),
-        (Role.OTHER, False),
+        (Role.SUBJECT_EVENT, Action.SHIFT),
+        (Role.RADIATION_SOURCE, Action.SHIFT),
+        (Role.DEVICE, Action.DUMMY),
+        (Role.VOCABULARY_VERSION, Action.DUMMY),
+        (Role.TIME_ZONE, Action.REMOVE),
+        (Role.OTHER, Action.DUMMY),
     ],
 )
-def test_only_subject_event_and_radiation_source_dates_are_shifted(role, shifted):
-    assert role.shifted is shifted
+def test_modified_dates_shifts_subject_events_and_removes_time_zones(role, action):
+    assert role.action is action
 
 
 def test_an_attribute_without_a_role_is_rejected():
@@ -192,7 +210,7 @@ def _write(path, document):
         (
             lambda d: d["attribute"][0].update(role="shifted"),
             "rule 1 has a role that is not subject-event, radiation-source, "
-            "device, vocabulary-version, or other",
+            "device, vocabulary-version, time-zone, or other",
         ),
         (
             lambda d: d["attribute"][0].update(
@@ -201,6 +219,12 @@ def _write(path, document):
             "rule 1 is not a DA, DT, or TM attribute",
         ),
         (lambda d: d["attribute"].pop(), "has no role for"),
+        (
+            lambda d: d.update(
+                attribute=[a for a in d["attribute"] if a["tag"] != "(0008,0201)"]
+            ),
+            "has no role for (0008,0201)",
+        ),
     ],
 )
 def test_a_malformed_roles_file_is_rejected(tmp_path, change, message):
