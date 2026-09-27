@@ -69,9 +69,17 @@ def cluster_sessions(
     # turn the datetimes in to timestamps (seconds in the epoch)
     timestamps = [[tx_datetime.timestamp()] for tx_datetime in tx_datetimes]
 
-    # set up the cluster algorithm
+    # Clustering needs at least two samples.
+    if len(timestamps) < 2:
+        for session_number, timestamp in enumerate(timestamps, start=1):
+            start_session = datetime.fromtimestamp(timestamp[0])
+            yield (session_number, start_session, start_session)
+        return
+
+    # set up the cluster algorithm; total_seconds() keeps whole days, which
+    # timedelta.seconds drops
     cluster_algo = sklearn.cluster.AgglomerativeClustering(
-        n_clusters=None, distance_threshold=interval.seconds, linkage="single"
+        n_clusters=None, distance_threshold=interval.total_seconds(), linkage="single"
     )
 
     # and fit the timestamps to clusters
