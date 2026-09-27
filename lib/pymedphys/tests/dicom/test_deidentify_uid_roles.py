@@ -128,9 +128,15 @@ def _write(path, document):
         (lambda d: d["attribute"][0].pop("keyword"), "rule 1 does not have"),
         (lambda d: d["attribute"][0].update(keyword="SOPClassUID"), "rule 1 names"),
         (lambda d: d["attribute"][0].update(tag="(0010,0010)"), "rule 1 is not a UI"),
+        (lambda d: d["attribute"][0].update(tag=[]), "rule 1 is not a UI"),
+        (lambda d: d["attribute"][0].update(tag={}), "rule 1 is not a UI"),
+        (lambda d: d["attribute"][0].update(role=[]), "rule 1 has a role"),
+        (lambda d: d["attribute"][0].update(role={}), "rule 1 has a role"),
         (lambda d: d["attribute"][0].update(note=""), "rule 1 has a note"),
         (lambda d: d["attribute"].append(dict(d["attribute"][0])), "repeats"),
         (lambda d: d["attribute"].pop(), "has no role for"),
+        (lambda d: d.update(attribute=1), "rules are not an array of tables"),
+        (lambda d: d.update(attribute={}), "rules are not an array of tables"),
     ],
 )
 def test_a_malformed_roles_file_is_rejected(tmp_path, change, message):
