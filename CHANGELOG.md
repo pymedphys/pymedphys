@@ -274,18 +274,21 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - **[Contributor facing only]** Coding agents have repository guidance. `AGENTS.md` gives every agent the development commands, architecture, conventions, and workflow rules, and points to the pull request rules in `CONTRIBUTING.md`. `CLAUDE.md` points Claude Code to it and adds how the `@claude` workflow runs and how to handle workflow files, which it stages in `claude_created_workflows_preview/` when a push lacks the `workflows` permission. Maintainers' personal preferences stay in their own agent settings, not in the repository. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071), [PR #2087](https://github.com/pymedphys/pymedphys/pull/2087)
 - **[Contributor facing only]** A development command,
   `pymedphys dev deid-tables`, generates Tables E.1-1, E.1-1a, and E.3.10-1
-  of DICOM PS3.15, Tables 6-1 and A-1 to A-4 of PS3.6, and Tables 8-1 and 8-2
-  and context groups CID 7050 and CID 7005 of PS3.16 as JSON from NEMA's
+  of DICOM PS3.15, Tables 6-1 and A-1 to A-4 of PS3.6, Tables 8-1 and 8-2
+  and context groups CID 7050 and CID 7005 of PS3.16, and the modules of the
+  CT Image, RT Dose, RT Structure Set, and RT Plan IODs with the attribute
+  tables of those modules and their macros from PS3.3, as JSON from NEMA's
   HTML publication of the pinned edition, 2026d, the first step towards the
   de-identification rule tables: the attribute confidentiality profile, its
   action codes, the safe private attributes, the data dictionary, the
   registries of UIDs, well-known frames of reference, and the UIDs of context
   groups and templates, the coding schemes and their UIDs, the codes that
-  record a de-identification method, and the purposes of reference for
-  contributing equipment. It downloads each source
+  record a de-identification method, the purposes of reference for
+  contributing equipment, and each attribute's Type in each module and
+  sequence of a supported IOD. It downloads each source
   page, or reads it from `--source-dir`, and parses it only after checking its
   SHA-256 digest against the pin. The parsers map columns by their header
-  text and reject unknown or missing columns, merged cells, empty or
+  text and reject unknown or missing columns, merged cells outside PS3.3, empty or
   otherwise inconsistent rows, a table with no rows, unrecognised tags,
   keywords, VRs, VMs, statuses, UIDs, UID types, parts, and coding scheme
   designators, code values and meanings that are too long for their VRs or
@@ -302,13 +305,16 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   `load_table_e1_1a`, `load_table_e3_10_1`, and `load_data_dictionary`),
   `pymedphys._dicom.deidentify.uid_registry` (`load_uid_values`,
   `load_frames_of_reference`, `load_context_group_uids`, and
-  `load_template_uids`), and `pymedphys._dicom.deidentify.codes`
+  `load_template_uids`), `pymedphys._dicom.deidentify.codes`
   (`load_coding_schemes`, `load_hl7v3_coding_schemes`, and
-  `load_context_group`) that
+  `load_context_group`), and `pymedphys._dicom.deidentify.iods`
+  (`load_iod_tables`) that
   check each row's fields, types, and values and reject a table whose rows no
-  longer match their recorded digest. `--check` exits with status 1 when the
+  longer match their recorded digest. PS3.3's tables are kept as published,
+  and its loader expands each IOD's modules, following every included macro,
+  into each attribute's Type at each place in the data set. `--check` exits with status 1 when the
   committed tables are missing or out of date.
-  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112)
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130)
 - **[Contributor facing only]** A private module,
   `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
   Spreadsheet to JSON, the first step towards descriptor cleaning
@@ -320,7 +326,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   file name, worksheet version, SHA-256, and AAPM's attribution. Its loader
   rejects a file edited without updating its content digest.
   [PR #2108](https://github.com/pymedphys/pymedphys/pull/2108)
-- **[Contributor facing only]** Private modules `pymedphys._dicom.deidentify.keys` and `pymedphys._dicom.deidentify.uids` hold the keys and replacement UIDs of the de-identification engine. A key is 256 bits from the operating system's secure generator, with a non-secret identifier for reports, and derives each value as a domain-separated HMAC-SHA256. A key file is created exclusively, readable only by its owner where the platform enforces file modes, and never inside the PyMedPhys configuration directory or a protected output directory. A replacement UID is the `2.25.` form of a version 5 UUID whose name is the keyed hash of the source UID, so the same key replaces a UID the same way in every file and run without a stored map. Patient ID and Patient's Name are replaced by keyed pseudonyms, `DEID-<code>` and `DEIDENTIFIED^<code>`, derived from the Patient ID and its issuer, or from a curated subject identifier, in `pymedphys._dicom.deidentify.pseudonyms`. A reviewed supplementary rule gives every UI attribute of the pinned data dictionary a role, `instance` or `definition`; a UID that the pinned tables register is retained whatever the role, and any other UID is replaced. Hypothesis joins the `tests` and `all` extras for their property tests. [PR #2113](https://github.com/pymedphys/pymedphys/pull/2113), [PR #2116](https://github.com/pymedphys/pymedphys/pull/2116), [PR #2117](https://github.com/pymedphys/pymedphys/pull/2117)
+- **[Contributor facing only]** Private modules `pymedphys._dicom.deidentify.keys` and `pymedphys._dicom.deidentify.uids` hold the keys and replacement UIDs of the de-identification engine. A key is 256 bits from the operating system's secure generator, with a non-secret identifier for reports, and derives each value as a domain-separated HMAC-SHA256. A key file is created exclusively, readable only by its owner where the platform enforces file modes, and never inside the PyMedPhys configuration directory or a protected output directory. A replacement UID is the `2.25.` form of a version 5 UUID whose name is the keyed hash of the source UID, so the same key replaces a UID the same way in every file and run without a stored map. Patient ID and Patient's Name are replaced by keyed pseudonyms, `DEID-<code>` and `DEIDENTIFIED^<code>`, derived from the Patient ID and its issuer, or from a curated subject identifier, in `pymedphys._dicom.deidentify.pseudonyms`. Each subject's date offset, 52 to 520 whole weeks backwards and never zero, is derived at first export and persisted in a subject profile, a custodian-held store tied to one key that records subjects under keyed tokens rather than identifiers; `pymedphys._dicom.deidentify.dates` shifts DA values and the dates of DT values by it, keeping times. Reviewed supplementary rules give every UI attribute of the pinned data dictionary a role, `instance` or `definition`, and every date, time, and datetime attribute a role that decides whether Modified Dates shifts it (subject events and radiation sources) or replaces it with a fixed dummy value (device, vocabulary version, and other); Modified Dates writes every time zone offset as `+0000` once each DT value with its own offset is in the instance's local time, which keeps every interval and hides the season that daylight saving would reveal, and shifts the IEEE 1588 seconds of Frame Origin Timestamp; a UID that the pinned tables register is retained whatever the role, and any other UID is replaced. Hypothesis joins the `tests` and `all` extras for their property tests. [PR #2113](https://github.com/pymedphys/pymedphys/pull/2113), [PR #2116](https://github.com/pymedphys/pymedphys/pull/2116), [PR #2117](https://github.com/pymedphys/pymedphys/pull/2117), [PR #2118](https://github.com/pymedphys/pymedphys/pull/2118), [PR #2123](https://github.com/pymedphys/pymedphys/pull/2123)
 - **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
   every pull request follows: single-concern scope, tests and documentation
   with each change, consolidated changelog entries that describe changes since the last stable release and link their pull requests, descriptions of the state
