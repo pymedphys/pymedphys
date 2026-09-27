@@ -31,6 +31,8 @@ from ..utilities import run_input_checks
 
 DEFAULT_RAM = int(2**30 * 1.5)  # 1.5 GB
 
+logger = logging.getLogger(__name__)
+
 
 def gamma_shell(
     axes_reference,
@@ -116,8 +118,8 @@ def gamma_shell(
         eligible points, all eligible points are used.
     ram_available : int, optional
         RAM budget in bytes used to split interpolation work into chunks.
-        Defaults to 1.5 GiB (1610612736 bytes). This is not a limit on total
-        process memory.
+        Defaults to 1.5 GiB (1610612736 bytes), also used when None is
+        passed. This is not a limit on total process memory.
     quiet : bool, optional
         Deprecated but maintained for now for backwards compatibility.
         `pymedphys.gamma` now utilises the `logging` module. You can set
@@ -186,6 +188,9 @@ def gamma_shell(
     if max_gamma is None:
         max_gamma = np.inf
 
+    if ram_available is None:
+        ram_available = DEFAULT_RAM
+
     options = GammaInternalFixedOptions.from_user_inputs(
         axes_reference,
         dose_reference,
@@ -208,19 +213,19 @@ def gamma_shell(
     )
 
     if options.local_gamma:
-        logging.info("Computing the gamma using local normalisation point")
+        logger.info("Computing the gamma using local normalisation point")
     else:
-        logging.info("Computing the gamma using global normalisation point")
+        logger.info("Computing the gamma using global normalisation point")
 
-    logging.info("Global normalisation set to %.3f", options.global_normalisation)
-    logging.info(
-        "Global dose threshold set to %.3f (%.2f%% of normalisation)",
+    logger.info("Global normalisation set to %.3f", options.global_normalisation)
+    logger.info(
+        "Global dose threshold set to %s (%s%% of normalisation)",
         options.global_dose_threshold,
         options.dose_percent_threshold,
     )
 
-    logging.info("Distance threshold set to %s", options.distance_mm_threshold)
-    logging.info(
+    logger.info("Distance threshold set to %s", options.distance_mm_threshold)
+    logger.info(
         "Lower dose cutoff set to %.3f (%.1f%% of normalisation)",
         options.lower_dose_cutoff,
         lower_percent_dose_cutoff,
@@ -244,7 +249,7 @@ def gamma_shell(
 
             gamma[key] = gamma_temp
 
-    logging.info("Complete!")
+    logger.info("Complete!")
 
     if len(gamma.keys()) == 1:
         gamma = next(iter(gamma.values()))
@@ -506,6 +511,9 @@ class GammaInternalFixedOptions:
         if max_gamma is None:
             max_gamma = np.inf
 
+        if ram_available is None:
+            ram_available = DEFAULT_RAM
+
         if np.isnan(max_gamma) or max_gamma <= 1:
             raise ValueError(
                 "max_gamma must be greater than 1. Gamma values above it are "
@@ -636,7 +644,7 @@ def gamma_loop(options: GammaInternalFixedOptions):
     )
     force_search_distances = force_search_distances[force_search_distances > distance]
     while distance <= options.maximum_test_distance:
-        logging.debug(
+        logger.debug(
             "Current distance: %.2f mm | Number of reference points remaining: %i",
             distance,
             np.sum(to_be_checked),
@@ -809,7 +817,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     num_slices = np.floor(estimated_ram_needed / options.ram_available).astype(int) + 1
 
-    logging.debug(
+    logger.debug(
         "Points tested per reference point: %i | RAM split count: %i",
         num_points_in_shell,
         num_slices,
