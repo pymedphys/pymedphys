@@ -35,15 +35,21 @@ def _write(path, document):
     return path
 
 
-def test_table_e1_1_is_generated_from_the_pinned_edition():
+@pytest.mark.parametrize(
+    "name, source",
+    [
+        ("e1_1.json", "part15/chapter_E.html"),
+        ("e1_1a.json", "part15/chapter_E.html"),
+        ("e3_10_1.json", "part15/sect_E.3.10.html"),
+    ],
+)
+def test_each_table_is_generated_from_the_pinned_edition(name, source):
     # A new pin without regenerated tables, or the reverse, fails here.
-    document = _document()
+    document = json.loads((standard.STANDARD_DIR / name).read_text(encoding="utf-8"))
+    pinned = {pinned.path: pinned.sha256 for pinned in generate.PIN.sources}
 
     assert document["edition"] == generate.PIN.edition
-    assert document["sources"] == [
-        {"path": source.path, "sha256": source.sha256}
-        for source in generate.PIN.sources
-    ]
+    assert document["sources"] == [{"path": source, "sha256": pinned[source]}]
 
 
 def test_table_e1_1_has_every_row_of_the_2026d_table():
@@ -275,3 +281,147 @@ def test_an_unreadable_file_is_rejected(tmp_path, text):
 def test_a_missing_file_is_rejected(tmp_path):
     with pytest.raises(standard.StandardTableError, match="could not be read"):
         standard.load_table_e1_1(tmp_path / "e1_1.json")
+
+
+E1_1A = standard.STANDARD_DIR / "e1_1a.json"
+E3_10_1 = standard.STANDARD_DIR / "e3_10_1.json"
+
+
+def _loaded(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_table_e1_1a_defines_every_implemented_action_code():
+    table = standard.load_table_e1_1a()
+
+    assert table.edition == "2026d"
+    assert table.acknowledgement == "DICOM PS3.15 2026d, \u00a9 NEMA"
+    assert [action.code for action in table.codes] == [
+        "D",
+        "Z",
+        "X",
+        "K",
+        "C",
+        "U",
+        "Z/D",
+        "X/Z",
+        "X/D",
+        "X/Z/D",
+        "X/Z/U*",
+    ]
+    assert table.codes[0].description == (
+        "replace with a non-zero length value that may be a dummy value and "
+        "consistent with the VR"
+    )
+
+
+def test_table_e3_10_1_has_every_row_of_the_2026d_table():
+    # Counts measured from the published 2026d table.
+    table = standard.load_table_e3_10_1()
+
+    assert table.edition == "2026d"
+    assert len(table.attributes) == 479
+    assert len({a.private_creator for a in table.attributes}) == 20
+    assert sum(1 for a in table.attributes if not a.vr) == 5
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        standard.SafePrivateAttribute(
+            "(7053,xx00)",
+            "Philips PET Private Group",
+            "DS",
+            "1",
+            "SUV Factor - Multiplying Stored Pixel Values by Rescale Slope then "
+            "this factor results in SUVbw in g/l",
+        ),
+        standard.SafePrivateAttribute("(00E1,xx21)", "ELSCINT1", "DS", "1", "DLP"),
+        # Published with a lower-case hexadecimal digit.
+        standard.SafePrivateAttribute(
+            "(2001,xx0a)", "Philips Imaging DD 001", "IS", "1", "Image Plane Number"
+        ),
+        # Published without a VR.
+        standard.SafePrivateAttribute(
+            "(0119,xx11)", "SIEMENS Ultrasound SC2000", "", "1", "Stage Timer Time"
+        ),
+        standard.SafePrivateAttribute(
+            "(2001,xx7d)", "Philips Imaging DD 001", "OW/OB", "1", "Frame Pixel Data"
+        ),
+    ],
+)
+def test_table_e3_10_1_rows(row):
+    assert row in standard.load_table_e3_10_1().attributes
+
+
+def test_the_new_rows_are_hashable():
+    hash(standard.load_table_e1_1a())
+    hash(standard.load_table_e3_10_1())
+
+
+@pytest.mark.parametrize(
+    "load, path",
+    [
+        (standard.load_table_e1_1a, E1_1),
+        (standard.load_table_e3_10_1, E1_1),
+        (standard.load_table_e1_1, E3_10_1),
+    ],
+)
+def test_a_loader_rejects_another_table(tmp_path, load, path):
+    with pytest.raises(standard.StandardTableError, match="is not a"):
+        load(_write(tmp_path / path.name, _loaded(path)))
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        (lambda rows: rows.pop(0), "does not define the action codes D"),
+        (lambda rows: rows[0].update(code="U*"), "row 1 has a code"),
+        (lambda rows: rows[0].update(description=""), "row 1 has a description"),
+        (lambda rows: rows[0].update(note="extra"), "row 1 does not have exactly"),
+        (lambda rows: rows.append(dict(rows[0])), "row 12 repeats an action code"),
+    ],
+)
+def test_a_malformed_table_e1_1a_is_rejected(tmp_path, change, message):
+    document = _loaded(E1_1A)
+    change(document["rows"])
+
+    with pytest.raises(standard.StandardTableError, match=message):
+        standard.load_table_e1_1a(
+            _write(tmp_path / "e1_1a.json", _redigested(document))
+        )
+
+
+@pytest.mark.parametrize(
+    "field, value, message",
+    [
+        ("tag", "(7054,xx00)", "row 1 has a tag"),
+        ("tag", "(7053,0000)", "row 1 has a tag"),
+        ("tag", ["(7053,xx00)"], "row 1 has a tag"),
+        ("private_creator", "", "row 1 has a private creator"),
+        ("vr", "ds", "row 1 has a VR"),
+        ("vr", None, "row 1 has a VR"),
+        ("vm", "n", "row 1 has a VM"),
+        ("meaning", None, "row 1 has a meaning"),
+    ],
+)
+def test_a_malformed_table_e3_10_1_row_is_rejected(tmp_path, field, value, message):
+    document = _loaded(E3_10_1)
+    document["rows"][0][field] = value
+
+    with pytest.raises(standard.StandardTableError, match=message):
+        standard.load_table_e3_10_1(
+            _write(tmp_path / "e3_10_1.json", _redigested(document))
+        )
+
+
+def test_a_repeated_private_creator_and_tag_is_rejected(tmp_path):
+    # Tags are compared without regard to the case of their hexadecimal digits.
+    document = _loaded(E3_10_1)
+    lower = next(row for row in document["rows"] if row["tag"] == "(2001,xx0a)")
+    document["rows"].append(dict(lower, tag="(2001,xx0A)"))
+
+    with pytest.raises(standard.StandardTableError, match="repeats a private creator"):
+        standard.load_table_e3_10_1(
+            _write(tmp_path / "e3_10_1.json", _redigested(document))
+        )

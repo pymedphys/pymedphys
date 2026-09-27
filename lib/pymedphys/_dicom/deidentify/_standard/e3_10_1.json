@@ -1,0 +1,3368 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.15 Table E.3.10-1",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "part15/sect_E.3.10.html",
+   "sha256": "101ac4aedd9d45fba8adaa35cab22820d6c0cbda82cdf51d7456f4bf3dafe3a0"
+  }
+ ],
+ "content_sha256": "7acb26dbab0e3124c02d075cbf8c5510354a20ded9f89ee4765976a905d92f63",
+ "rows": [
+  {
+   "tag": "(7053,xx00)",
+   "private_creator": "Philips PET Private Group",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "SUV Factor - Multiplying Stored Pixel Values by Rescale Slope then this factor results in SUVbw in g/l"
+  },
+  {
+   "tag": "(7053,xx09)",
+   "private_creator": "Philips PET Private Group",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Activity Concentration Factor - Multiplying Stored Pixel Values by Rescale Slope then this factor results in MBq/ml."
+  },
+  {
+   "tag": "(00E1,xx21)",
+   "private_creator": "ELSCINT1",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "DLP"
+  },
+  {
+   "tag": "(00E1,xx50)",
+   "private_creator": "ELSCINT1",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Acquisition Duration"
+  },
+  {
+   "tag": "(01E1,xx26)",
+   "private_creator": "ELSCINT1",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Phantom Type"
+  },
+  {
+   "tag": "(01F1,xx01)",
+   "private_creator": "ELSCINT1",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Acquisition Type"
+  },
+  {
+   "tag": "(01F1,xx07)",
+   "private_creator": "ELSCINT1",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Table Velocity"
+  },
+  {
+   "tag": "(01F1,xx26)",
+   "private_creator": "ELSCINT1",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Pitch"
+  },
+  {
+   "tag": "(01F1,xx27)",
+   "private_creator": "ELSCINT1",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Rotation Time"
+  },
+  {
+   "tag": "(0019,xx23)",
+   "private_creator": "GEMS_ACQU_01",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Table Speed [mm/rotation]"
+  },
+  {
+   "tag": "(0019,xx24)",
+   "private_creator": "GEMS_ACQU_01",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Mid Scan Time [sec]"
+  },
+  {
+   "tag": "(0019,xx27)",
+   "private_creator": "GEMS_ACQU_01",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "Rotation Speed (Gantry Period)"
+  },
+  {
+   "tag": "(0019,xx9E)",
+   "private_creator": "GEMS_ACQU_01",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Internal Pulse Sequence Name"
+  },
+  {
+   "tag": "(0043,xx27)",
+   "private_creator": "GEMS_PARM_01",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "Scan Pitch Ratio in the form \"n.nnn:1\""
+  },
+  {
+   "tag": "(0045,xx01)",
+   "private_creator": "GEMS_HELIOS_01",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Number of Macro Rows in Detector"
+  },
+  {
+   "tag": "(0045,xx02)",
+   "private_creator": "GEMS_HELIOS_01",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Macro width at ISO Center"
+  },
+  {
+   "tag": "(0903,xx10)",
+   "private_creator": "GEIIS PACS",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Reject Image Flag"
+  },
+  {
+   "tag": "(0903,xx11)",
+   "private_creator": "GEIIS PACS",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Significant Flag"
+  },
+  {
+   "tag": "(0903,xx12)",
+   "private_creator": "GEIIS PACS",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Confidential Flag"
+  },
+  {
+   "tag": "(2001,xx01)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "MR Image Chemical Shift"
+  },
+  {
+   "tag": "(2001,xx02)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "MR Image Chemical Shift Number"
+  },
+  {
+   "tag": "(2001,xx03)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "MR Image Diffusion B-Factor"
+  },
+  {
+   "tag": "(2001,xx04)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Image Diffusion Direction"
+  },
+  {
+   "tag": "(2001,xx05)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Graphic Annotation Parent ID"
+  },
+  {
+   "tag": "(2001,xx06)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Image Enhanced"
+  },
+  {
+   "tag": "(2001,xx07)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Image Type Edes"
+  },
+  {
+   "tag": "(2001,xx08)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "MR Image Phase Number"
+  },
+  {
+   "tag": "(2001,xx09)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "MR Image Prepulse Delay"
+  },
+  {
+   "tag": "(2001,xx0a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "Image Plane Number"
+  },
+  {
+   "tag": "(2001,xx0b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Image Plane Orientation"
+  },
+  {
+   "tag": "(2001,xx0c)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Arrhythmia Rejection"
+  },
+  {
+   "tag": "(2001,xx0e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Cardiac Cycled"
+  },
+  {
+   "tag": "(2001,xx0f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "MR Series Cardiac Gate Width"
+  },
+  {
+   "tag": "(2001,xx10)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Cardiac Sync"
+  },
+  {
+   "tag": "(2001,xx11)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "MR Series Diffusion Echo Time"
+  },
+  {
+   "tag": "(2001,xx12)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Dynamic Series"
+  },
+  {
+   "tag": "(2001,xx13)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "MR Series Epi Factor"
+  },
+  {
+   "tag": "(2001,xx14)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Echoes"
+  },
+  {
+   "tag": "(2001,xx15)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Locations"
+  },
+  {
+   "tag": "(2001,xx16)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Phase Contrast Directions"
+  },
+  {
+   "tag": "(2001,xx17)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Phases"
+  },
+  {
+   "tag": "(2001,xx18)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Slices"
+  },
+  {
+   "tag": "(2001,xx19)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Partial Matrix Scanned"
+  },
+  {
+   "tag": "(2001,xx1a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "3",
+   "meaning": "MR Series Pc Velocity"
+  },
+  {
+   "tag": "(2001,xx1b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "MR Series Prepulse Delay"
+  },
+  {
+   "tag": "(2001,xx1c)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Prepulse Type"
+  },
+  {
+   "tag": "(2001,xx1d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "MR Series Reconstruction Number"
+  },
+  {
+   "tag": "(2001,xx1e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Reformat Accuracy"
+  },
+  {
+   "tag": "(2001,xx1f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Respiration Sync"
+  },
+  {
+   "tag": "(2001,xx21)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Sel Part Inversion Recovery"
+  },
+  {
+   "tag": "(2001,xx22)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "MR Series Water Fat Shift"
+  },
+  {
+   "tag": "(2001,xx23)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "MR Series Flip Angle"
+  },
+  {
+   "tag": "(2001,xx24)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "MR Series Is Interactive"
+  },
+  {
+   "tag": "(2001,xx25)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "MR Series Echo Time Display"
+  },
+  {
+   "tag": "(2001,xx26)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Presentation State Subtraction Active"
+  },
+  {
+   "tag": "(2001,xx27)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Edge Enhancement Kernel Size"
+  },
+  {
+   "tag": "(2001,xx28)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Edge Enhancement Gain Factor Sub"
+  },
+  {
+   "tag": "(2001,xx29)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Edge Enhancement Gain Factor"
+  },
+  {
+   "tag": "(2001,xx2a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Edge Enhancement Taste Adapt Sub"
+  },
+  {
+   "tag": "(2001,xx2b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Edge Enhancement Taste Adapt"
+  },
+  {
+   "tag": "(2001,xx2c)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Harmonization Factor"
+  },
+  {
+   "tag": "(2001,xx2d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Stack Number Of Slices"
+  },
+  {
+   "tag": "(2001,xx2e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Harmonization Kernel Size"
+  },
+  {
+   "tag": "(2001,xx2f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Harmonization Gain"
+  },
+  {
+   "tag": "(2001,xx30)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Log Subtraction Gain Step Taste"
+  },
+  {
+   "tag": "(2001,xx31)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Mixing Nr Of Mask Image Numbers"
+  },
+  {
+   "tag": "(2001,xx32)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Stack Radial Angle"
+  },
+  {
+   "tag": "(2001,xx33)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Stack Radial Axis"
+  },
+  {
+   "tag": "(2001,xx34)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Mixing Mask Operation Type"
+  },
+  {
+   "tag": "(2001,xx35)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Stack Slice Number"
+  },
+  {
+   "tag": "(2001,xx36)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Stack Type"
+  },
+  {
+   "tag": "(2001,xx37)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Mixing Operation Type"
+  },
+  {
+   "tag": "(2001,xx38)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Overlay Mix Factor"
+  },
+  {
+   "tag": "(2001,xx39)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Overscan Factor"
+  },
+  {
+   "tag": "(2001,xx3a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Pixel Shift"
+  },
+  {
+   "tag": "(2001,xx3b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "4",
+   "meaning": "Pixel Shift Split Line Coordinates"
+  },
+  {
+   "tag": "(2001,xx3c)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "2",
+   "meaning": "Pixel Shift Shift Vectora"
+  },
+  {
+   "tag": "(2001,xx3d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Contour Fill Color"
+  },
+  {
+   "tag": "(2001,xx3e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "2",
+   "meaning": "Pixel Shift Shift Vectorb"
+  },
+  {
+   "tag": "(2001,xx3f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Displayed Area Zoom Interpolation Meth"
+  },
+  {
+   "tag": "(2001,xx40)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Pixel Shift Split Screen"
+  },
+  {
+   "tag": "(2001,xx41)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Subtraction Land Marking Factor"
+  },
+  {
+   "tag": "(2001,xx42)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Subtraction Land Marking Active"
+  },
+  {
+   "tag": "(2001,xx43)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "2",
+   "meaning": "Ellips Displ Shut Major Ax Frst End Pnt"
+  },
+  {
+   "tag": "(2001,xx44)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "2",
+   "meaning": "Ellips Displ Shut Major Ax Scnd End Pnt"
+  },
+  {
+   "tag": "(2001,xx45)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "2",
+   "meaning": "Ellips Displ Shut Other Ax Frst End Pnt"
+  },
+  {
+   "tag": "(2001,xx46)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Graphic Line Style"
+  },
+  {
+   "tag": "(2001,xx47)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Graphic Line Width"
+  },
+  {
+   "tag": "(2001,xx48)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Graphic Annotation Id"
+  },
+  {
+   "tag": "(2001,xx49)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "Trace First Image"
+  },
+  {
+   "tag": "(2001,xx4a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Trace Taste"
+  },
+  {
+   "tag": "(2001,xx4b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Interpolation Method"
+  },
+  {
+   "tag": "(2001,xx4c)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Poly Line Begin Point Style"
+  },
+  {
+   "tag": "(2001,xx4d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Poly Line End Point Style"
+  },
+  {
+   "tag": "(2001,xx4e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Window Smoothing Taste"
+  },
+  {
+   "tag": "(2001,xx4f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Harmonization Offset"
+  },
+  {
+   "tag": "(2001,xx50)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Graphic Marker Type"
+  },
+  {
+   "tag": "(2001,xx51)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "Overlay Plane Id"
+  },
+  {
+   "tag": "(2001,xx53)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Presentation Gl Trafo Invert"
+  },
+  {
+   "tag": "(2001,xx54)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Contour Fill Transparency"
+  },
+  {
+   "tag": "(2001,xx55)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Graphic Line Color"
+  },
+  {
+   "tag": "(2001,xx56)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Graphic Type"
+  },
+  {
+   "tag": "(2001,xx57)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Log Subtraction Taste"
+  },
+  {
+   "tag": "(2001,xx58)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Series Xray Contrast Transfer Taste"
+  },
+  {
+   "tag": "(2001,xx59)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "Curve Id"
+  },
+  {
+   "tag": "(2001,xx5a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "ST",
+   "vm": "1",
+   "meaning": "Graphic Annotation Model"
+  },
+  {
+   "tag": "(2001,xx5d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "ST",
+   "vm": "1",
+   "meaning": "Measurement Text Units"
+  },
+  {
+   "tag": "(2001,xx5e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "ST",
+   "vm": "1",
+   "meaning": "Measurement Text Type"
+  },
+  {
+   "tag": "(2001,xx5f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Stack Sequence"
+  },
+  {
+   "tag": "(2001,xx60)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Stacks"
+  },
+  {
+   "tag": "(2001,xx61)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Series Transmitted"
+  },
+  {
+   "tag": "(2001,xx62)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Series Committed"
+  },
+  {
+   "tag": "(2001,xx63)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Examination Source"
+  },
+  {
+   "tag": "(2001,xx64)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "Text Type"
+  },
+  {
+   "tag": "(2001,xx65)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Overlay Plane Sequence"
+  },
+  {
+   "tag": "(2001,xx66)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Image Curve"
+  },
+  {
+   "tag": "(2001,xx67)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Linear Presentation Gl Trafo Shape Sub"
+  },
+  {
+   "tag": "(2001,xx68)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Modality Gl Trafo Sequence"
+  },
+  {
+   "tag": "(2001,xx69)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Display Shutter Sequence"
+  },
+  {
+   "tag": "(2001,xx6a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Spatial Transformation Sequence"
+  },
+  {
+   "tag": "(2001,xx6b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Edge Enhancement Sequence"
+  },
+  {
+   "tag": "(2001,xx6d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Text Font"
+  },
+  {
+   "tag": "(2001,xx6e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "Series Type"
+  },
+  {
+   "tag": "(2001,xx6f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Mixing Sequence"
+  },
+  {
+   "tag": "(2001,xx71)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Graphic Constraint"
+  },
+  {
+   "tag": "(2001,xx72)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "2",
+   "meaning": "Ellips Displ Shut Other Ax Scnd End Pnt"
+  },
+  {
+   "tag": "(2001,xx73)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Referenced Mask Image Sequence"
+  },
+  {
+   "tag": "(2001,xx74)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1-n",
+   "meaning": "Window Center Sub"
+  },
+  {
+   "tag": "(2001,xx75)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1-n",
+   "meaning": "Window Width Sub"
+  },
+  {
+   "tag": "(2001,xx76)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Presentation State Xray Contrast Transfer Taste"
+  },
+  {
+   "tag": "(2001,xx77)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Gl Trafo Type"
+  },
+  {
+   "tag": "(2001,xx79)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Harmonisation Sequence"
+  },
+  {
+   "tag": "(2001,xx7a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Window Rounding Factor"
+  },
+  {
+   "tag": "(2001,xx7b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "MR Series Acquisition Number"
+  },
+  {
+   "tag": "(2001,xx7c)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Frame Number"
+  },
+  {
+   "tag": "(2001,xx7d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "OW/OB",
+   "vm": "1",
+   "meaning": "Frame Pixel Data"
+  },
+  {
+   "tag": "(2001,xx7e)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Edge Enhancement Gain Taste"
+  },
+  {
+   "tag": "(2001,xx7f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Edge Enhancement Gain Taste Sub"
+  },
+  {
+   "tag": "(2001,xx80)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Text Anchor Point Alignment"
+  },
+  {
+   "tag": "(2001,xx81)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Dynamic Scans"
+  },
+  {
+   "tag": "(2001,xx82)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "MR Series Echo Train Length"
+  },
+  {
+   "tag": "(2001,xx83)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "MR Series Imaging Frequency"
+  },
+  {
+   "tag": "(2001,xx84)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "MR Series Inversion Time"
+  },
+  {
+   "tag": "(2001,xx85)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "MR Series Magnetic Field Strength"
+  },
+  {
+   "tag": "(2001,xx86)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "MR Series Nr Of Phase Encoding Steps"
+  },
+  {
+   "tag": "(2001,xx87)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "MR Series Nucleus"
+  },
+  {
+   "tag": "(2001,xx88)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "MR Series Number Of Averages"
+  },
+  {
+   "tag": "(2001,xx89)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "MR Series Percent Phase Field Of View"
+  },
+  {
+   "tag": "(2001,xx8a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "DS",
+   "vm": "1",
+   "meaning": "MR Series Percent Sampling"
+  },
+  {
+   "tag": "(2001,xx8b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "MR Series Transmitting Coil"
+  },
+  {
+   "tag": "(2001,xx8c)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "0-n",
+   "meaning": "Needs Processing"
+  },
+  {
+   "tag": "(2001,xx90)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Text Foreground Color"
+  },
+  {
+   "tag": "(2001,xx91)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Text Background Color"
+  },
+  {
+   "tag": "(2001,xx92)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Text Shadow Color"
+  },
+  {
+   "tag": "(2001,xx93)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Text Style"
+  },
+  {
+   "tag": "(2001,xx94)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Processing Order Specialization"
+  },
+  {
+   "tag": "(2001,xx9a)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Graphic Number Sequence"
+  },
+  {
+   "tag": "(2001,xx9b)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Graphic Number"
+  },
+  {
+   "tag": "(2001,xx9d)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Subtraction Type"
+  },
+  {
+   "tag": "(2001,xx9f)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "2",
+   "meaning": "Pixel Processing Kernel Size"
+  },
+  {
+   "tag": "(2001,xxa1)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Is Raw Image"
+  },
+  {
+   "tag": "(2001,xxa2)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Log Subtraction Curve Taste"
+  },
+  {
+   "tag": "(2001,xxa3)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Text Color Foreground"
+  },
+  {
+   "tag": "(2001,xxa4)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Text Color Background"
+  },
+  {
+   "tag": "(2001,xxa5)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Text Color Shadow"
+  },
+  {
+   "tag": "(2001,xxc0)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Content Item Identifier"
+  },
+  {
+   "tag": "(2001,xxc1)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Nested Object Type Name"
+  },
+  {
+   "tag": "(2001,xxc2)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Subtraction Rescale Factor"
+  },
+  {
+   "tag": "(2001,xxc3)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Subtraction Offset"
+  },
+  {
+   "tag": "(2001,xxc5)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Mask Image Lut Sequence"
+  },
+  {
+   "tag": "(2001,xxc6)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Gain Lut Sequence"
+  },
+  {
+   "tag": "(2001,xxc7)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Contrast Image Lut Sequence"
+  },
+  {
+   "tag": "(2001,xxca)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Reversed Modality Lut"
+  },
+  {
+   "tag": "(2001,xxcb)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "Redundant Overlay Plane Id"
+  },
+  {
+   "tag": "(2001,xxd0)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "AT",
+   "vm": "1-n",
+   "meaning": "Frame Index Pointer"
+  },
+  {
+   "tag": "(2001,xxd1)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1-n",
+   "meaning": "Index Number Vector"
+  },
+  {
+   "tag": "(2001,xxd2)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Detector Number"
+  },
+  {
+   "tag": "(2001,xxd3)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Phase Number"
+  },
+  {
+   "tag": "(2001,xxd4)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Rotation Number"
+  },
+  {
+   "tag": "(2001,xxd5)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Rr Interval Number"
+  },
+  {
+   "tag": "(2001,xxd6)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Time Slot Number"
+  },
+  {
+   "tag": "(2001,xxd7)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Slice Number"
+  },
+  {
+   "tag": "(2001,xxd8)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Angular View Number"
+  },
+  {
+   "tag": "(2001,xxd9)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Frame Time Slice Number"
+  },
+  {
+   "tag": "(2001,xxda)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Is Arrowhead"
+  },
+  {
+   "tag": "(2001,xxdb)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "PET Rr Interval Index"
+  },
+  {
+   "tag": "(2001,xxdc)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "PET Time Slot Index"
+  },
+  {
+   "tag": "(2001,xxdd)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "PET Time Slice Index"
+  },
+  {
+   "tag": "(2001,xxde)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "PET Slice Index"
+  },
+  {
+   "tag": "(2001,xxdf)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Voxel Number"
+  },
+  {
+   "tag": "(2001,xxe9)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Per Frame Voxels Functional Group"
+  },
+  {
+   "tag": "(2001,xxf1)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "6",
+   "meaning": "MR Image Prospective Motion Correction"
+  },
+  {
+   "tag": "(2001,xxf2)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "FL",
+   "vm": "1-n",
+   "meaning": "MR Image Retrospective Motion Correction"
+  },
+  {
+   "tag": "(2001,xxf3)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Dynamic Linear Voigl Trafo"
+  },
+  {
+   "tag": "(2001,xxf4)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Color Key"
+  },
+  {
+   "tag": "(2001,xxf5)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Rotated Text Allowed"
+  },
+  {
+   "tag": "(2001,xxf6)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Number Of Represented Images"
+  },
+  {
+   "tag": "(2001,xxf7)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "LO",
+   "vm": "0-n",
+   "meaning": "Data Type Icons"
+  },
+  {
+   "tag": "(2001,xxf9)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Flagging Sequence"
+  },
+  {
+   "tag": "(2001,xxfb)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Bookmark Sequence"
+  },
+  {
+   "tag": "(2001,xxfc)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Ris Code Sequence"
+  },
+  {
+   "tag": "(2001,xxfd)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Workflow Step Sequence"
+  },
+  {
+   "tag": "(2001,xxff)",
+   "private_creator": "Philips Imaging DD 001",
+   "vr": "OW/OB",
+   "vm": "1",
+   "meaning": "Volume Pixel"
+  },
+  {
+   "tag": "(2001,xx01)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Edr Setgp"
+  },
+  {
+   "tag": "(2001,xx02)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Edr Setsk"
+  },
+  {
+   "tag": "(2001,xx03)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Um Rank Type"
+  },
+  {
+   "tag": "(2001,xx04)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Um Rank Number"
+  },
+  {
+   "tag": "(2001,xx05)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Um Rank Enhancement"
+  },
+  {
+   "tag": "(2001,xx06)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Um Kernel Size"
+  },
+  {
+   "tag": "(2001,xx07)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Um Gamma Type"
+  },
+  {
+   "tag": "(2001,xx08)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Um Gamma Angle"
+  },
+  {
+   "tag": "(2001,xx09)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Um Gamma Shift"
+  },
+  {
+   "tag": "(2001,xx0a)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Um Gamma Center"
+  },
+  {
+   "tag": "(2001,xx0b)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Drr Contrast Equalization"
+  },
+  {
+   "tag": "(2001,xx0c)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Drr Contrast Equalization Kernel Size"
+  },
+  {
+   "tag": "(2001,xx0d)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Drr Sharp Lut Type"
+  },
+  {
+   "tag": "(2001,xx0e)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Drr Sharpening"
+  },
+  {
+   "tag": "(2001,xx0f)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Drr Sharp Kernel Size"
+  },
+  {
+   "tag": "(2001,xx10)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Drr Window Width"
+  },
+  {
+   "tag": "(2001,xx11)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Drr Window Level"
+  },
+  {
+   "tag": "(2001,xx12)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Drr Lut Type"
+  },
+  {
+   "tag": "(2001,xx13)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Unique Processing Mode"
+  },
+  {
+   "tag": "(2001,xx14)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Contrast Balance"
+  },
+  {
+   "tag": "(2001,xx15)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Center Density"
+  },
+  {
+   "tag": "(2001,xx16)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Bright Density"
+  },
+  {
+   "tag": "(2001,xx17)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Detail Contrast"
+  },
+  {
+   "tag": "(2001,xx18)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Unique Density Curve"
+  },
+  {
+   "tag": "(2001,xx19)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Density Min"
+  },
+  {
+   "tag": "(2001,xx1a)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Density Max"
+  },
+  {
+   "tag": "(2001,xx1b)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Gamma"
+  },
+  {
+   "tag": "(2001,xx1c)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Gamma Min"
+  },
+  {
+   "tag": "(2001,xx1d)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Gamma Max"
+  },
+  {
+   "tag": "(2001,xx1e)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Structure Preference"
+  },
+  {
+   "tag": "(2001,xx1f)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Noise Limit"
+  },
+  {
+   "tag": "(2001,xx20)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Noise Band"
+  },
+  {
+   "tag": "(2001,xx21)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Noise Step"
+  },
+  {
+   "tag": "(2001,xx22)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Noise Compensation"
+  },
+  {
+   "tag": "(2001,xx23)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Structure Boost"
+  },
+  {
+   "tag": "(2001,xx24)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Strong Contrast Limit"
+  },
+  {
+   "tag": "(2001,xx25)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Strong Contrast Factor"
+  },
+  {
+   "tag": "(2001,xx26)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Structure Boost Offset"
+  },
+  {
+   "tag": "(2001,xx27)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Weak Contrast Limit"
+  },
+  {
+   "tag": "(2001,xx28)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Unique Smooth Gain"
+  },
+  {
+   "tag": "(2001,xx29)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Unique Level"
+  },
+  {
+   "tag": "(2001,xx2a)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Unique Gain Up Single"
+  },
+  {
+   "tag": "(2001,xx2b)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Unique Smh Limit One"
+  },
+  {
+   "tag": "(2001,xx2c)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Film Density Min"
+  },
+  {
+   "tag": "(2001,xx2d)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Unique Film Density Max"
+  },
+  {
+   "tag": "(2001,xx2e)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Unique Version"
+  },
+  {
+   "tag": "(2001,xx2f)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Ranger Version"
+  },
+  {
+   "tag": "(2001,xx30)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Ranger Mode"
+  },
+  {
+   "tag": "(2001,xx31)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Ranger Field1"
+  },
+  {
+   "tag": "(2001,xx32)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Ranger Field2"
+  },
+  {
+   "tag": "(2001,xx33)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Ranger Percentile Key1"
+  },
+  {
+   "tag": "(2001,xx34)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Ranger Percentile Key2"
+  },
+  {
+   "tag": "(2001,xx35)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Ranger Dose1"
+  },
+  {
+   "tag": "(2001,xx36)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Ranger Dose2"
+  },
+  {
+   "tag": "(2001,xx37)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Ranger Manual Dose1"
+  },
+  {
+   "tag": "(2001,xx38)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Ranger Manual Dose2"
+  },
+  {
+   "tag": "(2001,xx39)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Unique Rox Shape"
+  },
+  {
+   "tag": "(2001,xx3a)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Ranger Set Sequence"
+  },
+  {
+   "tag": "(2001,xx3b)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Rox Sequence"
+  },
+  {
+   "tag": "(2001,xx3c)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Xray Edge Enhancement Sequence"
+  },
+  {
+   "tag": "(2001,xx3d)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Edr Lut Sequence"
+  },
+  {
+   "tag": "(2001,xx3e)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Unique Dose Decades"
+  },
+  {
+   "tag": "(2001,xx3f)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Unique Dose Unit"
+  },
+  {
+   "tag": "(2001,xx40)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Unique Density Unit"
+  },
+  {
+   "tag": "(2001,xx50)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Workflow Status"
+  },
+  {
+   "tag": "(2001,xx52)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Workflow Step Id"
+  },
+  {
+   "tag": "(2001,xx53)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Workflow Step Status"
+  },
+  {
+   "tag": "(2001,xx57)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Workflow Step Input Sequence"
+  },
+  {
+   "tag": "(2001,xx58)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Workflow Step Output Sequence"
+  },
+  {
+   "tag": "(2001,xx5a)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Workflow Step Type"
+  },
+  {
+   "tag": "(2001,xx5c)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Workflow Id"
+  },
+  {
+   "tag": "(2001,xx5d)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Pixel Data Representation Rows"
+  },
+  {
+   "tag": "(2001,xx5e)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Pixel Data Representation Columns"
+  },
+  {
+   "tag": "(2001,xx5f)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Private Dicom Extension Sequence"
+  },
+  {
+   "tag": "(2001,xx63)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "ST",
+   "vm": "1",
+   "meaning": "Isyntax Reference"
+  },
+  {
+   "tag": "(2001,xx64)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Workflow Step Job Params Sequence"
+  },
+  {
+   "tag": "(2001,xx65)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Preserve Aspect"
+  },
+  {
+   "tag": "(2001,xx66)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Interpolated"
+  },
+  {
+   "tag": "(2001,xx67)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Error Flag"
+  },
+  {
+   "tag": "(2001,xx68)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Error Message Id"
+  },
+  {
+   "tag": "(2001,xx6b)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "LO",
+   "vm": "0-n",
+   "meaning": "Suitable For"
+  },
+  {
+   "tag": "(2001,xx71)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Submit Mpps Job"
+  },
+  {
+   "tag": "(2001,xx72)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FL",
+   "vm": "2",
+   "meaning": "Displayed Area Bottom Right Hand Corner Fraction"
+  },
+  {
+   "tag": "(2001,xx73)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "FL",
+   "vm": "2",
+   "meaning": "Displayed Area Top Left Hand Corner Fraction"
+  },
+  {
+   "tag": "(2001,xx74)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Interpolation Mode"
+  },
+  {
+   "tag": "(2001,xx75)",
+   "private_creator": "Philips Imaging DD 002",
+   "vr": "SS",
+   "vm": "0-n",
+   "meaning": "Graphic Annotation Id Reference"
+  },
+  {
+   "tag": "(2001,xx01)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "View Geometry"
+  },
+  {
+   "tag": "(2001,xx02)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Frame Geometry Origin"
+  },
+  {
+   "tag": "(2001,xx03)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "2",
+   "meaning": "Frame Geometry Extent"
+  },
+  {
+   "tag": "(2001,xx04)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "6",
+   "meaning": "Frame Geometry Orientation"
+  },
+  {
+   "tag": "(2001,xx05)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Visual Sequence"
+  },
+  {
+   "tag": "(2001,xx06)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Cut Sequence"
+  },
+  {
+   "tag": "(2001,xx07)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Visual Opacity"
+  },
+  {
+   "tag": "(2001,xx08)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Opacity Map Sequence"
+  },
+  {
+   "tag": "(2001,xx0a)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Light Sequence"
+  },
+  {
+   "tag": "(2001,xx0b)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Color Map Sequence"
+  },
+  {
+   "tag": "(2001,xx0d)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Visual Threshold"
+  },
+  {
+   "tag": "(2001,xx0e)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Scene Sequence"
+  },
+  {
+   "tag": "(2001,xx0f)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "2",
+   "meaning": "Frame Geometry Slab"
+  },
+  {
+   "tag": "(2001,xx12)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Gradient Map Sequence"
+  },
+  {
+   "tag": "(2001,xx17)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Display Rows"
+  },
+  {
+   "tag": "(2001,xx18)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Display Columns"
+  },
+  {
+   "tag": "(2001,xx19)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Frame Geometry Type"
+  },
+  {
+   "tag": "(2001,xx1a)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Light Intensity"
+  },
+  {
+   "tag": "(2001,xx1b)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Light Color"
+  },
+  {
+   "tag": "(2001,xx1c)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Light Origin"
+  },
+  {
+   "tag": "(2001,xx1d)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Light Direction"
+  },
+  {
+   "tag": "(2001,xx1e)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "4-n",
+   "meaning": "Color Map Samples"
+  },
+  {
+   "tag": "(2001,xx1f)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "2-n",
+   "meaning": "Opacity Map Samples"
+  },
+  {
+   "tag": "(2001,xx21)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Visual Color"
+  },
+  {
+   "tag": "(2001,xx22)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Illumination Ambient"
+  },
+  {
+   "tag": "(2001,xx23)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Illumination Diffuse"
+  },
+  {
+   "tag": "(2001,xx24)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Illumination Specular"
+  },
+  {
+   "tag": "(2001,xx25)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Illumination Specular Power"
+  },
+  {
+   "tag": "(2001,xx26)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Depth Cue Begin"
+  },
+  {
+   "tag": "(2001,xx27)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Depth Cue Lambda"
+  },
+  {
+   "tag": "(2001,xx28)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Depth Cue Function"
+  },
+  {
+   "tag": "(2001,xx2a)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Cut Set Type"
+  },
+  {
+   "tag": "(2001,xx2b)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Cut Plane Origin"
+  },
+  {
+   "tag": "(2001,xx2c)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Cut Plane Normal"
+  },
+  {
+   "tag": "(2001,xx2d)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Volume Definition Number"
+  },
+  {
+   "tag": "(2001,xx2e)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Volume Mask Sequence"
+  },
+  {
+   "tag": "(2001,xx2f)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Volume Mask Data"
+  },
+  {
+   "tag": "(2001,xx30)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SL",
+   "vm": "3",
+   "meaning": "Volume Mask Offset"
+  },
+  {
+   "tag": "(2001,xx31)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SL",
+   "vm": "3",
+   "meaning": "Volume Mask Size"
+  },
+  {
+   "tag": "(2001,xx32)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SL",
+   "vm": "2",
+   "meaning": "Volume Mask Alignment"
+  },
+  {
+   "tag": "(2001,xx36)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Light Anchor"
+  },
+  {
+   "tag": "(2001,xx37)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Cone Geometry Origin"
+  },
+  {
+   "tag": "(2001,xx38)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "9",
+   "meaning": "Cone Geometry Orientation"
+  },
+  {
+   "tag": "(2001,xx39)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Cone Geometry View Distance"
+  },
+  {
+   "tag": "(2001,xx3a)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "2",
+   "meaning": "Cone Geometry Slab Extent"
+  },
+  {
+   "tag": "(2001,xx3b)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "2",
+   "meaning": "Cone Geometry Field Of View"
+  },
+  {
+   "tag": "(2001,xx3c)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Intensity Map Sequence"
+  },
+  {
+   "tag": "(2001,xx3d)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1-n",
+   "meaning": "Intensity Map Samples"
+  },
+  {
+   "tag": "(2001,xx3e)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Mesh Sequence"
+  },
+  {
+   "tag": "(2001,xx40)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Mesh Color"
+  },
+  {
+   "tag": "(2001,xx41)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Mesh Draw Style"
+  },
+  {
+   "tag": "(2001,xx42)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Mesh Section Sequence"
+  },
+  {
+   "tag": "(2001,xx44)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Mesh Section Vertex Connectivity"
+  },
+  {
+   "tag": "(2001,xx45)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "Mesh Section Vertex Size"
+  },
+  {
+   "tag": "(2001,xx46)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Mesh Section Vertex Format"
+  },
+  {
+   "tag": "(2001,xx47)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "OB",
+   "vm": "1-n",
+   "meaning": "Mesh Section Vertex Data"
+  },
+  {
+   "tag": "(2001,xx49)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Referenced Volume Definition Sequence"
+  },
+  {
+   "tag": "(2001,xx4a)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "OB",
+   "vm": "1-n",
+   "meaning": "Mesh Section Index Data"
+  },
+  {
+   "tag": "(2001,xx4b)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "Mesh Section Index Size"
+  },
+  {
+   "tag": "(2001,xx4c)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Shutter Interaction Type"
+  },
+  {
+   "tag": "(2001,xxa1)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "CS",
+   "vm": "1-2",
+   "meaning": "Volume Type"
+  },
+  {
+   "tag": "(2001,xxa2)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Volume Origin"
+  },
+  {
+   "tag": "(2001,xxa3)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "9",
+   "meaning": "Volume Axis"
+  },
+  {
+   "tag": "(2001,xxa4)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "2",
+   "meaning": "Volume Pixel Spacing"
+  },
+  {
+   "tag": "(2001,xxa5)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1-n",
+   "meaning": "Volume Slice Spacing"
+  },
+  {
+   "tag": "(2001,xxa6)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "US",
+   "vm": "1",
+   "meaning": "Volume Slices"
+  },
+  {
+   "tag": "(2001,xxa8)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "IS",
+   "vm": "1-n",
+   "meaning": "Referenced Volume Definition Number"
+  },
+  {
+   "tag": "(2001,xxa9)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "SQ",
+   "vm": "0-n",
+   "meaning": "Linear Modality Gl Trafo Sequence"
+  },
+  {
+   "tag": "(2001,xxaa)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "FD",
+   "vm": "1-n",
+   "meaning": "Volume Slice Offsets"
+  },
+  {
+   "tag": "(2001,xxab)",
+   "private_creator": "Philips Imaging DD 097",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "Number Of Volume Definitions"
+  },
+  {
+   "tag": "(2001,xx00)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Presentation State Sequence"
+  },
+  {
+   "tag": "(2001,xx01)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Embedded Original Presentation State Sequence"
+  },
+  {
+   "tag": "(2001,xx02)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "SQ",
+   "vm": "0-1",
+   "meaning": "Planar Intersection Sequence"
+  },
+  {
+   "tag": "(2001,xx03)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Plane Separator Line Color"
+  },
+  {
+   "tag": "(2001,xx04)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "SQ",
+   "vm": "1-n",
+   "meaning": "Plane Sequence"
+  },
+  {
+   "tag": "(2001,xx05)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "FD",
+   "vm": "4",
+   "meaning": "Plane Equation"
+  },
+  {
+   "tag": "(2001,xx06)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "FD",
+   "vm": "1",
+   "meaning": "Plane Opacity"
+  },
+  {
+   "tag": "(2001,xx07)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Plane Enabled"
+  },
+  {
+   "tag": "(2001,xx08)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Plane Selected"
+  },
+  {
+   "tag": "(2001,xx09)",
+   "private_creator": "Philips Imaging DD 129",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Plane Highlight Color"
+  },
+  {
+   "tag": "(0025,xx01)",
+   "private_creator": "Philips ST80i",
+   "vr": "OW",
+   "vm": "1",
+   "meaning": "ST80i Stress Study file data"
+  },
+  {
+   "tag": "(0019,xx0C)",
+   "private_creator": "SIEMENS MR HEADER",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "B Value"
+  },
+  {
+   "tag": "(0019,xx0D)",
+   "private_creator": "SIEMENS MR HEADER",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Diffusion Directionality"
+  },
+  {
+   "tag": "(0019,xx0E)",
+   "private_creator": "SIEMENS MR HEADER",
+   "vr": "FD",
+   "vm": "3",
+   "meaning": "Diffusion Gradient Direction"
+  },
+  {
+   "tag": "(0019,xx27)",
+   "private_creator": "SIEMENS MR HEADER",
+   "vr": "FD",
+   "vm": "6",
+   "meaning": "B Matrix"
+  },
+  {
+   "tag": "(0043,xx39)",
+   "private_creator": "GEMS_PARM_01",
+   "vr": "IS",
+   "vm": "4",
+   "meaning": "1stvalue is B Value"
+  },
+  {
+   "tag": "(0043,xx6F)",
+   "private_creator": "GEMS_PARM_01",
+   "vr": "DS",
+   "vm": "3-4",
+   "meaning": "Scanner Table Entry + Gradient Coil Selected"
+  },
+  {
+   "tag": "(0025,xx07)",
+   "private_creator": "GEMS_SERS_01",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "Images in Series"
+  },
+  {
+   "tag": "(7E01,xx01)",
+   "private_creator": "HOLOGIC, Inc.",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Codec Version"
+  },
+  {
+   "tag": "(7E01,xx02)",
+   "private_creator": "HOLOGIC, Inc.",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "Codec Content Type"
+  },
+  {
+   "tag": "(7E01,xx10)",
+   "private_creator": "HOLOGIC, Inc.",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "High Resolution Data Sequence"
+  },
+  {
+   "tag": "(7E01,xx11)",
+   "private_creator": "HOLOGIC, Inc.",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Low Resolution Data Sequence"
+  },
+  {
+   "tag": "(7E01,xx12)",
+   "private_creator": "HOLOGIC, Inc.",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Codec Content"
+  },
+  {
+   "tag": "(0099,xx01)",
+   "private_creator": "NQHeader",
+   "vr": "UI",
+   "vm": "1",
+   "meaning": "Version"
+  },
+  {
+   "tag": "(0099,xx02)",
+   "private_creator": "NQHeader",
+   "vr": "UI",
+   "vm": "1",
+   "meaning": "Analyzed Series UID"
+  },
+  {
+   "tag": "(0099,xx04)",
+   "private_creator": "NQHeader",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Return Code"
+  },
+  {
+   "tag": "(0099,xx05)",
+   "private_creator": "NQHeader",
+   "vr": "LT",
+   "vm": "1",
+   "meaning": "Return Message"
+  },
+  {
+   "tag": "(0099,xx10)",
+   "private_creator": "NQHeader",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "MI"
+  },
+  {
+   "tag": "(0099,xx20)",
+   "private_creator": "NQHeader",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "Units"
+  },
+  {
+   "tag": "(0099,xx21)",
+   "private_creator": "NQHeader",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "ICV"
+  },
+  {
+   "tag": "(0199,xx01)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Cortical White Matter"
+  },
+  {
+   "tag": "(0199,xx02)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Cortical Gray Matter"
+  },
+  {
+   "tag": "(0199,xx03)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left 3rd Ventricle"
+  },
+  {
+   "tag": "(0199,xx04)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left 4th Ventricle"
+  },
+  {
+   "tag": "(0199,xx05)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left 5th Ventricle"
+  },
+  {
+   "tag": "(0199,xx06)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Lateral Ventricle"
+  },
+  {
+   "tag": "(0199,xx07)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Inferior Lateral Ventricle"
+  },
+  {
+   "tag": "(0199,xx08)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Inferior CSF"
+  },
+  {
+   "tag": "(0199,xx09)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Cerebellar White Matter"
+  },
+  {
+   "tag": "(0199,xx0a)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Cerebellar Gray Matter"
+  },
+  {
+   "tag": "(0199,xx0b)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Hippocampus"
+  },
+  {
+   "tag": "(0199,xx0c)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Amygdala"
+  },
+  {
+   "tag": "(0199,xx0d)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Thalamus"
+  },
+  {
+   "tag": "(0199,xx0e)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Caudate"
+  },
+  {
+   "tag": "(0199,xx0f)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Putamen"
+  },
+  {
+   "tag": "(0199,xx10)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Pallidum"
+  },
+  {
+   "tag": "(0199,xx11)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Ventral Diencephalon"
+  },
+  {
+   "tag": "(0199,xx12)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Nucleus Accumbens"
+  },
+  {
+   "tag": "(0199,xx13)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Brain Stem"
+  },
+  {
+   "tag": "(0199,xx14)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Exterior CSF"
+  },
+  {
+   "tag": "(0199,xx15)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left WM Hypo"
+  },
+  {
+   "tag": "(0199,xx16)",
+   "private_creator": "NQLeft",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Left Other"
+  },
+  {
+   "tag": "(0299,xx01)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Cortical White Matter"
+  },
+  {
+   "tag": "(0299,xx02)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Cortical Gray Matter"
+  },
+  {
+   "tag": "(0299,xx03)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right 3rd Ventricle"
+  },
+  {
+   "tag": "(0299,xx04)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right 4th Ventricle"
+  },
+  {
+   "tag": "(0299,xx05)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right 5th Ventricle"
+  },
+  {
+   "tag": "(0299,xx06)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Lateral Ventricle"
+  },
+  {
+   "tag": "(0299,xx07)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Inferior Lateral Ventricle"
+  },
+  {
+   "tag": "(0299,xx08)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Inferior CSF"
+  },
+  {
+   "tag": "(0299,xx09)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Cerebellar White Matter"
+  },
+  {
+   "tag": "(0299,xx0a)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Cerebellar Gray Matter"
+  },
+  {
+   "tag": "(0299,xx0b)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Hippocampus"
+  },
+  {
+   "tag": "(0299,xx0c)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Amygdala"
+  },
+  {
+   "tag": "(0299,xx0d)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Thalamus"
+  },
+  {
+   "tag": "(0299,xx0e)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Caudate"
+  },
+  {
+   "tag": "(0299,xx0f)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Putamen"
+  },
+  {
+   "tag": "(0299,xx10)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Pallidum"
+  },
+  {
+   "tag": "(0299,xx11)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Ventral Diencephalon"
+  },
+  {
+   "tag": "(0299,xx12)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Nucleus Accumbens"
+  },
+  {
+   "tag": "(0299,xx13)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Brain Stem"
+  },
+  {
+   "tag": "(0299,xx14)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Exterior CSF"
+  },
+  {
+   "tag": "(0299,xx15)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right WM Hypo"
+  },
+  {
+   "tag": "(0299,xx16)",
+   "private_creator": "NQRight",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Right Other"
+  },
+  {
+   "tag": "(2005,xx0D)",
+   "private_creator": "Philips MR Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Scale Intercept"
+  },
+  {
+   "tag": "(2005,xx0E)",
+   "private_creator": "Philips MR Imaging DD 001",
+   "vr": "FL",
+   "vm": "1",
+   "meaning": "Scale Slope"
+  },
+  {
+   "tag": "(0119,xx00)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "LO",
+   "vm": "1",
+   "meaning": "Acoustic Meta Information Version"
+  },
+  {
+   "tag": "(0119,xx01)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Common Acoustic Meta Information"
+  },
+  {
+   "tag": "(0119,xx02)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Multi Stream Sequence"
+  },
+  {
+   "tag": "(0119,xx03)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Acoustic Data Sequence"
+  },
+  {
+   "tag": "(0119,xx04)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Per Transaction Acoustic Control Information"
+  },
+  {
+   "tag": "(0119,xx05)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Acoustic Data Offset"
+  },
+  {
+   "tag": "(0119,xx06)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Acoustic Data Length"
+  },
+  {
+   "tag": "(0119,xx07)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Footer Offset"
+  },
+  {
+   "tag": "(0119,xx08)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UL",
+   "vm": "1",
+   "meaning": "Footer Length"
+  },
+  {
+   "tag": "(0119,xx09)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SS",
+   "vm": "1",
+   "meaning": "Acoustic Stream Number"
+  },
+  {
+   "tag": "(0119,xx10)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": "Acoustic Stream Type"
+  },
+  {
+   "tag": "(0119,xx11)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "",
+   "vm": "1",
+   "meaning": "Stage Timer Time"
+  },
+  {
+   "tag": "(0119,xx12)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "",
+   "vm": "1",
+   "meaning": "Stop Watch Time"
+  },
+  {
+   "tag": "(0119,xx13)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "IS",
+   "vm": "1",
+   "meaning": "Volume Rate"
+  },
+  {
+   "tag": "(0119,xx21)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SH",
+   "vm": "1",
+   "meaning": ""
+  },
+  {
+   "tag": "(0129,xx00)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "MPR View Sequence"
+  },
+  {
+   "tag": "(0129,xx02)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UI",
+   "vm": "1",
+   "meaning": "Bookmark UID"
+  },
+  {
+   "tag": "(0129,xx03)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "",
+   "vm": "1",
+   "meaning": "Plane Origin Vector"
+  },
+  {
+   "tag": "(0129,xx04)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "",
+   "vm": "1",
+   "meaning": "Row Vector"
+  },
+  {
+   "tag": "(0129,xx05)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "",
+   "vm": "1",
+   "meaning": "Column Vector"
+  },
+  {
+   "tag": "(0129,xx06)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Visualization Sequence"
+  },
+  {
+   "tag": "(0129,xx07)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UI",
+   "vm": "1",
+   "meaning": "Bookmark UID"
+  },
+  {
+   "tag": "(0129,xx08)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Visualization Information"
+  },
+  {
+   "tag": "(0129,xx09)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Application State Sequence"
+  },
+  {
+   "tag": "(0129,xx10)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Application State Information"
+  },
+  {
+   "tag": "(0129,xx11)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Referenced Bookmark Sequence"
+  },
+  {
+   "tag": "(0129,xx12)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UI",
+   "vm": "1",
+   "meaning": "Referenced Bookmark UID"
+  },
+  {
+   "tag": "(0129,xx20)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SQ",
+   "vm": "1",
+   "meaning": "Cine Parameters Sequence"
+  },
+  {
+   "tag": "(0129,xx21)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Cine Parameters Schema"
+  },
+  {
+   "tag": "(0129,xx22)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Values of Cine Parameters"
+  },
+  {
+   "tag": "(0129,xx29)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": ""
+  },
+  {
+   "tag": "(0129,xx30)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "CS",
+   "vm": "1",
+   "meaning": "Raw Data Object Type"
+  },
+  {
+   "tag": "(0139,xx01)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "SL",
+   "vm": "1",
+   "meaning": "Physio Capture ROI"
+  },
+  {
+   "tag": "(0149,xx01)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "FD",
+   "vm": "1-n",
+   "meaning": "Vector of BROI Points"
+  },
+  {
+   "tag": "(0149,xx02)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "FD",
+   "vm": "1-n",
+   "meaning": "Start/End Timestamps of Strip Stream"
+  },
+  {
+   "tag": "(0149,xx03)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "FD",
+   "vm": "1-n",
+   "meaning": "Timestamps of Visible R-waves"
+  },
+  {
+   "tag": "(7FD1,xx01)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Acoustic Image and Footer Data"
+  },
+  {
+   "tag": "(7FD1,xx09)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "UI",
+   "vm": "1",
+   "meaning": "Volume Version ID"
+  },
+  {
+   "tag": "(7FD1,xx10)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Volume Payload"
+  },
+  {
+   "tag": "(7FD1,xx11)",
+   "private_creator": "SIEMENS Ultrasound SC2000",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "After Payload"
+  },
+  {
+   "tag": "(7FD1,xx01)",
+   "private_creator": "SIEMENS SYNGO ULTRA-SOUND TOYON DATA STREAMING",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Padding"
+  },
+  {
+   "tag": "(7FD1,xx09)",
+   "private_creator": "SIEMENS SYNGO ULTRA-SOUND TOYON DATA STREAMING",
+   "vr": "UI",
+   "vm": "1",
+   "meaning": "Version ID"
+  },
+  {
+   "tag": "(7FD1,xx10)",
+   "private_creator": "SIEMENS SYNGO ULTRA-SOUND TOYON DATA STREAMING",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "Volume Payload"
+  },
+  {
+   "tag": "(7FD1,xx11)",
+   "private_creator": "SIEMENS SYNGO ULTRA-SOUND TOYON DATA STREAMING",
+   "vr": "OB",
+   "vm": "1",
+   "meaning": "After Payload"
+  }
+ ]
+}
