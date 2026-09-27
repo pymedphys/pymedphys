@@ -16,6 +16,6 @@
 
 This development-only package reads NEMA's HTML (chtml) publication of the
 standard, after checking each source file against its pinned SHA-256 digest,
-as decision D-001 of the de-identification design requires. PyMedPhys ships
+as the de-identification design requires. PyMedPhys ships
 the tables generated from these sources, never the sources themselves.
 """

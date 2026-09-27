@@ -51,7 +51,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 ### New features and enhancements
 
 - `pymedphys.gamma` has a new `exclude_nan_reference` option. When set, reference points whose dose is NaN are left out of the analysis, for example unmeasured detector positions or points outside a region of interest. They are reported as NaN, and the default normalisation ignores them. Without it, a NaN reference dose still raises `ValueError`, whose message now names the option, so that NaN from an upstream error is not silently dropped. NaN in the evaluation dose, and infinite doses in either grid, still raise; the evaluation message recommends cropping the evaluation grid, or using the measurement as the reference with the new option. [PR #2124](https://github.com/pymedphys/pymedphys/pull/2124)
-- New `pymedphys.gamma_pass_rate` gives the percentage of analysed reference points in a `pymedphys.gamma` result that pass (gamma at most 1), leaving out the NaN points that were not analysed. It raises `ValueError` if no point was analysed. It replaces a private helper that counted only gamma below 1 and divided by zero when there were no points; the "Gamma from DICOM" and 1D how-to guides now use it. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
+- New `pymedphys.gamma_pass_rate` gives the percentage of analysed reference points in a `pymedphys.gamma` result that pass (gamma at most 1), leaving out the NaN points that were not analysed and any masked values of a masked array. It raises `ValueError` if no point was analysed or any gamma value is negative, and `TypeError` for the dict of results that `pymedphys.gamma` returns for several thresholds. Gamma from other software, or from earlier versions of `pymedphys.gamma`, can be NaN at analysed points, which the pass rate would leave out; recalculate such gamma with `pymedphys.gamma` first. It replaces a private helper that counted only gamma below 1 and divided by zero when there were no points; the "Gamma from DICOM" and 1D how-to guides now use it. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120), [PR #2127](https://github.com/pymedphys/pymedphys/pull/2127)
 - `pymedphys.gamma` has a `random_state` argument, an integer seed or `numpy.random.Generator`, that selects the `random_subset` reproducibly without seeding NumPy's global random state. Without it, the subset still comes from NumPy's global random state, so earlier analyses that called `numpy.random.seed` select the same points. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
 - The interpolation comparison notebook compares PyMedPhys with SciPy's `RegularGridInterpolator`, and the documentation dependencies no longer include EconForge's `interpolation`. The reference page keeps the earlier benchmark image, labelled as a historical result, and links to the executable comparison. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
@@ -214,6 +214,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI's documentation build is the only documentation check on pull requests, and its `docs-html` artefact holds the built pages. Read the Docs builds a hosted preview only of a pull request labelled `rtd-preview`, so routine pull requests no longer take its build slots, and it still builds and publishes `main`. Automation rules in the Read the Docs dashboard make this choice; the workflow guide lists them. The documentation guide explains how to download `docs-html` and how to run the `Documentation` workflow on a branch. [PR #2121](https://github.com/pymedphys/pymedphys/pull/2121)
 - The private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. The MetersetMap app and the delivery tests now use `pymedphys.gamma_pass_rate` instead of their own pass-rate calculations. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
 - **[Contributor facing only]** CI now tests the declared minimum versions of
   both NumPy and pandas. The NumPy 1.26 compatibility job becomes
@@ -251,9 +252,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   free, so parallel workers no longer collide on one fixed port.
   ReadTheDocs installs the documentation environment with `uv sync` from
   `uv.lock`, as CI does, instead of with pip from `requirements-docs.txt`,
-  which `pymedphys dev propagate` no longer generates, and it cancels
-  pull-request previews when every changed path is one the documentation
-  never reads, such as CI configuration and tests.
+  which `pymedphys dev propagate` no longer generates.
   [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099), [PR #2115](https://github.com/pymedphys/pymedphys/pull/2115)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan
@@ -304,8 +303,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112)
 - **[Contributor facing only]** A private module,
   `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
-  Spreadsheet to JSON, the first step towards descriptor cleaning (design
-  decision D-009) and checks of structure names against TG-263. PyMedPhys
+  Spreadsheet to JSON, the first step towards descriptor cleaning
+  and checks of structure names against TG-263. PyMedPhys
   does not include the spreadsheet. The converter maps columns by their header
   text; rejects unknown or missing columns, empty required values, numbers
   where text is expected, names containing whitespace, FMA identifiers that
