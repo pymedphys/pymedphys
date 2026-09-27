@@ -181,6 +181,8 @@ def _datetime_match(value: str) -> re.Match[str]:
     match = _DT.fullmatch(value.rstrip(_PADDING))
     if not match or not _valid_time(match) or not _valid_utc_offset(match):
         raise ValueError("the value is not a DT value with a full date")
+    # The date must exist, whether or not the value has its own offset.
+    _wall_clock(match)
     return match
 
 
@@ -199,14 +201,33 @@ def _wall_clock(match: re.Match[str]) -> datetime.datetime:
         raise ValueError("the value is not a DT value with a full date") from None
 
 
+def _utc_instant(match: re.Match[str]) -> tuple[int, int, int]:
+    """Return a value with its own offset as UTC minutes, seconds, and microseconds.
+
+    Minutes count from the start of year 1, so values at either end of the
+    calendar compare without overflow, and a leap second (60) needs no
+    ``datetime``.
+    """
+    local = _wall_clock(match)
+    minutes = (local.toordinal() * 24 + local.hour) * 60 + local.minute
+    fraction = match["time"].partition(".")[2]
+    return (
+        minutes - _offset_minutes(match["offset"]),
+        int(match["second"] or 0),
+        int(fraction.ljust(6, "0")),
+    )
+
+
 def local_offset(timezone_offset: str | None, datetimes: Iterable[str]) -> str | None:
     """Return the UTC offset of an instance's local time.
 
     This is the offset :func:`to_local_datetime` converts to. It is the
     instance's Timezone Offset From UTC (0008,0201) where present, because
     PS3.3 C.12.1.1.8 makes it the offset of every date and time without its
-    own. Otherwise it is the offset of the earliest DT value that has one, so
-    the values with offsets keep their intervals; with neither, ``None``.
+    own. Otherwise it is the offset of the earliest DT value that has one,
+    compared to the microsecond, so the values with offsets keep their
+    intervals; values at the same instant are taken in the order of their
+    offsets as text. With neither, it is ``None``.
 
     Raises
     ------
@@ -226,17 +247,15 @@ def local_offset(timezone_offset: str | None, datetimes: Iterable[str]) -> str |
         if not _valid_offset(offset):
             raise ValueError("the time zone offset is not from -1200 to +1400")
         return offset
-    earliest: tuple[datetime.datetime, str] | None = None
+    earliest: tuple[int, int, int, str] | None = None
     for value in datetimes:
         match = _datetime_match(value)
         if match["offset"] is None:
             continue
-        instant = _wall_clock(match) - datetime.timedelta(
-            minutes=_offset_minutes(match["offset"])
-        )
-        if earliest is None or (instant, match["offset"]) < earliest:
-            earliest = (instant, match["offset"])
-    return None if earliest is None else earliest[1]
+        candidate = (*_utc_instant(match), match["offset"])
+        if earliest is None or candidate < earliest:
+            earliest = candidate
+    return None if earliest is None else earliest[-1]
 
 
 def to_local_datetime(value: str, offset: str) -> str:
@@ -258,7 +277,7 @@ def to_local_datetime(value: str, offset: str) -> str:
         not a UTC offset from -1200 to +1400, the value's precision cannot
         express the conversion exactly (a date alone between different
         offsets, or hours alone by a part of an hour), or the result would be
-        before year 1.
+        outside years 1 to 9999.
 
     Examples
     --------
@@ -278,7 +297,9 @@ def to_local_datetime(value: str, offset: str) -> str:
     try:
         local = _wall_clock(match) + datetime.timedelta(minutes=difference)
     except OverflowError:
-        raise ValueError("the converted date would be before year 1") from None
+        raise ValueError(
+            "the converted date would be outside years 1 to 9999"
+        ) from None
     parts = [f"{local.year:04d}{local.month:02d}{local.day:02d}"]
     if match["hour"] is not None:
         parts.append(f"{local.hour:02d}")

@@ -226,6 +226,44 @@ def test_without_any_offset_there_is_no_local_offset():
     assert dates.local_offset(None, ["20260927120000", "20260927"]) is None
 
 
+@pytest.mark.parametrize(
+    "values",
+    [
+        # The first value is 58 seconds earlier, in the same UTC minute.
+        ["20260927120001+1000", "20260927020059+0000"],
+        # The first value is 0.8 seconds earlier, in the same UTC second.
+        ["20260927120000.1+1000", "20260927020000.9+0000"],
+    ],
+)
+def test_the_earliest_value_is_found_to_the_fraction_of_a_second(values):
+    assert dates.local_offset(None, values) == "+1000"
+    assert dates.local_offset(None, values[::-1]) == "+1000"
+
+
+def test_values_at_the_same_instant_are_ordered_by_offset():
+    # Different fraction precision, same instant: the choice is deterministic.
+    values = ["20260927120000.5+1000", "20260927020000.50+0000"]
+
+    assert dates.local_offset(None, values) == "+0000"
+    assert dates.local_offset(None, values[::-1]) == "+0000"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [("00010101000000+1400", "+1400"), ("99991231230000-1200", "-1200")],
+)
+def test_the_earliest_value_is_found_at_the_ends_of_the_calendar(value, expected):
+    assert dates.local_offset(None, [value]) == expected
+
+
+@pytest.mark.parametrize("value", ["20260230010100", "20260931", "20260230010100 "])
+def test_a_datetime_without_an_offset_must_have_a_real_date(value):
+    with pytest.raises(ValueError, match="not a DT value"):
+        dates.local_offset(None, [value])
+    with pytest.raises(ValueError, match="not a DT value"):
+        dates.to_local_datetime(value, "+1000")
+
+
 @pytest.mark.parametrize("offset", ["+1500", "-1201", "-0000", "1000", "+10"])
 def test_a_local_offset_outside_the_range_is_rejected(offset):
     with pytest.raises(ValueError, match="-1200 to \\+1400"):
@@ -261,7 +299,8 @@ def test_a_datetime_converts_to_local_time(value, offset, expected):
         ("20260927120000+1000", "+1500", "local offset"),
         ("20260927120000+1401", "+1000", "not a DT value"),
         ("2026+1000", "+1000", "not a DT value"),
-        ("00010101000000+0100", "-1200", "before year 1"),
+        ("00010101000000+0100", "-1200", "outside years 1 to 9999"),
+        ("99991231230000-1200", "+1400", "outside years 1 to 9999"),
     ],
 )
 def test_a_datetime_that_cannot_convert_exactly_is_rejected(value, offset, message):
@@ -312,6 +351,57 @@ def test_converting_to_local_time_keeps_every_interval(values):
     assert [b - a for a, b in zip(originals, originals[1:])] == [
         b - a for a, b in zip(locals_, locals_[1:])
     ]
+
+
+any_moment = st.datetimes(
+    min_value=datetime.datetime(1900, 1, 1), max_value=datetime.datetime(9990, 1, 1)
+)
+
+
+@hypothesis.given(
+    st.lists(st.tuples(any_moment, any_offset), min_size=1, max_size=5).filter(
+        lambda values: len({_utc(*value) for value in values}) == len(values)
+    )
+)
+def test_the_local_offset_is_that_of_the_earliest_instant(values):
+    # Seconds and microseconds included, compared with the standard library.
+    texts = [f"{d:%Y%m%d%H%M%S.%f}{o}" for d, o in values]
+    earliest = min(values, key=lambda value: _utc(*value))
+
+    assert dates.local_offset(None, texts) == earliest[1]
+
+
+@hypothesis.given(
+    any_minute,
+    st.lists(
+        st.tuples(
+            st.integers(min_value=0, max_value=59),
+            st.integers(min_value=0, max_value=999_999),
+            any_offset,
+        ),
+        min_size=2,
+        max_size=5,
+        unique_by=lambda value: value[:2],
+    ),
+)
+def test_within_one_utc_minute_seconds_and_fractions_decide(minute, parts):
+    # Every value is in the same UTC minute, recorded at its own offset.
+    texts = []
+    for second, microsecond, offset in parts:
+        moment = minute + datetime.timedelta(seconds=second, microseconds=microsecond)
+        texts.append(
+            f"{moment - _utc(minute, offset) + minute:%Y%m%d%H%M%S.%f}{offset}"
+        )
+    earliest = min(parts, key=lambda value: value[:2])
+
+    assert dates.local_offset(None, texts) == earliest[2]
+
+
+def _utc(moment, offset):
+    minutes = int(offset[1:3]) * 60 + int(offset[3:])
+    return moment - datetime.timedelta(
+        minutes=-minutes if offset[0] == "-" else minutes
+    )
 
 
 def _ptp(seconds, nanoseconds=0):
