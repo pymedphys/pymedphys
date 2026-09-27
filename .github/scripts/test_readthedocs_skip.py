@@ -52,9 +52,7 @@ AFFECTED = (
 
 
 def _git(cwd: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
-    )
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
 
 
 @unittest.skipIf(
