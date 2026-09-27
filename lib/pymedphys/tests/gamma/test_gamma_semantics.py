@@ -60,6 +60,48 @@ def test_point_outside_the_grid_gets_gamma_to_the_nearest_edge_point(interp_algo
     np.testing.assert_allclose(result, expected, rtol=0, atol=1e-12)
 
 
+@pytest.mark.parametrize("local_gamma", [False, True])
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+def test_linear_dose_gradient_matches_the_analytic_minimum(interp_algo, local_gamma):
+    # Along a linear evaluation dose a + b*x on [0, 3], gamma squared is a
+    # convex quadratic in x, so its minimum is the stationary point clipped
+    # to the grid. Reference points lie inside, just outside and well
+    # outside the grid on both sides.
+    a, b, dta = 0.97, 0.025, 2.0
+    evaluation_x = np.linspace(0.0, 3.0, 11)
+    reference_x = np.array([-1.7, -0.2, 0.3, 1.7, 4.3])
+    reference_dose = np.array([0.98, 1.01, 1.02, 0.99, 1.03])
+
+    with pytest.warns(UserWarning, match=OUTSIDE):
+        result = pymedphys.gamma(
+            reference_x,
+            reference_dose,
+            evaluation_x,
+            a + b * evaluation_x,
+            3,
+            dta,
+            interp_fraction=100,
+            local_gamma=local_gamma,
+            interp_algo=interp_algo,
+        )
+
+    dose_criterion = 0.03 * (reference_dose if local_gamma else reference_dose.max())
+    stationary = (
+        reference_x * dose_criterion**2 - b * (a - reference_dose) * dta**2
+    ) / (dose_criterion**2 + (b * dta) ** 2)
+    nearest = np.clip(stationary, evaluation_x[0], evaluation_x[-1])
+    exact = np.hypot(
+        (a + b * nearest - reference_dose) / dose_criterion,
+        (nearest - reference_x) / dta,
+    )
+    # The search can only overestimate gamma, by at most one search step
+    # (dta / interp_fraction) times the objective's Lipschitz bound.
+    step = dta / 100
+    lipschitz = np.sqrt((b / dose_criterion) ** 2 + 1 / dta**2)
+    assert np.all(result >= exact - 1e-12), (result, exact)
+    assert np.all(result - exact <= step * lipschitz), (result, exact)
+
+
 @pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
 def test_three_dimensional_point_outside_the_grid(interp_algo):
     axis = np.linspace(0.0, 2.0, 5)
