@@ -23,10 +23,24 @@ If you cannot install `uv` on your workstation, use the fallback path in the
 
 ## macOS with Python 3.14
 
-watchdog 6.0.0 has no macOS wheel for Python 3.14, so on that combination the
-`user` and `all` extras do not install it rather than build it from source. No
-compiler is needed. The GUI still works: Streamlit polls for file changes
-instead of using watchdog's file-system events.
+The `user` and `all` extras include watchdog. Watchdog 6.0.0 has no macOS wheel
+for Python 3.14, so building its FSEvents extension needs a C compiler and the
+macOS SDK. Before installing either extra with Python 3.14, install
+[Apple's Command Line Tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools):
+
+```bash
+xcode-select --install
+```
+
+Complete the installer, then check that both the compiler and SDK are available:
+
+```bash
+xcrun --find clang
+xcrun --show-sdk-path
+```
+
+Both commands should print a path. If Xcode or its Command Line Tools are
+already installed, run these checks before installing PyMedPhys.
 
 ## Why there is more than one install
 

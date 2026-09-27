@@ -74,7 +74,7 @@ user = [
   "toml",
   "tqdm",
   "trio-asyncio",
-  "watchdog; sys_platform != 'darwin' or python_version < '3.14'",  # no macOS 3.14 wheel
+  "watchdog",
   "xmltodict",
 ]
 
@@ -247,7 +247,7 @@ all = [
     "types-requests",
     "types-tabulate",
     "types-toml",
-    "watchdog; sys_platform != 'darwin' or python_version < '3.14'",  # no macOS 3.14 wheel
+    "watchdog",
     "xmltodict",
 ]
 

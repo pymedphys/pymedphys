@@ -97,7 +97,12 @@ def test_members_outside_destination_are_refused(tmp_path, archive_cli, member_t
         member.linkname = str(outside)
     _write_archive(archive, member)
 
-    with pytest.raises(ValueError, match="outside the extraction directory"):
+    expected = (
+        "outside the extraction directory"
+        if member_type == "file"
+        else "link or special file"
+    )
+    with pytest.raises(ValueError, match=expected):
         _list_archive(archive)
 
     assert outside.read_bytes() == b"Keep this file unchanged"

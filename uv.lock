@@ -3198,7 +3198,7 @@ all = [
     { name = "types-requests" },
     { name = "types-tabulate" },
     { name = "types-toml" },
-    { name = "watchdog", marker = "python_full_version < '3.14' or sys_platform != 'darwin'" },
+    { name = "watchdog" },
     { name = "xmltodict" },
 ]
 cli = [
@@ -3323,7 +3323,7 @@ user = [
     { name = "toml" },
     { name = "tqdm" },
     { name = "trio-asyncio" },
-    { name = "watchdog", marker = "python_full_version < '3.14' or sys_platform != 'darwin'" },
+    { name = "watchdog" },
     { name = "xmltodict" },
 ]
 
@@ -3337,8 +3337,8 @@ pre-commit = [
 
 [package.metadata]
 requires-dist = [
-    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'all'", specifier = ">=6" },
-    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'user'", specifier = ">=6" },
+    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'all'", specifier = ">=6.0.0" },
+    { name = "altair", marker = "python_full_version >= '3.14' and extra == 'user'", specifier = ">=6.0.0" },
     { name = "anthropic", marker = "extra == 'ai'" },
     { name = "anthropic", marker = "extra == 'all'" },
     { name = "anthropic", marker = "extra == 'tests'" },
@@ -3503,8 +3503,8 @@ requires-dist = [
     { name = "types-toml", marker = "extra == 'all'" },
     { name = "types-toml", marker = "extra == 'dev'" },
     { name = "typing-extensions" },
-    { name = "watchdog", marker = "(python_full_version < '3.14' and extra == 'all') or (sys_platform != 'darwin' and extra == 'all')" },
-    { name = "watchdog", marker = "(python_full_version < '3.14' and extra == 'user') or (sys_platform != 'darwin' and extra == 'user')" },
+    { name = "watchdog", marker = "extra == 'all'" },
+    { name = "watchdog", marker = "extra == 'user'" },
     { name = "xmltodict", marker = "extra == 'all'" },
     { name = "xmltodict", marker = "extra == 'user'" },
 ]

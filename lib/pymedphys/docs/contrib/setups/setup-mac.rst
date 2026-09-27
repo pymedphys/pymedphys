@@ -14,6 +14,9 @@ On macOS, the standalone uv installer is:
 
 Open a new terminal if ``uv`` is not yet on your ``PATH``.
 
+Before using Python 3.14, follow the macOS build prerequisites in
+:doc:`Installation options <../../users/get-started/installation-options>`.
+
 Create the development environment
 ===================================
 

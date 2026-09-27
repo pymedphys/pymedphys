@@ -314,7 +314,7 @@ urllib3==2.8.0
     # via requests
 uvicorn==0.53.0
     # via streamlit
-watchdog==6.0.0 ; python_full_version < '3.14' or sys_platform != 'darwin'
+watchdog==6.0.0
     # via
     #   pymedphys
     #   streamlit
