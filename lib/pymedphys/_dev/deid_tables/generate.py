@@ -17,8 +17,7 @@
 ``pymedphys dev deid-tables`` runs :func:`generate`. Every source file is
 checked against the SHA-256 digest pinned here before it is parsed, and each
 generated file records the edition, the source digests, a digest of its rows,
-and the acknowledgement of its part, such as "DICOM PS3.15 <edition>, © NEMA"
-(decision D-001 of the de-identification design).
+and the acknowledgement of its part, such as "DICOM PS3.15 <edition>, © NEMA".
 """
 
 from __future__ import annotations
