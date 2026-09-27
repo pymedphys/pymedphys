@@ -73,7 +73,7 @@ PyMedPhys is often used to:
 Install PyMedPhys
 *****************
 
-PyMedPhys currently supports Python 3.10, 3.11, 3.12, 3.13, and 3.14.
+PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
 
 For most users, we recommend using ``uv`` to create an environment and install
 PyMedPhys:
@@ -152,7 +152,7 @@ pre-commit by running:
 
 .. code:: bash
 
-    uv sync --python 3.14 --locked --extra all --group dev
+    uv sync --python 3.12 --locked --extra all --group dev
     uv run -- pre-commit install
 
 Run automated tests with:

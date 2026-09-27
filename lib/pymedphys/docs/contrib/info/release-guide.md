@@ -58,7 +58,7 @@ Set `version = "VERSION"` near the top of `pyproject.toml`, then refresh the loc
 
 ```bash
 uv lock
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.12 --locked --extra all --group dev
 uv run -- pymedphys dev propagate
 ```
 
@@ -136,10 +136,10 @@ Once the release is on PyPI, set `main` to `NEXT` through a pull request, so tha
 
 ## Check the published files yourself
 
-The workflow checks the published files with Python 3.14 on GitHub-hosted runners. To check them on another platform, Python version, or network, such as behind an institutional proxy, run from the root of a checkout, in Bash or PowerShell:
+The workflow checks the published files with Python 3.12 on GitHub-hosted runners. To check them on another platform, Python version, or network, such as behind an institutional proxy, run from the root of a checkout, in Bash or PowerShell:
 
 ```bash
-uv run --no-project --python 3.14 python .github/scripts/check_distributions.py --published VERSION --tests --summary release-check.md
+uv run --no-project --python 3.12 python .github/scripts/check_distributions.py --published VERSION --tests --summary release-check.md
 ```
 
 This installs the wheel and the sdist from PyPI into separate fresh environments outside the checkout, as the **Verify published** jobs do, then adds the `user` and `tests` extras to the wheel's environment and runs the test suite there, as the **Test published** jobs do. The tests download public datasets and can take tens of minutes; omit `--tests` for a check of a few minutes. Neither the checkout nor `PYTHONPATH` can affect the environments.
@@ -169,7 +169,7 @@ If the artefact is unavailable, recover the original archives from the GitHub re
 
 ```bash
 gh release download vVERSION --pattern "pymedphys-*" --dir release-assets
-uv run --no-project --python 3.14 python .github/scripts/check_distributions.py --published VERSION --compare-with release-assets
+uv run --no-project --python 3.12 python .github/scripts/check_distributions.py --published VERSION --compare-with release-assets
 ```
 
 For missing GitHub assets, the original archives can also be downloaded from the URLs in pip's installation reports; verify them this way before attaching them with `gh release upload vVERSION release-assets/*`. If a PyPI upload is incomplete and the original files cannot be recovered, publish a new version. Keep the existing tag and release record; a fresh rebuild is not a replacement for the original files.

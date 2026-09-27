@@ -3,7 +3,7 @@
 PyMedPhys uses optional dependency groups so you can install either a broad
 end-user stack or a narrower task-specific stack.
 
-PyMedPhys currently supports Python 3.10, 3.11, 3.12, 3.13, and 3.14.
+PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
 
 ## Recommended approach
 

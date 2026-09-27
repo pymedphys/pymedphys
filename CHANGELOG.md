@@ -65,7 +65,6 @@ This project adheres to
   attributes are processed. This is not a deprecation.
   [PR #2078](https://github.com/pymedphys/pymedphys/pull/2078), [PR #2086](https://github.com/pymedphys/pymedphys/pull/2086)
 - An experimental DICOM RT viewer displays a CT series with its RT Structure Set and, optionally, its RT Dose, with controls for slice, window level, and window width, and a toggle for each structure. It reads the files from paths on the local file system and skips, with a warning, CT slices that it cannot read. It is not part of `pymedphys gui`: run `streamlit run` on `pymedphys/_experimental/dicomrtvisualisation/visualise.py` in the installed package. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885), [PR #1907](https://github.com/pymedphys/pymedphys/pull/1907)
-- PyMedPhys supports Python 3.13 and 3.14, as well as 3.10, 3.11, and 3.12. On Windows, it installs `pywin32` on these versions too. [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 
 ### Bug fixes
 
@@ -129,7 +128,6 @@ This project adheres to
 
 ### Dependency changes
 
-- The locked environment moves to pylibjpeg-libjpeg 2.4, which publishes wheels for Python 3.13 and 3.14, and to Altair 6, which Streamlit installs. Altair 5.5 fails on import under Python 3.14: there it passes a `closed` argument that `typing.TypedDict` does not accept. On macOS, `watchdog`, in the `user` and `all` extras, has no wheel for Python 3.14 yet, so installing those extras on macOS with Python 3.14 builds it from source, which needs the Xcode Command Line Tools. [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 - The locked development environment moves from NumPy 1.26 to NumPy 2 (2.2 on Python 3.10, 2.4 on 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version; a focused compatibility check runs with 1.26.4 in the existing Linux/Python 3.12 CI job. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
 - `streamlit` is now constrained to `>=1.54` instead of `~=1.34.0`. Newer Streamlit releases no longer depend on GitPython. The locked development environment moves to Pillow 12, protobuf 7, and pyarrow 25, and to a fixed release of every dependency that had a security fix available at the time; the security workflow explicitly ignores PYSEC-2025-183, a disputed PyJWT advisory with no fix. [PR #2036](https://github.com/pymedphys/pymedphys/pull/2036), [PR #2039](https://github.com/pymedphys/pymedphys/pull/2039), [PR #2041](https://github.com/pymedphys/pymedphys/pull/2041)
 - The `user` and `all` extras now install `dash` and `plotly`; `plotly` draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885)
@@ -155,14 +153,6 @@ This project adheres to
   which `pymedphys dev propagate` no longer generates, and it cancels
   pull-request previews when every changed path is one the documentation
   never reads, such as CI configuration and tests.
-  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
-- **[Contributor facing only]** CI defaults to Python 3.14, the newest
-  supported version. The quick unit-test run uses it, as do every job that
-  does not choose a version, the release workflow's checks of the published
-  files, and Read the Docs builds. The full matrix adds Python 3.13 and 3.14.
-  NumPy 1.26 has no wheels for Python 3.13 or later, so its compatibility
-  check moves to its own job on Python 3.12, which runs alongside both the
-  quick and full matrices. The contributor setup guides install Python 3.14.
   [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
 - **[Contributor facing only]** Removed unmaintained experimental code that
   nothing imports: the `serviceplans` module (with the service plan

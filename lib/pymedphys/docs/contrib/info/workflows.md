@@ -142,8 +142,8 @@ Static type checking for type safety.
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12, 3.13, 3.14)
-  - Quick mode for other PRs (Ubuntu + Python 3.14). The selector's
+  - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.10, 3.11, 3.12)
+  - Quick mode for other PRs (Ubuntu + Python 3.12). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
   - Installs the `user` extra so the headless Streamlit GUI tests run
@@ -151,15 +151,13 @@ Fast unit tests with smart matrix strategy.
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
 
-The `numpy-floor` job runs a focused NumPy 1.26.4 compatibility check
-alongside both the quick and full matrices, on Ubuntu with Python 3.12, because
-NumPy 1.26 has no wheels for Python 3.13 or later. It installs the same locked
-environment as the unit tests, overlays NumPy with
-`uv run --no-sync --with numpy==1.26.4`, and exercises delivery conversions,
+The Linux/Python 3.12 job also runs a focused NumPy 1.26.4 compatibility step
+in both the quick and full matrices. It reuses the installed dependencies with
+`uv run --no-sync --with numpy==1.26.4` and exercises delivery conversions,
 electron inserts, MetersetMap, mock profiles, dose summation, structure masks
-and synthetic Pinnacle exports without downloading datasets. It uploads its
-JUnit report as `junit-numpy126`. A failure fails the unit-test workflow and
-therefore the required CI or release summary.
+and synthetic Pinnacle exports without downloading datasets. Its separate
+JUnit report is included in the job's existing artefact. A failure fails the
+unit-test job and therefore the required CI or release summary.
 
 ### Extended Workflows (Conditional)
 
@@ -450,7 +448,7 @@ request broader coverage and trigger another CI run.
 
 ### What a successful summary means
 
-- Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
+- Ordinary PRs use Ubuntu and Python 3.12 when unit tests are selected. The
   full OS/Python matrix runs on main pushes and `full-test` PRs; integration
   tests also run on PRs that change their inputs. A green ordinary PR
   therefore does not mean the full matrix or the integration tests ran before
@@ -541,7 +539,7 @@ act pull_request -W .github/workflows/ci.yml
 
 ```bash
 # Install with dev dependencies
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.12 --locked --extra all --group dev
 
 # Run all pre-commit hooks
 uv run pre-commit run --all-files
@@ -586,7 +584,7 @@ uv run pymedphys dev docs
 
 ## Version Compatibility
 
-- **Python**: 3.10, 3.11, 3.12, 3.13, 3.14 (tested in CI; 3.14 is the default; 3.10 reaches end of life in October 2026)
+- **Python**: 3.10, 3.11, 3.12 (tested in CI; 3.10 reaches end of life in October 2026)
 - **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)
