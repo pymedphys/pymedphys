@@ -120,6 +120,39 @@ def test_an_altered_row_is_rejected(tmp_path):
         standard.load_table_e1_1(_write(tmp_path / "e1_1.json", document))
 
 
+_MISSING = object()
+
+
+@pytest.mark.parametrize(
+    "edition",
+    [_MISSING, None, "", 2026, ["2026d"]],
+    ids=["missing", "null", "empty", "number", "list"],
+)
+def test_an_edition_that_is_not_text_is_rejected(tmp_path, edition):
+    # The acknowledgement is made to match, so only the edition is wrong.
+    document = _document()
+    if edition is _MISSING:
+        del document["edition"]
+        edition = None
+    else:
+        document["edition"] = edition
+    document["acknowledgement"] = f"DICOM PS3.15 {edition}, \u00a9 NEMA"
+
+    with pytest.raises(standard.StandardTableError, match="edition"):
+        standard.load_table_e1_1(_write(tmp_path / "e1_1.json", document))
+
+
+def test_rows_that_cannot_be_encoded_are_rejected(tmp_path):
+    # JSON can escape a lone surrogate, which has no UTF-8 encoding.
+    document = _document()
+    document["rows"][0]["name"] = "\ud800"
+    path = tmp_path / "e1_1.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(standard.StandardTableError, match="row"):
+        standard.load_table_e1_1(path)
+
+
 def test_a_missing_acknowledgement_is_rejected(tmp_path):
     document = _document()
     del document["acknowledgement"]

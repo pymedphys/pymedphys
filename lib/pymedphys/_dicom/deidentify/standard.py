@@ -140,12 +140,21 @@ def _read(path: pathlib.Path, table: str) -> dict:
     if document.get("schema") != SCHEMA or document.get("table") != table:
         raise StandardTableError(f"{path.name} is not a {SCHEMA} file for {table}")
     edition = document.get("edition")
+    if not isinstance(edition, str) or not edition:
+        raise StandardTableError(f"{path.name} does not name its edition as text")
     if document.get("acknowledgement") != f"DICOM PS3.15 {edition}, © NEMA":
         raise StandardTableError(f"{path.name} lacks the copyright acknowledgement")
     rows = document.get("rows")
     if not isinstance(rows, list) or not rows:
         raise StandardTableError(f"{path.name} has no rows")
-    if content_sha256(rows) != document.get("content_sha256"):
+    try:
+        digest = content_sha256(rows)
+    except UnicodeEncodeError as error:
+        # JSON can escape a lone surrogate, which has no UTF-8 encoding.
+        raise StandardTableError(
+            f"{path.name} has a row with text that cannot be encoded as UTF-8"
+        ) from error
+    if digest != document.get("content_sha256"):
         raise StandardTableError(
             f"{path.name} rows do not match their recorded digest; "
             "regenerate the tables with pymedphys dev deid-tables"
@@ -194,12 +203,14 @@ def load_table_e1_1(path: pathlib.Path | None = None) -> ProfileTable:
     Raises
     ------
     StandardTableError
-        If the file cannot be read, has another schema or table, lacks the
-        copyright acknowledgement, or has rows that do not match its recorded
-        digest; if it has no rows or repeats a tag; or if a row does not have
-        exactly the expected fields, with non-empty text for the name and
-        tag, true or false for the flags, and actions defined in Table
-        E.1-1a for the Basic Profile and each known option.
+        If the file cannot be read, has another schema or table, does not
+        name its edition as non-empty text, lacks the copyright
+        acknowledgement, has row text that cannot be encoded as UTF-8, or has
+        rows that do not match its recorded digest; if it has no rows or
+        repeats a tag; or if a row does not have exactly the expected fields,
+        with non-empty text for the name and tag, true or false for the
+        flags, and actions defined in Table E.1-1a for the Basic Profile and
+        each known option.
     """
     return _load_table_e1_1((path or STANDARD_DIR / "e1_1.json").resolve())
 
