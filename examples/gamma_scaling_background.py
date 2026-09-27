@@ -7,8 +7,9 @@ python examples/gamma_scaling_background.py --status gamma-scaling-local
 python examples/gamma_scaling_background.py --stop gamma-scaling-local
 python examples/gamma_scaling_background.py --resume gamma-scaling-local
 
-Stopping waits for the current worker, preserves its checkpoint and allows a
-later resume. The upload ZIP excludes the large temporary gamma arrays.
+The entire run has a two-hour deadline, including warm-ups and reporting.
+Stopping interrupts the active worker and preserves completed comparisons.
+The upload ZIP excludes the large temporary gamma arrays.
 """
 
 import argparse
@@ -19,15 +20,20 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import traceback
 import zipfile
 from pathlib import Path
+
+from gamma_scaling_process import start_process, terminate_process
 
 PREVIOUS = "866f83edad8586a42a739094e488f45242b72c95"
 SOURCE_FILES = (
     "gamma_scaling_background.py",
     "gamma_scaling.py",
     "gamma_scaling_worker.py",
+    "gamma_scaling_process.py",
+    "gamma_performance_audit.py",
     "gamma_performance.py",
     "gamma-scaling-requirements.txt",
 )
@@ -102,10 +108,23 @@ def bundle(output):
     paths += [output / "benchmark-source" / name for name in SOURCE_FILES]
     study = output / "study"
     paths += [
-        study / name
-        for name in ("results.json", "timings.csv", "summary.csv", "README.md")
+        study / name for name in ("results.json", "audit-plan.json", "calibration.json")
     ]
-    paths += list(study.glob("scaling-*.png")) + list(study.glob("scaling-*.svg"))
+    status = json.loads((output / "run.json").read_text(encoding="utf-8"))
+    if status.get("report_complete", True):
+        paths += [
+            study / name
+            for name in (
+                "timings.csv",
+                "summary.csv",
+                "speed-ratios.csv",
+                "speed-ratios.png",
+                "speed-ratios.svg",
+                "audit-scenarios.png",
+                "README.md",
+            )
+        ]
+        paths += list(study.glob("scaling-*.png")) + list(study.glob("scaling-*.svg"))
     target = output / "gamma-scaling-upload.zip"
     temporary = target.with_suffix(".tmp")
     with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -116,6 +135,34 @@ def bundle(output):
     return target
 
 
+def remaining_budget(config):
+    """Resume never resets the original wall-clock deadline."""
+    return max(0.0, config["deadline_unix"] - time.time())
+
+
+def bundle_with_deadline(output, deadline):
+    """Keep even compression inside the total budget."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 6:
+        print(
+            "No packaging time remains; raw evidence is in the study directory.",
+            flush=True,
+        )
+        return False
+    process = start_process(
+        [sys.executable, str(Path(__file__).resolve()), "--bundle", str(output)],
+        stdin=subprocess.DEVNULL,
+    )
+    try:
+        # Reserve the bounded process-tree termination time too.
+        process.wait(timeout=max(0.01, remaining - 6))
+    except subprocess.TimeoutExpired:
+        terminate_process(process)
+        print("Packaging reached the deadline; raw evidence is preserved.", flush=True)
+        return False
+    return process.returncode == 0
+
+
 def supervise(output):
     try:
         lock = RunLock(output)
@@ -123,9 +170,20 @@ def supervise(output):
     except OSError:
         print("This study already has an active supervisor.", flush=True)
         return 1
+    deadline = time.monotonic()
     try:
         config = json.loads((output / "run-config.json").read_text(encoding="utf-8"))
-        status = {"state": "running", "pid": os.getpid(), "started_utc": now()}
+        deadline += remaining_budget(config)
+        reserve = min(120.0, config["max_seconds"] * 0.2)
+        status = {
+            "state": "running",
+            "pid": os.getpid(),
+            "started_utc": now(),
+            "deadline_utc": datetime.datetime.fromtimestamp(
+                config["deadline_unix"], datetime.timezone.utc
+            ).isoformat(),
+            "max_seconds": config["max_seconds"],
+        }
         write_json(output / "run.json", status)
         environment = environment_description()
         environment_path = output / "environment.json"
@@ -141,7 +199,15 @@ def supervise(output):
         command = [
             sys.executable,
             "-u",
-            str(output / "benchmark-source/gamma_scaling.py"),
+            str(
+                output
+                / "benchmark-source"
+                / (
+                    "gamma_scaling.py"
+                    if config["quick"]
+                    else "gamma_performance_audit.py"
+                )
+            ),
             "--repo",
             config["repo"],
             "--previous-ref",
@@ -154,31 +220,55 @@ def supervise(output):
             str(config["worker_timeout"]),
             "--stop-file",
             str(output / "stop.request"),
+            "--deadline",
+            str(config["deadline_unix"] - reserve),
         ]
         if config["quick"]:
-            command += ["--scales", "0.02", "--round-indices", "0"]
+            command += [
+                "--schedule",
+                "size-first",
+                "--scales",
+                "0.02",
+                "--round-indices",
+                "0",
+            ]
         command += [
             "--resume" if (study / "results.json").exists() else "--output",
             str(study),
         ]
         print(
-            f"Study started at {now()}; complete configuration: run-config.json",
+            f"Study started at {now()}; deadline {status['deadline_utc']}. "
+            f"Measurements stop {reserve:g} seconds earlier for reporting and packaging.",
             flush=True,
         )
         try:
-            process = subprocess.Popen(
+            process = start_process(
                 command, cwd=config["repo"], stdin=subprocess.DEVNULL
             )
             status["driver_pid"] = process.pid
             write_json(output / "run.json", status)
-            exit_code = process.wait()
+            watchdog = False
+            try:
+                process.wait(
+                    timeout=max(0.01, deadline - reserve / 2 - time.monotonic())
+                )
+            except subprocess.TimeoutExpired:
+                watchdog = True
+                terminate_process(process)
+                print(
+                    "Overall watchdog stopped the driver and workers; preserving the checkpoint.",
+                    flush=True,
+                )
+            exit_code = process.returncode
             result_path = study / "results.json"
             result = (
                 json.loads(result_path.read_text(encoding="utf-8"))
                 if result_path.exists()
                 else {}
             )
-            if (output / "stop.request").exists() and not result.get("complete"):
+            if watchdog or result.get("stop_reason") == "time_budget":
+                state = "budget_exhausted"
+            elif (output / "stop.request").exists() and not result.get("complete"):
                 state = "stopped"
             else:
                 state = (
@@ -192,27 +282,32 @@ def supervise(output):
                 finished_utc=now(),
                 complete=bool(result.get("complete")),
                 quick=config["quick"],
+                report_complete=exit_code == 0 and not watchdog,
+                watchdog=watchdog,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - Preserve evidence from any failed stage.
             traceback.print_exc()
-            status.update(state="failed", finished_utc=now())
+            status.update(state="failed", finished_utc=now(), report_complete=False)
         write_json(output / "run.json", status)
         print(
             f"Study {status['state']}; preparing gamma-scaling-upload.zip", flush=True
         )
         sys.stdout.flush()
         sys.stderr.flush()
-        bundle(output)
-        print("Upload bundle is ready.", flush=True)
-        return 0 if status["state"] == "completed" else 1
-    except Exception:
+        if bundle_with_deadline(output, deadline):
+            print("Upload bundle is ready.", flush=True)
+        return 0 if status["state"] in ("completed", "budget_exhausted") else 1
+    except Exception:  # noqa: BLE001 - Record setup failures as well as worker failures.
         traceback.print_exc()
-        write_json(output / "run.json", {"state": "failed", "finished_utc": now()})
+        write_json(
+            output / "run.json",
+            {"state": "failed", "finished_utc": now(), "report_complete": False},
+        )
         try:
             sys.stdout.flush()
             sys.stderr.flush()
-            bundle(output)
-        except Exception:
+            bundle_with_deadline(output, deadline)
+        except Exception:  # noqa: BLE001 - A packaging error must retain the raw log.
             traceback.print_exc()
         return 1
     finally:
@@ -222,13 +317,21 @@ def supervise(output):
 def show_status(output):
     status = json.loads((output / "run.json").read_text(encoding="utf-8"))
     print(f"State: {status['state']}; supervisor active: {busy(output)}")
+    config = json.loads((output / "run-config.json").read_text(encoding="utf-8"))
+    if "deadline_unix" in config:
+        print(
+            f"Remaining wall-clock allowance: {remaining_budget(config) / 60:.1f} minutes"
+        )
     result_path = output / "study/results.json"
     if result_path.exists():
         result = json.loads(result_path.read_text(encoding="utf-8"))
         config = result["config"]
-        expected = 1
-        for key in ("dimensions", "profiles", "scales", "round_indices"):
-            expected *= len(config[key])
+        if "plan" in config:
+            expected = len(config["plan"]) or 74
+        else:
+            expected = 1
+            for key in ("dimensions", "profiles", "scales", "round_indices"):
+                expected *= len(config[key])
         calls = sum(len(r.get("times", [])) for r in result["records"])
         print(
             f"Verified four-way groups: {len(result['comparisons'])}/{expected}; recorded timed calls: {calls}"
@@ -249,17 +352,28 @@ def main():
     action.add_argument("--stop", type=Path)
     action.add_argument("--resume", type=Path)
     action.add_argument("--supervise", type=Path, help=argparse.SUPPRESS)
+    action.add_argument("--bundle", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--previous-ref", default=PREVIOUS)
     parser.add_argument("--current-ref", default="HEAD")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--worker-timeout", type=int, default=14400)
     parser.add_argument(
+        "--max-seconds",
+        type=int,
+        default=7200,
+        help="Total wall-clock budget, including reporting (5–7200; default 7200)",
+    )
+    parser.add_argument(
         "--quick",
         action="store_true",
         help="Small installation check; not the full study",
     )
     args = parser.parse_args()
+    launched = time.time()
+    if args.bundle:
+        bundle(args.bundle.resolve(strict=True))
+        return 0
     if args.supervise:
         return supervise(args.supervise.resolve(strict=True))
     if args.status:
@@ -271,7 +385,7 @@ def main():
             parser.error("This study has no active supervisor")
         (output / "stop.request").touch()
         print(
-            "Stop requested. The current worker will finish before the checkpoint is closed."
+            "Stop requested. The active worker will be interrupted; completed comparisons are preserved."
         )
         return 0
     if args.resume:
@@ -282,6 +396,14 @@ def main():
         if status["state"] == "completed":
             parser.error("This study is already complete; its upload ZIP is ready")
         config = json.loads((output / "run-config.json").read_text(encoding="utf-8"))
+        if "deadline_unix" not in config:
+            parser.error(
+                "This older run has no overall deadline. Start a new output directory with the current launcher."
+            )
+        if remaining_budget(config) <= min(120, config["max_seconds"] * 0.2):
+            parser.error(
+                "The original study budget is exhausted; resume cannot extend it"
+            )
         if Path(config["python"]).resolve() != Path(sys.executable).resolve():
             parser.error("Resume with the original Python environment")
         environment_path = output / "environment.json"
@@ -292,7 +414,10 @@ def main():
                     "Restore the original Python and package versions before resuming"
                 )
         (output / "stop.request").unlink(missing_ok=True)
+        (output / "gamma-scaling-upload.zip").unlink(missing_ok=True)
     else:
+        if not 5 <= args.max_seconds <= 7200:
+            parser.error("The total budget must be between 5 and 7200 seconds")
         if min(args.threads, args.worker_timeout) < 1:
             parser.error("Use positive thread and timeout settings")
         repo = args.repo.resolve(strict=True)
@@ -323,6 +448,8 @@ def main():
             "threads": args.threads,
             "worker_timeout": args.worker_timeout,
             "quick": args.quick,
+            "max_seconds": args.max_seconds,
+            "deadline_unix": launched + args.max_seconds,
         }
         write_json(output / "run-config.json", config)
     write_json(output / "run.json", {"state": "starting", "requested_utc": now()})
@@ -353,6 +480,9 @@ def main():
     )
     print(
         f"Output: {output}\nKeep the workstation awake and avoid other heavy computation."
+    )
+    print(
+        f"Total wall-clock limit: {config['max_seconds'] / 60:g} minutes, including warm-ups and reporting."
     )
     print(
         f'Check progress: python examples/gamma_scaling_background.py --status "{output}"'

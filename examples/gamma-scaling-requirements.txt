@@ -1,4 +1,4 @@
-# Fixed scientific dependencies for the canonical cloud comparison.
+# Fixed scientific dependencies for the workstation comparison.
 # Both source revisions run in the same environment; neither is pip-installed.
 numpy==1.26.4
 scipy==1.17.1

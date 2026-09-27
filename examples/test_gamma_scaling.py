@@ -1,9 +1,12 @@
 """Checks for benchmark integrity; no expensive gamma run is needed here."""
 
 import itertools
+import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from gamma_scaling import (
@@ -12,11 +15,73 @@ from gamma_scaling import (
     VARIANTS,
     compare_arrays,
     paired_ratios,
+    run_study,
     shape_for,
+    study_groups,
+    validate_records,
 )
 
 
 class ScalingIntegrityTests(unittest.TestCase):
+    def test_small_sizes_cover_every_case_before_larger_grids(self):
+        config = {
+            "dimensions": [2, 3],
+            "profiles": ["global", "cap2", "local"],
+            "scales": [0.1, 1, 100],
+            "round_indices": [0, 1, 2, 3],
+            "schedule": "size-first",
+        }
+        groups = list(study_groups(config))
+        self.assertEqual(len(groups), 72)
+        self.assertEqual(
+            {(d, p) for d, p, _, _ in groups[:6]},
+            set(itertools.product(config["dimensions"], config["profiles"])),
+        )
+        self.assertTrue(all(scale == 0.1 for _, _, scale, _ in groups[:24]))
+        self.assertEqual({r for _, _, _, r in groups[:24]}, {0, 1, 2, 3})
+
+    def test_deadline_interrupts_without_publishing_a_partial_timing(self):
+        config = {
+            "dimensions": [2],
+            "profiles": ["global"],
+            "scales": [0.1],
+            "round_indices": [0],
+            "threads": 1,
+            "worker_timeout": 600,
+            "ram_bytes": 1024,
+            "repeats": 1,
+            "revisions": {"previous": "old", "current": "new"},
+        }
+        result = {
+            "config": config,
+            "host": {},
+            "cloud": {},
+            "records": [],
+            "comparisons": {},
+        }
+
+        def overrun(command, *, timeout, **_):
+            self.assertLess(timeout, 0.2)
+            time.sleep(timeout + 0.01)
+            raise subprocess.TimeoutExpired(command, timeout)
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            with patch("gamma_scaling.run_command", side_effect=overrun):
+                run_study(
+                    config,
+                    {"previous": output, "current": output},
+                    output,
+                    result,
+                    deadline=time.monotonic() + 0.1,
+                )
+        self.assertEqual(result["stop_reason"], "time_budget")
+        self.assertEqual(result["records"][0]["status"], "budget_exhausted")
+        self.assertNotIn("times", result["records"][0])
+        validate_records(result)
+        self.assertFalse(result["complete"])
+        self.assertEqual(result["incomplete_groups"], ["2d-global-0.1x-round-0"])
+
     def paired_example(self):
         return {
             "records": [

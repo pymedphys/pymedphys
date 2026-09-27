@@ -1,195 +1,238 @@
-# Gamma performance: a background workstation study
+# Gamma performance: a two-hour workstation audit
 
-This study compares complete gamma-call times for **old and new PyMedPhys
-source, each with the PyMedPhys and SciPy interpolators**. It measures absolute
-seconds and scaling over much larger grids, checks the numerical results, and
-packages the evidence for publication. Run it on one workstation to keep the
-hardware consistent. The script runs independently of a notebook or terminal.
+This audit compares complete gamma calculations using **old and new PyMedPhys
+source, each with the PyMedPhys and SciPy interpolators**. It records absolute
+seconds, scaling curves and **PyMedPhys speed / SciPy speed**, checks the numerical
+results and packages the evidence. All measurements run on one workstation.
 
-“Old/new SciPy” means the old/new gamma implementation using the **same SciPy
-package version**, not a comparison of SciPy releases. The earlier
-[fixed-grid notebook](gamma-performance.ipynb) explains the avoided copying
-with a smaller recorded experiment. Its rasterised phantom differs from this
-study's continuous field, so their timing observations must not be pooled.
+The workflow has a fixed, calibrated scope and a **two-hour overall deadline**.
+It includes a repeated scaling matrix and two larger synthetic volume examples.
+“Old/new SciPy” means old/new gamma code using the same SciPy package version.
 
-## Start the study
+The [earlier notebook](gamma-performance.ipynb) explains the optimisation.
+The [recorded workstation evidence](gamma-scaling-workstation/index.md) preserves
+useful partial results from the earlier long run, including a 3D example taking
+3 min 28 s with new PyMedPhys versus 18 min 5 s with SciPy. Those observations
+use a different schedule and must not be pooled with the new audit.
 
-Use a checkout containing PR #2066, Git and Python 3.12. Both source revisions
-must be available locally; a shallow clone may need a fetch. Activate a Python
-environment and, from the repository root, run:
+## Start
+
+Use Git, Python 3.12 and a checkout containing PR #2066. Both source revisions
+must exist locally; a shallow clone may need a fetch. From the repository root:
 
 ```console
 python -m pip install -r examples/gamma-scaling-requirements.txt
-python examples/gamma_scaling_background.py --output gamma-scaling-local
+python examples/gamma_scaling_background.py --output gamma-audit-2h
 ```
 
-Use a separate environment if installing those fixed dependencies would change
-packages you need for other work. On Windows, the existing repository environment
-can be used as `.\.venv\Scripts\python.exe` in place of `python`.
+Use a separate environment if those pinned dependencies would change packages
+you need elsewhere. On Windows, the existing repository environment can be used
+as `.\.venv\Scripts\python.exe` in place of `python`.
 
-The launch command returns immediately. You can close the terminal, but keep
-the workstation awake, connected to power and free of other heavy computation.
-**Allow many hours and substantial free RAM.** The default is four Numba
-threads and a four-hour timeout per whole worker, including its warm-up and
-timed call. The 1.5 GiB RAM chunk budget does not cap total process memory.
-Neither the launcher nor the benchmark changes your power settings.
+The command returns immediately and the audit runs in the background. You can
+close the terminal. Keep the workstation awake, connected to power and free of
+other heavy computation; the script does not change power settings.
 
-The launcher resolves previous main `866f83edad8586a42a739094e488f45242b72c95`
-and the checkout's committed `HEAD` to exact source identifiers before starting.
-Use `--current-ref`, `--previous-ref`, `--threads` or `--worker-timeout` on the
-initial launch to choose other values. Uncommitted library edits are not
-measured. Temporary detached worktrees keep the comparison separate from your
-working files; the benchmark removes its own worktrees afterwards.
+The launcher freezes scripts, package versions and exact source identifiers:
+previous main `866f83edad8586a42a739094e488f45242b72c95` and committed `HEAD` by
+default. Uncommitted library edits are not measured. Use `--current-ref`,
+`--previous-ref` or `--threads` on the initial launch to change these settings.
+Four Numba threads are used by default; OMP, OpenBLAS and MKL use one thread.
+The 1.5 GiB RAM chunk budget is not a process memory limit.
 
-It also freezes copies of the benchmark scripts inside the output directory,
-so later edits to the repository's runner do not change an active study or its
-resume path. Keep the Python environment unchanged until the study finishes.
+**Use a new output directory.** Older runs contain frozen runners without the
+new audit plan. Runs without an overall deadline cannot be resumed by this
+launcher. Keep the Python environment unchanged while a run is active.
 
-For a small installation and background-launch check, use a separate directory:
+A small installation check, separate from the audit:
 
 ```console
-python examples/gamma_scaling_background.py --quick --output gamma-scaling-check
+python examples/gamma_scaling_background.py --quick --output gamma-audit-check
 ```
 
-This exercises all six dimension/criterion combinations and all four variants
-at small sizes, with one round. It is explicitly marked as a quick check and
-cannot support the full scaling claim.
+This exercises all six ordinary dimension/criterion combinations and four
+variants at small sizes, with one round. It does not exercise the large volume
+examples or support the full audit claim.
 
-## Progress, stopping and resuming
+## A fixed scope that fits the budget
 
-```console
-python examples/gamma_scaling_background.py --status gamma-scaling-local
-```
+| Stage | Scope | Maximum allowance |
+| --- | --- | ---: |
+| Calibration | Up to three probes for each of six dimension/criterion families | 13.5 min |
+| Repeated matrix | 2D/3D × three criteria × three sizes × four balanced rounds | 54 min |
+| SABR-like volume | One four-way comparison at the specified 1.25 mm grid | 20 min |
+| Prostate and nodes | One four-way comparison at the specified 2.5 mm grid | 20 min |
+| Remaining allowance | Git setup, checkpoints, reporting, packaging and scheduling margin | 12.5 min |
 
-Status reports completed four-way groups, recorded timed calls and the log
-location. The full study has **120 groups and 480 timed calls**. `run.log`
-reports the current grid, round and implementation, including warm-up time.
-To follow it on Windows:
+Every comparison allowance includes all four workers' imports, data preparation,
+**full warm-ups**, timed calls and array verification. An ordinary comparison
+has a shared **45-second limit**, not 45 seconds per implementation. Eleven seconds
+of each limit are reserved for process termination and final checkpoint work.
+The larger examples each have a shared 20-minute limit. These are benchmark
+budgets, not predictions of an individual gamma-call time.
 
-```powershell
-Get-Content gamma-scaling-local/run.log -Tail 20 -Wait
-```
+Calibration chooses the largest tested size finishing within **25 seconds** for
+each family. There are at most three attempts, increasing or reducing nominal
+point count by a factor of three. The three measured sizes are that selected
+size divided by nine, divided by three and unchanged. Their shapes must be
+distinct. Sizes can differ between criteria; each four-way group always uses
+identical inputs. Do not compare different families as though grid size were
+controlled. Calibration observations are retained separately and excluded from
+the reported audit statistics.
 
-To stop cleanly:
+After calibration, `audit-plan.json` freezes **74 four-way groups**: 72 repeated
+matrix groups plus two single-round volume examples. A complete run contains
+**296 timed calls and 296 full warm-ups**, in addition to calibration. Matrix
+cases cover smaller sizes first and all six families in each round. Each
+ordinary case has four rounds balancing execution position and immediate
+predecessor across the four variants. The volume examples have only one round;
+they illustrate absolute waiting time without estimating repeatability.
 
-```console
-python examples/gamma_scaling_background.py --stop gamma-scaling-local
-```
+A slow or busy machine may fail calibration; the audit then stops early with a
+diagnostic instead of launching an impractical matrix. Unexpected slowdowns,
+errors or a volume case exceeding its limit produce explicitly incomplete
+coverage. **Completed means every planned group passed its numerical checks.**
+`routine_complete` separately reports whether all 72 ordinary groups finished.
+No workflow can guarantee successful measurements on arbitrary hardware while
+also imposing a hard deadline; the runtime limit takes precedence.
 
-Stopping waits for the **current worker to finish**; a large worker can take
-a long time. It then preserves its checkpoint and closes the temporary
-checkouts. To continue later:
+The independent supervisor enforces the two-hour wall-clock limit, including
+reporting and ZIP creation. Measurements stop two minutes before that deadline;
+a watchdog interrupts a stalled driver or worker tree during finalisation.
+`--max-seconds` can shorten the total allowance (5–7200 seconds), for diagnostics;
+shortening it does not shrink the fixed audit scope. `--worker-timeout` can
+shorten an individual worker allowance but cannot extend a group or total limit.
+The unrestricted foreground `gamma_scaling.py` sweep remains available for
+specialist experiments and does not provide this launcher's two-hour guarantee.
 
-```console
-python examples/gamma_scaling_background.py --resume gamma-scaling-local
-```
+## The workloads and their interpretation
 
-Resume restores the saved revisions and settings, uses the frozen scripts,
-and requires the original Python environment and host. An operating-system
-lock prevents concurrent runs from writing to the same study. Completed runs
-cannot be resumed accidentally; start a new directory for another experiment.
+The repeated matrix samples the same continuous field at different resolutions:
+two Gaussian-blurred boxes and a smaller boost, with 6 mm Gaussian standard
+deviation. The domain is ±100 mm along both 2D axes, or ±50, ±70 and ±70 mm along
+3D `(z, y, x)`. Baseline shapes are 401 × 401 and 41 × 57 × 57; a point multiplier
+scales each axis by its dimension's root and rounds down. Calibration is capped
+at 100× baseline points. Small calibrated grids are computational test cases,
+not clinical dose-grid recommendations. The 2D field is a separate workload,
+not a slice of the 3D field.
 
-## What the full study measures
-
-Each dimension uses five nominal point multipliers, with axis lengths rounded
-down to integer sizes:
-
-| Multiplier | 2D shape (y, x) | 3D shape (z, y, x) |
+| Matrix profile | Dose and distance criteria | Search cap |
 | --- | --- | --- |
-| 1× | 401 × 401 | 41 × 57 × 57 |
-| 3× | 694 × 694 | 59 × 82 × 82 |
-| 10× | 1268 × 1268 | 88 × 122 × 122 |
-| 30× | 2196 × 2196 | 127 × 177 × 177 |
-| 100× | 4010 × 4010 | 190 × 264 × 264 |
-
-The maxima are **16,080,100 points in 2D** and **13,242,240 in 3D**. These
-are total reference-grid points, not the number of interpolation queries made
-during gamma. The 3D maximum is approximately 99.4 times its own baseline
-after rounding. The very fine grids are stress tests, not clinical grid-size
-recommendations.
-
-Two large Gaussian-blurred boxes and a smaller boost form a smooth continuous
-dose field, with 6 mm Gaussian standard deviation. It is sampled on a fixed
-physical domain: ±100 mm along both 2D axes, or ±50, ±70 and ±70 mm along
-the 3D axes. The evaluation field is scaled by 1.02 and translated by
-(1.5, −2.0) mm in 2D or (1.5, −2.0, 0.75) mm in 3D, in the stated array-axis
-order. Increasing resolution samples the same analytic field rather than
-changing a rasterised box edge. The 2D field is a separate workload, not a
-central slice of the 3D field.
-
-Both revisions receive identical ascending, regularly spaced, coincident grids
-and float64 arrays. These avoid cases the previous implementation mishandled.
-Three settings give **30 workloads**:
-
-| Profile | Dose and distance criteria | Search cap |
-| --- | --- | --- |
-| Global | 3% of a fixed 2 Gy normalisation; 3 mm | Unset |
+| Global | 3% of fixed 2 Gy normalisation; 3 mm | Unset |
 | Capped global | The same global criteria | `max_gamma=2` |
-| Local | 2% of the dose at each reference point; 2 mm | Unset |
+| Local | 2% of each reference dose; 2 mm | Unset |
 
-The supplied global normalisation is exactly 2 Gy; the sampled maximum is not
-rescaled to equal it. Every reference point at or above **0.2 Gy** is included.
-There is no random subset or early exit simply because gamma passes.
-`interp_fraction=10` controls search sampling, not input-grid spacing. A cap
-need not save time if the uncapped search already finishes below it. The local
-case changes both normalisation and criteria, so it does not isolate either
-factor's cost.
+The supplied global normalisation is exactly 2 Gy; sampled maxima are not
+rescaled. Points at or above 0.2 Gy are included. Both revisions receive
+identical ascending, regularly spaced, coincident float64 grids. Evaluation
+is scaled by 1.02 and translated by (1.5, −2.0) mm in 2D or
+(1.5, −2.0, 0.75) mm in 3D. There is no random subset or early exit simply because
+gamma passes. `interp_fraction=10` controls search sampling, not input spacing.
+The local case changes normalisation and criteria together, so it cannot isolate
+either factor's cost. A cap need not save time when gamma already finishes below it.
 
-## Timing and correctness
+### Two volume examples motivated by clinical workflows
 
-Four rounds balance the order of the four implementations: each occupies
-each position once, and each directed consecutive pair occurs once. Each
-worker imports one verified checkout in a fresh process, performs a complete
-untimed warm-up, then times one complete gamma call. The full study therefore
-has **480 timed calls and 480 full warm-ups**.
+Grid spacing is only part of the workload. Physical extent determines total
+voxels; dose distribution and cutoff determine how many reference points need
+searching. Gradients, dose differences and search settings also affect cost.
+A finely sampled SABR grid can contain more voxels but fewer eligible reference
+points than a coarser pelvic grid.
 
-Imports, input generation, initial compilation/cache loading, verification and
-file writing are excluded. Preparation inside the gamma call is included.
-Numba uses four threads by default; OMP, OpenBLAS and MKL are set to one. This
-measures warmed use, not the first-ever wait. Changing grid resolution also
-changes discretisation and interpolation error, so scaling is not a pure
-algorithmic-complexity experiment.
+| Synthetic example | Centre-to-centre extent (z, y, x) | Isotropic spacing | Shape (z, y, x) | Total voxels |
+| --- | --- | --- | --- | ---: |
+| SABR-like compact target | 250 × 300 × 300 mm | 1.25 mm | 201 × 241 × 241 | 11,674,281 |
+| Prostate and pelvic nodes | 500 × 400 × 400 mm | 2.5 mm | 201 × 161 × 161 | 5,210,121 |
 
-Every timed array must exactly match its warm-up. The controller compares
-every old/new gamma value and NaN position **exactly for each interpolator**.
-It additionally compares PyMedPhys with SciPy using absolute tolerance
-`1e-10` in dimensionless gamma and zero relative tolerance, recording maximum
-error and any pass-classification disagreements. This is an arithmetic
-allowance, not a physical or clinical tolerance. All eligible points must have
-finite gamma. Hashes are recorded for provenance; they do not replace the
-full-array comparisons.
+These extents are explicit illustrative assumptions, not claimed typical patient
+sizes. The SABR proxy has a compact smooth ellipsoid with semi-axes
+(20, 18, 16) mm and a 3 mm edge-smoothing parameter. The pelvic proxy has a prostate-like
+ellipsoid centred at z = −120 mm with semi-axes (30, 25, 30) mm, plus bilateral
+elongated ellipsoids with semi-axes (110, 18, 18) mm and 70% amplitude, centred at
+(15, 5, ±35) mm. Its edge-smoothing parameter is 6 mm. Smoothing is referenced
+to the shortest semi-axis; transitions along longer axes are broader. Both include a broad Gaussian
+low-dose component; the exact analytic definitions are frozen in
+`gamma_scaling_worker.py`. They contain no patient anatomy or calculated plan dose.
+The 2 Gy amplitude is a benchmark normalisation, not a treatment prescription.
 
-Only fully verified four-way groups enter the figures. Absolute curves show
-median seconds on logarithmic axes. Relative curves use new/old ratios within
-each matched round, then their median; this need not equal the ratio of the
-absolute medians. Ranges show observed min–max, not confidence intervals.
-Small differences near equality should not be promoted as reliable changes
-from four rounds alone. A failed or timed-out case is reported as incomplete,
-never as zero time or a speed gain.
+Both use global **3%/2 mm**, a 10% cutoff, the same shifts and scaling as the
+matrix, and no gamma cap. These common benchmark settings draw on
+[AAPM TG-218](https://aapm.onlinelibrary.wiley.com/doi/10.1002/mp.12810);
+they are not proposed site-specific acceptance criteria for SABR or prostate QA.
+The report includes total and eligible voxel counts. The old stress-test field
+at approximately 0.53 mm spacing must not be treated as a substitute for these
+workloads, nor should a universal 3D speed ratio be assumed in advance.
 
-## What to upload
+![Synthetic SABR and prostate/nodal fields at their specified physical dimensions](audit-scenarios.png)
 
-When status says **completed**, upload just:
+This figure shows the reference fields in the coronal plane at y = 0 mm.
+The white contour marks the 10% dose cutoff. Regenerate it without gamma calls
+by importing `save_scenarios` from `examples/gamma_performance_audit.py`.
+
+## Timing, numerical checks and ratios
+
+Each fresh worker imports one verified source checkout, performs a complete
+untimed warm-up and then times one complete gamma call. Imports, input generation,
+initial compilation/cache loading, verification and file writing are excluded
+from the reported gamma-call seconds but count towards wall-clock budgets.
+Preparation inside gamma is included. These measurements describe warmed use,
+not the first-ever wait. Changing resolution also changes discretisation and
+interpolation error, so the curves are not a pure complexity experiment.
+
+Every timed array must exactly match its warm-up. Old/new gamma arrays and NaN
+positions must match exactly for each interpolator. PyMedPhys/SciPy arrays are
+compared element by element with absolute tolerance `1e-10` in dimensionless
+gamma and zero relative tolerance. Maximum difference and pass-classification
+disagreements are recorded. This arithmetic allowance is not a physical or
+clinical tolerance. Every eligible point must have finite gamma. Hashes record
+provenance but do not replace full-array comparisons.
+
+Only fully verified four-way groups contribute to the comparison figures:
+
+- Absolute times: seconds on logarithmic axes, with observed minimum–maximum.
+- Effect of this change: paired new time / old time within each interpolator.
+- Interpolator speed: **SciPy time / PyMedPhys time**, equal to PyMedPhys speed /
+  SciPy speed. Values above one favour PyMedPhys.
+
+Ratios are calculated within each matched round, then summarised; the median
+ratio need not equal the ratio of the two absolute medians. Ranges are observed
+variation, not confidence intervals. One-round volume cases have no repeatability
+range. Do not pool workloads into one overall speed-up or extrapolate missing
+measurements. A timed-out worker contributes no invented timing or ratio;
+successful calls from its unfinished group remain in the raw record, labelled
+unverified for four-way comparison.
+
+## Progress, stopping, resuming and upload
+
+```console
+python examples/gamma_scaling_background.py --status gamma-audit-2h
+python examples/gamma_scaling_background.py --stop gamma-audit-2h
+python examples/gamma_scaling_background.py --resume gamma-audit-2h
+```
+
+`run.log` reports calibration, the active case, implementation and completed
+timings. On Windows, follow it with
+`Get-Content gamma-audit-2h/run.log -Tail 20 -Wait`.
+Stopping interrupts the active worker and preserves checkpoints. Resume requires
+the original source, frozen scripts, Python environment and host. **It does not
+reset the deadline**; time while stopped still counts. An operating-system lock
+prevents concurrent writers. Completed runs cannot be resumed accidentally.
+
+When the supervisor is inactive, upload:
 
 ```text
-gamma-scaling-local/gamma-scaling-upload.zip
+gamma-audit-2h/gamma-scaling-upload.zip
 ```
 
-The bundle contains:
+The ZIP contains raw `study/results.json`, the frozen plan and calibration
+record, individual and summary CSVs, speed-ratio CSV, PNG/SVG figures, the
+results table, logs, package versions and benchmark sources. Large temporary
+`.npy` arrays and compilation caches are excluded. Save the whole directory
+locally if you may resume. Share the PNGs directly; screenshots are optional.
 
-- `study/results.json`: every timing, numerical check and source/environment record;
-- `study/timings.csv` and `study/summary.csv`: individual and summarised values;
-- three PNG/SVG comparison figures and the generated results table;
-- `run.json`, `run-config.json` and `run.log`: completion state, launch settings and progress;
-- `environment.json` and frozen benchmark scripts: package versions and reproducible source.
-
-The large temporary `.npy` arrays and compilation caches are **excluded**.
-Keep the whole output directory locally if you may need to resume. A stopped
-or failed run also produces a bundle for diagnosis; its status is explicit
-and its measurements must not be labelled a complete study. A quick-check
-bundle is similarly identified.
-
-The completed full-run JSON is the primary evidence for committing the new
-scaling record to the repository, regenerating the performance notebook and
-updating the changelog with a permanent result link. Share saved PNGs directly
-when illustrating the run; a screenshot is optional.
+`completed` requires all 74 groups. `budget_exhausted`, `stopped` and `failed`
+retain their explicit coverage limitations. If report generation is interrupted,
+`report_complete` is false and stale derived figures are excluded from the ZIP.
+If even packaging reaches the deadline, upload `study/results.json`,
+`study/calibration.json`, `study/audit-plan.json` (where present), `run.json`
+and `run.log` instead. The JSON remains the primary evidence for publication.

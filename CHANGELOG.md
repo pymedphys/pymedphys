@@ -28,12 +28,13 @@ documents the independent evidence and remaining limitations.
 ### Faster gamma calculations
 
 Gamma avoids repeated coordinate copies and interpolator setup. The
-[performance demonstration](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance.html)
-explains the change and its numerical checks. A new
+[recorded workstation evidence](https://docs.pymedphys.com/en/latest/contrib/info/gamma-scaling-workstation/index.html)
+shows about 28% lower warmed runtime with the PyMedPhys interpolator for a
+13.2-million-point 3D global-gamma case, with unchanged numerical results.
+This is a partial synthetic study on one workstation. The
 [background workstation study](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance-study.html)
-compares old/new PyMedPhys and SciPy paths across 2D/3D grids up to 100 times
-the former maximum size, saving absolute timings, logarithmic plots and an
-upload bundle for reproducible reporting.
+compares both interpolation paths with absolute timings and logarithmic plots,
+with a calibrated two-hour audit and separate synthetic volume examples.
 
 ### New features and enhancements
 

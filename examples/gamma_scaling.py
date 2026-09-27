@@ -25,10 +25,12 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 from pathlib import Path
 
 import numpy as np
 from gamma_performance import checked_checkout, machine_description
+from gamma_scaling_process import StudyStopped, run_command
 
 PREVIOUS = "866f83edad8586a42a739094e488f45242b72c95"
 BASE_SHAPES = {2: (401, 401), 3: (41, 57, 57)}
@@ -44,6 +46,8 @@ PROFILE_LABELS = {
     "global": "Global 3% / 3 mm",
     "cap2": "Global 3% / 3 mm, cap 2",
     "local": "Local 2% / 2 mm",
+    "sabr": "Synthetic SABR-like volume · 1.25 mm grid",
+    "prostate-nodes": "Synthetic prostate and nodes · 2.5 mm grid",
 }
 
 
@@ -122,7 +126,28 @@ def compare_arrays(paths, atol=1e-10):
             array._mmap.close()
 
 
-def run_study(config, roots, output, result, stop_file=None):
+def study_groups(config):
+    """Complete all six cases at smaller sizes before attempting larger grids."""
+    if "plan" in config:
+        yield from config["plan"]
+    elif config.get("schedule") == "size-first":
+        for scale, round_index, profile, dimension in itertools.product(
+            config["scales"],
+            config["round_indices"],
+            config["profiles"],
+            config["dimensions"],
+        ):
+            yield dimension, profile, scale, round_index
+    else:
+        yield from itertools.product(
+            config["dimensions"],
+            config["profiles"],
+            config["scales"],
+            config["round_indices"],
+        )
+
+
+def run_study(config, roots, output, result, stop_file=None, deadline=None):
     worker_source = (
         Path(__file__).with_name("gamma_scaling_worker.py").read_text(encoding="utf-8")
     )
@@ -130,149 +155,194 @@ def run_study(config, roots, output, result, stop_file=None):
     array_directory.mkdir(exist_ok=True)
     worker = output / "worker.py"
     worker.write_text(worker_source, encoding="utf-8")
-    for dimension, profile, scale in itertools.product(
-        config["dimensions"], config["profiles"], config["scales"]
-    ):
+    for dimension, profile, scale, round_index in study_groups(config):
+        if deadline is not None and time.monotonic() >= deadline:
+            result["stop_reason"] = "time_budget"
+            return result
         case = case_id(dimension, profile, scale)
-        shape = shape_for(dimension, scale)
-        for round_index in config["round_indices"]:
-            group = f"{case}-round-{round_index}"
-            if group in result["comparisons"]:
+        case_options = config.get("cases", {}).get(case, {})
+        shape = tuple(case_options.get("shape", shape_for(dimension, scale)))
+        group = f"{case}-round-{round_index}"
+        if group in result["comparisons"]:
+            continue
+        group_started = time.monotonic()
+        group_deadline = min(
+            deadline if deadline is not None else float("inf"),
+            group_started
+            + case_options.get(
+                "comparison_seconds", config.get("comparison_seconds", float("inf"))
+            )
+            - 11,
+        )
+        paths = {}
+        group_records = []
+        for position in ORDERS[round_index % 4]:
+            if stop_file is not None and stop_file.exists():
+                print(
+                    "Stop requested; preserving the current worker checkpoint.",
+                    flush=True,
+                )
+                return result
+            variant = VARIANTS[position]
+            version, algorithm = variant.split("-")
+            key = f"{group}-{variant}"
+            array_path = array_directory / f"{key}.npy"
+            paths[variant] = array_path
+            existing = next((r for r in result["records"] if r["id"] == key), None)
+            if (
+                existing is not None
+                and existing["status"] == "ok"
+                and array_path.exists()
+            ):
+                group_records.append(existing)
                 continue
-            paths = {}
-            group_records = []
-            for position in ORDERS[round_index % 4]:
-                if stop_file is not None and stop_file.exists():
-                    print(
-                        "Stop requested; preserving the current worker checkpoint.",
-                        flush=True,
-                    )
+            if existing is not None:
+                result["records"].remove(existing)
+            job = {
+                **case_options,
+                "dimension": dimension,
+                "profile": profile,
+                "shape": shape,
+                "algorithm": algorithm,
+                "ram_bytes": config["ram_bytes"],
+                "repeats": config["repeats"],
+                "checkout": str(roots[version]),
+                "array_path": str(array_path),
+            }
+            job_path = output / "worker-config.json"
+            write_json(job_path, job)
+            record = {
+                "id": key,
+                "case": case,
+                "dimension": dimension,
+                "profile": profile,
+                "scale": scale,
+                "shape": list(shape),
+                "points": int(np.prod(shape)),
+                "round": round_index,
+                "variant": variant,
+                "revision": config["revisions"][version],
+                "started_utc": utc_now(),
+                "host": result["host"],
+                "cloud": result["cloud"],
+            }
+            print(
+                f"{case}, {np.prod(shape):,} points, round {round_index + 1}: {variant}",
+                flush=True,
+            )
+            remaining = group_deadline - time.monotonic()
+            if remaining <= 0:
+                if deadline is not None and time.monotonic() >= deadline:
+                    result["stop_reason"] = "time_budget"
                     return result
-                variant = VARIANTS[position]
-                version, algorithm = variant.split("-")
-                key = f"{group}-{variant}"
-                array_path = array_directory / f"{key}.npy"
-                paths[variant] = array_path
-                existing = next((r for r in result["records"] if r["id"] == key), None)
+                break
+            worker_timeout = min(config["worker_timeout"], remaining)
+            try:
+                process = run_command(
+                    [sys.executable, str(worker), str(job_path)],
+                    cwd=output,
+                    env=dict(
+                        os.environ,
+                        PYTHONPATH=str(roots[version] / "lib"),
+                        NUMBA_NUM_THREADS=str(config["threads"]),
+                        OMP_NUM_THREADS="1",
+                        OPENBLAS_NUM_THREADS="1",
+                        MKL_NUM_THREADS="1",
+                        PYTHONDONTWRITEBYTECODE="1",
+                    ),
+                    timeout=worker_timeout,
+                    stop_file=stop_file,
+                )
+                measured = json.loads(process.stdout)
+                if measured["numba_threads"] != config["threads"]:
+                    raise ValueError("Worker did not use the requested thread count")
                 if (
-                    existing is not None
-                    and existing["status"] == "ok"
-                    and array_path.exists()
+                    measured["shape"] != list(shape)
+                    or measured["finite_points"] != measured["eligible_points"]
                 ):
-                    group_records.append(existing)
-                    continue
-                if existing is not None:
-                    result["records"].remove(existing)
-                job = {
-                    "dimension": dimension,
-                    "profile": profile,
-                    "shape": shape,
-                    "algorithm": algorithm,
-                    "ram_bytes": config["ram_bytes"],
-                    "repeats": config["repeats"],
-                    "checkout": str(roots[version]),
-                    "array_path": str(array_path),
-                }
-                job_path = output / "worker-config.json"
-                write_json(job_path, job)
-                record = {
-                    "id": key,
-                    "case": case,
-                    "dimension": dimension,
-                    "profile": profile,
-                    "scale": scale,
-                    "shape": list(shape),
-                    "points": int(np.prod(shape)),
-                    "round": round_index,
-                    "variant": variant,
-                    "revision": config["revisions"][version],
-                    "started_utc": utc_now(),
-                    "host": result["host"],
-                    "cloud": result["cloud"],
-                }
+                    raise ValueError(
+                        "Unexpected shape or non-finite eligible gamma points"
+                    )
+                record.update(measured, status="ok")
                 print(
-                    f"{case}, {np.prod(shape):,} points, round {round_index + 1}: {variant}",
+                    f"  {measured['times']} s; full warm-up {measured['warmup_seconds']:.3f} s",
                     flush=True,
                 )
+            except StudyStopped:
+                record.update(status="stopped")
+                result["stop_reason"] = "user_stop"
+            except subprocess.TimeoutExpired:
+                if deadline is not None and time.monotonic() >= deadline:
+                    record.update(status="budget_exhausted")
+                    result["stop_reason"] = "time_budget"
+                else:
+                    record.update(status="timeout", worker_timeout=worker_timeout)
+                print(
+                    "  Worker interrupted; no timing reported for this call", flush=True
+                )
+            except subprocess.CalledProcessError as error:
+                record.update(
+                    status="error", error=(error.stderr or error.stdout)[-10000:]
+                )
+                print(f"  Failed: {record['error']}", flush=True)
+            result["records"].append(record)
+            group_records.append(record)
+            write_json(output / "results.json", result)
+            if result.get("stop_reason"):
+                return result
+            if record["status"] != "ok":
+                break
+        if len(group_records) == 4 and all(r["status"] == "ok" for r in group_records):
+            if len({r["input_sha256"] for r in group_records}) != 1:
+                raise AssertionError(
+                    "The four implementations received different inputs"
+                )
+            if (
+                len({json.dumps(r["versions"], sort_keys=True) for r in group_records})
+                != 1
+            ):
+                raise AssertionError("Worker dependency versions differ")
+            if "comparison_seconds" in config:
+                # Array verification also runs inside the comparison deadline.
+                # It is a leaf process so the same tree-termination rules apply.
+                comparison_job = output / "comparison-config.json"
+                write_json(comparison_job, {k: str(v) for k, v in paths.items()})
                 try:
-                    process = subprocess.run(
-                        [sys.executable, str(worker), str(job_path)],
-                        cwd=output,
-                        env=dict(
-                            os.environ,
-                            PYTHONPATH=str(roots[version] / "lib"),
-                            NUMBA_NUM_THREADS=str(config["threads"]),
-                            OMP_NUM_THREADS="1",
-                            OPENBLAS_NUM_THREADS="1",
-                            MKL_NUM_THREADS="1",
-                            PYTHONDONTWRITEBYTECODE="1",
-                        ),
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                        timeout=config["worker_timeout"],
+                    checked = run_command(
+                        [
+                            sys.executable,
+                            str(Path(__file__).resolve()),
+                            "--compare-arrays",
+                            str(comparison_job),
+                        ],
+                        timeout=max(0.01, group_deadline - time.monotonic()),
+                        stop_file=stop_file,
                     )
-                    measured = json.loads(process.stdout)
-                    if measured["numba_threads"] != config["threads"]:
-                        raise ValueError(
-                            "Worker did not use the requested thread count"
-                        )
-                    if (
-                        measured["shape"] != list(shape)
-                        or measured["finite_points"] != measured["eligible_points"]
-                    ):
-                        raise ValueError(
-                            "Unexpected shape or non-finite eligible gamma points"
-                        )
-                    record.update(measured, status="ok")
-                    print(
-                        f"  {measured['times']} s; full warm-up {measured['warmup_seconds']:.3f} s",
-                        flush=True,
-                    )
-                except subprocess.TimeoutExpired:
-                    record.update(
-                        status="timeout", worker_timeout=config["worker_timeout"]
-                    )
-                    print(
-                        "  Worker time limit reached; not a measured gamma runtime",
-                        flush=True,
-                    )
-                except subprocess.CalledProcessError as error:
-                    record.update(
-                        status="error", error=(error.stderr or error.stdout)[-10000:]
-                    )
-                    print(f"  Failed: {record['error']}", flush=True)
-                result["records"].append(record)
-                group_records.append(record)
-                write_json(output / "results.json", result)
-            if all(r["status"] == "ok" for r in group_records):
-                if len({r["input_sha256"] for r in group_records}) != 1:
-                    raise AssertionError(
-                        "The four implementations received different inputs"
-                    )
-                if (
-                    len(
-                        {
-                            json.dumps(r["versions"], sort_keys=True)
-                            for r in group_records
-                        }
-                    )
-                    != 1
-                ):
-                    raise AssertionError("Worker dependency versions differ")
-                result["comparisons"][group] = compare_arrays(paths)
-                for record in group_records:
-                    record["verified"] = True
-                print(
-                    "  Exact old/new arrays; PyMedPhys/SciPy checked across every element",
-                    flush=True,
-                )
-                write_json(output / "results.json", result)
-                for path in paths.values():
-                    path.unlink()
+                    comparison = json.loads(checked.stdout)
+                except (subprocess.TimeoutExpired, StudyStopped):
+                    result["incomplete_groups"].append(group)
+                    if stop_file is not None and stop_file.exists():
+                        result["stop_reason"] = "user_stop"
+                    elif deadline is not None and time.monotonic() >= deadline:
+                        result["stop_reason"] = "time_budget"
+                    write_json(output / "results.json", result)
+                    return result
             else:
-                result["incomplete_groups"].append(group)
-                write_json(output / "results.json", result)
+                comparison = compare_arrays(paths)
+            comparison["wall_seconds"] = time.monotonic() - group_started
+            result["comparisons"][group] = comparison
+            for record in group_records:
+                record["verified"] = True
+            print(
+                "  Exact old/new arrays; PyMedPhys/SciPy checked across every element",
+                flush=True,
+            )
+            write_json(output / "results.json", result)
+            for path in paths.values():
+                path.unlink()
+        else:
+            result["incomplete_groups"].append(group)
+            write_json(output / "results.json", result)
     for version, root in roots.items():
         checked_checkout(root, config["revisions"][version])
     result["completed_utc"] = utc_now()
@@ -320,15 +390,7 @@ def summarise(result):
 def validate_records(result):
     """Validate provenance, counts and coverage before accepting any plot."""
     config = result["config"]
-    expected = {
-        f"{case_id(d, p, s)}-round-{r}"
-        for d, p, s, r in itertools.product(
-            config["dimensions"],
-            config["profiles"],
-            config["scales"],
-            config["round_indices"],
-        )
-    }
+    expected = {f"{case_id(d, p, s)}-round-{r}" for d, p, s, r in study_groups(config)}
     ids = set()
     for record in result["records"]:
         if record["id"] in ids:
@@ -379,7 +441,7 @@ def validate_records(result):
         raise ValueError("Cannot combine different scientific dependency versions")
     result["incomplete_groups"] = sorted(expected - result["comparisons"].keys())
     result["expected_groups"] = len(expected)
-    result["complete"] = not result["incomplete_groups"]
+    result["complete"] = bool(expected) and not result["incomplete_groups"]
 
 
 def paired_ratios(result, case, numerator, denominator):
@@ -402,6 +464,145 @@ def paired_ratios(result, case, numerator, denominator):
             raise ValueError("Runtime ratios must be paired on the same runner")
         ratios.append(np.median(left["times"]) / np.median(right["times"]))
     return np.asarray(ratios)
+
+
+def speed_ratios(result):
+    """PyMedPhys speed / SciPy speed = SciPy seconds / PyMedPhys seconds."""
+    rows = []
+    for summary in summarise(result):
+        if summary["variant"] != "current-pymedphys":
+            continue
+        for revision in ("previous", "current"):
+            values = paired_ratios(
+                result, summary["case"], f"{revision}-scipy", f"{revision}-pymedphys"
+            )
+            rows.append(
+                {
+                    **{
+                        k: summary[k]
+                        for k in (
+                            "case",
+                            "dimension",
+                            "profile",
+                            "scale",
+                            "points",
+                            "eligible_points",
+                            "rounds",
+                        )
+                    },
+                    "revision": revision,
+                    "median_speed_ratio": float(np.median(values)),
+                    "min_speed_ratio": float(min(values)),
+                    "max_speed_ratio": float(max(values)),
+                }
+            )
+    return rows
+
+
+def save_speed_report(result, output):
+    import matplotlib.pyplot as plt
+
+    rows = speed_ratios(result)
+    with (output / "speed-ratios.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    panels = [
+        (d, p)
+        for p in result["config"]["profiles"]
+        for d in result["config"]["dimensions"]
+        if "plan" not in result["config"]
+        or any(g[0] == d and g[1] == p for g in result["config"]["plan"])
+    ]
+    nrows = (len(panels) + 1) // 2
+    fig, axes = plt.subplots(nrows, 2, figsize=(12, 3.3 * nrows + 1.6), squeeze=False)
+    for ax, (dimension, profile) in zip(axes.flat, panels):
+        available = False
+        for revision, label, colour in (
+            ("previous", "Old gamma source", "#A8541B"),
+            ("current", "New gamma source", "#176B91"),
+        ):
+            selected = sorted(
+                (
+                    r
+                    for r in rows
+                    if r["dimension"] == dimension
+                    and r["profile"] == profile
+                    and r["revision"] == revision
+                ),
+                key=lambda r: r["points"],
+            )
+            if not selected:
+                continue
+            available = True
+            x = [r["points"] for r in selected]
+            ax.plot(
+                x,
+                [r["median_speed_ratio"] for r in selected],
+                "o--" if revision == "previous" else "s-",
+                label=label,
+                color=colour,
+            )
+            ax.vlines(
+                x,
+                [r["min_speed_ratio"] for r in selected],
+                [r["max_speed_ratio"] for r in selected],
+                color=colour,
+                alpha=0.6,
+            )
+        ax.set(
+            title=f"{dimension}D · {PROFILE_LABELS[profile]}",
+            xscale="log",
+            xlabel="Total reference grid points (log scale)",
+            ylabel="PyMedPhys / SciPy speed",
+        )
+        if available:
+            ax.axhline(1, color="#777777", linestyle=":")
+            ax.set_ylim(bottom=0)
+            ax.grid(alpha=0.2)
+        else:
+            ax.set_axis_off()
+            ax.text(
+                0.5,
+                0.5,
+                "No complete four-way comparison",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+            )
+    for ax in list(axes.flat)[len(panels) :]:
+        ax.set_axis_off()
+    handles, labels = axes.flat[0].get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.945),
+        ncol=2,
+        frameon=False,
+    )
+    fig.suptitle(
+        "How much faster is the PyMedPhys interpolation path?",
+        fontsize=17,
+        fontweight="bold",
+        y=0.985,
+    )
+    revisions = result["config"]["revisions"]
+    measured = next(r for r in result["records"] if r.get("verified"))
+    provenance = f"Previous {revisions['previous'][:12]} / current {revisions['current'][:12]} · {result['config']['threads']} Numba threads · {measured['host']['processor']}"
+    fig.text(
+        0.04,
+        0.02,
+        "Speed ratio = SciPy time / PyMedPhys time for the complete warmed gamma call. Higher favours PyMedPhys.\nMedians of matched-round ratios; bars show observed min–max, not confidence intervals.\nOnly verified four-way groups. Single-round scenarios have no repeatability range; see speed-ratios.csv for counts.\n"
+        + textwrap.fill(provenance, width=145),
+        fontsize=8,
+    )
+    fig.tight_layout(rect=(0, 0.095, 1, 0.92), h_pad=2.0)
+    fig.savefig(output / "speed-ratios.png", dpi=160, facecolor="white")
+    fig.savefig(output / "speed-ratios.svg", facecolor="white")
+    plt.close(fig)
 
 
 def save_report(result, output):
@@ -464,6 +665,10 @@ def save_report(result, output):
     )
     for profile in result["config"]["profiles"]:
         dimensions = result["config"]["dimensions"]
+        if "plan" in result["config"]:
+            dimensions = sorted(
+                {g[0] for g in result["config"]["plan"] if g[1] == profile}
+            )
         height = 4.1 * len(dimensions) + 2.5
         fig, axs = plt.subplots(len(dimensions), 2, figsize=(12, height), squeeze=False)
         fig.subplots_adjust(
@@ -476,6 +681,9 @@ def save_report(result, output):
         )
         for row_index, dimension in enumerate(dimensions):
             absolute, relative = axs[row_index]
+            available = any(
+                r["profile"] == profile and r["dimension"] == dimension for r in rows
+            )
             for variant in VARIANTS:
                 selected = sorted(
                     (
@@ -562,8 +770,20 @@ def save_report(result, output):
                 ylabel="Paired new / old runtime",
                 title=f"{dimension}D · effect of this change",
             )
-            relative.axhline(1, color="#666666", linestyle=":", linewidth=1)
-            relative.legend(fontsize=9)
+            if available:
+                relative.axhline(1, color="#666666", linestyle=":", linewidth=1)
+                relative.legend(fontsize=9)
+            else:
+                for ax in (absolute, relative):
+                    ax.set_axis_off()
+                    ax.text(
+                        0.5,
+                        0.5,
+                        "No complete four-way comparison",
+                        ha="center",
+                        va="center",
+                        transform=ax.transAxes,
+                    )
             for ax in (absolute, relative):
                 ax.grid(True, which="major", alpha=0.2)
         handles, names = axs[0, 0].get_legend_handles_labels()
@@ -589,7 +809,27 @@ def save_report(result, output):
             ha="center",
         )
         config = result["config"]
-        count = len({r["round"] for r in result["records"] if r.get("verified")})
+        count = len(
+            {
+                r["round"]
+                for r in result["records"]
+                if r.get("verified") and r["profile"] == profile
+            }
+        )
+        round_counts = []
+        for dimension in dimensions:
+            selected = sorted(
+                (
+                    r
+                    for r in rows
+                    if r["profile"] == profile
+                    and r["dimension"] == dimension
+                    and r["variant"] == "current-pymedphys"
+                ),
+                key=lambda r: r["points"],
+            )
+            counts = "/".join(str(r["rounds"]) for r in selected) or "none"
+            round_counts.append(f"{dimension}D {counts}")
         processors = sorted({r["host"]["processor"] for r in result["records"]})
         measured = next(r for r in result["records"] if r.get("verified"))
         software = ", ".join(
@@ -599,11 +839,17 @@ def save_report(result, output):
             f"{'; '.join(processors)} · Python {measured['python'].split()[0]} · {software}",
             width=150,
         )
+        field_note = (
+            "Fixed volume and spacing; single comparison."
+            if profile in ("sabr", "prostate-nodes")
+            else "Fixed fields; increasing resolution."
+        )
         footer = (
             f"Previous {config['revisions']['previous'][:12]} · Current {config['revisions']['current'][:12]} · {config['threads']} Numba threads\n"
             f"{environment_note}\n"
-            f"{count} observed round(s); medians and min–max, not confidence intervals. Ratios paired within runners; full warm-ups excluded.\n"
-            "Fixed fields; increasing resolution. Old/new arrays equal exactly; PyMedPhys/SciPy checked to 1e-10.\n"
+            f"Up to {count} observed rounds per case; medians and min–max, not confidence intervals. Ratios paired within runners; full warm-ups excluded.\n"
+            f"Rounds at ascending grid sizes: {'; '.join(round_counts)}.\n"
+            f"{field_note} Old/new arrays equal exactly; PyMedPhys/SciPy checked to 1e-10.\n"
             f"Verified groups: {len(result['comparisons'])}; incomplete groups: {len(set(result['incomplete_groups']))}."
         )
         cloud = measured["cloud"]
@@ -616,9 +862,11 @@ def save_report(result, output):
         fig.savefig(output / f"scaling-{profile}.png", dpi=180, facecolor="white")
         fig.savefig(output / f"scaling-{profile}.svg", facecolor="white")
         plt.close(fig)
+    save_speed_report(result, output)
     headers = [
         "Case",
         "Points",
+        "Eligible points",
         "Old PyMedPhys (s)",
         "New PyMedPhys (s)",
         "Old SciPy (s)",
@@ -629,6 +877,7 @@ def save_report(result, output):
         "# Four-way gamma scaling results",
         "",
         "Absolute medians in seconds; only fully verified four-way groups contribute.",
+        f"Coverage: {len(result['comparisons'])}/{result['expected_groups']} planned groups; stop reason: {result.get('stop_reason', 'none')}. Incomplete coverage is not a complete scaling study.",
         "",
         "| " + " | ".join(headers) + " |",
         "| " + " | ".join(["---"] * len(headers)) + " |",
@@ -642,6 +891,7 @@ def save_report(result, output):
                 [
                     case,
                     f"{first['points']:,}",
+                    f"{first['eligible_points']:,}",
                     *[
                         f"{selected[v]['median_seconds']:.4f}"
                         if v in selected
@@ -660,6 +910,8 @@ def save_report(result, output):
         "Absolute times are medians of all timed calls. Figure ratios are calculated within each matched runner/round before taking the median; they need not equal the ratio of the absolute medians. Ranges show observed min–max, not confidence intervals.",
         "",
         "PyMedPhys/SciPy ratios compare the full gamma call, not an isolated interpolation kernel. Log axes show multiplicative changes. Peak RSS includes input preparation, warm-up and verification; the RAM chunk budget is not a process memory cap.",
+        "",
+        "See `speed-ratios.csv` and `speed-ratios.png` for SciPy time / PyMedPhys time, paired within each round. Values above one favour PyMedPhys. Calibration observations are separate and do not enter these summaries. Fixed scenario grids have one round; routine audit cases have four when complete.",
     ]
     (output / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -671,6 +923,10 @@ def merge_results(directory, output):
     ]
     if not parts:
         raise ValueError("No results.json files found")
+    if any("plan" in part["config"] for part in parts):
+        raise ValueError(
+            "Calibrated audits have independent plans; report each workstation separately"
+        )
     keys = (
         "revisions",
         "threads",
@@ -678,10 +934,11 @@ def merge_results(directory, output):
         "ram_bytes",
         "worker_sha256",
         "driver_sha256",
+        "process_sha256",
     )
     for key in keys:
         if (
-            len({json.dumps(part["config"][key], sort_keys=True) for part in parts})
+            len({json.dumps(part["config"].get(key), sort_keys=True) for part in parts})
             != 1
         ):
             raise ValueError(f"Cannot combine studies with different {key}")
@@ -733,6 +990,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
+    parser.add_argument("--compare-arrays", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--previous-ref", default=PREVIOUS)
     parser.add_argument("--current-ref", default="HEAD")
@@ -756,6 +1014,14 @@ def main():
         default=3600,
         help="Whole-worker seconds, including setup, warm-up and repeats",
     )
+    parser.add_argument(
+        "--schedule", choices=["case-first", "size-first"], default="case-first"
+    )
+    parser.add_argument(
+        "--deadline",
+        type=float,
+        help="Unix deadline for measurements; reserve reporting time separately",
+    )
     parser.add_argument("--output", type=Path)
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--merge", type=Path)
@@ -763,9 +1029,18 @@ def main():
     parser.add_argument(
         "--stop-file",
         type=Path,
-        help="Stop after the current worker when this file appears",
+        help="Interrupt the current worker when this file appears",
     )
     args = parser.parse_args()
+    if args.compare_arrays:
+        paths = json.loads(args.compare_arrays.read_text(encoding="utf-8"))
+        print(json.dumps(compare_arrays(paths), allow_nan=False))
+        return
+    deadline = (
+        time.monotonic() + max(0, args.deadline - time.time())
+        if args.deadline is not None
+        else None
+    )
     if args.resume and (args.output or args.merge or args.plot_only):
         parser.error("Use --resume on its own, with matching study options")
     if (
@@ -810,6 +1085,7 @@ def main():
         parser.error("Choose two distinct revisions")
     config = {
         "revisions": revisions,
+        "schedule": args.schedule,
         "dimensions": args.dimensions,
         "profiles": args.profiles,
         "scales": sorted(args.scales),
@@ -822,6 +1098,9 @@ def main():
             Path(__file__).with_name("gamma_scaling_worker.py").read_bytes()
         ).hexdigest(),
         "driver_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "process_sha256": hashlib.sha256(
+            Path(__file__).with_name("gamma_scaling_process.py").read_bytes()
+        ).hexdigest(),
     }
     host = {
         "processor": machine_description(),
@@ -858,6 +1137,7 @@ def main():
                 "Resume requires matching source, worker, options and host"
             )
         result["incomplete_groups"] = []
+        result.pop("stop_reason", None)
     write_json(output / "results.json", result)
     with tempfile.TemporaryDirectory(prefix="pymedphys-scaling-") as directory:
         roots = {}
@@ -867,7 +1147,7 @@ def main():
                 git("worktree", "add", "--detach", str(root), revision)
                 checked_checkout(root, revision)
                 roots[version] = root
-            run_study(config, roots, output, result, args.stop_file)
+            run_study(config, roots, output, result, args.stop_file, deadline)
         finally:
             for root in roots.values():
                 if not root.resolve().is_relative_to(Path(directory).resolve()):
@@ -878,6 +1158,12 @@ def main():
     else:
         validate_records(result)
         write_json(output / "results.json", result)
+    if result.get("stop_reason") == "time_budget":
+        print(
+            "Time budget reached; saved completed comparisons and marked remaining groups incomplete.",
+            flush=True,
+        )
+        return
     if args.stop_file is not None and args.stop_file.exists():
         print(
             "Study stopped at a checkpoint; resume to finish the remaining comparisons.",

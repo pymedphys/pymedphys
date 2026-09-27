@@ -61,15 +61,71 @@ def dose_field(axes, shift=None, scale=1.0):
     return (2.0 * scale / 2.4) * dose
 
 
+SCENARIOS = {
+    "sabr": {"shape": (201, 241, 241), "spacing_mm": 1.25},
+    "prostate-nodes": {"shape": (201, 161, 161), "spacing_mm": 2.5},
+}
+
+
+def scenario_field(axes, scenario, shift=(0, 0, 0), scale=1.0):
+    """Analytic workload proxies, without patient anatomy or calculated dose.
+
+    Ellipsoidal plateaux have smooth edges and a broad low-dose component.
+    Coordinates, radii and Gaussian widths are in mm, in (z, y, x) order.
+    Edge smoothing is referenced to the shortest semi-axis; the transition
+    is broader along longer semi-axes, not a constant normal-distance blur.
+    The fixed 2 Gy amplitude is a benchmark normalisation, not a prescription.
+    """
+    coordinates = np.ogrid[tuple(slice(0, n) for n in map(len, axes))]
+    coordinates = [
+        axis[index] - offset for axis, index, offset in zip(axes, coordinates, shift)
+    ]
+
+    def plateau(centre, radii, sigma):
+        radius = np.sqrt(
+            sum(((c - o) / r) ** 2 for c, o, r in zip(coordinates, centre, radii))
+        )
+        return 0.5 * (1 - erf((radius - 1) * min(radii) / (sigma * np.sqrt(2))))
+
+    if scenario == "sabr":
+        core = plateau((0, 0, 0), (20, 18, 16), 3)
+        widths, amplitude = (50, 60, 60), 0.15
+    elif scenario == "prostate-nodes":
+        core = plateau((-120, 0, 0), (30, 25, 30), 6)
+        for lateral in (-35, 35):
+            core = np.maximum(core, 0.7 * plateau((15, 5, lateral), (110, 18, 18), 6))
+        widths, amplitude = (140, 65, 90), 0.2
+    else:
+        raise ValueError("Unknown synthetic scenario")
+    halo = amplitude * np.exp(
+        -0.5 * sum((c / width) ** 2 for c, width in zip(coordinates, widths))
+    )
+    return 2 * scale * (core + halo) / (1 + amplitude)
+
+
 def inputs(config):
     ndim = config["dimension"]
     extents = (50, 70, 70) if ndim == 3 else (100, 100)
-    axes = tuple(
-        np.linspace(-extent, extent, count, dtype=np.float64)
-        for extent, count in zip(extents, config["shape"])
-    )
-    reference = dose_field(axes)
-    evaluation = dose_field(axes, shift=(1.5, -2.0, 0.75)[:ndim], scale=1.02)
+    scenario = config.get("scenario")
+    if scenario:
+        specification = SCENARIOS[scenario]
+        if tuple(config["shape"]) != specification["shape"]:
+            raise ValueError(
+                "Scenario grid must retain its documented spacing and extent"
+            )
+        axes = tuple(
+            (np.arange(n, dtype=np.float64) - (n - 1) / 2) * specification["spacing_mm"]
+            for n in specification["shape"]
+        )
+        reference = scenario_field(axes, scenario)
+        evaluation = scenario_field(axes, scenario, shift=(1.5, -2.0, 0.75), scale=1.02)
+    else:
+        axes = tuple(
+            np.linspace(-extent, extent, count, dtype=np.float64)
+            for extent, count in zip(extents, config["shape"])
+        )
+        reference = dose_field(axes)
+        evaluation = dose_field(axes, shift=(1.5, -2.0, 0.75)[:ndim], scale=1.02)
     options = {
         "dose_percent_threshold": 3,
         "distance_mm_threshold": 3,
@@ -87,6 +143,8 @@ def inputs(config):
         )
     if config["profile"] == "cap2":
         options["max_gamma"] = 2
+    if scenario:
+        options["distance_mm_threshold"] = 2
     return axes, reference, evaluation, options
 
 
