@@ -289,6 +289,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   edition of the generated tables.
   [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101)
 - **[Contributor facing only]** DICOM coordinate and dose tests use local synthetic fixtures; the validation record above retains the historical fixture provenance. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- **[Contributor facing only]** `examples/` contains the gamma benchmark tooling behind the performance audit. The integration Doctests job runs its unit tests whenever `examples/` changes. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
