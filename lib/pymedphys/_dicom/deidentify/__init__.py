@@ -16,7 +16,7 @@
 
 The design is in ``docs/contrib/info/deidentification-design.md``. This
 package does not yet de-identify anything; so far it holds the rule tables
-generated from the DICOM standard and the code that loads them; the keys,
-keyed replacement UIDs, and UID attribute roles of design decisions D-003 and
-D-004; and the patient pseudonyms of D-005.
+generated from the DICOM standard and the code that loads them, and the keys,
+keyed replacement UIDs, UID attribute roles, and patient pseudonyms that
+later stages will use.
 """

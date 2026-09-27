@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Keyed replacement UIDs (design decision D-003)."""
+"""Keyed replacement UIDs."""
 
 import hashlib
 import hmac

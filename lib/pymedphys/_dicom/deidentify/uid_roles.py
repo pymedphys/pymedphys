@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The role of every UI attribute, a supplementary (L2) rule (design decision D-003).
+"""The role of every UI attribute, a supplementary (L2) rule.
 
 ``uid_roles.toml`` gives each UI attribute of the pinned PS3.6 data dictionary
 one role, curated by hand. An ``instance`` attribute identifies an instance,
