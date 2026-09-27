@@ -24,6 +24,7 @@ The [illustrated guide](https://docs.pymedphys.com/en/latest/contrib/info/dicom-
 explains affected cases, retrospective checks and plotting. The
 [validation record](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinate-validation.html)
 documents the independent evidence and remaining limitations.
+[PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 
 ### Faster gamma calculations
 
@@ -33,6 +34,7 @@ measured 22–26% lower warmed runtime with the PyMedPhys interpolator on two
 synthetic SABR-like and prostate/nodal volumes, with unchanged numerical results.
 The report includes absolute comparisons with SciPy, runtime-model limitations
 and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance-study.html).
+[PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 
 ### New features and enhancements
 
@@ -158,9 +160,9 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - Pinnacle RTDOSE export no longer fails when a beam dose file is empty: empty and zero-filled beam dose files are skipped, and the dose from the other beams is exported. A missing beam dose file still stops RTDOSE export rather than exporting an incomplete sum. [PR #1960](https://github.com/pymedphys/pymedphys/pull/1960), [PR #2057](https://github.com/pymedphys/pymedphys/pull/2057)
 - Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports no longer fail with a `KeyError` when the plan has no `ToolType`; Manufacturer's Model Name is then left empty. RTPLAN and RTSTRUCT exports now write Manufacturer's Model Name, which a misspelt attribute name had left out of them. [PR #1956](https://github.com/pymedphys/pymedphys/pull/1956)
 - PyMedPhys now works with pydicom 3. With pydicom 3, v0.41.0 failed in code that called the removed `pydicom.read_file` and `pydicom.write_file`, including the `pymedphys dicom adjust-machine-name`, `adjust-RED`, `adjust-RED-by-structure-name`, `merge-contours`, `listen`, and `send` commands, Pinnacle image export, and DICOM input in the MetersetMap app. Datasets that PyMedPhys constructs now declare a Transfer Syntax UID, defaulting to Implicit VR Little Endian, because pydicom 3 needs one to decode pixel data and uses it to choose the encoding when writing. `pymedphys.dicom.zyx_and_dose_from_dataset` no longer overwrites a dataset's Transfer Syntax UID with Implicit VR Little Endian; it sets one only when none is present. [PR #1959](https://github.com/pymedphys/pymedphys/pull/1959), [PR #1964](https://github.com/pymedphys/pymedphys/pull/1964)
-- RT Dose conversion accepts rounded cardinal orientations and valid single-slice files, and rejects inconsistent geometry. See the illustrated guide above.
-- Gamma handles descending evaluation axes, uses SciPy for uneven spacing with a warning, and bounds its search so disjoint-grid comparisons terminate.
-- The experimental Sum Coincident DICOM Doses app checks corresponding voxel positions before adding raw arrays, with absolute geometric tolerances and warnings for small mismatches.
+- RT Dose conversion accepts rounded cardinal orientations and valid single-slice files, and rejects inconsistent geometry. See the illustrated guide above. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- Gamma handles descending evaluation axes, uses SciPy for uneven spacing with a warning, and bounds its search so disjoint-grid comparisons terminate. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- The experimental Sum Coincident DICOM Doses app checks corresponding voxel positions before adding raw arrays, with absolute geometric tolerances and warnings for small mismatches. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 
 ### Dependency changes
 
@@ -256,7 +258,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   exist, that pytest collects the tests it cites, and that it follows the
   edition of the generated tables.
   [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101)
-- **[Contributor facing only]** DICOM coordinate and dose tests use local synthetic fixtures; the validation record above retains the historical fixture provenance.
+- **[Contributor facing only]** DICOM coordinate and dose tests use local synthetic fixtures; the validation record above retains the historical fixture provenance. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 - **[Contributor facing only]** The test suite now runs with `HOME` and
   `USERPROFILE` pointed at a temporary directory, so running the tests no
   longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
@@ -336,9 +338,9 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   relative to the config file that contains it.
   [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
 - The wheel and sdist no longer include the built HTML documentation, which v0.41.0 bundled under `pymedphys/docs/_build/html` and which made up most of its 7.5 MB wheel. The documentation remains at <https://docs.pymedphys.com/en/latest/>. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
-- RT Dose conversion returns ascending patient `(z, y, x)` axes with the dose reordered to match. Its shape or index order can differ from `pixel_array`; index and plot dose/gamma with the returned axes.
-- Gamma and interpolation reject invalid axis structures, including when interpolation uses `skip_checks=True`. Compare single-plane doses in 2D; the singleton-axis search limitation remains tracked in [#2070](https://github.com/pymedphys/pymedphys/issues/2070).
-- The private IEC patient-coordinate option is disabled pending separate validation.
+- RT Dose conversion returns ascending patient `(z, y, x)` axes with the dose reordered to match. Its shape or index order can differ from `pixel_array`; index and plot dose/gamma with the returned axes. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- Gamma and interpolation reject invalid axis structures, including when interpolation uses `skip_checks=True`. Compare single-plane doses in 2D; the singleton-axis search limitation remains tracked in [#2070](https://github.com/pymedphys/pymedphys/issues/2070). [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- The private `xyz_axes_from_dataset` option for IEC patient coordinates (`'patient'`, `'IEC patient'` or `'p'`) now raises `NotImplementedError`, because its previous output was incorrect. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 
 ## [0.41.0]
 
