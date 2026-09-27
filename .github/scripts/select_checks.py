@@ -135,6 +135,7 @@ SLOW_TEST_FILES = frozenset(
 DOCTEST_FILES = frozenset(
     {
         "lib/pymedphys/_dev/deid_tables/ps3_3.py",
+        "lib/pymedphys/_dicom/deidentify/dates.py",
         "lib/pymedphys/_dicom/deidentify/keys.py",
         "lib/pymedphys/_dicom/deidentify/pseudonyms.py",
         "lib/pymedphys/_dicom/deidentify/uids.py",
