@@ -75,6 +75,7 @@ def test_encode_file_name_gives_a_single_name(value, path_type):
         ("/tmp/x", "%2Ftmp%2Fx"),
         ("C:x", "C%3Ax"),
         ('123456_SMITH, JOHN "JACK"', "123456_SMITH, JOHN %22JACK%22"),
+        ("a\x00b\tc\nd\x1fe", "a%00b%09c%0Ad%1Fe"),
     ],
 )
 def test_encode_file_name_encodes_path_characters(value, expected):

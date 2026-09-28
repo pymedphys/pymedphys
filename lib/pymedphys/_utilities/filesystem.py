@@ -66,10 +66,14 @@ def make_a_valid_directory_name(proposed_directory_name):
     return directory_name
 
 
-# Characters that separate or qualify path components on POSIX or Windows, or
-# that Windows does not allow in names. "%" is included so that an encoded
-# name cannot equal a different value.
-_ENCODED_NAME_CHARACTERS = frozenset('%/\\:*?"<>|')
+# The control characters U+0000 to U+001F, such as tab and line feed. Windows
+# does not allow them in names, and no platform allows U+0000 in a path.
+_CONTROL_CHARACTERS = frozenset(chr(code) for code in range(0x20))
+
+# The characters that encode_file_name encodes: those that separate or qualify
+# path components on POSIX or Windows, those that Windows does not allow in
+# names, and "%", so that an encoded name cannot equal a different value.
+_ENCODED_NAME_CHARACTERS = frozenset('%/\\:*?"<>|') | _CONTROL_CHARACTERS
 
 
 def encode_file_name(value: object) -> str:
@@ -96,8 +100,6 @@ def encode_file_name(value: object) -> str:
         return name.replace(".", "%2E")
 
     return "".join(
-        f"%{ord(character):02X}"
-        if character in _ENCODED_NAME_CHARACTERS or ord(character) < 0x20
-        else character
+        f"%{ord(character):02X}" if character in _ENCODED_NAME_CHARACTERS else character
         for character in name
     )
