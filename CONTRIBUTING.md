@@ -67,6 +67,23 @@ These rules apply to every pull request.
 - **Description.** State the scope, what is deferred, how the change was
   verified, and what reviewers should check first. Describe the state being
   merged, not the revisions made during review.
+- **Readers.** Many PyMedPhys users, contributors, and reviewers are
+  physicists and other scientists rather than full-time software developers.
+  Write pull request descriptions, issues, and reviews so that they can follow
+  them:
+  - start with a plain summary of what changes for users and why;
+  - explain the problem with a concrete example of what went wrong, and each
+    change by its effect, not only by the code it touches;
+  - explain or avoid jargon, and show before-and-after examples, such as an
+    error message, where they help;
+  - keep the detail a reviewer needs to check the implementation, in a
+    clearly labelled later section such as "Reviewer focus".
+- **Reviews.** Explain each finding by what would go wrong and for whom, then
+  give the evidence and a suggested fix, and say plainly which findings must be
+  fixed before approval. Rely on CI's results for the commit under review
+  instead of re-running the tests, linters, and builds that CI runs. Spend
+  review effort on what CI does not check, such as independent reference
+  values, counterexamples, and configurations that CI does not exercise.
 - **Stacked pull requests.** When a change depends on another open pull
   request, open it against that pull request's branch and name the parent in
   the description. Merge (do not rebase) the parent's changes into it before
