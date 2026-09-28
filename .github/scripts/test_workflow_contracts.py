@@ -71,12 +71,32 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(workflow=filename):
                 workflow = jobs(filename)
                 summary = workflow[summary_id]
-                self.assertEqual(needs(summary), set(workflow) - {summary_id})
+                # Only jobs that report the summary's result may follow it.
+                reporters = {
+                    job for job, body in workflow.items() if summary_id in needs(body)
+                }
+                self.assertEqual(
+                    needs(summary), set(workflow) - {summary_id} - reporters
+                )
                 self.assertIn("    if: always()", summary)
                 self.assertIn(f"    name: {name}", summary)
                 self.assertIn(
                     "python .github/scripts/check_workflow_status.py", summary
                 )
+
+    def test_only_the_main_failure_report_follows_the_ci_summary(self):
+        workflow = jobs("ci.yml")
+        reporters = {job for job, body in workflow.items() if "summary" in needs(body)}
+        self.assertEqual(reporters, {"report-main-failure"})
+        report = workflow["report-main-failure"]
+        # It must never run for pull requests, and needs only to write issues.
+        self.assertIn(
+            "    if: failure() && github.event_name == 'push' && "
+            "github.ref == 'refs/heads/main'",
+            report,
+        )
+        self.assertIn("    permissions:\n      issues: write\n    steps:", report)
+        self.assertIn('title="CI failed on main"', report)
 
     def test_conditional_jobs_and_gates_use_identical_selection(self):
         for filename, summary_id in (
