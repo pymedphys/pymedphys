@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2018 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,3 +64,40 @@ def make_a_valid_directory_name(proposed_directory_name):
     directory_name = directory_name.replace(" ", "-")
 
     return directory_name
+
+
+# Characters that separate or qualify path components on POSIX or Windows, or
+# that Windows does not allow in names. "%" is included so that an encoded
+# name cannot equal a different value.
+_ENCODED_NAME_CHARACTERS = frozenset('%/\\:*?"<>|')
+
+
+def encode_file_name(value: object) -> str:
+    """Return a value, such as a patient ID, as a single file or folder name.
+
+    Characters that could make the name refer to another folder, or that
+    Windows does not allow in names, and the whole names ``.`` and ``..``, are
+    replaced by ``%`` and their two-digit hexadecimal code, so ``../x``
+    becomes ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Different values give
+    different names, and names without these characters are unchanged.
+
+    Parameters
+    ----------
+    value
+        The value to name the file or folder after, converted with ``str``.
+
+    Returns
+    -------
+    str
+        The file or folder name.
+    """
+    name = str(value)
+    if name in (".", ".."):
+        return name.replace(".", "%2E")
+
+    return "".join(
+        f"%{ord(character):02X}"
+        if character in _ENCODED_NAME_CHARACTERS or ord(character) < 0x20
+        else character
+        for character in name
+    )
