@@ -6,12 +6,8 @@ ai = [
 all = [
     'altair',
     'anthropic',
-    'anyio',
-    'astroid',
     'attrs',
-    'dash',
     'dbfread',
-    'dicompyler-core',
     'doc8',
     'httpx2',
     'hypothesis',
@@ -22,10 +18,8 @@ all = [
     'matplotlib',
     'mypy',
     'natsort',
-    'networkx',
     'numba',
     'numpy',
-    'packaging',
     'pandas',
     'Pillow',
     'plotly',
@@ -61,7 +55,6 @@ all = [
     'toml',
     'tqdm',
     'trio',
-    'trio-asyncio',
     'types-python-dateutil',
     'types-PyYAML',
     'types-requests',
@@ -97,7 +90,6 @@ docs = [
     'ipython',
     'jupyter-book',
     'matplotlib',
-    'networkx',
     'numba',
     'numpy',
     'pydicom',
@@ -107,20 +99,8 @@ docs = [
     'toml',
     'tqdm',
 ]
-doctests = [
-    'pytest',
-    'ruff',
-    'sphinx-book-theme',
-    'tabulate',
-    'toml',
-]
 icom = [
     'numpy',
-]
-lint = [
-    'astroid',
-    'pylint',
-    'ruff',
 ]
 mosaiq = [
     'attrs',
@@ -130,12 +110,8 @@ mosaiq = [
     'sqlalchemy',
     'toml',
 ]
-propagate = [
-    'ruff',
-]
 tests = [
     'anthropic',
-    'astroid',
     'hypothesis',
     'imageio',
     'matplotlib',
@@ -160,18 +136,14 @@ tests = [
 ]
 user = [
     'altair',
-    'anyio',
     'attrs',
-    'dash',
     'dbfread',
-    'dicompyler-core',
     'imageio',
     'keyring',
     'matplotlib',
     'natsort',
     'numba',
     'numpy',
-    'packaging',
     'pandas',
     'Pillow',
     'plotly',
@@ -191,7 +163,6 @@ user = [
     'timeago',
     'toml',
     'tqdm',
-    'trio-asyncio',
     'watchdog',
     'xlrd',
     'xmltodict',
