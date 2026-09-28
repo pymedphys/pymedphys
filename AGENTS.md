@@ -412,6 +412,10 @@ detailed explanations of individual features.
 
 - Before opening or updating a pull request, read and follow
   [Open and review a pull request](CONTRIBUTING.md#open-and-review-a-pull-request).
+- Write pull request descriptions, issues, and reviews for the readers
+  described there: a plain summary and concrete examples first, and the
+  technical detail in a labelled section after them. When reviewing, use CI's
+  results for the reviewed commit instead of repeating its checks.
 - When a pull request's scope changes after it is opened, update its title and
   description to match the current diff and the validation actually run.
 - Before a pull request exists, link a comparison against its actual base:
