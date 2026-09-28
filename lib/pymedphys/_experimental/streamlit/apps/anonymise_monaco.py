@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 
 ""
 
+import os
 import pathlib
 import shutil
 import tempfile
@@ -30,6 +32,26 @@ TITLE = "Anonymising Monaco Backend Files"
 
 HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("data", "demographic.000000")
+
+
+def _path_within(directory: str | os.PathLike[str], name: str) -> pathlib.Path:
+    """Return the path of the file ``name`` inside ``directory``.
+
+    The patient ID typed into this app forms part of the names of the files
+    it creates and deletes, so a name that resolves anywhere other than inside
+    ``directory``, such as ``../012345.zip``, is refused.
+
+    Raises
+    ------
+    ValueError
+        If ``name`` does not resolve to a path inside ``directory``.
+    """
+    root = os.path.realpath(directory)
+    path = os.path.realpath(os.path.join(root, name))
+    if not path.startswith(os.path.join(root, "")):
+        raise ValueError(f"The patient ID would place a file outside {root}")
+
+    return pathlib.Path(path)
 
 
 def main():
@@ -59,7 +81,7 @@ def main():
 
     st.write(f"Export directory: `{export_directory}`")
 
-    zip_path = pathlib.Path(export_directory).joinpath(f"{patient_id}.zip")
+    zip_path = _path_within(export_directory, f"{patient_id}.zip")
 
     st.write(f"Zip file to be created: `{zip_path}`")
 
@@ -86,8 +108,8 @@ def main():
 
             st.write("Creating anonymised demographic file...")
 
-            new_demographic_file = new_temp_location.joinpath(
-                f"demographic.{patient_id}"
+            new_demographic_file = _path_within(
+                new_temp_location, f"demographic.{patient_id}"
             )
 
             shutil.copy2(ANON_DEMOGRAPHIC_FILE, new_demographic_file)
