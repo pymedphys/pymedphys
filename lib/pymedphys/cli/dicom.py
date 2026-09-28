@@ -254,7 +254,21 @@ def listen(dicom_subparsers):
         type=str,
         help="The host/IP to bind to",
     )
-    parser.add_argument("-d", "--storage_directory", default=".", type=str, help="")
+    parser.add_argument(
+        "-d",
+        "--storage_directory",
+        default=".",
+        type=str,
+        help=(
+            "The folder to store received objects in, by default the current "
+            "folder. Each object is stored in a folder named after its Patient "
+            "ID, then in folders named after its Study and Series Instance "
+            "UIDs, in a file named after its SOP Instance UID. In these names, "
+            'the characters %% / \\ : * ? " < > | and control characters are '
+            "written as %% and their two-digit hexadecimal code, and the names "
+            ". and .. as %%2E and %%2E%%2E."
+        ),
+    )
     parser.add_argument(
         "-a",
         "--aetitle",

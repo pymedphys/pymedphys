@@ -30,10 +30,12 @@ from pymedphys._imports import psutil, pydicom, pynetdicom, pytest
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.connect.listen import (
     DicomListener,
+    _storage_name,
     hierarchical_dicom_storage_directory,
 )
 from pymedphys._dicom.connect.send import DicomSender
 from pymedphys._dicom.create import dicom_dataset_from_dict
+from pymedphys.cli import define_parser
 
 METHOD_MOCK = Mock()
 
@@ -247,6 +249,109 @@ def test_hierarchical_dicom_storage_directory(test_dataset):
     )
     created_directory = hierarchical_dicom_storage_directory(test_dir, test_dataset)
     assert created_directory == expected_directory
+
+
+@pytest.mark.pydicom
+# The UID values are deliberately invalid, so pydicom warns when they are set.
+@pytest.mark.filterwarnings("ignore:Invalid value for VR UI:UserWarning")
+@pytest.mark.parametrize(
+    "keyword, value",
+    [
+        ("PatientID", "../outside"),
+        ("PatientID", "/outside"),
+        ("PatientID", ".."),
+        ("StudyInstanceUID", ".."),
+        ("SeriesInstanceUID", "../../outside"),
+    ],
+)
+def test_hierarchical_dicom_storage_directory_stays_inside_storage(
+    tmp_path, test_dataset, keyword, value
+):
+    """Each identifier names one folder inside the storage directory,
+    whatever value the sender gives it."""
+    setattr(test_dataset, keyword, value)
+
+    series_directory = hierarchical_dicom_storage_directory(tmp_path, test_dataset)
+
+    assert series_directory.parent.parent.parent == tmp_path
+    assert ".." not in series_directory.parts
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "../outside",
+        "/outside",
+        "..",
+        ".",
+        "a/b",
+        "C:outside",
+        "C:\\outside",
+        "\\\\server\\share",
+    ],
+)
+@pytest.mark.parametrize(
+    "path_type",
+    [pathlib.PurePosixPath, pathlib.PureWindowsPath],
+    ids=["posix", "windows"],
+)
+def test_storage_name_is_a_single_name(value, path_type):
+    """A received value becomes one file or folder name on POSIX and on
+    Windows."""
+    name = _storage_name(value)
+
+    storage = path_type("storage")
+    assert (storage / name).parent == storage
+    assert name not in (".", "..")
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [("../x", "..%2Fx"), ("..", "%2E%2E"), ("/tmp/x", "%2Ftmp%2Fx"), ("C:x", "C%3Ax")],
+)
+def test_storage_name_encodes_path_characters(value, expected):
+    assert _storage_name(value) == expected
+
+
+def test_storage_name_keeps_ordinary_identifiers_and_distinct_values():
+    assert _storage_name("987654321PyMedPhysID") == "987654321PyMedPhysID"
+    assert _storage_name("1.2.826.0.1.3680043.8.498.1") == "1.2.826.0.1.3680043.8.498.1"
+    assert len({_storage_name(value) for value in ["a/b", "a%2Fb", "a:b", ".."]}) == 4
+
+
+def test_listen_help_describes_stored_names(capsys, monkeypatch):
+    """The storage folder's help text renders, with its literal % signs."""
+    # A wide terminal keeps argparse from wrapping inside "two-digit".
+    monkeypatch.setenv("COLUMNS", "500")
+    with pytest.raises(SystemExit) as exit_info:
+        define_parser().parse_args(["dicom", "listen", "--help"])
+
+    assert exit_info.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "written as % and their two-digit hexadecimal code" in help_text
+    assert "as %2E and %2E%2E." in help_text
+
+
+@pytest.mark.pydicom
+def test_dicom_listener_stores_inside_storage_directory(tmp_path, test_dataset):
+    """An object whose PatientID points outside the storage directory is
+    stored inside it."""
+    storage_directory = tmp_path / "storage"
+    storage_directory.mkdir()
+    test_dataset.PatientID = "../outside"
+    dicom_listener = DicomListener(storage_directory=storage_directory)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+
+    status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0x0000
+    (stored_path,) = tmp_path.rglob("*.dcm")
+    assert stored_path.is_relative_to(storage_directory)
 
 
 @pytest.mark.pydicom
