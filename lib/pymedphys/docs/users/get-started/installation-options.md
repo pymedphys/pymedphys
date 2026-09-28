@@ -99,16 +99,40 @@ They help on shells that would otherwise interpret square brackets.
 | `tests` | `uv pip install "pymedphys[tests]"` | `user`, plus what you need to run PyMedPhys's own test suite with `pymedphys dev tests`, for example to check an installation. |
 | `all` | `uv pip install "pymedphys[all]"` | `user`, `ai`, and `tests` together. |
 
-Earlier versions of this page recommended the `cli`, `dicom`, `icom`, and
-`mosaiq` extras for particular workflows. Those extras did not include
+### Smaller installs for one feature
+
+If you use only one part of PyMedPhys, for example on a server that only
+receives DICOM files, a feature extra installs just what that feature needs.
+Combine them with commas, for example `"pymedphys[gamma,dicom]"` for gamma on
+DICOM files.
+
+| Extra | Covers |
+| --- | --- |
+| `gamma` | `pymedphys.gamma` and `pymedphys.gamma_pass_rate`. |
+| `dicom` | `pymedphys.dicom` and the `pymedphys dicom` commands, including `listen` and `send`. |
+| `mosaiq` | `pymedphys.mosaiq` and `pymedphys.Delivery.from_mosaiq`. |
+| `icom` | `pymedphys icom listen` and `pymedphys.Delivery.from_icom`. |
+| `trf` | `pymedphys.trf.read`, `pymedphys.Delivery.from_trf`, and the `pymedphys trf to-csv` and `detect` commands. Identifying TRF files against Mosaiq, with `pymedphys.trf.identify` or `pymedphys trf orchestrate`, needs `"pymedphys[trf,mosaiq]"`. |
+| `cli` | The same as `user`, because the command line spans every feature. |
+
+These extras do not cover plotting helpers, such as
+`pymedphys.metersetmap.display`, which need matplotlib, or the GUI. `user`
+covers everything. If a feature extra is missing a package, the error message
+suggests `user`, which always works.
+
+Before this release, the `dicom`, `icom`, and `mosaiq` extras did not include
 everything their features needed: for example, `dicom` had no NumPy, which
-DICOM anonymisation uses. They now install exactly what `user` installs, so
-existing commands that use them keep working. New installs should use `user`.
+DICOM anonymisation uses. They now do, and CI checks each extra on its own.
+`mosaiq` no longer installs the packages that only TRF identification uses, so
+install `"pymedphys[trf,mosaiq]"` for that.
 
 ## What most people should choose
 
 Choose `user`. It suits workstation use, scripts and scheduled jobs, DICOM and
 Mosaiq automation, iCOM services, and the GUI.
+
+Choose a feature extra only when a smaller install matters, such as a
+dedicated DICOM or iCOM service, and you use only that feature.
 
 Add `ai` only if you want to try the experimental AI chat app, and `tests` only
 if you want to run the test suite against your installation.

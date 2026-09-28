@@ -179,6 +179,15 @@ and fails first if the overlay did not take effect. It uploads its JUnit
 report as `junit-dependency-floors`. A failure fails the unit-test workflow and
 therefore the required CI or release summary.
 
+The `narrow-extras` job checks that each narrow feature extra (`gamma`,
+`dicom`, `mosaiq`, `icom`, and `trf`) holds every package its feature needs.
+For each, on Ubuntu with Python 3.14, it installs only that extra and the
+`test-runner` dependency group, then runs the feature's non-slow tests with
+`uv run --no-sync`, so nothing else is installed. Tests there that exercise
+another feature skip themselves when its packages are missing. It uploads a
+JUnit report per extra as `junit-extra-<extra>`, and runs alongside both the
+quick and full matrices.
+
 ### Extended Workflows (Conditional)
 
 #### `integration-tests.yml`
@@ -219,6 +228,10 @@ SQL Server integration tests for Mosaiq database functionality.
 - **Features**: Waits for SQL Server to accept connections, then runs the tests once;
   test failures are not hidden by retries. The CSV-backed tests load the mimic
   tables once per module through a read-only connection
+- **Matrix**: one leg installs the `tests` extra and runs every database test;
+  the other installs only the `mosaiq` extra with the `test-runner` and
+  `mosaiq-db-fixtures` groups and runs the tests in `tests/mosaiq`, to check
+  that the extra holds everything `pymedphys.mosaiq` needs
 
 #### `docs.yml`
 Builds documentation on PRs that change documentation sources, package modules, or any unclassified input. It is the only documentation check on pull requests.

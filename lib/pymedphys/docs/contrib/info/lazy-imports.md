@@ -7,7 +7,7 @@ PyMedPhys can be installed with very few dependencies, but most of its features 
 - `pip install pymedphys` is the **base install**. It installs PyMedPhys and its required dependencies only, which today is just `tomlkit`.
 - `pip install "pymedphys[user]"` also installs the optional packages that PyMedPhys's features use. The name in square brackets is an **extra**: a named set of optional dependencies, declared under `[project.optional-dependencies]` in `pyproject.toml`.
 
-`user` is the extra to recommend. It covers every feature except the experimental AI chat app, which has its own `ai` extra. The older feature extras, such as `dicom`, are now aliases that install the same packages as `user`.
+`user` is the extra to recommend. It covers every feature except the experimental AI chat app, which has its own `ai` extra. The narrow feature extras, `gamma`, `dicom`, `mosaiq`, `icom`, and `trf`, each install only what one feature's public functions and commands use, for smaller installs.
 
 Extras are for people who install PyMedPhys. The tools for working on PyMedPhys itself, such as linters and the documentation build, are in **dependency groups** under `[dependency-groups]`, which are not published to PyPI. `uv sync` in a source checkout installs every extra and every tool, through the default `dev` group.
 
@@ -52,6 +52,7 @@ The details:
 - On a development version, which is not on PyPI, the message instead suggests installing the extra from the source checkout, for example `python -m pip install -e ".[user]"`, so that pip does not replace the development version with a release.
 - The error's `name` attribute is the missing package, for example `"numpy"`.
 - The extra is found from the generated `lib/pymedphys/dependency-extra.txt`, using the distribution's name rather than the name it is imported under. `sklearn`, for example, comes from `scikit-learn`.
+- The message suggests `user` even when a narrow extra, such as `dicom`, also has the package. One missing package usually means the rest of a feature is missing too, and PyMedPhys cannot tell which feature is being used, whereas `user` always covers it.
 
 Two other cases get their own message:
 
@@ -66,7 +67,7 @@ Tools such as `inspect`, `doctest`, and IDEs ask objects whether they have attri
 
 ### Add a new optional dependency
 
-1. Add the distribution to the extra that the feature belongs to, normally `user`, in `pyproject.toml`. A tool used only for working on PyMedPhys goes in a dependency group instead, such as `lint` or `docs`.
+1. Add the distribution to `user` in `pyproject.toml`, and also to the narrow extra of the feature that uses it, if its public functions or commands need it. A tool used only for working on PyMedPhys goes in a dependency group instead, such as `lint` or `docs`.
 2. Run `uv lock` and `pymedphys dev propagate`, which regenerates `dependency-extra.txt` and the other generated files. CI fails if they are out of date.
 3. Add an `import` statement for it to `lib/pymedphys/_imports/imports.py`. Register each submodule that code uses and that the package does not import itself (see below).
 4. If the import name differs from the distribution name, as with `import yaml` from `PyYAML`, add the pair to `DISTRIBUTION_FOR_IMPORT` in `lib/pymedphys/_extras.py`.
@@ -119,6 +120,7 @@ Every other module must import on a base install. Only add an entry when a modul
 
 - **In every unit test job**, `lib/pymedphys/tests/imports/test_optional_dependencies.py` starts a fresh Python interpreter and installs an import hook, from `base_install.py` in the same folder, that refuses every import except the standard library, PyMedPhys, and the base dependencies. It then imports every module that `import_policy` says must work on a base install. This imitates a base install without creating one, so it runs quickly on every operating system.
 - The same file checks that the Streamlit modules import once `user` is installed, that the messages name the right extra, that introspection does not fail, and that the registry matches `pyproject.toml`. The check for the AI modules is skipped wherever the `ai` extra is not installed, which currently includes CI.
+- **The `narrow-extras` job in `unit-tests.yml`** installs each narrow extra alone, with only the `test-runner` dependency group, and runs that feature's tests, so a package missing from the extra fails CI. `mosaiq-db-tests.yml` does the same for `mosaiq` against a SQL Server database. A test in those folders that exercises another feature, private code, or a plotting helper skips itself with `pytest.importorskip` when that package is missing.
 - **`pymedphys dev imports`** checks the same policy against real installs. It creates a virtual environment, installs PyMedPhys without extras, imports each base-tier module in its own interpreter, then installs the `user`, `ai`, and `tests` extras and imports everything else. It needs network access, so CI does not run it.
 
 ## Known gap

@@ -15,7 +15,8 @@ Common reasons to use the CLI include:
 
 If you have not installed PyMedPhys yet, read
 :doc:`Installation options <installation-options>` first.
-The ``user`` extra installs everything the commands need:
+The ``user`` extra installs everything the commands need. A feature extra,
+such as ``dicom``, is enough for that feature's commands:
 
 .. code:: bash
 

@@ -86,9 +86,10 @@ For most users:
 Other installs
 --------------
 
-The older ``cli``, ``dicom``, ``icom``, and ``mosaiq`` extras now install
-the same packages as ``user``, so existing commands that use them keep
-working. The optional ``ai`` extra adds the experimental AI chat app.
+For a smaller install that covers one feature, use its extra instead:
+``gamma``, ``dicom``, ``mosaiq``, ``icom``, or ``trf``. Combine them with
+commas, for example ``"pymedphys[gamma,dicom]"``. The optional ``ai`` extra
+adds the experimental AI chat app.
 
 Because ``.venv`` exists in the current folder, ``uv pip install`` will
 install into that environment automatically.

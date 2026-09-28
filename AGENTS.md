@@ -242,12 +242,15 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
   - `ai`: the experimental Mosaiq chat app's Anthropic dependencies; opt-in, never part of `user`.
   - `tests`: `user` plus what running the installed test suite needs.
   - `all`: `user`, `ai`, and `tests`.
-  - `cli`, `dicom`, `icom`, `mosaiq`: aliases for `user`, kept so existing install commands work. Do not add packages to them or add new feature extras without a CI job that installs the extra alone and exercises its feature.
+  - `gamma`, `dicom`, `mosaiq`, `icom`, `trf`: narrow extras, one per feature. Each lists every package its feature's public functions and commands import, directly or through PyMedPhys code, not only those its dependencies happen to bring. The `narrow-extras` job in `unit-tests.yml` installs each alone with the `test-runner` group and runs its feature's tests, and `mosaiq-db-tests.yml` does the same for `mosaiq` against SQL Server. Add a new feature extra only with a matrix entry there. Plotting helpers, private code, and the GUI are not part of any narrow extra; `user` covers them.
+  - `cli`: an alias for `user`, because the command line spans every feature.
 - Groups:
   - `dev`, the default: PyMedPhys with every extra, plus the `docs`, `lint`, and `pre-commit` groups. A plain `uv sync` installs it.
   - `docs`: the documentation build, including the packages its notebooks run.
   - `lint`: linters, type checkers, and stubs.
   - `pre-commit` and `script-tests`: the small sets their CI jobs install on their own.
+  - `test-runner`: pytest and the packages the tests themselves use, without any feature's packages, for the narrow-extras jobs. `mosaiq-db-fixtures` adds what loading the test Mosaiq database needs.
+- When a narrow-extras job fails because a feature's code needs a package, add the package to that extra. Skip a test with `pytest.importorskip` only when it exercises another feature, private code, or a plotting helper that shares the folder, and say which in a comment.
 - Put a tool that only contributors or CI use in a group, never an extra. CI jobs install only what they need, through the `extras` and `groups` inputs of `.github/actions/setup-project`, which always passes `--no-default-groups`.
 
 ### Optional Dependencies
