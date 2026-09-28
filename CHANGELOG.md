@@ -12,17 +12,6 @@ This project adheres to
 
 ## Unreleased
 
-### Corrected Mosaiq session counts for multi-day intervals
-
-`pymedphys._mosaiq.sessions.cluster_sessions` previously discarded whole days
-from `interval`. An interval of exactly one or more days became zero, giving
-one session per treatment; for example, treatments 30 hours apart gave two
-sessions for a two-day interval and now give one. **Recalculate session counts
-and boundaries obtained with intervals of a day or more.** Fractional seconds in `interval` are also retained, so a 500 ms threshold
-now groups treatments 250 ms apart. Re-check counts produced with fractional-second
-thresholds too. The default three-hour interval retains its threshold.
-[PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
-
 ### Corrected DICOM RT Dose coordinates
 
 Corrected patient coordinates and dose ordering for non-HFS orientations and
@@ -126,7 +115,6 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
-- `pymedphys._mosaiq.sessions.cluster_sessions`, which Mosaiq session reporting uses, now honours whole days and fractional seconds in `interval`. It used `timedelta.seconds`, which drops whole days, so a two-day interval became zero and every treatment was reported as a session of its own. A single treatment is now one session, and no treatments give no sessions; both raised `ValueError` before. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 - Reading a Monaco file, or an iCOM file watched by the iCOM observer, now raises the error from opening the file when it cannot be opened, for example `FileNotFoundError`. The helper that opens these files without locking them replaced that error with `UnboundLocalError`. On Windows with pywin32 installed, a missing file was already reported by pywin32 before this point. [PR #2135](https://github.com/pymedphys/pymedphys/pull/2135)
 - `pymedphys.gamma` no longer prints a `--- Logging error ---` traceback on every call when INFO logging is enabled. Its dose-threshold message formatted the threshold arrays as single numbers, which NumPy 2 rejects. `ram_available=None` now means the default budget; it raised `TypeError` when a reference point lay outside the evaluation grid. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
 - The experimental iView/iCOM alignment utility again makes iCOM gantry and collimator angles continuous where they cross ±180° when used with pandas 3. It adjusted the angles in place in arrays that pandas 3 makes read-only, so it raised `ValueError: assignment destination is read-only`; it now works on a copy and leaves its input unchanged. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
@@ -232,7 +220,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
-- **[Contributor facing only]** A pull request that changes code the slow tests check against real data now runs them, instead of leaving them to `main`. This covers the TRF, delivery and MetersetMap round trips, Pinnacle export, gamma against published pass rates, and anonymisation and pseudonymisation. Changes to TRF, DICOM delivery, RT Plan and MetersetMap code also run the Mosaiq database tests, which use them. The weekly dependency update keeps one pull request up to date, labels it `full-test`, creates its app token just before opening the pull request, and opens or updates an issue when a scheduled run fails. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
+- **[Contributor facing only]** The weekly dependency update keeps one pull request up to date on the `deps/weekly-update` branch, runs only on `main` and one run at a time, labels its pull request `full-test`, creates its app token just before opening the pull request, and opens or comments on an issue when a scheduled run fails. When CI fails on a push to `main`, a job opens or comments on an issue, so a failure in the slow or database tests, which pull requests run only for their own inputs or the `full-test` label, does not go unnoticed. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 - **[Contributor facing only]** The unused `[tool.pymedphys.extra-groups]` table, the code in `pymedphys dev propagate` that could read it, the lazy-import entries for packages PyMedPhys does not use (`black`, `dash`, `dicompylercore`, `packaging`, `tornado`, and `xlsxwriter`), and `.dockerignore`, left from a Dockerfile removed in 2023, have been removed. [PR #2138](https://github.com/pymedphys/pymedphys/pull/2138)
 - **[Contributor facing only]** Pre-commit runs the ruff version pinned in `uv.lock` (0.16.8) instead of ruff 0.4.1 from the `ruff-pre-commit` hook, with the rules that applied before (`E4`, `E7`, `E9`, `F`) selected explicitly and on Python files only. One commit reformats 17 files with it, and `.git-blame-ignore-revs` lists that commit. Pyright reports variables that are certainly unbound as errors and possibly unbound ones as warnings; both were silenced. `pymedphys dev imports` exits with status 1 when a module fails to import, finds the virtual environment's interpreter on Windows, and does not count test modules that skip themselves with `pytest.importorskip`. [PR #2135](https://github.com/pymedphys/pymedphys/pull/2135)
 - Gamma logs to its module logger, `pymedphys._gamma.implementation.shell`, instead of the root logger. The speed-up and effect-of-noise gamma how-to notebooks use `pymedphys.gamma_pass_rate`. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
@@ -414,7 +402,6 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### (Potentially) breaking changes
 
-- `pymedphys._mosaiq.sessions.cluster_sessions` can return fewer sessions for intervals of a day or more or with fractional seconds; see "Corrected Mosaiq session counts for multi-day intervals" above. Empty and single-treatment inputs now return zero or one session respectively. Empty sites also return no sessions or offsets and a mean offset of `None` through the Mosaiq reporting helpers. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
 - The unused `lint`, `doctests`, and `propagate` extras have been removed. Install `pymedphys[dev]` for ruff and propagation tooling, `pymedphys[user,tests]` for tests and pylint, or `pymedphys[all]` for all development tools. PyMedPhys no longer directly requires `setuptools` or `typing-extensions`; its typing imports now use the standard library. The `user` and `all` extras drop direct requirements for `anyio`, `dicompyler-core`, `packaging`, and `trio-asyncio`, the `docs` and `all` extras drop `networkx`, and the `tests` and `all` extras rely on pylint to install `astroid`. Other dependencies still install some of these packages transitively; applications that use them must declare their own requirements. The lockfile loses ten packages, including Flask and Werkzeug, following removal of the unused `dash` dependency. [PR #2138](https://github.com/pymedphys/pymedphys/pull/2138)
 - `pymedphys.gamma` results change for evaluation grids with a single-value axis, such as single-slice evaluation doses; see "Gamma with single-slice evaluation doses" above. The earlier values depended on the coordinate origin and could be several times too high. The default `interp_algo="pymedphys"` now accepts such grids instead of raising `ValueError`. [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126)
 - `pymedphys.gamma` now raises `ValueError` for inputs that gave silently wrong or missing results. NaN or infinite values in either dose grid: a NaN in the reference made every result NaN, and one in the evaluation made results NaN near it. A `max_gamma` of 1 or less, which could report failing points as passing. A `global_normalisation` that is not finite and positive, including the default for an all-zero reference. Local gamma where an analysed reference point has zero dose, which was reported as NaN and so excluded; raise `lower_percent_dose_cutoff` above zero to exclude such points explicitly. [PR #2119](https://github.com/pymedphys/pymedphys/pull/2119)

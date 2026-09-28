@@ -67,8 +67,8 @@ any fallback.
 | Other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
 | Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests |
 | `.github/scripts/`, `integration-tests.yml`, `examples/`, or packaging filters (`.gitignore`, `.gitattributes`, `.hgignore`, including nested files) | Standard checks, plus integration tests |
-| Slow-test modules, their production inputs in `SLOW_TEST_SOURCES`, modules with doctests, or non-Python test fixtures | Adds integration tests |
-| Any path naming Mosaiq or a database (except documentation), or TRF, DICOM delivery, RT Plan and MetersetMap code in `DATABASE_SOURCES` | Adds database tests |
+| Slow-test modules, modules with doctests, or non-Python test fixtures | Adds integration tests |
+| Any path naming Mosaiq or a database (except documentation) | Adds database tests |
 | `conftest.py`, top-level package modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` | Adds integration and database tests |
 | A symlink, a submodule or an unverifiable merge diff | Every check a changed path can select, including integration and database tests |
 | `full-test` label | Every check and the full unit-test matrix |
@@ -103,13 +103,15 @@ or renames such a module. Shared test data, including `_data/urls.json` and
 `_data/hashes.json`, also selects integration tests because ordinary unit runs
 exclude the slow tests that consume some datasets.
 
-`SLOW_TEST_SOURCES` also selects the production code exercised by slow tests:
-TRF and DICOM delivery, RT Plan, MetersetMap, Pinnacle export, gamma and
-interpolation, RT Dose reading, anonymisation and pseudonymisation, and their
-DICOM helpers and CLI entry points. `DATABASE_SOURCES` covers the TRF, DICOM
-delivery, RT Plan and MetersetMap code used by the Mosaiq database comparisons.
-Update these lists when the tests gain a dependency or a module moves; policy
-tests verify that every listed source path exists.
+Pull requests therefore do not run the slow or database tests for changes to
+the package code those tests exercise, such as TRF, Pinnacle, MetersetMap,
+gamma or anonymisation code, unless the `full-test` or `database` label is
+added. Every push to `main` runs them, and the release workflow runs the slow
+tests before publishing. Add `full-test` to a pull request that changes such
+code substantially. When CI fails on a push to `main`, the `report-main-failure`
+job opens or comments on the issue titled "CI failed on main", linking to the
+run, so a failure that pull request checks could not see is noticed before a
+release. Close the issue once `main` is green again.
 
 Selected jobs need only `changes`, so they start alongside pre-commit and run
 whatever its result, and one run reports every result. The summary waits for
