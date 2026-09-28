@@ -66,3 +66,35 @@ def test_symbolic_link_out_of_directory_is_refused(tmp_path):
 
     with pytest.raises(ValueError):
         _path_within(directory, "link/012345.zip")
+
+
+def test_symbolic_link_inside_directory_is_the_entry_itself(tmp_path):
+    """Deleting a patient's zip file that is a link to another export removes
+    the link, not the other export."""
+    directory = tmp_path / "export"
+    directory.mkdir()
+    other_export = directory / "654321.zip"
+    other_export.write_bytes(b"another patient's export")
+    link = directory / "012345.zip"
+    try:
+        link.symlink_to(other_export)
+    except OSError:
+        pytest.skip("Creating symbolic links is not permitted here")
+
+    path = _path_within(directory, "012345.zip")
+    path.unlink()
+
+    assert not os.path.lexists(link)
+    assert other_export.read_bytes() == b"another patient's export"
+
+
+def test_symbolic_link_to_a_file_outside_directory_is_refused(tmp_path):
+    directory = tmp_path / "export"
+    directory.mkdir()
+    try:
+        (directory / "012345.zip").symlink_to(tmp_path / "012345.zip")
+    except OSError:
+        pytest.skip("Creating symbolic links is not permitted here")
+
+    with pytest.raises(ValueError):
+        _path_within(directory, "012345.zip")

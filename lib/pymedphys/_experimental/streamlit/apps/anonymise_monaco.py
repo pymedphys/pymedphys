@@ -38,17 +38,24 @@ def _path_within(directory: str | os.PathLike[str], name: str) -> pathlib.Path:
     """Return the path of the file ``name`` inside ``directory``.
 
     The patient ID typed into this app forms part of the names of the files
-    it creates and deletes, so a name that resolves anywhere other than inside
-    ``directory``, such as ``../012345.zip``, is refused.
+    it creates and deletes, so a name that leads anywhere other than inside
+    ``directory``, such as ``../012345.zip``, is refused. The path returned
+    is the entry ``name`` itself, so when it is a symbolic link the app acts
+    on the link, not on the file it points to; the link must also lead
+    inside ``directory``.
 
     Raises
     ------
     ValueError
-        If ``name`` does not resolve to a path inside ``directory``.
+        If ``name``, or the target of a symbolic link on its path, is not
+        inside ``directory``.
     """
     root = os.path.realpath(directory)
-    path = os.path.realpath(os.path.join(root, name))
-    if not path.startswith(os.path.join(root, "")):
+    inside = os.path.join(root, "")
+    path = os.path.normpath(os.path.join(root, name))
+    if not path.startswith(inside):
+        raise ValueError(f"The patient ID would place a file outside {root}")
+    if not os.path.realpath(path).startswith(inside):
         raise ValueError(f"The patient ID would place a file outside {root}")
 
     return pathlib.Path(path)
