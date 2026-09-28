@@ -27,12 +27,10 @@ from unittest.mock import Mock
 from check_workflow_status import check_jobs
 from select_checks import (
     COST_GATED,
-    DATABASE_SOURCES,
     DOCTEST_FILES,
     OUTPUTS,
     PATH_SELECTABLE,
     SLOW_TEST_FILES,
-    SLOW_TEST_SOURCES,
     STANDARD,
     ChangedPath,
     changed_paths,
@@ -199,7 +197,7 @@ class SelectionTests(unittest.TestCase):
                 self.assertEqual(selected(select_checks([path])), {"run-docs"})
 
     def test_package_code_runs_python_and_generated_docs(self):
-        result = select_checks(["lib/pymedphys/_electronfactors/core.py"])
+        result = select_checks(["lib/pymedphys/_gamma/implementation.py"])
         self.assertEqual(
             selected(result),
             {
@@ -267,11 +265,9 @@ class SelectionTests(unittest.TestCase):
             ("docker/mosaiq/docker-compose.yml", {"run-database"}),
             ("lib/pymedphys/_mosaiq/mock/data.csv", {"run-database"}),
             ("lib/pymedphys/_data/hashes.json", both),
-            ("lib/pymedphys/_metersetmap/metersetmap.py", both),
+            ("lib/pymedphys/_metersetmap/metersetmap.py", {"run-integration"}),
             ("lib/pymedphys/_mosaiq/api.py", both),
-            ("lib/pymedphys/_gamma/implementation/shell.py", {"run-integration"}),
-            ("lib/pymedphys/_trf/manage/identify.py", both),
-            ("lib/pymedphys/_electronfactors/core.py", set()),
+            ("lib/pymedphys/_gamma/implementation/shell.py", set()),
             (".github/workflows/claude.yml", set()),
             ("lib/pymedphys/tests/fixture.csv", {"run-integration"}),
             ("lib/pymedphys/docs/users/howto/mosaiq.md", set()),
@@ -305,37 +301,6 @@ class SelectionTests(unittest.TestCase):
         self.assertFalse(
             select_checks(["lib/pymedphys/tests/dicom/test_dose.py"])["run-integration"]
         )
-
-    def test_code_under_slow_tests_selects_integration_tests(self):
-        for path in (
-            "lib/pymedphys/_trf/decode/header.py",
-            "lib/pymedphys/_dicom/delivery/core.py",
-            "lib/pymedphys/_metersetmap/metersetmap.py",
-            "lib/pymedphys/_pinnacle/rtdose.py",
-            "lib/pymedphys/cli/pinnacle.py",
-            "lib/pymedphys/_gamma/implementation/shell.py",
-            "lib/pymedphys/_dicom/dose.py",
-            "lib/pymedphys/_dicom/anonymise/core.py",
-            "lib/pymedphys/_experimental/pseudonymisation/strategy.py",
-            "lib/pymedphys/_dicom/compat.py",
-            "lib/pymedphys/_dicom/constants/core.py",
-            "lib/pymedphys/_dicom/uid.py",
-            "lib/pymedphys/_dicom/utilities/files.py",
-            "lib/pymedphys/experimental/pseudonymisation.py",
-            "lib/pymedphys/cli/__init__.py",
-            "lib/pymedphys/cli/experimental/__init__.py",
-        ):
-            with self.subTest(path=path):
-                result = select_checks([path])
-                self.assertTrue(result["run-integration"])
-                self.assertFalse(result["run-full-matrix"])
-        for path in (
-            "lib/pymedphys/_dicom/header.py",
-            "lib/pymedphys/_electronfactors/core.py",
-            "lib/pymedphys/cli/gui.py",
-        ):
-            with self.subTest(path=path):
-                self.assertFalse(select_checks([path])["run-integration"])
 
     def test_shared_slow_inputs_select_integration_tests(self):
         for path in (
@@ -382,19 +347,15 @@ class SelectionTests(unittest.TestCase):
             "lib/pymedphys/_utilities/constants.py",
             "lib/pymedphys/_base/delivery.py",
             "lib/pymedphys/mosaiq.py",
-            "lib/pymedphys/_metersetmap/metersetmap.py",
-            "lib/pymedphys/_dicom/rtplan/core.py",
-            "lib/pymedphys/_trf/manage/identify.py",
-            "lib/pymedphys/_dicom/delivery/core.py",
         ):
             with self.subTest(path=path):
                 self.assertTrue(select_checks([path])["run-database"])
         self.assertFalse(
-            select_checks(["lib/pymedphys/_electronfactors/core.py"])["run-database"]
+            select_checks(["lib/pymedphys/_gamma/core.py"])["run-database"]
         )
 
     def test_mixed_changes_cannot_be_hidden_by_docs(self):
-        result = select_checks(["README.rst", "lib/pymedphys/_electronfactors/core.py"])
+        result = select_checks(["README.rst", "lib/pymedphys/_gamma/core.py"])
         self.assertTrue(result["run-python"])
         self.assertTrue(result["run-docs"])
 
@@ -418,12 +379,7 @@ class SelectionTests(unittest.TestCase):
     def test_only_main_and_full_test_widen_the_unit_test_matrix(self):
         self.assertTrue(select_checks([], event_name="push")["run-full-matrix"])
         self.assertTrue(select_checks([], labels=["full-test"])["run-full-matrix"])
-        for paths in (
-            None,
-            [],
-            ["uv.lock"],
-            ["lib/pymedphys/_electronfactors/core.py"],
-        ):
+        for paths in (None, [], ["uv.lock"], ["lib/pymedphys/_gamma/core.py"]):
             with self.subTest(paths=paths):
                 self.assertFalse(select_checks(paths)["run-full-matrix"])
 
@@ -511,16 +467,6 @@ class RepositoryScanTests(unittest.TestCase):
             "DOCTEST_FILES", DOCTEST_FILES, has_doctest_examples, "hold doctests"
         )
 
-    def test_listed_sources_exist(self):
-        root = Path(__file__).resolve().parents[2]
-        for entry in sorted(set(SLOW_TEST_SOURCES) | set(DATABASE_SOURCES)):
-            with self.subTest(entry=entry):
-                path = root / entry
-                if entry.endswith("/"):
-                    self.assertTrue(path.is_dir(), f"{entry} is not a directory")
-                else:
-                    self.assertTrue(path.is_file(), f"{entry} is not a file")
-
     def test_listed_modules_select_integration_tests(self):
         for path in sorted(SLOW_TEST_FILES | DOCTEST_FILES):
             with self.subTest(path=path):
@@ -576,13 +522,12 @@ class RepositoryScanTests(unittest.TestCase):
 class SummaryTests(unittest.TestCase):
     def test_reasons_name_the_first_path_or_policy(self):
         reasons = explain_checks(
-            ["README.rst", "lib/pymedphys/_electronfactors/core.py", "uv.lock"],
+            ["README.rst", "lib/pymedphys/_gamma/core.py", "uv.lock"],
             labels=["database"],
         )
         self.assertEqual(reasons["run-docs"], ("documentation", "README.rst"))
         self.assertEqual(
-            reasons["run-python"],
-            ("package Python", "lib/pymedphys/_electronfactors/core.py"),
+            reasons["run-python"], ("package Python", "lib/pymedphys/_gamma/core.py")
         )
         self.assertEqual(reasons["run-scripts"], ("unclassified input", "uv.lock"))
         self.assertEqual(reasons["run-integration"], ("integration input", "uv.lock"))

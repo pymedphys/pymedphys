@@ -1,4 +1,3 @@
-# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2021 Derek Lane, Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,10 +41,8 @@ def cluster_sessions(
         ** The list is assumed to be sorted in increasing date/time order
 
     interval : timedelta
-        An exclusive upper bound on the gap between consecutive treatment
-        times in the same session. A gap equal to the interval starts a new
-        session. Single linkage can join a session whose total duration is
-        longer than this interval.
+        the minimum interval between tx_datetimes to include in the
+        same cluster
 
     Returns
     -------
@@ -53,9 +50,6 @@ def cluster_sessions(
         * session number, starting at 1 and incrementing
         * start_session: datetime when the session starts
         * end_session: datetime when the session ends
-
-        No treatments yield no sessions; one treatment yields one session
-        whose start and end are that treatment time.
 
     Examples
     --------
@@ -75,17 +69,9 @@ def cluster_sessions(
     # turn the datetimes in to timestamps (seconds in the epoch)
     timestamps = [[tx_datetime.timestamp()] for tx_datetime in tx_datetimes]
 
-    # Clustering needs at least two samples.
-    if len(timestamps) < 2:
-        for session_number, timestamp in enumerate(timestamps, start=1):
-            start_session = datetime.fromtimestamp(timestamp[0])
-            yield (session_number, start_session, start_session)
-        return
-
-    # set up the cluster algorithm; total_seconds() keeps whole days, which
-    # timedelta.seconds drops
+    # set up the cluster algorithm
     cluster_algo = sklearn.cluster.AgglomerativeClustering(
-        n_clusters=None, distance_threshold=interval.total_seconds(), linkage="single"
+        n_clusters=None, distance_threshold=interval.seconds, linkage="single"
     )
 
     # and fit the timestamps to clusters
@@ -156,8 +142,7 @@ def sessions_for_site(
     # cluster_sessions expects a sorted list, so extract
     #   the Tx_DtTm value from each row
     dose_hst_datetimes = [row[0] for row in result]
-    if dose_hst_datetimes:
-        assert isinstance(dose_hst_datetimes[0], datetime)
+    assert isinstance(dose_hst_datetimes[0], datetime)
     return cluster_sessions(dose_hst_datetimes)
 
 
