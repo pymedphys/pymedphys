@@ -34,24 +34,32 @@ def _version_3_table(rows):
     )
 
 
-def test_the_layouts_that_decode_a_table_are_found():
+def test_the_layouts_that_fit_a_table_are_found():
     table = _version_3_table(5)
 
-    layouts = detect.search_for_possible_decoding_options(
-        table, len(ITEM_PARTS), ITEM_PARTS
-    )
+    layouts = detect.search_for_possible_decoding_options(table, len(ITEM_PARTS))
 
     # Layouts 2 and 3 are identical, and a 12 byte row splits evenly into the
     # 4 byte rows of layout 1. Layout 4's 16 byte rows do not fit.
     assert layouts == [1, 2, 3]
 
 
-def test_a_table_no_layout_decodes_is_reported():
+def test_a_table_no_layout_fits_is_reported():
     table = _version_3_table(5)[:-1]
 
-    assert not detect.search_for_possible_decoding_options(
-        table, len(ITEM_PARTS), ITEM_PARTS
-    )
+    assert not detect.search_for_possible_decoding_options(table, len(ITEM_PARTS))
+
+
+def test_a_new_item_part_does_not_hide_the_layouts_that_fit():
+    # A newer linac software version may log a column PyMedPhys cannot name
+    # yet, in a row layout it already knows.
+    item_parts = np.array([2240, 111, 1, 2], dtype=np.int16)
+    table = _version_3_table(5)
+
+    layouts = detect.search_for_possible_decoding_options(table, len(item_parts))
+
+    assert layouts == [1, 2, 3]
+    assert detect.unknown_item_parts(item_parts) == ["1_2"]
 
 
 def test_item_parts_without_a_column_name_are_reported():
@@ -61,7 +69,7 @@ def test_item_parts_without_a_column_name_are_reported():
     assert detect.unknown_item_parts(ITEM_PARTS) == []
 
 
-def test_the_command_fails_when_no_layout_decodes(tmp_path, monkeypatch):
+def test_the_command_fails_when_no_layout_fits(tmp_path, monkeypatch):
     monkeypatch.setattr(detect, "detect_file_encoding", lambda filepath: [])
 
     with pytest.raises(SystemExit) as raised:
@@ -70,7 +78,7 @@ def test_the_command_fails_when_no_layout_decodes(tmp_path, monkeypatch):
     assert raised.value.code != 0
 
 
-def test_a_real_file_decodes_with_the_layout_its_header_names():
+def test_a_real_file_fits_the_layout_its_header_names():
     path = pymedphys.data_path("negative-metersetmap.trf")
     with open(path, "rb") as f:
         header_contents, _ = split_into_header_table(f.read())

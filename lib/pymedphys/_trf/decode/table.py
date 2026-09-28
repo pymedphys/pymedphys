@@ -40,6 +40,13 @@ def decode_trf_table(trf_table_contents, header_table_contents):
     return table_dataframe
 
 
+def row_length(version, item_parts_length):
+    """Return the number of bytes in each row of a table of this version."""
+    layout = CONFIG["version_row"][str(version)]
+
+    return layout["lg_scale"] * item_parts_length + layout["offset"]
+
+
 def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
     column_names_from_dict = CONFIG["item_part_names"]
     column_names_from_data = [
@@ -49,8 +56,7 @@ def decode_rows(trf_table_contents, version, item_parts_length, item_parts):
 
     dtype = CONFIG["version_row"][str(version)]["dtype"]
     offset = CONFIG["version_row"][str(version)]["offset"]
-    lg_scale = CONFIG["version_row"][str(version)]["lg_scale"]
-    line_grouping = lg_scale * item_parts_length + offset
+    line_grouping = row_length(version, item_parts_length)
 
     if version == 1:
         decoded_rows = [
