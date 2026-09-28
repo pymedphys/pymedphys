@@ -32,7 +32,7 @@ for Windows, Linux, or macOS. With Git and
 git clone https://github.com/pymedphys/pymedphys.git
 cd pymedphys
 uv python install 3.14
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.14 --locked
 uv run pre-commit install
 ```
 

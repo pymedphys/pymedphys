@@ -150,7 +150,7 @@ Static type checking for type safety.
 
 - **Jobs**:
   - `type-check`: Pyright, the blocking type checker, then MyPy, a secondary
-    checker run from the locked `dev` extra. MyPy is optional: its step uses
+    checker run from the locked `lint` dependency group, with the `tests` and `ai` extras so that both checkers see every import. MyPy is optional: its step uses
     `continue-on-error`, so a MyPy failure marks the step and adds a run
     annotation but leaves the job green. It runs even when Pyright fails
 - Runs when the selector chooses the Python checks, even if pre-commit fails
@@ -163,7 +163,7 @@ Fast unit tests with smart matrix strategy.
   - Quick mode for other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
-  - Installs the `user` extra so the headless Streamlit GUI tests run
+  - Installs the `tests` extra, which includes `user`, so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
   - JUnit XML report generation
@@ -294,7 +294,7 @@ into the project environment.
 
 - **Scans**:
   - `dependency-audit`: pip-audit over an export of `uv.lock` containing all
-    extras. The audit runs on Ubuntu/Python 3.12 and evaluates dependency
+    extras and dependency groups. The audit runs on Ubuntu/Python 3.12 and evaluates dependency
     markers for that environment; it is not a separate audit of every
     OS/Python combination. Advisory on pull requests and pushes so a
     newly published advisory cannot turn an unrelated commit red; blocking on
@@ -356,13 +356,16 @@ Standardised project setup for all workflows.
 
 - **Features**:
   - Python setup with configurable version
-  - uv package manager with caches separated by extras (tool-only jobs use
-    their job ID), so a small tool cache cannot claim the dependency cache
+  - uv package manager with caches separated by extras and dependency groups
+    (jobs that install neither use their job ID), so a small tool cache cannot claim the dependency cache
     needed by scientific jobs. setup-uv's own key adds the OS and the full
     Python version
   - PyMedPhys data caching, through `actions/cache-data`, only for jobs that
     consume data
-  - Dependency installation with extras
+  - Dependency installation with the requested extras and dependency groups,
+    always without the default `dev` group, which holds every extra and tool.
+    It sets `UV_NO_DEFAULT_GROUPS=1` for the rest of the job, so later `uv run`
+    steps do not install that group either
   - Tool-only setup for jobs that do not need an installed project
 
 ### `actions/cache-data/action.yml`
@@ -431,8 +434,10 @@ The trusted publisher registered with PyPI must match this repository,
 Read the Docs builds and hosts
 [docs.pymedphys.com](https://docs.pymedphys.com/), outside GitHub Actions. It
 reads `.readthedocs.yml`, which installs the same locked environment as the
-`Documentation` workflow, with `uv sync` from `uv.lock` (the project, the
-`docs` extra, and the default `dev` group), runs `pymedphys dev docs --prep`,
+`Documentation` workflow, with `uv sync` from `uv.lock` (the project and the
+`docs` dependency group). Read the Docs does not pass `--no-default-groups`, so
+it also installs the default `dev` group, which holds every extra and tool,
+unless `UV_NO_DEFAULT_GROUPS=1` is set in the project's Read the Docs settings, runs `pymedphys dev docs --prep`,
 and fails on Sphinx warnings. Automation rules in the Read the Docs dashboard,
 not this repository, decide which pushes and pull requests it builds:
 
@@ -641,7 +646,7 @@ act pull_request -W .github/workflows/ci.yml
 
 ```bash
 # Install with dev dependencies
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.14 --locked
 
 # Run all pre-commit hooks
 uv run pre-commit run --all-files

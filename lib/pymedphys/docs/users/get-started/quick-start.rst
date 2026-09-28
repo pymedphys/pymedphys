@@ -83,16 +83,12 @@ For most users:
 
     uv pip install "pymedphys[user]"
 
-Other common installs
----------------------
+Other installs
+--------------
 
-If you need a narrower install, here are some common patterns:
-
-.. code:: bash
-
-    uv pip install "pymedphys[dicom,cli]"
-    uv pip install "pymedphys[mosaiq,cli]"
-    uv pip install "pymedphys[user,icom]"
+The older ``cli``, ``dicom``, ``icom``, and ``mosaiq`` extras now install
+the same packages as ``user``, so existing commands that use them keep
+working. The optional ``ai`` extra adds the experimental AI chat app.
 
 Because ``.venv`` exists in the current folder, ``uv pip install`` will
 install into that environment automatically.

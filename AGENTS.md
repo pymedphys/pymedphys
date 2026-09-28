@@ -9,7 +9,7 @@ the [contributor language policy](CONTRIBUTING.md#language), for every change.
 
 ```bash
 # Install with uv (required for development)
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.14 --locked
 
 # Install pre-commit hooks
 uv run -- pre-commit install
@@ -235,15 +235,20 @@ Use this list wherever metadata needs the maintainers.
 
 ### Dependencies and Extras
 
-The project uses uv with optional dependency groups:
+Extras (`[project.optional-dependencies]`) are published and are for people who install PyMedPhys. Dependency groups (`[dependency-groups]`) are not published and are for working on PyMedPhys from a checkout. uv.lock pins both.
 
-- `user`: Standard user installation
-- `ai`: The Anthropic dependencies of the experimental Mosaiq chat app; opt-in, never part of `user`
-- `all`: All features including development tools
-- `dev`: Development tools (linting, formatting)
-- `docs`: Documentation building
-- `tests`: Testing dependencies
-- Specific features: `dicom`, `mosaiq`, `icom`, etc.
+- Extras:
+  - `user`: every dependency of the library, CLI, and GUI; the documented install.
+  - `ai`: the experimental Mosaiq chat app's Anthropic dependencies; opt-in, never part of `user`.
+  - `tests`: `user` plus what running the installed test suite needs.
+  - `all`: `user`, `ai`, and `tests`.
+  - `cli`, `dicom`, `icom`, `mosaiq`: aliases for `user`, kept so existing install commands work. Do not add packages to them or add new feature extras without a CI job that installs the extra alone and exercises its feature.
+- Groups:
+  - `dev`, the default: PyMedPhys with every extra, plus the `docs`, `lint`, and `pre-commit` groups. A plain `uv sync` installs it.
+  - `docs`: the documentation build, including the packages its notebooks run.
+  - `lint`: linters, type checkers, and stubs.
+  - `pre-commit` and `script-tests`: the small sets their CI jobs install on their own.
+- Put a tool that only contributors or CI use in a group, never an extra. CI jobs install only what they need, through the `extras` and `groups` inputs of `.github/actions/setup-project`, which always passes `--no-default-groups`.
 
 ### Optional Dependencies
 
@@ -502,7 +507,7 @@ detailed explanations of individual features.
 When updating dependencies:
 
 1. Update version constraints in `pyproject.toml`
-2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked --extra all --group dev` to regenerate `uv.lock`
+2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked` to regenerate `uv.lock`
 3. Run `uv run pymedphys dev propagate` to regenerate the exported
    `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`

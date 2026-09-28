@@ -7,7 +7,9 @@ PyMedPhys can be installed with very few dependencies, but most of its features 
 - `pip install pymedphys` is the **base install**. It installs PyMedPhys and its required dependencies only, which today is just `tomlkit`.
 - `pip install "pymedphys[user]"` also installs the optional packages that PyMedPhys's features use. The name in square brackets is an **extra**: a named set of optional dependencies, declared under `[project.optional-dependencies]` in `pyproject.toml`.
 
-`user` is the extra to recommend. It covers every feature except the experimental AI chat app, which has its own `ai` extra. The narrower extras, such as `dicom`, each lack some dependencies of the feature they are named after, so a user who installs one of them can still hit a missing package.
+`user` is the extra to recommend. It covers every feature except the experimental AI chat app, which has its own `ai` extra. The older feature extras, such as `dicom`, are now aliases that install the same packages as `user`.
+
+Extras are for people who install PyMedPhys. The tools for working on PyMedPhys itself, such as linters and the documentation build, are in **dependency groups** under `[dependency-groups]`, which are not published to PyPI. `uv sync` in a source checkout installs every extra and every tool, through the default `dev` group.
 
 ## How lazy imports work
 
@@ -64,7 +66,7 @@ Tools such as `inspect`, `doctest`, and IDEs ask objects whether they have attri
 
 ### Add a new optional dependency
 
-1. Add the distribution to the extra that the feature belongs to, normally `user`, in `pyproject.toml`.
+1. Add the distribution to the extra that the feature belongs to, normally `user`, in `pyproject.toml`. A tool used only for working on PyMedPhys goes in a dependency group instead, such as `lint` or `docs`.
 2. Run `uv lock` and `pymedphys dev propagate`, which regenerates `dependency-extra.txt` and the other generated files. CI fails if they are out of date.
 3. Add an `import` statement for it to `lib/pymedphys/_imports/imports.py`. Register each submodule that code uses and that the package does not import itself (see below).
 4. If the import name differs from the distribution name, as with `import yaml` from `PyYAML`, add the pair to `DISTRIBUTION_FOR_IMPORT` in `lib/pymedphys/_extras.py`.
@@ -119,9 +121,8 @@ Every other module must import on a base install. Only add an entry when a modul
 - The same file checks that the Streamlit modules import once `user` is installed, that the messages name the right extra, that introspection does not fail, and that the registry matches `pyproject.toml`. The check for the AI modules is skipped wherever the `ai` extra is not installed, which currently includes CI.
 - **`pymedphys dev imports`** checks the same policy against real installs. It creates a virtual environment, installs PyMedPhys without extras, imports each base-tier module in its own interpreter, then installs the `user`, `ai`, and `tests` extras and imports everything else. It needs network access, so CI does not run it.
 
-## Known gaps
+## Known gap
 
 - The command line reads `~/.pymedphys/config.toml` with the optional `toml` package, so on a base install every `pymedphys` command fails when that file exists.
-- The narrower extras, such as `dicom` and `mosaiq`, do not include everything their features need.
 
 [#2072](https://github.com/pymedphys/pymedphys/issues/2072) has the background to this page.
