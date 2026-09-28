@@ -104,14 +104,21 @@ def test_modules_without_a_required_extra_import_on_a_base_install(tmp_path):
     assert result["failures"] == {}
 
 
-def test_modules_that_need_an_extra_import_with_it(tmp_path):
-    for module in ("streamlit", "anthropic", "trio", "httpx2"):
+# Import names of a few packages that only each extra provides, to skip where
+# the extra is not installed. The unit test jobs install ``user`` but not
+# ``ai``, so only the ``user`` case runs there.
+_EXTRA_MARKERS = {"user": ("streamlit",), "ai": ("anthropic", "trio", "httpx2")}
+
+
+@pytest.mark.parametrize("extra", sorted(_EXTRA_MARKERS))
+def test_modules_that_need_an_extra_import_with_it(tmp_path, extra):
+    for module in _EXTRA_MARKERS[extra]:
         pytest.importorskip(module)
 
     names = [
         name
         for name in import_policy.module_names()
-        if import_policy.required_extra(name) in ("user", "ai")
+        if import_policy.required_extra(name) == extra
     ]
 
     result = _run(tmp_path, _IMPORT_EACH, names, base_install=False)
