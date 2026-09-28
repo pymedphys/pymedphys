@@ -230,8 +230,9 @@ def test_imports_map_to_their_distribution(import_name, distribution):
 @pytest.mark.parametrize(
     "import_name, extra",
     [
-        # ``user`` is suggested wherever it applies: the narrower extras
-        # each miss dependencies of the features they are named after.
+        # ``user`` is suggested wherever it applies, even where a narrow
+        # extra such as ``dicom`` also provides the package: ``user`` always
+        # covers the feature being used.
         ("numpy", "user"),
         ("pydicom.dataset", "user"),
         ("pandas", "user"),

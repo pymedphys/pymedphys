@@ -99,13 +99,54 @@ tests = [
 # Everything that can be installed from PyPI.
 all = ["pymedphys[user,ai,tests]"]
 
-# Former feature extras, kept as aliases for ``user`` so that existing install
-# commands keep working. Each used to list only part of what its feature needed,
-# so installing one could leave that feature unable to run.
+# Smaller installs for one feature each. Each lists every package its feature
+# uses, and a CI job installs it alone and runs that feature's tests. Combine
+# them as needed, for example "pymedphys[gamma,dicom]" for gamma on DICOM files.
+# Gamma: pymedphys.gamma and gamma_pass_rate. numba runs the default
+# interpolation; SciPy the "scipy" option and unevenly spaced axes.
+gamma = [
+  "numba",
+  "numpy>=1.26",
+  "scipy",
+]
+# DICOM: pymedphys.dicom and the pymedphys dicom commands, including listen and
+# send. toml reads ~/.pymedphys/config.toml, which every command reads when it
+# exists.
+dicom = [
+  "numpy>=1.26",
+  "pydicom>=3.0",
+  "pynetdicom",
+  "scipy",
+  "shapely>=1.7.0",
+  "toml",
+]
+# Mosaiq: pymedphys.mosaiq and Delivery.from_mosaiq. keyring stores the
+# credentials that connect() asks for when none are given.
+mosaiq = [
+  "keyring",
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "pymssql",
+]
+
+# iCOM: pymedphys icom listen and Delivery.from_icom.
+icom = [
+  "numpy>=1.26",
+  "toml",
+]
+# TRF: pymedphys.trf.read, Delivery.from_trf, and the trf to-csv and detect
+# commands. pymedphys.trf.identify and trf orchestrate also look up Mosaiq,
+# so they need "pymedphys[trf,mosaiq]".
+trf = [
+  "attrs",
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "python-dateutil",
+  "toml",
+]
+
+# The command line spans every feature, so it installs what user installs.
 cli = ["pymedphys[user]"]
-dicom = ["pymedphys[user]"]
-icom = ["pymedphys[user]"]
-mosaiq = ["pymedphys[user]"]
 
 # Dependency groups are for working on PyMedPhys from a source checkout. They
 # are not published to PyPI, and uv.lock pins them together with the extras.
@@ -154,6 +195,24 @@ lint = [
 pre-commit = [
   "pre-commit",
   "ruff",
+]
+# The test runner and the packages the tests themselves use, without any
+# feature's packages. CI installs it with one narrow extra to check that the
+# extra holds everything its feature's tests need. tqdm shows progress when
+# test data is downloaded.
+test-runner = [
+  "hypothesis",
+  "psutil",
+  "pytest",
+  "pytest-timeout",
+  "pytest-xdist",
+  "tqdm",
+]
+# The mock Mosaiq database that the Mosaiq database tests load, used with the
+# mosaiq extra and test-runner to test that extra against SQL Server.
+mosaiq-db-fixtures = [
+  "sqlalchemy",
+  "toml",
 ]
 # CI installs only this group, hash-checked from uv.lock, to run the
 # .github/scripts tests in parallel without the project.

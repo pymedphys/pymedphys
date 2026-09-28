@@ -43,8 +43,10 @@ DISTRIBUTION_FOR_IMPORT = {
 BASE_DISTRIBUTIONS = frozenset({"tomlkit"})
 
 # The extras to suggest, in order of preference. ``user`` comes first because
-# it holds every dependency of every feature except the AI app. The other
-# extras either repeat ``user`` or build on it. Development tools are in
+# it holds every dependency of every feature except the AI app, so it always
+# fixes the error. The narrow feature extras, such as ``dicom``, are never
+# suggested: one missing package usually means a whole feature is missing, and
+# the code cannot tell which feature the user wants. Development tools are in
 # dependency groups, which are not published, so no extra provides them.
 EXTRA_PREFERENCE = ("user", "ai", "tests")
 
