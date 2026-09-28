@@ -102,6 +102,28 @@ def test_get_treatments(connection):
 
 
 @pytest.mark.mosaiqdb
+def test_the_test_database_keeps_decimal_places(connection):
+    # SQL Server stores a DECIMAL with no scale as a whole number, which
+    # would round values such as a control point's Index of 33.333 to 33.
+    points = _csv_rows("TxFieldPoint.csv", FIELD_ID)
+    expected = sorted((int(row["Point"]), float(row["Index"])) for row in points)
+
+    rows = pymedphys.mosaiq.execute(
+        connection,
+        """
+        SELECT Point, [Index]
+        FROM TxFieldPoint
+        WHERE FLD_ID = %(field_id)s
+        ORDER BY Point
+        """,
+        {"field_id": FIELD_ID},
+    )
+
+    assert [(point, float(index)) for point, index in rows] == expected
+    assert any(index % 1 for _, index in expected)
+
+
+@pytest.mark.mosaiqdb
 def test_delivery_from_mosaiq_matches_the_field_record(connection):
     # Needs only the mosaiq extra, unlike the comparison with DICOM and TRF
     # below. The expected values come from the CSV the test database is loaded
@@ -120,9 +142,7 @@ def test_delivery_from_mosaiq_matches_the_field_record(connection):
     assert delivery.mu[0] == 0
     assert delivery.mu[-1] == pytest.approx(meterset)
     assert np.all(np.diff(delivery.mu) >= 0)
-    # The test database stores Index as DECIMAL with no decimal places, so
-    # 33.333 becomes 33, which moves the MU by up to half a percent of Index.
-    np.testing.assert_allclose(delivery.mu, index / index[-1] * meterset, atol=1)
+    np.testing.assert_allclose(delivery.mu, index / index[-1] * meterset)
     # Angles are returned in the range -180 to 180 degrees.
     for angles, column in [
         (delivery.gantry, "Gantry_Ang"),
