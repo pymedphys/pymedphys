@@ -316,9 +316,7 @@ into the project environment.
 - **Coverage**: Change selection applies only to PRs; scheduled and manual runs scan
   even when the last commit did not change security-related files
 - **Summary**: Requires every selected scan to succeed
-- **Not in the workflow**: secret scanning and push protection are GitHub
-  repository settings (Settings, Code security and analysis), and Dependabot
-  raises dependency alerts from the same lockfiles
+- **Not in the workflow**: CodeQL code scanning uses GitHub's default setup for Python and GitHub Actions with the default query suite. It runs on pushes to `main`, on pull requests from branches of this repository (not forks), and weekly, and its pull request check is not required for merging. Secret scanning with push protection, and Dependabot alerts, malware alerts, and security updates, are also repository settings (Settings, then Advanced Security); Dependabot raises its alerts from the same lockfiles
 
 #### `deps.yml`
 Automated dependency updates for Python packages.
