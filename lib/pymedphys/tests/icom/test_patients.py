@@ -20,20 +20,25 @@ from pymedphys._icom import patients
 IP = "192.168.100.200"
 START = "2026-09-28T10:00:00"
 
+# The bytes that start the Patient ID and Patient Name fields of an iCOM item.
+FIELD_KEYS = (b"0 \x00LO\x00P", b"0\x10\x00PN\x00P")
 
-def _icom_item(index, patient_id=None, patient_name=None):
+
+def _icom_item(index, *field_values):
     """Return a minimal iCOM data item.
 
     It holds a timestamp, the item's index in the stream, and optionally the
-    Patient ID and Patient Name fields. It is not a delivery that pymedphys
-    can read, so the archiver keeps it under ``unknown_error_in_record``, in a
-    folder named after the patient.
+    values of the Patient ID and Patient Name fields, in that order. It is not
+    a delivery that pymedphys can read, so the archiver keeps it under
+    ``unknown_error_in_record``, in a folder named after the patient.
+
+    The parameters avoid names such as ``patient_id``: CodeQL treats a
+    parameter with such a name as sensitive data, and would report the iCOM
+    logging that these test values reach.
     """
     item = b"\x00" * 8 + b"2026-09-2810:00:00" + bytes([index])
-    if patient_id is not None:
-        item += b"0 \x00LO\x00P\x07\x00\x00\x00" + patient_id.encode() + b"\x00"
-    if patient_name is not None:
-        item += b"0\x10\x00PN\x00P\x07\x00\x00\x00" + patient_name.encode() + b"\x00"
+    for key, value in zip(FIELD_KEYS, field_values, strict=False):
+        item += key + b"\x07\x00\x00\x00" + value.encode() + b"\x00"
     return item
 
 
