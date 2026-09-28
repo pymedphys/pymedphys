@@ -175,6 +175,10 @@ Use this list wherever metadata needs the maintainers.
   `~/.streamlit`. The Zenodo cache stays shared through `PYMEDPHYS_DATA_DIR`,
   which `pymedphys._data.download.get_data_dir` honours. Write test outputs to
   `tmp_path`, never beside cached data files.
+- Tests must also pass from an installed wheel, because the published-release
+  jobs run the installed package's suite. Read only files inside the package,
+  and take the package's own requirements from `importlib.metadata`, never from
+  `pyproject.toml` or other files outside `lib/pymedphys`.
 - `dev tests` and `dev doctests` bypass user logging configuration during CLI
   startup, before pytest can isolate the home directory. Keep this boundary:
   opening a configured log can modify user files before any test runs.

@@ -23,16 +23,16 @@ run on every platform in the unit test matrix.
 import importlib.metadata
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import textwrap
-import tomllib
 
 import pytest
 
 from pymedphys import _extras
 from pymedphys._dev import import_policy
-from pymedphys._dev.paths import LIBRARY_PATH, REPO_ROOT
+from pymedphys._dev.paths import LIBRARY_PATH
 from pymedphys._imports import _parse
 
 BASE_INSTALL_SCRIPT = pathlib.Path(__file__).with_name("base_install.py")
@@ -267,10 +267,13 @@ def test_other_missing_imports_are_explained(import_name, expected):
 
 
 def test_every_registered_import_comes_from_a_declared_dependency():
-    pyproject = tomllib.loads(REPO_ROOT.joinpath("pyproject.toml").read_text())
+    # Installed metadata, not pyproject.toml, so that this also runs from an
+    # installed wheel, as the published-release tests do.
+    requirements = importlib.metadata.requires("pymedphys") or []
     base = {
-        requirement.split(";")[0].split("[")[0].split(">")[0].split("=")[0].strip()
-        for requirement in pyproject["project"]["dependencies"]
+        re.match(r"[A-Za-z0-9._-]+", requirement).group()
+        for requirement in requirements
+        if "extra ==" not in requirement
     }
     assert base == set(_extras.BASE_DISTRIBUTIONS)
 
