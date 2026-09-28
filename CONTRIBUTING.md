@@ -15,12 +15,12 @@ Maintainers then remove it:
 
 1. Edit the post to replace the information with `[REDACTED]`, or delete the comment. Hiding a comment is not enough, because anyone can expand it again.
 2. Open the post's edit history (**edited**), and delete each revision that contains the information (**Options**, then **Delete revision from history**).
-3. If the information is in an issue's title or cannot be removed by editing, an admin deletes the issue. The issue's timeline keeps earlier titles, and in an organisation an owner must first allow admins to delete issues.
+3. If the information is in a title, or cannot be removed by editing, an admin deletes the issue or archives the pull request, because GitHub keeps every earlier title. An organisation owner must first allow admins to delete issues. Archiving hides a pull request from everyone except admins; to remove it permanently, ask GitHub Support.
 4. If the information was committed to a branch or pull request, follow GitHub's guide to [removing sensitive data from a repository](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository).
 5. Ask GitHub Support to remove any files that were attached to the post.
 6. Tell the person who posted it, so that they can follow their organisation's privacy procedures.
 
-The information is removed when it no longer appears in the post, its edit history, its title history, its attachments, or the repository's history. Copies in forks and clones, and emails that GitHub has already sent to people watching the repository, cannot be recalled.
+Then check while signed out of GitHub: the information must no longer appear in the post, its edit history, its earlier titles, its attachments, or the repository's history. Copies in forks and clones, and emails that GitHub has already sent to people watching the repository, cannot be recalled.
 
 ## Set up a development environment
 
