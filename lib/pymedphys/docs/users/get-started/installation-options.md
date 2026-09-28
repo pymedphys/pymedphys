@@ -112,7 +112,7 @@ DICOM files.
 | `dicom` | `pymedphys.dicom` and the `pymedphys dicom` commands, including `listen` and `send`. |
 | `mosaiq` | `pymedphys.mosaiq` and `pymedphys.Delivery.from_mosaiq`. |
 | `icom` | `pymedphys icom listen` and `pymedphys.Delivery.from_icom`. |
-| `trf` | `pymedphys.trf.read`, `pymedphys.Delivery.from_trf`, and the `pymedphys trf to-csv` command. Identifying TRF files against Mosaiq, with `pymedphys.trf.identify` or `pymedphys trf orchestrate`, needs `"pymedphys[trf,mosaiq]"`. |
+| `trf` | `pymedphys.trf.read`, `pymedphys.Delivery.from_trf`, and the `pymedphys trf to-csv` and `detect` commands. Identifying TRF files against Mosaiq, with `pymedphys.trf.identify` or `pymedphys trf orchestrate`, needs `"pymedphys[trf,mosaiq]"`. |
 | `cli` | The same as `user`, because the command line spans every feature. |
 
 These extras do not cover plotting helpers, such as

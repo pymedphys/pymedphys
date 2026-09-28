@@ -225,7 +225,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   - `dicom`: `pymedphys.dicom` and the `pymedphys dicom` commands. It adds NumPy, SciPy, Shapely, and toml to pydicom and pynetdicom.
   - `mosaiq`: `pymedphys.mosaiq` and `Delivery.from_mosaiq`. It adds keyring and NumPy, and drops attrs, scikit-learn, SQLAlchemy, and toml, which only TRF identification, private session clustering, and the test database used.
   - `icom`: `pymedphys icom listen` and `Delivery.from_icom`. It adds toml to NumPy.
-  - New `trf`: `pymedphys.trf.read`, `Delivery.from_trf`, and the `trf to-csv` command. `pymedphys.trf.identify` and `trf orchestrate` also look up Mosaiq, so they need `pymedphys[trf,mosaiq]`.
+  - New `trf`: `pymedphys.trf.read`, `Delivery.from_trf`, and the `trf to-csv` and `trf detect` commands. `pymedphys.trf.identify` and `trf orchestrate` also look up Mosaiq, so they need `pymedphys[trf,mosaiq]`.
   - `cli` now installs what `user` installs, because the command line spans every feature.
 - `pandas` is now required at `>=2.0` instead of `>=1.0.0`. The Mosaiq mock database loader uses `pandas.to_datetime(..., format="mixed")`, which pandas 2.0 introduced, so earlier pandas versions already failed there. The locked development environment moves from pandas 2.3.3 to pandas 3.0.6, so CI tests PyMedPhys with pandas 3; pandas 3 no longer installs `pytz`, which PyMedPhys does not use. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
 - The `user`, `tests`, and `all` extras now install `xlrd`, which reads the Excel 97-2003 workbook in which AAPM publishes the TG-263 structure names. [PR #2108](https://github.com/pymedphys/pymedphys/pull/2108)

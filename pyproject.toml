@@ -134,9 +134,9 @@ icom = [
   "numpy>=1.26",
   "toml",
 ]
-# TRF: pymedphys.trf.read, Delivery.from_trf, and the trf to-csv command.
-# pymedphys.trf.identify and trf orchestrate also look up Mosaiq, so they need
-# "pymedphys[trf,mosaiq]".
+# TRF: pymedphys.trf.read, Delivery.from_trf, and the trf to-csv and detect
+# commands. pymedphys.trf.identify and trf orchestrate also look up Mosaiq, so
+# they need "pymedphys[trf,mosaiq]".
 trf = [
   "attrs",
   "numpy>=1.26",
