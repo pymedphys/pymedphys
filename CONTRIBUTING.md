@@ -5,6 +5,23 @@ change depends on, and open a pull request for your changes.
 The older `master` and release-maintenance branches are retained as read-only
 history.
 
+## Keep patient data out of public posts
+
+Issues, pull requests, discussions, and their comments are public, and anyone can download the files attached to them. Never post anything that identifies a patient: clinical DICOM files, treatment or delivery records, logs, screenshots, or file names that show a patient's name, ID, or date of birth. Use anonymised or synthetic data instead.
+
+If identifying information is posted, tell the maintainers privately, by the email address in the [security policy](https://github.com/pymedphys/pymedphys/blob/main/SECURITY.md), rather than in a comment.
+
+Maintainers then remove it:
+
+1. Edit the post to replace the information with `[REDACTED]`, or delete the comment. Hiding a comment is not enough, because anyone can expand it again.
+2. Open the post's edit history (**edited**), and delete each revision that contains the information (**Options**, then **Delete revision from history**).
+3. If the information is in an issue's title or cannot be removed by editing, an admin deletes the issue. The issue's timeline keeps earlier titles, and in an organisation an owner must first allow admins to delete issues.
+4. If the information was committed to a branch or pull request, follow GitHub's guide to [removing sensitive data from a repository](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository).
+5. Ask GitHub Support to remove any files that were attached to the post.
+6. Tell the person who posted it, so that they can follow their organisation's privacy procedures.
+
+The information is removed when it no longer appears in the post, its edit history, its title history, its attachments, or the repository's history. Copies in forks and clones, and emails that GitHub has already sent to people watching the repository, cannot be recalled.
+
 ## Set up a development environment
 
 Start with the [workstation setup guides](https://docs.pymedphys.com/en/latest/contrib/setups/index.html)
