@@ -103,15 +103,17 @@ or renames such a module. Shared test data, including `_data/urls.json` and
 `_data/hashes.json`, also selects integration tests because ordinary unit runs
 exclude the slow tests that consume some datasets.
 
-Pull requests therefore do not run the slow or database tests for changes to
-the package code those tests exercise, such as TRF, Pinnacle, MetersetMap,
-gamma or anonymisation code, unless the `full-test` or `database` label is
-added. Every push to `main` runs them, and the release workflow runs the slow
-tests before publishing. Add `full-test` to a pull request that changes such
-code substantially. When CI fails on a push to `main`, the `report-main-failure`
-job opens or comments on the issue titled "CI failed on main", linking to the
-run, so a failure that pull request checks could not see is noticed before a
-release. Close the issue once `main` is green again.
+Changes outside the integration and database inputs listed above, such as
+TRF decoding, Pinnacle export or gamma implementation code, leave those tests
+unselected on a pull request. Add `full-test` to request both suites and the
+full unit-test matrix; `database` requests only the database suite. Modules
+with doctests, including `_metersetmap/metersetmap.py`, already select
+integration tests through the existing path rules. Every push to `main` runs
+both suites, and the release workflow runs the slow tests before publishing.
+Add `full-test` to a pull request that substantially changes code exercised by
+slow tests. When CI fails on a push to `main`, the `report-main-failure` job
+opens or comments on the issue titled "CI failed on main", linking to the run.
+Close the issue once `main` is green again.
 
 Selected jobs need only `changes`, so they start alongside pre-commit and run
 whatever its result, and one run reports every result. The summary waits for
