@@ -23,11 +23,13 @@ pytest.importorskip("streamlit")
 
 # The app imports the Streamlit utilities at import time, so this import must
 # come after the skip guard.
-from pymedphys._experimental.streamlit.apps import anonymise_monaco  # noqa: E402
+from pymedphys._experimental.streamlit.apps.anonymise_monaco import (  # noqa: E402
+    _path_within,
+)
 
 
 def test_file_name_resolves_inside_directory(tmp_path):
-    path = anonymise_monaco._path_within(tmp_path, "012345.zip")
+    path = _path_within(tmp_path, "012345.zip")
 
     assert path == pathlib.Path(os.path.realpath(tmp_path), "012345.zip")
 
@@ -41,7 +43,7 @@ def test_file_name_leaving_directory_is_refused(tmp_path, name):
     directory.mkdir()
 
     with pytest.raises(ValueError):
-        anonymise_monaco._path_within(directory, name)
+        _path_within(directory, name)
 
 
 def test_absolute_file_name_is_refused(tmp_path):
@@ -49,7 +51,7 @@ def test_absolute_file_name_is_refused(tmp_path):
     directory.mkdir()
 
     with pytest.raises(ValueError):
-        anonymise_monaco._path_within(directory, str(tmp_path / "012345.zip"))
+        _path_within(directory, str(tmp_path / "012345.zip"))
 
 
 def test_symbolic_link_out_of_directory_is_refused(tmp_path):
@@ -63,4 +65,4 @@ def test_symbolic_link_out_of_directory_is_refused(tmp_path):
         pytest.skip("Creating symbolic links is not permitted here")
 
     with pytest.raises(ValueError):
-        anonymise_monaco._path_within(directory, "link/012345.zip")
+        _path_within(directory, "link/012345.zip")
