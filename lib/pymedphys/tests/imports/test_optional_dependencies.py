@@ -239,8 +239,9 @@ def test_imports_map_to_their_distribution(import_name, distribution):
         ("PIL", "user"),
         ("anthropic", "ai"),
         ("pytest", "tests"),
+        # ``pymedphys dev imports`` and its tests use tabulate.
+        ("tabulate", "tests"),
         # Development tools are in dependency groups, not extras.
-        ("tabulate", None),
         ("pylint", None),
         ("not_a_dependency", None),
     ],
@@ -294,14 +295,8 @@ def test_every_registered_import_comes_from_a_declared_dependency():
         if root not in sys.stdlib_module_names
         and _extras.distribution_for(root) not in _extras.BASE_DISTRIBUTIONS
         and _extras.extra_for(root) is None
-        and root not in DEVELOPMENT_TOOL_IMPORTS
     ]
     assert undeclared == []
-
-
-# Registered imports that only ``pymedphys dev`` commands use. They come from
-# the ``dev`` dependency group, which installed metadata does not record.
-DEVELOPMENT_TOOL_IMPORTS = frozenset({"tabulate"})
 
 
 def test_the_distribution_table_matches_the_installed_packages():

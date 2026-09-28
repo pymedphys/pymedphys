@@ -93,6 +93,7 @@ tests = [
   "pytest-sugar",
   "pytest-timeout",
   "pytest-xdist",
+  "tabulate",  # pymedphys dev imports, which the test suite exercises
 ]
 
 # Everything that can be installed from PyPI.
@@ -118,7 +119,6 @@ dev = [
   {include-group = "lint"},
   {include-group = "pre-commit"},
   "rope",
-  "tabulate",
 ]
 # The documentation build, including the packages its executed notebooks use.
 # Read the Docs and the documentation CI job install only this group.

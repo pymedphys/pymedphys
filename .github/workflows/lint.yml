@@ -20,7 +20,8 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           extras: 'all'
-          groups: 'lint'
+          # docs: Pylint checks pymedphys._dev.docs, which imports Sphinx.
+          groups: 'lint docs'
 
       - name: Run pylint
         run: |

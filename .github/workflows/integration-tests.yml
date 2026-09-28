@@ -127,8 +127,11 @@ jobs:
         with:
           persist-credentials: false
 
-      # Building and propagation need only the project and uv.
+      # Building needs only the project and uv; propagation also formats the
+      # generated version file with Ruff, from the pre-commit group.
       - uses: ./.github/actions/setup-project
+        with:
+          groups: 'pre-commit'
 
       - name: Build the sdist, then the wheel from it
         if: inputs.run-wheel-build
