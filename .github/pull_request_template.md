@@ -1,46 +1,52 @@
+<!-- markdownlint-disable-file MD041 -->
+<!-- Write for readers who are physicists rather than full-time software developers: plain language and examples first, technical detail under "Reviewer focus". CONTRIBUTING.md, under "Open and review a pull request", has the rules. -->
+
 ## Summary
 
-Describe the change in a few sentences.
+<!-- In plain words: what changes for users, and why. -->
 
 ## Why
 
-Explain the motivation, bug, or context.
-
-Closes #
+<!-- The problem, with a concrete example of what went wrong, such as an error message or a wrong result. Link the issue if there is one, for example "Closes #123". -->
 
 ## What changed
 
+<!-- Each change by its effect, not only by the code it touches. Show before and after where it helps. -->
+
 -
--
--
+
+## Scope and what is deferred
+
+<!-- What this pull request covers, and what it leaves for later. -->
 
 ## How was this tested?
 
-List the commands you ran, or explain why no local testing was needed.
+<!-- The commands you ran and what they showed, or why no local testing was needed. -->
 
 ```bash
-# Example:
-# uv run pytest -m "not slow"
+# For example:
+# uv run pymedphys dev tests -m "not slow"
 ```
 
 ## Reviewer focus
 
-Call out any risky areas, assumptions, or places where you would like extra scrutiny.
+<!-- The technical detail a reviewer needs, and what to check first: risky areas, assumptions, and anything CI does not check. -->
 
 ## Breaking changes
 
-* [ ] None
-* [ ] Yes (describe below)
+- [ ] None
+- [ ] Yes (describe below)
 
 ## Documentation
 
-* [ ] Not needed
-* [ ] Updated in this PR
-* [ ] Follow-up doc change needed
+- [ ] Not needed (say why)
+- [ ] Updated in this pull request
+- [ ] Follow-up change needed
 
-Checklist
-* [ ] The diff is focused
-* [ ] I added or updated tests, or explained why not needed
-* [ ] I updated docs, or explained why not needed
-* [ ] I noted any breaking changes
-* [ ] I linked the relevant issue/discussion when applicable
+## Checklist
+
+- [ ] The pull request is focused on one concern
+- [ ] Tests or other evidence are included, or I explained why not
+- [ ] `CHANGELOG.md` has an entry that ends with a link to this pull request
+- [ ] Documentation is updated, or I explained why not
+- [ ] Breaking changes are noted
