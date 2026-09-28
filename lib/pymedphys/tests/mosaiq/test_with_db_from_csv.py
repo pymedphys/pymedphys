@@ -98,6 +98,7 @@ def test_get_treatments(connection):
 
 @pytest.mark.mosaiqdb
 def test_delivery_from_mosaiq(connection, trf_filepath, dicom_filepath):
+    pytest.importorskip("pydicom")  # from the dicom extra, not mosaiq
     trf_delivery = pymedphys.Delivery.from_trf(trf_filepath)
     dicom_delivery = pymedphys.Delivery.from_dicom(dicom_filepath)
     mosaiq_delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
@@ -118,6 +119,7 @@ def test_delivery_from_mosaiq(connection, trf_filepath, dicom_filepath):
 
 @pytest.mark.mosaiqdb
 def test_trf_identification(connection: pymedphys.mosaiq.Connection, trf_filepath):
+    pytest.importorskip("attr")  # identification needs "pymedphys[trf,mosaiq]"
     delivery_details = pymedphys.trf.identify(connection, trf_filepath, TIMEZONE)
     assert delivery_details.field_id == FIELD_ID
     assert str(delivery_details.first_name).lower() == FIRST_NAME.lower()

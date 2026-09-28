@@ -251,6 +251,7 @@ def test_cli_prints_file_count_not_paths(tmp_path, capsys, caplog, command):
 def test_streamlit_pseudonymise_failure_does_not_print_file_name(
     monkeypatch, capsys, caplog
 ):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
     from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
 
     caplog.set_level(logging.DEBUG)
@@ -382,6 +383,7 @@ def test_pseudonymise_cli_redacts_pydicom_value_messages(tmp_path, capsys, caplo
 
 @pytest.mark.pydicom
 def test_streamlit_pseudonymise_reports_any_error_by_type(monkeypatch, capsys, caplog):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
     from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
 
     caplog.set_level(logging.DEBUG)
@@ -407,6 +409,7 @@ def test_streamlit_pseudonymise_reports_any_error_by_type(monkeypatch, capsys, c
 def test_streamlit_pseudonymise_redacts_pydicom_value_messages(
     tmp_path, capsys, caplog
 ):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
     from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
 
     caplog.set_level(logging.DEBUG)
@@ -473,6 +476,7 @@ def test_commands_keep_paths_out_of_pydicom_reading_diagnostics(
 def test_streamlit_pseudonymise_keeps_upload_names_out_of_pydicom_diagnostics(
     tmp_path, capsys, caplog
 ):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
     from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
 
     caplog.set_level(logging.DEBUG)
