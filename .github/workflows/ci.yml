@@ -146,3 +146,31 @@ jobs:
           --conditional integration-tests=run-integration
           --conditional mosaiq-db-tests=run-database
           --conditional docs-check=run-docs
+
+  # Pull requests run the slow and database tests only for their own inputs or
+  # a label, so a push to main can be the first run to show such a failure.
+  # Record it in an issue rather than only in the Actions tab.
+  report-main-failure:
+    needs: [summary]
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="CI failed on main"
+          body="CI failed on main at $COMMIT: $RUN_URL"
+          number=$(gh issue list --state open --search "\"$title\" in:title" \
+            --json number,title --jq "map(select(.title == \"$title\")) | first | .number // empty")
+          if [[ -n "$number" ]]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi

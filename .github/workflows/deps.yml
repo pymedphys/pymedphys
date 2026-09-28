@@ -11,8 +11,15 @@ on:
 permissions:
   contents: read
 
+# Scheduled and manual runs share a single update branch.
+concurrency:
+  group: weekly-dependency-update
+  cancel-in-progress: false
+
 jobs:
   update:
+    # A shared PR branch must always be based on main.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -30,15 +37,6 @@ jobs:
             echo "::error::PYMEDPHYS_CI_BOT_ID is not set; the update PR needs the app token so that CI runs on it."
             exit 1
           fi
-
-      - name: Generate bot token
-        id: bot-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
-          private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
-          permission-contents: write
-          permission-pull-requests: write
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -90,6 +88,18 @@ jobs:
           wheel-test/bin/pymedphys --help
           wheel-test/bin/python -c "import pymedphys; print(pymedphys.__version__)"
 
+      # App tokens last an hour, and validation can take longer, so create the
+      # token only once it is needed.
+      - name: Generate bot token
+        id: bot-token
+        if: steps.update.outputs.changed == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
+          private-key: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Create PR
         if: steps.update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
@@ -103,6 +113,36 @@ jobs:
             lib/pymedphys/_version.py
           title: "chore: update dependencies"
           body-path: updates.md
-          branch: deps/update-${{ github.run_number }}
+          # One branch, so each week updates the open pull request instead of
+          # adding another.
+          branch: deps/weekly-update
           commit-message: "chore: update dependencies"
-          labels: dependencies
+          # full-test runs the whole unit-test matrix and the slow tests.
+          labels: |
+            dependencies
+            full-test
+
+  # A failed scheduled update is otherwise visible only in the Actions tab.
+  report-failure:
+    needs: update
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Weekly dependency update failed"
+          body="The scheduled dependency update failed: $RUN_URL"
+          number=$(gh issue list --state open --search "\"$title\" in:title" \
+            --json number,title --jq "map(select(.title == \"$title\")) | first | .number // empty")
+          if [[ -n "$number" ]]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
