@@ -1,0 +1,18 @@
+name: Suggestion or other issue
+description: Suggest an improvement, or raise anything that is not a bug report.
+body:
+  - type: checkboxes
+    id: patient-data
+    attributes:
+      label: Patient data
+      description: "Issues are public. Share only anonymised or synthetic data."
+      options:
+        - label: "Nothing in this issue identifies a patient. It includes no clinical DICOM files, and no screenshots, logs, or file names that show a patient's name, ID, or date of birth."
+          required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: "What would you like to change or discuss, and why? Include a concrete example if you can."
+    validations:
+      required: true
