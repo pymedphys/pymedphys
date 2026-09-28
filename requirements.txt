@@ -29,7 +29,9 @@ cloudpickle==3.1.2
     # via joblib
 colorama==0.4.6 ; sys_platform == 'win32'
     # via tqdm
-contourpy==1.3.3
+contourpy==1.3.3 ; python_full_version < '3.12'
+    # via matplotlib
+contourpy==1.4.0 ; python_full_version >= '3.12'
     # via matplotlib
 cryptography==50.0.1 ; sys_platform == 'linux'
     # via secretstorage
@@ -37,10 +39,8 @@ cycler==0.12.1
     # via matplotlib
 dbfread==2.0.7
     # via pymedphys
-fonttools==4.65.0
+fonttools==4.66.0
     # via matplotlib
-greenlet==3.5.6 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'
-    # via sqlalchemy
 h11==0.16.0
     # via uvicorn
 httptools==0.8.0
@@ -49,7 +49,7 @@ idna==3.20
     # via
     #   anyio
     #   requests
-imageio==2.37.4
+imageio==2.38.0
     # via pymedphys
 importlib-metadata==9.0.1 ; python_full_version < '3.12'
     # via keyring
@@ -128,7 +128,7 @@ numpy==2.5.3 ; python_full_version >= '3.12'
     #   shapely
     #   streamlit
     #   tifffile
-packaging==24.2
+packaging==26.3
     # via
     #   altair
     #   matplotlib
@@ -160,7 +160,7 @@ pydicom==3.0.2
     #   pynetdicom
 pylibjpeg-libjpeg==2.4.0
     # via pymedphys
-pymssql==2.4.1
+pymssql==2.4.2
     # via pymedphys
 pynetdicom==3.0.4
     # via pymedphys
@@ -193,7 +193,11 @@ rpds-py==2026.6.3
     #   referencing
 scikit-learn==1.9.1
     # via pymedphys
-scipy==1.17.1
+scipy==1.17.1 ; python_full_version < '3.12'
+    # via
+    #   pymedphys
+    #   scikit-learn
+scipy==1.18.1 ; python_full_version >= '3.12'
     # via
     #   pymedphys
     #   scikit-learn
@@ -203,15 +207,17 @@ shapely==2.1.2
     # via pymedphys
 six==1.17.0
     # via python-dateutil
-sqlalchemy==2.0.54
+sqlalchemy==2.1.1
     # via pymedphys
-starlette==1.6.0
+starlette==1.7.0
     # via streamlit
 streamlit==1.64.0
     # via pymedphys
 threadpoolctl==3.7.0
     # via scikit-learn
-tifffile==2026.3.3
+tifffile==2026.3.3 ; python_full_version < '3.12'
+    # via imageio
+tifffile==2026.9.20 ; python_full_version >= '3.12'
     # via imageio
 timeago==1.0.16
     # via pymedphys
@@ -235,7 +241,7 @@ tzdata==2026.4 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
 urllib3==2.8.0
     # via requests
-uvicorn==0.53.0
+uvicorn==0.54.0
     # via streamlit
 watchdog==6.0.0
     # via
