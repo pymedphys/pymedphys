@@ -84,7 +84,7 @@ def add_deid_tables_parser(dev_subparsers):
         "--source-dir",
         help=(
             "Read the source pages from this directory, laid out as NEMA's "
-            "output/chtml/ tree, instead of downloading them."
+            "output/ tree, instead of downloading them."
         ),
     )
     parser.add_argument(

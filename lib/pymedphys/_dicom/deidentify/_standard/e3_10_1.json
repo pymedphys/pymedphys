@@ -5,7 +5,7 @@
  "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
  "sources": [
   {
-   "path": "part15/sect_E.3.10.html",
+   "path": "chtml/part15/sect_E.3.10.html",
    "sha256": "101ac4aedd9d45fba8adaa35cab22820d6c0cbda82cdf51d7456f4bf3dafe3a0"
   }
  ],

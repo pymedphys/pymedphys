@@ -51,9 +51,9 @@ def test_anthropic_api_key(capsys):
         assert message is not None, "API returned no message"
         assert message.content is not None, "Message contains no content"
         assert len(message.content) > 0, "Message content array is empty"
-        assert isinstance(
-            message.content[0].text, str
-        ), "Message content is not a string"
+        assert isinstance(message.content[0].text, str), (
+            "Message content is not a string"
+        )
 
         # Get the actual text for display
         response_text = message.content[0].text

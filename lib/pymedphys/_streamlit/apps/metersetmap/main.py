@@ -225,11 +225,11 @@ def plot_gamma_hist(gamma, percent, dist):
     valid_gamma = gamma[~np.isnan(gamma)]
 
     plt.hist(valid_gamma, 50, density=True)
-    pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
+    percent_pass = pymedphys.gamma_pass_rate(gamma)
 
     plt.title(
         "Local Gamma ({}%/{}mm) | Percent Pass: {:.2f} % | Mean Gamma: {:.2f} | Max Gamma: {:.2f}".format(
-            percent, dist, pass_ratio * 100, np.mean(valid_gamma), np.max(valid_gamma)
+            percent, dist, percent_pass, np.mean(valid_gamma), np.max(valid_gamma)
         )
     )
 
@@ -566,8 +566,7 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
 
         st.write(
             _exceptions.UnableToCreatePDF(
-                "Please install Image Magick to create PDF reports "
-                f"<{download_url}>."
+                f"Please install Image Magick to create PDF reports <{download_url}>."
             )
         )
 

@@ -21,8 +21,7 @@ record the profile and options applied, in De-identification Method Code
 Sequence (0012,0064), and CID 7005 the purposes of reference for Contributing
 Equipment Sequence (0018,A001), including DCM 109104 "De-identifying
 Equipment". ``pymedphys dev deid-tables`` generates each table as a file in
-``_standard/`` from the pinned edition (design decision D-001), and the
-loaders here check it as
+``_standard/`` from the pinned edition, and the loaders here check it as
 :func:`~pymedphys._dicom.deidentify.uid_registry.load_registry_table` checks
 the tables of PS3.6 Annex A.
 """

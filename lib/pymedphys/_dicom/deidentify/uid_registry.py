@@ -18,7 +18,7 @@ Annex A registers the UIDs that the standard defines (Table A-1), the
 well-known frames of reference (Table A-2), the UIDs of context groups (Table
 A-3), and the UIDs of HL7 CDA templates (Table A-4). ``pymedphys dev
 deid-tables`` generates each as a file in ``_standard/`` from the pinned
-edition (design decision D-001), and the loaders here check it as
+edition, and the loaders here check it as
 :mod:`~pymedphys._dicom.deidentify.standard` checks the other tables.
 
 :class:`RegistryTableSpec` and :func:`load_registry_table` also serve
@@ -239,8 +239,9 @@ _UID_VALUE_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
     _UID,
     _NAME,
     (
-        lambda row: row["keyword"] == ""
-        or _matches(UID_KEYWORD_PATTERN, row["keyword"]),
+        lambda row: (
+            row["keyword"] == "" or _matches(UID_KEYWORD_PATTERN, row["keyword"])
+        ),
         "has a keyword that is not empty or letters, digits, and underscores "
         "starting with a letter",
     ),
@@ -250,8 +251,7 @@ _UID_VALUE_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
     ),
     (
         lambda row: _matches(REGISTRY_PART_PATTERN, row["part"]),
-        "has a part that is not a part or standard, an edition in parentheses, "
-        "or both",
+        "has a part that is not a part or standard, an edition in parentheses, or both",
     ),
     (
         lambda row: row["name"].endswith("(Retired)") == _retired_in_part(row["part"]),
@@ -278,18 +278,24 @@ _FRAME_OF_REFERENCE_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
 _CONTEXT_GROUP_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
     _UID,
     (
-        lambda row: row["identifier"] == ""
-        or _matches(CONTEXT_GROUP_PATTERN, row["identifier"]),
+        lambda row: (
+            row["identifier"] == ""
+            or _matches(CONTEXT_GROUP_PATTERN, row["identifier"])
+        ),
         "has an identifier that is not empty or of the form CID n",
     ),
     (
-        lambda row: _is_text(row["name"], empty=True)
-        and bool(row["identifier"]) == bool(row["name"]),
+        lambda row: (
+            _is_text(row["name"], empty=True)
+            and bool(row["identifier"]) == bool(row["name"])
+        ),
         "has an identifier without a name, or a name without an identifier",
     ),
     (
-        lambda row: row["comment"] == ""
-        or _matches(CONTEXT_GROUP_COMMENT_PATTERN, row["comment"]),
+        lambda row: (
+            row["comment"] == ""
+            or _matches(CONTEXT_GROUP_COMMENT_PATTERN, row["comment"])
+        ),
         "has a comment that is not empty, Retired, or RET with an edition",
     ),
 )

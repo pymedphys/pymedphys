@@ -4,63 +4,43 @@ altair==6.3.0
     # via
     #   pymedphys
     #   streamlit
-annotated-types==0.8.0
-    # via pydantic
 anyio==4.15.1
     # via
-    #   pymedphys
     #   starlette
     #   streamlit
 attrs==26.1.0
     # via
     #   jsonschema
-    #   outcome
     #   pymedphys
     #   referencing
-    #   trio
 backports-tarfile==1.2.0 ; python_full_version < '3.12'
     # via jaraco-context
-blinker==1.9.0
-    # via flask
 certifi==2026.7.22
     # via requests
-cffi==2.1.1 ; (implementation_name != 'pypy' and os_name == 'nt' and platform_python_implementation == 'PyPy') or (implementation_name != 'pypy' and os_name == 'nt' and sys_platform != 'linux') or (platform_python_implementation != 'PyPy' and sys_platform == 'linux')
-    # via
-    #   cryptography
-    #   trio
+cffi==2.1.1 ; platform_python_implementation != 'PyPy' and sys_platform == 'linux'
+    # via cryptography
 charset-normalizer==3.5.1
     # via requests
 click==8.5.0
     # via
-    #   flask
     #   streamlit
     #   uvicorn
 cloudpickle==3.1.2
     # via joblib
 colorama==0.4.6 ; sys_platform == 'win32'
     # via tqdm
-comm==0.2.3
-    # via dash
 contourpy==1.3.3
     # via matplotlib
 cryptography==50.0.1 ; sys_platform == 'linux'
     # via secretstorage
 cycler==0.12.1
     # via matplotlib
-dash==4.4.1
-    # via pymedphys
 dbfread==2.0.7
     # via pymedphys
-dicompyler-core==0.5.6
-    # via pymedphys
-flask==3.1.3
-    # via dash
 fonttools==4.65.0
     # via matplotlib
-greenlet==3.5.6
-    # via
-    #   sqlalchemy
-    #   trio-asyncio
+greenlet==3.5.6 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'
+    # via sqlalchemy
 h11==0.16.0
     # via uvicorn
 httptools==0.8.0
@@ -69,19 +49,12 @@ idna==3.20
     # via
     #   anyio
     #   requests
-    #   trio
 imageio==2.37.4
     # via pymedphys
-importlib-metadata==9.0.1
-    # via
-    #   dash
-    #   keyring
+importlib-metadata==9.0.1 ; python_full_version < '3.12'
+    # via keyring
 itsdangerous==2.2.0
-    # via
-    #   flask
-    #   streamlit
-janus==2.0.0
-    # via dash
+    # via streamlit
 jaraco-classes==3.4.0
     # via keyring
 jaraco-context==6.1.2
@@ -95,7 +68,6 @@ jeepney==0.9.0 ; sys_platform == 'linux'
 jinja2==3.1.6
     # via
     #   altair
-    #   flask
     #   pydeck
 joblib==1.6.0
     # via scikit-learn
@@ -110,14 +82,9 @@ kiwisolver==1.5.1
 llvmlite==0.49.0
     # via numba
 markupsafe==3.0.3
-    # via
-    #   flask
-    #   jinja2
-    #   werkzeug
+    # via jinja2
 matplotlib==3.11.2
-    # via
-    #   dicompyler-core
-    #   pymedphys
+    # via pymedphys
 more-itertools==11.1.0
     # via
     #   jaraco-classes
@@ -129,14 +96,11 @@ narwhals==2.26.0
     #   scikit-learn
 natsort==8.4.0
     # via pymedphys
-nest-asyncio==1.6.0
-    # via dash
 numba==0.67.0
     # via pymedphys
 numpy==2.4.6 ; python_full_version < '3.12'
     # via
     #   contourpy
-    #   dicompyler-core
     #   imageio
     #   matplotlib
     #   numba
@@ -152,7 +116,6 @@ numpy==2.4.6 ; python_full_version < '3.12'
 numpy==2.5.3 ; python_full_version >= '3.12'
     # via
     #   contourpy
-    #   dicompyler-core
     #   imageio
     #   matplotlib
     #   numba
@@ -165,18 +128,13 @@ numpy==2.5.3 ; python_full_version >= '3.12'
     #   shapely
     #   streamlit
     #   tifffile
-outcome==1.3.0.post0
-    # via
-    #   trio
-    #   trio-asyncio
 packaging==24.2
     # via
     #   altair
     #   matplotlib
     #   plotly
-    #   pymedphys
     #   streamlit
-pandas==2.3.3
+pandas==3.0.6
     # via
     #   pymedphys
     #   streamlit
@@ -187,24 +145,17 @@ pillow==12.3.0
     #   pymedphys
     #   streamlit
 plotly==7.1.0
-    # via
-    #   dash
-    #   pymedphys
+    # via pymedphys
 protobuf==7.36.2
     # via streamlit
 pyarrow==25.0.1
     # via streamlit
-pycparser==3.0 ; (implementation_name != 'PyPy' and implementation_name != 'pypy' and os_name == 'nt' and platform_python_implementation == 'PyPy') or (implementation_name != 'PyPy' and implementation_name != 'pypy' and os_name == 'nt' and sys_platform != 'linux') or (implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' and sys_platform == 'linux')
+pycparser==3.0 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'
     # via cffi
-pydantic==2.13.5
-    # via dash
-pydantic-core==2.46.5
-    # via pydantic
 pydeck==0.9.3
     # via streamlit
 pydicom==3.0.2
     # via
-    #   dicompyler-core
     #   pymedphys
     #   pynetdicom
 pylibjpeg-libjpeg==2.4.0
@@ -222,8 +173,6 @@ python-dateutil==2.9.0.post0
     #   pymedphys
 python-multipart==0.0.32
     # via streamlit
-pytz==2026.3.post1
-    # via pandas
 pywin32==312 ; sys_platform == 'win32'
     # via pymedphys
 pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
@@ -236,11 +185,8 @@ referencing==0.37.0
     #   jsonschema-specifications
 requests==2.34.2
     # via
-    #   dash
     #   pymedphys
     #   streamlit
-retrying==1.4.2
-    # via dash
 rpds-py==2026.6.3
     # via
     #   jsonschema
@@ -253,22 +199,10 @@ scipy==1.17.1
     #   scikit-learn
 secretstorage==3.5.0 ; sys_platform == 'linux'
     # via keyring
-setuptools==84.0.0
-    # via
-    #   dash
-    #   pymedphys
 shapely==2.1.2
     # via pymedphys
 six==1.17.0
-    # via
-    #   dicompyler-core
-    #   python-dateutil
-sniffio==1.3.1
-    # via
-    #   trio
-    #   trio-asyncio
-sortedcontainers==2.4.0
-    # via trio
+    # via python-dateutil
 sqlalchemy==2.0.54
     # via pymedphys
 starlette==1.6.0
@@ -289,26 +223,15 @@ tomlkit==0.15.1
     # via pymedphys
 tqdm==4.70.1
     # via pymedphys
-trio==0.34.0
-    # via trio-asyncio
-trio-asyncio==0.16.0
-    # via pymedphys
 typing-extensions==4.16.0
     # via
     #   altair
     #   anyio
-    #   dash
-    #   pydantic
-    #   pydantic-core
-    #   pymedphys
     #   referencing
     #   sqlalchemy
     #   starlette
     #   streamlit
-    #   typing-inspection
-typing-inspection==0.4.4
-    # via pydantic
-tzdata==2026.4
+tzdata==2026.4 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
 urllib3==2.8.0
     # via requests
@@ -320,14 +243,10 @@ watchdog==6.0.0
     #   streamlit
 websockets==16.1.1
     # via streamlit
-werkzeug==3.1.8
-    # via
-    #   dash
-    #   flask
 xlrd==2.0.2
     # via pymedphys
 xmltodict==1.0.4
     # via pymedphys
-zipp==4.1.0
+zipp==4.1.0 ; python_full_version < '3.12'
     # via importlib-metadata
 .[user]

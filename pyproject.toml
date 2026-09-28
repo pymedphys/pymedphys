@@ -26,8 +26,6 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "typing-extensions",
-  "setuptools",
   "tomlkit",
 ]
 
@@ -44,19 +42,15 @@ user = [
   "Pillow",
   "PyYAML",
   "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
-  "anyio",
   "attrs",
-  "dash",
   "dbfread",
-  "dicompyler-core",
   "imageio[tifffile]",
   "keyring",
   "matplotlib",
   "natsort",
   "numba",
   "numpy>=1.26",
-  "packaging",
-  "pandas>=1.0.0",
+  "pandas>=2.0",
   "plotly",
   "pydicom>=3.0",
   "pylibjpeg-libjpeg>=1.3.2",
@@ -73,7 +67,6 @@ user = [
   "timeago",
   "toml",
   "tqdm",
-  "trio-asyncio",
   "watchdog",
   "xlrd",
   "xmltodict",
@@ -102,19 +95,13 @@ dev = [
   "types-toml",
 ]
 
-lint = [
-  "astroid",
-  "pylint",
-  "ruff",
-]
-
 tests = [
   "anthropic",
-  "astroid",
+  "hypothesis",
   "imageio",
   "matplotlib",
   "numba",
-  "pandas>=1.0.0",
+  "pandas>=2.0",
   "Pillow",
   "psutil",
   "pydicom>=3.0",
@@ -137,7 +124,6 @@ docs = [
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
-  "networkx",
   "numba",
   "numpy>=1.26",
   "pydicom>=3.0",
@@ -146,14 +132,6 @@ docs = [
   "sphinx-book-theme",
   "toml",
   "tqdm",
-]
-
-doctests = [
-  "pytest",
-  "ruff",
-  "sphinx-book-theme",
-  "tabulate",
-  "toml"
 ]
 
 # comparables = [
@@ -175,15 +153,11 @@ icom = [
 
 mosaiq = [
     "attrs",
-    "pandas>=1.0.0",
+    "pandas>=2.0",
     "pymssql",
     "scikit-learn",
     "sqlalchemy",
     "toml",
-]
-
-propagate = [
-    "ruff",
 ]
 
 all = [
@@ -191,14 +165,11 @@ all = [
     "PyYAML",
     "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
     "anthropic",
-    "anyio",
-    "astroid",
     "attrs",
-    "dash",
     "dbfread",
-    "dicompyler-core",
     "doc8",
     "httpx2",
+    "hypothesis",
     "imageio[tifffile]",
     "ipython>=7.31.1",
     "jupyter-book>=0.12.0,<2.0.0",
@@ -206,11 +177,9 @@ all = [
     "matplotlib",
     "mypy",
     "natsort",
-    "networkx",
     "numba",
     "numpy>=1.26",
-    "packaging",
-    "pandas>=1.0.0",
+    "pandas>=2.0",
     "plotly",
     "pre-commit",
     "psutil",
@@ -243,7 +212,6 @@ all = [
     "toml",
     "tqdm",
     "trio",
-    "trio-asyncio",
     "types-PyYAML",
     "types-python-dateutil",
     "types-requests",
@@ -254,16 +222,6 @@ all = [
     "xmltodict",
 ]
 
-[tool.pymedphys.extra-groups]
-# Groups are consumed by propagate_extras(); this table is authoritative.
-# Each value lists EXTRA NAMES defined under [project.optional-dependencies].
-dev   = ["tests", "docs", "cli", "propagate"]
-docs  = ["docs"]
-user  = ["user"]
-
-# Optional aggregations if you want “full” exports in CI, etc.
-full  = ["user", "ai", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
-
 [dependency-groups]
 dev = [
   "sphinx-external-toc>=1.0.1",
@@ -272,6 +230,7 @@ dev = [
 # without the project or its scientific dependencies.
 pre-commit = [
   "pre-commit",
+  "ruff",
 ]
 # CI installs only this group, hash-checked from uv.lock, to run the
 # .github/scripts tests in parallel without the project.
@@ -305,9 +264,16 @@ timeout = 900
 # "will be removed in v4", so using one fails the test.
 filterwarnings = ["error:.*removed in v4:DeprecationWarning"]
 
-# Existing tool config stays as-is
+[tool.ruff]
+# Python sources only: `ruff check .` and `ruff format .` then cover the same
+# files as the pre-commit hooks, and leave notebooks and Markdown alone.
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+
 [tool.ruff.lint]
-extend-ignore = ["E741", "E722", "F401"]  # example: match your current settings
+# An explicit rule set, so that upgrading ruff through uv.lock does not change
+# which rules apply.
+select = ["E4", "E7", "E9", "F"]
+extend-ignore = ["E741", "E722", "F401"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["pymedphys._imports"]
@@ -323,7 +289,8 @@ exclude = ["**/node_modules", "**/__pycache__"]
 # future work would be to iteratively set these to true and fix the code base.
 reportMissingImports = false
 reportGeneralTypeIssues = false
-reportUnboundVariable = false
+reportUnboundVariable = "error"
+reportPossiblyUnboundVariable = "warning"
 reportOptionalMemberAccess = false
 reportOptionalSubscript = false
 reportOptionalOperand = false

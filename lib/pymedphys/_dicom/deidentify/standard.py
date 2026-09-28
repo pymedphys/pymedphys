@@ -15,7 +15,7 @@
 """Load the rule tables generated from the DICOM standard.
 
 ``pymedphys dev deid-tables`` generates the tables in ``_standard/`` from the
-pinned edition of DICOM PS3.15 and PS3.6 (design decision D-001). They are
+pinned edition of DICOM PS3.15 and PS3.6. They are
 never edited by hand, so a table whose rows do not match its recorded digest
 is rejected. Each table carries the copyright attribution of its part, such as
 "DICOM PS3.15 <edition>, © NEMA".
@@ -497,14 +497,17 @@ _DATA_DICTIONARY_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
         "has a tag that is not of the form (gggg,eeee) with an even group",
     ),
     (
-        lambda row: _is_text(row["name"], empty=True)
-        and _is_text(row["keyword"], empty=True)
-        and bool(row["name"]) == bool(row["keyword"]),
+        lambda row: (
+            _is_text(row["name"], empty=True)
+            and _is_text(row["keyword"], empty=True)
+            and bool(row["name"]) == bool(row["keyword"])
+        ),
         "has a name without a keyword, or a keyword without a name",
     ),
     (
-        lambda row: not row["keyword"]
-        or bool(KEYWORD_PATTERN.fullmatch(row["keyword"])),
+        lambda row: (
+            not row["keyword"] or bool(KEYWORD_PATTERN.fullmatch(row["keyword"]))
+        ),
         "has a keyword that is not letters and digits, starting with a letter",
     ),
     (

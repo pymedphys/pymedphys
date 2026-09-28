@@ -213,9 +213,7 @@ def anonymise(dicom_subparsers):
         "-p",
         "--keep_private_tags",
         action="store_true",
-        help=(
-            "Use this flag to preserve private tags in the " "anonymised DICOM files."
-        ),
+        help=("Use this flag to preserve private tags in the anonymised DICOM files."),
     )
 
     unknown_tags_group = parser.add_mutually_exclusive_group()

@@ -967,8 +967,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--published checks PyPI, not a build directory")
         if args.expected_version is not None or args.skip_install:
             parser.error(
-                "--expected-version and --skip-install apply only to a build "
-                "directory"
+                "--expected-version and --skip-install apply only to a build directory"
             )
         report_dir = args.report_dir or Path(
             tempfile.mkdtemp(prefix="pymedphys-published-")

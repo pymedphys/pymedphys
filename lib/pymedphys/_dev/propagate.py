@@ -234,22 +234,6 @@ def propagate_extras():
             union_pkgs.update(v)
         extras_map["all"] = sorted(union_pkgs, key=str.lower)
 
-    # OPTIONAL: also expand [tool.pymedphys.extra-groups] into package lists.
-    # Flip this to True if you want groups included alongside extras.
-    include_groups = False
-    tool = py.get("tool")
-    if (
-        include_groups
-        and tool
-        and "pymedphys" in tool
-        and "extra-groups" in tool["pymedphys"]
-    ):
-        for group, extra_names in tool["pymedphys"]["extra-groups"].items():
-            acc = set()
-            for x in extra_names:
-                acc.update(extras_map.get(x, []))
-            extras_map[group] = sorted(acc, key=str.lower)
-
     # Emit as multiline TOML arrays with LF newlines
     tbl = tomlkit.table()
     for key in sorted(extras_map.keys(), key=str.lower):

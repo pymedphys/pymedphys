@@ -39,6 +39,7 @@ def _gaussian_pixels(shape, position, orientation_sign_x):
 
 
 @pytest.mark.pydicom
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
 @pytest.mark.parametrize("cropped_column", ["first", "last"])
 def test_head_first_prone_dose_matches_a_one_column_crop_of_itself(cropped_column):
     position = (100.0, -200.0, 300.0)
@@ -112,13 +113,18 @@ def test_uneven_evaluation_axis_falls_back_to_scipy():
     np.testing.assert_allclose(result, expected, equal_nan=True)
 
 
-def test_single_point_evaluation_axis_is_rejected():
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
+def test_singleton_evaluation_axis_works_with_either_interpolator():
     axes, dose = _grid()
+    evaluation = ((axes[0], np.array([0.0])), dose[:, 6:7])
 
-    with pytest.raises(ValueError, match="at least two"):
-        pymedphys.gamma(axes, dose, (axes[0], np.array([0.0])), dose[:, 6:7], 2, 2)
+    expected = pymedphys.gamma(axes, dose, *evaluation, 2, 2, interp_algo="scipy")
+    result = pymedphys.gamma(axes, dose, *evaluation, 2, 2)
+
+    np.testing.assert_allclose(result, expected, rtol=0, atol=1e-12)
 
 
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
 @pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
 @pytest.mark.parametrize("max_gamma", [None, 2])
 def test_non_overlapping_grids_can_pass_gamma(interp_algo, max_gamma):
@@ -145,12 +151,8 @@ def test_scipy_preserves_singleton_spatial_dimensions():
     np.testing.assert_array_equal(result, np.zeros_like(dose))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Three-dimensional shells do not reliably sample a singleton plane",
-)
-def test_scipy_planar_gamma_is_translation_invariant():
+@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+def test_planar_gamma_is_translation_invariant(interp_algo):
     axis = np.arange(-2.0, 3.0)
     y, _ = np.meshgrid(axis, axis, indexing="ij")
     results = []
@@ -163,7 +165,7 @@ def test_scipy_planar_gamma_is_translation_invariant():
                 (1 + 0.1 * (y - 0.9))[None, :, :],
                 3,
                 3,
-                interp_algo="scipy",
+                interp_algo=interp_algo,
             ).item()
         )
     # Independently minimise (y - 0.9)^2 / 0.3^2 + y^2 / 3^2.
@@ -172,11 +174,7 @@ def test_scipy_planar_gamma_is_translation_invariant():
     np.testing.assert_allclose(results, expected, rtol=0, atol=0.002)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Shells miss a reachable evaluation plane and exclude a failing point",
-)
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
 def test_scipy_planar_gamma_retains_perpendicular_distance():
     axis = np.arange(-2.0, 3.0)
     result = pymedphys.gamma(
@@ -221,6 +219,7 @@ def _assert_within_search_resolution(result, expected, interp_fraction=10):
     assert np.all(result <= expected + resolution), (result, expected)
 
 
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
 def test_search_samples_the_spatial_endpoint():
     # The ordinary 0.3 mm shells miss this narrow grid. The spatial endpoint
     # reaches the last evaluation point from x=-1, despite not being a step
@@ -238,44 +237,16 @@ def test_search_samples_the_spatial_endpoint():
     )
 
     expected = _exact_1d_gamma(reference_x, evaluation_x, 3)
-    # Only x=-1 is asserted: see the expected failure below for x=1.
-    _assert_within_search_resolution(result[:1], expected[:1])
+    _assert_within_search_resolution(result, expected)
 
 
 @pytest.mark.timeout(10)
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_search_terminates_on_an_evaluation_grid_narrower_than_a_step(interp_algo):
-    # The grids' bounding intervals overlap, but the 0.3 mm shells miss the
-    # narrow evaluation interval. This used to search forever.
-    reference_x = np.array([-1.0, 0.0, 1.0])
-    evaluation_x = np.array([0.04, 0.05])
-    result = pymedphys.gamma(
-        reference_x,
-        np.ones(3),
-        evaluation_x,
-        np.ones(2),
-        3,
-        3,
-        interp_algo=interp_algo,
-    )
-
-    # Points whose search never samples the grid are reported as NaN; any
-    # value that is reported must be right.
-    finite = np.isfinite(result)
-    expected = _exact_1d_gamma(reference_x, evaluation_x, 3)
-    _assert_within_search_resolution(result[finite], expected[finite])
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "Search shells step past evaluation grids narrower than one step, so "
-        "points they cannot reach are excluded as NaN despite having a gamma."
-    ),
-)
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
 @pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
 def test_every_point_finds_an_evaluation_grid_narrower_than_a_step(interp_algo):
+    # The grids' bounding intervals overlap, but the 0.3 mm shells miss the
+    # narrow evaluation interval. This used to search forever, and then
+    # excluded the points it could not reach as NaN.
     reference_x = np.array([-1.0, 0.0, 1.0])
     evaluation_x = np.array([0.04, 0.05])
     result = pymedphys.gamma(
@@ -293,20 +264,8 @@ def test_every_point_finds_an_evaluation_grid_narrower_than_a_step(interp_algo):
     )
 
 
-def test_disjoint_grid_beyond_max_gamma_has_no_candidate():
-    result = pymedphys.gamma(
-        np.array([0.0, 1.0]),
-        np.ones(2),
-        np.array([1000.0, 1001.0]),
-        np.ones(2),
-        3,
-        3,
-        max_gamma=2,
-    )
-    assert np.all(np.isnan(result))
-
-
 @pytest.mark.timeout(10)
+@pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
 def test_far_disjoint_grids_skip_empty_search_shells():
     # A 0.01 mm step from zero would require 100 million empty iterations.
     result = pymedphys.gamma(
