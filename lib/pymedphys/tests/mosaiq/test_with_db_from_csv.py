@@ -13,12 +13,17 @@
 # limitations under the License.
 
 
+import csv
+import pathlib
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 import pymedphys
 from pymedphys._mosaiq import helpers
 from pymedphys._mosaiq.mock import from_csv, utilities
+
+MOCK_DATA_DIRECTORY = pathlib.Path(from_csv.__file__).parent / "data"
 
 PATIENT_ID = 989898
 FIELD_ID = 88043
@@ -94,6 +99,62 @@ def test_get_treatments(connection):
     assert (
         np.datetime64(A_TREATMENT_DATETIME) in treatments["start"].tolist()  # pylint: disable=unsubscriptable-object
     )
+
+
+@pytest.mark.mosaiqdb
+def test_delivery_from_mosaiq_matches_the_field_record(connection):
+    # Needs only the mosaiq extra, unlike the comparison with DICOM and TRF
+    # below. The expected values come from the CSV the test database is loaded
+    # from, not through the database.
+    field = _csv_rows("TxField.csv", FIELD_ID)[0]
+    points = sorted(
+        _csv_rows("TxFieldPoint.csv", FIELD_ID), key=lambda row: int(row["Point"])
+    )
+    index = np.array([float(row["Index"]) for row in points])
+    meterset = float(field["Meterset"])
+
+    delivery = pymedphys.Delivery.from_mosaiq(connection, FIELD_ID)
+
+    assert np.shape(delivery.mlc) == (len(points), 80, 2)
+    assert np.shape(delivery.jaw) == (len(points), 2)
+    assert delivery.mu[0] == 0
+    assert delivery.mu[-1] == pytest.approx(meterset)
+    assert np.all(np.diff(delivery.mu) >= 0)
+    # The test database stores Index as DECIMAL with no decimal places, so
+    # 33.333 becomes 33, which moves the MU by up to half a percent of Index.
+    np.testing.assert_allclose(delivery.mu, index / index[-1] * meterset, atol=1)
+    # Angles are returned in the range -180 to 180 degrees.
+    for angles, column in [
+        (delivery.gantry, "Gantry_Ang"),
+        (delivery.collimator, "Coll_Ang"),
+    ]:
+        np.testing.assert_allclose(
+            np.mod(angles, 360), [float(row[column]) % 360 for row in points]
+        )
+    # The Y jaws, in mm, as positive distances from the central axis.
+    np.testing.assert_allclose(
+        delivery.jaw,
+        [[10 * float(row["Coll_Y2"]), -10 * float(row["Coll_Y1"])] for row in points],
+    )
+
+    # The field, 3ABUT, is three abutting 60 mm segments, each delivered
+    # between a pair of control points. Leaf pairs 14 to 65 lie within the
+    # jaws; every one is open 60 mm, centred 60 mm to one side, then on the
+    # central axis, then 60 mm to the other side.
+    mlc = np.array(delivery.mlc)[:, 14:66, :]
+    np.testing.assert_allclose(mlc.sum(axis=-1), 60)
+    np.testing.assert_allclose(
+        (mlc[..., 0] - mlc[..., 1]) / 2,
+        np.broadcast_to([[-60], [-60], [0], [0], [60], [60]], mlc.shape[:2]),
+    )
+
+
+def _csv_rows(table, field_id):
+    path = MOCK_DATA_DIRECTORY / table
+    with open(path, newline="", encoding="utf-8") as csv_file:
+        return [
+            row for row in csv.DictReader(csv_file) if int(row["FLD_ID"]) == field_id
+        ]
 
 
 @pytest.mark.mosaiqdb
