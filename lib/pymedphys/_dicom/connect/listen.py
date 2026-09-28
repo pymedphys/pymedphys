@@ -25,34 +25,7 @@ from pymedphys._imports import pydicom, pynetdicom
 
 from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
-
-
-# Characters that separate or qualify path components on POSIX or Windows, or
-# that Windows does not allow in names. "%" is included so that an encoded
-# name cannot equal a different received value.
-_UNSAFE_NAME_CHARACTERS = frozenset('%/\\:*?"<>|')
-
-
-def _storage_name(value) -> str:
-    """Return a received DICOM value as a single file or folder name.
-
-    Senders choose the identifiers that name the listener's folders and
-    files. Characters that could make a name refer to another folder, or that
-    Windows does not allow, and the whole names ``.`` and ``..``, are replaced
-    by ``%`` and their two-digit hexadecimal code, so ``../x`` becomes
-    ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Different values give different
-    names, and ordinary patient IDs and UIDs are unchanged.
-    """
-    name = str(value)
-    if name in (".", ".."):
-        return name.replace(".", "%2E")
-
-    return "".join(
-        f"%{ord(character):02X}"
-        if character in _UNSAFE_NAME_CHARACTERS or ord(character) < 0x20
-        else character
-        for character in name
-    )
+from pymedphys._utilities.filesystem import encode_file_name
 
 
 def hierarchical_dicom_storage_directory(
@@ -61,13 +34,14 @@ def hierarchical_dicom_storage_directory(
     """Return the folder for a received object: Patient ID, then Study
     Instance UID, then Series Instance UID, inside ``storage_directory``.
 
-    Each value becomes a single folder name (see ``_storage_name``), so no
-    value can place the folder outside ``storage_directory``.
+    Each value becomes a single folder name (see ``encode_file_name`` in
+    ``pymedphys._utilities.filesystem``), so no value can place the folder
+    outside ``storage_directory``.
     """
     series_path = pathlib.Path(storage_directory).joinpath(
-        _storage_name(ds.PatientID),
-        _storage_name(ds.StudyInstanceUID),
-        _storage_name(ds.SeriesInstanceUID),
+        encode_file_name(ds.PatientID),
+        encode_file_name(ds.StudyInstanceUID),
+        encode_file_name(ds.SeriesInstanceUID),
     )
     return series_path
 
@@ -170,7 +144,9 @@ class DicomListener(DicomConnectBase):
         self.association_directory = series_dir
 
         filename = pathlib.Path(
-            "{!s}.{!s}.dcm".format(mode_prefix, _storage_name(dataset.SOPInstanceUID))
+            "{!s}.{!s}.dcm".format(
+                mode_prefix, encode_file_name(dataset.SOPInstanceUID)
+            )
         )
         filepath = series_dir.joinpath(filename)
 

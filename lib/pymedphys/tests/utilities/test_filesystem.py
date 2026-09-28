@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+
 from pymedphys._imports import pytest
 
 from pymedphys._utilities import filesystem
@@ -36,3 +38,57 @@ def test_open_no_lock_raises_the_error_from_open(tmp_path, monkeypatch):
     with pytest.raises(FileNotFoundError):
         with filesystem.open_no_lock(tmp_path / "missing.txt"):
             pass
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "../outside",
+        "/outside",
+        "..",
+        ".",
+        "a/b",
+        "C:outside",
+        "C:\\outside",
+        "\\\\server\\share",
+    ],
+)
+@pytest.mark.parametrize(
+    "path_type",
+    [pathlib.PurePosixPath, pathlib.PureWindowsPath],
+    ids=["posix", "windows"],
+)
+def test_encode_file_name_gives_a_single_name(value, path_type):
+    """A value becomes one file or folder name on POSIX and on Windows."""
+    name = filesystem.encode_file_name(value)
+
+    folder = path_type("folder")
+    assert (folder / name).parent == folder
+    assert name not in (".", "..")
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("../x", "..%2Fx"),
+        ("..", "%2E%2E"),
+        ("/tmp/x", "%2Ftmp%2Fx"),
+        ("C:x", "C%3Ax"),
+        ('123456_SMITH, JOHN "JACK"', "123456_SMITH, JOHN %22JACK%22"),
+        ("a\x00b\tc\nd\x1fe", "a%00b%09c%0Ad%1Fe"),
+    ],
+)
+def test_encode_file_name_encodes_path_characters(value, expected):
+    assert filesystem.encode_file_name(value) == expected
+
+
+def test_encode_file_name_keeps_ordinary_names_and_distinct_values():
+    for name in [
+        "987654321PyMedPhysID",
+        "1.2.826.0.1.3680043.8.498.1",
+        "123456_O'BRIEN, MARY-JANE J.",
+    ]:
+        assert filesystem.encode_file_name(name) == name
+
+    values = ["a/b", "a%2Fb", "a:b", ".."]
+    assert len({filesystem.encode_file_name(value) for value in values}) == 4

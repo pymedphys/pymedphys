@@ -484,6 +484,7 @@ detailed explanations of individual features.
   `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>` before
   pushing.
 - CodeQL code scanning, secret scanning with push protection, and Dependabot alerts, malware alerts, and security updates are repository settings (Settings, then Advanced Security), not workflow jobs. CodeQL uses default setup for Python and GitHub Actions with the default query suite. Fix its findings; where a finding is intended behaviour, dismiss it as won't fix with a comment that says why.
+- PyMedPhys's tools are for clinical users behind strong network protections. Do not remove information that operators rely on, such as patient identifiers in local logs, or rename code and tests to avoid CodeQL's name-based heuristics. Where a risk matters to users, document it, and dismiss the finding as intended behaviour.
 
 ### Dependency Updates
 

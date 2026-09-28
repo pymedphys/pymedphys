@@ -4,6 +4,7 @@ import pathlib
 import traceback
 
 import pymedphys
+from pymedphys._utilities.filesystem import encode_file_name
 
 from . import extract, observer
 
@@ -58,7 +59,8 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
         {"patient_name": patient_name},
     )
 
-    patient_dir = output_dir.joinpath(f"{patient_id}_{patient_name}")
+    # Windows does not allow the double quotes that patient names can contain.
+    patient_dir = output_dir.joinpath(encode_file_name(f"{patient_id}_{patient_name}"))
     patient_dir.mkdir(parents=True, exist_ok=True)
 
     logging.debug(
@@ -178,11 +180,20 @@ class PatientIcomData:
                 {"usage_start": usage_start},
             )
 
-            save_patient_data(
-                usage_start, self._current_patient_data[ip], self._output_dir
-            )
-            self._current_patient_data[ip] = None
-            self._usage_start[ip] = None
+            try:
+                save_patient_data(
+                    usage_start, self._current_patient_data[ip], self._output_dir
+                )
+            except OSError:
+                # A delivery that cannot be archived must not stop the
+                # recording of the deliveries that follow it.
+                logging.exception(
+                    "Could not archive the delivery that started at %s.",
+                    usage_start,
+                )
+            finally:
+                self._current_patient_data[ip] = None
+                self._usage_start[ip] = None
 
         else:
             logging.debug("No delivery is currently being recorded.")
