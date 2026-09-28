@@ -66,7 +66,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev tests'
+          extras: 'tests'
           cache-data: 'true'
 
       # The slow tests are independent, and processes that share the data
@@ -127,9 +127,8 @@ jobs:
         with:
           persist-credentials: false
 
+      # Building and propagation need only the project and uv.
       - uses: ./.github/actions/setup-project
-        with:
-          extras: 'dev'
 
       - name: Build the sdist, then the wheel from it
         if: inputs.run-wheel-build

@@ -41,7 +41,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           # user is a superset of mosaiq and provides the Streamlit GUI tests
           # with the app dependencies.
-          extras: 'dev tests user'
+          extras: 'tests'
 
       - name: Run unit tests
         id: tests
@@ -89,7 +89,7 @@ jobs:
         with:
           cache-data: 'true'
           python-version: '3.11'
-          extras: 'dev tests user'
+          extras: 'tests'
 
       - name: Run unit tests at the minimum NumPy and pandas versions
         id: tests

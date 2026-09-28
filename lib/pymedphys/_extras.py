@@ -43,10 +43,10 @@ DISTRIBUTION_FOR_IMPORT = {
 BASE_DISTRIBUTIONS = frozenset({"tomlkit"})
 
 # The extras to suggest, in order of preference. ``user`` comes first because
-# it holds every dependency of every feature except the AI app. The narrower
-# extras such as ``dicom`` each lack dependencies of the features they are
-# named after, so suggesting one would only move the failure.
-EXTRA_PREFERENCE = ("user", "ai", "tests", "docs", "dev")
+# it holds every dependency of every feature except the AI app. The other
+# extras either repeat ``user`` or build on it. Development tools are in
+# dependency groups, which are not published, so no extra provides them.
+EXTRA_PREFERENCE = ("user", "ai", "tests")
 
 
 def normalise(distribution: str) -> str:
@@ -118,7 +118,10 @@ def missing_dependency_message(
     extra = extra_for(import_name)
     if extra is None:
         return (
-            f'{problem} Install it with:\n\n    python -m pip install "{distribution}"'
+            f"{problem} No PyMedPhys extra provides it. If you are working on "
+            "PyMedPhys from a source checkout, run `uv sync` in the checkout, "
+            "which installs every development tool. Otherwise install it with:"
+            f'\n\n    python -m pip install "{distribution}"'
         )
 
     provided_by = (

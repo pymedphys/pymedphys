@@ -12,12 +12,14 @@ build:
       - "pymedphys dev docs --prep"
 
 # The locked environment that CI's documentation build uses: uv sync installs
-# the project, the docs extra, and the default dev group from uv.lock.
+# the project and the docs group from uv.lock. Read the Docs does not pass
+# --no-default-groups, so it also installs the default dev group unless the
+# project's Read the Docs settings define UV_NO_DEFAULT_GROUPS=1.
 python:
   install:
     - method: uv
       command: sync
-      extras:
+      groups:
         - docs
 
 sphinx:

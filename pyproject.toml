@@ -38,6 +38,7 @@ Documentation = "https://docs.pymedphys.com"
 pymedphys = "pymedphys.__main__:main"
 
 [project.optional-dependencies]
+# Extras are published with the package, for people who install it.
 user = [
   "Pillow",
   "PyYAML",
@@ -79,47 +80,48 @@ ai = [
   "httpx2",
   "trio",
 ]
-dev = [
-  "doc8",
-  "mypy",
-  "pre-commit",
-  "pyright",
-  "readme-renderer",
-  "rope",
-  "ruff",
-  "tabulate",
-  "types-PyYAML",
-  "types-python-dateutil",
-  "types-requests",
-  "types-tabulate",
-  "types-toml",
-]
 
+# What running the installed test suite needs, on top of ``user``: install
+# "pymedphys[tests]", then run ``pymedphys dev tests``. The release checks do
+# this with each published version.
 tests = [
-  "anthropic",
+  "pymedphys[user]",
   "hypothesis",
-  "imageio",
-  "matplotlib",
-  "numba",
-  "pandas>=2.0",
-  "Pillow",
   "psutil",
-  "pydicom>=3.0",
-  "pynetdicom",
-  "pylibjpeg-libjpeg>=1.3.2",
-  "pylint",
   "pytest",
   "pytest-rerunfailures",
   "pytest-sugar",
   "pytest-timeout",
   "pytest-xdist",
-  "python-dateutil",
-  "shapely",
-  "toml",
-  "tqdm",
-  "xlrd",
 ]
 
+# Everything that can be installed from PyPI.
+all = ["pymedphys[user,ai,tests]"]
+
+# Former feature extras, kept as aliases for ``user`` so that existing install
+# commands keep working. Each used to list only part of what its feature needed,
+# so installing one could leave that feature unable to run.
+cli = ["pymedphys[user]"]
+dicom = ["pymedphys[user]"]
+icom = ["pymedphys[user]"]
+mosaiq = ["pymedphys[user]"]
+
+# Dependency groups are for working on PyMedPhys from a source checkout. They
+# are not published to PyPI, and uv.lock pins them together with the extras.
+# CI installs only the groups each job needs, with ``--no-default-groups``.
+[dependency-groups]
+# Everything a contributor needs. ``uv sync`` installs this group by default, so
+# a plain ``uv sync`` gives a complete development environment.
+dev = [
+  "pymedphys[all]",
+  {include-group = "docs"},
+  {include-group = "lint"},
+  {include-group = "pre-commit"},
+  "rope",
+  "tabulate",
+]
+# The documentation build, including the packages its executed notebooks use.
+# Read the Docs and the documentation CI job install only this group.
 docs = [
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
@@ -130,101 +132,22 @@ docs = [
   "scipy",
   "sphinx-argparse",
   "sphinx-book-theme",
+  "sphinx-external-toc>=1.0.1",
   "toml",
   "tqdm",
 ]
-
-# comparables = [
-#     "flashgamma",
-# ]
-
-cli = [
-    "toml",
-]
-
-dicom = [
-    "pydicom>=3.0",
-    "pynetdicom",
-]
-
-icom = [
-    "numpy>=1.26",
-]
-
-mosaiq = [
-    "attrs",
-    "pandas>=2.0",
-    "pymssql",
-    "scikit-learn",
-    "sqlalchemy",
-    "toml",
-]
-
-all = [
-    "Pillow",
-    "PyYAML",
-    "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
-    "anthropic",
-    "attrs",
-    "dbfread",
-    "doc8",
-    "httpx2",
-    "hypothesis",
-    "imageio[tifffile]",
-    "ipython>=7.31.1",
-    "jupyter-book>=0.12.0,<2.0.0",
-    "keyring",
-    "matplotlib",
-    "mypy",
-    "natsort",
-    "numba",
-    "numpy>=1.26",
-    "pandas>=2.0",
-    "plotly",
-    "pre-commit",
-    "psutil",
-    "pydicom>=3.0",
-    "pylibjpeg-libjpeg>=1.3.2",
-    "pylint",
-    "pymssql",
-    "pynetdicom",
-    "pyright",
-    "pytest",
-    "pytest-rerunfailures",
-    "pytest-sugar",
-    "pytest-timeout",
-    "pytest-xdist",
-    "python-dateutil",
-    "pywin32; sys_platform == 'win32'",
-    "readme-renderer",
-    "requests",
-    "rope",
-    "ruff",
-    "scikit-learn",
-    "scipy",
-    "shapely>=1.7.0",
-    "sphinx-argparse",
-    "sphinx-book-theme",
-    "sqlalchemy",
-    "streamlit>=1.54",
-    "tabulate",
-    "timeago",
-    "toml",
-    "tqdm",
-    "trio",
-    "types-PyYAML",
-    "types-python-dateutil",
-    "types-requests",
-    "types-tabulate",
-    "types-toml",
-    "watchdog",
-    "xlrd",
-    "xmltodict",
-]
-
-[dependency-groups]
-dev = [
-  "sphinx-external-toc>=1.0.1",
+# Linters, type checkers, and their type stubs.
+lint = [
+  "doc8",
+  "mypy",
+  "pylint",
+  "pyright",
+  "readme-renderer",
+  "types-PyYAML",
+  "types-python-dateutil",
+  "types-requests",
+  "types-tabulate",
+  "types-toml",
 ]
 # CI installs only this group, hash-checked from uv.lock, to run pre-commit
 # without the project or its scientific dependencies.

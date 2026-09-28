@@ -70,7 +70,7 @@ jobs:
 
       - name: Export the locked dependency set
         run: >-
-          uv export --frozen --all-extras --no-emit-project --no-hashes
+          uv export --frozen --all-extras --all-groups --no-emit-project --no-hashes
           --output-file audit-requirements.txt
 
       # Advisory on pull requests and pushes: an advisory published against a
