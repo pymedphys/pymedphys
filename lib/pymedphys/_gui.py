@@ -13,10 +13,13 @@
 
 # pylint: disable = protected-access
 
+import importlib.util
 import pathlib
 import shutil
 import subprocess
 import sys
+
+from pymedphys import _extras
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -24,6 +27,14 @@ STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
 
 def main(args):
     """Boot up the pymedphys GUI"""
+    # Streamlit runs in a subprocess, whose error would not say which extra
+    # provides it.
+    if importlib.util.find_spec("streamlit") is None:
+        raise ModuleNotFoundError(
+            _extras.missing_dependency_message("streamlit", "pymedphys gui"),
+            name="streamlit",
+        )
+
     _fill_streamlit_credentials()
 
     streamlit_script_path = str(HERE.joinpath("_app.py"))

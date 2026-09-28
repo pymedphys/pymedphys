@@ -55,3 +55,19 @@ def test_port_must_be_an_integer(capsys):
         define_parser().parse_args(["gui", "--port", "not-a-port"])
 
     assert "--port" in capsys.readouterr().err
+
+
+def test_launching_without_streamlit_names_the_extra_to_install(monkeypatch):
+    find_spec = _gui.importlib.util.find_spec
+    monkeypatch.setattr(
+        _gui.importlib.util,
+        "find_spec",
+        lambda name, *args: None if name == "streamlit" else find_spec(name, *args),
+    )
+    monkeypatch.setattr(_gui.subprocess, "check_call", pytest.fail)
+
+    args = define_parser().parse_args(["gui"])
+    with pytest.raises(ModuleNotFoundError, match=r"\"user\" extra") as error:
+        args.func(args)
+
+    assert error.value.name == "streamlit"

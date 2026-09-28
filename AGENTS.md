@@ -241,6 +241,12 @@ The project uses uv with optional dependency groups:
 - `tests`: Testing dependencies
 - Specific features: `dicom`, `mosaiq`, `icom`, etc.
 
+### Optional Dependencies
+
+- Import every third-party package other than the base dependencies through `pymedphys._imports`, for example `from pymedphys._imports import numpy as np`. It imports the package on first use and, when the package is missing, names the extra that provides it. Register a new package in `lib/pymedphys/_imports/imports.py`, and add it to `DISTRIBUTION_FOR_IMPORT` in `lib/pymedphys/_extras.py` when its import name differs from its distribution name.
+- Every module must import with only the base dependencies, except those listed in `REQUIRED_EXTRAS` in `lib/pymedphys/_dev/import_policy.py`: the Streamlit apps, the AI modules, and the tests. So outside those, do not use an optional package when a module is imported: not at module level, in decorators, default arguments, or class bodies, nor in annotations unless the module has `from __future__ import annotations`.
+- The tests in `lib/pymedphys/tests/imports` check both rules in every unit test job, by importing each module in a fresh interpreter in which only the standard library and the base dependencies can be imported. `pymedphys dev imports` checks the same policy against real installs.
+
 ### Packaging
 
 - `uv build` makes the sdist and then the wheel from it, so a file missing from
