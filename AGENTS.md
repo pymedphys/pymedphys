@@ -479,8 +479,7 @@ detailed explanations of individual features.
   audits only and cannot check this, so confirm a new pin with
   `git ls-remote --tags https://github.com/<owner>/<repo> | grep <sha>` before
   pushing.
-- Secret scanning and push protection are GitHub repository settings, not
-  workflow jobs.
+- CodeQL code scanning, secret scanning with push protection, and Dependabot alerts, malware alerts, and security updates are repository settings (Settings, then Advanced Security), not workflow jobs. CodeQL uses default setup for Python and GitHub Actions with the default query suite. Fix its findings; where a finding is intended behaviour, dismiss it as won't fix with a comment that says why.
 
 ### Dependency Updates
 
