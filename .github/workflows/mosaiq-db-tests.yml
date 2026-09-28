@@ -9,8 +9,25 @@ permissions:
 
 jobs:
   test-mosaiq-db:
+    name: Mosaiq database (${{ matrix.install }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Every database test, with everything installed.
+          - install: tests
+            extras: tests
+            groups: ''
+            paths: ''
+          # The mosaiq extra alone, which must hold everything pymedphys.mosaiq
+          # needs. The fixtures group loads the mock database. Tests of other
+          # features skip themselves when their packages are missing.
+          - install: mosaiq
+            extras: mosaiq
+            groups: test-runner mosaiq-db-fixtures
+            paths: tests/mosaiq
 
     services:
       sqlserver:
@@ -29,7 +46,8 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           cache-data: 'true'
-          extras: 'tests'
+          extras: ${{ matrix.extras }}
+          groups: ${{ matrix.groups }}
 
       - name: Wait for SQL Server startup
         run: |
@@ -51,4 +69,9 @@ jobs:
           MOSAIQ_SQL_SERVER: localhost
           MOSAIQ_SQL_USER: SA
           MOSAIQ_SQL_PASSWORD: sqlServerPassw0rd
-        run: uv run pymedphys dev tests -v --mosaiqdb
+          TEST_PATHS: ${{ matrix.paths }}
+        run: |
+          set -euxo pipefail
+          read -ra paths <<< "${TEST_PATHS}"
+          # --no-sync keeps uv from installing anything beyond the matrix entry.
+          uv run --no-sync -- pymedphys dev tests -v --mosaiqdb "${paths[@]}"
