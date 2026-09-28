@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Optional
+from typing import Dict, Literal, Optional
 
 from pymedphys._imports import streamlit as st
-from typing_extensions import Literal
 
 from pymedphys._mosaiq import connect as _connect
 from pymedphys._mosaiq import credentials as _credentials
