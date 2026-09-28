@@ -68,8 +68,8 @@ uv run -- pymedphys dev docs
 ```
 
 Documentation notebooks must use declared, locked dependencies rather than
-installing packages while running. Add documentation dependencies to both the
-`docs` and `all` extras and regenerate `uv.lock`; CI and ReadTheDocs both
+installing packages while running. Add documentation dependencies to the
+`docs` dependency group and regenerate `uv.lock`; CI and ReadTheDocs both
 install the documentation environment from it.
 Unexpected notebook errors and documentation build warnings fail the build.
 An install cell kept for readers running a notebook elsewhere (for example on
