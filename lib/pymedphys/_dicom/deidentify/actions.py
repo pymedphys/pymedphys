@@ -25,9 +25,9 @@ Dates and with Modified Dates as mutually exclusive, so selecting both is
 rejected. Otherwise PS3.15 defines no precedence between options. Where two
 selected options give an attribute different actions, as Retain Device
 Identity (K) and Modified Dates (C) do for eleven calibration, manufacture,
-installation, and beam hold dates, no output can satisfy both while the
-attribute has a value. Such an attribute is reported as a conflict and given
-no action; what a policy does about it is decided when the policy is
+installation, and beam hold dates and times, no output can satisfy both while
+the attribute has a value. Such an attribute is reported as a conflict and
+given no action; what a policy does about it is decided when the policy is
 validated.
 
 These are the actions of Table E.1-1 alone. Compound actions such as X/Z/D
