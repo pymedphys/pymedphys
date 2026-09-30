@@ -329,7 +329,7 @@ class _Reader:
         tag = self._unpack("<HH", position, end)
         if tag[0] == 0xFFFE:  # an item or delimiter where an element belongs
             raise _Unreadable
-        vr = bytes(self.data[position + 4 : position + 6]).decode("latin-1")
+        vr: str | None = bytes(self.data[position + 4 : position + 6]).decode("latin-1")
         if not explicit:
             vr, header, (length,) = None, 8, self._unpack("<I", position + 4, end)
         elif vr in VRS_WITH_16_BIT_LENGTH:
