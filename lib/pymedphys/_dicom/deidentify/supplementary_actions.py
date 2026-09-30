@@ -38,7 +38,12 @@ from collections.abc import Mapping
 
 from pymedphys._imports import tomlkit
 
-from .standard import ACTION_CODES, load_data_dictionary, load_table_e1_1
+from .standard import (
+    ACTION_CODES,
+    ProfileTable,
+    load_data_dictionary,
+    load_table_e1_1,
+)
 
 SCHEMA = "pymedphys-deid-supplementary-actions/1"
 SUPPLEMENTARY_ACTIONS_PATH = (
@@ -50,6 +55,30 @@ COVERED_VRS = frozenset({"PN"})
 # The VRs whose attributes the roles files cover.
 _ROLE_VRS = frozenset({"UI", "DA", "DT", "TM"})
 _FIELDS = frozenset({"tag", "keyword", "action", "note"})
+
+
+def _covers(table_tag: str, tag: str) -> bool:
+    """Whether a Table E.1-1 tag covers a dictionary tag.
+
+    An "x" in the table's tag stands for any digit, so "(50xx,xxxx)" covers
+    every attribute of the retired Curve group, such as "(50xx,2500)". Only
+    tags of the form "(gggg,eeee)" are compared, so the private attributes
+    row, "(gggg,eeee) where gggg is odd", covers none.
+    """
+    return len(table_tag) == len(tag) == len("(gggg,eeee)") and all(
+        expected in ("x", found) for expected, found in zip(table_tag, tag)
+    )
+
+
+def _listed(table: ProfileTable, tags) -> frozenset[str]:
+    """Return the dictionary tags that Table E.1-1 lists, exactly or masked."""
+    exact = {row.tag for row in table.attributes}
+    masked = [tag for tag in exact if "x" in tag]
+    return frozenset(
+        tag
+        for tag in tags
+        if tag in exact or any(_covers(pattern, tag) for pattern in masked)
+    )
 
 
 class SupplementaryActionError(ValueError):
@@ -145,7 +174,8 @@ def load_supplementary_actions(
         acknowledgement; does not give its rules as an array of tables; has a
         rule without exactly the fields tag, keyword, action, and note; has a
         rule for an attribute that is not in the data dictionary, with
-        another keyword, that Table E.1-1 lists, or of a VR that a roles file
+        another keyword, that Table E.1-1 lists (exactly or by a masked
+        tag, as it lists the Curve group), or of a VR that a roles file
         covers; has an action not defined in Table E.1-1a, or an empty note;
         repeats a tag; or has no action for a person name that Table E.1-1
         omits.
@@ -177,7 +207,7 @@ def _load(path: pathlib.Path) -> SupplementaryActions:
         )
 
     attributes = {attribute.tag: attribute for attribute in dictionary.attributes}
-    listed = frozenset(row.tag for row in table.attributes)
+    listed = _listed(table, attributes)
     entries = document.get("attribute", [])
     if not isinstance(entries, list):
         raise SupplementaryActionError(f"{path.name} rules are not an array of tables")

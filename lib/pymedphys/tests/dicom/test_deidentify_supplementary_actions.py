@@ -18,7 +18,12 @@ import re
 
 from pymedphys._imports import pytest, tomlkit
 
-from pymedphys._dicom.deidentify import standard, supplementary_actions
+from pymedphys._dicom.deidentify import (
+    standard,
+    supplementary_actions,
+    temporal_roles,
+    uid_roles,
+)
 
 # The actions of Table E.1-1a that never keep the value as received.
 REMOVING_ACTIONS = {"X", "Z", "D", "X/Z", "Z/D", "X/D", "X/Z/D"}
@@ -40,7 +45,7 @@ def test_every_person_name_that_table_e1_1_omits_has_an_action():
     omitted = {
         tag
         for tag, attribute in _dictionary().items()
-        if attribute.vr == "PN" and tag not in listed
+        if "PN" in attribute.vrs and tag not in listed
     }
 
     # Checked by hand against the 2026d PS3.6 and PS3.15.
@@ -56,7 +61,7 @@ def test_the_basic_profile_keeps_no_person_name():
     actions = {
         tag: listed[tag].basic_profile if tag in listed else rules[tag].action
         for tag, attribute in _dictionary().items()
-        if attribute.vr == "PN"
+        if "PN" in attribute.vrs
     }
 
     assert len(actions) == 32
@@ -84,6 +89,13 @@ def test_actions(tag, keyword, action):
 
     assert (rule.tag, rule.keyword, rule.action) == (tag, keyword, action)
     assert rule.note
+
+
+def test_the_vrs_the_roles_files_cover_are_left_to_them():
+    # pylint: disable=protected-access
+    assert supplementary_actions._ROLE_VRS == (
+        uid_roles._FORMAT.vrs | temporal_roles._FORMAT.vrs
+    )
 
 
 def test_notes_describe_decisions_rather_than_cite_their_numbers():
@@ -147,6 +159,11 @@ def _first(**fields):
         (_first(keyword="EvaluatorName"), "rule 1 names"),
         (
             _first(tag="(0010,0010)", keyword="PatientName"),
+            "rule 1 is listed in Table E.1-1",
+        ),
+        # Table E.1-1 lists the whole retired Curve group as (50xx,xxxx).
+        (
+            _first(tag="(50xx,2500)", keyword="CurveLabel"),
             "rule 1 is listed in Table E.1-1",
         ),
         (
