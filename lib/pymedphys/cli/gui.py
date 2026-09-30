@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Cancer Care Associates
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +27,27 @@ def gui_cli(subparsers: argparse._SubParsersAction):
         type=int,
         help="Port to serve the GUI on. Defaults to Streamlit's default port.",
     )
+    parser.add_argument(
+        "--address",
+        type=_address,
+        help=(
+            "Network address to serve the GUI on, for example 0.0.0.0 for "
+            "every IPv4 interface. By default the GUI listens on 127.0.0.1, "
+            "so only this computer can connect. WARNING: the GUI has no "
+            "authentication and its apps handle patient data. Anyone who can "
+            "reach this address and port can use every app and download its "
+            "outputs, and the connection is unencrypted HTTP. Serve on "
+            "another address only on a network where that is acceptable."
+        ),
+    )
     parser.add_argument("--electron", action="store_true")
     parser.set_defaults(func=main)
 
     return parser
+
+
+def _address(value: str) -> str:
+    # Streamlit treats an empty address as unset and serves on every interface.
+    if not value.strip():
+        raise argparse.ArgumentTypeError("the address must not be empty")
+    return value

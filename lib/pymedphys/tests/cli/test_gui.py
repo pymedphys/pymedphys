@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""``pymedphys gui --port`` serves the GUI on the requested port."""
+"""``pymedphys gui`` serves only this computer unless given ``--address``."""
 
 from pymedphys._imports import pytest
 
@@ -32,22 +32,58 @@ def _launch(monkeypatch, *cli_args):
     return launched[0]
 
 
-def test_default_launch_leaves_the_port_to_streamlit(monkeypatch):
+def _values(command, option):
+    return [value for name, value in zip(command, command[1:]) if name == option]
+
+
+def _streamlit_params(command):
+    streamlit_cli = pytest.importorskip("streamlit.web.cli")
+    context = streamlit_cli.main_run.make_context("run", command[4:])
+
+    assert context.params["target"].endswith("_app.py")
+    assert context.params["args"] == ()
+    return context.params
+
+
+def test_default_launch_serves_only_this_computer(monkeypatch):
     command = _launch(monkeypatch)
 
     assert command[1:4] == ["-m", "streamlit", "run"]
+    assert _values(command, "--server.address") == ["127.0.0.1"]
+    assert _values(command, "--server.allowedHosts") == ["localhost", "127.0.0.1"]
+    assert _values(command, "--browser.gatherUsageStats") == ["false"]
     assert "--server.port" not in command
 
 
-def test_streamlit_reads_the_requested_port(monkeypatch):
-    streamlit_cli = pytest.importorskip("streamlit.web.cli")
-    command = _launch(monkeypatch, "--port", "8600")
+def test_address_opts_in_to_serving_another_interface(monkeypatch):
+    command = _launch(monkeypatch, "--address", "0.0.0.0")
 
-    context = streamlit_cli.main_run.make_context("run", command[4:])
+    assert _values(command, "--server.address") == ["0.0.0.0"]
+    assert "--server.allowedHosts" not in command
+    assert _values(command, "--browser.gatherUsageStats") == ["false"]
 
-    assert context.params["server_port"] == 8600
-    assert context.params["target"].endswith("_app.py")
-    assert context.params["args"] == ()
+
+def test_streamlit_reads_the_default_options(monkeypatch):
+    # Command line options take precedence over Streamlit's environment variables.
+    monkeypatch.setenv("STREAMLIT_SERVER_ADDRESS", "0.0.0.0")
+    monkeypatch.setenv("STREAMLIT_BROWSER_GATHER_USAGE_STATS", "true")
+    params = _streamlit_params(_launch(monkeypatch))
+
+    assert params["server_address"] == "127.0.0.1"
+    assert params["server_allowedHosts"] == ("localhost", "127.0.0.1")
+    assert params["browser_gatherUsageStats"] is False
+    assert params["server_port"] is None
+
+
+def test_streamlit_reads_the_requested_address_and_port(monkeypatch):
+    params = _streamlit_params(
+        _launch(monkeypatch, "--address", "192.0.2.10", "--port", "8600")
+    )
+
+    assert params["server_address"] == "192.0.2.10"
+    assert params["server_allowedHosts"] == ()
+    assert params["browser_gatherUsageStats"] is False
+    assert params["server_port"] == 8600
 
 
 def test_port_must_be_an_integer(capsys):
@@ -55,3 +91,21 @@ def test_port_must_be_an_integer(capsys):
         define_parser().parse_args(["gui", "--port", "not-a-port"])
 
     assert "--port" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("address", ["", "  "])
+def test_address_must_not_be_empty(capsys, address):
+    # Streamlit would serve every interface for an empty address.
+    with pytest.raises(SystemExit):
+        define_parser().parse_args(["gui", "--address", address])
+
+    assert "--address" in capsys.readouterr().err
+
+
+def test_address_help_warns_that_the_apps_are_open_to_anyone(capsys):
+    with pytest.raises(SystemExit):
+        define_parser().parse_args(["gui", "--help"])
+
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "no authentication" in help_text
+    assert "patient data" in help_text
