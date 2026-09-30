@@ -128,9 +128,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 The Attributes listed in Table E.1-1 for each Profile or Option are contained in Standard IODs, or may be contained in Standard Extended IODs. An implementation claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall protect or retain all instances of the Attributes listed in Table E.1-1, whether contained in the top level Data Set or embedded in an Item of a Sequence of Items. The action codes in Table E.1-1a are used in Table E.1-1.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-011"]
+decisions = ["D-001", "D-007", "D-011"]
+implementation = ["_dicom/deidentify/actions.py", "_dicom/deidentify/standard.py"]
+tests = [
+  "tests/dicom/test_deidentify_actions.py::test_the_basic_profile_alone_gives_each_attribute_its_profile_action",
+  "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
+  "tests/dicom/test_deidentify_actions.py::test_each_attribute_has_one_action_or_a_conflict",
+]
+note = '''
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.2-01"
@@ -483,18 +492,23 @@ Do not let de-identification compromise conformance with the standards that defi
 status = "partial"
 milestone = "M4"
 decisions = ["D-001", "D-003", "D-005", "D-008", "D-011"]
-implementation = ["_dicom/deidentify/iods.py", "_dicom/deidentify/values.py"]
+implementation = [
+  "_dicom/deidentify/iods.py",
+  "_dicom/deidentify/sop_classes.py",
+  "_dicom/deidentify/values.py",
+]
 tests = [
   "tests/dicom/test_deidentify_iods.py::test_the_first_supported_release_iods_are_generated",
   "tests/dicom/test_deidentify_iods.py::test_an_attribute_can_have_a_different_type_in_each_module",
   "tests/dicom/test_deidentify_iods.py::test_types_depend_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_iods.py::test_macros_are_expanded_where_they_are_included",
+  "tests/dicom/test_deidentify_sop_classes.py::test_the_first_supported_release_sop_classes_find_their_iods",
   "tests/dicom/test_deidentify_values.py::test_valid_values",
   "tests/dicom/test_deidentify_values.py::test_invalid_values",
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value, and a value can be checked against its VR and VM before it is written. Remaining: resolving compound actions and synthesising dummy values from these Types, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and validating output against its IOD (M4).
+The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Remaining: resolving compound actions and synthesising dummy values from these Types, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and validating output against its IOD (M4).
 '''
 
 [[requirement]]
@@ -532,7 +546,9 @@ decisions = ["D-001", "D-010"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
   "_dev/deid_tables/generate.py",
+  "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
+  "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
 ]
 tests = [
@@ -542,9 +558,10 @@ tests = [
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
+  "tests/dicom/test_deidentify_sop_classes.py::test_an_unsupported_or_unlisted_sop_class_has_no_iod",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, and PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
