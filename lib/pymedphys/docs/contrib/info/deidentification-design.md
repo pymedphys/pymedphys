@@ -99,7 +99,7 @@ The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API 
    - It removes group 0004 from every file other than a DICOMDIR, and removes Data Set Trailing Padding. A source DICOMDIR is never passed through; one is written only by regenerating it from the de-identified files (E.1.1).
    - Encapsulated documents are replaced, as Table E.1-1 requires, or the instance is sequestered.
    - Metadata in compressed pixel data bitstreams, such as JPEG APPn segments, is removed without recompression.
-   - Output file and directory names are built only from replacement identifiers, never from source paths, file names, or attribute values.
+   - Output file and directory names are built only from replacement identifiers, never from source paths, file names, or attribute values. Each instance is written to `<Patient ID>/<Study Instance UID>/<Series Instance UID>/<SOP Instance UID>.dcm` below the output directory, from its replacement values (D-016).
    - De-identification markers follow D-012.
 8. **Referential integrity.**
    - A first pass builds a graph of instances and references. It reports dangling references, frame of reference mismatches, and inconsistent hierarchy using opaque identifiers, before anything is written.
@@ -291,11 +291,12 @@ These are the active design decisions, not statements that the code implements t
 
 - **Decision.**
   - Logs, standard output and standard error, warnings, exception messages, output file and directory names, and release reports contain no source attribute values, original paths, or keys. They use attribute paths, opaque object identifiers, rule identifiers, and aggregate results.
+  - Each instance is written to `<Patient ID>/<Study Instance UID>/<Series Instance UID>/<SOP Instance UID>.dcm` below the output directory, from its replacement Patient ID (D-005) and replacement UIDs (D-003). Names therefore hold only ASCII digits, upper-case letters, `.` and `-`, and the `.dcm` suffix, and a path below the output directory has at most 160 characters. A value that is not a replacement, such as a retained UID, names nothing. Instances that share a file name, and so a SOP Instance UID, are reported by their positions and never renamed.
   - A QC pack contains only the retained strings, contextual excerpts, and image previews needed for review. It is written to an explicitly designated location restricted to authorised reviewers, treated as potentially identifying, excluded from release directories and archives, and has documented retention and deletion.
   - Key and subject-profile stores are separate custodian-controlled state and are included in neither.
   - Release reports record an opaque attestation reference and outcome, not the review material.
-- **Rationale.** Human review needs material that may still identify people; routine diagnostics and distributable reports do not.
-- **Tests.** Captured logs and errors contain no source values or paths; release archives contain no QC or state artefacts; the QC destination and access requirements are enforced; and a reviewer can locate affected output from opaque identifiers.
+- **Rationale.** Human review needs material that may still identify people; routine diagnostics and distributable reports do not. Names built from replacement values are the same under one key in every run and processing order, whereas renaming instances that share a name would make each name depend on the other instances, and so rename earlier output when an incremental export adds instances. Naming a file by its replacement SOP Instance UID lets a reviewer find output from the identifiers in reports. The 160-character bound leaves 98 characters for the output directory within the 259 that Windows allows a path without long-path support.
+- **Tests.** Captured logs and errors contain no source values or paths; output names contain no source path, file name, or value, are portable and within the length bound, and are refused for any value that is not a replacement; instances that share a file name are reported, not renamed; release archives contain no QC or state artefacts; the QC destination and access requirements are enforced; and a reviewer can locate affected output from opaque identifiers.
 
 ### D-017: Public-release risk assessment
 
