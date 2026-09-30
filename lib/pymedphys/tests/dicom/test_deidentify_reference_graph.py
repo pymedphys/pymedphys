@@ -208,13 +208,6 @@ def test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves(
             id="padded-performed-procedure-step",
         ),
         pytest.param(
-            "ReferencedStudySequence",
-            ("(0008,1110)", "(0008,1155)"),
-            synthetic.DETACHED_STUDY_MANAGEMENT,
-            False,
-            id="detached-study-management",
-        ),
-        pytest.param(
             "ReferencedImageSequence",
             synthetic.REFERENCED_IMAGE,
             synthetic.PRIVATE_SOP_CLASS,
@@ -262,18 +255,72 @@ def test_a_missing_target_of_a_class_outside_table_b5_1_is_not_dangling(
     assert findings == ((_dangling(PLAN, attribute),) if dangling else ())
 
 
+def _refer_to_study(dataset, attribute, sop_class, value):
+    """Make ``dataset`` refer to the study ``value`` at ``attribute``."""
+    if attribute == synthetic.RT_REFERENCED_STUDY:
+        frame = dataset.ReferencedFrameOfReferenceSequence[0]
+        study = frame.RTReferencedStudySequence[0]
+        del study.ReferencedSOPClassUID
+        if sop_class is not None:
+            synthetic.uid(study, "ReferencedSOPClassUID", sop_class)
+        synthetic.uid(study, "ReferencedSOPInstanceUID", value)
+        return
+    study = synthetic.reference(sop_class, value)
+    if attribute == synthetic.REFERENCED_STUDY:
+        dataset.ReferencedStudySequence = [study]
+    else:
+        dataset.RequestAttributesSequence = [
+            synthetic.item(ReferencedStudySequence=[study])
+        ]
+
+
 @pytest.mark.pydicom
-def test_a_private_study_class_in_the_rt_referenced_study_sequence_is_not_dangling():
-    # PS3.3 C.8.8.5.4: the class is the study's own, which may be private, and
-    # the Referenced SOP Instance UID is the study's.
+@pytest.mark.parametrize(
+    "value, dangling",
+    [
+        (synthetic.STUDY, False),
+        (synthetic.STUDY + "\x00", False),
+        ("2.25.9005", True),
+        # The SOP Instance UID of an input is not a Study Instance UID.
+        (synthetic.CT_SLICES[0], True),
+    ],
+    ids=["in-collection", "padded", "not-in-collection", "naming-an-instance"],
+)
+@pytest.mark.parametrize(
+    "sop_class",
+    [
+        synthetic.DETACHED_STUDY_MANAGEMENT,
+        None,
+        synthetic.PRIVATE_SOP_CLASS,
+        synthetic.CT_IMAGE_STORAGE,
+    ],
+    ids=["detached-study-management", "no-sop-class", "private", "ct-image-storage"],
+)
+@pytest.mark.parametrize(
+    "attribute",
+    [
+        synthetic.RT_REFERENCED_STUDY,
+        synthetic.REFERENCED_STUDY,
+        synthetic.REQUESTED_REFERENCED_STUDY,
+    ],
+    ids=["rt-referenced-study", "referenced-study", "requested-study"],
+)
+def test_a_reference_to_a_study_resolves_to_the_study_whatever_its_class(
+    attribute, sop_class, value, dangling
+):
+    # PS3.3 Sections 10.6.1 and C.8.8.5.4: in these sequences, Referenced SOP
+    # Instance UID is the study's, and Referenced SOP Class UID is the study's
+    # own class, which may be retired or private. So the study resolves among
+    # the inputs' Study Instance UIDs, and the class rule does not apply.
     datasets = synthetic.collection()
-    frame = datasets[STRUCTURE_SET].ReferencedFrameOfReferenceSequence[0]
-    study = frame.RTReferencedStudySequence[0]
-    synthetic.uid(study, "ReferencedSOPClassUID", synthetic.PRIVATE_SOP_CLASS)
+    _refer_to_study(datasets[STRUCTURE_SET], attribute, sop_class, value)
 
     graph = _graph(datasets)
 
-    assert not graph.findings
+    assert graph.findings == (
+        (_dangling(STRUCTURE_SET, attribute),) if dangling else ()
+    )
+    # Only references to instances are edges.
     assert graph.edges == _graph(synthetic.collection()).edges
 
 

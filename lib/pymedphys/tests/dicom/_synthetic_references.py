@@ -30,8 +30,9 @@ RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
 ENCAPSULATED_PDF_STORAGE = "1.2.840.10008.5.1.4.1.1.104.1"
 # SOP Classes of other service classes, which PS3.4 Table B.5-1 does not
-# list. PS3.3 C.8.8.5.4 gives Detached Study Management, a retired SOP Class,
-# in the RT Referenced Study Sequence.
+# list. PS3.3 Sections 10.6.1 and C.8.8.5.4 give Detached Study Management, a
+# retired SOP Class, in the Referenced Study Sequence and the RT Referenced
+# Study Sequence.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 MODALITY_PERFORMED_PROCEDURE_STEP = "1.2.840.10008.3.1.2.3.3"
 # Storage SOP Classes that Table B.5-1 does not list either: a Private SOP
@@ -71,6 +72,10 @@ REFERENCED_STRUCTURE_SET = ("(300C,0060)", "(0008,1155)")
 REFERENCED_DOSE = ("(300C,0080)", "(0008,1155)")
 REFERENCED_PLAN = ("(300C,0002)", "(0008,1155)")
 REFERENCED_IMAGE = ("(0008,1140)", "(0008,1155)")
+# Referenced SOP Instance UID names a study in these, as in the RT Referenced
+# Study Sequence: the General Study module's, and each request's.
+REFERENCED_STUDY = ("(0008,1110)", "(0008,1155)")
+REQUESTED_REFERENCED_STUDY = ("(0040,0275)", "(0008,1110)", "(0008,1155)")
 # Places where every definition in the IOD is Type 3.
 REQUESTED_STUDY = ("(0040,0275)", "(0020,000D)")
 PERTINENT_DOCUMENTS = ("(0044,0110)", "(0038,0100)", "(0008,1155)")

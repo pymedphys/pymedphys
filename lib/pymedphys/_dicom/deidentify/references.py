@@ -19,8 +19,12 @@ that :mod:`~pymedphys._dicom.deidentify.iods` generates, not listed by hand:
 each place inside a sequence where the IOD defines one of
 :data:`REFERENCE_TAGS`, such as Referenced SOP Instance UID (0008,1155) in an
 RT Plan's Referenced Structure Set Sequence (300C,0060), with the attribute's
-Type there. At the top level of the data set, the same Series and Study
-Instance UIDs identify the instance itself.
+Type there. The attribute's tag gives the level of what it names, except
+that Referenced SOP Instance UID names a study in the items of a Referenced
+Study Sequence (0008,1110) or an RT Referenced Study Sequence (3006,0012),
+where Referenced SOP Class UID (0008,1150) is the study's own class (PS3.3
+Sections 10.6.1 and C.8.8.5.4). At the top level of the data set, the same
+Series and Study Instance UIDs identify the instance itself.
 
 An :class:`InstanceRecord` holds what the reference graph
 (:mod:`~pymedphys._dicom.deidentify.reference_graph`) needs from one
@@ -54,6 +58,7 @@ from .uids import normalise_uid
 
 SOP_CLASS_TAG = "(0008,0016)"
 REFERENCED_SOP_CLASS_TAG = "(0008,1150)"
+REFERENCED_SOP_INSTANCE_TAG = "(0008,1155)"
 
 
 class Level(enum.Enum):
@@ -65,13 +70,21 @@ class Level(enum.Enum):
 
 
 # The attributes that make a reference when they are inside a sequence, and
-# the level of what they name.
+# the level of what they name, except in the items of STUDY_SEQUENCES.
 REFERENCE_TAGS: Mapping[str, Level] = types.MappingProxyType(
     {
-        "(0008,1155)": Level.INSTANCE,  # Referenced SOP Instance UID
+        REFERENCED_SOP_INSTANCE_TAG: Level.INSTANCE,
         "(0008,1167)": Level.INSTANCE,  # Multi-frame Source SOP Instance UID
         "(0020,000E)": Level.SERIES,  # Series Instance UID
         "(0020,000D)": Level.STUDY,  # Study Instance UID
+    }
+)
+# The sequences in whose items Referenced SOP Instance UID names a study,
+# by its Study Instance UID (PS3.3 Sections 10.6.1 and C.8.8.5.4).
+STUDY_SEQUENCES = frozenset(
+    {
+        "(0008,1110)",  # Referenced Study Sequence
+        "(3006,0012)",  # RT Referenced Study Sequence
     }
 )
 # The top-level attributes that identify an instance, its series, and its
@@ -97,7 +110,10 @@ class ReferenceSite:
     tag : str
         The tag of the referring attribute, a key of :data:`REFERENCE_TAGS`.
     level : Level
-        What the attribute's value names.
+        What the attribute's value names: the level :data:`REFERENCE_TAGS`
+        gives the tag, except that Referenced SOP Instance UID names a study
+        where the innermost sequence of ``path`` is one of
+        :data:`STUDY_SEQUENCES`.
     type : str
         The attribute's Type there, ``"1"``, ``"2"``, or ``"3"``: where the
         IOD's modules give it several, the strictest, with 1C counting as 1
@@ -141,6 +157,12 @@ def reference_sites(iod: IOD) -> tuple[ReferenceSite, ...]:
     ...     if site.attribute == ("(300C,0060)", "(0008,1155)")
     ... ]  # Referenced Structure Set Sequence
     [('instance', '1')]
+    >>> [
+    ...     (site.level.value, site.type)
+    ...     for site in reference_sites(rt_plan)
+    ...     if site.attribute == ("(0008,1110)", "(0008,1155)")
+    ... ]  # Referenced Study Sequence
+    [('study', '1')]
     """
     places = dict.fromkeys(
         (definition.path, definition.tag)
@@ -152,11 +174,18 @@ def reference_sites(iod: IOD) -> tuple[ReferenceSite, ...]:
         ReferenceSite(
             path,
             tag,
-            REFERENCE_TAGS[tag],
+            _level(path, tag),
             min(each.type.removesuffix("C") for each in iod.lookup(tag, path)),
         )
         for path, tag in places
     )
+
+
+def _level(path: tuple[str, ...], tag: str) -> Level:
+    """Return the level of what ``tag`` names in the items of ``path``."""
+    if tag == REFERENCED_SOP_INSTANCE_TAG and path[-1] in STUDY_SEQUENCES:
+        return Level.STUDY
+    return REFERENCE_TAGS[tag]
 
 
 @dataclasses.dataclass(frozen=True)

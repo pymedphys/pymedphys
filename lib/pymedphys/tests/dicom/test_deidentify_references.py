@@ -31,9 +31,10 @@ FIRST_RELEASE_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
 # Paths from the module tables of the 2026d PS3.3, checked against its text.
 RT_REFERENCES = [
     # RT Structure Set: the contour images of each referenced frame, their
-    # series, the images of each ROI contour, the source series, and the
-    # predecessor structure set.
+    # series and study, the images of each ROI contour, the source series,
+    # and the predecessor structure set.
     ("RT Structure Set", synthetic.CONTOUR_IMAGES, Level.INSTANCE),
+    ("RT Structure Set", synthetic.RT_REFERENCED_STUDY, Level.STUDY),
     ("RT Structure Set", synthetic.RT_REFERENCED_SERIES, Level.SERIES),
     ("RT Structure Set", synthetic.ROI_CONTOUR_IMAGES, Level.INSTANCE),
     ("RT Structure Set", ("(3006,0039)", "(3006,004B)", "(0020,000E)"), Level.SERIES),
@@ -60,16 +61,54 @@ RT_REFERENCES = [
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
-    # Every IOD: Common Instance Reference.
+    # Every IOD: Common Instance Reference, and the study in General Study
+    # and in each request.
     *(
         (iod, attribute, level)
         for iod in FIRST_RELEASE_IODS
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1200)", "(0020,000D)"), Level.STUDY),
+            (synthetic.REFERENCED_STUDY, Level.STUDY),
+            (synthetic.REQUESTED_REFERENCED_STUDY, Level.STUDY),
         ]
     ),
 ]
+# Every sequence in which a first release IOD defines Referenced SOP Instance
+# UID (0008,1155), from the sequences' descriptions in the 2026d PS3.3. In
+# the items of the Referenced Study Sequence and the RT Referenced Study
+# Sequence, it is the Study Instance UID of a study (Sections 10.6.1 and
+# C.8.8.5.4). In the others, it names an instance, a performed procedure
+# step, a patient, or an HL7 document.
+STUDY_SEQUENCES = {"(0008,1110)", "(3006,0012)"}
+OTHER_SEQUENCES = {
+    "(0008,1111)",  # Referenced Performed Procedure Step Sequence
+    "(0008,1120)",  # Referenced Patient Sequence
+    "(0008,1140)",  # Referenced Image Sequence
+    "(0008,114A)",  # Referenced Instance Sequence
+    "(0008,1156)",  # Definition Source Sequence
+    "(0008,1199)",  # Referenced SOP Sequence
+    "(0008,2112)",  # Source Image Sequence
+    "(0018,990C)",  # Referenced Defined Protocol Sequence
+    "(0018,990D)",  # Referenced Performed Protocol Sequence
+    "(0020,9172)",  # Conversion Source Attributes Sequence
+    "(0038,0100)",  # Pertinent Documents Sequence
+    "(0040,A390)",  # HL7 Structured Document Reference Sequence
+    "(0042,0013)",  # Source Instance Sequence
+    "(0070,0404)",  # Referenced Spatial Registration Sequence
+    "(3006,0016)",  # Contour Image Sequence
+    "(3006,0018)",  # Predecessor Structure Set Sequence
+    "(3008,0030)",  # Referenced Treatment Record Sequence
+    "(300A,0401)",  # Referenced Setup Image Sequence
+    "(300A,078C)",  # Referenced Patient Setup Photo Sequence
+    "(300C,0002)",  # Referenced RT Plan Sequence
+    "(300C,0042)",  # Referenced Reference Image Sequence
+    "(300C,0060)",  # Referenced Structure Set Sequence
+    "(300C,0080)",  # Referenced Dose Sequence
+    "(3010,0007)",  # Originating SOP Instance Reference Sequence
+    "(3010,0009)",  # Equivalent Conceptual Volume Instance Reference Sequence
+    "(3010,004A)",  # Referenced Direct Segment Instance Sequence
+}
 # Every other UI attribute that uid_roles.toml marks "instance" and that a
 # first release IOD defines inside a sequence, with why it is not followed.
 NOT_FOLLOWED = {
@@ -187,8 +226,57 @@ def test_reference_sites_are_nested_and_distinct(name):
     assert sites
     assert all(site.path for site in sites)
     assert len({(site.path, site.tag) for site in sites}) == len(sites)
-    assert all(references.REFERENCE_TAGS[site.tag] is site.level for site in sites)
+    assert all(
+        references.REFERENCE_TAGS[site.tag] is site.level
+        for site in sites
+        if site.path[-1] not in STUDY_SEQUENCES
+    )
     assert {site.type for site in sites} <= {"1", "2", "3"}
+
+
+@pytest.mark.parametrize(
+    "path, tag, level",
+    [
+        (("(0008,1110)",), "(0008,1155)", Level.STUDY),
+        (("(0040,0275)", "(0008,1110)"), "(0008,1155)", Level.STUDY),
+        (("(3006,0010)", "(3006,0012)"), "(0008,1155)", Level.STUDY),
+        # Only the sequence whose items hold the attribute decides.
+        (("(0008,1110)", "(0008,1199)"), "(0008,1155)", Level.INSTANCE),
+        (("(3006,0012)", "(3006,0014)", "(3006,0016)"), "(0008,1155)", Level.INSTANCE),
+        (("(0008,1111)",), "(0008,1155)", Level.INSTANCE),
+        # Only Referenced SOP Instance UID names a study there.
+        (("(0008,1110)",), "(0008,1167)", Level.INSTANCE),
+        (("(3006,0012)",), "(0020,000E)", Level.SERIES),
+    ],
+    ids=_id,
+)
+def test_referenced_sop_instance_uid_names_a_study_in_a_study_sequence(
+    path, tag, level
+):
+    # PS3.3 Sections 10.6.1 and C.8.8.5.4: in the items of the Referenced
+    # Study Sequence and the RT Referenced Study Sequence, the Referenced SOP
+    # Instance UID is the study's, and the Referenced SOP Class UID is the
+    # study's own class, such as the retired Detached Study Management.
+    definition = iods.AttributeDefinition(path, tag, "Synthetic", "1", "A", ())
+    iod = iods.IOD("Synthetic", "Table A.0-1", (), (definition,))
+
+    assert references.reference_sites(iod) == (ReferenceSite(path, tag, level, "1"),)
+
+
+def test_referenced_sop_instance_uid_names_a_study_only_in_the_study_sequences():
+    # A new edition that defines Referenced SOP Instance UID in another
+    # sequence fails here until someone decides what its items name.
+    sites = [
+        site
+        for name in FIRST_RELEASE_IODS
+        for site in references.reference_sites(_iod(name))
+        if site.tag == "(0008,1155)"
+    ]
+
+    assert {site.path[-1] for site in sites} == STUDY_SEQUENCES | OTHER_SEQUENCES
+    assert {site.path[-1] for site in sites if site.level is Level.STUDY} == (
+        STUDY_SEQUENCES
+    )
 
 
 def test_an_attribute_defined_twice_at_one_place_is_one_site():
@@ -281,7 +369,7 @@ def test_a_record_finds_references_in_nested_items():
 
     assert found == sorted(
         [
-            (synthetic.RT_REFERENCED_STUDY, "instance", synthetic.STUDY),
+            (synthetic.RT_REFERENCED_STUDY, "study", synthetic.STUDY),
             (synthetic.RT_REFERENCED_SERIES, "series", synthetic.CT_SERIES),
             *(
                 (attribute, "instance", slice_)

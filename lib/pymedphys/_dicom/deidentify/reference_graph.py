@@ -21,14 +21,21 @@ graph resolves each reference to the inputs it names, and reports each input
 that lacks an identifier and each reference that names nothing in the
 collection.
 
+A reference resolves by the level of its site, to each input with that SOP
+Instance UID, Series Instance UID, or Study Instance UID. Referenced SOP
+Instance UID (0008,1155) in a Referenced Study Sequence or RT Referenced
+Study Sequence item names a study, whatever its Referenced SOP Class UID
+(0008,1150), which is the study's own class, such as the retired Detached
+Study Management (PS3.3 Sections 10.6.1 and C.8.8.5.4).
+
 Two kinds of reference that name no input are not reported. A reference to
-an instance whose Referenced SOP Class UID (0008,1150) is not a Standard
-Storage SOP Class of PS3.4 Table B.5-1, such as a Private or retired SOP
-Class, resolves if it names an input; otherwise it is not reported, because
-such a class may name something that is not a stored instance, such as a
-performed procedure step, or a study or patient through a retired or private
-management class (PS3.3 C.8.8.5.4). A UID that the pinned tables register,
-such as a well-known color palette, names a public definition.
+an instance whose Referenced SOP Class UID is not a Standard Storage SOP
+Class of PS3.4 Table B.5-1, such as a Private or retired SOP Class, resolves
+if it names an input; otherwise it is not reported, because such a class may
+name something that is not a stored instance, such as a performed procedure
+step, or a patient through a retired or private management class. A UID that
+the pinned tables register, such as a well-known colour palette, names a
+public definition.
 
 A :class:`Finding` names inputs only by their positions in the records given
 to :func:`build_reference_graph`, and attributes only by their tags, so it
@@ -65,12 +72,14 @@ class FindingKind(enum.Enum):
     DANGLING_REFERENCE
         A value at one of the input's reference sites names no input at the
         site's level: no input has that SOP Instance UID, Series Instance
-        UID, or Study Instance UID, without padding. An empty value, or one
-        that is not a single UID, names nothing, except that an empty value
-        at a Type 3 site means the same as an absent one. A value that names
-        no input is not reported if its Referenced SOP Class UID is not a
-        Standard Storage SOP Class of Table B.5-1, or if the pinned tables
-        register it. There is one finding for each input and site, whose
+        UID, or Study Instance UID, without padding. Referenced SOP Instance
+        UID in a Referenced Study Sequence or RT Referenced Study Sequence
+        item names a study. An empty value, or one that is not a single UID,
+        names nothing, except that an empty value at a Type 3 site means the
+        same as an absent one. A value that names no input is not reported
+        if the pinned tables register it, or if its site names an instance
+        and its Referenced SOP Class UID is not a Standard Storage SOP Class
+        of Table B.5-1. There is one finding for each input and site, whose
         ``count`` is the number of distinct values there that name nothing.
     """
 
