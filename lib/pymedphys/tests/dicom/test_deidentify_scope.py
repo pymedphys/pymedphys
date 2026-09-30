@@ -62,6 +62,18 @@ def test_the_supported_transfer_syntaxes_are_current_in_ps3_6():
     assert not any(registered[uid].retired for uid in scope.SUPPORTED_TRANSFER_SYNTAXES)
 
 
+def test_only_the_storage_sop_classes_of_the_supported_iods_are_supported():
+    # A new edition that maps another SOP Class to a supported IOD fails
+    # here once its tables are regenerated.
+    supported = {
+        row.uid
+        for row in sop_classes.load_storage_sop_classes().rows
+        if scope.classify(row.uid, EXPLICIT_LE).disposition is Disposition.SUPPORTED
+    }
+
+    assert supported == set(SUPPORTED)
+
+
 @pytest.mark.parametrize("sop_class, iod", SUPPORTED.items())
 @pytest.mark.parametrize("transfer_syntax", [IMPLICIT_LE, EXPLICIT_LE])
 def test_a_supported_instance_is_de_identified(sop_class, iod, transfer_syntax):
@@ -77,8 +89,8 @@ def test_padding_is_ignored():
     found = scope.classify("1.2.840.10008.5.1.4.1.1.481.5\x00", EXPLICIT_LE + "\x00")
 
     assert found.disposition is Disposition.SUPPORTED
-    assert scope.classify(IMPLICIT_LE + " ", IMPLICIT_LE).disposition is (
-        Disposition.UNLISTED_SOP_CLASS
+    assert scope.classify("1.2.840.10008.5.1.4.1.1.2 ", IMPLICIT_LE + " ") == (
+        scope.Classification(Disposition.SUPPORTED, "CT Image")
     )
 
 

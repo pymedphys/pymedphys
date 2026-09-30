@@ -58,7 +58,8 @@ class Disposition(enum.Enum):
     UNLISTED_SOP_CLASS = "unlisted-sop-class"
     # A Standard Storage SOP Class of an IOD the release does not support.
     UNSUPPORTED_IOD = "unsupported-iod"
-    # A supported IOD in a transfer syntax the release does not read.
+    # A supported IOD with no transfer syntax, or one the release does not
+    # read.
     UNSUPPORTED_TRANSFER_SYNTAX = "unsupported-transfer-syntax"
 
 
@@ -102,9 +103,12 @@ def classify(
     ----------
     sop_class_uid : str
         The instance's SOP Class UID (0008,0016), as read, with any trailing
-        NUL or space padding.
+        NUL or space padding. Anything but text, such as ``None`` or several
+        values, counts as no SOP Class UID.
     transfer_syntax_uid : str
         The Transfer Syntax UID (0002,0010) of the instance's file, as read.
+        Anything but text counts as no transfer syntax, which is not
+        supported.
     sop_classes : RegistryTable of StorageSOPClass, optional
         PS3.4 Table B.5-1. Defaults to
         :func:`~pymedphys._dicom.deidentify.sop_classes.load_storage_sop_classes`.
