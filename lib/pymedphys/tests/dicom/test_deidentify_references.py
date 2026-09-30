@@ -16,6 +16,7 @@
 
 import io
 import pickle
+import struct
 
 from pymedphys._imports import pydicom, pytest
 
@@ -515,17 +516,61 @@ def test_a_record_read_from_a_file_matches_the_data_set(transfer_syntax):
     assert len(expected.references) == 9
 
 
+ITEM_TAG = 0xFFFEE000
+
+
+def _encoded(tag, value):
+    """Return an element or item of defined length in Implicit VR Little Endian.
+
+    Its tag's group and element, then the length of ``value``, each little
+    endian, then ``value`` (PS3.5 Sections 7.1.3 and 7.5).
+    """
+    return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
+
+
+def _encoded_items(*items):
+    """Return the value of a sequence whose items hold the encoded elements."""
+    return b"".join(_encoded(ITEM_TAG, b"".join(item)) for item in items)
+
+
+def _encoded_reference(sop_class, sop_instance):
+    """Return the encoded elements of a synthetic.reference item."""
+    # A UID of odd length has a trailing NUL (PS3.5 Section 9.1).
+    return [
+        _encoded(tag, uid.encode() + b"\x00" * (len(uid) % 2))
+        for tag, uid in [(0x00081150, sop_class), (0x00081155, sop_instance)]
+    ]
+
+
+def _unknown(monkeypatch, tag, value):
+    """Return an element whose VR is UN, whatever pydicom's dictionary knows."""
+    # pydicom gives a UN element of an attribute it knows that attribute's VR,
+    # unless replace_un_with_known_vr is off, as it can be when reading.
+    with monkeypatch.context() as patch:
+        patch.setattr(pydicom.config, "replace_un_with_known_vr", False)
+        return pydicom.DataElement(tag, "UN", value)
+
+
 def _with_rt_assertion():
+    """Return an RT Plan with an RT Assertions Sequence, and its encoded value."""
     dataset = synthetic.rt_plan()
     dataset.add(
         synthetic.rt_assertions(
             synthetic.reference(synthetic.ENCAPSULATED_PDF_STORAGE, "2.25.9030")
         )
     )
-    return dataset, synthetic.RT_ASSERTIONS_SEQUENCE, synthetic.PERTINENT_DOCUMENTS
+    document = _encoded_reference(synthetic.ENCAPSULATED_PDF_STORAGE, "2.25.9030")
+    value = _encoded_items([_encoded(0x00380100, _encoded_items(document))])
+    return (
+        dataset,
+        synthetic.RT_ASSERTIONS_SEQUENCE,
+        synthetic.PERTINENT_DOCUMENTS,
+        value,
+    )
 
 
 def _with_dose_calculation_model():
+    """Return an RT Dose with a Dose Calculation Model Sequence, and its value."""
     # Dose Calculation Model Sequence (3004,0080) > Dose Calculation Model
     # Parameter Sequence (3004,0083), neither of which pydicom 3.0.2 knows.
     parameter = synthetic.item(
@@ -538,7 +583,10 @@ def _with_dose_calculation_model():
     dataset = synthetic.rt_dose()
     dataset.add(synthetic.sequence(0x30040080, [model]))
     attribute = ("(3004,0080)", "(3004,0083)", "(0008,1199)", "(0008,1155)")
-    return dataset, 0x30040080, attribute
+    plan = _encoded_reference(synthetic.RT_PLAN_STORAGE, synthetic.PLAN)
+    encoded_parameter = [_encoded(0x00081199, _encoded_items(plan))]
+    encoded_model = [_encoded(0x30040083, _encoded_items(encoded_parameter))]
+    return dataset, 0x30040080, attribute, _encoded_items(encoded_model)
 
 
 @pytest.mark.pydicom
@@ -549,11 +597,40 @@ def _with_dose_calculation_model():
     [_with_rt_assertion, _with_dose_calculation_model],
     ids=["rt-assertions", "dose-calculation-model"],
 )
-def test_a_sequence_read_as_unknown_is_decoded_with_its_dictionary_vr(build):
-    # In Implicit VR Little Endian, pydicom reads a sequence of defined length
-    # that it does not know as UN. PS3.5 Section 6.2.2 lets a reader that
-    # knows the VR decode the value as Implicit VR Little Endian.
-    dataset, tag, attribute = build()
+def test_a_sequence_held_as_unknown_is_decoded_with_its_dictionary_vr(
+    monkeypatch, build
+):
+    # PS3.5 Section 6.2.2 lets a reader that knows the VR of a UN value decode
+    # it as Implicit VR Little Endian. The value is encoded here, so the test
+    # does not depend on which attributes pydicom knows.
+    dataset, tag, attribute, value = build()
+    expected = InstanceRecord.from_dataset(dataset)
+    dataset[tag] = _unknown(monkeypatch, tag, value)
+
+    record = InstanceRecord.from_dataset(dataset)
+
+    assert record == expected
+    assert attribute in {reference.site.attribute for reference in record.references}
+    # The data set is unchanged.
+    assert dataset[tag].VR == "UN"
+    assert dataset[tag].value == value
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
+@pytest.mark.parametrize(
+    "build",
+    [_with_rt_assertion, _with_dose_calculation_model],
+    ids=["rt-assertions", "dose-calculation-model"],
+)
+def test_a_record_read_from_implicit_vr_has_the_references_in_unknown_sequences(
+    build,
+):
+    # pydicom 3.0.2 reads each of these sequences as UN from Implicit VR
+    # Little Endian, since it does not know them; a pydicom that knows them
+    # reads them as SQ. Either way, the record is the same.
+    dataset, _, attribute, _ = build()
     expected = InstanceRecord.from_dataset(dataset)
 
     read = _written_and_read(dataset, "1.2.840.10008.1.2")
@@ -561,13 +638,9 @@ def test_a_sequence_read_as_unknown_is_decoded_with_its_dictionary_vr(build):
 
     assert record == expected
     assert attribute in {reference.site.attribute for reference in record.references}
-    # The data set is unchanged.
-    assert read[tag].VR == "UN"
-    assert isinstance(read[tag].value, bytes)
 
 
 @pytest.mark.pydicom
-@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
 @pytest.mark.parametrize(
     "tag, found",
     [("(0044,0110)", True), ("(3004,0082)", False), ("(0009,1010)", False)],
@@ -576,20 +649,18 @@ def test_a_sequence_read_as_unknown_is_decoded_with_its_dictionary_vr(build):
 def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
     monkeypatch, tag, found
 ):
-    # The value of an RT Assertions Sequence read from Implicit VR Little
-    # Endian, given as the UN value of RT Assertions Sequence (0044,0110), of
-    # Commissioning Status (3004,0082), whose dictionary VR is CS, and of a
-    # private attribute, which the dictionary does not list. pydicom 3.0.2
-    # knows none of them, so it keeps the VR UN.
-    dataset, sequence_tag, _ = _with_rt_assertion()
-    encoded = _written_and_read(dataset, "1.2.840.10008.1.2")[sequence_tag].value
+    # The encoded value of an RT Assertions Sequence, given as the UN value of
+    # RT Assertions Sequence (0044,0110), of Commissioning Status (3004,0082),
+    # whose dictionary VR is CS, and of a private attribute, which the
+    # dictionary does not list.
+    *_, value = _with_rt_assertion()
     _only_site(
         monkeypatch,
         ReferenceSite((tag, "(0038,0100)"), "(0008,1155)", Level.INSTANCE, "3"),
     )
     dataset = synthetic.rt_plan()
     number = int(tag[1:5] + tag[6:10], 16)
-    dataset[number] = pydicom.DataElement(number, "UN", encoded)
+    dataset[number] = _unknown(monkeypatch, number, value)
     assert dataset[number].VR == "UN"
 
     record = InstanceRecord.from_dataset(dataset)
