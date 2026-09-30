@@ -240,9 +240,9 @@ These are the active design decisions, not statements that the code implements t
 
 ### D-010: Unsupported object types
 
-- **Decision.** Sequester Structured Reports (including dose reports), Key Object Selection documents, Presentation States, instances of Private SOP Classes, and objects outside the supported scope. List them in the report and exclude them from the conformance claim.
+- **Decision.** Sequester Structured Reports (including dose reports), Key Object Selection documents, Presentation States, instances of Private SOP Classes, and objects outside the supported scope. List them in the report and exclude them from the conformance claim. An instance is classified from its SOP Class UID, through PS3.4 Table B.5-1, and from its file's transfer syntax. The first supported release de-identifies the CT Image, RT Structure Set, RT Plan, and RT Dose IODs in the Implicit VR Little Endian and Explicit VR Little Endian transfer syntaxes, and the report says why any other instance was sequestered: it had no SOP Class UID or one that is not text, its SOP Class is not a Standard Storage SOP Class of Table B.5-1, its IOD is not supported (the report names the IOD), or its transfer syntax is missing or not supported.
 - **Rationale.** The Basic Profile gives Content Sequence D, and E.3.4 Note 2 warns of significant risk in de-identifying Structured Reports without the Clean Structured Content Option. Presentation States can carry graphic and text annotations (MIDI §1.22.3). De-identification of Private SOP Classes is not defined (E.1.1, Note 6 after Table E.1-1a).
-- **Tests.** Each type is sequestered and reported, and never written to the release output.
+- **Tests.** Each type is sequestered and reported, and never written to the release output. The Storage SOP Classes of the first release's IODs are supported in both transfer syntaxes, and each other kind of SOP Class, and each other transfer syntax, is classified with its reason.
 
 ### D-011: Validated overrides and derived claims
 
