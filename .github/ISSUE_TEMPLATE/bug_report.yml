@@ -1,6 +1,6 @@
 name: Bug report
 description: Report something in PyMedPhys that does not work as documented.
-labels: ["bug"]
+type: Bug
 body:
   - type: markdown
     attributes:

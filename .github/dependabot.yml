@@ -20,7 +20,6 @@ updates:
       default-days: 7
     labels:
       - dependencies
-      - "CI / CD"
     groups:
       actions:
         patterns:
