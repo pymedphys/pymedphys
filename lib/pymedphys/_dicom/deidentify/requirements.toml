@@ -553,6 +553,7 @@ implementation = [
   "_dev/deid_tables/generate.py",
   "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
+  "_dicom/deidentify/scope.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
   "_dicom/deidentify/supplementary_actions.py",
@@ -565,10 +566,12 @@ tests = [
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
   "tests/dicom/test_deidentify_sop_classes.py::test_an_unsupported_or_unlisted_sop_class_has_no_iod",
+  "tests/dicom/test_deidentify_scope.py::test_a_standard_sop_class_of_another_iod_is_sequestered",
+  "tests/dicom/test_deidentify_scope.py::test_a_sop_class_that_table_b_5_1_does_not_list_is_sequestered",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, and reviewed supplementary actions cover the person names that Table E.1-1 omits. Remaining: the edition-check workflow (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-entered RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits. Remaining: the edition-check workflow (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-entered RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
