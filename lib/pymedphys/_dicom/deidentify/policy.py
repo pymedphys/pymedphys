@@ -42,8 +42,9 @@ without the preset, and any other conflict, such as one a new edition of the
 table adds, are rejected.
 
 A preset is enabled only once its behaviour is implemented and validated. No
-preset is enabled yet; ``basic``, the preset of the first supported release,
-which covers the Basic Profile alone, is to be enabled first. The engine takes
+preset is enabled yet; the first supported release is to enable ``basic``, the
+Basic Profile alone, and a preset that adds the Clean Descriptors Option to
+it. The engine takes
 its policy from :func:`select_policy`, which refuses a preset that is not
 enabled. A policy composed from a given table is never enabled, and a custom
 option set is validated but not enabled.
@@ -90,8 +91,9 @@ PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     }
 )
 DEFAULT_PRESET = "basic"
-# The presets whose behaviour is implemented and validated. None is yet;
-# ``basic``, the preset of the first supported release, is to be enabled first.
+# The presets whose behaviour is implemented and validated. None is yet; the
+# first supported release is to enable ``basic`` and a preset that adds the
+# Clean Descriptors Option to it.
 ENABLED_PRESETS: frozenset[str] = frozenset()
 
 # The preset that resolves the conflicts below, and the actions it resolves.

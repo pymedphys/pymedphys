@@ -26,8 +26,8 @@ The file gives actions only to attributes that the table omits, so it never
 changes an action the table gives. UI, DA, DT, and TM attributes are left to
 the roles files (:mod:`~pymedphys._dicom.deidentify.uid_roles` and
 :mod:`~pymedphys._dicom.deidentify.temporal_roles`), which give each of them a
-role. The temporal roles act only under Modified Dates, so the Basic Profile
-action of a date or time that Table E.1-1 omits is still to be decided.
+role. The temporal roles act only under Modified Dates; the Basic Profile
+action of a date or time that Table E.1-1 omits, X/Z/D, is to be added here.
 """
 
 from __future__ import annotations
