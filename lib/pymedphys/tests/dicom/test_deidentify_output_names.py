@@ -55,8 +55,9 @@ RESERVED_DEVICE_NAMES = frozenset(
 
 any_key = st.binary(min_size=32, max_size=32).map(keys.DeidKey)
 # Source UIDs of the forms real systems write: under an organisation's root,
-# here an invented one, and "2.25." with a random version 4 UUID, as pydicom
-# generates them. Both can reach a name only through a leak.
+# here an invented one, and "2.25." with a random version 4 UUID, as pydicom's
+# generate_uid(prefix=None) makes them. Both can reach a name only through a
+# leak.
 source_uids = st.one_of(
     st.from_regex(r"1\.2\.840\.99999(?:\.(?:0|[1-9][0-9]{0,9})){1,8}", fullmatch=True),
     st.uuids(version=4).map(lambda uuid_: f"{uids.UID_ROOT}{uuid_.int}"),

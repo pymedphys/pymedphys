@@ -97,7 +97,7 @@ The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API 
    - A private sequence not known to be safe is parsed and each nested attribute is handled on its own merits.
 7. **File container.**
    - The engine replaces the File Meta Information and the preamble, as E.1.1 requires: it builds the File Meta Information itself, describing the de-identifying application, and writes a zeroed preamble (D-002).
-   - It removes group 0004 from every file other than a DICOMDIR, and removes Data Set Trailing Padding. A source DICOMDIR is never passed through; one is written only by regenerating it from the de-identified files (E.1.1).
+   - It removes group 0004 from every file other than a DICOMDIR, and removes Data Set Trailing Padding. A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016); E.1.1 would allow one only if regenerated from the de-identified files.
    - Encapsulated documents are replaced, as Table E.1-1 requires, or the instance is sequestered.
    - Metadata in compressed pixel data bitstreams, such as JPEG APPn segments, is removed without recompression.
    - Output file and directory names are built only from replacement identifiers, never from source paths, file names, or attribute values. Each instance is written to `<Patient ID>/<Study Instance UID>/<Series Instance UID>/<SOP Instance UID>.dcm` below the output directory, from its replacement values (D-016).

@@ -129,8 +129,9 @@ All Data Elements with a Group Number of 0004 shall be removed from any SOP Inst
 '''
 status = "planned"
 milestone = "M4"
+decisions = ["D-016"]
 note = '''
-Group 0004 is removed with the rest of the file container. A DICOMDIR is only ever regenerated from the de-identified files, never passed through.
+Group 0004 is removed with the rest of the file container. A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016).
 '''
 
 [[requirement]]
