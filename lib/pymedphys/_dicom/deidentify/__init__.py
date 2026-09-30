@@ -19,7 +19,7 @@ package does not yet de-identify anything; so far it holds the rule tables
 generated from the DICOM standard and the code that loads them, and the keys,
 keyed replacement UIDs, UID and temporal attribute roles, patient
 pseudonyms, subject profiles, date offsets, the actions of Table E.1-1
-under selected options, the checks of values against their VR and VM, and the
-classification of instances as de-identified or sequestered, that later
-stages will use.
+under selected options, the checks of values against their VR and VM, the
+classification of instances as de-identified or sequestered, and the first
+pass's graph of the references between instances, that later stages will use.
 """
