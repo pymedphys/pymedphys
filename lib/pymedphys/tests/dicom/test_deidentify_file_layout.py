@@ -595,6 +595,19 @@ def test_the_file_meta_group_length_is_not_trusted():
     ]
 
 
+def test_the_data_set_is_not_read_after_unreadable_file_meta_information():
+    # (0002,0016) has no VR, so it cannot be read as File Meta Information,
+    # although it would read as an implicit VR element of 2 bytes.
+    unreadable = struct.pack("<HHI", 0x0002, 0x0016, 2) + b"AE"
+    data = _file(IMPLICIT, unreadable + _implicit(0x00100010, NAME))
+
+    layout = read_file_layout(data)
+
+    assert layout.transfer_syntax == IMPLICIT
+    assert layout.spans[-1] == Span(172, len(data), None, Location(Region.TRAILING))
+    assert not layout.readable
+
+
 @pytest.mark.parametrize(
     "data",
     [
@@ -701,6 +714,17 @@ def test_a_vr_that_differs_from_ps3_6_is_read_as_written():
     assert _described(layout)[4:] == [
         (174, len(data), 186, "data set element (300A,00B0) (OB)")
     ]
+
+
+def test_an_attribute_with_several_dictionary_vrs_keeps_the_vr_as_written():
+    # PS3.6 gives Smallest Image Pixel Value (0028,0106) "US or SS".
+    implicit = read_file_layout(_file(IMPLICIT, _implicit(0x00280106, b"\x00\x00")))
+    written_as_un = read_file_layout(
+        _file(EXPLICIT, _explicit(0x00280106, "UN", b"\x00\x00"))
+    )
+
+    assert implicit.spans[-1].location.vr is None
+    assert written_as_un.spans[-1].location.vr == "UN"
 
 
 def test_a_repeating_group_in_implicit_vr_has_its_dictionary_vr():
