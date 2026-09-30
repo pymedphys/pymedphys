@@ -18,6 +18,7 @@ The design is in ``docs/contrib/info/deidentification-design.md``. This
 package does not yet de-identify anything; so far it holds the rule tables
 generated from the DICOM standard and the code that loads them, and the keys,
 keyed replacement UIDs, UID and temporal attribute roles, patient
-pseudonyms, subject profiles, date offsets, and the actions of Table E.1-1
-under selected options that later stages will use.
+pseudonyms, subject profiles, date offsets, the actions of Table E.1-1
+under selected options, and the supplementary actions for attributes that the
+table omits, that later stages will use.
 """
