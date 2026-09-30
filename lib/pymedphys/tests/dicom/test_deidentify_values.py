@@ -60,7 +60,7 @@ VALID = [
     ("IS", "-2147483648"),
     # LO, SH: no backslash, no control character except ESC.
     ("LO", "L" * 64),
-    ("LO", "\x1b$BFixture\x1b(B"),
+    ("LO", "Müller"),
     ("SH", "S" * 16),
     # ST, LT, UT: text with TAB, CR, LF, FF, and ESC; a backslash is allowed.
     ("ST", "S" * 1024),
@@ -74,7 +74,9 @@ VALID = [
     ("PN", "Family^Given^Middle^Prefix^Suffix"),
     # Decoded from the Japanese example of PS3.5 Annex H.
     ("PN", "Yamada^Tarou=山田^太郎=やまだ^たろう"),
-    ("PN", "P" * 64 + "=" + "Q" * 64),
+    # Each group's 64 characters include the "=" before it (PS3.5 Section
+    # 6.2.1.2).
+    ("PN", "P" * 64 + "=" + "Q" * 63 + "=" + "R" * 63),
     # TM: HHMMSS.FFFFFF, trailing components optional, trailing padding.
     ("TM", "070907.0705 "),
     ("TM", "1010"),
@@ -157,9 +159,12 @@ INVALID = [
     ("LO", "SECRET\\SECRET"),
     ("LO", "SECRET\nSECRET"),
     ("LO", "SECRET\x00"),
+    # A decoded value has no escape sequences: encoding adds them.
+    ("LO", "SECRET\x1b[31m"),
     ("SH", "SECRETSECRETSECRE"),
     ("ST", "S" * 1025),
     ("ST", "SECRET\x00"),
+    ("ST", "SECRET\x1b"),
     ("LT", "L" * 10241),
     ("UT", "SECRET\x07"),
     ("UC", "SECRET\\SECRET"),
@@ -168,6 +173,9 @@ INVALID = [
     ("PN", "SECRET" * 10 + "SECRE"),
     ("PN", "SECRET\\SECRET"),
     ("PN", "SECRET\r"),
+    ("PN", "P" * 64 + "=" + "SECRET" * 10 + "SECR"),
+    ("PN", "=" + "SECRET" * 10 + "SECR"),
+    ("PN", "SECRET\x1b$B"),
     # PS3.5's own example of an invalid Value.
     ("TM", "021 "),
     ("TM", "2400"),
@@ -194,6 +202,8 @@ INVALID = [
     ("UV", -1),
     ("FL", 3.5e38),
     ("FL", "1.5"),
+    ("FL", 2**1024),
+    ("FD", 2**1024),
     ("FD", "SECRET"),
     ("AT", 2**32),
     ("AT", "(0010,0010)"),
@@ -323,3 +333,30 @@ def test_every_vr_the_dictionary_uses_can_be_checked():
 
     assert used - {"SQ"} <= set(values.CHECKED_VRS)
     assert set(values.CHECKED_VRS) == standard.VRS - {"SQ"}
+
+
+@pytest.mark.parametrize("single", ["ORIGINAL", b"\x00\x01", bytearray(b"\x00")])
+def test_a_single_string_or_bytes_is_not_taken_as_its_characters(single):
+    # pydicom gives an attribute with one value as that value alone.
+    with pytest.raises(TypeError, match="sequence of values"):
+        values.values_problem("CS", "2-n", single)
+
+
+def test_every_vm_the_dictionary_uses_can_be_checked():
+    vms = {
+        attribute.vm
+        for attribute in standard.load_data_dictionary().attributes
+        if attribute.vm
+    }
+
+    assert len(vms) == 20
+    for vm in vms:
+        values.vm_problem(vm, 1)
+
+
+@pytest.mark.parametrize("vr, value", [("DS", 1.5), ("US", -1), ("OW", "SECRET")])
+def test_problems_name_the_vr(vr, value):
+    problem = values.value_problem(vr, value)
+
+    assert problem is not None
+    assert f"a value of VR {vr}" in problem

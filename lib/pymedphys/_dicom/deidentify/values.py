@@ -22,6 +22,11 @@ adds any padding byte; an integer or float for a binary number; and bytes for
 an OB, OD, OF, OL, OV, OW, or UN value. The number of values is checked
 against the attribute's VM in the pinned PS3.6 data dictionary.
 
+Text values are decoded strings, so they contain no ISO/IEC 2022 escape
+sequences, which encoding adds, and no ESC. Whether a text value can be encoded
+in the data set's Specific Character Set (0008,0005) is checked when the value
+is written, not here.
+
 What is wrong is described without quoting the value, so the result can be
 reported and logged even when the value is identifying.
 """
@@ -37,9 +42,9 @@ from collections.abc import Callable, Sequence
 from .standard import VM_PATTERN
 from .uid_registry import is_uid
 
-_ESC = "\x1b"
-# The controls a text VR (ST, LT, UT) may contain, besides ESC.
-_TEXT_CONTROLS = frozenset({"\t", "\n", "\f", "\r", _ESC})
+# The controls a text VR (ST, LT, UT) may contain. PS3.5 also allows ESC,
+# but only in the escape sequences that encoding adds.
+_TEXT_CONTROLS = frozenset({"\t", "\n", "\f", "\r"})
 _DEFAULT_REPERTOIRE = re.compile(r"[\x20-\x7e]*")
 _FL_MAX = 3.4028234663852886e38
 _UNLIMITED = 2**32 - 2
@@ -156,12 +161,17 @@ def _check_is(value: str) -> bool:
 
 
 def _check_pn(value: str) -> bool:
+    # Each group's 64 characters include the "=" before it (PS3.5 Section
+    # 6.2.1.2).
     groups = value.split("=")
     return (
         "\\" not in value
-        and not _has_controls(value, frozenset({_ESC}))
+        and not _has_controls(value, frozenset())
         and len(groups) <= 3
-        and all(len(group) <= 64 and group.count("^") <= 4 for group in groups)
+        and all(
+            len(group) + (index > 0) <= 64 and group.count("^") <= 4
+            for index, group in enumerate(groups)
+        )
     )
 
 
@@ -171,11 +181,11 @@ def _check_ur(value: str) -> bool:
 
 
 def _short_text(max_length: int) -> Callable[[str], bool]:
-    """Check LO, SH, and UC: no backslash, and no control except ESC."""
+    """Check LO, SH, and UC: no backslash, and no control."""
     return lambda value: (
         len(value) <= max_length
         and "\\" not in value
-        and not _has_controls(value, frozenset({_ESC}))
+        and not _has_controls(value, frozenset())
     )
 
 
@@ -211,8 +221,8 @@ _STRING_CHECKS: dict[str, tuple[Callable[[str], bool], str]] = {
     "LT": (_text(10240), "at most 10240 characters, no control but TAB, CR, LF, FF"),
     "PN": (
         _check_pn,
-        "up to three groups of at most 64 characters and five components, "
-        "no backslash or control",
+        "up to three groups of at most 64 characters, counting the = before "
+        "each, and five components, no backslash or control",
     ),
     "SH": (_short_text(16), "at most 16 characters, no backslash or control"),
     "ST": (_text(1024), "at most 1024 characters, no control but TAB, CR, LF, FF"),
@@ -232,19 +242,28 @@ CHECKED_VRS = frozenset({*_STRING_CHECKS, *_INTEGER_RANGES, "FL", "FD", *_WORD_B
 
 def _number_problem(vr: str, value: object) -> str | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return f"is not a number, as an {vr} value must be"
+        return f"is not a number, as a value of VR {vr} must be"
     if vr in _INTEGER_RANGES:
         low, high = _INTEGER_RANGES[vr]
         if not isinstance(value, int) or not low <= value <= high:
-            return f"is not an integer from {low} to {high}, as an {vr} value must be"
-    elif vr == "FL" and math.isfinite(value) and abs(value) > _FL_MAX:
-        return "is outside the range of a 32-bit float, as an FL value must not be"
+            return (
+                f"is not an integer from {low} to {high}, as a value of VR {vr} must be"
+            )
+        return None
+    try:
+        number = float(value)
+    except OverflowError:
+        number = math.inf
+    if isinstance(value, int) and math.isinf(number):
+        return f"is too large for a 64-bit float, as a value of VR {vr} must not be"
+    if vr == "FL" and math.isfinite(number) and abs(number) > _FL_MAX:
+        return "is outside the range of a 32-bit float, as a value of VR FL must not be"
     return None
 
 
 def _bytes_problem(vr: str, value: object) -> str | None:
     if not isinstance(value, (bytes, bytearray)):
-        return f"is not bytes, as an {vr} value must be"
+        return f"is not bytes, as a value of VR {vr} must be"
     if len(value) % _WORD_BYTES[vr]:
         return f"is not a whole number of {_WORD_BYTES[vr]}-byte words"
     return None
@@ -252,7 +271,7 @@ def _bytes_problem(vr: str, value: object) -> str | None:
 
 def _string_problem(vr: str, value: object) -> str | None:
     if not isinstance(value, str):
-        return f"is not text, as an {vr} value must be"
+        return f"is not text, as a value of VR {vr} must be"
     check, description = _STRING_CHECKS[vr]
     if value and not check(value):
         return f"is not a valid {vr} value: {description}"
@@ -334,8 +353,8 @@ def vm_problem(vm: str, count: int) -> str | None:
     Returns
     -------
     str or None
-        What is wrong, such as ``"has 2 values where VM 3 requires 3"``; or
-        None.
+        What is wrong, such as ``"has 2 values where VM 3 does not allow that
+        many"``; or None.
 
     Raises
     ------
@@ -374,9 +393,16 @@ def values_problem(vr: str, vm: str, values: Sequence[object]) -> str | None:
 
     Raises
     ------
+    TypeError
+        If ``values`` is a single string or bytes, as pydicom gives an
+        attribute with one value, rather than a sequence of values.
     ValueError
         If ``vr`` or ``vm`` is not of a form PS3.6 uses, or a VR is SQ.
     """
+    if isinstance(values, (str, bytes, bytearray)):
+        raise TypeError(
+            "values must be a sequence of values, not a single string or bytes"
+        )
     alternatives = vr.split(" or ")
     if not all(alternative in CHECKED_VRS for alternative in alternatives):
         raise ValueError("each VR must be one of PS3.5 Table 6.2-1 other than SQ")
