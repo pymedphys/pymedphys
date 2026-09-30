@@ -50,11 +50,12 @@ def streamlit_options(port: int | None, address: str | None) -> list[str]:
         The port to serve on, or ``None`` for Streamlit's configured port.
     address
         The network address to serve on, or ``None`` to serve only this
-        computer on the loopback address. Streamlit then also accepts only
-        requests addressed to ``localhost`` or the loopback address, which
-        stops a web page from reaching the GUI by DNS rebinding. With an
-        explicit address, the accepted host names are left to Streamlit's
-        ``server.allowedHosts`` setting, which by default accepts any.
+        computer on the loopback address. Streamlit then also accepts the
+        WebSocket connections that run the apps only when they are addressed
+        to ``localhost`` or the loopback address, which protects those
+        connections against DNS rebinding. With an explicit address, the
+        accepted host names are left to Streamlit's ``server.allowedHosts``
+        setting, which by default accepts any.
 
     Returns
     -------
