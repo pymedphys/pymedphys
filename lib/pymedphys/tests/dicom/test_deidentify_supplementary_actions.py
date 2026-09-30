@@ -167,6 +167,10 @@ def _first(**fields):
             "rule 1 is listed in Table E.1-1",
         ),
         (
+            _first(tag="(50xx,200A)", keyword="TotalTime"),
+            "rule 1 is listed in Table E.1-1",
+        ),
+        (
             _first(tag="(0008,0016)", keyword="SOPClassUID"),
             "rule 1 is of a VR that a roles file covers",
         ),

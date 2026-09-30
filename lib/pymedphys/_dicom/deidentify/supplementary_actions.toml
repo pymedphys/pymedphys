@@ -5,7 +5,7 @@
 # Every person name (PN) attribute that Table E.1-1 omits has a rule, so that
 # no person's name is kept merely because the table does not list it. A rule
 # never covers an attribute that Table E.1-1 lists, or a UI, DA, DT, or TM
-# attribute, which the roles files cover.
+# attribute, which the roles files give roles.
 
 schema = "pymedphys-deid-supplementary-actions/1"
 edition = "2026d"

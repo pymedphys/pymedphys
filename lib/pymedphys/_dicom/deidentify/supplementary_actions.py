@@ -25,7 +25,9 @@ received, since the engine does not change pixel data.
 The file gives actions only to attributes that the table omits, so it never
 changes an action the table gives. UI, DA, DT, and TM attributes are left to
 the roles files (:mod:`~pymedphys._dicom.deidentify.uid_roles` and
-:mod:`~pymedphys._dicom.deidentify.temporal_roles`), which cover them all.
+:mod:`~pymedphys._dicom.deidentify.temporal_roles`), which give each of them a
+role. The temporal roles act only under Modified Dates, so the Basic Profile
+action of a date or time that Table E.1-1 omits is still to be decided.
 """
 
 from __future__ import annotations
@@ -52,7 +54,7 @@ SUPPLEMENTARY_ACTIONS_PATH = (
 
 # Every attribute of these VRs that Table E.1-1 omits needs an action.
 COVERED_VRS = frozenset({"PN"})
-# The VRs whose attributes the roles files cover.
+# The VRs whose attributes the roles files give roles.
 _ROLE_VRS = frozenset({"UI", "DA", "DT", "TM"})
 _FIELDS = frozenset({"tag", "keyword", "action", "note"})
 
@@ -60,10 +62,10 @@ _FIELDS = frozenset({"tag", "keyword", "action", "note"})
 def _covers(table_tag: str, tag: str) -> bool:
     """Whether a Table E.1-1 tag covers a dictionary tag.
 
-    An "x" in the table's tag stands for any digit, so "(50xx,xxxx)" covers
-    every attribute of the retired Curve group, such as "(50xx,2500)". Only
-    tags of the form "(gggg,eeee)" are compared, so the private attributes
-    row, "(gggg,eeee) where gggg is odd", covers none.
+    An "x" in the table's tag stands for any hexadecimal digit, so
+    "(50xx,xxxx)" covers every attribute of the retired Curve group, such as
+    "(50xx,2500)". Only tags of the form "(gggg,eeee)" are compared, so the
+    private attributes row, "(gggg,eeee) where gggg is odd", covers none.
     """
     return len(table_tag) == len(tag) == len("(gggg,eeee)") and all(
         expected in ("x", found) for expected, found in zip(table_tag, tag)
