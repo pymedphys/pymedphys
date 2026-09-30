@@ -54,14 +54,20 @@ RESERVED_DEVICE_NAMES = frozenset(
 )
 
 any_key = st.binary(min_size=32, max_size=32).map(keys.DeidKey)
-# Source UIDs under the invented root, which no "2.25." name can contain.
-source_uids = st.from_regex(
-    r"1\.2\.840\.99999(?:\.(?:0|[1-9][0-9]{0,9})){1,8}", fullmatch=True
+# Source UIDs of the forms real systems write: under an organisation's root,
+# here an invented one, and "2.25." with a random version 4 UUID, as pydicom
+# generates them. Both can reach a name only through a leak.
+source_uids = st.one_of(
+    st.from_regex(r"1\.2\.840\.99999(?:\.(?:0|[1-9][0-9]{0,9})){1,8}", fullmatch=True),
+    st.uuids(version=4).map(lambda uuid_: f"{uids.UID_ROOT}{uuid_.int}"),
 )
-# Source Patient IDs with a lower-case letter other than d, c, and m, the only
-# lower-case letters an output path can contain.
-source_patient_ids = st.from_regex(
-    r"[A-Za-z0-9 ]{0,10}[abe-ln-z][A-Za-z0-9 ]{0,10}", fullmatch=True
+# Source Patient IDs, including IDs in the pseudonym code's own alphabet. Each
+# of those has a letter, so it cannot be part of a UID, and at least eight
+# characters, so it appears in a 16-character code by chance with probability
+# below 1e-11.
+source_patient_ids = st.one_of(
+    st.from_regex(r"[A-Za-z0-9 ]{0,10}[abe-ln-z][A-Za-z0-9 ]{0,10}", fullmatch=True),
+    st.from_regex(r"[A-Z2-7]{0,7}[A-Z][A-Z2-7]{7,12}", fullmatch=True),
 )
 padding = st.text(alphabet="\x00 ", min_size=1, max_size=3)
 
