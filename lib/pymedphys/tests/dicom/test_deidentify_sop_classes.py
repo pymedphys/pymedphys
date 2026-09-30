@@ -178,8 +178,12 @@ def test_an_unsupported_or_unlisted_sop_class_has_no_iod(sop_class):
     assert sop_classes.iod_for_sop_class(sop_class) is None
 
 
+@pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_sop_class_uid_read_from_a_file_finds_its_iod():
+    # An end-to-end check. pydicom removes the padding when it decodes the
+    # value, so test_trailing_padding_is_ignored is what shows that the lookup
+    # removes it too.
     rt_plan_storage = "1.2.840.10008.5.1.4.1.1.481.5"
     dataset = pydicom.Dataset()
     dataset.SOPClassUID = rt_plan_storage
@@ -188,10 +192,10 @@ def test_a_sop_class_uid_read_from_a_file_finds_its_iod():
     dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
     written = io.BytesIO()
     pydicom.dcmwrite(written, dataset, enforce_file_format=True)
+    read = pydicom.dcmread(io.BytesIO(written.getvalue()))
 
     # PS3.5 Section 9.1 pads the odd-length UID with a NUL.
-    assert rt_plan_storage.encode() + b"\x00" in written.getvalue()
-    read = pydicom.dcmread(io.BytesIO(written.getvalue()))
+    assert read.get_item(0x00080016).value == rt_plan_storage.encode() + b"\x00"
     found = sop_classes.iod_for_sop_class(read.SOPClassUID)
 
     assert found is not None
