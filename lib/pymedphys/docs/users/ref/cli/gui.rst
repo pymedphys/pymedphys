@@ -10,10 +10,10 @@ Serving the apps
 ----------------
 
 By default, ``pymedphys gui`` listens only on the loopback address
-``127.0.0.1``, so only the computer that runs it can connect. It also accepts
-only requests addressed to ``localhost`` or ``127.0.0.1``, which protects
-against other web pages reaching the apps through DNS rebinding, and it turns
-off Streamlit's usage statistics.
+``127.0.0.1``, so only the computer that runs it can connect. It also restricts
+the WebSocket connections used to run the apps to requests addressed to
+``localhost`` or ``127.0.0.1``, protecting those connections against DNS
+rebinding. It turns off Streamlit's usage statistics.
 
 To serve other computers, for example from a department server, pass the
 address to listen on with ``--address``. This serves every IPv4 interface on
