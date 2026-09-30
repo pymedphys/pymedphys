@@ -285,7 +285,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - **[Contributor facing only]** A development command,
   `pymedphys dev deid-tables`, generates Tables E.1-1, E.1-1a, and E.3.10-1
   of DICOM PS3.15, Tables 6-1 and A-1 to A-4 of PS3.6, Tables 8-1 and 8-2
-  and context groups CID 7050 and CID 7005 of PS3.16, and the modules of the
+  and context groups CID 7050 and CID 7005 of PS3.16, Table B.5-1 of PS3.4,
+  and the modules of the
   CT Image, RT Dose, RT Structure Set, and RT Plan IODs with the attribute
   tables of those modules and their macros from PS3.3, as JSON from NEMA's
   HTML publication of the pinned edition, 2026d, the first step towards the
@@ -294,8 +295,9 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   registries of UIDs, well-known frames of reference, and the UIDs of context
   groups and templates, the coding schemes and their UIDs, the codes that
   record a de-identification method, the purposes of reference for
-  contributing equipment, and each attribute's Type in each module and
-  sequence of a supported IOD. It downloads each source
+  contributing equipment, the IOD of each Storage SOP Class, and each
+  attribute's Type in each module and sequence of a supported IOD. It
+  downloads each source
   page, or reads it from `--source-dir`, and parses it only after checking its
   SHA-256 digest against the pin. The parsers map columns by their header
   text and reject unknown or missing columns, merged cells outside PS3.3, empty or
@@ -317,14 +319,18 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   `load_frames_of_reference`, `load_context_group_uids`, and
   `load_template_uids`), `pymedphys._dicom.deidentify.codes`
   (`load_coding_schemes`, `load_hl7v3_coding_schemes`, and
-  `load_context_group`), and `pymedphys._dicom.deidentify.iods`
-  (`load_iod_tables`) that
+  `load_context_group`), `pymedphys._dicom.deidentify.iods`
+  (`load_iod_tables`), and `pymedphys._dicom.deidentify.sop_classes`
+  (`load_storage_sop_classes`) that
   check each row's fields, types, and values and reject a table whose rows no
   longer match their recorded digest. PS3.3's tables are kept as published,
   and its loader expands each IOD's modules, following every included macro,
-  into each attribute's Type at each place in the data set. `--check` exits with status 1 when the
+  into each attribute's Type at each place in the data set.
+  `iod_for_sop_class` finds an instance's IOD, with those Types, from its SOP
+  Class UID, and finds none for the SOP Classes of other IODs or for a UID
+  that Table B.5-1 does not list, such as a retired or private SOP Class. `--check` exits with status 1 when the
   committed tables are missing or out of date.
-  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130)
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158)
 - **[Contributor facing only]** A private module,
   `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
   Spreadsheet to JSON, the first step towards descriptor cleaning

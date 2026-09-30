@@ -1,0 +1,283 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""DICOM PS3.4 Table B.5-1, generated from the standard, and the IOD of each SOP Class."""
+
+import dataclasses
+import json
+import re
+
+from pymedphys._imports import pytest
+
+from pymedphys._dicom.deidentify import iods, sop_classes, standard, uid_registry
+
+SPEC = sop_classes.STORAGE_SOP_CLASS_TABLE
+
+
+def _loaded(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _redigested(document):
+    """Record the digest of the rows as they now are, as a careful editor would."""
+    document["content_sha256"] = standard.content_sha256(document["rows"])
+    return document
+
+
+def _write(path, document):
+    path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def _shipped():
+    return _loaded(standard.STANDARD_DIR / SPEC.file)
+
+
+def test_the_table_has_every_row_of_the_2026d_table():
+    # Counts measured from the published 2026d PS3.4.
+    rows = sop_classes.load_storage_sop_classes().rows
+
+    assert len(rows) == 173
+    assert len({row.iod for row in rows}) == 161
+    assert sum(bool(row.specialization) for row in rows) == 57
+
+
+def test_the_table_carries_its_edition_and_acknowledgement():
+    table = sop_classes.load_storage_sop_classes()
+
+    assert table.edition == "2026d"
+    assert table.acknowledgement == "DICOM PS3.4 2026d, © NEMA"
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        # Checked by hand against Table B.5-1 of the 2026d PS3.4.
+        sop_classes.StorageSOPClass(
+            name="CT Image Storage",
+            uid="1.2.840.10008.5.1.4.1.1.2",
+            iod="CT Image IOD",
+            specialization="B.5.1.26",
+        ),
+        sop_classes.StorageSOPClass(
+            name="CT Image Storage - For Processing",
+            uid="1.2.840.10008.5.1.4.1.1.2.3",
+            iod="CT Image IOD",
+            specialization="B.5.1.26",
+        ),
+        sop_classes.StorageSOPClass(
+            name="Enhanced CT Image Storage",
+            uid="1.2.840.10008.5.1.4.1.1.2.1",
+            iod="Enhanced CT Image IOD",
+            specialization="B.5.1.7 B.5.1.23 B.5.1.26",
+        ),
+        sop_classes.StorageSOPClass(
+            name="RT Plan Storage",
+            uid="1.2.840.10008.5.1.4.1.1.481.5",
+            iod="RT Plan IOD",
+            specialization="",
+        ),
+        # The one name in the table without "Storage", as published; PS3.6
+        # Table A-1 calls it "Macular Grid Thickness and Volume Report Storage".
+        sop_classes.StorageSOPClass(
+            name="Macular Grid Thickness and Volume Report",
+            uid="1.2.840.10008.5.1.4.1.1.79.1",
+            iod="Macular Grid Thickness and Volume Report IOD",
+            specialization="B.5.1.5",
+        ),
+    ],
+)
+def test_table_rows(row):
+    assert row in sop_classes.load_storage_sop_classes().rows
+
+
+def test_the_iod_name_drops_the_trailing_iod():
+    row = sop_classes.StorageSOPClass(
+        name="RT Dose Storage",
+        uid="1.2.840.10008.5.1.4.1.1.481.2",
+        iod="RT Dose IOD",
+        specialization="",
+    )
+
+    assert row.iod_name == "RT Dose"
+
+
+def test_every_storage_sop_class_is_a_current_sop_class_in_ps3_6():
+    registered = {
+        uid.uid: uid
+        for uid in uid_registry.load_uid_values().rows
+        if uid.uid_type == "SOP Class"
+    }
+
+    for row in sop_classes.load_storage_sop_classes().rows:
+        assert row.uid in registered, row.name
+        assert not registered[row.uid].retired, row.name
+
+
+def test_every_generated_iod_is_the_iod_of_a_storage_sop_class():
+    named = {row.iod_name for row in sop_classes.load_storage_sop_classes().rows}
+
+    assert set(iods.load_iod_tables().iods) <= named
+
+
+@pytest.mark.pydicom
+def test_the_first_supported_release_sop_classes_find_their_iods():
+    # pydicom's UID dictionary is an independent transcription of PS3.6.
+    from pydicom import uid
+
+    expected = {
+        uid.CTImageStorage: "CT Image",
+        # Added to the standard after pydicom's bundled edition; from Table
+        # B.5-1 of the 2026d PS3.4.
+        "1.2.840.10008.5.1.4.1.1.2.3": "CT Image",
+        uid.RTDoseStorage: "RT Dose",
+        uid.RTStructureSetStorage: "RT Structure Set",
+        uid.RTPlanStorage: "RT Plan",
+    }
+
+    found = {
+        sop_class: sop_classes.iod_for_sop_class(sop_class) for sop_class in expected
+    }
+
+    assert {sop_class: iod.name for sop_class, iod in found.items()} == expected
+    tables = iods.load_iod_tables()
+    for iod in found.values():
+        assert iod is tables.iods[iod.name]
+
+
+@pytest.mark.parametrize(
+    "sop_class",
+    [
+        # Storage SOP Classes whose IODs have no generated Types: MR Image,
+        # Enhanced CT Image, RT Ion Plan, and RT Beams Treatment Record.
+        "1.2.840.10008.5.1.4.1.1.4",
+        "1.2.840.10008.5.1.4.1.1.2.1",
+        "1.2.840.10008.5.1.4.1.1.481.8",
+        "1.2.840.10008.5.1.4.1.1.481.4",
+        # SOP Classes that Table B.5-1 does not list: the retired Nuclear
+        # Medicine Image Storage, Hanging Protocol Storage, which another
+        # service class defines, and Verification, which stores nothing.
+        "1.2.840.10008.5.1.4.1.1.5",
+        "1.2.840.10008.5.1.4.38.1",
+        "1.2.840.10008.1.1",
+    ],
+)
+def test_an_unsupported_or_unlisted_sop_class_has_no_iod(sop_class):
+    assert sop_classes.iod_for_sop_class(sop_class) is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        # A private SOP Class under an invented root.
+        "1.2.3.4.5",
+        # Padding is not stripped, so a padded UID matches nothing.
+        "1.2.840.10008.5.1.4.1.1.481.5\x00",
+        "1.2.840.10008.5.1.4.1.1.481.5 ",
+        "",
+    ],
+)
+def test_a_uid_the_table_does_not_list_has_no_iod(value):
+    assert sop_classes.iod_for_sop_class(value) is None
+
+
+def test_tables_from_different_editions_are_rejected():
+    later = dataclasses.replace(sop_classes.load_storage_sop_classes(), edition="2099a")
+
+    with pytest.raises(standard.StandardTableError, match="different editions"):
+        sop_classes.iod_for_sop_class(
+            "1.2.840.10008.5.1.4.1.1.481.5", sop_classes=later
+        )
+
+
+def test_the_tables_can_be_given(tmp_path):
+    document = _shipped()
+    plan = next(row for row in document["rows"] if row["name"] == "RT Plan Storage")
+    plan["iod"] = "RT Dose IOD"
+    table = sop_classes.load_storage_sop_classes(
+        _write(tmp_path / SPEC.file, _redigested(document))
+    )
+
+    found = sop_classes.iod_for_sop_class(
+        "1.2.840.10008.5.1.4.1.1.481.5",
+        sop_classes=table,
+        iod_tables=iods.load_iod_tables(),
+    )
+
+    assert found is not None
+    assert found.name == "RT Dose"
+
+
+@pytest.mark.parametrize(
+    "field, value, message",
+    [
+        ("uid", "1.02", "row 1 has a UID"),
+        ("uid", "1." + "2" * 63, "row 1 has a UID"),
+        ("name", "", "row 1 has a name"),
+        ("name", None, "row 1 has a name"),
+        ("iod", "Computed Radiography Image", "row 1 has an IOD"),
+        ("iod", "IOD", "row 1 has an IOD"),
+        ("iod", 1, "row 1 has an IOD"),
+        ("specialization", "5.1.1", "row 1 has a specialization"),
+        ("specialization", "B.5.1.1,B.5.1.2", "row 1 has a specialization"),
+        ("specialization", "B.5.1.1 ", "row 1 has a specialization"),
+        ("specialization", None, "row 1 has a specialization"),
+    ],
+)
+def test_a_malformed_row_is_rejected(tmp_path, field, value, message):
+    document = _shipped()
+    document["rows"][0][field] = value
+
+    with pytest.raises(standard.StandardTableError, match=re.escape(message)):
+        sop_classes.load_storage_sop_classes(
+            _write(tmp_path / SPEC.file, _redigested(document))
+        )
+
+
+def test_a_row_without_exactly_its_fields_is_rejected(tmp_path):
+    document = _shipped()
+    del document["rows"][0]["specialization"]
+
+    with pytest.raises(standard.StandardTableError, match="exactly the fields"):
+        sop_classes.load_storage_sop_classes(
+            _write(tmp_path / SPEC.file, _redigested(document))
+        )
+
+
+@pytest.mark.parametrize("field", ["uid", "name"])
+def test_a_repeated_uid_or_name_is_rejected(tmp_path, field):
+    document = _shipped()
+    rows = document["rows"]
+    rows[1][field] = rows[0][field]
+
+    with pytest.raises(standard.StandardTableError, match=f"row 2 repeats the {field}"):
+        sop_classes.load_storage_sop_classes(
+            _write(tmp_path / SPEC.file, _redigested(document))
+        )
+
+
+def test_an_altered_row_is_rejected(tmp_path):
+    document = _shipped()
+    document["rows"][0]["iod"] = "RT Plan IOD"
+
+    with pytest.raises(standard.StandardTableError, match="recorded digest"):
+        sop_classes.load_storage_sop_classes(_write(tmp_path / SPEC.file, document))
+
+
+def test_another_part_is_rejected(tmp_path):
+    document = _shipped()
+    document["acknowledgement"] = "DICOM PS3.3 2026d, © NEMA"
+
+    with pytest.raises(standard.StandardTableError, match="acknowledgement"):
+        sop_classes.load_storage_sop_classes(_write(tmp_path / SPEC.file, document))
