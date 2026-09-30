@@ -20,12 +20,15 @@ that changes it. "A requirement for an Option, when implemented, overrides any
 requirement for the underlying Profile" (PS3.15 E.1.1), so an attribute takes
 the action of the selected options that give one, and otherwise the Profile's.
 
-PS3.15 defines no precedence between options. Where two selected options give
-an attribute different actions, as Retain Longitudinal Temporal Information
-with Full Dates (K) and with Modified Dates (C) do for every date they list,
-no output can satisfy both while the attribute has a value. Such an attribute
-is reported as a conflict and given no action; what a policy does about it is
-decided when the policy is validated.
+PS3.15 E.3.6 specifies Retain Longitudinal Temporal Information with Full
+Dates and with Modified Dates as mutually exclusive, so selecting both is
+rejected. Otherwise PS3.15 defines no precedence between options. Where two
+selected options give an attribute different actions, as Retain Device
+Identity (K) and Modified Dates (C) do for eleven calibration, manufacture,
+installation, and beam hold dates, no output can satisfy both while the
+attribute has a value. Such an attribute is reported as a conflict and given
+no action; what a policy does about it is decided when the policy is
+validated.
 
 These are the actions of Table E.1-1 alone. Compound actions such as X/Z/D
 are resolved later, from the attribute's Type in its IOD, and reviewed
@@ -39,6 +42,12 @@ import types
 from collections.abc import Iterable, Mapping
 
 from .standard import OPTIONS, ProfileTable, load_table_e1_1
+
+# Options that PS3.15 specifies as mutually exclusive: E.3.6 for the two Retain
+# Longitudinal Temporal Information Options.
+MUTUALLY_EXCLUSIVE = (
+    frozenset({"retain_longitudinal_full_dates", "retain_longitudinal_modified_dates"}),
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -104,6 +113,11 @@ def _selected(options: Iterable[str]) -> tuple[str, ...]:
             f"unknown options {unknown}; the options of Table E.1-1 are "
             + ", ".join(OPTIONS)
         )
+    for exclusive in MUTUALLY_EXCLUSIVE:
+        if exclusive <= chosen:
+            raise ValueError(
+                f"the options {sorted(exclusive)} are mutually exclusive (PS3.15 E.3.6)"
+            )
     return tuple(option for option in OPTIONS if option in chosen)
 
 
@@ -136,7 +150,9 @@ def effective_actions(
     TypeError
         If ``options`` is a single string rather than a collection of names.
     ValueError
-        If an option is not one of Table E.1-1's options.
+        If an option is not one of Table E.1-1's options, or if the options
+        include both Retain Longitudinal Temporal Information with Full Dates
+        and with Modified Dates, which PS3.15 E.3.6 makes mutually exclusive.
     """
     selected = _selected(options)
     if table is None:

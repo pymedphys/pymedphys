@@ -15,6 +15,7 @@
 """The action of each attribute of Table E.1-1 under a profile and its options."""
 
 import dataclasses
+import itertools
 
 from pymedphys._imports import hypothesis, pytest
 
@@ -100,43 +101,58 @@ def test_options_that_agree_give_their_common_action(options, tag, action):
     assert not effective.conflicts
 
 
-def test_full_and_modified_dates_conflict_on_every_date_they_list():
-    effective = actions.effective_actions([FULL_DATES, MODIFIED_DATES])
-    conflicting = {conflict.tag for conflict in effective.conflicts}
-
-    assert len(conflicting) == 169
-    assert "(0008,0020)" in conflicting  # Study Date
-    assert conflicting.isdisjoint(effective.actions)
-    for conflict in effective.conflicts:
-        assert dict(conflict.actions) == {FULL_DATES: "K", MODIFIED_DATES: "C"}
+@pytest.mark.parametrize("others", [(), ("retain_uids",)])
+def test_full_and_modified_dates_are_mutually_exclusive(others):
+    # PS3.15 E.3.6 specifies the two as mutually exclusive Options.
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        actions.effective_actions([FULL_DATES, MODIFIED_DATES, *others])
 
 
 def test_device_identity_and_modified_dates_conflict_on_eleven_attributes():
     effective = actions.effective_actions([DEVICE_IDENTITY, MODIFIED_DATES])
 
     assert {conflict.tag for conflict in effective.conflicts} == DEVICE_DATE_CONFLICTS
+    assert DEVICE_DATE_CONFLICTS.isdisjoint(effective.actions)
     for conflict in effective.conflicts:
         assert dict(conflict.actions) == {DEVICE_IDENTITY: "K", MODIFIED_DATES: "C"}
     beam_hold = next(c for c in effective.conflicts if c.tag == "(300C,0127)")
     assert beam_hold.name == "Beam Hold Transition DateTime"
 
 
-def test_a_conflict_lists_every_selected_option_that_gives_an_action():
+def test_a_conflict_lists_only_the_selected_options_that_give_an_action():
     effective = actions.effective_actions(
-        [DEVICE_IDENTITY, FULL_DATES, MODIFIED_DATES, "retain_uids"]
+        [MODIFIED_DATES, "retain_uids", DEVICE_IDENTITY, "clean_descriptors"]
     )
     beam_hold = next(c for c in effective.conflicts if c.tag == "(300C,0127)")
 
-    # Retain Device Identity and Full Dates agree, but Modified Dates does not.
-    assert dict(beam_hold.actions) == {
-        DEVICE_IDENTITY: "K",
-        FULL_DATES: "K",
-        MODIFIED_DATES: "C",
-    }
-    assert list(beam_hold.actions) == [DEVICE_IDENTITY, FULL_DATES, MODIFIED_DATES]
+    # Retain UIDs and Clean Descriptors give Beam Hold Transition DateTime
+    # no action, and the options are in the table's order.
+    assert list(beam_hold.actions.items()) == [
+        (DEVICE_IDENTITY, "K"),
+        (MODIFIED_DATES, "C"),
+    ]
 
 
-@hypothesis.given(st.sets(st.sampled_from(standard.OPTIONS)))
+def test_only_device_identity_and_modified_dates_conflict():
+    # A new edition that adds a conflict between two options fails here once
+    # its tables are regenerated. Any conflict among more options is also one
+    # between two of them.
+    counts = {}
+    for pair in itertools.combinations(standard.OPTIONS, 2):
+        if set(pair) == {FULL_DATES, MODIFIED_DATES}:
+            continue
+        conflicts = actions.effective_actions(pair).conflicts
+        if conflicts:
+            counts[pair] = len(conflicts)
+
+    assert counts == {(DEVICE_IDENTITY, MODIFIED_DATES): 11}
+
+
+@hypothesis.given(
+    st.sets(st.sampled_from(standard.OPTIONS)).filter(
+        lambda selected: not {FULL_DATES, MODIFIED_DATES} <= selected
+    )
+)
 def test_each_attribute_has_one_action_or_a_conflict(selected):
     effective = actions.effective_actions(selected)
     conflicts = {conflict.tag: conflict for conflict in effective.conflicts}
@@ -187,9 +203,9 @@ def test_the_table_can_be_given():
 
 
 def test_the_results_are_read_only():
-    effective = actions.effective_actions([FULL_DATES, MODIFIED_DATES])
+    effective = actions.effective_actions([DEVICE_IDENTITY, MODIFIED_DATES])
 
     with pytest.raises(TypeError):
         effective.actions["(0010,0010)"] = "K"  # type: ignore[index]
     with pytest.raises(TypeError):
-        effective.conflicts[0].actions[FULL_DATES] = "X"  # type: ignore[index]
+        effective.conflicts[0].actions[DEVICE_IDENTITY] = "X"  # type: ignore[index]
